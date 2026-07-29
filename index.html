@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LYAN - Le lien qui compte</title>
+    <meta name="description" content="LYAN relie les habitants aux talents de leur quartier en Guadeloupe, Martinique, Guyane et à La Réunion. Trouvez la bonne personne, en toute confiance.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ========== NAVIGATION ========== -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="#" class="logo">
+                <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon-svg">
+                    <defs>
+                        <linearGradient id="lyanGradient" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="55%" stop-color="#80A86E"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                        <linearGradient id="lyanRoof" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                    </defs>
+                    <!-- Roof outline -->
+                    <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    
+                    <!-- 3 silhouettes (heads + bodies) -->
+                    <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                    <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                    <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                    
+                    <!-- Connected arcs for bodies -->
+                    <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                          stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                </svg>
+                <div class="logo-text-block">
+                    <span class="logo-title">LYAN</span>
+                    <span class="logo-subtitle">LE LIEN QUI COMPTE</span>
+                </div>
+            </a>
+            
+            <div class="nav-links">
+                <a href="#search-services">Trouver</a>
+                <a href="#how-it-works">Comment ça marche</a>
+                <a href="#about">À propos</a>
+                <a href="#login" class="btn btn-outline">Connexion</a>
+                <a href="#" class="btn btn-primary btn-signup-nav open-signup-trigger">S'inscrire</a>
+            </div>
+            
+            <button class="mobile-menu-btn" aria-label="Ouvrir le menu">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay">
+        <div class="mobile-menu-content">
+            <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
+            <a href="#search-services">Trouver</a>
+            <a href="#how-it-works">Comment ça marche</a>
+            <a href="#about">À propos</a>
+            <div class="mobile-menu-actions">
+                <a href="#login" class="btn btn-outline" style="width: 100%; margin-bottom: 12px;">Connexion</a>
+                <a href="#" class="btn btn-primary open-signup-trigger" style="width: 100%;">S'inscrire</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SECTION 1 : HERO ========== -->
+    <header class="hero">
+        <!-- Decorative enlarged 3D vector elements -->
+        <svg class="deco deco-floating" style="top: 15%; left: 3%; width: 140px;" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="60" cy="60" r="45" fill="none" stroke="#E5B345" stroke-width="3" stroke-dasharray="6 8" opacity="0.4"/>
+            <circle cx="60" cy="60" r="25" fill="#E5B345" opacity="0.15"/>
+        </svg>
+        <svg class="deco deco-floating" style="bottom: 12%; right: 4%; width: 160px; animation-delay: -2s;" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 120 Q70 20 120 120" stroke="#7BC5E3" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/>
+            <circle cx="70" cy="50" r="8" fill="#4A7C59" opacity="0.25"/>
+        </svg>
+
+        <div class="container hero-container">
+            <div class="hero-content fade-in-up">
+                <h1>Qui peut vous aider <br><span class="text-gradient">aujourd'hui ?</span></h1>
+                <p class="hero-subtitle">Le réseau de confiance qui relie les habitants aux talents de leur quartier dans les DOM.</p>
+                
+                <!-- Search Bar -->
+                <form class="hero-search" id="heroSearchForm">
+                    <div class="hero-search-fields">
+                        <div class="search-input-wrapper">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input type="text" id="searchInput" placeholder="Que recherchez-vous ?" autocomplete="off">
+                        </div>
+                        <div class="search-input-wrapper">
+                            <i class="ph ph-map-pin"></i>
+                            <select id="locationSelect">
+                                <option value="" disabled selected>Département...</option>
+                                <option value="guadeloupe">Guadeloupe (971)</option>
+                                <option value="martinique">Martinique (972)</option>
+                                <option value="guyane">Guyane (973)</option>
+                                <option value="reunion">La Réunion (974)</option>
+                                <option value="saint-martin">St-Martin / St-Barth</option>
+                            </select>
+                        </div>
+                        <div class="search-input-wrapper">
+                            <i class="ph ph-buildings"></i>
+                            <select id="citySelect" disabled>
+                                <option value="" selected>Toutes les communes</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn-autolocate" id="autoLocateBtn" title="Me géolocaliser">
+                            <i class="ph ph-crosshair"></i>
+                            <span class="autolocate-text">GPS</span>
+                        </button>
+                        <button type="submit" class="btn btn-primary search-btn">Trouver</button>
+                    </div>
+                </form>
+
+                <!-- Suggestion Tags -->
+                <div class="suggestion-tags">
+                    <button class="tag" data-query="Réparer quelque chose"><i class="ph ph-wrench"></i> Réparer</button>
+                    <button class="tag" data-query="Améliorer ma maison"><i class="ph ph-house-line"></i> Maison</button>
+                    <button class="tag" data-query="Entretenir mon jardin"><i class="ph ph-plant"></i> Jardin</button>
+                    <button class="tag" data-query="Donner un coup de neuf"><i class="ph ph-paint-roller"></i> Peinture</button>
+                    <button class="tag" data-query="Monter un meuble"><i class="ph ph-package"></i> Meuble</button>
+                    <button class="tag active" data-query=""><i class="ph ph-question"></i> Je ne sais pas qui contacter</button>
+                </div>
+
+                <!-- Two CTA Buttons -->
+                <div class="hero-cta-group">
+                    <a href="#" class="btn btn-primary btn-lg open-signup-trigger"><i class="ph ph-user-plus"></i> S'inscrire maintenant</a>
+                    <a href="#search-services" class="btn btn-outline btn-lg"><i class="ph ph-magnifying-glass"></i> Explorer les talents</a>
+                </div>
+            </div>
+            
+            <div class="hero-visual fade-in-right">
+                <svg viewBox="0 0 500 500" class="hero-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- Soft Blob background -->
+                    <ellipse cx="250" cy="260" rx="230" ry="210" fill="#F4EFE6" opacity="0.8"/>
+                    
+                    <!-- Sun 3D -->
+                    <circle cx="390" cy="85" r="55" fill="#E5B345" opacity="0.25"/>
+                    <circle cx="390" cy="85" r="38" fill="#F4D375" opacity="0.6"/>
+                    <line x1="390" y1="20" x2="390" y2="5" stroke="#E5B345" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+                    <line x1="435" y1="40" x2="448" y2="28" stroke="#E5B345" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+                    <line x1="450" y1="85" x2="465" y2="85" stroke="#E5B345" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+                    
+                    <!-- Tropical Palm -->
+                    <path d="M120 460 Q135 340 145 260 Q150 220 142 190" stroke="#4A7C59" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.8"/>
+                    <path d="M142 190 Q90 140 45 165 Q100 130 142 190Z" fill="#4A7C59" opacity="0.45"/>
+                    <path d="M142 190 Q110 120 65 110 Q120 110 142 190Z" fill="#709C7D" opacity="0.45"/>
+                    <path d="M142 190 Q170 110 215 100 Q170 130 142 190Z" fill="#4A7C59" opacity="0.45"/>
+                    <path d="M142 190 Q190 145 225 160 Q180 140 142 190Z" fill="#80A86E" opacity="0.4"/>
+                    
+                    <!-- Stylized House 3D -->
+                    <g transform="translate(300, 310)">
+                        <rect x="0" y="25" width="75" height="55" rx="8" fill="#FFFFFF" stroke="#4A7C59" stroke-width="3"/>
+                        <polygon points="-8,27 37.5,-10 83,27" fill="#E5B345"/>
+                        <rect x="28" y="45" width="20" height="35" rx="3" fill="#4A7C59"/>
+                        <circle cx="20" cy="42" r="6" fill="#7BC5E3"/>
+                        <circle cx="55" cy="42" r="6" fill="#7BC5E3"/>
+                    </g>
+                    
+                    <!-- Wrench & Heart Floating -->
+                    <g transform="translate(270, 210) rotate(-25)" opacity="0.6">
+                        <rect x="-6" y="0" width="12" height="75" rx="6" fill="#7BC5E3"/>
+                        <circle cx="0" cy="-10" r="20" fill="none" stroke="#7BC5E3" stroke-width="8"/>
+                    </g>
+                    
+                    <g transform="translate(420, 200)" opacity="0.5">
+                        <path d="M0 10 Q0 0 10 0 Q20 0 20 10 Q20 20 10 30 Q0 20 0 10Z" fill="#E76F51" transform="rotate(-45, 10, 15)"/>
+                    </g>
+                    
+                    <!-- 3D Connection Dots -->
+                    <circle cx="70" cy="390" r="8" fill="#E5B345" opacity="0.5"/>
+                    <circle cx="95" cy="415" r="5" fill="#7BC5E3" opacity="0.6"/>
+                    <circle cx="430" cy="370" r="7" fill="#4A7C59" opacity="0.5"/>
+                </svg>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========== SECTION 2 : CONFIANCE ========== -->
+    <section id="about" class="section trust-section">
+        <div class="container">
+            <div class="section-header text-center reveal">
+                <span class="pill-badge pill-green"><i class="ph ph-shield-check"></i> Garantie & Sérénité</span>
+                <h2>La confiance, tout simplement.</h2>
+                <p class="section-subtitle">Chaque profil est vérifié pour garantir des rencontres et échanges en toute sérénité.</p>
+            </div>
+            
+            <div class="trust-grid reveal delay-1">
+                <div class="trust-card">
+                    <div class="trust-icon">
+                        <i class="ph-fill ph-user-check" style="font-size: 2.4rem; color: #4A7C59;"></i>
+                    </div>
+                    <h3>Des personnes vérifiées</h3>
+                    <p>Professionnels et talents de confiance, recommandés par vos voisins.</p>
+                </div>
+                <div class="trust-card">
+                    <div class="trust-icon">
+                        <i class="ph-fill ph-map-pin" style="font-size: 2.4rem; color: #E5B345;"></i>
+                    </div>
+                    <h3>Des recommandations locales</h3>
+                    <p>Parce qu'une bonne réputation se construit près de chez soi.</p>
+                </div>
+                <div class="trust-card">
+                    <div class="trust-icon">
+                        <i class="ph-fill ph-heart" style="font-size: 2.4rem; color: #7BC5E3;"></i>
+                    </div>
+                    <h3>Une vraie communauté</h3>
+                    <p>Des voisins qui s'entraident, au-delà du simple service rendu.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== SECTION 3 : COMMENT ÇA FONCTIONNE ========== -->
+    <section id="how-it-works" class="section how-section">
+        <div class="container">
+            <div class="section-header text-center reveal">
+                <span class="pill-badge pill-blue"><i class="ph ph-sparkle"></i> Simplicité & Rapidité</span>
+                <h2>Comment ça fonctionne ?</h2>
+                <p class="section-subtitle">Trouvez la bonne personne en 3 étapes simples.</p>
+            </div>
+            
+            <div class="steps-row reveal delay-1">
+                <div class="step">
+                    <div class="step-icon-wrapper step-icon-blue">
+                        <i class="ph-fill ph-magnifying-glass-plus" style="font-size: 2.2rem; color: #3F9EB0;"></i>
+                    </div>
+                    <h3>1. Je cherche de l'aide</h3>
+                    <p>Décrivez votre besoin en quelques mots. Pas besoin de connaître le métier exact.</p>
+                </div>
+                <div class="step-arrow"><i class="ph-bold ph-arrow-right"></i></div>
+                <div class="step">
+                    <div class="step-icon-wrapper step-icon-emerald">
+                        <i class="ph-fill ph-users-three" style="font-size: 2.2rem; color: #4A7C59;"></i>
+                    </div>
+                    <h3>2. Je trouve la personne</h3>
+                    <p>LYAN vous met en lien avec les talents recommandés par votre communauté locale.</p>
+                </div>
+                <div class="step-arrow"><i class="ph-bold ph-arrow-right"></i></div>
+                <div class="step">
+                    <div class="step-icon-wrapper step-icon-coral">
+                        <i class="ph-fill ph-check-circle" style="font-size: 2.2rem; color: #E5B345;"></i>
+                    </div>
+                    <h3>3. Projet réalisé !</h3>
+                    <p>Votre voisin de confiance s'occupe de tout. Vous recommandez, le lien se crée.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== SECTION 4 : CATÉGORIES ========== -->
+    <section id="search-services" class="section categories-section">
+        <div class="container">
+            <div class="section-header text-center reveal">
+                <span class="pill-badge pill-yellow"><i class="ph ph-grid-four"></i> Tous nos domaines</span>
+                <h2>Découvrez les talents autour de chez vous</h2>
+                <p class="section-subtitle">Sélectionnez une catégorie pour explorer les talents disponibles dans votre secteur.</p>
+            </div>
+            
+            <div class="categories-grid reveal delay-1">
+                <!-- Maison -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-house" style="font-size: 1.8rem; color: #4A7C59;"></i>
+                    </div>
+                    <span class="category-name">Maison</span>
+                </a>
+
+                <!-- Électricité -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-lightning" style="font-size: 1.8rem; color: #E5B345;"></i>
+                    </div>
+                    <span class="category-name">Électricité</span>
+                </a>
+
+                <!-- Plomberie -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-drop" style="font-size: 1.8rem; color: #7BC5E3;"></i>
+                    </div>
+                    <span class="category-name">Plomberie</span>
+                </a>
+
+                <!-- Peinture -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-paint-brush" style="font-size: 1.8rem; color: #E76F51;"></i>
+                    </div>
+                    <span class="category-name">Peinture</span>
+                </a>
+
+                <!-- Jardin -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-tree" style="font-size: 1.8rem; color: #4A7C59;"></i>
+                    </div>
+                    <span class="category-name">Jardin</span>
+                </a>
+
+                <!-- Nettoyage -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-sparkle" style="font-size: 1.8rem; color: #7BC5E3;"></i>
+                    </div>
+                    <span class="category-name">Nettoyage</span>
+                </a>
+
+                <!-- Montage -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-package" style="font-size: 1.8rem; color: #9D4EDD;"></i>
+                    </div>
+                    <span class="category-name">Montage</span>
+                </a>
+
+                <!-- Climatisation -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-wind" style="font-size: 1.8rem; color: #48CAE4;"></i>
+                    </div>
+                    <span class="category-name">Climatisation</span>
+                </a>
+
+                <!-- Bricolage -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-wrench" style="font-size: 1.8rem; color: #E5B345;"></i>
+                    </div>
+                    <span class="category-name">Bricolage</span>
+                </a>
+
+                <!-- Ménage -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-broom" style="font-size: 1.8rem; color: #7BC5E3;"></i>
+                    </div>
+                    <span class="category-name">Ménage</span>
+                </a>
+
+                <!-- Baby-sitting -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-baby" style="font-size: 1.8rem; color: #EC4899;"></i>
+                    </div>
+                    <span class="category-name">Baby-sitting</span>
+                </a>
+
+                <!-- Aide à la personne -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-first-aid-kit" style="font-size: 1.8rem; color: #4A7C59;"></i>
+                    </div>
+                    <span class="category-name">Aide à la personne</span>
+                </a>
+
+                <!-- Déménagement -->
+                <a href="#" class="category-card open-signup-trigger">
+                    <div class="category-icon-container">
+                        <i class="ph-fill ph-truck" style="font-size: 1.8rem; color: #E76F51;"></i>
+                    </div>
+                    <span class="category-name">Déménagement</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== SECTION 5 : TALENTS ========== -->
+    <section id="talents" class="section talents-section">
+        <div class="container">
+            <div class="section-header text-center reveal">
+                <span class="pill-badge pill-green"><i class="ph ph-heart-beat"></i> La vie de quartier</span>
+                <h2>Ils font vivre votre quartier.</h2>
+                <p class="section-subtitle">Découvrez des profils passionnés et recommandés près de chez vous.</p>
+            </div>
+            
+            <div class="talents-grid reveal delay-1">
+                <div class="talent-card">
+                    <div class="talent-photo">
+                        <img src="https://images.unsplash.com/photo-1507152832244-10d45c7eda57?auto=format&fit=crop&w=400&q=80" alt="David">
+                    </div>
+                    <h3>David</h3>
+                    <span class="talent-role">Plombier · Guadeloupe</span>
+                    <div class="talent-stars">★★★★★</div>
+                    <blockquote>"La plomberie est mon métier depuis 15 ans. J'aime savoir que mes voisins peuvent compter sur moi."</blockquote>
+                </div>
+
+                <div class="talent-card">
+                    <div class="talent-photo">
+                        <img src="https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=400&q=80" alt="Sarah">
+                    </div>
+                    <h3>Sarah</h3>
+                    <span class="talent-role">Peintre · Martinique</span>
+                    <div class="talent-stars">★★★★★</div>
+                    <blockquote>"J'aime redonner vie aux maisons. Chaque projet est une nouvelle histoire de quartier."</blockquote>
+                </div>
+
+                <div class="talent-card">
+                    <div class="talent-photo">
+                        <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80" alt="Kevin">
+                    </div>
+                    <h3>Kevin</h3>
+                    <span class="talent-role">Bricoleur · La Réunion</span>
+                    <div class="talent-stars">★★★★★</div>
+                    <blockquote>"Montage de meubles, étagères, petits travaux... j'adore rendre service et échanger."</blockquote>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== SECTION 6 : TÉMOIGNAGES ========== -->
+    <section id="testimonials" class="section testimonials-section">
+        <div class="container">
+            <div class="section-header text-center reveal">
+                <span class="pill-badge pill-yellow"><i class="ph ph-star"></i> Avis & Expériences</span>
+                <h2>Ils ont trouvé bien plus<br>qu'un professionnel.</h2>
+            </div>
+            
+            <div class="testimonials-slider reveal delay-1">
+                <div class="testimonial-track" id="testimonialTrack">
+                    <div class="testimonial-slide">
+                        <blockquote>"Je ne connaissais personne pour refaire ma salle de bain. Deux jours plus tard, j'avais trouvé quelqu'un de confiance grâce à LYAN."</blockquote>
+                        <div class="testimonial-author">
+                            <img src="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=400&q=80" alt="Marie">
+                            <div>
+                                <strong>Marie L.</strong>
+                                <span>Guadeloupe</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="testimonial-slide">
+                        <blockquote>"En arrivant à La Réunion, je ne connaissais personne. Grâce à LYAN, j'ai trouvé un électricien formidable qui est devenu un ami."</blockquote>
+                        <div class="testimonial-author">
+                            <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80" alt="Thomas">
+                            <div>
+                                <strong>Thomas R.</strong>
+                                <span>La Réunion</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="testimonial-slide">
+                        <blockquote>"Mon fils m'a inscrite sur LYAN. Depuis, j'ai un voisin qui m'aide pour le jardin toutes les semaines. C'est rassurant."</blockquote>
+                        <div class="testimonial-author">
+                            <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80" alt="Lucienne">
+                            <div>
+                                <strong>Lucienne M.</strong>
+                                <span>Martinique</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slider-dots" id="sliderDots"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== SECTION 7 : CTA FINAL ========== -->
+    <section id="join" class="section cta-section">
+        <div class="container">
+            <div class="section-header text-center reveal">
+                <span class="pill-badge pill-green"><i class="ph ph-handshake"></i> Rejoignez-nous</span>
+                <h2>Rejoignez la communauté LYAN.</h2>
+                <p class="section-subtitle">Que vous proposiez des compétences ou recherchiez de l'aide, lancez-vous aujourd'hui.</p>
+            </div>
+            
+            <div class="cta-grid reveal delay-1">
+                <div class="cta-card cta-propose open-signup-trigger" data-preset-role="provider">
+                    <div class="cta-icon-wrapper step-icon-emerald">
+                        <i class="ph-fill ph-wrench" style="font-size: 2.6rem; color: #4A7C59;"></i>
+                    </div>
+                    <h3>Je propose mes services</h3>
+                    <p>Faites connaître votre talent et vos compétences à votre quartier.</p>
+                    <button class="btn btn-primary btn-lg">Rejoindre comme Talent</button>
+                </div>
+                <div class="cta-card cta-search open-signup-trigger" data-preset-role="seeker">
+                    <div class="cta-icon-wrapper step-icon-blue">
+                        <i class="ph-fill ph-house-line" style="font-size: 2.6rem; color: #3F9EB0;"></i>
+                    </div>
+                    <h3>Je cherche quelqu'un</h3>
+                    <p>Trouvez la bonne personne de confiance près de chez vous.</p>
+                    <button class="btn btn-accent btn-lg">Trouver un voisin</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-top">
+                <a href="#" class="logo">
+                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon-svg">
+                        <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                              stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                    </svg>
+                    <div class="logo-text-block">
+                        <span class="logo-title" style="color: #FFFFFF;">LYAN</span>
+                        <span class="logo-subtitle" style="color: #E5B345;">LE LIEN QUI COMPTE</span>
+                    </div>
+                </a>
+                <div class="footer-links">
+                    <a href="#about">À propos</a>
+                    <a href="#">Confidentialité</a>
+                    <a href="#">Conditions</a>
+                    <a href="#">Contact</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 LYAN - Le réseau de confiance des DOM. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========== MODAL PARCOURS D'INSCRIPTION INTERACTIF ========== -->
+    <div class="modal-overlay" id="signupModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeSignupBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                              stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                    </svg>
+                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Inscription LYAN</span>
+                </div>
+                <div class="step-indicator">
+                    <span class="step-count" id="stepCountText">Étape 1 sur 4</span>
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                </div>
+            </div>
+
+            <!-- Modal Body / Steps -->
+            <div class="modal-body">
+                <!-- STEP 1 : CHOIX DU RÔLE -->
+                <div class="modal-step active" id="modalStep1">
+                    <h3 class="step-title">Bienvenue sur LYAN !</h3>
+                    <p class="step-desc">Quelle est la raison principale de votre venue aujourd'hui ?</p>
+                    
+                    <div class="choice-cards-grid">
+                        <div class="choice-card" data-role="provider">
+                            <div class="choice-card-icon">🛠️</div>
+                            <h4>Je propose mes services</h4>
+                            <p>Vous êtes un professionnel ou un particulier talentueux souhaitant aider vos voisins.</p>
+                        </div>
+                        <div class="choice-card" data-role="seeker">
+                            <div class="choice-card-icon">🔍</div>
+                            <h4>Je cherche quelqu'un</h4>
+                            <p>Vous avez un besoin, un dépannage ou un projet à réaliser près de chez vous.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2 : SELECTION DES CATÉGORIES -->
+                <div class="modal-step" id="modalStep2">
+                    <h3 class="step-title" id="step2Title">Vos domaines d'intervention</h3>
+                    <p class="step-desc" id="step2Desc">Sélectionnez une ou plusieurs catégories (vous pourrez les modifier plus tard).</p>
+
+                    <div class="category-selection-grid">
+                        <div class="cat-select-card" data-cat="maison"><i class="ph-fill ph-house"></i><span>Maison</span></div>
+                        <div class="cat-select-card" data-cat="electricite"><i class="ph-fill ph-lightning"></i><span>Électricité</span></div>
+                        <div class="cat-select-card" data-cat="plomberie"><i class="ph-fill ph-drop"></i><span>Plomberie</span></div>
+                        <div class="cat-select-card" data-cat="peinture"><i class="ph-fill ph-paint-brush"></i><span>Peinture</span></div>
+                        <div class="cat-select-card" data-cat="jardin"><i class="ph-fill ph-tree"></i><span>Jardin</span></div>
+                        <div class="cat-select-card" data-cat="nettoyage"><i class="ph-fill ph-sparkle"></i><span>Nettoyage</span></div>
+                        <div class="cat-select-card" data-cat="montage"><i class="ph-fill ph-package"></i><span>Montage</span></div>
+                        <div class="cat-select-card" data-cat="climatisation"><i class="ph-fill ph-wind"></i><span>Climatisation</span></div>
+                        <div class="cat-select-card" data-cat="bricolage"><i class="ph-fill ph-wrench"></i><span>Bricolage</span></div>
+                        <div class="cat-select-card" data-cat="menage"><i class="ph-fill ph-broom"></i><span>Ménage</span></div>
+                        <div class="cat-select-card" data-cat="babysitting"><i class="ph-fill ph-baby"></i><span>Baby-sitting</span></div>
+                        <div class="cat-select-card" data-cat="aide-personne"><i class="ph-fill ph-first-aid-kit"></i><span>Aide à la personne</span></div>
+                        <div class="cat-select-card" data-cat="demenagement"><i class="ph-fill ph-truck"></i><span>Déménagement</span></div>
+                    </div>
+                </div>
+
+                <!-- STEP 3 : LOCALISATION DOM -->
+                <div class="modal-step" id="modalStep3">
+                    <h3 class="step-title">Où vous situez-vous ?</h3>
+                    <p class="step-desc">LYAN connecte les habitants et talents au sein de chaque territoire.</p>
+
+                    <div class="form-group">
+                        <label for="modalTerritorySelect">Votre territoire DOM</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-map-pin"></i>
+                            <select id="modalTerritorySelect" class="modal-input">
+                                <option value="" disabled selected>Choisissez votre région</option>
+                                <option value="Guadeloupe (971)">Guadeloupe (971)</option>
+                                <option value="Martinique (972)">Martinique (972)</option>
+                                <option value="Guyane (973)">Guyane (973)</option>
+                                <option value="La Réunion (974)">La Réunion (974)</option>
+                                <option value="St-Martin / St-Barth">St-Martin / St-Barth</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modalCityInput">Ville / Commune</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-buildings"></i>
+                            <input type="text" id="modalCityInput" class="modal-input" placeholder="Ex: Baie-Mahault, Fort-de-France, Saint-Denis..." autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4 : CRÉATION DE COMPTE -->
+                <div class="modal-step" id="modalStep4">
+                    <h3 class="step-title">Créer votre compte</h3>
+                    <p class="step-desc">Dernière étape pour rejoindre le réseau de confiance LYAN.</p>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="modalFirstName">Prénom</label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-user"></i>
+                                <input type="text" id="modalFirstName" class="modal-input" placeholder="Votre prénom">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="modalLastName">Nom</label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-user"></i>
+                                <input type="text" id="modalLastName" class="modal-input" placeholder="Votre nom">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modalEmail">Adresse Email</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-envelope"></i>
+                            <input type="email" id="modalEmail" class="modal-input" placeholder="votre.email@exemple.com">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modalPhone">Numéro de Téléphone</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-phone"></i>
+                            <input type="tel" id="modalPhone" class="modal-input" placeholder="06 90 ...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 5 : CONFIRMATION & SUCCÈS -->
+                <div class="modal-step" id="modalStep5">
+                    <div class="success-screen">
+                        <div class="success-icon">🎉</div>
+                        <h3 class="step-title">Félicitations !</h3>
+                        <p class="step-desc">Votre profil LYAN a été créé avec succès.</p>
+
+                        <div class="recap-box">
+                            <div class="recap-item"><span>Profil :</span><span id="recapRoleText">Talent de confiance</span></div>
+                            <div class="recap-item"><span>Territoire :</span><span id="recapTerritoryText">Guadeloupe</span></div>
+                            <div class="recap-item"><span>Catégories :</span><span id="recapCategoriesText">Maison, Jardin</span></div>
+                        </div>
+
+                        <button class="btn btn-primary btn-lg" id="modalFinishBtn" style="width: 100%;">Découvrir mon espace LYAN</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-outline" id="prevStepBtn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i> Précédent</button>
+                <button class="btn btn-primary" id="nextStepBtn">Continuer <i class="ph ph-arrow-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL RÉSULTATS DE RECHERCHE MEMBRES ========== -->
+    <div class="modal-overlay" id="searchResultsModal">
+        <div class="modal-card modal-card-large">
+            <button class="modal-close-btn" id="closeSearchModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                              stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                    </svg>
+                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Talents recommandés</span>
+                </div>
+                <div class="search-summary-badge" id="searchSummaryBadge">
+                    <!-- Dynamic summary like: 🔍 Plomberie à 📍 Guadeloupe (971) -->
+                </div>
+            </div>
+
+            <div class="modal-body search-modal-body">
+                <div class="search-results-grid" id="searchResultsContainer">
+                    <!-- Dynamic member result cards inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL CONNEXION (MANUEL & GOOGLE) ========== -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeLoginModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                              stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                    </svg>
+                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Connexion LYAN</span>
+                </div>
+                <h3 class="step-title" style="font-size: 1.5rem; margin-bottom: 4px;">Heureux de vous revoir !</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Connectez-vous à votre espace personnel.</p>
+            </div>
+
+            <div class="modal-body">
+                <!-- Google Sign In Button -->
+                <button type="button" class="btn btn-google" id="googleAuthBtn">
+                    <svg width="20" height="20" viewBox="0 0 48 48" class="google-svg-icon">
+                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.66 0 6.6 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.6 42.62 14.66 48 24 48z"/>
+                    </svg>
+                    Continuer avec Google
+                </button>
+
+                <div class="auth-divider">
+                    <span>ou avec votre email</span>
+                </div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">Adresse email ou téléphone</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-envelope"></i>
+                            <input type="text" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="loginPassword">Mot de passe</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-lock-key"></i>
+                            <input type="password" id="loginPassword" class="modal-input" placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <div class="login-options-row">
+                        <label class="remember-checkbox">
+                            <input type="checkbox" checked> Se souvenir de moi
+                        </label>
+                        <a href="#" class="forgot-link">Mot de passe oublié ?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 16px;">Se connecter</button>
+                </form>
+
+                <p class="auth-footer-text">
+                    Pas encore de compte ? <a href="#" id="switchToSignupBtn">S'inscrire gratuitement</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL DASHBOARD / ESPACE PROFIL BICOLORE ========== -->
+    <div class="modal-overlay" id="profileDashboardModal">
+        <div class="modal-card modal-card-dashboard theme-provider" id="profileCardTheme">
+            <button class="modal-close-btn" id="closeProfileModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <!-- Profile Banner / Role Switcher Header -->
+            <div class="profile-header-banner" id="profileHeaderBanner">
+                <div class="profile-user-summary">
+                    <div class="profile-photo-container">
+                        <img src="https://images.unsplash.com/photo-1507152832244-10d45c7eda57?auto=format&fit=crop&w=400&q=80" alt="Avatar" id="profileAvatarImg" class="profile-avatar-large">
+                        <button class="edit-photo-btn" title="Changer la photo"><i class="ph ph-camera"></i></button>
+                    </div>
+                    <div>
+                        <h2 class="profile-user-name" id="profileUserName">David M.</h2>
+                        <span class="profile-role-badge" id="profileRoleBadge">🛠️ Espace Talent (Prestataire)</span>
+                        <div class="profile-location-text" id="profileLocationText"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
+                    </div>
+                </div>
+
+                <!-- Bicolore Role Switcher Toggle -->
+                <div class="role-switch-container">
+                    <span class="role-switch-label">Mode d'affichage :</span>
+                    <div class="role-toggle-group">
+                        <button type="button" class="role-toggle-btn active" id="btnRoleProvider" data-role-theme="provider">
+                            🛠️ Talent
+                        </button>
+                        <button type="button" class="role-toggle-btn" id="btnRoleSeeker" data-role-theme="seeker">
+                            🔍 Habitant
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Tabs Bar -->
+            <div class="profile-tabs">
+                <button class="profile-tab-btn active" data-tab="tab-identity"><i class="ph ph-user"></i> Mon Profil</button>
+                <button class="profile-tab-btn" data-tab="tab-domain"><i class="ph ph-wrench"></i> Domaine & Services</button>
+                <button class="profile-tab-btn" data-tab="tab-realizations" id="tabRealizationsBtn"><i class="ph ph-image"></i> Mes Réalisations</button>
+                <button class="profile-tab-btn" data-tab="tab-activity"><i class="ph ph-clipboard-text"></i> Mes Demandes & Avis</button>
+                <button class="profile-tab-btn" data-tab="tab-settings"><i class="ph ph-gear"></i> Paramètres</button>
+            </div>
+
+            <!-- Profile Content Body -->
+            <div class="modal-body profile-modal-body">
+                <!-- TAB 1 : MON PROFIL -->
+                <div class="profile-tab-content active" id="tab-identity">
+                    <h4 class="tab-section-title">Informations Personnelles & Coordonnées</h4>
+                    <form id="profileIdentityForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Prénom</label>
+                                <div class="input-with-icon"><i class="ph ph-user"></i><input type="text" class="modal-input" id="profileFirstNameInput" value="David"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Nom</label>
+                                <div class="input-with-icon"><i class="ph ph-user"></i><input type="text" class="modal-input" id="profileLastNameInput" value="M."></div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Adresse email</label>
+                                <div class="input-with-icon"><i class="ph ph-envelope"></i><input type="email" class="modal-input" id="profileEmailInput" value="david.m@lyan-dom.com"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Téléphone</label>
+                                <div class="input-with-icon"><i class="ph ph-phone"></i><input type="tel" class="modal-input" id="profilePhoneInput" value="06 90 12 34 56"></div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Département DOM</label>
+                                <div class="input-with-icon">
+                                    <i class="ph ph-map-pin"></i>
+                                    <select class="modal-input" id="profileTerritorySelect">
+                                        <option value="Guadeloupe (971)" selected>Guadeloupe (971)</option>
+                                        <option value="Martinique (972)">Martinique (972)</option>
+                                        <option value="Guyane (973)">Guyane (973)</option>
+                                        <option value="La Réunion (974)">La Réunion (974)</option>
+                                        <option value="St-Martin / St-Barth">St-Martin / St-Barth</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Commune</label>
+                                <div class="input-with-icon"><i class="ph ph-buildings"></i><input type="text" class="modal-input" id="profileCityInput" value="Baie-Mahault"></div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Enregistrer mon profil</button>
+                    </form>
+                </div>
+
+                <!-- TAB 2 : DOMAINE D'ACTIVITÉ & SERVICES -->
+                <div class="profile-tab-content" id="tab-domain">
+                    <h4 class="tab-section-title" id="domainTabTitle">Réglages du Domaine d'Activité & Compétences</h4>
+                    <form id="profileDomainForm">
+                        <div class="form-group">
+                            <label>Intitulé de votre spécialité / activité principal</label>
+                            <div class="input-with-icon"><i class="ph ph-briefcase"></i><input type="text" class="modal-input" id="profileRoleInput" value="Plombier & Sanitaire"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tarif horaire ou Forfait indicatif</label>
+                                <div class="input-with-icon"><i class="ph ph-currency-eur"></i><input type="text" class="modal-input" id="profileRateInput" value="À partir de 35€/h"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Zone d'intervention (km)</label>
+                                <div class="input-with-icon"><i class="ph ph-navigation-arrow"></i><input type="text" class="modal-input" value="Jusqu'à 30 km autour de Baie-Mahault"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Présentation publique & Bio</label>
+                            <textarea class="modal-input" style="padding-left: 16px; height: 90px; resize: none;" id="profileBioInput">Spécialiste de la plomberie résidentielle et du dépannage d'urgence sur Baie-Mahault et Grande-Terre.</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Diplômes, Certifications & Badges</label>
+                            <div class="input-with-icon"><i class="ph ph-certificate"></i><input type="text" class="modal-input" value="Artisan Vérifié • CAP Plomberie Sanitaire • Garantie Décennale"></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Mettre à jour mon offre</button>
+                    </form>
+                </div>
+
+                <!-- TAB 3 : MES DEMANDES & AVIS -->
+                <div class="profile-tab-content" id="tab-activity">
+                    <h4 class="tab-section-title">Activité Récents & Recommandations de Voisins</h4>
+                    
+                    <div class="profile-stats-row">
+                        <div class="profile-stat-card">
+                            <span class="stat-num">24</span>
+                            <span class="stat-lbl">Missions réalisées</span>
+                        </div>
+                        <div class="profile-stat-card">
+                            <span class="stat-num">★ 4.9</span>
+                            <span class="stat-lbl">Note moyenne</span>
+                        </div>
+                        <div class="profile-stat-card">
+                            <span class="stat-num">100%</span>
+                            <span class="stat-lbl">Taux de réponse</span>
+                        </div>
+                    </div>
+
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon"><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></div>
+                            <div class="activity-details">
+                                <strong>Réparation fuite d'eau d'urgence</strong>
+                                <span>Demandé par Marie L. (Le Gosier) • Réalisé le 24 Juillet 2026</span>
+                                <div class="review-quote">"Intervention rapide et impeccable. David m'a sauvée !" ⭐⭐⭐⭐⭐</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon"><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></div>
+                            <div class="activity-details">
+                                <strong>Installation chauffe-eau solaire</strong>
+                                <span>Demandé par Thomas P. (Baie-Mahault) • Réalisé le 15 Juillet 2026</span>
+                                <div class="review-quote">"Très professionnel, explications claires et chantier propre." ⭐⭐⭐⭐⭐</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 5 : MES RÉALISATIONS -->
+                <div class="profile-tab-content" id="tab-realizations">
+                    <div class="realizations-header-row">
+                        <h4 class="tab-section-title" style="margin-bottom: 0;">Galerie de mes Travaux & Chantiers</h4>
+                        <button type="button" class="btn btn-primary btn-sm" id="openAddRealizationBtn">
+                            <i class="ph ph-plus"></i> Ajouter une réalisation
+                        </button>
+                    </div>
+                    <p class="section-subtitle" style="margin-bottom: 20px; font-size: 0.9rem;">Montrez la qualité de votre travail aux habitants de votre quartier.</p>
+                    
+                    <div class="realizations-grid" id="myRealizationsGrid">
+                        <!-- Dynamic portfolio items inserted here -->
+                    </div>
+                </div>
+
+                <!-- TAB 4 : PARAMÈTRES -->
+                <div class="profile-tab-content" id="tab-settings">
+                    <h4 class="tab-section-title">Sécurité & Notifications</h4>
+                    <div class="form-group">
+                        <label>Notifications SMS & WhatsApp pour chaque nouvelle demande</label>
+                        <label class="remember-checkbox" style="margin-top: 6px;"><input type="checkbox" checked> Recevoir les alertes d'intervention instantanées</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Visibilité dans l'annuaire des talents</label>
+                        <label class="remember-checkbox" style="margin-top: 6px;"><input type="checkbox" checked> Rendre mon profil visible aux voisins de mon département</label>
+                    </div>
+                    <div class="settings-actions">
+                        <button type="button" class="btn btn-outline" id="logoutBtn" style="color: #E76F51; border-color: #E76F51;"><i class="ph ph-sign-out"></i> Se déconnecter</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL PROFIL PUBLIC RÉSEAU SOCIAL ========== -->
+    <div class="modal-overlay" id="publicMemberProfileModal">
+        <div class="modal-card modal-card-dashboard theme-provider" id="publicProfileThemeCard">
+            <button class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <!-- Public Header Banner -->
+            <div class="profile-header-banner public-header-banner">
+                <div class="profile-user-summary">
+                    <div class="profile-photo-container">
+                        <img src="" alt="Avatar" id="publicMemberAvatar" class="profile-avatar-large">
+                        <span class="online-dot-lg" title="Membre en ligne"></span>
+                    </div>
+                    <div>
+                        <h2 class="profile-user-name" id="publicMemberName">David M.</h2>
+                        <span class="profile-role-badge" id="publicMemberRoleBadge">🛠️ Artisan Plombier</span>
+                        <div class="profile-location-text" id="publicMemberLocationText"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
+                    </div>
+                </div>
+
+                <!-- Social Action Bar -->
+                <div class="social-action-bar">
+                    <button type="button" class="btn-social btn-recommend" id="recommendMemberBtn">
+                        <i class="ph-fill ph-thumbs-up"></i> Recommander <span id="recommendCountBadge">142</span>
+                    </button>
+                    <button type="button" class="btn-social btn-contact-direct" id="publicContactBtn">
+                        <i class="ph-fill ph-chat-circle-dots"></i> Contacter
+                    </button>
+                    <button type="button" class="btn-social btn-share-profile" id="shareProfileBtn" title="Partager le profil">
+                        <i class="ph ph-share-network"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Public Tabs Bar -->
+            <div class="profile-tabs">
+                <button class="public-tab-btn active" data-public-tab="pubtab-realizations"><i class="ph ph-image"></i> Réalisations & Travaux</button>
+                <button class="public-tab-btn" data-public-tab="pubtab-about"><i class="ph ph-user"></i> À propos & Tarifs</button>
+                <button class="public-tab-btn" data-public-tab="pubtab-reviews"><i class="ph ph-star"></i> Avis des Voisins (<span id="publicReviewsCount">48</span>)</button>
+            </div>
+
+            <!-- Public Body Content -->
+            <div class="modal-body profile-modal-body">
+                <!-- PUB TAB 1 : RÉALISATIONS -->
+                <div class="public-tab-content active" id="pubtab-realizations">
+                    <h4 class="tab-section-title">Galerie des Travaux Réalisés</h4>
+                    <div class="realizations-grid" id="publicRealizationsGrid">
+                        <!-- Member's work gallery photos inserted dynamically -->
+                    </div>
+                </div>
+
+                <!-- PUB TAB 2 : À PROPOS -->
+                <div class="public-tab-content" id="pubtab-about">
+                    <h4 class="tab-section-title">Présentation & Compétences</h4>
+                    <p class="profile-bio-text" id="publicMemberBioText">Spécialiste de la plomberie résidentielle et du dépannage d'urgence sur Baie-Mahault et Grande-Terre.</p>
+                    
+                    <div class="about-info-grid">
+                        <div class="info-block">
+                            <span class="info-label">Tarif Indicatif</span>
+                            <strong class="info-val" id="publicMemberRate">À partir de 35€/h</strong>
+                        </div>
+                        <div class="info-block">
+                            <span class="info-label">Badges & Confiance</span>
+                            <strong class="info-val" id="publicMemberBadge">✔ Artisan Vérifié</strong>
+                        </div>
+                    </div>
+
+                    <h5 style="font-weight: 800; margin: 18px 0 10px;">Compétences clés</h5>
+                    <div class="member-skills-tags" id="publicMemberSkillsContainer">
+                        <!-- Skills pills -->
+                    </div>
+                </div>
+
+                <!-- PUB TAB 3 : AVIS VOISINS -->
+                <div class="public-tab-content" id="pubtab-reviews">
+                    <h4 class="tab-section-title">Recommandations & Retours de Voisins</h4>
+                    <div class="activity-list" id="publicMemberReviewsList">
+                        <!-- Reviews list -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL IMPORTER / AJOUTER UNE RÉALISATION ========== -->
+    <div class="modal-overlay" id="addRealizationModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeAddRealizationModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <i class="ph-fill ph-image" style="font-size: 2rem; color: var(--primary);"></i>
+                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Nouvelle Réalisation</span>
+                </div>
+                <h3 class="step-title" style="font-size: 1.4rem; margin-bottom: 4px;">Montrez votre savoir-faire</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Ajoutez une photo de votre chantier ou projet réalisé.</p>
+            </div>
+
+            <div class="modal-body">
+                <form id="addRealizationForm">
+                    <div class="form-group">
+                        <label for="realizationTitle">Titre du chantier / projet</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-pencil-line"></i>
+                            <input type="text" id="realizationTitle" class="modal-input" placeholder="Ex: Rénovation salle de bain à Baie-Mahault" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="realizationImageUrl">Photo de la réalisation</label>
+                        <div class="image-upload-wrapper">
+                            <input type="file" id="realizationFileInput" accept="image/*" style="display: none;">
+                            <button type="button" class="btn btn-outline btn-upload-trigger" id="triggerFileInputBtn" style="width: 100%; margin-bottom: 8px;">
+                                <i class="ph ph-upload-simple"></i> Choisir une photo depuis mon appareil...
+                            </button>
+                            <input type="url" id="realizationImageUrl" class="modal-input" placeholder="Ou collez une URL d'image (ex: https://...)">
+                        </div>
+                        <div class="image-preview-container" id="realizationImagePreview" style="display: none; margin-top: 10px; text-align: center;">
+                            <img src="" alt="Aperçu" style="max-height: 140px; border-radius: var(--radius-md); object-fit: cover;">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="realizationCity">Commune de réalisation</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-map-pin"></i>
+                            <input type="text" id="realizationCity" class="modal-input" placeholder="Ex: Baie-Mahault" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="realizationDesc">Description courte du travail accompli</label>
+                        <textarea id="realizationDesc" class="modal-input" style="padding-left: 16px; height: 80px; resize: none;" placeholder="Détails des travaux, matériaux utilisés, durée..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px;">Publier cette réalisation 🚀</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
