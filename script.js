@@ -1,13 +1,13 @@
 /**
- * LYAN - Script (Community, Trust, Member Search & Interactive Signup Workflow)
+ * LYANN - Script (Community, Trust, Member Search & Interactive Signup Workflow)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================================================
-    // BASE DE DONNÉES DES MEMBRES LYAN (VISAGES ET TALENTS DES DOM)
+    // BASE DE DONNÉES DES MEMBRES LYANN (VISAGES ET TALENTS DES DOM)
     // ==========================================================================
-    const LYAN_MEMBERS = [
+    const LYANN_MEMBERS = [
         // GUADELOUPE (971)
         {
             id: 1,
@@ -530,7 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedCity = citySelect ? citySelect.value : '';
 
         // Filter members
-        let filteredMembers = LYAN_MEMBERS.filter(member => {
+        let filteredMembers = LYANN_MEMBERS.filter(member => {
             // Location match (if selected)
             const matchLocation = !selectedLocation || member.location === selectedLocation;
 
@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `).join('');
         } else {
             // Empty state — fallback proposals in region
-            const fallbackMembers = LYAN_MEMBERS.filter(m => !selectedLocation || m.location === selectedLocation).slice(0, 3);
+            const fallbackMembers = LYANN_MEMBERS.filter(m => !selectedLocation || m.location === selectedLocation).slice(0, 3);
 
             searchResultsContainer.innerHTML = `
                 <div class="empty-search-state">
@@ -939,7 +939,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalFinishBtn) {
         modalFinishBtn.addEventListener('click', () => {
             closeSignupModal();
-            alert(`Félicitations ${userSignupData.firstName} ! Votre compte LYAN est prêt.`);
+            alert(`Félicitations ${userSignupData.firstName} ! Votre compte LYANN est prêt.`);
             currentStep = 1;
             updateStepUI();
         });
@@ -1036,7 +1036,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (googleAuthBtn) {
         googleAuthBtn.addEventListener('click', () => {
-            alert('🟢 Authentification Google réussie ! Bienvenue sur votre espace LYAN.');
+            alert('🟢 Authentification Google réussie ! Bienvenue sur votre espace LYANN.');
             openProfileDashboard('provider');
         });
     }
@@ -1124,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let memberRecommendations = {};
 
     function openPublicMemberProfile(memberId) {
-        const member = LYAN_MEMBERS.find(m => m.id == memberId) || LYAN_MEMBERS[0];
+        const member = LYANN_MEMBERS.find(m => m.id == memberId) || LYANN_MEMBERS[0];
         currentVisitingMember = member;
 
         const avatarEl = document.getElementById('publicMemberAvatar');
@@ -1337,7 +1337,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderMyDashboardRealizations();
 
             if (addRealizationModal) addRealizationModal.classList.remove('active');
-            alert('🎉 Votre réalisation a été publiée avec succès sur votre profil LYAN !');
+            alert('🎉 Votre réalisation a été publiée avec succès sur votre profil LYANN !');
             addRealizationForm.reset();
             realizationImagePreview.style.display = 'none';
         });
