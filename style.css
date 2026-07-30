@@ -3978,6 +3978,110 @@ input:checked + .slider:before {
     line-height: 1.3;
 }
 
+/* ==========================================================================
+   POLISSAGE UI/UX & RESPONSIVITÉ GLOBALE SUBLIMÉE (MOBILE & TABLETTE)
+   ========================================================================== */
+
+/* Ajustements Modales sur écrans mobiles et petits écrans */
+@media (max-width: 768px) {
+    .modal-overlay {
+        padding: 12px;
+        align-items: flex-end;
+    }
+
+    .modal-card,
+    .modal-card-large,
+    .modal-card-xl {
+        max-height: 92dvh;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        margin: 0;
+    }
+
+    .modal-header {
+        padding: 20px 20px 14px;
+    }
+
+    .modal-body {
+        padding: 20px;
+        max-height: calc(92dvh - 120px);
+    }
+
+    .modal-footer {
+        padding: 14px 20px;
+    }
+
+    .modal-close-btn {
+        top: 14px;
+        right: 14px;
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
+    }
+
+    /* Hero Search Fields sur Mobile */
+    .hero-search-fields {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .search-input-wrapper {
+        width: 100%;
+        flex: none !important;
+    }
+
+    .search-btn {
+        width: 100%;
+        padding: 14px;
+        font-size: 1.05rem;
+    }
+
+    /* Grille d'annuaire et toolbar de résultats */
+    .results-page-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+    }
+
+    .search-filters-toolbar {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .toolbar-filter-item {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+    }
+
+    .search-toolbar-select {
+        width: 100%;
+    }
+
+    /* Pricing & Banner sur Mobile */
+    .upgrade-banner-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Polissage pour très petits mobiles (< 400px) */
+@media (max-width: 400px) {
+    .logo-subtitle {
+        display: none;
+    }
+
+    .step-title {
+        font-size: 1.35rem;
+    }
+
+    .pricing-page-title {
+        font-size: 1.65rem;
+    }
+}
+
+
 
 
 
