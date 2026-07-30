@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LYANN - Nos Offres & Formules d'Abonnement</title>
+    <meta name="description" content="Découvrez nos 4 formules d'abonnement LYANN : Lyanneur Gratuit, Lyanneur Plus, Lyanneur Ultime et Lyanneur PRO pour propulser votre activité dans les DOM.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="pricing-page">
+
+    <!-- ========== NAVIGATION ========== -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">
+                <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon-svg">
+                    <defs>
+                        <linearGradient id="lyanGradient" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="55%" stop-color="#80A86E"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                        <linearGradient id="lyanRoof" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                    <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                    <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                    <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                          stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                </svg>
+                <div class="logo-text-block">
+                    <span class="logo-title">LYANN</span>
+                    <span class="logo-subtitle">LE LIEN QUI COMPTE</span>
+                </div>
+            </a>
+            
+            <div class="nav-links">
+                <a href="index.html">Accueil</a>
+                <a href="results.html">Trouver / Annuaire</a>
+                <a href="pricing.html" class="active">Nos Offres</a>
+                <a href="how-it-works.html">Comment ça marche</a>
+                <a href="about.html">Notre Histoire</a>
+                <a href="#login" class="btn btn-outline open-login-trigger">Connexion</a>
+                <a href="#" class="btn btn-primary btn-signup-nav open-signup-trigger">S'inscrire</a>
+            </div>
+            
+            <button class="mobile-menu-btn" aria-label="Ouvrir le menu">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay" id="mobileMenu">
+        <div class="mobile-menu-content">
+            <button class="mobile-menu-close" aria-label="Fermer le menu">
+                <i class="ph ph-x"></i>
+            </button>
+            <div class="mobile-nav-links">
+                <a href="index.html">Accueil</a>
+                <a href="results.html">Trouver / Annuaire</a>
+                <a href="pricing.html" class="active">Nos Offres</a>
+                <a href="how-it-works.html">Comment ça marche</a>
+                <a href="about.html">Notre Histoire</a>
+                <div class="mobile-auth-btns">
+                    <a href="#login" class="btn btn-outline open-login-trigger" style="width: 100%;">Connexion</a>
+                    <a href="#" class="btn btn-primary open-signup-trigger" style="width: 100%;">S'inscrire</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== HERO PAGE NOS OFFRES ========== -->
+    <section class="pricing-hero-section">
+        <div class="container">
+            <div class="pricing-hero-content text-center">
+                <span class="pill-badge pill-yellow"><i class="ph ph-crown-simple"></i> Des offres adaptées à chaque profil</span>
+                <h1 class="pricing-page-title">Développez votre activité avec LYANN DOM</h1>
+                <p class="pricing-page-subtitle">Que vous soyez un voisin passionné, un indépendant ambitieux ou une entreprise certifiée, découvrez la formule qui propulsera vos demandes.</p>
+                
+                <!-- Toggle Mensuel / Annuel -->
+                <div class="pricing-billing-toggle">
+                    <span class="billing-label active" id="monthlyBillingLabel">Facturation mensuelle</span>
+                    <label class="switch">
+                        <input type="checkbox" id="billingToggleInput">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="billing-label" id="yearlyBillingLabel">Facturation annuelle <span class="discount-badge">-20%</span></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== GRILLE DES 4 FORMULES D'ABONNEMENT ========== -->
+    <section class="section pricing-main-section">
+        <div class="container">
+            <div class="pricing-grid">
+                
+                <!-- 1. LYANNEUR (Gratuit) -->
+                <div class="pricing-card plan-lyanneur">
+                    <div>
+                        <span class="plan-badge badge-lyanneur">LYANNEUR</span>
+                        <h3 class="plan-name">Lyanneur</h3>
+                        <p class="plan-tagline">Pour commencer et être visible dans la communauté.</p>
+                        <div class="plan-price">
+                            <span class="price-val">Gratuit</span>
+                            <span class="price-period">/ 0 € pour toujours</span>
+                        </div>
+                        <ul class="plan-features-list">
+                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> Profil public complet</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> 5 photos maxi</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> Avis clients certifiés</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> Réponses limitées aux demandes</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> Positionnement standard</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> 1 seule catégorie d’activité</li>
+                        </ul>
+                    </div>
+                    <div class="plan-action">
+                        <button class="btn btn-plan-lyanneur open-signup-trigger" data-plan="lyanneur">S'inscrire gratuitement</button>
+                    </div>
+                </div>
+
+                <!-- 2. LYANNEUR PLUS (9,90 €) -->
+                <div class="pricing-card plan-plus">
+                    <div>
+                        <span class="plan-badge badge-plus">LYANNEUR +</span>
+                        <h3 class="plan-name">Lyanneur Plus</h3>
+                        <p class="plan-tagline">Pour les talents qui souhaitent recevoir davantage de demandes.</p>
+                        <div class="plan-price">
+                            <span class="price-currency">€</span>
+                            <span class="price-val" data-monthly="9,90" data-yearly="7,90">9,90</span>
+                            <span class="price-period">/ mois</span>
+                        </div>
+                        <ul class="plan-features-list">
+                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> <strong>Réponses illimitées</strong></li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Jusqu’à 20 photos</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Plusieurs catégories d'activités</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Statistiques de base du profil</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Profil mieux référencé</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Badge « Profil vérifié »</li>
+                        </ul>
+                    </div>
+                    <div class="plan-action">
+                        <button class="btn btn-plan-plus open-signup-trigger" data-plan="plus">Choisir Lyanneur Plus</button>
+                    </div>
+                </div>
+
+                <!-- 3. LYANNEUR ULTIME (29,90 €) — OFFRE STAR -->
+                <div class="pricing-card plan-ultime popular-plan">
+                    <div class="popular-ribbon">⭐ La plus populaire</div>
+                    <div>
+                        <span class="plan-badge badge-ultime">LYANNEUR ULTIME</span>
+                        <h3 class="plan-name">Lyanneur Ultime</h3>
+                        <p class="plan-tagline">Pour maximiser sa visibilité et recevoir un maximum de demandes directes.</p>
+                        <div class="plan-price">
+                            <span class="price-currency">€</span>
+                            <span class="price-val" data-monthly="29,90" data-yearly="23,90">29,90</span>
+                            <span class="price-period">/ mois</span>
+                        </div>
+                        <ul class="plan-features-list">
+                            <li><i class="ph-fill ph-star" style="color: #E8B83F;"></i> <strong>Tout Lyanneur Plus inclus</strong></li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> <strong>Mise en avant sponsorisée</strong></li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Portfolio de réalisations illimité</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Réception prioritaire des demandes</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Statistiques de visites détaillées</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Mini-page pro personnalisée</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Sélection ponctuelle LYANN</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Réservation ou contact direct</li>
+                        </ul>
+                    </div>
+                    <div class="plan-action">
+                        <button class="btn btn-plan-ultime open-signup-trigger" data-plan="ultime">Devenir Lyanneur Ultime</button>
+                        <div class="plan-target-note">Idéal indépendant & autoentrepreneur</div>
+                    </div>
+                </div>
+
+                <!-- 4. LYANNEUR PRO (59,90 €) -->
+                <div class="pricing-card plan-pro">
+                    <div>
+                        <div class="pro-official-badge-preview">
+                            <i class="ph-fill ph-shield-check" style="color: #E8B83F;"></i>
+                            <span class="pro-text">PRO</span>
+                            <span class="verified-text">VÉRIFIÉ PAR LYANN</span>
+                        </div>
+                        <h3 class="plan-name">Lyanneur PRO</h3>
+                        <p class="plan-tagline">Pour les entreprises structurées et artisans certifiés avec SIRET.</p>
+                        <div class="plan-price">
+                            <span class="price-currency">€</span>
+                            <span class="price-val" data-monthly="59,90" data-yearly="47,90">59,90</span>
+                            <span class="price-period">/ mois</span>
+                        </div>
+                        <ul class="plan-features-list">
+                            <li><i class="ph-fill ph-shield-check" style="color: #173F36;"></i> <strong>Tout Lyanneur Ultime inclus</strong></li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> <strong>Badge « PRO VÉRIFIÉ PAR LYANN »</strong></li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Numéro SIRET vérifié & certifié</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Assurance pro vérifiée (RC/Décennale)</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Multi-membres & collaborateurs</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Multi-zones géographiques</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Tableau de bord entreprise avancé</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Export contacts & statistiques CSV</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Support client prioritaire 7j/7</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Demandes réservées aux PRO</li>
+                        </ul>
+                    </div>
+                    <div class="plan-action">
+                        <button class="btn btn-plan-pro open-signup-trigger" data-plan="pro">Souscrire au compte PRO</button>
+                        <div class="pro-verification-note">
+                            <i class="ph ph-info"></i> Le badge <strong>PRO VÉRIFIÉ PAR LYANN</strong> est accordé après contrôle SIRET & Assurance par notre équipe.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Note d'information & Upgrade pour déjà inscrits -->
+            <div class="already-member-upgrade-banner">
+                <div class="upgrade-banner-content">
+                    <i class="ph-fill ph-lightning" style="font-size: 2rem; color: #E5B345;"></i>
+                    <div>
+                        <h4>Déjà membre LYANN ?</h4>
+                        <p>Vous pouvez faire évoluer votre offre à tout moment depuis votre tableau de bord ou en contactant notre équipe.</p>
+                    </div>
+                    <a href="#login" class="btn btn-outline open-login-trigger">Upgrader mon profil</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="index.html" class="logo">
+                        <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoofFooter)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                            <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                            <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                            <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                                  stroke="url(#lyanGradientFooter)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                            <defs>
+                                <linearGradient id="lyanGradientFooter" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#4A7C59"/>
+                                    <stop offset="55%" stop-color="#80A86E"/>
+                                    <stop offset="100%" stop-color="#E5B345"/>
+                                </linearGradient>
+                                <linearGradient id="lyanRoofFooter" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#4A7C59"/>
+                                    <stop offset="100%" stop-color="#E5B345"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div class="logo-text-block">
+                            <span class="logo-title">LYANN</span>
+                            <span class="logo-subtitle">LE LIEN QUI COMPTE</span>
+                        </div>
+                    </a>
+                    <p class="footer-desc">LYANN est la plateforme d'entraide et de mise en relation de confiance dédiée à la Guadeloupe, la Martinique, la Guyane et La Réunion.</p>
+                </div>
+
+                <div class="footer-links-column">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="results.html">Annuaire des Talents</a></li>
+                        <li><a href="pricing.html">Nos Offres & Tarifs</a></li>
+                        <li><a href="how-it-works.html">Comment ça marche</a></li>
+                        <li><a href="about.html">Notre Histoire</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-links-column">
+                    <h4>Territoires DOM</h4>
+                    <ul>
+                        <li><a href="results.html?location=guadeloupe">Guadeloupe (971)</a></li>
+                        <li><a href="results.html?location=martinique">Martinique (972)</a></li>
+                        <li><a href="results.html?location=guyane">Guyane (973)</a></li>
+                        <li><a href="results.html?location=reunion">La Réunion (974)</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-links-column">
+                    <h4>Informations Légales</h4>
+                    <ul>
+                        <li><a href="#" class="open-privacy-trigger">Politique de confidentialité</a></li>
+                        <li><a href="#" class="open-terms-trigger">Conditions Générales (CGU)</a></li>
+                        <li><a href="#" class="open-contact-trigger">Nous contacter</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2026 LYANN DOM. Tous droits réservés. Le lien qui compte dans nos territoires.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========== MODAL CONNEXION ========== -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeLoginModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Connexion LYANN</span>
+                <h3 class="step-title" style="font-size: 1.5rem; margin-bottom: 4px;">Heureux de vous revoir !</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Connectez-vous à votre espace personnel.</p>
+            </div>
+
+            <div class="modal-body">
+                <button type="button" class="btn btn-google" id="googleAuthBtn">
+                    <i class="ph-bold ph-google-logo"></i> Continuer avec Google
+                </button>
+                <div class="modal-divider"><span>ou avec votre email</span></div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">Adresse email</label>
+                        <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Mot de passe</label>
+                        <input type="password" id="loginPassword" class="modal-input" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px;">Se connecter 🚀</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL INSCRIPTION MODULAIRE ========== -->
+    <div class="modal-overlay" id="signupModal">
+        <div class="modal-card modal-card-large">
+            <button class="modal-close-btn" id="closeSignupModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <div id="signupWorkflowContainer"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

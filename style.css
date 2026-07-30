@@ -3876,5 +3876,108 @@ input:checked + .slider:before {
     margin-top: 14px;
 }
 
+/* Bannière "Déjà membre LYANN ?" sur la page pricing.html */
+.already-member-upgrade-banner {
+    margin-top: 54px;
+    background: linear-gradient(135deg, #1E2822 0%, #2A3B31 100%);
+    color: #FFFFFF;
+    padding: 28px 36px;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.upgrade-banner-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.upgrade-banner-content h4 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+    color: #FFFFFF;
+}
+
+.upgrade-banner-content p {
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+/* Grille de sélection d'abonnement dans le modal d'inscription */
+.modal-plan-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-top: 16px;
+}
+
+@media (max-width: 600px) {
+    .modal-plan-choice-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.modal-plan-card {
+    background: #FFFFFF;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+}
+
+.modal-plan-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.modal-plan-card.selected {
+    border-color: var(--primary);
+    background: var(--pop-emerald-light);
+    box-shadow: 0 4px 12px rgba(74, 124, 89, 0.15);
+}
+
+.modal-plan-card.plan-ultime-card.selected {
+    border-color: #E8B83F;
+    background: #FFFDF5;
+    box-shadow: 0 4px 14px rgba(232, 184, 63, 0.25);
+}
+
+.modal-plan-card.plan-pro-card.selected {
+    border-color: #173F36;
+    background: #F4F7F6;
+    box-shadow: 0 4px 14px rgba(23, 63, 54, 0.25);
+}
+
+.modal-plan-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.modal-plan-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.modal-plan-price {
+    font-size: 0.95rem;
+    font-weight: 900;
+}
+
+.modal-plan-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+
 
 

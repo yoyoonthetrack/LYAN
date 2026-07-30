@@ -907,13 +907,14 @@ document.addEventListener('DOMContentLoaded', () => {
         categories: [],
         territory: '',
         city: '',
+        plan: 'lyanneur',
         firstName: '',
         lastName: '',
         email: '',
         phone: ''
     };
 
-    function openSignupModal(presetRole = null) {
+    function openSignupModal(presetRole = null, presetPlan = null) {
         if (!signupModal) return;
         signupModal.classList.add('active');
         document.body.style.overflow = 'hidden';
@@ -921,6 +922,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (presetRole) {
             userSignupData.role = presetRole;
             selectRoleCard(presetRole);
+        }
+
+        if (presetPlan) {
+            userSignupData.plan = presetPlan;
+            const modalPlanCards = document.querySelectorAll('.modal-plan-card');
+            modalPlanCards.forEach(c => {
+                if (c.dataset.plan === presetPlan) c.classList.add('selected');
+                else c.classList.remove('selected');
+            });
         }
     }
 
@@ -932,11 +942,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     openTriggers.forEach(trigger => {
         trigger.addEventListener('click', (e) => {
-            // Only trigger signup if it's not a category search card
             if (trigger.classList.contains('category-card')) return;
             e.preventDefault();
             const presetRole = trigger.dataset.presetRole || null;
-            openSignupModal(presetRole);
+            const presetPlan = trigger.dataset.plan || null;
+            openSignupModal(presetRole, presetPlan);
         });
     });
 
@@ -981,28 +991,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Sélection des cartes d'abonnement dans le modal
+    const modalPlanCards = document.querySelectorAll('.modal-plan-card');
+    modalPlanCards.forEach(planCard => {
+        planCard.addEventListener('click', () => {
+            modalPlanCards.forEach(c => c.classList.remove('selected'));
+            planCard.classList.add('selected');
+            userSignupData.plan = planCard.dataset.plan;
+        });
+    });
+
     function updateStepUI() {
-        for (let i = 1; i <= 5; i++) {
+        for (let i = 1; i <= 6; i++) {
             const stepEl = document.getElementById(`modalStep${i}`);
             if (stepEl) {
                 stepEl.classList.toggle('active', i === currentStep);
             }
         }
 
-        if (currentStep <= 4) {
-            stepCountText.textContent = `Étape ${currentStep} sur 4`;
-            progressBarFill.style.width = `${(currentStep / 4) * 100}%`;
-            modalFooter.style.display = 'flex';
+        if (currentStep <= 5) {
+            if (stepCountText) stepCountText.textContent = `Étape ${currentStep} sur 5`;
+            if (progressBarFill) progressBarFill.style.width = `${(currentStep / 5) * 100}%`;
+            if (modalFooter) modalFooter.style.display = 'flex';
         } else {
-            stepCountText.textContent = `Terminé 🎉`;
-            progressBarFill.style.width = `100%`;
-            modalFooter.style.display = 'none';
+            if (stepCountText) stepCountText.textContent = `Terminé 🎉`;
+            if (progressBarFill) progressBarFill.style.width = `100%`;
+            if (modalFooter) modalFooter.style.display = 'none';
         }
 
-        if (currentStep > 1 && currentStep < 5) {
-            prevStepBtn.style.visibility = 'visible';
+        if (currentStep > 1 && currentStep < 6) {
+            if (prevStepBtn) prevStepBtn.style.visibility = 'visible';
         } else {
-            prevStepBtn.style.visibility = 'hidden';
+            if (prevStepBtn) prevStepBtn.style.visibility = 'hidden';
         }
 
         if (currentStep === 2) {
@@ -1017,10 +1037,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (currentStep === 5) {
+        if (currentStep === 6) {
             const recapRole = document.getElementById('recapRoleText');
             const recapTerritory = document.getElementById('recapTerritoryText');
             const recapCategories = document.getElementById('recapCategoriesText');
+            const recapPlan = document.getElementById('recapPlanText');
 
             if (recapRole) {
                 recapRole.textContent = userSignupData.role === 'provider' 
@@ -1034,6 +1055,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 recapCategories.textContent = userSignupData.categories.length > 0
                     ? userSignupData.categories.join(', ')
                     : 'Toutes catégories';
+            }
+            if (recapPlan) {
+                if (userSignupData.plan === 'plus') recapPlan.textContent = 'Lyanneur Plus (9,90 € / mois)';
+                else if (userSignupData.plan === 'ultime') recapPlan.textContent = 'Lyanneur Ultime (29,90 € / mois) ⭐';
+                else if (userSignupData.plan === 'pro') recapPlan.textContent = 'Lyanneur PRO (59,90 € / mois) - PRO VÉRIFIÉ';
+                else recapPlan.textContent = 'Lyanneur (Gratuit)';
             }
         }
     }
@@ -1054,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return false;
             }
             if (cityInput) userSignupData.city = cityInput.value;
-        } else if (currentStep === 4) {
+        } else if (currentStep === 5) {
             const firstName = document.getElementById('modalFirstName');
             const email = document.getElementById('modalEmail');
             if (!firstName || !firstName.value.trim()) {
@@ -1074,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (nextStepBtn) {
         nextStepBtn.addEventListener('click', () => {
             if (validateCurrentStep()) {
-                if (currentStep < 5) {
+                if (currentStep < 6) {
                     currentStep++;
                     updateStepUI();
                 }
