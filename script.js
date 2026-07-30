@@ -1648,6 +1648,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- GESTION DU TOGGLE DE FACTURATION (MENSUEL / ANNUEL -20%) ---
+    const billingToggleInput = document.getElementById('billingToggleInput');
+    const monthlyBillingLabel = document.getElementById('monthlyBillingLabel');
+    const yearlyBillingLabel = document.getElementById('yearlyBillingLabel');
+    const priceElements = document.querySelectorAll('.price-val[data-monthly]');
+
+    if (billingToggleInput) {
+        billingToggleInput.addEventListener('change', () => {
+            const isYearly = billingToggleInput.checked;
+
+            if (monthlyBillingLabel) monthlyBillingLabel.classList.toggle('active', !isYearly);
+            if (yearlyBillingLabel) yearlyBillingLabel.classList.toggle('active', isYearly);
+
+            priceElements.forEach(el => {
+                const monthlyPrice = el.getAttribute('data-monthly');
+                const yearlyPrice = el.getAttribute('data-yearly');
+                el.textContent = isYearly ? yearlyPrice : monthlyPrice;
+            });
+        });
+    }
+
     renderMyDashboardRealizations();
     updateStepUI();
 });
