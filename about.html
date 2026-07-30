@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notre Histoire & Interview de Yoann - LYANN DOM</title>
+    <meta name="description" content="Découvrez l'histoire de Yoann, fondateur de LYANN en Guadeloupe. Pourquoi et comment nous avons créé le réseau de confiance et de liens pour l'habitat dans les DOM.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ========== NAVIGATION ========== -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">
+                <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon-svg">
+                    <defs>
+                        <linearGradient id="lyanGradientNav" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="55%" stop-color="#80A86E"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                        <linearGradient id="lyanRoofNav" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoofNav)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                    <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                    <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                    <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                          stroke="url(#lyanGradientNav)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                </svg>
+                <div class="logo-text-block">
+                    <span class="logo-title">LYANN</span>
+                    <span class="logo-subtitle">LE LIEN QUI COMPTE</span>
+                </div>
+            </a>
+            
+            <div class="nav-links">
+                <a href="results.html">Trouver / Annuaire</a>
+                <a href="how-it-works.html">Comment ça marche</a>
+                <a href="about.html" class="active-nav-link">À propos</a>
+                <a href="#login" class="btn btn-outline open-login-trigger">Connexion</a>
+                <a href="#" class="btn btn-primary btn-signup-nav open-signup-trigger">S'inscrire</a>
+            </div>
+            
+            <button class="mobile-menu-btn" aria-label="Ouvrir le menu">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay">
+        <div class="mobile-menu-content">
+            <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
+            <a href="index.html#search-services">Trouver</a>
+            <a href="how-it-works.html">Comment ça marche</a>
+            <a href="about.html">À propos</a>
+            <div class="mobile-menu-actions">
+                <a href="#login" class="btn btn-outline open-login-trigger" style="width: 100%; margin-bottom: 12px;">Connexion</a>
+                <a href="#" class="btn btn-primary open-signup-trigger" style="width: 100%;">S'inscrire</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== HERO PAGE ABOUT / NOTRE HISTOIRE ========== -->
+    <header class="about-hero">
+        <div class="container text-center">
+            
+            <div class="founder-hero-badge fade-in-up">
+                <div class="founder-avatar-small">Y</div>
+                <div class="founder-badge-info">
+                    <div class="founder-name-title">Yoann • 34 ans</div>
+                    <div class="founder-tagline">Guadeloupéen & Fondateur de LYANN</div>
+                </div>
+            </div>
+
+            <h1 class="interview-hero-title fade-in-up">
+                « Le lien est ce qui nous permet tous <br class="desktop-only-br">
+                d'avancer en <span class="text-gradient">toute sérénité. »</span>
+            </h1>
+
+            <p class="interview-intro-lead fade-in-up">
+                Rencontre avec Yoann : d'une boule au ventre sur ses propres chantiers en Guadeloupe à la création d'une plateforme née du cœur pour relier les habitants et les talents de confiance dans nos territoires.
+            </p>
+
+            <div class="interview-quick-stats fade-in-up">
+                <div class="stat-pill-item">
+                    <div class="stat-pill-icon"><i class="ph-fill ph-map-pin"></i></div>
+                    <div class="stat-pill-text">
+                        <div class="stat-pill-value">Guadeloupe & DOM</div>
+                        <div class="stat-pill-label">Ancrage territorial fort</div>
+                    </div>
+                </div>
+
+                <div class="stat-pill-item">
+                    <div class="stat-pill-icon"><i class="ph-fill ph-handshake"></i></div>
+                    <div class="stat-pill-text">
+                        <div class="stat-pill-value">Confiance Mutualisée</div>
+                        <div class="stat-pill-label">Avis & recommandation</div>
+                    </div>
+                </div>
+
+                <div class="stat-pill-item">
+                    <div class="stat-pill-icon"><i class="ph-fill ph-users-three"></i></div>
+                    <div class="stat-pill-text">
+                        <div class="stat-pill-value">Même Équipe</div>
+                        <div class="stat-pill-label">Particuliers & Pros sérieux</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- ========== SECTION INTERVIEW Q&A ========== -->
+    <section class="interview-section">
+        <div class="container">
+            <div class="interview-container">
+
+                <!-- CARD Q1 -->
+                <article class="interview-card fade-in-up">
+                    <div class="question-meta">
+                        <span class="question-badge"><i class="ph-fill ph-microphone"></i> Question 01</span>
+                        <span class="question-topic-pill">📍 Les Origines & Le Parcours</span>
+                    </div>
+
+                    <h2 class="question-title">Yoann, parle-nous de toi. Quel a été ton parcours avant de donner naissance à LYANN ?</h2>
+
+                    <div class="answer-body">
+                        <p>
+                            Je m'appelle <strong>Yoann</strong>, j'ai 34 ans et je suis un enfant de la Guadeloupe. Après mes études et mes premières expériences professionnelles, j'ai eu cette chance formidable de partir voyager partout à travers le monde pendant quelques années. Voyager m'a énormément ouvert l'esprit, m'a appris la résilience et le sens du contact. Mais il y a une certitude absolue que l'on comprend rapidement quand on parcourt le monde : <strong>rien ne remplace la chaleur et l'amour de sa propre terre.</strong>
+                        </p>
+                        <p>
+                            Il y a quelques années, j'ai pris la décision évidente de rentrer m'installer chez moi, en Guadeloupe. Je voulais bâtir ma vie ici et m'investir concrètement dans le développement de notre île.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- CARD Q2 -->
+                <article class="interview-card fade-in-up">
+                    <div class="question-meta">
+                        <span class="question-badge"><i class="ph-fill ph-microphone"></i> Question 02</span>
+                        <span class="question-topic-pill">⚡ Le Déclic & L'Angoisse des Chantiers</span>
+                    </div>
+
+                    <h2 class="question-title">Quelle a été l'étincelle de départ ? Comment s'est passée ton installation et tes premiers projets immobiliers ?</h2>
+
+                    <div class="answer-body">
+                        <p>
+                            Comme beaucoup d'entre nous au retour au pays, j'ai eu cette forte envie d'investir dans l'immobilier et de rénover. Mais très vite, la réalité m'a rattrapé et s'est transformée en une <strong>immense angoisse</strong> : la peur de tomber sur des entrepreneurs malhonnêtes, des gens pas sérieux, qui prennent des acomptes et disparaissent ou laissent des chantiers à moitié terminés.
+                        </p>
+                        <p>
+                            Au départ, je pensais que c'était une peur isolée, une inquiétude personnelle d'investisseur. Mais plus j'en parlais autour de moi — avec la famille, les amis, les voisins, les collègues —, plus j'ai réalisé un constat saisissant : <strong>nous étions TOUS dans la même galère.</strong>
+                        </p>
+
+                        <div class="quote-callout">
+                            <p>« Plus j'en parlais autour de moi, plus je réalisais que je n'étais pas seul. Presque chaque famille avait son histoire de chantier interrompu ou d'artisan introuvable. »</p>
+                            <div class="quote-author">Yoann</div>
+                        </div>
+
+                        <p>
+                            Cette peur de l'imprévu gâchait des projets de vie entiers. C'était devenu évident qu'il manquait un pont de confiance transparent.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- CARD Q3 -->
+                <article class="interview-card fade-in-up">
+                    <div class="question-meta">
+                        <span class="question-badge"><i class="ph-fill ph-microphone"></i> Question 03</span>
+                        <span class="question-topic-pill">🤝 La Rencontre & Le Premier Réseau</span>
+                    </div>
+
+                    <h2 class="question-title">Comment tes propres travaux se sont-ils finalement terminés ?</h2>
+
+                    <div class="answer-body">
+                        <p>
+                            J'ai eu beaucoup de chance. Après quelques frayeurs, je suis bien heureusement tombé sur des professionnels <strong>extrêmement sérieux, respectueux et passionnés</strong> par leur métier. Des gens de parole qui ont pris mes chantiers en main et les ont menés à terme avec une grande qualité.
+                        </p>
+                        <p>
+                            Mais une fois le soulagement passé, une question m'a immédiatement obsédé : <strong>« Pourquoi je n'ai pas pu les connaître AVANT ? »</strong>
+                        </p>
+                        <p>
+                            Pourquoi avoir dû traverser des mois d'inquiétude alors que ces perles rares existaient juste à côté de chez moi ? C'est à ce moment-là que j'ai spontanément commencé à faire énormément de <strong>mise en réseau</strong>. Dès qu'un ami cherchait un maçon, un électricien ou un plombier de confiance, je le mettais en contact avec les artisans sérieux de mon carnet d'adresses. Et à chaque fois, la magie opérait : le particulier était rassuré et le professionnel passionné décrochait un chantier mérité.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- CARD Q4 -->
+                <article class="interview-card fade-in-up">
+                    <div class="question-meta">
+                        <span class="question-badge"><i class="ph-fill ph-microphone"></i> Question 04</span>
+                        <span class="question-topic-pill">🌿 La Naissance de LYANN</span>
+                    </div>
+
+                    <h2 class="question-title">Comment s'est fait le passage du carnet d'adresses personnel à la plateforme digitale LYANN ? Et que signifie ce nom ?</h2>
+
+                    <div class="answer-body">
+                        <p>
+                            Au bout d'un moment, la demande était devenue si forte que je me suis lancé dans ce projet fou : <strong>créer une véritable plateforme moderne où l'on recrée du lien humain et transparent entre les habitants.</strong>
+                        </p>
+                        <p>
+                            Le nom <strong>LYANN</strong> a été une vraie évidence. <em>Lyann</em>, comme la <em>liane</em> en créole, représente le symbole ultime du lien. La liane s'accroche, relie, soutient et permet de s'élever. Le lien est précisément la chose qui nous permet à tous d'avancer en toute sérénité.
+                        </p>
+
+                        <div class="quote-callout">
+                            <p>« Sur LYANN, les avis authentiques permettent aux particuliers de savoir exactement à qui ils ont affaire, et offrent aux pros qui travaillent bien la visibilité qu'ils méritent. »</p>
+                            <div class="quote-author">Yoann</div>
+                        </div>
+
+                        <p>
+                            Les avis et recommandations vérifiés donnent enfin aux particuliers une idée claire et honnête de leur interlocuteur. Et en parallèle, ils permettent aux artisans rigoureux qui ont envie d'avoir une excellente presse et beaucoup de clients de <strong>se démarquer avec fierté</strong>.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- CARD Q5 -->
+                <article class="interview-card fade-in-up">
+                    <div class="question-meta">
+                        <span class="question-badge"><i class="ph-fill ph-microphone"></i> Question 05</span>
+                        <span class="question-topic-pill">🚀 L'Avenir & Nos Territoires</span>
+                    </div>
+
+                    <h2 class="question-title">Quelle est ta vision pour la Guadeloupe et les autres territoires ultramarins ?</h2>
+
+                    <div class="answer-body">
+                        <p>
+                            Mon désir le plus cher est de <strong>faire avancer mon pays</strong>, la Guadeloupe, ainsi que la Martinique, la Guyane, La Réunion et tous les territoires qui nous ressemblent et partagent nos réalités insulaires. Nous avons des talents incroyables sur nos îles, mais il manquait ce canal de confiance collective.
+                        </p>
+                        <p>
+                            Aujourd'hui, je veux que chaque habitant sache qu'il n'est plus seul et démuni face à ses projets d'habitat. Et je veux que chaque entrepreneur sérieux sache qu'il a une communauté solide derrière lui.
+                        </p>
+                        <p>
+                            <strong>J'ai une confiance absolue en nous pour qu'on avance ensemble.</strong>
+                        </p>
+                    </div>
+                </article>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== SECTION "NOUS SOMMES DU MÊME CÔTÉ" ========== -->
+    <section class="same-side-section">
+        <div class="container text-center">
+            <span class="pill-badge pill-green"><i class="ph ph-heart-handshake"></i> Solidarité & Sérénité</span>
+            <h2 class="section-title" style="font-size: 2.2rem; margin-top: 12px;">Pourquoi nous sommes <span class="text-gradient">du même côté</span></h2>
+            <p class="section-subtitle" style="max-width: 700px; margin: 0 auto;">
+                Particuliers et professionnels sérieux recherchent exactement la même chose : du respect, de la clarté et un travail bien fait. LYANN est l'alliance qui protège les deux.
+            </p>
+
+            <div class="same-side-grid">
+                <!-- CARD HABITANTS -->
+                <div class="same-side-card">
+                    <div class="same-side-icon green">
+                        <i class="ph-fill ph-house"></i>
+                    </div>
+                    <h3>Pour vous, Habitants & Porteurs de Projets</h3>
+                    <p style="color: var(--text-muted);">Fini l'angoisse des chantiers et la peur de l'inconnu. Avancez l'esprit tranquille.</p>
+                    
+                    <ul class="same-side-list">
+                        <li><i class="ph-fill ph-check-circle"></i> Accessibilité directe aux professionnels recommandés par le quartier.</li>
+                        <li><i class="ph-fill ph-check-circle"></i> Transparence totale grâce aux avis réels et aux photos de réalisation.</li>
+                        <li><i class="ph-fill ph-check-circle"></i> Gain de temps et économies financières en évitant les erreurs de casting.</li>
+                        <li><i class="ph-fill ph-check-circle"></i> Écoute et accompagnement communautaire du début à la fin.</li>
+                    </ul>
+                </div>
+
+                <!-- CARD PROS -->
+                <div class="same-side-card">
+                    <div class="same-side-icon gold">
+                        <i class="ph-fill ph-wrench"></i>
+                    </div>
+                    <h3>Pour vous, Entrepreneurs & Talents de Confiance</h3>
+                    <p style="color: var(--text-muted);">Soyez récompensés pour votre rigueur et votre professionnalisme au quotidien.</p>
+
+                    <ul class="same-side-list">
+                        <li><i class="ph-fill ph-check-circle"></i> Valorisation garantie de votre savoir-faire et réputation protégée.</li>
+                        <li><i class="ph-fill ph-check-circle"></i> Flux régulier de nouveaux clients locaux qualifiés et respectueux.</li>
+                        <li><i class="ph-fill ph-check-circle"></i> Démarque face à la concurrence déloyale grâce à vos bonnes évaluations.</li>
+                        <li><i class="ph-fill ph-check-circle"></i> Fierté d'être un acteur majeur qui fait avancer notre économie locale.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== MANIFESTO BANNER ========== -->
+    <section class="manifesto-section">
+        <div class="container text-center">
+            <div class="manifesto-card fade-in-up">
+                <div class="manifesto-badge">
+                    <i class="ph-fill ph-sparkle"></i> Le Vœu du Fondateur
+                </div>
+
+                <blockquote class="manifesto-quote">
+                    « Créer du lien, c'est redonner le pouvoir aux personnes honnêtes. <span>Avançons ensemble, la tête haute.</span> »
+                </blockquote>
+
+                <p class="manifesto-desc">
+                    LYANN a été pensé pour durer et pour faire briller la Guadeloupe et tous les territoires ultramarins. Rejoignez notre communauté dès aujourd'hui et construisons l'avenir de notre habitat en toute sérénité.
+                </p>
+
+                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                    <a href="index.html#search-services" class="btn btn-primary btn-lg">
+                        <i class="ph ph-magnifying-glass"></i> Trouver un professionnel de confiance
+                    </a>
+                    <a href="#" class="btn btn-outline open-signup-trigger" style="color: #ffffff; border-color: rgba(255,255,255,0.4);">
+                        <i class="ph ph-user-plus"></i> Rejoindre le réseau LYANN
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col brand-col">
+                    <a href="index.html" class="logo">
+                        <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoofNav)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                            <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                            <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                            <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                                  stroke="url(#lyanGradientNav)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                        </svg>
+                        <div class="logo-text-block">
+                            <span class="logo-title" style="color: #FAF7F2;">LYANN</span>
+                            <span class="logo-subtitle" style="color: #709C7D;">LE LIEN QUI COMPTE</span>
+                        </div>
+                    </a>
+                    <p class="footer-desc">Le premier réseau de confiance qui connecte les habitants et les talents de quartier dans tous les DOM.</p>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Navigation</h4>
+                    <ul class="footer-links">
+                        <li><a href="index.html#search-services">Trouver un service</a></li>
+                        <li><a href="how-it-works.html">Comment ça marche</a></li>
+                        <li><a href="about.html">Notre Histoire / À propos</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Territoires</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">Guadeloupe (971)</a></li>
+                        <li><a href="#">Martinique (972)</a></li>
+                        <li><a href="#">Guyane (973)</a></li>
+                        <li><a href="#">La Réunion (974)</a></li>
+                        <li><a href="#">Saint-Martin (97150)</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4 class="footer-title">Rejoindre</h4>
+                    <ul class="footer-links">
+                        <li><a href="#" class="open-signup-trigger">Inscrire mon activité</a></li>
+                        <li><a href="#" class="open-login-trigger">Espace Membre</a></li>
+                        <li><a href="#">Charte de confiance</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2026 LYANN DOM. Tous droits réservés. Conçu avec passion en Guadeloupe pour nos territoires.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========== MODALS FOR SIGNUP & LOGIN ========== -->
+    <!-- MODAL SIGNUP STEPPER -->
+    <div class="modal-overlay" id="signupModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeSignupModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoofNav)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                              stroke="url(#lyanGradientNav)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                    </svg>
+                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">LYANN</span>
+                </div>
+                <div class="modal-stepper-progress">
+                    <div class="stepper-track"><div class="stepper-fill" id="stepperFill" style="width: 20%;"></div></div>
+                    <span class="stepper-step-indicator" id="stepperStepIndicator">Étape 1 sur 5</span>
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <!-- STEP 1 : RÔLE -->
+                <div class="modal-step active" id="modalStep1">
+                    <h3 class="step-title">Quel est votre objectif ?</h3>
+                    <p class="step-desc">Choisissez la façon dont vous souhaitez utiliser LYANN.</p>
+                    <div class="role-cards-grid">
+                        <div class="role-card-select active" data-role="seeker">
+                            <div class="role-card-icon"><i class="ph-fill ph-house-line"></i></div>
+                            <div class="role-card-info">
+                                <h4>Je cherche un service / artisan</h4>
+                                <p>Trouvez rapidement des talents recommandés dans votre secteur.</p>
+                            </div>
+                        </div>
+                        <div class="role-card-select" data-role="provider">
+                            <div class="role-card-icon"><i class="ph-fill ph-wrench"></i></div>
+                            <div class="role-card-info">
+                                <h4>Je propose mes services</h4>
+                                <p>Rejoignez le réseau des talents vérifiés et développez votre activité.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2 : TERRITOIRE -->
+                <div class="modal-step" id="modalStep2">
+                    <h3 class="step-title">Où êtes-vous situé ?</h3>
+                    <p class="step-desc">LYANN relie les habitants sur tous nos territoires ultramarins.</p>
+                    <div class="territory-select-grid">
+                        <button type="button" class="territory-btn active" data-territory="Guadeloupe">📍 Guadeloupe (971)</button>
+                        <button type="button" class="territory-btn" data-territory="Martinique">📍 Martinique (972)</button>
+                        <button type="button" class="territory-btn" data-territory="Guyane">📍 Guyane (973)</button>
+                        <button type="button" class="territory-btn" data-territory="La Réunion">📍 La Réunion (974)</button>
+                        <button type="button" class="territory-btn" data-territory="Saint-Martin">📍 St-Martin (97150)</button>
+                    </div>
+                </div>
+
+                <!-- STEP 3 : COORDONNÉES -->
+                <div class="modal-step" id="modalStep3">
+                    <h3 class="step-title">Vos Informations</h3>
+                    <p class="step-desc">Créez votre identifiant sécurisé sur LYANN.</p>
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="modalFirstName">Prénom</label>
+                            <input type="text" id="modalFirstName" class="modal-input" placeholder="Votre prénom">
+                        </div>
+                        <div class="form-group">
+                            <label for="modalLastName">Nom</label>
+                            <input type="text" id="modalLastName" class="modal-input" placeholder="Votre nom">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="modalEmail">Adresse Email</label>
+                        <input type="email" id="modalEmail" class="modal-input" placeholder="votre.email@exemple.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="modalPhone">Téléphone</label>
+                        <input type="tel" id="modalPhone" class="modal-input" placeholder="06 90 ...">
+                    </div>
+                </div>
+
+                <!-- STEP 4 : CONFIRMATION -->
+                <div class="modal-step" id="modalStep4">
+                    <div class="success-screen">
+                        <div class="success-icon">🎉</div>
+                        <h3 class="step-title">Félicitations !</h3>
+                        <p class="step-desc">Votre profil LYANN a été créé avec succès.</p>
+                        <button class="btn btn-primary btn-lg" id="modalFinishBtn" style="width: 100%;">Accéder à mon espace</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-outline" id="prevStepBtn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i> Précédent</button>
+                <button class="btn btn-primary" id="nextStepBtn">Continuer <i class="ph ph-arrow-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL LOGIN -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeLoginModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <div class="modal-header">
+                <h3 class="step-title">Connexion à LYANN</h3>
+                <p class="step-desc">Connectez-vous à votre compte membre.</p>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="loginEmailInput">Adresse Email</label>
+                    <input type="email" id="loginEmailInput" class="modal-input" placeholder="votre.email@exemple.com">
+                </div>
+                <div class="form-group">
+                    <label for="loginPasswordInput">Mot de passe</label>
+                    <input type="password" id="loginPasswordInput" class="modal-input" placeholder="••••••••">
+                </div>
+                <button class="btn btn-primary btn-lg" id="doLoginBtn" style="width: 100%; margin-top: 16px;">Se connecter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>

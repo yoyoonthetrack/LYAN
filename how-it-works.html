@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment ça marche ? - LYANN DOM</title>
+    <meta name="description" content="Découvrez comment LYANN relie les habitants aux talents de leur quartier en Guadeloupe, Martinique, Guyane, La Réunion et St-Martin. Guide étape par étape.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ========== NAVIGATION ========== -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">
+                <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon-svg">
+                    <defs>
+                        <linearGradient id="lyanGradientNav" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="55%" stop-color="#80A86E"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                        <linearGradient id="lyanRoofNav" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoofNav)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                    <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                    <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                    <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                          stroke="url(#lyanGradientNav)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                </svg>
+                <div class="logo-text-block">
+                    <span class="logo-title">LYANN</span>
+                    <span class="logo-subtitle">LE LIEN QUI COMPTE</span>
+                </div>
+            </a>
+            
+            <div class="nav-links">
+                <a href="results.html">Trouver / Annuaire</a>
+                <a href="how-it-works.html" class="active-nav-link">Comment ça marche</a>
+                <a href="about.html">Notre Histoire</a>
+                <a href="#login" class="btn btn-outline open-login-trigger">Connexion</a>
+                <a href="#" class="btn btn-primary btn-signup-nav open-signup-trigger">S'inscrire</a>
+            </div>
+            
+            <button class="mobile-menu-btn" aria-label="Ouvrir le menu">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay">
+        <div class="mobile-menu-content">
+            <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
+            <a href="index.html#search-services">Trouver</a>
+            <a href="how-it-works.html">Comment ça marche</a>
+            <a href="about.html">Notre Histoire</a>
+            <div class="mobile-menu-actions">
+                <a href="#login" class="btn btn-outline open-login-trigger" style="width: 100%; margin-bottom: 12px;">Connexion</a>
+                <a href="#" class="btn btn-primary open-signup-trigger" style="width: 100%;">S'inscrire</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== HERO PAGE COMMENT ÇA MARCHE ========== -->
+    <header class="hero how-hero">
+        <div class="container text-center">
+            <span class="pill-badge pill-green" style="margin-bottom: 16px; display: inline-flex;"><i class="ph ph-sparkle"></i> Guide & Transparence</span>
+            <h1 class="how-hero-title">Comment fonctionne <br class="desktop-only-br"><span class="text-gradient">le réseau LYANN ?</span></h1>
+            <p class="hero-subtitle" style="margin: 0 auto 32px; max-width: 680px;">
+                LYANN réinvente l'entraide locale dans les DOM. Découvrez comment nous connectons habitants et talents de confiance en toute simplicité.
+            </p>
+
+            <!-- Switcher de rôle interactif -->
+            <div class="role-selector-pill">
+                <button type="button" class="role-pill-btn active" id="pillForSeekers">
+                    <i class="ph-fill ph-house-line"></i> Pour les Habitants
+                </button>
+                <button type="button" class="role-pill-btn" id="pillForProviders">
+                    <i class="ph-fill ph-wrench"></i> Pour les Talents & Artisans
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========== ETAPES POUR LES HABITANTS ========== -->
+    <section id="sectionSeekersSteps" class="section steps-detail-section">
+        <div class="container">
+            <div class="section-header text-center">
+                <span class="pill-badge pill-blue"><i class="ph ph-magnifying-glass"></i> Vous cherchez de l'aide ?</span>
+                <h2>Trouvez la bonne personne en 4 étapes simples</h2>
+                <p class="section-subtitle">Du dépannage express au projet de rénovation, tout commence près de chez vous.</p>
+            </div>
+
+            <div class="detailed-steps-grid">
+                <div class="detail-step-card">
+                    <div class="step-number-badge">1</div>
+                    <div class="step-card-icon step-icon-blue">
+                        <i class="ph-fill ph-magnifying-glass-plus"></i>
+                    </div>
+                    <h3>Exprimez votre besoin</h3>
+                    <p>Tapez simplement ce dont vous avez besoin : <em>"Plombier pour une fuite à Baie-Mahault"</em>, <em>"Peintre à Fort-de-France"</em> ou <em>"Jardinier à Saint-Denis"</em>. Choisissez votre département DOM.</p>
+                </div>
+
+                <div class="detail-step-card">
+                    <div class="step-number-badge">2</div>
+                    <div class="step-card-icon step-icon-emerald">
+                        <i class="ph-fill ph-user-check"></i>
+                    </div>
+                    <h3>Explorez les profils vérifiés</h3>
+                    <p>Accédez aux fiches des talents de votre quartier. Consultez leurs photos de chantier, leurs badges de confiance (Artisan Vérifié, Voisin Recommandé) et les avis authentiques déposés par vos voisins.</p>
+                </div>
+
+                <div class="detail-step-card">
+                    <div class="step-number-badge">3</div>
+                    <div class="step-card-icon step-icon-coral">
+                        <i class="ph-fill ph-chat-circle-dots"></i>
+                    </div>
+                    <h3>Échangez en direct sans intermédiaire</h3>
+                    <p>Contactez le talent par téléphone, message direct ou WhatsApp. Fixez ensemble la date d'intervention, le tarif horaire ou le forfait. Transparence totale sans commissions cachées.</p>
+                </div>
+
+                <div class="detail-step-card">
+                    <div class="step-number-badge">4</div>
+                    <div class="step-card-icon step-icon-yellow">
+                        <i class="ph-fill ph-heart-beat"></i>
+                    </div>
+                    <h3>Projet réalisé & Réseau renforcé</h3>
+                    <p>Une fois l'intervention achevée, recommandez votre talent en lui attribuant des étoiles et un avis. Vous contribuez ainsi à faire grandir le réseau de confiance de votre île !</p>
+                </div>
+            </div>
+
+            <div class="text-center" style="margin-top: 40px;">
+                <button type="button" class="btn btn-primary btn-lg open-signup-trigger" data-preset-role="seeker">
+                    <i class="ph ph-magnifying-glass"></i> Trouver un talent maintenant
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== ETAPES POUR LES TALENTS (MASQUÉES PAR DÉFAUT, COMMUTABLES) ========== -->
+    <section id="sectionProvidersSteps" class="section steps-detail-section" style="display: none;">
+        <div class="container">
+            <div class="section-header text-center">
+                <span class="pill-badge pill-green"><i class="ph ph-briefcase"></i> Vous proposez vos compétences ?</span>
+                <h2>Développez votre activité et aidez votre quartier</h2>
+                <p class="section-subtitle">Particulier passionné ou professionnel diplômé, faites rayonner votre savoir-faire.</p>
+            </div>
+
+            <div class="detailed-steps-grid">
+                <div class="detail-step-card">
+                    <div class="step-number-badge">1</div>
+                    <div class="step-card-icon step-icon-emerald">
+                        <i class="ph-fill ph-identification-card"></i>
+                    </div>
+                    <h3>Créez votre fiche vitrine en 2 min</h3>
+                    <p>Renseignez votre nom, vos domaines d'intervention (Plomberie, Électricité, Jardin, Ménage...) et votre commune d'intervention en Guadeloupe, Martinique, Guyane ou La Réunion.</p>
+                </div>
+
+                <div class="detail-step-card">
+                    <div class="step-number-badge">2</div>
+                    <div class="step-card-icon step-icon-blue">
+                        <i class="ph-fill ph-images"></i>
+                    </div>
+                    <h3>Publiez vos photos de chantiers</h3>
+                    <p>Ajoutez des réalisations dans votre galerie d'images. Montrez la qualité de vos finitions : rénovation de salle de bain, taille de palmiers, peinture murale... Vos photos parlent pour vous !</p>
+                </div>
+
+                <div class="detail-step-card">
+                    <div class="step-number-badge">3</div>
+                    <div class="step-card-icon step-icon-coral">
+                        <i class="ph-fill ph-bell-ringing"></i>
+                    </div>
+                    <h3>Recevez les demandes des habitants</h3>
+                    <p>Les voisins de votre commune vous contactent directement pour leurs besoins. Répondez rapidement, fixez vos prix et établissez votre planning en toute liberté.</p>
+                </div>
+
+                <div class="detail-step-card">
+                    <div class="step-number-badge">4</div>
+                    <div class="step-card-icon step-icon-yellow">
+                        <i class="ph-fill ph-medal"></i>
+                    </div>
+                    <h3>Gagnez des badges & des recommandations</h3>
+                    <p>Cumulez les avis 5 étoiles et débloquez les badges <em>Artisan Vérifié</em> ou <em>Voisin de Confiance</em>. Développez une réputation solide et durable près de chez vous.</p>
+                </div>
+            </div>
+
+            <div class="text-center" style="margin-top: 40px;">
+                <button type="button" class="btn btn-primary btn-lg open-signup-trigger" data-preset-role="provider">
+                    <i class="ph ph-wrench"></i> Rejoindre comme Talent
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== CHARTE DE CONFIANCE & ENGAGEMENTS DOM ========== -->
+    <section class="section trust-charter-section">
+        <div class="container">
+            <div class="section-header text-center">
+                <span class="pill-badge pill-yellow"><i class="ph ph-shield-check"></i> Notre Engagement</span>
+                <h2>La Charte de Sérénité LYANN</h2>
+                <p class="section-subtitle">4 piliers fondamentaux pour bâtir le réseau de confiance le plus sûr des Caraïbes et de l'Océan Indien.</p>
+            </div>
+
+            <div class="charter-grid">
+                <div class="charter-card">
+                    <div class="charter-icon"><i class="ph-fill ph-user-focus"></i></div>
+                    <h4>Profils & Identités Vérifiés</h4>
+                    <p>Chaque profil est soumis à une vérification d'identité et de coordonnées locales pour garantir des échanges authentiques entre voisins réels.</p>
+                </div>
+
+                <div class="charter-card">
+                    <div class="charter-icon"><i class="ph-fill ph-map-trifold"></i></div>
+                    <h4>Ancrage 100% Territorial DOM</h4>
+                    <p>Des filtres pensés sur-mesure pour chaque île et département (Guadeloupe, Martinique, Guyane, La Réunion, St-Martin) afin de favoriser le circuit court du service.</p>
+                </div>
+
+                <div class="charter-card">
+                    <div class="charter-icon"><i class="ph-fill ph-currency-circle-dollar"></i></div>
+                    <h4>Zéro Frais Cachés</h4>
+                    <p>L'utilisation du réseau et la mise en relation entre habitants et talents sont transparentes. Pas de frais de commission prélevés sur vos échanges.</p>
+                </div>
+
+                <div class="charter-card">
+                    <div class="charter-icon"><i class="ph-fill ph-thumbs-up"></i></div>
+                    <h4>Avis Voisins Recommandés</h4>
+                    <p>Seules les personnes ayant réellement bénéficié d'un service peuvent laisser une évaluation. Pas d'avis truqués ou anonymes.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== SECTION FAQ ACCORDÉON INTERACTIF ========== -->
+    <section class="section faq-section">
+        <div class="container" style="max-width: 860px;">
+            <div class="section-header text-center">
+                <span class="pill-badge pill-green"><i class="ph ph-question"></i> FAQ</span>
+                <h2>Questions fréquentes</h2>
+                <p class="section-subtitle">Tout ce que vous devez savoir pour démarrer sereinement sur LYANN.</p>
+            </div>
+
+            <div class="faq-accordion">
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Comment s'inscrire sur LYANN ? Est-ce gratuit ?</span>
+                        <i class="ph ph-caret-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>L'inscription sur LYANN est 100% gratuite. Que vous recherchiez de l'aide ou que vous proposiez des compétences, vous pouvez créer votre compte en 2 minutes en cliquant sur le bouton <strong>"S'inscrire"</strong> en haut de la page.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Puis-je être à la fois Habitant (chercher) et Talent (proposer) ?</span>
+                        <i class="ph ph-caret-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Absolument ! Grâce au **mode bicolore LYANN**, votre compte unique vous permet de basculer en un clic entre l'espace <em>Talent (Vert Sage)</em> et l'espace <em>Habitant (Corail)</em>.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Quels sont les départements couverts par LYANN ?</span>
+                        <i class="ph ph-caret-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>LYANN couvre spécifiquement l'ensemble des départements et territoires d'Outre-Mer : la <strong>Guadeloupe (971)</strong>, la <strong>Martinique (972)</strong>, la <strong>Guyane (973)</strong>, <strong>La Réunion (974)</strong> et <strong>Saint-Martin / Saint-Barthélemy</strong>.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Comment fonctionne le classement des talents ?</span>
+                        <i class="ph ph-caret-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Les talents sont classés selon leur proximité géographique avec votre commune, le nombre de recommandations reçues par vos voisins et la réactivité de leur profil. Aucun passe-droit payant !</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Comment contacter un artisan ou un voisin disponible ?</span>
+                        <i class="ph ph-caret-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Sur la fiche publique du membre, cliquez simplement sur le bouton <strong>"Contacter"</strong> pour envoyer un message direct ou accéder à son numéro de téléphone / WhatsApp.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Que faire si mon domaine d'activité n'est pas listé ?</span>
+                        <i class="ph ph-caret-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Lors de votre inscription, vous pouvez choisir la catégorie la plus proche ou utiliser le champ libre <em>"Spécialité sur-mesure"</em> dans votre espace profil pour préciser vos compétences.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== SECTION CTA FINAL ========== -->
+    <section class="section cta-section">
+        <div class="container">
+            <div class="section-header text-center">
+                <span class="pill-badge pill-green"><i class="ph ph-handshake"></i> Lancez-vous</span>
+                <h2>Faites vivre le lien de votre quartier.</h2>
+                <p class="section-subtitle">Rejoignez dès aujourd'hui la communauté des voisins et talents des DOM.</p>
+            </div>
+            
+            <div class="cta-grid">
+                <div class="cta-card cta-propose open-signup-trigger" data-preset-role="provider">
+                    <div class="cta-icon-wrapper step-icon-emerald">
+                        <i class="ph-fill ph-wrench" style="font-size: 2.6rem; color: #4A7C59;"></i>
+                    </div>
+                    <h3>Je propose mes services</h3>
+                    <p>Faites connaître votre savoir-faire et trouvez des chantiers près de chez vous.</p>
+                    <button class="btn btn-primary btn-lg">Rejoindre comme Talent</button>
+                </div>
+                <div class="cta-card cta-search open-signup-trigger" data-preset-role="seeker">
+                    <div class="cta-icon-wrapper step-icon-blue">
+                        <i class="ph-fill ph-house-line" style="font-size: 2.6rem; color: #3F9EB0;"></i>
+                    </div>
+                    <h3>Je cherche quelqu'un</h3>
+                    <p>Trouvez la personne idéale de confiance dans votre commune.</p>
+                    <button class="btn btn-accent btn-lg">Trouver un voisin</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-top">
+                <a href="index.html" class="logo">
+                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon-svg">
+                        <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoofNav)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                              stroke="url(#lyanGradientNav)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                    </svg>
+                    <div class="logo-text-block">
+                        <span class="logo-title" style="color: #FFFFFF;">LYANN</span>
+                        <span class="logo-subtitle" style="color: #E5B345;">LE LIEN QUI COMPTE</span>
+                    </div>
+                </a>
+                <div class="footer-links">
+                    <a href="about.html">Notre Histoire</a>
+                    <a href="how-it-works.html">Comment ça marche</a>
+                    <a href="#privacy" class="open-privacy-trigger">Confidentialité</a>
+                    <a href="#terms" class="open-terms-trigger">Conditions</a>
+                    <a href="#contact" class="open-contact-trigger">Contact</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 LYANN - Le réseau de confiance des DOM. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODALES RÉUTILISÉES POUR LA PAGE COMMENT ÇA MARCHE -->
+    <!-- Modal Inscription -->
+    <div class="modal-overlay" id="signupModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeSignupBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Inscription LYANN</span>
+                </div>
+                <div class="step-indicator"><span class="step-count" id="stepCountText">Étape 1 sur 4</span></div>
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="progressBarFill"></div></div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-step active" id="modalStep1">
+                    <h3 class="step-title">Bienvenue sur LYANN !</h3>
+                    <p class="step-desc">Quelle est la raison principale de votre venue aujourd'hui ?</p>
+                    <div class="choice-cards-grid">
+                        <div class="choice-card" data-role="provider">
+                            <div class="choice-card-icon">🛠️</div>
+                            <h4>Je propose mes services</h4>
+                            <p>Vous êtes un professionnel ou un particulier talentueux souhaitant aider vos voisins.</p>
+                        </div>
+                        <div class="choice-card" data-role="seeker">
+                            <div class="choice-card-icon">🔍</div>
+                            <h4>Je cherche quelqu'un</h4>
+                            <p>Vous avez un besoin, un dépannage ou un projet à réaliser près de chez vous.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-step" id="modalStep2">
+                    <h3 class="step-title" id="step2Title">Vos domaines d'intervention</h3>
+                    <p class="step-desc" id="step2Desc">Sélectionnez une ou plusieurs catégories.</p>
+                    <div class="category-selection-grid">
+                        <div class="cat-select-card" data-cat="maison"><i class="ph-fill ph-house"></i><span>Maison</span></div>
+                        <div class="cat-select-card" data-cat="electricite"><i class="ph-fill ph-lightning"></i><span>Électricité</span></div>
+                        <div class="cat-select-card" data-cat="plomberie"><i class="ph-fill ph-drop"></i><span>Plomberie</span></div>
+                        <div class="cat-select-card" data-cat="peinture"><i class="ph-fill ph-paint-brush"></i><span>Peinture</span></div>
+                        <div class="cat-select-card" data-cat="jardin"><i class="ph-fill ph-tree"></i><span>Jardin</span></div>
+                        <div class="cat-select-card" data-cat="menage"><i class="ph-fill ph-broom"></i><span>Ménage</span></div>
+                    </div>
+                </div>
+                <div class="modal-step" id="modalStep3">
+                    <h3 class="step-title">Où vous situez-vous ?</h3>
+                    <div class="form-group">
+                        <label for="modalTerritorySelect">Votre territoire DOM</label>
+                        <select id="modalTerritorySelect" class="modal-input">
+                            <option value="Guadeloupe (971)" selected>Guadeloupe (971)</option>
+                            <option value="Martinique (972)">Martinique (972)</option>
+                            <option value="Guyane (973)">Guyane (973)</option>
+                            <option value="La Réunion (974)">La Réunion (974)</option>
+                            <option value="St-Martin / St-Barth">St-Martin / St-Barth</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="modalCityInput">Ville / Commune</label>
+                        <input type="text" id="modalCityInput" class="modal-input" placeholder="Ex: Baie-Mahault">
+                    </div>
+                </div>
+                <div class="modal-step" id="modalStep4">
+                    <h3 class="step-title">Créer votre compte</h3>
+                    <div class="form-row">
+                        <div class="form-group"><label>Prénom</label><input type="text" id="modalFirstName" class="modal-input" placeholder="Prénom"></div>
+                        <div class="form-group"><label>Nom</label><input type="text" id="modalLastName" class="modal-input" placeholder="Nom"></div>
+                    </div>
+                    <div class="form-group"><label>Email</label><input type="email" id="modalEmail" class="modal-input" placeholder="email@exemple.com"></div>
+                </div>
+                <div class="modal-step" id="modalStep5">
+                    <div class="success-screen">
+                        <div class="success-icon">🎉</div>
+                        <h3 class="step-title">Félicitations !</h3>
+                        <p class="step-desc">Votre profil LYANN a été créé avec succès.</p>
+                        <button class="btn btn-primary btn-lg" id="modalFinishBtn" style="width: 100%;">Découvrir mon espace LYANN</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-outline" id="prevStepBtn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i> Précédent</button>
+                <button class="btn btn-primary" id="nextStepBtn">Continuer <i class="ph ph-arrow-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Connexion -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeLoginModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Connexion LYANN</span>
+                <h3 class="step-title" style="font-size: 1.5rem; margin-top: 8px;">Heureux de vous revoir !</h3>
+            </div>
+            <div class="modal-body">
+                <button type="button" class="btn btn-google" id="googleAuthBtn" style="width: 100%;">Continuer avec Google</button>
+                <div class="auth-divider"><span>ou avec votre email</span></div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Adresse email</label>
+                        <input type="email" class="modal-input" placeholder="votre.email@exemple.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Mot de passe</label>
+                        <input type="password" class="modal-input" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 16px;">Se connecter</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Recherche Membres -->
+    <div class="modal-overlay" id="searchResultsModal">
+        <div class="modal-card modal-card-large">
+            <button class="modal-close-btn" id="closeSearchModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Talents recommandés</span>
+                <div class="search-summary-badge" id="searchSummaryBadge"></div>
+            </div>
+            <div class="modal-body search-modal-body">
+                <div class="search-results-grid" id="searchResultsContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Logique spécifique du commutateur de rôle sur la page Comment ça marche
+        document.addEventListener('DOMContentLoaded', () => {
+            const pillSeekers = document.getElementById('pillForSeekers');
+            const pillProviders = document.getElementById('pillForProviders');
+            const secSeekers = document.getElementById('sectionSeekersSteps');
+            const secProviders = document.getElementById('sectionProvidersSteps');
+
+            if (pillSeekers && pillProviders && secSeekers && secProviders) {
+                pillSeekers.addEventListener('click', () => {
+                    pillSeekers.classList.add('active');
+                    pillProviders.classList.remove('active');
+                    secSeekers.style.display = 'block';
+                    secProviders.style.display = 'none';
+                });
+
+                pillProviders.addEventListener('click', () => {
+                    pillProviders.classList.add('active');
+                    pillSeekers.classList.remove('active');
+                    secProviders.style.display = 'block';
+                    secSeekers.style.display = 'none';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

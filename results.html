@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LYANN - Annuaire des Talents & Résultats de Recherche</title>
+    <meta name="description" content="Découvrez tous les artisans, professionnels et membres recommandés en Guadeloupe, Martinique, Guyane et La Réunion.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="results-page">
+
+    <!-- ========== NAVIGATION ========== -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">
+                <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon-svg">
+                    <defs>
+                        <linearGradient id="lyanGradient" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="55%" stop-color="#80A86E"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                        <linearGradient id="lyanRoof" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                    <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                    <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                    <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                          stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                </svg>
+                <div class="logo-text-block">
+                    <span class="logo-title">LYANN</span>
+                    <span class="logo-subtitle">LE LIEN QUI COMPTE</span>
+                </div>
+            </a>
+            
+            <div class="nav-links">
+                <a href="index.html">Accueil</a>
+                <a href="results.html" class="active">Annuaire des Talents</a>
+                <a href="how-it-works.html">Comment ça marche</a>
+                <a href="about.html">Notre Histoire</a>
+                <a href="#login" class="btn btn-outline open-login-trigger">Connexion</a>
+                <a href="#" class="btn btn-primary btn-signup-nav open-signup-trigger">S'inscrire</a>
+            </div>
+            
+            <button class="mobile-menu-btn" aria-label="Ouvrir le menu">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay" id="mobileMenu">
+        <div class="mobile-menu-content">
+            <button class="mobile-menu-close" aria-label="Fermer le menu">
+                <i class="ph ph-x"></i>
+            </button>
+            <div class="mobile-nav-links">
+                <a href="index.html">Accueil</a>
+                <a href="results.html" class="active">Annuaire des Talents</a>
+                <a href="how-it-works.html">Comment ça marche</a>
+                <a href="about.html">Notre Histoire</a>
+                <div class="mobile-auth-btns">
+                    <a href="#login" class="btn btn-outline open-login-trigger" style="width: 100%;">Connexion</a>
+                    <a href="#" class="btn btn-primary open-signup-trigger" style="width: 100%;">S'inscrire</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== HERO BARRE DE RECHERCHE PAGE RÉSULTATS ========== -->
+    <section class="results-hero-section">
+        <div class="container">
+            <div class="results-hero-content text-center">
+                <span class="pill-badge pill-emerald"><i class="ph ph-magnifying-glass"></i> Annuaire Officiel LYANN DOM</span>
+                <h1 class="results-page-title">Trouvez les meilleurs talents autour de chez vous</h1>
+                <p class="results-page-subtitle">Recherchez par activité, département, commune et rayon kilométrique parmi tous les membres recommandés.</p>
+                
+                <!-- Barre de Recherche Complète -->
+                <form class="hero-search results-search-bar" id="heroSearchForm">
+                    <div class="hero-search-fields">
+                        <div class="search-input-wrapper flex-2">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input type="text" id="searchInput" placeholder="Métier, activité, compétence (ex: Plomberie, Climatisation...)" autocomplete="off">
+                        </div>
+                        <div class="search-input-wrapper">
+                            <i class="ph ph-map-pin"></i>
+                            <select id="locationSelect">
+                                <option value="guadeloupe" selected>Guadeloupe (971)</option>
+                                <option value="martinique">Martinique (972)</option>
+                                <option value="guyane">Guyane (973)</option>
+                                <option value="reunion">La Réunion (974)</option>
+                                <option value="saint-martin">St-Martin / St-Barth</option>
+                            </select>
+                        </div>
+                        <div class="search-input-wrapper">
+                            <i class="ph ph-buildings"></i>
+                            <select id="citySelect">
+                                <option value="" selected>Toutes les communes</option>
+                            </select>
+                        </div>
+                        <div class="search-input-wrapper distance-range-wrapper">
+                            <i class="ph ph-navigation-arrow" style="color: var(--primary); font-size: 1.1rem;"></i>
+                            <div class="range-control-block">
+                                <div class="range-track-container">
+                                    <span class="range-floating-badge" id="distanceValueBadge">- de 15 km</span>
+                                    <input type="range" id="distanceRange" min="0" max="6" step="1" value="2" class="distance-slider" title="Rayon : - de 5km, - de 10km, - de 15km, - de 20km, - de 30km, - de 50km, Toute l'île">
+                                </div>
+                                <div class="range-labels-row">
+                                    <span>- de 5 km</span>
+                                    <span>Toute l'île</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary search-btn">Filtrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== CONTENU PRINCIPAL DES RÉSULTATS ========== -->
+    <section class="results-main-section section">
+        <div class="container">
+            
+            <!-- Toolbar de Filtres & Récapitulatif -->
+            <div class="results-page-toolbar">
+                <div class="results-summary-info">
+                    <div class="search-summary-badge" id="searchSummaryBadge">
+                        <!-- Dynamic summary filled by script.js -->
+                    </div>
+                </div>
+
+                <div class="search-filters-toolbar">
+                    <div class="toolbar-filter-item">
+                        <label for="searchSortSelect"><i class="ph ph-arrows-down-up"></i> Trier par :</label>
+                        <select id="searchSortSelect" class="search-toolbar-select">
+                            <option value="recommended" selected>🏆 Recommandés & Mieux notés</option>
+                            <option value="reviews">⭐ Nombre d'avis clients</option>
+                            <option value="city">📍 Par Commune</option>
+                            <option value="name">🔤 Nom de A à Z</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-filter-item">
+                        <label for="modalCategoryFilterSelect"><i class="ph ph-grid-four"></i> Domaine / Métier :</label>
+                        <select id="modalCategoryFilterSelect" class="search-toolbar-select">
+                            <option value="all" selected>Tous les domaines</option>
+                            <option value="maison">🏠 Maison & Rénovation</option>
+                            <option value="jardin">🌴 Jardin & Espaces Verts</option>
+                            <option value="climatisation">❄️ Climatisation & Froid</option>
+                            <option value="menage">🧹 Ménage & Propreté</option>
+                            <option value="demenagement">🚚 Déménagement & Transport</option>
+                            <option value="electricite">⚡ Électricité</option>
+                            <option value="plomberie">💧 Plomberie</option>
+                            <option value="peinture">🎨 Peinture</option>
+                            <option value="bricolage">🛠️ Bricolage</option>
+                            <option value="babysitting">👶 Baby-sitting</option>
+                            <option value="aide-personne">🤝 Aide à la personne</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grille des Cartes de Membres -->
+            <div class="search-results-grid" id="searchResultsContainer">
+                <!-- Dynamically injected member profile cards -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="index.html" class="logo">
+                        <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoofFooter)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                            <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                            <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                            <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                                  stroke="url(#lyanGradientFooter)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                            <defs>
+                                <linearGradient id="lyanGradientFooter" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#4A7C59"/>
+                                    <stop offset="55%" stop-color="#80A86E"/>
+                                    <stop offset="100%" stop-color="#E5B345"/>
+                                </linearGradient>
+                                <linearGradient id="lyanRoofFooter" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#4A7C59"/>
+                                    <stop offset="100%" stop-color="#E5B345"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div class="logo-text-block">
+                            <span class="logo-title">LYANN</span>
+                            <span class="logo-subtitle">LE LIEN QUI COMPTE</span>
+                        </div>
+                    </a>
+                    <p class="footer-desc">LYANN est la plateforme d'entraide et de mise en relation de confiance dédiée à la Guadeloupe, la Martinique, la Guyane et La Réunion.</p>
+                </div>
+
+                <div class="footer-links-column">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="results.html">Annuaire des Talents</a></li>
+                        <li><a href="how-it-works.html">Comment ça marche</a></li>
+                        <li><a href="about.html">Notre Histoire</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-links-column">
+                    <h4>Territoires DOM</h4>
+                    <ul>
+                        <li><a href="results.html?location=guadeloupe">Guadeloupe (971)</a></li>
+                        <li><a href="results.html?location=martinique">Martinique (972)</a></li>
+                        <li><a href="results.html?location=guyane">Guyane (973)</a></li>
+                        <li><a href="results.html?location=reunion">La Réunion (974)</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-links-column">
+                    <h4>Informations Légales</h4>
+                    <ul>
+                        <li><a href="#" class="open-privacy-trigger">Politique de confidentialité</a></li>
+                        <li><a href="#" class="open-terms-trigger">Conditions Générales (CGU)</a></li>
+                        <li><a href="#" class="open-contact-trigger">Nous contacter</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2026 LYANN DOM. Tous droits réservés. Le lien qui compte dans nos territoires.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========== MODAL PROFIL PUBLIC MEMBRE ========== -->
+    <div class="modal-overlay" id="publicProfileModal">
+        <div class="modal-card modal-card-large" id="publicProfileCardContent">
+            <!-- Dynamic profile info loaded by JS -->
+        </div>
+    </div>
+
+    <!-- ========== MODAL CONNEXION ========== -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeLoginModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Connexion LYANN</span>
+                <h3 class="step-title" style="font-size: 1.5rem; margin-bottom: 4px;">Heureux de vous revoir !</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Connectez-vous à votre espace personnel.</p>
+            </div>
+
+            <div class="modal-body">
+                <button type="button" class="btn btn-google" id="googleAuthBtn">
+                    <i class="ph-bold ph-google-logo"></i> Continuer avec Google
+                </button>
+                <div class="modal-divider"><span>ou avec votre email</span></div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">Adresse email</label>
+                        <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Mot de passe</label>
+                        <input type="password" id="loginPassword" class="modal-input" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px;">Se connecter 🚀</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL INSCRIPTION MODULAIRE ========== -->
+    <div class="modal-overlay" id="signupModal">
+        <div class="modal-card modal-card-large">
+            <button class="modal-close-btn" id="closeSignupModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <div id="signupWorkflowContainer"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

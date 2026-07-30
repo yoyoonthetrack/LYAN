@@ -376,6 +376,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- Effacement automatique au clic pour écrire dans la barre de recherche ---
+    if (searchInput) {
+        const handleSearchInputFocus = () => {
+            if (searchInput.value.trim() !== '') {
+                searchInput.value = '';
+                tags.forEach(t => t.classList.remove('active'));
+            }
+        };
+
+        searchInput.addEventListener('focus', handleSearchInputFocus);
+        searchInput.addEventListener('click', handleSearchInputFocus);
+    }
+
     // --- Category Cards Click to Search ---
     const categoryCards = document.querySelectorAll('.category-card');
     categoryCards.forEach(catCard => {
@@ -422,98 +435,142 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- COMMUNES DE CHAQUE DÉPARTEMENT DOM ---
     const DOM_COMMUNES = {
         guadeloupe: [
-            "Baie-Mahault", "Pointe-à-Pitre", "Les Abymes", "Le Gosier", "Sainte-Anne", 
-            "Le Moule", "Petit-Bourg", "Sainte-Rose", "Capesterre-Belle-Eau", "Lamentin", 
-            "Saint-François", "Basse-Terre", "Trois-Rivières", "Morne-à-l'Eau", "Anse-Bertrand", 
-            "Port-Louis", "Gourbeyre", "Bouillante", "Vieux-Habitants", "Deshaies", "Pointe-Noire", 
-            "Terre-de-Haut", "Grand-Bourg (Marie-Galante)"
+            "Anse-Bertrand", "Baie-Mahault", "Baillif", "Basse-Terre", "Bouillante",
+            "Capesterre-Belle-Eau", "Capesterre-de-Marie-Galante", "Deshaies", "Gourbeyre",
+            "Goyave", "Grand-Bourg (Marie-Galante)", "La Désirade", "Lamentin", "Le Gosier",
+            "Le Moule", "Les Abymes", "Morne-à-l'Eau", "Petit-Bourg", "Petit-Canal",
+            "Pointe-à-Pitre", "Pointe-Noire", "Port-Louis", "Saint-Claude", "Saint-François",
+            "Saint-Louis (Marie-Galante)", "Sainte-Anne", "Sainte-Rose", "Terre-de-Bas",
+            "Terre-de-Haut", "Trois-Rivières", "Vieux-Fort", "Vieux-Habitants"
         ],
         martinique: [
-            "Fort-de-France", "Le Lamentin", "Le Robert", "Schoelcher", "Le François", 
-            "Ducos", "Saint-Joseph", "Sainte-Luce", "La Trinité", "Rivière-Salée", 
-            "Gros-Morne", "Sainte-Marie", "Le Marin", "Les Trois-Îlets", "Vauclin", 
-            "Case-Pilote", "Saint-Pierre", "Lorrain", "Les Anses-d'Arlet", "Rivière-Pilote"
+            "Ajoupa-Bouillon", "Basse-Pointe", "Bellefontaine", "Case-Pilote", "Ducos",
+            "Fonds-Saint-Denis", "Fort-de-France", "Grand'Rivière", "Gros-Morne",
+            "La Trinité", "Le Carbet", "Le Diamant", "Le François", "Le Lamentin", "Le Lorrain",
+            "Le Marigot", "Le Marin", "Le Morne-Rouge", "Le Morne-Vert", "Le Prêcheur", "Le Robert",
+            "Les Anses-d'Arlet", "Les Trois-Îlets", "Macouba", "Rivière-Pilote", "Rivière-Salée",
+            "Saint-Esprit", "Saint-Joseph", "Saint-Pierre", "Sainte-Anne", "Sainte-Luce", "Sainte-Marie",
+            "Schoelcher", "Vauclin"
         ],
         guyane: [
-            "Cayenne", "Kourou", "Matoury", "Saint-Laurent-du-Maroni", "Remire-Montjoly", 
-            "Mana", "Macouria", "Maripasoula", "Apatou", "Grand-Santi", "Saint-Georges", "Sinnamary"
+            "Apatou", "Awala-Yalimapo", "Camopi", "Cayenne", "Grand-Santi", "Iracoubo",
+            "Kourou", "Macouria", "Mana", "Maripasoula", "Matoury", "Montsinéry-Tonnegrande",
+            "Ouanary", "Papaichton", "Régina", "Remire-Montjoly", "Roura", "Saint-Georges",
+            "Saint-Laurent-du-Maroni", "Saül", "Sinnamary"
         ],
         reunion: [
-            "Saint-Denis", "Saint-Paul", "Saint-Pierre", "Le Tampon", "Saint-André", 
-            "Saint-Louis", "Le Port", "Saint-Joseph", "Saint-Benoît", "Sainte-Marie", 
-            "Sainte-Suzanne", "Petite-Île", "Bras-Panon", "La Possession", "L'Étang-Salé", "Salazie"
+            "Bras-Panon", "Cilaos", "Entre-Deux", "L'Étang-Salé", "La Possession", "Le Port",
+            "Le Tampon", "Les Trois-Bassins", "Petite-Île", "Plaine-des-Palmistes", "Saint-André",
+            "Saint-Benoît", "Saint-Denis", "Saint-Joseph", "Saint-Leu", "Saint-Louis",
+            "Saint-Paul", "Saint-Philippe", "Saint-Pierre", "Sainte-Marie", "Sainte-Rose",
+            "Sainte-Suzanne", "Salazie"
         ],
         "saint-martin": [
-            "Marigot", "Grand-Case", "Baie-Nettlé", "Cul-de-Sac", "Anse-Marcel", 
-            "Quartier-d'Orléans", "Terres-Basses", "Gustavia (St-Barth)", "St-Jean (St-Barth)"
+            "Marigot", "Grand-Case", "Baie-Nettlé", "Cul-de-Sac", "Anse-Marcel",
+            "Quartier-d'Orléans", "Terres-Basses", "Gustavia (St-Barth)", "St-Jean (St-Barth)", "Lorient (St-Barth)"
         ]
     };
 
-    // --- AUTOLOCALISATION GPS AUTOMATIQUE (DÈS LE CHARGEMENT DE LA PAGE) ---
+    const locationSelect = document.getElementById('locationSelect');
+    const citySelect = document.getElementById('citySelect');
     const autoLocateBtn = document.getElementById('autoLocateBtn');
 
-    function triggerAutoLocation() {
-        if (!autoLocateBtn) return;
+    // --- FONCTION DE PEUPLEMENT DYNAMIQUE DES COMMUNES ---
+    function updateCityOptions(region, selectedCity = '') {
+        if (!citySelect) return;
 
-        autoLocateBtn.classList.remove('located');
-        autoLocateBtn.classList.add('loading');
-        autoLocateBtn.innerHTML = `<i class="ph ph-spinner"></i> <span class="autolocate-text">Détection...</span>`;
+        citySelect.innerHTML = '';
 
-        function applyAutoLocation(region, city) {
-            if (locationSelect) {
-                locationSelect.value = region;
-                const event = new Event('change');
-                locationSelect.dispatchEvent(event);
+        if (!region || !DOM_COMMUNES[region]) {
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = 'Toutes les communes';
+            citySelect.appendChild(defaultOpt);
+            citySelect.disabled = false;
+            return;
+        }
+
+        citySelect.disabled = false;
+
+        // Option par défaut "Toutes les communes"
+        const deptCode = region === 'guadeloupe' ? '971' : region === 'martinique' ? '972' : region === 'guyane' ? '973' : region === 'reunion' ? '974' : 'DOM';
+        const allOpt = document.createElement('option');
+        allOpt.value = '';
+        allOpt.textContent = `Toutes les communes (${deptCode})`;
+        citySelect.appendChild(allOpt);
+
+        // Options de chaque commune triées par ordre alphabétique
+        const communes = [...DOM_COMMUNES[region]].sort((a, b) => a.localeCompare(b, 'fr'));
+        communes.forEach(commune => {
+            const opt = document.createElement('option');
+            opt.value = commune;
+            opt.textContent = commune;
+            if (selectedCity && selectedCity.toLowerCase() === commune.toLowerCase()) {
+                opt.selected = true;
             }
-            setTimeout(() => {
-                if (citySelect) {
-                    citySelect.value = city;
-                }
-                autoLocateBtn.classList.remove('loading');
-                autoLocateBtn.classList.add('located');
-                autoLocateBtn.innerHTML = `<i class="ph ph-check-circle"></i> <span class="autolocate-text">${city}</span>`;
-            }, 150);
-        }
+            citySelect.appendChild(opt);
+        });
+    }
 
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
+    // Écoute du changement manuel du Département
+    if (locationSelect) {
+        locationSelect.addEventListener('change', (e) => {
+            const selectedRegion = e.target.value;
+            updateCityOptions(selectedRegion);
+        });
+    }
 
-                    let detectedRegion = "guadeloupe";
-                    let detectedCity = "Baie-Mahault";
+    // --- GESTION DU SLIDER DE DISTANCE (Crans : - de 5 km, - de 10 km, - de 15 km, - de 20 km, - de 30 km, - de 50 km, Toute l'île) ---
+    const distanceRange = document.getElementById('distanceRange');
+    const distanceValueBadge = document.getElementById('distanceValueBadge');
+    const DISTANCE_STEPS = [
+        "- de 5 km",
+        "- de 10 km",
+        "- de 15 km",
+        "- de 20 km",
+        "- de 30 km",
+        "- de 50 km",
+        "Toute l'île"
+    ];
 
-                    if (lat >= 14.3 && lat <= 14.9 && lon >= -61.3 && lon <= -60.7) {
-                        detectedRegion = "martinique";
-                        detectedCity = "Fort-de-France";
-                    } else if (lat >= 2.0 && lat <= 6.0 && lon >= -54.5 && lon <= -51.5) {
-                        detectedRegion = "guyane";
-                        detectedCity = "Cayenne";
-                    } else if (lat >= -21.5 && lat <= -20.7 && lon >= 55.1 && lon <= 56.0) {
-                        detectedRegion = "reunion";
-                        detectedCity = "Saint-Denis";
-                    }
+    function updateDistanceBadge(stepIdx) {
+        if (!distanceValueBadge || !distanceRange) return;
+        const idx = Math.min(Math.max(parseInt(stepIdx, 10) || 0, 0), DISTANCE_STEPS.length - 1);
+        const labelText = DISTANCE_STEPS[idx];
 
-                    applyAutoLocation(detectedRegion, detectedCity);
-                },
-                (error) => {
-                    // Fallback automatique Guadeloupe / Baie-Mahault
-                    applyAutoLocation("guadeloupe", "Baie-Mahault");
-                },
-                { timeout: 4000 }
-            );
+        distanceValueBadge.textContent = labelText;
+
+        if (idx === DISTANCE_STEPS.length - 1) {
+            distanceValueBadge.style.background = '#FFF3D6';
+            distanceValueBadge.style.color = '#8A6200';
+            distanceValueBadge.style.borderColor = '#E5B345';
         } else {
-            applyAutoLocation("guadeloupe", "Baie-Mahault");
+            distanceValueBadge.style.background = '#EAF2EC';
+            distanceValueBadge.style.color = '#2E4C37';
+            distanceValueBadge.style.borderColor = 'rgba(74, 124, 89, 0.3)';
         }
+
+        // Calcule la position relative % (0% à 100% sur 6 pas) et déplace le badge au-dessus du curseur
+        const pct = (idx / (DISTANCE_STEPS.length - 1)) * 100;
+        distanceValueBadge.style.left = `calc(${pct}% + (${6 - pct * 0.12}px))`;
     }
 
-    if (autoLocateBtn) {
-        autoLocateBtn.addEventListener('click', triggerAutoLocation);
+    if (distanceRange) {
+        updateDistanceBadge(distanceRange.value);
+        ['input', 'change', 'mousemove', 'touchmove'].forEach(evt => {
+            distanceRange.addEventListener(evt, (e) => {
+                updateDistanceBadge(e.target.value);
+            });
+        });
     }
 
-    // Lancement automatique dès l'arrivée sur le site
-    triggerAutoLocation();
+    // Initialisation du menu déroulant des communes dès le chargement de la page
+    if (locationSelect && locationSelect.value) {
+        updateCityOptions(locationSelect.value);
+    } else if (locationSelect) {
+        locationSelect.value = "guadeloupe";
+        updateCityOptions("guadeloupe");
+    }
 
     // ==========================================================================
     // MOTEUR DE RECHERCHE DE MEMBRES
@@ -524,6 +581,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchResultsContainer = document.getElementById('searchResultsContainer');
     const searchSummaryBadge = document.getElementById('searchSummaryBadge');
 
+    let currentSearchResultsList = [];
+
     function performMemberSearch(customQuery = null) {
         const query = customQuery !== null ? customQuery.toLowerCase().trim() : (searchInput ? searchInput.value.toLowerCase().trim() : '');
         const selectedLocation = locationSelect ? locationSelect.value : '';
@@ -531,13 +590,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Filter members
         let filteredMembers = LYANN_MEMBERS.filter(member => {
-            // Location match (if selected)
             const matchLocation = !selectedLocation || member.location === selectedLocation;
-
-            // City match (if selected)
             const matchCity = !selectedCity || member.city.toLowerCase() === selectedCity.toLowerCase();
-
-            // Query match (if typed)
             let matchQuery = true;
             if (query) {
                 const searchHaystack = [
@@ -548,19 +602,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     ...member.keywords,
                     ...member.skills.map(s => s.toLowerCase())
                 ].join(' ');
-
                 matchQuery = searchHaystack.includes(query);
             }
-
             return matchLocation && matchCity && matchQuery;
         });
 
-        // Display results modal
+        currentSearchResultsList = filteredMembers;
+
+        // Reset modal toolbar filters if present
+        const searchSortSelect = document.getElementById('searchSortSelect');
+        const modalCategoryFilterSelect = document.getElementById('modalCategoryFilterSelect');
+        if (searchSortSelect) searchSortSelect.value = 'recommended';
+        if (modalCategoryFilterSelect) modalCategoryFilterSelect.value = 'all';
+
         renderSearchResults(filteredMembers, query, selectedLocation, selectedCity);
     }
 
     function renderSearchResults(members, query, selectedLocation, selectedCity) {
-        if (!searchResultsModal || !searchResultsContainer) return;
+        if (!searchResultsContainer) return;
 
         // Render Summary Badge
         let locationLabel = "Tous les DOM";
@@ -574,17 +633,34 @@ document.addEventListener('DOMContentLoaded', () => {
             locationLabel = `${selectedCity} (${locationLabel})`;
         }
 
+        let distanceText = "";
+        if (distanceRange) {
+            const idx = Math.min(Math.max(parseInt(distanceRange.value, 10) || 0, 0), DISTANCE_STEPS.length - 1);
+            const labelText = DISTANCE_STEPS[idx];
+            distanceText = labelText === "Toute l'île" ? " • Toute l'île" : ` • Rayon ${labelText}`;
+        }
+
         if (searchSummaryBadge) {
             searchSummaryBadge.innerHTML = `
                 <span>🔍 ${query ? `"${query}"` : "Tous les domaines"}</span>
                 <span>•</span>
-                <span>📍 ${locationLabel}</span>
+                <span>📍 ${locationLabel}${distanceText}</span>
                 <span>•</span>
-                <span style="color: var(--primary);">${members.length} talent(s) trouvé(s)</span>
+                <span style="color: var(--primary); font-weight: 800;">${members.length} talent(s) disponible(s)</span>
             `;
         }
 
-        // Render Member Cards Grid
+        renderSearchResultsGrid(members, locationLabel);
+
+        // Show Modal Window ONLY IF present on home page
+        if (searchResultsModal) {
+            searchResultsModal.classList.add('active');
+        }
+    }
+
+    function renderSearchResultsGrid(members, locationLabel = "") {
+        if (!searchResultsContainer) return;
+
         if (members.length > 0) {
             searchResultsContainer.innerHTML = members.map(member => `
                 <div class="member-result-card">
@@ -592,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="member-header">
                             <div class="member-avatar-wrapper">
                                 <img src="${member.avatar}" alt="${member.name}" class="member-avatar">
-                                <span class="online-dot" title="En ligne"></span>
+                                <span class="online-dot" title="Actif récemment"></span>
                             </div>
                             <div class="member-info">
                                 <h4>${member.name} <span class="verified-badge">✔ ${member.badge}</span></h4>
@@ -614,25 +690,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
-                        <button class="btn btn-outline view-member-profile-btn" data-member-id="${member.id}">
-                            <i class="ph ph-user"></i> Voir le profil
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-light);">
+                        <button class="btn btn-outline btn-sm view-member-profile-btn" data-member-id="${member.id}">
+                            <i class="ph ph-user"></i> Voir profil
                         </button>
-                        <button class="btn btn-primary contact-member-btn" data-member-id="${member.id}" data-member-name="${member.name}">
+                        <button class="btn btn-primary btn-sm contact-member-btn" data-member-id="${member.id}" data-member-name="${member.name}">
                             <i class="ph ph-chat-circle-dots"></i> Contacter
                         </button>
                     </div>
                 </div>
             `).join('');
         } else {
-            // Empty state — fallback proposals in region
-            const fallbackMembers = LYANN_MEMBERS.filter(m => !selectedLocation || m.location === selectedLocation).slice(0, 3);
+            // Empty state — fallback proposals
+            const fallbackMembers = LYANN_MEMBERS.slice(0, 3);
 
             searchResultsContainer.innerHTML = `
-                <div class="empty-search-state">
-                    <div class="empty-search-icon">🔍</div>
-                    <h4>Aucun talent exact trouvé pour cette recherche à ${locationLabel}.</h4>
-                    <p>Voici les membres recommandés disponibles dans votre département :</p>
+                <div class="empty-search-state" style="grid-column: 1 / -1; text-align: center; padding: 32px 20px;">
+                    <div class="empty-search-icon" style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
+                    <h4 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px;">Aucun membre ne correspond exactement à ce filtre.</h4>
+                    <p style="color: var(--text-muted); margin-bottom: 20px;">Découvrez d'autres talents très demandés dans votre région :</p>
                 </div>
                 ${fallbackMembers.map(member => `
                     <div class="member-result-card">
@@ -655,32 +731,111 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <p class="member-bio">"${member.bio}"</p>
                         </div>
-                        <button class="btn btn-primary contact-member-btn" data-member-id="${member.id}" data-member-name="${member.name}">
-                            <i class="ph ph-chat-circle-dots"></i> Contacter ${member.name.split(' ')[0]}
-                        </button>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px;">
+                            <button class="btn btn-outline btn-sm view-member-profile-btn" data-member-id="${member.id}">
+                                <i class="ph ph-user"></i> Voir profil
+                            </button>
+                            <button class="btn btn-primary btn-sm contact-member-btn" data-member-id="${member.id}" data-member-name="${member.name}">
+                                <i class="ph ph-chat-circle-dots"></i> Contacter
+                            </button>
+                        </div>
                     </div>
                 `).join('')}
             `;
         }
 
-        // Attach Contact Event to Result Cards Buttons
+        // Attach Profile Click Event to buttons
+        document.querySelectorAll('.view-member-profile-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const memberId = btn.dataset.memberId;
+                openPublicMemberProfile(memberId);
+            });
+        });
+
+        // Attach Contact Event
         document.querySelectorAll('.contact-member-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const memberName = btn.dataset.memberName;
                 openContactMemberModal(memberName);
             });
         });
-
-        // Show Modal
-        searchResultsModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
     }
+
+    // Écoute des sélecteurs de tri et de filtrage dans la fenêtre de recherche
+    const searchSortSelect = document.getElementById('searchSortSelect');
+    const modalCategoryFilterSelect = document.getElementById('modalCategoryFilterSelect');
+
+    function applyModalSortingAndFiltering() {
+        const sortVal = searchSortSelect ? searchSortSelect.value : 'recommended';
+        const catVal = modalCategoryFilterSelect ? modalCategoryFilterSelect.value : 'all';
+
+        let list = [...currentSearchResultsList];
+
+        if (list.length === 0) list = [...LYANN_MEMBERS];
+
+        if (catVal !== 'all') {
+            list = list.filter(m => m.category === catVal);
+        }
+
+        if (sortVal === 'recommended') {
+            list.sort((a, b) => b.rating - a.rating || b.reviewsCount - a.reviewsCount);
+        } else if (sortVal === 'reviews') {
+            list.sort((a, b) => b.reviewsCount - a.reviewsCount);
+        } else if (sortVal === 'city') {
+            list.sort((a, b) => a.city.localeCompare(b.city, 'fr'));
+        } else if (sortVal === 'name') {
+            list.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+        }
+
+        renderSearchResultsGrid(list);
+    }
+
+    if (searchSortSelect) searchSortSelect.addEventListener('change', applyModalSortingAndFiltering);
+    if (modalCategoryFilterSelect) modalCategoryFilterSelect.addEventListener('change', applyModalSortingAndFiltering);
 
     if (heroForm) {
         heroForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            performMemberSearch();
+            const isResultsPage = window.location.pathname.includes('results.html');
+            const q = searchInput ? searchInput.value.trim() : '';
+            const loc = locationSelect ? locationSelect.value : '';
+            const city = citySelect ? citySelect.value : '';
+            const dist = distanceRange ? distanceRange.value : '';
+
+            if (!isResultsPage) {
+                window.location.href = `results.html?query=${encodeURIComponent(q)}&location=${encodeURIComponent(loc)}&city=${encodeURIComponent(city)}&distance=${encodeURIComponent(dist)}`;
+            } else {
+                performMemberSearch();
+            }
         });
+    }
+
+    // Auto-exécution si on se trouve sur results.html
+    if (window.location.pathname.includes('results.html')) {
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('query') || '';
+        const loc = params.get('location') || '';
+        const city = params.get('city') || '';
+        const dist = params.get('distance') || '';
+        const cat = params.get('category') || '';
+
+        if (searchInput && q) searchInput.value = q;
+        if (locationSelect && loc) {
+            locationSelect.value = loc;
+            updateCityOptions(loc);
+        }
+        if (citySelect && city) citySelect.value = city;
+        if (distanceRange && dist) {
+            distanceRange.value = dist;
+            updateDistanceBadge(dist);
+        }
+
+        if (cat) {
+            const modalCatSelect = document.getElementById('modalCategoryFilterSelect');
+            if (modalCatSelect) modalCatSelect.value = cat;
+        }
+
+        performMemberSearch(q || null);
     }
 
     if (closeSearchModalBtn) {
@@ -1343,7 +1498,156 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    renderMyDashboardRealizations();
+    // ==========================================================================
+    // DESTINATION ET INTERACTIONS DE TOUS LES BOUTONS DU SITE
+    // ==========================================================================
 
+    // 1. Clic sur les tuiles de catégories -> Redirige vers la page dédiée Annuaire results.html
+    document.querySelectorAll('.category-card-trigger').forEach(card => {
+        card.addEventListener('click', (e) => {
+            e.preventDefault();
+            const cat = card.getAttribute('data-category');
+            if (cat) {
+                window.location.href = `results.html?category=${encodeURIComponent(cat)}`;
+            }
+        });
+    });
+
+    // 2. Clic sur les cartes de talents (David, Sarah, Kevin) -> Ouvre le profil public
+    document.querySelectorAll('.talent-card-trigger').forEach(card => {
+        card.addEventListener('click', (e) => {
+            e.preventDefault();
+            const memberId = card.getAttribute('data-member-id');
+            if (memberId) {
+                openPublicMemberProfile(memberId);
+            }
+        });
+    });
+
+    // 3. Gestionnaire FAQ Accordéon
+    document.querySelectorAll('.faq-question').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.closest('.faq-item');
+            if (item) {
+                item.classList.toggle('active');
+            }
+        });
+    });
+
+    // 4. Modales Légales (Confidentialité, Conditions, Contact)
+    const privacyModal = document.getElementById('privacyModal');
+    const termsModal = document.getElementById('termsModal');
+    const contactModal = document.getElementById('contactModal');
+
+    document.querySelectorAll('.open-privacy-trigger').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (privacyModal) privacyModal.classList.add('active');
+        });
+    });
+
+    document.querySelectorAll('.open-terms-trigger').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (termsModal) termsModal.classList.add('active');
+        });
+    });
+
+    document.querySelectorAll('.open-contact-trigger').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (contactModal) contactModal.classList.add('active');
+        });
+    });
+
+    document.getElementById('closePrivacyModalBtn')?.addEventListener('click', () => {
+        if (privacyModal) privacyModal.classList.remove('active');
+    });
+
+    document.getElementById('closeTermsModalBtn')?.addEventListener('click', () => {
+        if (termsModal) termsModal.classList.remove('active');
+    });
+
+    document.getElementById('closeContactModalBtn')?.addEventListener('click', () => {
+        if (contactModal) contactModal.classList.remove('active');
+    });
+
+    // Formulaire de contact
+    document.getElementById('contactForm')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (contactModal) contactModal.classList.remove('active');
+        alert('📩 Votre message a été transmis avec succès à l\'équipe LYANN ! Nous vous répondrons sous 24h.');
+        e.target.reset();
+    });
+
+    // Recommander member button
+    const recommendBtn = document.getElementById('recommendMemberBtn');
+    if (recommendBtn) {
+        recommendBtn.addEventListener('click', () => {
+            const badge = document.getElementById('recommendCountBadge');
+            if (badge) {
+                let currentCount = parseInt(badge.textContent, 10) || 142;
+                badge.textContent = currentCount + 1;
+                alert('👍 Merci ! Votre recommandation a été enregistrée avec succès.');
+            }
+        });
+    }
+
+    // --- GESTION DE LA MODALE TOUTES LES CATÉGORIES & PROPOSITION D'ACTIVITÉ ---
+    const allCategoriesModal = document.getElementById('allCategoriesModal');
+    const openAllCategoriesBtn = document.getElementById('openAllCategoriesBtn');
+    const closeAllCategoriesModalBtn = document.getElementById('closeAllCategoriesModalBtn');
+    const mobileCategorySelect = document.getElementById('mobileCategorySelect');
+    const proposeActivityForm = document.getElementById('proposeActivityForm');
+    const proposeSuccessMsg = document.getElementById('proposeSuccessMsg');
+
+    if (openAllCategoriesBtn) {
+        openAllCategoriesBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (allCategoriesModal) allCategoriesModal.classList.add('active');
+        });
+    }
+
+    if (closeAllCategoriesModalBtn) {
+        closeAllCategoriesModalBtn.addEventListener('click', () => {
+            if (allCategoriesModal) allCategoriesModal.classList.remove('active');
+        });
+    }
+
+    // Sélection via le menu déroulant mobile
+    if (mobileCategorySelect) {
+        mobileCategorySelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (!val) return;
+
+            if (val === 'open-modal-all') {
+                if (allCategoriesModal) allCategoriesModal.classList.add('active');
+                mobileCategorySelect.value = '';
+            } else {
+                window.location.href = `results.html?category=${encodeURIComponent(val)}`;
+                mobileCategorySelect.value = '';
+            }
+        });
+    }
+
+    // Soumission du formulaire de proposition d'activité
+    if (proposeActivityForm) {
+        proposeActivityForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const activityInput = document.getElementById('proposeActivityName');
+            if (activityInput && activityInput.value.trim()) {
+                if (proposeSuccessMsg) {
+                    proposeSuccessMsg.style.display = 'flex';
+                }
+                proposeActivityForm.reset();
+                setTimeout(() => {
+                    if (proposeSuccessMsg) proposeSuccessMsg.style.display = 'none';
+                    if (allCategoriesModal) allCategoriesModal.classList.remove('active');
+                }, 3500);
+            }
+        });
+    }
+
+    renderMyDashboardRealizations();
     updateStepUI();
 });

@@ -54,10 +54,10 @@
             </a>
             
             <div class="nav-links">
-                <a href="#search-services">Trouver</a>
-                <a href="#how-it-works">Comment ça marche</a>
-                <a href="#about">À propos</a>
-                <a href="#login" class="btn btn-outline">Connexion</a>
+                <a href="results.html">Trouver / Annuaire</a>
+                <a href="how-it-works.html">Comment ça marche</a>
+                <a href="about.html">Notre Histoire</a>
+                <a href="#login" class="btn btn-outline open-login-trigger">Connexion</a>
                 <a href="#" class="btn btn-primary btn-signup-nav open-signup-trigger">S'inscrire</a>
             </div>
             
@@ -72,10 +72,10 @@
         <div class="mobile-menu-content">
             <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
             <a href="#search-services">Trouver</a>
-            <a href="#how-it-works">Comment ça marche</a>
-            <a href="#about">À propos</a>
+            <a href="how-it-works.html">Comment ça marche</a>
+            <a href="about.html">Notre Histoire</a>
             <div class="mobile-menu-actions">
-                <a href="#login" class="btn btn-outline" style="width: 100%; margin-bottom: 12px;">Connexion</a>
+                <a href="#login" class="btn btn-outline open-login-trigger" style="width: 100%; margin-bottom: 12px;">Connexion</a>
                 <a href="#" class="btn btn-primary open-signup-trigger" style="width: 100%;">S'inscrire</a>
             </div>
         </div>
@@ -95,7 +95,7 @@
 
         <div class="container hero-container">
             <div class="hero-content fade-in-up">
-                <h1>Qui peut vous aider <br><span class="text-gradient">aujourd'hui ?</span></h1>
+                <h1>Qui peut vous aider <br class="desktop-only-br"><span class="text-gradient">aujourd'hui ?</span></h1>
                 <p class="hero-subtitle">Le réseau de confiance qui relie les habitants aux talents de leur quartier dans les DOM.</p>
                 
                 <!-- Search Bar -->
@@ -108,8 +108,7 @@
                         <div class="search-input-wrapper">
                             <i class="ph ph-map-pin"></i>
                             <select id="locationSelect">
-                                <option value="" disabled selected>Département...</option>
-                                <option value="guadeloupe">Guadeloupe (971)</option>
+                                <option value="guadeloupe" selected>Guadeloupe (971)</option>
                                 <option value="martinique">Martinique (972)</option>
                                 <option value="guyane">Guyane (973)</option>
                                 <option value="reunion">La Réunion (974)</option>
@@ -118,14 +117,23 @@
                         </div>
                         <div class="search-input-wrapper">
                             <i class="ph ph-buildings"></i>
-                            <select id="citySelect" disabled>
+                            <select id="citySelect">
                                 <option value="" selected>Toutes les communes</option>
                             </select>
                         </div>
-                        <button type="button" class="btn-autolocate" id="autoLocateBtn" title="Me géolocaliser">
-                            <i class="ph ph-crosshair"></i>
-                            <span class="autolocate-text">GPS</span>
-                        </button>
+                        <div class="search-input-wrapper distance-range-wrapper">
+                            <i class="ph ph-navigation-arrow" style="color: var(--primary); font-size: 1.1rem;"></i>
+                            <div class="range-control-block">
+                                <div class="range-track-container">
+                                    <span class="range-floating-badge" id="distanceValueBadge">- de 15 km</span>
+                                    <input type="range" id="distanceRange" min="0" max="6" step="1" value="2" class="distance-slider" title="Rayon : - de 5km, - de 10km, - de 15km, - de 20km, - de 30km, - de 50km, Toute l'île">
+                                </div>
+                                <div class="range-labels-row">
+                                    <span>- de 5 km</span>
+                                    <span>Toute l'île</span>
+                                </div>
+                            </div>
+                        </div>
                         <button type="submit" class="btn btn-primary search-btn">Trouver</button>
                     </div>
                 </form>
@@ -272,113 +280,80 @@
             <div class="section-header text-center reveal">
                 <span class="pill-badge pill-yellow"><i class="ph ph-grid-four"></i> Tous nos domaines</span>
                 <h2>Découvrez les talents autour de chez vous</h2>
-                <p class="section-subtitle">Sélectionnez une catégorie pour explorer les talents disponibles dans votre secteur.</p>
+                <p class="section-subtitle">Sélectionnez un domaine d'activité ou utilisez le menu déroulant sur mobile.</p>
             </div>
             
+            <!-- Menu déroulant pour le format Mobile -->
+            <div class="mobile-category-wrapper">
+                <div class="mobile-category-select-container">
+                    <i class="ph ph-sliders"></i>
+                    <select id="mobileCategorySelect" class="mobile-category-select">
+                        <option value="" selected>🔍 Choisir une activité par catégorie...</option>
+                        <option value="maison">🏠 Maison & Rénovation</option>
+                        <option value="jardin">🌴 Jardin & Espaces Verts</option>
+                        <option value="climatisation">❄️ Climatisation & Froid DOM</option>
+                        <option value="menage">🧹 Ménage & Propreté</option>
+                        <option value="demenagement">🚚 Déménagement & Transport</option>
+                        <option value="electricite">⚡ Électricité & Dépannage</option>
+                        <option value="plomberie">💧 Plomberie & Sanitaire</option>
+                        <option value="peinture">🎨 Peinture & Décoration</option>
+                        <option value="bricolage">🛠️ Bricolage & Montage</option>
+                        <option value="babysitting">👶 Baby-sitting & Enfants</option>
+                        <option value="open-modal-all">➕ Voir toutes les activités / Proposer...</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Grille Web (5 catégories principales + 1 case "Autres") -->
             <div class="categories-grid reveal delay-1">
-                <!-- Maison -->
-                <a href="#" class="category-card open-signup-trigger">
+                <!-- 1. Maison -->
+                <a href="#" class="category-card category-card-trigger" data-category="maison">
                     <div class="category-icon-container">
                         <i class="ph-fill ph-house" style="font-size: 1.8rem; color: #4A7C59;"></i>
                     </div>
-                    <span class="category-name">Maison</span>
+                    <span class="category-name">Maison & Rénovation</span>
                 </a>
 
-                <!-- Électricité -->
-                <a href="#" class="category-card open-signup-trigger">
-                    <div class="category-icon-container">
-                        <i class="ph-fill ph-lightning" style="font-size: 1.8rem; color: #E5B345;"></i>
-                    </div>
-                    <span class="category-name">Électricité</span>
-                </a>
-
-                <!-- Plomberie -->
-                <a href="#" class="category-card open-signup-trigger">
-                    <div class="category-icon-container">
-                        <i class="ph-fill ph-drop" style="font-size: 1.8rem; color: #7BC5E3;"></i>
-                    </div>
-                    <span class="category-name">Plomberie</span>
-                </a>
-
-                <!-- Peinture -->
-                <a href="#" class="category-card open-signup-trigger">
-                    <div class="category-icon-container">
-                        <i class="ph-fill ph-paint-brush" style="font-size: 1.8rem; color: #E76F51;"></i>
-                    </div>
-                    <span class="category-name">Peinture</span>
-                </a>
-
-                <!-- Jardin -->
-                <a href="#" class="category-card open-signup-trigger">
+                <!-- 2. Jardin -->
+                <a href="#" class="category-card category-card-trigger" data-category="jardin">
                     <div class="category-icon-container">
                         <i class="ph-fill ph-tree" style="font-size: 1.8rem; color: #4A7C59;"></i>
                     </div>
-                    <span class="category-name">Jardin</span>
+                    <span class="category-name">Jardin & Espaces Verts</span>
                 </a>
 
-                <!-- Nettoyage -->
-                <a href="#" class="category-card open-signup-trigger">
-                    <div class="category-icon-container">
-                        <i class="ph-fill ph-sparkle" style="font-size: 1.8rem; color: #7BC5E3;"></i>
-                    </div>
-                    <span class="category-name">Nettoyage</span>
-                </a>
-
-                <!-- Montage -->
-                <a href="#" class="category-card open-signup-trigger">
-                    <div class="category-icon-container">
-                        <i class="ph-fill ph-package" style="font-size: 1.8rem; color: #9D4EDD;"></i>
-                    </div>
-                    <span class="category-name">Montage</span>
-                </a>
-
-                <!-- Climatisation -->
-                <a href="#" class="category-card open-signup-trigger">
+                <!-- 3. Climatisation -->
+                <a href="#" class="category-card category-card-trigger" data-category="climatisation">
                     <div class="category-icon-container">
                         <i class="ph-fill ph-wind" style="font-size: 1.8rem; color: #48CAE4;"></i>
                     </div>
-                    <span class="category-name">Climatisation</span>
+                    <span class="category-name">Climatisation & Froid</span>
                 </a>
 
-                <!-- Bricolage -->
-                <a href="#" class="category-card open-signup-trigger">
+                <!-- 4. Ménage -->
+                <a href="#" class="category-card category-card-trigger" data-category="menage">
                     <div class="category-icon-container">
-                        <i class="ph-fill ph-wrench" style="font-size: 1.8rem; color: #E5B345;"></i>
+                        <i class="ph-fill ph-broom" style="font-size: 1.8rem; color: #E5B345;"></i>
                     </div>
-                    <span class="category-name">Bricolage</span>
+                    <span class="category-name">Ménage & Propreté</span>
                 </a>
 
-                <!-- Ménage -->
-                <a href="#" class="category-card open-signup-trigger">
-                    <div class="category-icon-container">
-                        <i class="ph-fill ph-broom" style="font-size: 1.8rem; color: #7BC5E3;"></i>
-                    </div>
-                    <span class="category-name">Ménage</span>
-                </a>
-
-                <!-- Baby-sitting -->
-                <a href="#" class="category-card open-signup-trigger">
-                    <div class="category-icon-container">
-                        <i class="ph-fill ph-baby" style="font-size: 1.8rem; color: #EC4899;"></i>
-                    </div>
-                    <span class="category-name">Baby-sitting</span>
-                </a>
-
-                <!-- Aide à la personne -->
-                <a href="#" class="category-card open-signup-trigger">
-                    <div class="category-icon-container">
-                        <i class="ph-fill ph-first-aid-kit" style="font-size: 1.8rem; color: #4A7C59;"></i>
-                    </div>
-                    <span class="category-name">Aide à la personne</span>
-                </a>
-
-                <!-- Déménagement -->
-                <a href="#" class="category-card open-signup-trigger">
+                <!-- 5. Déménagement -->
+                <a href="#" class="category-card category-card-trigger" data-category="demenagement">
                     <div class="category-icon-container">
                         <i class="ph-fill ph-truck" style="font-size: 1.8rem; color: #E76F51;"></i>
                     </div>
-                    <span class="category-name">Déménagement</span>
+                    <span class="category-name">Déménagement & Transport</span>
                 </a>
+
+                <!-- 6. Case "Autres" -> Ouvre la modale complète avec proposition -->
+                <div class="category-card category-card-other" id="openAllCategoriesBtn" title="Voir toutes les catégories ou proposer une nouvelle activité">
+                    <div class="category-icon-container" style="background: var(--pop-yellow-light);">
+                        <i class="ph-fill ph-plus-circle" style="font-size: 2rem; color: #C69222;"></i>
+                    </div>
+                    <span class="category-name" style="font-weight: 800; color: #1E2822;">Autres...</span>
+                    <span class="category-badge-pill">+15 domaines & Proposer</span>
+                </div>
             </div>
         </div>
     </section>
@@ -393,7 +368,7 @@
             </div>
             
             <div class="talents-grid reveal delay-1">
-                <div class="talent-card">
+                <div class="talent-card talent-card-trigger" data-member-id="1" style="cursor: pointer;">
                     <div class="talent-photo">
                         <img src="https://images.unsplash.com/photo-1507152832244-10d45c7eda57?auto=format&fit=crop&w=400&q=80" alt="David">
                     </div>
@@ -403,7 +378,7 @@
                     <blockquote>"La plomberie est mon métier depuis 15 ans. J'aime savoir que mes voisins peuvent compter sur moi."</blockquote>
                 </div>
 
-                <div class="talent-card">
+                <div class="talent-card talent-card-trigger" data-member-id="6" style="cursor: pointer;">
                     <div class="talent-photo">
                         <img src="https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=400&q=80" alt="Sarah">
                     </div>
@@ -413,7 +388,7 @@
                     <blockquote>"J'aime redonner vie aux maisons. Chaque projet est une nouvelle histoire de quartier."</blockquote>
                 </div>
 
-                <div class="talent-card">
+                <div class="talent-card talent-card-trigger" data-member-id="13" style="cursor: pointer;">
                     <div class="talent-photo">
                         <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80" alt="Kevin">
                     </div>
@@ -521,10 +496,11 @@
                     </div>
                 </a>
                 <div class="footer-links">
-                    <a href="#about">À propos</a>
-                    <a href="#">Confidentialité</a>
-                    <a href="#">Conditions</a>
-                    <a href="#">Contact</a>
+                    <a href="about.html">Notre Histoire</a>
+                    <a href="how-it-works.html">Comment ça marche</a>
+                    <a href="#privacy" class="open-privacy-trigger">Confidentialité</a>
+                    <a href="#terms" class="open-terms-trigger">Conditions</a>
+                    <a href="#contact" class="open-contact-trigger">Contact</a>
                 </div>
             </div>
             <div class="footer-bottom">
@@ -696,25 +672,60 @@
         </div>
     </div>
 
-    <!-- ========== MODAL RÉSULTATS DE RECHERCHE MEMBRES ========== -->
+    <!-- ========== MODAL FENÊTRE RÉSULTATS DE RECHERCHE & ANNUAIRE ========== -->
     <div class="modal-overlay" id="searchResultsModal">
-        <div class="modal-card modal-card-large">
+        <div class="modal-card modal-card-xl search-results-window">
             <button class="modal-close-btn" id="closeSearchModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
 
-            <div class="modal-header">
-                <div class="modal-logo">
-                    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
-                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
-                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
-                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
-                              stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
-                    </svg>
-                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Talents recommandés</span>
+            <div class="search-window-header">
+                <div class="search-window-title-block">
+                    <div class="modal-logo">
+                        <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                            <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                            <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                            <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                                  stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                        </svg>
+                        <div>
+                            <h3 class="search-window-main-title">Annuaire des Talents & Prestataires</h3>
+                            <div class="search-summary-badge" id="searchSummaryBadge">
+                                <!-- Dynamic summary -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="search-summary-badge" id="searchSummaryBadge">
-                    <!-- Dynamic summary like: 🔍 Plomberie à 📍 Guadeloupe (971) -->
+
+                <!-- Barre d'outils de Tri et Filtrage dynamique -->
+                <div class="search-filters-toolbar">
+                    <div class="toolbar-filter-item">
+                        <label for="searchSortSelect"><i class="ph ph-arrows-down-up"></i> Trier par :</label>
+                        <select id="searchSortSelect" class="search-toolbar-select">
+                            <option value="recommended" selected>🏆 Recommandés & Mieux notés</option>
+                            <option value="reviews">⭐ Nombre d'avis clients</option>
+                            <option value="city">📍 Par Commune</option>
+                            <option value="name">🔤 Nom de A à Z</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-filter-item">
+                        <label for="modalCategoryFilterSelect"><i class="ph ph-grid-four"></i> Domaine / Métier :</label>
+                        <select id="modalCategoryFilterSelect" class="search-toolbar-select">
+                            <option value="all" selected>Tous les domaines</option>
+                            <option value="maison">🏠 Maison & Rénovation</option>
+                            <option value="jardin">🌴 Jardin & Espaces Verts</option>
+                            <option value="climatisation">❄️ Climatisation & Froid</option>
+                            <option value="menage">🧹 Ménage & Propreté</option>
+                            <option value="demenagement">🚚 Déménagement & Transport</option>
+                            <option value="electricite">⚡ Électricité</option>
+                            <option value="plomberie">💧 Plomberie</option>
+                            <option value="peinture">🎨 Peinture</option>
+                            <option value="bricolage">🛠️ Bricolage</option>
+                            <option value="babysitting">👶 Baby-sitting</option>
+                            <option value="aide-personne">🤝 Aide à la personne</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -1127,6 +1138,188 @@
 
                     <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px;">Publier cette réalisation 🚀</button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL CONFIDENTIALITÉ ========== -->
+    <div class="modal-overlay" id="privacyModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closePrivacyModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;"><i class="ph ph-shield-check"></i> Confidentialité & Données</span>
+                <h3 class="step-title" style="font-size: 1.4rem; margin-top: 6px;">Protection de vos données personnelles</h3>
+            </div>
+            <div class="modal-body" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted);">
+                <p style="margin-bottom: 14px;">Chez <strong>LYANN DOM</strong>, la confidentialité de vos données personnelles est une priorité absolue. Vos coordonnées ne sont partagées qu'avec votre accord explicite lors d'une mise en relation.</p>
+                <h4 style="color: var(--text); font-weight: 800; margin: 16px 0 6px;">1. Collecte des données</h4>
+                <p>Nous collectons uniquement les informations nécessaires au bon fonctionnement du service (Nom, Prénom, Territoire DOM, Commune et Adresse Email/Téléphone).</p>
+                <h4 style="color: var(--text); font-weight: 800; margin: 16px 0 6px;">2. Utilisation & Sécurité</h4>
+                <p>Vos données sont hébergées sur des serveurs sécurisés conformes au RGPD. Elles ne seront jamais vendues à des tiers commercialement.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL CONDITIONS GÉNÉRALES ========== -->
+    <div class="modal-overlay" id="termsModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeTermsModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;"><i class="ph ph-file-text"></i> Conditions Générales</span>
+                <h3 class="step-title" style="font-size: 1.4rem; margin-top: 6px;">Conditions d'utilisation de LYANN</h3>
+            </div>
+            <div class="modal-body" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted);">
+                <p style="margin-bottom: 14px;">L'utilisation du réseau LYANN implique l'acceptation sans réserve des présentes conditions d'utilisation.</p>
+                <h4 style="color: var(--text); font-weight: 800; margin: 16px 0 6px;">1. Objet du service</h4>
+                <p>LYANN est une plateforme de mise en relation de confiance entre habitants et prestataires indépendants dans les départements d'Outre-Mer.</p>
+                <h4 style="color: var(--text); font-weight: 800; margin: 16px 0 6px;">2. Engagements des membres</h4>
+                <p>Chaque membre s'engage à fournir des informations exactes, à respecter la courtoisie communautaire et à honorer ses engagements professionnels.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL CONTACT ========== -->
+    <div class="modal-overlay" id="contactModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeContactModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;"><i class="ph ph-envelope-simple"></i> Nous Contacter</span>
+                <h3 class="step-title" style="font-size: 1.4rem; margin-top: 6px;">Une question ? Une suggestion ?</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Notre équipe basée aux Antilles et à La Réunion vous répond sous 24h.</p>
+            </div>
+            <div class="modal-body">
+                <form id="contactForm">
+                    <div class="form-group">
+                        <label>Votre nom complet</label>
+                        <input type="text" class="modal-input" placeholder="Ex: Jean Dupont" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Adresse email</label>
+                        <input type="email" class="modal-input" placeholder="votre.email@exemple.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Votre message</label>
+                        <textarea class="modal-input" style="padding-left: 16px; height: 100px; resize: none;" placeholder="Comment pouvons-nous vous aider ?" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px;">Envoyer mon message 📩</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL TOUTES LES CATÉGORIES & PROPOSITION D'ACTIVITÉ ========== -->
+    <div class="modal-overlay" id="allCategoriesModal">
+        <div class="modal-card modal-card-large">
+            <button class="modal-close-btn" id="closeAllCategoriesModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                    </svg>
+                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Toutes nos activités</span>
+                </div>
+                <h3 class="step-title" style="font-size: 1.45rem; margin-top: 6px;">Catalogue complet des domaines d'intervention</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Cliquez sur une catégorie pour voir les membres ou proposez une nouvelle activité ci-dessous.</p>
+            </div>
+
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+                <!-- Grille complète des catégories -->
+                <div class="modal-categories-grid">
+                    <a href="#" class="category-card category-card-trigger" data-category="maison">
+                        <div class="category-icon-container"><i class="ph-fill ph-house" style="color: #4A7C59;"></i></div>
+                        <span class="category-name">Maison & Rénovation</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="jardin">
+                        <div class="category-icon-container"><i class="ph-fill ph-tree" style="color: #4A7C59;"></i></div>
+                        <span class="category-name">Jardin & Espaces Verts</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="climatisation">
+                        <div class="category-icon-container"><i class="ph-fill ph-wind" style="color: #48CAE4;"></i></div>
+                        <span class="category-name">Climatisation & Froid</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="menage">
+                        <div class="category-icon-container"><i class="ph-fill ph-broom" style="color: #E5B345;"></i></div>
+                        <span class="category-name">Ménage & Propreté</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="demenagement">
+                        <div class="category-icon-container"><i class="ph-fill ph-truck" style="color: #E76F51;"></i></div>
+                        <span class="category-name">Déménagement & Transport</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="electricite">
+                        <div class="category-icon-container"><i class="ph-fill ph-lightning" style="color: #E5B345;"></i></div>
+                        <span class="category-name">Électricité</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="plomberie">
+                        <div class="category-icon-container"><i class="ph-fill ph-drop" style="color: #7BC5E3;"></i></div>
+                        <span class="category-name">Plomberie</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="peinture">
+                        <div class="category-icon-container"><i class="ph-fill ph-paint-brush" style="color: #E76F51;"></i></div>
+                        <span class="category-name">Peinture</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="bricolage">
+                        <div class="category-icon-container"><i class="ph-fill ph-wrench" style="color: #E5B345;"></i></div>
+                        <span class="category-name">Bricolage</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="babysitting">
+                        <div class="category-icon-container"><i class="ph-fill ph-baby" style="color: #EC4899;"></i></div>
+                        <span class="category-name">Baby-sitting</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="aide-personne">
+                        <div class="category-icon-container"><i class="ph-fill ph-first-aid-kit" style="color: #4A7C59;"></i></div>
+                        <span class="category-name">Aide à la personne</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="nettoyage">
+                        <div class="category-icon-container"><i class="ph-fill ph-sparkle" style="color: #7BC5E3;"></i></div>
+                        <span class="category-name">Nettoyage Vitres</span>
+                    </a>
+                    <a href="#" class="category-card category-card-trigger" data-category="montage">
+                        <div class="category-icon-container"><i class="ph-fill ph-package" style="color: #9D4EDD;"></i></div>
+                        <span class="category-name">Montage de meubles</span>
+                    </a>
+                </div>
+
+                <!-- Petite case pour proposer une nouvelle activité -->
+                <div class="propose-activity-box">
+                    <div class="propose-box-header">
+                        <div class="propose-icon"><i class="ph-fill ph-lightbulb"></i></div>
+                        <div>
+                            <h4>Une idée d'activité manquante ?</h4>
+                            <p>Proposez un nouveau domaine. Notre équipe LYANN l'examinera et le validera sous 24h.</p>
+                        </div>
+                    </div>
+
+                    <form id="proposeActivityForm">
+                        <div class="propose-form-row">
+                            <div class="form-group flex-2">
+                                <label for="proposeActivityName">Nom de l'activité ou métier proposé</label>
+                                <input type="text" id="proposeActivityName" class="modal-input" placeholder="Ex: Élagage cocotiers, Réparation nautique, Cours de créole..." required>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label for="proposeTerritory">Territoire concerné</label>
+                                <select id="proposeTerritory" class="modal-input">
+                                    <option value="Guadeloupe">Guadeloupe (971)</option>
+                                    <option value="Martinique">Martinique (972)</option>
+                                    <option value="Guyane">Guyane (973)</option>
+                                    <option value="La Réunion">La Réunion (974)</option>
+                                    <option value="Saint-Martin">St-Martin / St-Barth</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            <i class="ph ph-paper-plane-tilt"></i> Soumettre la proposition à l'équipe
+                        </button>
+                    </form>
+                    <div class="propose-success-message" id="proposeSuccessMsg" style="display: none;">
+                        <i class="ph-fill ph-check-circle" style="font-size: 1.4rem;"></i>
+                        <span>Merci ! Votre proposition d'activité a bien été transmise à notre équipe pour validation sous 24h. 🎉</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
