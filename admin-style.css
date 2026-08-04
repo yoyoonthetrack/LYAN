@@ -1,35 +1,47 @@
 /* ==========================================================================
-   LYANN DOM — ENTERPRISE BACK-OFFICE ADMIN STYLES (DARK GLASSMORPHIC THEME)
+   LYANN DOM — ENTERPRISE BACK-OFFICE ADMIN STYLES (CHARTE CHARTE OFFICIELLE DE MARQUE)
    ========================================================================== */
 
 :root {
-    --admin-bg: #0B0D10;
-    --admin-card-bg: #14171E;
-    --admin-card-hover: #1A1F28;
-    --admin-sidebar-bg: #0F1218;
-    --admin-header-bg: rgba(15, 18, 24, 0.85);
-    
+    /* Charte Graphique Officielle LYANN (Vert Sage #4A7C59, Jaune Sable #E5B345 & Bleu Lagon #7BC5E3) */
+    --admin-brand-primary: #4A7C59;            /* Vert Sage Logo */
+    --admin-brand-primary-light: #709C7D;
+    --admin-brand-primary-dark: #2F523A;
+
+    --admin-brand-yellow: #E5B345;             /* Jaune Sable Logo */
+    --admin-brand-yellow-light: #F4D375;
+    --admin-brand-yellow-dark: #C69222;
+
+    --admin-brand-sky: #7BC5E3;                /* Bleu Lagon Logo */
+    --admin-brand-sky-light: #E8F6FA;
+
+    --admin-bg: #0F1712;                       /* Deep Brand Forest Obsidian */
+    --admin-card-bg: #17231C;                  /* Warm Dark Emerald Card */
+    --admin-card-hover: #1F2D24;               /* Hover Emerald Card */
+    --admin-sidebar-bg: #121C16;               /* Sidebar Deep Emerald */
+    --admin-header-bg: rgba(18, 28, 22, 0.88); /* Glassmorphic Header */
+
     --admin-primary: #4A7C59;
-    --admin-primary-dark: #2E7D32;
-    --admin-primary-light: rgba(74, 124, 89, 0.25);
-    --admin-accent-gold: #D4A843;
-    --admin-accent-blue: #2563EB;
-    --admin-accent-danger: #E53E3E;
-    --admin-accent-warning: #DD6B20;
-    --admin-accent-success: #38A169;
+    --admin-primary-dark: #2F523A;
+    --admin-primary-light: rgba(74, 124, 89, 0.28);
+    --admin-accent-gold: #E5B345;
+    --admin-accent-blue: #7BC5E3;
+    --admin-accent-danger: #E76F51;
+    --admin-accent-warning: #E5B345;
+    --admin-accent-success: #4A7C59;
 
-    --admin-text-main: #F3F4F6;
-    --admin-text-muted: #9CA3AF;
-    --admin-border: rgba(255, 255, 255, 0.08);
-    --admin-border-light: rgba(255, 255, 255, 0.15);
+    --admin-text-main: #FAF7F2;                 /* Off-White Warm Sand */
+    --admin-text-muted: #A3B5A8;               /* Muted Sage */
+    --admin-border: rgba(112, 156, 125, 0.18);
+    --admin-border-light: rgba(229, 179, 69, 0.3);
 
-    --admin-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --admin-font: 'Outfit', 'Plus Jakarta Sans', -apple-system, sans-serif;
     --admin-font-mono: 'IBM Plex Mono', monospace;
-    --admin-radius-lg: 16px;
-    --admin-radius-md: 10px;
-    --admin-radius-sm: 6px;
-    --admin-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    --admin-transition: all 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --admin-radius-lg: 18px;
+    --admin-radius-md: 12px;
+    --admin-radius-sm: 8px;
+    --admin-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+    --admin-transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 * {
