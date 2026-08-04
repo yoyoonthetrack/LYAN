@@ -4663,6 +4663,15 @@ input:checked + .slider:before {
     box-shadow: 0 20px 48px rgba(74, 124, 89, 0.18);
 }
 
+@media (max-width: 768px) {
+    .how-main-illustration,
+    .how-illustration-img {
+        max-width: 380px;
+        margin: 0 auto;
+        display: block;
+    }
+}
+
 /* Légende en 3 pilules */
 .how-steps-legend-row {
     display: flex;
