@@ -335,6 +335,110 @@
             </section>
 
             <!-- ==========================================================================
+                 PÔLE 3 : PRESTATIONS, RÉSERVATIONS & LITIGES
+                 ========================================================================== -->
+            <section id="sec-bookings" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Prestations, Réservations & Arbitrage des Litiges</h1>
+                        <p class="admin-page-sub">Suivi en direct des commandes d'entraide et traitement des remboursements en 1-clic.</p>
+                    </div>
+                </div>
+
+                <div class="admin-table-card">
+                    <div class="table-card-header">
+                        <div class="table-card-title">Réservations Récentes & Arbitrages (1 Litige en cours)</div>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID Réservation</th>
+                                    <th>Demandeur</th>
+                                    <th>Prestataire</th>
+                                    <th>Service</th>
+                                    <th>Montant</th>
+                                    <th>Statut</th>
+                                    <th>Action Arbitrage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>#RES-9041</strong></td>
+                                    <td>Tati Huguette Cazeau</td>
+                                    <td>David Jean-Baptiste</td>
+                                    <td>Entretien Clim Inverter (Baie-Mahault)</td>
+                                    <td>85.00 €</td>
+                                    <td><span class="status-badge active">CONFIRMÉ ✅</span></td>
+                                    <td><button class="admin-btn admin-btn-secondary">Détails</button></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>#RES-8820</strong></td>
+                                    <td>Sarah Manicon</td>
+                                    <td>Kevin Bellerose</td>
+                                    <td>Taille de Haie & Jardinage (Cayenne)</td>
+                                    <td>120.00 €</td>
+                                    <td><span class="status-badge suspended">LITIGE OUVERT ⚠️</span></td>
+                                    <td>
+                                        <button class="admin-btn admin-btn-danger btn-refund-booking" data-res-id="8820">
+                                            <i class="ph-bold ph-arrow-u-down-left"></i> Rembourser Client (120€)
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 4 : MODÉRATION & SÉCURITÉ IA
+                 ========================================================================== -->
+            <section id="sec-moderation" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Modération du Contenu & Sécurité IA</h1>
+                        <p class="admin-page-sub">File des signalements communautaires et détection automatique de spam par Sentinelle IA.</p>
+                    </div>
+                </div>
+
+                <div class="admin-table-card">
+                    <div class="table-card-header">
+                        <div class="table-card-title">File des Signalements à Traiter (2)</div>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Signalé par</th>
+                                    <th>Auteur ciblé</th>
+                                    <th>Motif du Signalement</th>
+                                    <th>Extrait du Contenu</th>
+                                    <th>Détecteur IA</th>
+                                    <th>Action Modération</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr id="mod-row-1">
+                                    <td>Membre anonyme</td>
+                                    <td>Utilisateur #9812</td>
+                                    <td>Publicité abusive non autorisée</td>
+                                    <td>"Gagnez 5000€ en travaillant depuis chez vous en 5 minutes..."</td>
+                                    <td><span class="status-badge suspended">Sentinelle IA (99%)</span></td>
+                                    <td>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button class="admin-btn admin-btn-danger btn-delete-content" data-mod-id="1"><i class="ph-bold ph-trash"></i> Supprimer Post</button>
+                                            <button class="admin-btn admin-btn-secondary btn-ignore-mod" data-mod-id="1">Ignorer</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
                  PÔLE 5 : SUPPORT CLIENT & TICKETS SLA
                  ========================================================================== -->
             <section id="sec-support" class="admin-section">
@@ -417,6 +521,157 @@
                                             <i class="ph-bold ph-paper-plane"></i> Déclencher le Virement
                                         </button>
                                     </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 7 : NOTIFICATIONS, PUSH & CAMPAGNES SMS
+                 ========================================================================== -->
+            <section id="sec-campaigns" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Notifications, Push & Campagnes SMS / Email</h1>
+                        <p class="admin-page-sub">Envoi de messages ciblés par territoire DOM (Guadeloupe, Martinique, Guyane, Réunion).</p>
+                    </div>
+                </div>
+
+                <div class="admin-table-card" style="margin-bottom: 24px;">
+                    <div class="table-card-header">
+                        <div class="table-card-title">📣 Programmer une Nouvelle Campagne de Notification</div>
+                    </div>
+                    <div style="padding: 20px;">
+                        <form id="adminCampaignForm" onsubmit="event.preventDefault(); alert('🚀 Campagne envoyée avec succès à 1,420 membres !');">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div>
+                                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">Territoire Ciblé</label>
+                                    <select class="modal-input" style="background: rgba(255,255,255,0.05); color: #FFF; border: 1px solid var(--admin-border-light);">
+                                        <option>Tous les DOM (Guadeloupe, MQ, Guyane, Réunion)</option>
+                                        <option>Guadeloupe (971) uniquement</option>
+                                        <option>Martinique (972) uniquement</option>
+                                        <option>Guyane (973) uniquement</option>
+                                        <option>La Réunion (974) uniquement</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">Canal de Diffusion</label>
+                                    <select class="modal-input" style="background: rgba(255,255,255,0.05); color: #FFF; border: 1px solid var(--admin-border-light);">
+                                        <option>Push Notification Mobile + In-App</option>
+                                        <option>SMS Alerte Météo / Urgence</option>
+                                        <option>Email Newsletter Communautaire</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">Message de la Notification</label>
+                                <textarea class="modal-input" rows="3" placeholder="Tapez le contenu de la notification..." style="background: rgba(255,255,255,0.05); color: #FFF; border: 1px solid var(--admin-border-light);">🌴 [Marché Créole] Nouveaux artisans inscrits à Baie-Mahault ! Venez découvrir leurs prestations sur LYANN.</textarea>
+                            </div>
+                            <button type="submit" class="admin-btn admin-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Diffuser la Campagne Immédiatement</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 8 : CMS, BLOG & GESTION DE LA FAQ
+                 ========================================================================== -->
+            <section id="sec-cms" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">CMS, Blog & Gestion de la FAQ</h1>
+                        <p class="admin-page-sub">Édition des articles d'entraide, catégories de services et réponses aux questions fréquentes.</p>
+                    </div>
+                </div>
+
+                <div class="admin-table-card">
+                    <div class="table-card-header">
+                        <div class="table-card-title">Articles de Blog & Fiches Conseils Publiés</div>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Titre de l'Article</th>
+                                    <th>Auteur</th>
+                                    <th>Catégorie</th>
+                                    <th>Vues</th>
+                                    <th>Statut</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>10 conseils pour préparer sa maison avant la saison cyclonique</strong></td>
+                                    <td>Équipe LYANN</td>
+                                    <td>Prévention DOM</td>
+                                    <td>3,420</td>
+                                    <td><span class="status-badge active">PUBLIÉ</span></td>
+                                    <td><button class="admin-btn admin-btn-secondary">Éditer</button></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Comment valoriser les produits du jardin créole ?</strong></td>
+                                    <td>Man Tétine IA 🌺</td>
+                                    <td>Gastronomie & Terroir</td>
+                                    <td>1,890</td>
+                                    <td><span class="status-badge active">PUBLIÉ</span></td>
+                                    <td><button class="admin-btn admin-btn-secondary">Éditer</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 10 : SÉCURITÉ & AUDIT LOGS
+                 ========================================================================== -->
+            <section id="sec-security" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Sécurité, Conduite & Logs d'Audit Administrateurs</h1>
+                        <p class="admin-page-sub">Journal immuable de toutes les actions d'administration et surveillance des accès IP.</p>
+                    </div>
+                </div>
+
+                <div class="admin-table-card">
+                    <div class="table-card-header">
+                        <div class="table-card-title">Journal d'Audit Immuable (Dernières Actions Admin)</div>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Horodatage (UTC)</th>
+                                    <th>Administrateur</th>
+                                    <th>Action Effectuée</th>
+                                    <th>Adresse IP</th>
+                                    <th>Résultat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>2026-08-04 15:20:12</td>
+                                    <td>David Jean-Baptiste (Super Admin)</td>
+                                    <td>Validation KYC Membre #9042</td>
+                                    <td>196.201.21.14 (Guadeloupe)</td>
+                                    <td><span class="status-badge active">SUCCÈS ✅</span></td>
+                                </tr>
+                                <tr>
+                                    <td>2026-08-04 14:45:00</td>
+                                    <td>David Jean-Baptiste (Super Admin)</td>
+                                    <td>Déblocage Payout SEPA (450.00 €)</td>
+                                    <td>196.201.21.14 (Guadeloupe)</td>
+                                    <td><span class="status-badge active">SUCCÈS ✅</span></td>
+                                </tr>
+                                <tr>
+                                    <td>2026-08-04 13:10:05</td>
+                                    <td>Système Automatique (Sentinelle IA)</td>
+                                    <td>Blocage IP tentative de Brute Force</td>
+                                    <td>185.220.101.4 (Proxy)</td>
+                                    <td><span class="status-badge suspended">BLOQUÉ 🛡️</span></td>
                                 </tr>
                             </tbody>
                         </table>

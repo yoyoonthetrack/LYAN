@@ -158,8 +158,37 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.textContent = 'Mettre en Pause ⏸️';
                     btn.classList.replace('admin-btn-primary', 'admin-btn-secondary');
                     alert(`▶️ Agent IA réactivé.`);
-                }
+    // Remboursement 1-Clic Litige
+    document.querySelectorAll('.btn-refund-booking').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const resId = btn.getAttribute('data-res-id') || '8820';
+            if (confirm(`Arbitrer le litige #RES-${resId} et procéder au remboursement intégral du client ?`)) {
+                alert(`💳 Remboursement de 120.00 € effectué avec succès via Stripe.`);
+                btn.textContent = 'Remboursé ✅';
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
             }
+        });
+    });
+
+    // Actions Modération
+    document.querySelectorAll('.btn-delete-content').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const modId = btn.getAttribute('data-mod-id');
+            if (confirm('Supprimer définitivement ce contenu inapproprié et notifier l\'auteur ?')) {
+                const row = document.getElementById(`mod-row-${modId}`);
+                if (row) row.remove();
+                alert('🗑️ Contenu supprimé du réseau LYANN.');
+            }
+        });
+    });
+
+    document.querySelectorAll('.btn-ignore-mod').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const modId = btn.getAttribute('data-mod-id');
+            const row = document.getElementById(`mod-row-${modId}`);
+            if (row) row.remove();
+            alert('Signalement classé sans suite.');
         });
     });
 
