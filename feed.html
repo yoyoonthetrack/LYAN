@@ -68,20 +68,25 @@
     <!-- Mobile Menu Overlay -->
     <div class="mobile-menu-overlay" id="mobileMenu">
         <div class="mobile-menu-content">
-            <button class="mobile-menu-close" aria-label="Fermer le menu">
-                <i class="ph ph-x"></i>
-            </button>
-            <div class="mobile-nav-links">
-                <a href="index.html">Accueil</a>
-                <a href="results.html">Trouver / Annuaire</a>
-                <a href="feed.html" class="active">Le Fil LYANN</a>
-                <a href="pricing.html">Nos Offres</a>
-                <a href="how-it-works.html">Comment ça marche</a>
-                <a href="about.html">Notre Histoire</a>
-                <div class="mobile-auth-btns">
-                    <a href="#login" class="btn btn-outline open-login-trigger" style="width: 100%; margin-bottom: 12px;">Connexion</a>
-                    <a href="#" class="btn btn-primary open-signup-trigger" style="width: 100%;">S'inscrire</a>
+            <div>
+                <div class="mobile-menu-header">
+                    <span class="logo-title" style="font-weight: 800; font-size: 1.2rem; color: var(--primary-dark);">LYANN DOM</span>
+                    <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
                 </div>
+                <nav class="mobile-nav-list">
+                    <a href="index.html">Accueil <i class="ph ph-caret-right"></i></a>
+                    <a href="results.html">Trouver / Annuaire <i class="ph ph-caret-right"></i></a>
+                    <a href="feed.html" class="active">Le Fil LYANN <span class="nav-live-dot"></span></a>
+                    <a href="pricing.html">Nos Offres <i class="ph ph-caret-right"></i></a>
+                    <a href="how-it-works.html">Comment ça marche <i class="ph ph-caret-right"></i></a>
+                    <a href="about.html">Notre Histoire <i class="ph ph-caret-right"></i></a>
+                </nav>
+            </div>
+
+            <!-- Docked Action Buttons at Bottom -->
+            <div class="mobile-menu-docked-footer">
+                <a href="#login" class="btn btn-outline open-login-trigger" style="width: 100%; justify-content: center;">Connexion</a>
+                <a href="#" class="btn btn-primary open-signup-trigger" style="width: 100%; justify-content: center;">S'inscrire à LYANN 🚀</a>
             </div>
         </div>
     </div>

@@ -1935,6 +1935,97 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ==========================================================================
+    // LOGIQUE MARKETPLACE END-TO-END (BOOKING, MOT DE PASSE OUBLIÉ, SIGNALEMENT)
+    // ==========================================================================
+    const passwordResetModal = document.getElementById('passwordResetModal');
+    const closePasswordResetModalBtn = document.getElementById('closePasswordResetModalBtn');
+    const passwordResetForm = document.getElementById('passwordResetForm');
+    const forgotLinks = document.querySelectorAll('.forgot-link');
+
+    forgotLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) loginModal.classList.remove('active');
+            if (passwordResetModal) passwordResetModal.classList.add('active');
+        });
+    });
+
+    if (closePasswordResetModalBtn) {
+        closePasswordResetModalBtn.addEventListener('click', () => {
+            if (passwordResetModal) passwordResetModal.classList.remove('active');
+        });
+    }
+
+    if (passwordResetForm) {
+        passwordResetForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('📩 Un lien sécurisé de réinitialisation a été envoyé à votre adresse email.');
+            if (passwordResetModal) passwordResetModal.classList.remove('active');
+            passwordResetForm.reset();
+        });
+    }
+
+    // Modal Booking (Prise de RDV)
+    const bookingModal = document.getElementById('bookingModal');
+    const closeBookingModalBtn = document.getElementById('closeBookingModalBtn');
+    const bookingForm = document.getElementById('bookingForm');
+    const contactMemberBtns = document.querySelectorAll('.contact-member-trigger, .booking-trigger-btn');
+
+    contactMemberBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const memberName = btn.dataset.memberName || 'ce Lyanneur';
+            const targetNameEl = document.getElementById('bookingTargetMemberName');
+            if (targetNameEl) targetNameEl.textContent = `Réserver avec ${memberName}`;
+            if (bookingModal) bookingModal.classList.add('active');
+        });
+    });
+
+    if (closeBookingModalBtn) {
+        closeBookingModalBtn.addEventListener('click', () => {
+            if (bookingModal) bookingModal.classList.remove('active');
+        });
+    }
+
+    if (bookingForm) {
+        bookingForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('🎉 Votre demande de réservation et de devis a été transmise avec succès ! Vous recevrez une confirmation sous 2h.');
+            if (bookingModal) bookingModal.classList.remove('active');
+            bookingForm.reset();
+        });
+    }
+
+    // Modal Report (Signalement)
+    const reportModal = document.getElementById('reportModal');
+    const closeReportModalBtn = document.getElementById('closeReportModalBtn');
+    const reportForm = document.getElementById('reportForm');
+    const reportTriggers = document.querySelectorAll('.report-trigger-btn');
+
+    reportTriggers.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (reportModal) reportModal.classList.add('active');
+        });
+    });
+
+    if (closeReportModalBtn) {
+        closeReportModalBtn.addEventListener('click', () => {
+            if (reportModal) reportModal.classList.remove('active');
+        });
+    }
+
+    if (reportForm) {
+        reportForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('🛡️ Votre signalement a été transmis à l\'équipe de modération LYANN. Merci de contribuer à la sérénité du réseau !');
+            if (reportModal) reportModal.classList.remove('active');
+            reportForm.reset();
+        });
+    }
+
     renderFlashFeed();
 
     renderMyDashboardRealizations();

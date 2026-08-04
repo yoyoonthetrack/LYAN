@@ -72,17 +72,25 @@
     <!-- Mobile Menu Overlay -->
     <div class="mobile-menu-overlay" id="mobileMenu">
         <div class="mobile-menu-content">
-            <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
-            <div class="mobile-nav-links">
-                <a href="index.html" class="active">Accueil</a>
-                <a href="results.html">Annuaire des Talents</a>
-                <a href="pricing.html">Nos Offres</a>
-                <a href="how-it-works.html">Comment ça marche</a>
-                <a href="about.html">Notre Histoire</a>
-                <div class="mobile-auth-btns">
-                    <a href="#login" class="btn btn-outline open-login-trigger" style="width: 100%; margin-bottom: 12px;">Connexion</a>
-                    <a href="#" class="btn btn-primary open-signup-trigger" style="width: 100%;">S'inscrire</a>
+            <div>
+                <div class="mobile-menu-header">
+                    <span class="logo-title" style="font-weight: 800; font-size: 1.2rem; color: var(--primary-dark);">LYANN DOM</span>
+                    <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
                 </div>
+                <nav class="mobile-nav-list">
+                    <a href="index.html" class="active">Accueil <i class="ph ph-caret-right"></i></a>
+                    <a href="results.html">Trouver / Annuaire <i class="ph ph-caret-right"></i></a>
+                    <a href="feed.html">Le Fil LYANN <span class="nav-live-dot"></span></a>
+                    <a href="pricing.html">Nos Offres <i class="ph ph-caret-right"></i></a>
+                    <a href="how-it-works.html">Comment ça marche <i class="ph ph-caret-right"></i></a>
+                    <a href="about.html">Notre Histoire <i class="ph ph-caret-right"></i></a>
+                </nav>
+            </div>
+
+            <!-- Docked Action Buttons at Bottom -->
+            <div class="mobile-menu-docked-footer">
+                <a href="#login" class="btn btn-outline open-login-trigger" style="width: 100%; justify-content: center;">Connexion</a>
+                <a href="#" class="btn btn-primary open-signup-trigger" style="width: 100%; justify-content: center;">S'inscrire à LYANN 🚀</a>
             </div>
         </div>
     </div>
@@ -220,7 +228,7 @@
             <div class="trust-split-grid reveal delay-1">
                 <!-- Photo Humanisée Antilles -->
                 <div class="trust-image-block">
-                    <img src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=800&q=80" alt="Entraide et confiance dans les Antilles - LYANN" class="trust-photo">
+                    <img src="caribbean-mutual-help.png" alt="Entraide et solidarité dans les Antilles - LYANN DOM" class="trust-photo">
                     <div class="trust-floating-badge">
                         <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.5rem;"></i>
                         <div>
@@ -1456,6 +1464,117 @@
                         <span>Merci ! Votre proposition d'activité a bien été transmise à notre équipe pour validation sous 24h. 🎉</span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL PRISE DE RDV / DEMANDE DE PRESTATION (BOOKING) ========== -->
+    <div class="modal-overlay" id="bookingModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeBookingModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.1rem; color: #4A7C59;">Réservation & Devis LYANN</span>
+                <h3 class="step-title" id="bookingTargetMemberName" style="font-size: 1.35rem; margin-bottom: 4px;">Demande d'intervention</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Remplissez les détails de votre besoin pour réserver un créneau.</p>
+            </div>
+
+            <div class="modal-body">
+                <form id="bookingForm">
+                    <div class="form-group">
+                        <label for="bookingServiceType">Domaine d'intervention</label>
+                        <select id="bookingServiceType" class="modal-input" required>
+                            <option value="climatisation">❄️ Climatisation & Entretien</option>
+                            <option value="plomberie">💧 Plomberie & Dépannage</option>
+                            <option value="electricite">⚡ Électricité & Tableau</option>
+                            <option value="jardin">🌴 Jardin & Espaces Verts</option>
+                            <option value="peinture">🎨 Peinture & Rénovation</option>
+                            <option value="autre">🛠️ Autre service à domicile</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group-row" style="display: flex; gap: 12px;">
+                        <div class="form-group flex-1">
+                            <label for="bookingDate">Date souhaitée</label>
+                            <input type="date" id="bookingDate" class="modal-input" required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="bookingTimeSlot">Créneau horaire</label>
+                            <select id="bookingTimeSlot" class="modal-input" required>
+                                <option value="matin">Matin (8h - 12h)</option>
+                                <option value="apres-midi">Après-midi (14h - 18h)</option>
+                                <option value="soiree">Soirée (18h - 20h)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bookingLocation">Commune / Adresse d'intervention</label>
+                        <input type="text" id="bookingLocation" class="modal-input" placeholder="Ex: Baie-Mahault, Fort-de-France..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bookingNotes">Précisions sur votre besoin</label>
+                        <textarea id="bookingNotes" class="modal-input" style="height: 90px; padding: 10px;" placeholder="Explicitez les travaux (ex: clim Split 12000 BTU qui fuit, accès facile...)" required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 10px;">Envoyer la demande de réservation 📅</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL MOT DE PASSE OUBLIÉ ========== -->
+    <div class="modal-overlay" id="passwordResetModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closePasswordResetModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.1rem; color: #4A7C59;">Sécurité LYANN</span>
+                <h3 class="step-title" style="font-size: 1.35rem; margin-bottom: 4px;">Réinitialisation de mot de passe</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Saisissez votre adresse email pour recevoir un lien de réinitialisation sécurisé.</p>
+            </div>
+
+            <div class="modal-body">
+                <form id="passwordResetForm">
+                    <div class="form-group">
+                        <label for="resetEmailInput">Adresse email de votre compte</label>
+                        <input type="email" id="resetEmailInput" class="modal-input" placeholder="votre.email@exemple.com" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px;">Envoyer le lien de récupération 📩</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL SIGNALEMENT & MODÉRATION ========== -->
+    <div class="modal-overlay" id="reportModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeReportModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.1rem; color: #C95140;">Modération & Sérénité</span>
+                <h3 class="step-title" style="font-size: 1.35rem; margin-bottom: 4px;">Signaler un contenu ou profil</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Aidez-nous à préserver la confiance et la sérénité du réseau LYANN.</p>
+            </div>
+
+            <div class="modal-body">
+                <form id="reportForm">
+                    <div class="form-group">
+                        <label for="reportReason">Motif du signalement</label>
+                        <select id="reportReason" class="modal-input" required>
+                            <option value="inapproprie">Contenu ou langage inapproprié</option>
+                            <option value="fausse_info">Profil inexact ou fausses coordonnées</option>
+                            <option value="spam">Démarchage abusif / Spam</option>
+                            <option value="autre">Autre problème de sérénité</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="reportDetails">Précisions</label>
+                        <textarea id="reportDetails" class="modal-input" style="height: 90px; padding: 10px;" placeholder="Expliquez brièvement le problème rencontré..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px; background: #C95140; border-color: #C95140;">Transmettre le signalement 🛡️</button>
+                </form>
             </div>
         </div>
     </div>
