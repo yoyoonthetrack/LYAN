@@ -143,106 +143,374 @@
                 <div class="admin-page-header">
                     <div>
                         <h1 class="admin-page-title">Tableau de Bord Global & Business Intelligence</h1>
-                        <p class="admin-page-sub">Vue d'ensemble des performances financières et opérationnelles sur l'ensemble des DOM.</p>
+                        <p class="admin-page-sub">Pilotez en temps réel le chiffre d'affaires, les prestations, l'activité membres et la santé réseau sur l'ensemble des DOM.</p>
                     </div>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="admin-btn admin-btn-primary trigger-goto-aiops" style="background: linear-gradient(135deg, #2E7D32, #4A7C59);"><i class="ph-bold ph-robot"></i> 🤖 Gérer les Bots IA (8 Personas)</button>
-                        <button class="admin-btn admin-btn-secondary"><i class="ph-bold ph-download-simple"></i> Exporter Rapport BI</button>
-                        <button class="admin-btn admin-btn-primary"><i class="ph-bold ph-arrows-clockwise"></i> Actualiser Données</button>
+                        <button class="admin-btn admin-btn-secondary" id="exportBiReportBtn"><i class="ph-bold ph-download-simple"></i> Exporter Rapport BI</button>
+                        <button class="admin-btn admin-btn-primary" id="refreshAnalyticsBtn"><i class="ph-bold ph-arrows-clockwise"></i> Actualiser Données</button>
                     </div>
                 </div>
 
-                <!-- KPI Cards -->
-                <div class="kpi-grid">
+                <!-- ==========================================================================
+                     BARRE DE SÉLECTION DE PÉRIODE & FILTRES TERRITORIAUX
+                     ========================================================================== -->
+                <div class="analytics-control-bar" id="adminAnalyticsControlBar">
+                    <div class="analytics-control-group">
+                        <span style="font-size: 0.85rem; font-weight: 800; color: var(--admin-text-main); display: flex; align-items: center; gap: 6px;">
+                            <i class="ph-bold ph-calendar-blank" style="color: var(--admin-accent-gold);"></i> Période :
+                        </span>
+
+                        <div class="period-pills-group" id="periodPillsGroup">
+                            <button class="period-pill" data-period="today">Aujourd'hui</button>
+                            <button class="period-pill" data-period="7d">7J</button>
+                            <button class="period-pill active" data-period="30d">30 Derniers Jours</button>
+                            <button class="period-pill" data-period="this_month">Ce mois</button>
+                            <button class="period-pill" data-period="quarter">Q3 2026</button>
+                            <button class="period-pill" data-period="year2026">Année 2026</button>
+                            <button class="period-pill" data-period="custom">📅 Personnalisé</button>
+                        </div>
+
+                        <!-- Date range custom inputs -->
+                        <div class="custom-date-range-container" id="customDateRangeContainer">
+                            <span style="font-size: 0.78rem; color: var(--admin-text-muted);">Du</span>
+                            <input type="date" id="startDateInput" class="custom-date-input" value="2026-07-01">
+                            <span style="font-size: 0.78rem; color: var(--admin-text-muted);">Au</span>
+                            <input type="date" id="endDateInput" class="custom-date-input" value="2026-08-04">
+                            <button class="admin-btn admin-btn-secondary" id="applyCustomDateBtn" style="padding: 4px 10px; font-size: 0.78rem;">Appliquer</button>
+                        </div>
+                    </div>
+
+                    <div class="analytics-control-group">
+                        <span style="font-size: 0.85rem; font-weight: 800; color: var(--admin-text-main); display: flex; align-items: center; gap: 6px;">
+                            <i class="ph-bold ph-map-pin" style="color: var(--admin-accent-blue);"></i> Territoire :
+                        </span>
+                        <select class="admin-select" id="analyticsTerritorySelect" style="font-size: 0.82rem; padding: 6px 12px;">
+                            <option value="all">Tous les Territoires DOM (971, 972, 973, 974, 978)</option>
+                            <option value="971">🇬🇵 Guadeloupe (971)</option>
+                            <option value="972">🇲🇶 Martinique (972)</option>
+                            <option value="973">🇬🇫 Guyane (973)</option>
+                            <option value="974">🇷🇪 La Réunion (974)</option>
+                            <option value="978">🇲🇫 Saint-Martin / St-Barth (978/977)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ==========================================================================
+                     GRILLE DE 12 INDICATEURS DE PERFORMANCE BI (KPI DASHBOARD)
+                     ========================================================================== -->
+                <div class="kpi-grid-12">
                     <div class="kpi-card">
                         <div class="kpi-top">
                             <div class="kpi-icon green"><i class="ph-bold ph-currency-eur"></i></div>
-                            <span class="kpi-trend up"><i class="ph-bold ph-trend-up"></i> +18.4%</span>
+                            <span class="kpi-trend up" id="kpiGmvTrend"><i class="ph-bold ph-trend-up"></i> +18.4%</span>
                         </div>
-                        <div class="kpi-value">48,920 €</div>
-                        <div class="kpi-label">Volume d'Affaires Brut (GMV Mois)</div>
+                        <div class="kpi-value" id="kpiGmvVal">48,920 €</div>
+                        <div class="kpi-label">Volume d'Affaires Brut (GMV)</div>
+                        <div class="kpi-card-sub"><i class="ph ph-check-circle" style="color: #4A7C59;"></i> Transigé via Stripe Connect</div>
                     </div>
 
                     <div class="kpi-card">
                         <div class="kpi-top">
                             <div class="kpi-icon gold"><i class="ph-bold ph-wallet"></i></div>
-                            <span class="kpi-trend up"><i class="ph-bold ph-trend-up"></i> +12.1%</span>
+                            <span class="kpi-trend up" id="kpiCommTrend"><i class="ph-bold ph-trend-up"></i> +12.1%</span>
                         </div>
-                        <div class="kpi-value">7,338 €</div>
-                        <div class="kpi-label">Revenu Net Commissions (15% MRR)</div>
+                        <div class="kpi-value" id="kpiCommVal">7,338 €</div>
+                        <div class="kpi-label">Revenu Net Commissions (15%)</div>
+                        <div class="kpi-card-sub"><i class="ph ph-sparkle" style="color: var(--admin-accent-gold);"></i> Commission nette LYANN</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon blue"><i class="ph-bold ph-arrows-counter-clockwise"></i></div>
+                            <span class="kpi-trend up" id="kpiMrrTrend"><i class="ph-bold ph-trend-up"></i> +15.2%</span>
+                        </div>
+                        <div class="kpi-value" id="kpiMrrVal">4,190 €/m</div>
+                        <div class="kpi-label">MRR Abonnements (PRO/Ultime)</div>
+                        <div class="kpi-card-sub">78 artisans abonnés actifs</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon purple"><i class="ph-bold ph-shopping-bag-open"></i></div>
+                            <span class="kpi-trend up" id="kpiAovTrend"><i class="ph-bold ph-trend-up"></i> +3.2%</span>
+                        </div>
+                        <div class="kpi-value" id="kpiAovVal">42,50 €</div>
+                        <div class="kpi-label">Panier Moyen Prestration (AOV)</div>
+                        <div class="kpi-card-sub">Valeur moyenne par deal</div>
                     </div>
 
                     <div class="kpi-card">
                         <div class="kpi-top">
                             <div class="kpi-icon blue"><i class="ph-bold ph-users"></i></div>
-                            <span class="kpi-trend up"><i class="ph-bold ph-trend-up"></i> +240 membres</span>
+                            <span class="kpi-trend up" id="kpiUsersTrend"><i class="ph-bold ph-trend-up"></i> +240</span>
                         </div>
-                        <div class="kpi-value">12,480</div>
+                        <div class="kpi-value" id="kpiUsersVal">12,480</div>
                         <div class="kpi-label">Membres Actifs (MAU DOM)</div>
+                        <div class="kpi-card-sub">Taux engagement 68.4%</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon green"><i class="ph-bold ph-user-plus"></i></div>
+                            <span class="kpi-trend up" id="kpiNewUsersTrend"><i class="ph-bold ph-trend-up"></i> +8.4%</span>
+                        </div>
+                        <div class="kpi-value" id="kpiNewUsersVal">+485</div>
+                        <div class="kpi-label">Nouveaux Inscrits (Période)</div>
+                        <div class="kpi-card-sub">Croissance virale par parrainage</div>
                     </div>
 
                     <div class="kpi-card">
                         <div class="kpi-top">
                             <div class="kpi-icon purple"><i class="ph-bold ph-handshake"></i></div>
-                            <span class="kpi-trend up"><i class="ph-bold ph-trend-up"></i> 98.6%</span>
+                            <span class="kpi-trend up" id="kpiDealsTrend"><i class="ph-bold ph-trend-up"></i> 98.6%</span>
                         </div>
-                        <div class="kpi-value">1,420</div>
-                        <div class="kpi-label">Prestations "LYANNÉS" Réussies</div>
+                        <div class="kpi-value" id="kpiDealsVal">1,420</div>
+                        <div class="kpi-label">Prestations "LYANNÉS" Conclues</div>
+                        <div class="kpi-card-sub">Mises en relation réussies</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon gold"><i class="ph-bold ph-funnel"></i></div>
+                            <span class="kpi-trend up" id="kpiConvTrend"><i class="ph-bold ph-trend-up"></i> +0.6%</span>
+                        </div>
+                        <div class="kpi-value" id="kpiConvVal">4.82%</div>
+                        <div class="kpi-label">Taux de Conversion Globale</div>
+                        <div class="kpi-card-sub">Visiteurs ➔ Prestations réservées</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon green"><i class="ph-bold ph-shield-check"></i></div>
+                            <span class="kpi-trend up" id="kpiKycTrend"><i class="ph-bold ph-trend-up"></i> Certifié</span>
+                        </div>
+                        <div class="kpi-value" id="kpiKycVal">94.2%</div>
+                        <div class="kpi-label">Taux de Validation KYC Pro</div>
+                        <div class="kpi-card-sub">Artisans avec CNI + KBIS vérifiés</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon blue"><i class="ph-bold ph-clock"></i></div>
+                            <span class="kpi-trend up" id="kpiSlaTrend"><i class="ph-bold ph-trend-down"></i> -3 min</span>
+                        </div>
+                        <div class="kpi-value" id="kpiSlaVal">14 min</div>
+                        <div class="kpi-label">Temps de Réponse Moyen (SLA)</div>
+                        <div class="kpi-card-sub">Réponse artisan sur flash</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon gold"><i class="ph-bold ph-warning-circle"></i></div>
+                            <span class="kpi-trend down" id="kpiDisputesTrend"><i class="ph-bold ph-trend-down"></i> -0.12%</span>
+                        </div>
+                        <div class="kpi-value" id="kpiDisputesVal">0.42%</div>
+                        <div class="kpi-label">Taux de Litiges & Réclamations</div>
+                        <div class="kpi-card-sub">99.58% de satisfaction client</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon purple"><i class="ph-bold ph-arrow-u-up-right"></i></div>
+                            <span class="kpi-trend up" id="kpiRetentionTrend"><i class="ph-bold ph-trend-up"></i> +4.1%</span>
+                        </div>
+                        <div class="kpi-value" id="kpiRetentionVal">74.5%</div>
+                        <div class="kpi-label">Rétention Voisins (30 jours)</div>
+                        <div class="kpi-card-sub">Habitants ré-utilisant le réseau</div>
                     </div>
                 </div>
 
-                <!-- Direct Charts & Analytics Row -->
+                <!-- ==========================================================================
+                     EXECUTIVE ANALYTICAL DASHBOARDS & CHARTS (GRILLE 2 COLONNES)
+                     ========================================================================== -->
                 <div class="grid-2col" style="margin-bottom: 28px;">
+                    <!-- ANALYTIC CARD 1: COURBE FINANCIÈRE AVANCÉE -->
                     <div class="admin-table-card" style="padding: 24px;">
-                        <div class="table-card-title" style="margin-bottom: 16px;">📈 Courbe de Croissance du Chiffre d'Affaires (MRR 2026)</div>
-                        <div style="height: 220px; background: rgba(255,255,255,0.02); border: 1px dashed var(--admin-border); border-radius: 12px; display: flex; align-items: flex-end; justify-content: space-around; padding: 20px 10px;">
-                            <div style="height: 35%; width: 35px; background: var(--admin-primary); border-radius: 6px 6px 0 0;" title="Jan : 18k€"></div>
-                            <div style="height: 45%; width: 35px; background: var(--admin-primary); border-radius: 6px 6px 0 0;" title="Fév : 24k€"></div>
-                            <div style="height: 60%; width: 35px; background: var(--admin-primary); border-radius: 6px 6px 0 0;" title="Mar : 31k€"></div>
-                            <div style="height: 70%; width: 35px; background: var(--admin-primary); border-radius: 6px 6px 0 0;" title="Avr : 36k€"></div>
-                            <div style="height: 82%; width: 35px; background: var(--admin-primary); border-radius: 6px 6px 0 0;" title="Mai : 42k€"></div>
-                            <div style="height: 100%; width: 35px; background: linear-gradient(135deg, var(--admin-primary-dark), #A3E635); border-radius: 6px 6px 0 0;" title="Juin : 48.9k€"></div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <div class="table-card-title">📈 Analytics Financiers : Évolution du Chiffre d'Affaires</div>
+                                <div style="font-size: 0.78rem; color: var(--admin-text-muted);" id="financialChartSubtitle">Commissions & Volume d'Affaires selon la période sélectionnée</div>
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="admin-btn admin-btn-secondary chart-dataset-toggle active" data-metric="gmv" style="padding: 4px 10px; font-size: 0.74rem;">GMV Brut</button>
+                                <button class="admin-btn admin-btn-secondary chart-dataset-toggle" data-metric="comm" style="padding: 4px 10px; font-size: 0.74rem;">Commissions (15%)</button>
+                            </div>
+                        </div>
+
+                        <!-- Interactive Bar Graph Container -->
+                        <div class="analytics-chart-wrap" id="analyticsBarChartWrap">
+                            <div class="analytics-bar-col">
+                                <div class="analytics-bar-fill" style="height: 45%;"><span class="analytics-bar-val">18.2k€</span></div>
+                                <span class="analytics-bar-label">P1</span>
+                            </div>
+                            <div class="analytics-bar-col">
+                                <div class="analytics-bar-fill" style="height: 55%;"><span class="analytics-bar-val">24.5k€</span></div>
+                                <span class="analytics-bar-label">P2</span>
+                            </div>
+                            <div class="analytics-bar-col">
+                                <div class="analytics-bar-fill" style="height: 68%;"><span class="analytics-bar-val">31.0k€</span></div>
+                                <span class="analytics-bar-label">P3</span>
+                            </div>
+                            <div class="analytics-bar-col">
+                                <div class="analytics-bar-fill" style="height: 78%;"><span class="analytics-bar-val">36.8k€</span></div>
+                                <span class="analytics-bar-label">P4</span>
+                            </div>
+                            <div class="analytics-bar-col">
+                                <div class="analytics-bar-fill" style="height: 88%;"><span class="analytics-bar-val">42.1k€</span></div>
+                                <span class="analytics-bar-label">P5</span>
+                            </div>
+                            <div class="analytics-bar-col">
+                                <div class="analytics-bar-fill" style="height: 100%; background: linear-gradient(180deg, #A3E635, var(--admin-primary));"><span class="analytics-bar-val">48.9k€</span></div>
+                                <span class="analytics-bar-label">Actuel</span>
+                            </div>
                         </div>
                     </div>
 
+                    <!-- ANALYTIC CARD 2: MATRICE DE PERFORMANCE TERRITORIALE (DOM) -->
                     <div class="admin-table-card" style="padding: 24px;">
-                        <div class="table-card-title" style="margin-bottom: 16px;">🌴 Répartition Géographique (DOM)</div>
-                        <div style="display: flex; flex-direction: column; gap: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div class="table-card-title">🌴 Matrice de Performance par Territoire DOM</div>
+                            <span class="ops-health-badge"><span class="pulse-dot"></span> 5 Territoires Actifs</span>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 16px;" id="domPerformanceMatrix">
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
-                                    <span>🇬🇵 Guadeloupe (971)</span>
-                                    <strong>42% (5,241 membres)</strong>
+                                    <span>🇬🇵 <strong>Guadeloupe (971)</strong></span>
+                                    <strong style="color: var(--admin-accent-gold);" id="domGuadeloupeVal">42% • 20,546 € (5,241 membres)</strong>
                                 </div>
-                                <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
-                                    <div style="width: 42%; height: 100%; background: #38A169;"></div>
+                                <div style="height: 9px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+                                    <div id="domGuadeloupeBar" style="width: 42%; height: 100%; background: linear-gradient(90deg, #38A169, #A3E635); transition: width 0.6s ease;"></div>
                                 </div>
                             </div>
+
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
-                                    <span>🇲🇶 Martinique (972)</span>
-                                    <strong>36% (4,492 membres)</strong>
+                                    <span>🇲🇶 <strong>Martinique (972)</strong></span>
+                                    <strong style="color: #60A5FA;" id="domMartiniqueVal">36% • 17,611 € (4,492 membres)</strong>
                                 </div>
-                                <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
-                                    <div style="width: 36%; height: 100%; background: #60A5FA;"></div>
+                                <div style="height: 9px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+                                    <div id="domMartiniqueBar" style="width: 36%; height: 100%; background: linear-gradient(90deg, #3B82F6, #60A5FA); transition: width 0.6s ease;"></div>
                                 </div>
                             </div>
+
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
-                                    <span>🇬🇫 Guyane (973)</span>
-                                    <strong>14% (1,747 membres)</strong>
+                                    <span>🇬🇫 <strong>Guyane (973)</strong></span>
+                                    <strong style="color: #FBBF24;" id="domGuyaneVal">14% • 6,848 € (1,747 membres)</strong>
                                 </div>
-                                <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
-                                    <div style="width: 14%; height: 100%; background: #FBBF24;"></div>
+                                <div style="height: 9px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+                                    <div id="domGuyaneBar" style="width: 14%; height: 100%; background: linear-gradient(90deg, #D97706, #FBBF24); transition: width 0.6s ease;"></div>
                                 </div>
                             </div>
+
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
-                                    <span>🇷🇪 La Réunion (974)</span>
-                                    <strong>8% (998 membres)</strong>
+                                    <span>🇷🇪 <strong>La Réunion (974)</strong></span>
+                                    <strong style="color: #C084FC;" id="domReunionVal">8% • 3,915 € (998 membres)</strong>
                                 </div>
-                                <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
-                                    <div style="width: 8%; height: 100%; background: #C084FC;"></div>
+                                <div style="height: 9px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+                                    <div id="domReunionBar" style="width: 8%; height: 100%; background: linear-gradient(90deg, #9333EA, #C084FC); transition: width 0.6s ease;"></div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================================================
+                     ANALYTIC CARD 3 & 4 : RÉPARTITION CATÉGORIES & SANTÉ INFRASTRUCTURE
+                     ========================================================================== -->
+                <div class="grid-2col" style="margin-bottom: 28px;">
+                    <!-- ANALYTIC CARD 3: TOP CATÉGORIES & VOLUMES DE DEMANDE -->
+                    <div class="admin-table-card" style="padding: 24px;">
+                        <div class="table-card-title" style="margin-bottom: 16px;">❄️ Demande par Catégorie de Services (Volume Période)</div>
+                        <div id="categoryDemandList">
+                            <div class="category-demand-item">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.2rem;">❄️</span>
+                                    <div>
+                                        <strong style="font-size: 0.88rem;">Climatisation, Froid & Inverter</strong>
+                                        <div style="font-size: 0.75rem; color: var(--admin-text-muted);" id="cat1Count">482 demandes réservées</div>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <strong style="color: var(--admin-accent-gold);" id="cat1Vol">18,420 €</strong>
+                                    <div style="font-size: 0.72rem; color: #4A7C59;" id="cat1Pct">37.6% du volume</div>
+                                </div>
+                            </div>
+
+                            <div class="category-demand-item">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.2rem;">🛠️</span>
+                                    <div>
+                                        <strong style="font-size: 0.88rem;">Plomberie, Fuite & Sanitaire</strong>
+                                        <div style="font-size: 0.75rem; color: var(--admin-text-muted);" id="cat2Count">340 demandes réservées</div>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <strong style="color: var(--admin-accent-gold);" id="cat2Vol">12,980 €</strong>
+                                    <div style="font-size: 0.72rem; color: #4A7C59;" id="cat2Pct">26.5% du volume</div>
+                                </div>
+                            </div>
+
+                            <div class="category-demand-item">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.2rem;">🌿</span>
+                                    <div>
+                                        <strong style="font-size: 0.88rem;">Jardin Créole & Espaces Verts</strong>
+                                        <div style="font-size: 0.75rem; color: var(--admin-text-muted);" id="cat3Count">295 demandes réservées</div>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <strong style="color: var(--admin-accent-gold);" id="cat3Vol">8,850 €</strong>
+                                    <div style="font-size: 0.72rem; color: #4A7C59;" id="cat3Pct">18.1% du volume</div>
+                                </div>
+                            </div>
+
+                            <div class="category-demand-item">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.2rem;">👵</span>
+                                    <div>
+                                        <strong style="font-size: 0.88rem;">Aide aux Seniors & Ménage</strong>
+                                        <div style="font-size: 0.75rem; color: var(--admin-text-muted);" id="cat4Count">180 demandes réservées</div>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <strong style="color: var(--admin-accent-gold);" id="cat4Vol">5,400 €</strong>
+                                    <div style="font-size: 0.72rem; color: #4A7C59;" id="cat4Pct">11.0% du volume</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ANALYTIC CARD 4: INFRASTRUCTURE & AUTOMATISATION OPS -->
+                    <div class="admin-table-card" style="padding: 24px;">
+                        <div class="table-card-title" style="margin-bottom: 16px;">⚡ Santé Infrastructure, Escrow & Automatisation IA</div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+                            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); padding: 14px;">
+                                <div style="font-size: 0.76rem; color: var(--admin-text-muted);">🔒 Coffre Séquestre Stripe</div>
+                                <strong style="font-size: 1.25rem; color: var(--admin-accent-gold);" id="opsEscrowVal">34,200 €</strong>
+                                <div style="font-size: 0.72rem; color: #4A7C59;">Fonds sécurisés en attente</div>
+                            </div>
+
+                            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); padding: 14px;">
+                                <div style="font-size: 0.76rem; color: var(--admin-text-muted);">🤖 Intervention Bots IA</div>
+                                <strong style="font-size: 1.25rem; color: #A3E635;" id="opsAiVal">1,420 posts</strong>
+                                <div style="font-size: 0.72rem; color: var(--admin-text-muted);">8 personas actifs 24h/24</div>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); padding: 14px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 0.82rem; font-weight: 700;">Serveurs & Latence API (Cloudflare / Supabase)</span>
+                                <span style="font-size: 0.78rem; color: #4A7C59; font-weight: 800;">99.98% Uptime</span>
+                            </div>
+                            <div style="display: flex; gap: 16px; font-size: 0.78rem; color: var(--admin-text-muted);">
+                                <span>⚡ Latence : <strong>14 ms</strong></span>
+                                <span>🛡️ Pare-feu DDOS : <strong>Actif</strong></span>
+                                <span>📦 Sauvegardes : <strong>Toutes les 6h</strong></span>
                             </div>
                         </div>
                     </div>
