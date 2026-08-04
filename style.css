@@ -5392,10 +5392,13 @@ body.user-is-logged-in .logged-out-only {
 
 /* Modale Espace Mon Compte */
 .modal-card-user-account {
-    max-width: 780px !important;
+    max-width: 960px !important;
     width: 95% !important;
+    max-height: 90vh !important;
     padding: 0 !important;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     border-radius: var(--radius-xl) !important;
 }
 
@@ -5475,6 +5478,8 @@ body.user-is-logged-in .logged-out-only {
 .account-tab-content {
     display: none;
     padding: 24px 28px;
+    overflow-y: auto;
+    max-height: calc(85vh - 160px);
 }
 
 .account-tab-content.active {
