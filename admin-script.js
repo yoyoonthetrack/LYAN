@@ -158,6 +158,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.textContent = 'Mettre en Pause ⏸️';
                     btn.classList.replace('admin-btn-primary', 'admin-btn-secondary');
                     alert(`▶️ Agent IA réactivé.`);
+                }
+            }
+        });
+    });
     // Remboursement 1-Clic Litige
     document.querySelectorAll('.btn-refund-booking').forEach(btn => {
         btn.addEventListener('click', () => {
