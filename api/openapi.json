@@ -65,7 +65,7 @@
         }
       },
       "post": {
-        "summary": "Publication d'un nouveau post Flash avec médias (3 photos / vidéo 30s)",
+        "summary": "Publication d'un nouveau post Lyann avec médias (3 photos / vidéo 30s)",
         "responses": {
           "201": { "description": "Post créé avec succès" }
         }
