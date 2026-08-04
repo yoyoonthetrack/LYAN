@@ -694,7 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="btn btn-outline btn-sm view-member-profile-btn" data-member-id="${member.id}">
                             <i class="ph ph-user"></i> Voir profil
                         </button>
-                        <button class="btn btn-primary btn-sm contact-member-btn" data-member-id="${member.id}" data-member-name="${member.name}">
+                        <button class="btn btn-primary btn-sm contact-member-btn" data-member-id="${member.id}" data-member-name="${member.name}" data-member-avatar="${member.avatar}">
                             <i class="ph ph-chat-circle-dots"></i> Contacter
                         </button>
                     </div>
@@ -735,7 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="btn btn-outline btn-sm view-member-profile-btn" data-member-id="${member.id}">
                                 <i class="ph ph-user"></i> Voir profil
                             </button>
-                            <button class="btn btn-primary btn-sm contact-member-btn" data-member-id="${member.id}" data-member-name="${member.name}">
+                            <button class="btn btn-primary btn-sm contact-member-btn" data-member-id="${member.id}" data-member-name="${member.name}" data-member-avatar="${member.avatar}">
                                 <i class="ph ph-chat-circle-dots"></i> Contacter
                             </button>
                         </div>
@@ -752,11 +752,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Attach Contact Event
+        // Attach Contact Event -> Open Live Chat Direct
         document.querySelectorAll('.contact-member-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const memberName = btn.dataset.memberName;
-                openContactMemberModal(memberName);
+                const memberName = btn.dataset.memberName || 'Lyanneur';
+                const memberAvatar = btn.dataset.memberAvatar || 'david-34.png';
+                openChatWithUser(memberName, memberAvatar);
             });
         });
     }
@@ -1431,12 +1432,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Direct contact from public profile
+    // Direct contact from public profile -> Open Live Chat Direct
     if (publicContactBtn) {
         publicContactBtn.addEventListener('click', () => {
             if (currentVisitingMember) {
                 if (publicMemberProfileModal) publicMemberProfileModal.classList.remove('active');
-                openContactModal(currentVisitingMember.id, currentVisitingMember.name);
+                openChatWithUser(currentVisitingMember.name, currentVisitingMember.avatar);
             }
         });
     }
