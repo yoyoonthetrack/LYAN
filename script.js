@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // GUADELOUPE (971)
         {
             id: 1,
-            name: "David Jean-Baptiste (34 ans)",
+            name: "David Jean-Baptiste",
             role: "Plomberie & Clim Inverter",
             category: "plomberie",
             keywords: ["plomberie", "plombier", "fuite", "eau", "sanitaire", "robinet", "tuyau", "dépannage", "chauffe-eau", "clim"],
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 2,
-            name: "Marie-Line Popotte (39 ans)",
+            name: "Marie-Line Popotte",
             role: "Peinture Intérieure & Rénovation",
             category: "peinture",
             keywords: ["peinture", "peintre", "mural", "rénovation", "décoration", "enduit", "plâtre"],
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 3,
-            name: "Jean-Michel Télèphe (45 ans)",
+            name: "Jean-Michel Télèphe",
             role: "Électricité & Rénovation Moteurs",
             category: "electricite",
             keywords: ["électricité", "électricien", "panne", "tableau", "prise", "lumière", "câblage", "réparer"],
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 4,
-            name: "Man Saint-Louis (72 ans)",
+            name: "Man Saint-Louis",
             role: "Jardinier & Plantes Créoles",
             category: "jardin",
             keywords: ["jardin", "jardinier", "élagage", "pelouse", "tonte", "haie", "entretien", "plantes", "palmier"],
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 5,
-            name: "Élodie Rutil (27 ans)",
+            name: "Élodie Rutil",
             role: "Ménage & Entretien Maison",
             category: "menage",
             keywords: ["ménage", "nettoyage", "maison", "propreté", "entretien", "vitres", "repassage"],
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 15,
-            name: "Clarisse Vatin (31 ans)",
+            name: "Clarisse Vatin",
             role: "Baby-sitting & Garde d'enfants",
             category: "babysitting",
             keywords: ["baby-sitting", "babysitting", "garde d'enfants", "enfant", "bébé", "sortie d'école", "aide aux devoirs"],
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 16,
-            name: "Tati Rosalie Théophile (63 ans)",
+            name: "Tati Rosalie Théophile",
             role: "Aide à la personne & Seniors",
             category: "aide-personne",
             keywords: ["aide à la personne", "aide aux seniors", "compagnie", "courses", "repas", "autonomie", "auxiliaire"],
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // MARTINIQUE (972)
         {
             id: 6,
-            name: "Sarah Manicon (29 ans)",
+            name: "Sarah Manicon",
             role: "Coiffure & Rénovation",
             category: "peinture",
             keywords: ["peinture", "peintre", "mural", "rénovation", "décoration", "coup de neuf", "coiffure"],
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 17,
-            name: "Aurélie Bellerose (26 ans)",
+            name: "Aurélie Bellerose",
             role: "Baby-sitting & Sortie d'école",
             category: "babysitting",
             keywords: ["baby-sitting", "babysitting", "garde d'enfants", "enfant", "sortie d'école", "nounou"],
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 7,
-            name: "Nicolas Bellerose (36 ans)",
+            name: "Nicolas Bellerose",
             role: "Bricolage & Multi-services",
             category: "bricolage",
             keywords: ["bricolage", "bricoleur", "monter un meuble", "meuble", "étagère", "fixation", "ikea", "petit travail"],
@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 8,
-            name: "Christophe Vatin (42 ans)",
+            name: "Christophe Vatin",
             role: "Climatisation & Frigoriste",
             category: "climatisation",
             keywords: ["climatisation", "clim", "froid", "frigoriste", "entretien clim", "dépannage clim", "nettoyage clim"],
@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 9,
-            name: "Tati Huguette Cazeau (68 ans)",
+            name: "Tati Huguette Cazeau",
             role: "Jardinage & Cuisine Créole",
             category: "jardin",
             keywords: ["jardin", "jardinier", "plantes", "entretien", "fleurs", "cour", "cuisine"],
@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // GUYANE (973)
         {
             id: 10,
-            name: "Kevin Bellerose (41 ans)",
+            name: "Kevin Bellerose",
             role: "Électricité Pro & Dépannage",
             category: "electricite",
             keywords: ["déménagement", "déménager", "transport", "camion", "carton", "portage", "manutention", "électricité"],
@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 11,
-            name: "Corinne Narcisse (33 ans)",
+            name: "Corinne Narcisse",
             role: "Menuiserie & Aménagement Bois",
             category: "menuiserie",
             keywords: ["menuiserie", "menuisier", "bois", "porte", "fenêtre", "placard", "terrasse", "sur mesure"],
@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // LA RÉUNION (974)
         {
             id: 12,
-            name: "Cédric Flavien (38 ans)",
+            name: "Cédric Flavien",
             role: "Bricolage & Multi-services",
             category: "bricolage",
             keywords: ["bricolage", "bricoleur", "monter un meuble", "réparer", "étagère", "électricité", "plomberie"],
@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 13,
-            name: "Romain Payet (35 ans)",
+            name: "Romain Payet",
             role: "Entretien Jardin & Paysage",
             category: "jardin",
             keywords: ["jardin", "jardinier", "élagage", "gazon", "taille", "entretien", "plantes", "cour"],
@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // ST-MARTIN / ST-BARTH
         {
             id: 14,
-            name: "Guillaume Saint-Martin (44 ans)",
+            name: "Guillaume Saint-Martin",
             role: "Climatisation & Électricité Villa",
             category: "climatisation",
             keywords: ["climatisation", "clim", "électricité", "panne", "maintenance", "villa"],
@@ -1710,7 +1710,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const INITIAL_FLASH_POSTS = [
         {
             id: 'flash-1',
-            authorName: 'David Jean-Baptiste (34 ans)',
+            authorName: 'David Jean-Baptiste',
             authorRole: 'Artisan Clim & Froid',
             authorAvatar: 'david-34.png',
             badge: '⚡ Disponibilité',
@@ -1729,7 +1729,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 'flash-2',
-            authorName: 'Tati Huguette Cazeau (68 ans)',
+            authorName: 'Tati Huguette Cazeau',
             authorRole: 'Habitante vérifiée',
             authorAvatar: 'huguette-68.png',
             badge: '🔍 Besoin',
@@ -1747,7 +1747,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 'flash-3',
-            authorName: 'Élodie Rutil (27 ans)',
+            authorName: 'Élodie Rutil',
             authorRole: 'Voisine Recommandée',
             authorAvatar: 'sarah-29.png',
             badge: '⭐ Recommandation',
@@ -1767,7 +1767,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
             id: 'flash-4',
-            authorName: 'Kevin Bellerose (41 ans)',
+            authorName: 'Kevin Bellerose',
             authorRole: 'Lyanneur PRO',
             authorAvatar: 'kevin-41.png',
             badge: '📢 Info Quartier',
@@ -1842,7 +1842,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const vid = document.createElement('video');
             vid.src = attachedVideo;
             vid.className = 'flash-media-preview-thumb';
-            vid.muted = true;
+            vid.controls = true;
             flashMediaPreviewContainer.appendChild(vid);
         } else {
             if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
@@ -2104,7 +2104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.open-chat-trigger, .btn-open-chat').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            const name = btn.dataset.memberName || 'David Jean-Baptiste (34 ans)';
+            const name = btn.dataset.memberName || 'David Jean-Baptiste';
             const avatar = btn.dataset.memberAvatar || 'david-34.png';
             openChatWithUser(name, avatar);
         });
@@ -2453,7 +2453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function triggerLyannerDeal(memberName = 'David Jean-Baptiste (34 ans)', phone = '+590690001122') {
+    function triggerLyannerDeal(memberName = 'David Jean-Baptiste', phone = '+590690001122') {
         if (lyannedMemberName) lyannedMemberName.textContent = memberName;
 
         if (whatsappShortcutBtn) {
@@ -2491,7 +2491,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.trigger-lyanner-deal, #chatLyannerBtn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            const activeName = chatHeaderName ? chatHeaderName.textContent : 'David Jean-Baptiste (34 ans)';
+            const activeName = chatHeaderName ? chatHeaderName.textContent : 'David Jean-Baptiste';
             triggerLyannerDeal(activeName);
         });
     });
