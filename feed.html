@@ -55,6 +55,13 @@
                 <a href="about.html">Notre Histoire</a>
                 <a href="#login" class="btn btn-outline open-login-trigger">Connexion</a>
                 <a href="#" class="btn btn-primary btn-signup-nav open-signup-trigger">S'inscrire</a>
+                <button class="nav-profile-btn open-account-modal-trigger" title="Mon Compte LYANN (Réglages, Abonnement, Historique)">
+                    <div class="nav-profile-avatar-wrap">
+                        <img src="david-34.png" alt="Mon Profil" class="nav-profile-avatar">
+                        <span class="nav-profile-status-dot"></span>
+                    </div>
+                    <span>Mon Compte</span>
+                </button>
             </div>
             
             <button class="mobile-menu-btn" aria-label="Ouvrir le menu">
@@ -659,6 +666,155 @@
 
                     <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 10px;">Envoyer la demande de réservation 📅</button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL ESPACE MON COMPTE (#userAccountModal) ========== -->
+    <div class="modal-overlay" id="userAccountModal">
+        <div class="modal-card modal-card-user-account">
+            <button class="modal-close-btn" id="closeUserAccountModalBtn" aria-label="Fermer" style="color: #FFFFFF; top: 16px; right: 16px; z-index: 10;"><i class="ph ph-x"></i></button>
+
+            <div class="account-modal-header">
+                <div class="account-user-profile-summary">
+                    <img src="david-34.png" alt="Avatar Utilisateur" id="accountModalAvatar" class="account-avatar-lg">
+                    <div>
+                        <h3 class="account-user-name" id="accountModalName">Mon Compte LYANN</h3>
+                        <div class="account-user-meta">
+                            <span id="accountModalTerritory"><i class="ph ph-map-pin"></i> Guadeloupe (971)</span>
+                            <span class="pill-badge pill-green" id="accountModalBadge" style="font-size: 0.75rem;">Lyanneur Plus</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="account-tabs-nav">
+                <button class="account-tab-btn active" data-account-tab="tab-account-lyann"><i class="ph ph-handshake"></i> Mes LYANN (Historique)</button>
+                <button class="account-tab-btn" data-account-tab="tab-account-sub"><i class="ph ph-credit-card"></i> Mon Abonnement</button>
+                <button class="account-tab-btn" data-account-tab="tab-account-security"><i class="ph ph-shield-check"></i> Sécurité</button>
+                <button class="account-tab-btn" data-account-tab="tab-account-settings"><i class="ph ph-gear"></i> Réglages</button>
+            </div>
+
+            <div class="modal-body" style="padding: 0;">
+                <!-- ONGLET 1 : MES LYANN (HISTORIQUE) -->
+                <div class="account-tab-content active" id="tab-account-lyann">
+                    <h4 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 16px; color: var(--primary-dark);">📜 Historique de mes échanges & rendez-vous</h4>
+
+                    <div class="lyann-history-item">
+                        <div class="lyann-history-info">
+                            <div class="lyann-history-icon"><i class="ph ph-snowflake"></i></div>
+                            <div>
+                                <div class="lyann-history-title">Entretien Clim Inverter — Baie-Mahault</div>
+                                <div class="lyann-history-sub">Avec David Jean-Baptiste • Aujourd'hui à 15h00</div>
+                            </div>
+                        </div>
+                        <span class="pill-badge pill-green">Confirmé ✅</span>
+                    </div>
+
+                    <div class="lyann-history-item">
+                        <div class="lyann-history-info">
+                            <div class="lyann-history-icon"><i class="ph ph-tree-evergreen"></i></div>
+                            <div>
+                                <div class="lyann-history-title">Conseils Taille Fruitiers — Le Moule</div>
+                                <div class="lyann-history-sub">Avec Man Saint-Louis • Il y a 3 jours</div>
+                            </div>
+                        </div>
+                        <span class="pill-badge pill-gold">Terminé 🎉</span>
+                    </div>
+
+                    <div class="lyann-history-item">
+                        <div class="lyann-history-info">
+                            <div class="lyann-history-icon"><i class="ph ph-lightning"></i></div>
+                            <div>
+                                <div class="lyann-history-title">Remplacement Tableau Électrique — Schoelcher</div>
+                                <div class="lyann-history-sub">Demande postée sur Le Fil • Il y a 1 semaine</div>
+                            </div>
+                        </div>
+                        <span class="pill-badge" style="background: #EBF3EE; color: var(--primary-dark);">Répondu 💬</span>
+                    </div>
+                </div>
+
+                <!-- ONGLET 2 : MON ABONNEMENT -->
+                <div class="account-tab-content" id="tab-account-sub">
+                    <div class="subscription-status-card">
+                        <div>
+                            <span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 800; color: var(--primary-light); letter-spacing: 0.5px;">Offre Actuelle</span>
+                            <div class="subscription-plan-title">Lyanneur Plus (Habitant VIP)</div>
+                            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">Mise en relation prioritaire, annuaire illimité & soutien réseau local.</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="subscription-price-tag">9,90 € / mois</div>
+                            <span style="font-size: 0.78rem; color: #2E7D32; font-weight: 700;">● Renouvellement automatique</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px;">
+                        <a href="pricing.html" class="btn btn-primary" style="flex: 1; justify-content: center;">⚡ Changer ou Upgrader mon Offre</a>
+                        <button type="button" class="btn btn-outline" style="flex: 1; justify-content: center;" id="downloadInvoicesBtn">📄 Télécharger mes factures</button>
+                    </div>
+                </div>
+
+                <!-- ONGLET 3 : SÉCURITÉ -->
+                <div class="account-tab-content" id="tab-account-security">
+                    <h4 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 16px;">🔒 Sécurité du compte & Mot de passe</h4>
+                    <form id="accountSecurityForm">
+                        <div class="form-group">
+                            <label for="accCurrentPass">Mot de passe actuel</label>
+                            <input type="password" id="accCurrentPass" class="modal-input" placeholder="••••••••" required>
+                        </div>
+
+                        <div class="form-group-row" style="display: flex; gap: 12px;">
+                            <div class="form-group flex-1">
+                                <label for="accNewPass">Nouveau mot de passe</label>
+                                <input type="password" id="accNewPass" class="modal-input" placeholder="••••••••" required>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label for="accConfirmPass">Confirmer le mot de passe</label>
+                                <input type="password" id="accConfirmPass" class="modal-input" placeholder="••••••••" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Mettre à jour mon mot de passe 🔑</button>
+                    </form>
+                </div>
+
+                <!-- ONGLET 4 : RÉGLAGES -->
+                <div class="account-tab-content" id="tab-account-settings">
+                    <h4 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 16px;">⚙️ Informations personnelles & Préférences</h4>
+                    <form id="accountSettingsForm">
+                        <div class="form-group-row" style="display: flex; gap: 12px;">
+                            <div class="form-group flex-1">
+                                <label for="accFirstName">Prénom</label>
+                                <input type="text" id="accFirstName" class="modal-input" value="David" required>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label for="accLastName">Nom</label>
+                                <input type="text" id="accLastName" class="modal-input" value="Jean-Baptiste" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group-row" style="display: flex; gap: 12px;">
+                            <div class="form-group flex-1">
+                                <label for="accTerritory">Territoire DOM</label>
+                                <select id="accTerritory" class="modal-input">
+                                    <option value="971" selected>Guadeloupe (971)</option>
+                                    <option value="972">Martinique (972)</option>
+                                    <option value="973">Guyane (973)</option>
+                                    <option value="974">La Réunion (974)</option>
+                                </select>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label for="accCity">Commune</label>
+                                <input type="text" id="accCity" class="modal-input" value="Baie-Mahault" required>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary">Enregistrer les modifications 💾</button>
+                            <button type="button" class="btn btn-outline" id="accountLogoutBtn" style="color: #C95140; border-color: #C95140;">Déconnexion 🚪</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

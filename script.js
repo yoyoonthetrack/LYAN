@@ -2259,6 +2259,89 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ==========================================================================
+    // LOGIQUE ESPACE MON COMPTE (#userAccountModal)
+    // ==========================================================================
+    const userAccountModal = document.getElementById('userAccountModal');
+    const closeUserAccountModalBtn = document.getElementById('closeUserAccountModalBtn');
+    const openAccountModalTriggers = document.querySelectorAll('.open-account-modal-trigger');
+    const accountTabBtns = document.querySelectorAll('.account-tab-btn');
+    const accountTabContents = document.querySelectorAll('.account-tab-content');
+
+    openAccountModalTriggers.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (userAccountModal) {
+                userAccountModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        });
+    });
+
+    if (closeUserAccountModalBtn) {
+        closeUserAccountModalBtn.addEventListener('click', () => {
+            if (userAccountModal) {
+                userAccountModal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+    }
+
+    // Gestion des onglets Mon Compte
+    accountTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.getAttribute('data-account-tab');
+            accountTabBtns.forEach(b => b.classList.remove('active'));
+            accountTabContents.forEach(c => c.classList.remove('active'));
+
+            btn.classList.add('active');
+            const targetEl = document.getElementById(targetTab);
+            if (targetEl) targetEl.classList.add('active');
+        });
+    });
+
+    // Formulaire Sécurité
+    const accountSecurityForm = document.getElementById('accountSecurityForm');
+    if (accountSecurityForm) {
+        accountSecurityForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('🔑 Votre mot de passe a été mis à jour avec succès !');
+            accountSecurityForm.reset();
+        });
+    }
+
+    // Formulaire Réglages
+    const accountSettingsForm = document.getElementById('accountSettingsForm');
+    if (accountSettingsForm) {
+        accountSettingsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const fn = document.getElementById('accFirstName')?.value || 'David';
+            const ln = document.getElementById('accLastName')?.value || 'Jean-Baptiste';
+            const nameEl = document.getElementById('accountModalName');
+            if (nameEl) nameEl.textContent = `${fn} ${ln}`;
+            alert('💾 Vos modifications de profil et préférences ont bien été enregistrées !');
+        });
+    }
+
+    // Télécharger factures & Déconnexion
+    const downloadInvoicesBtn = document.getElementById('downloadInvoicesBtn');
+    if (downloadInvoicesBtn) {
+        downloadInvoicesBtn.addEventListener('click', () => {
+            alert('📄 Votre dernier relevé de facturation (PDF) a été généré et téléchargé.');
+        });
+    }
+
+    const accountLogoutBtn = document.getElementById('accountLogoutBtn');
+    if (accountLogoutBtn) {
+        accountLogoutBtn.addEventListener('click', () => {
+            if (confirm('Êtes-vous sûr de vouloir vous déconnecter de votre espace LYANN ?')) {
+                if (userAccountModal) userAccountModal.classList.remove('active');
+                document.body.style.overflow = '';
+                alert('🚪 Vous êtes désormais déconnecté. À très bientôt sur LYANN DOM !');
+            }
+        });
+    }
+
     renderFlashFeed();
 
     renderMyDashboardRealizations();
