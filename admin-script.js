@@ -107,6 +107,64 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Approbation / Rejet des Publications IA
+    document.querySelectorAll('.btn-approve-ai').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const postId = btn.getAttribute('data-post-id');
+            if (confirm('Approuver cette publication IA et la diffuser immédiatement sur Le Fil public ?')) {
+                if (window.LYANN_AI_ECOSYSTEM) {
+                    window.LYANN_AI_ECOSYSTEM.approvePendingPost(postId);
+                }
+                const row = document.getElementById(`ai-row-${postId.replace('pending-', '')}`);
+                if (row) row.remove();
+                alert('✅ Publication IA approuvée et diffusée sur Le Fil !');
+            }
+        });
+    });
+
+    document.querySelectorAll('.btn-reject-ai').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const postId = btn.getAttribute('data-post-id');
+            if (confirm('Rejeter et supprimer cette proposition de contenu IA ?')) {
+                if (window.LYANN_AI_ECOSYSTEM) {
+                    window.LYANN_AI_ECOSYSTEM.rejectPendingPost(postId);
+                }
+                const row = document.getElementById(`ai-row-${postId.replace('pending-', '')}`);
+                if (row) row.remove();
+                alert('🚫 Proposition IA rejetée.');
+            }
+        });
+    });
+
+    // Toggle statut Agent IA (Actif / Pause)
+    document.querySelectorAll('.btn-toggle-agent').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const agentId = btn.getAttribute('data-agent-id');
+            if (window.LYANN_AI_ECOSYSTEM) {
+                const newStatus = window.LYANN_AI_ECOSYSTEM.toggleAgentStatus(agentId);
+                if (newStatus === 'PAUSED') {
+                    btn.textContent = 'Reprendre ▶️';
+                    btn.classList.replace('admin-btn-secondary', 'admin-btn-primary');
+                    alert(`⏸️ Agent IA mis en pause avec succès.`);
+                } else {
+                    btn.textContent = 'Mettre en Pause ⏸️';
+                    btn.classList.replace('admin-btn-primary', 'admin-btn-secondary');
+                    alert(`▶️ Agent IA réactivé.`);
+                }
+            }
+        });
+    });
+
+    // Bouton de Pause Générale d'Urgence IA
+    const btnPauseAllAI = document.getElementById('btnPauseAllAI');
+    if (btnPauseAllAI) {
+        btnPauseAllAI.addEventListener('click', () => {
+            if (confirm('🚨 ATTENTION : Mettre en pause TOUS les Agents IA du réseau simultanément ?')) {
+                alert('⏸️ Tout le réseau d\'Agents IA a été mis en pause conservatoire.');
+            }
+        });
+    }
+
     // Feature Flags Toggles
     document.querySelectorAll('.feature-flag-input').forEach(input => {
         input.addEventListener('change', () => {

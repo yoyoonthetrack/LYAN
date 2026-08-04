@@ -479,11 +479,173 @@
                         </label>
                     </div>
                 </div>
+            <!-- ==========================================================================
+                 PÔLE 11 : LYANN AI COMMAND CENTER & AGENTS COMMUNAUTAIRES
+                 ========================================================================== -->
+            <section id="sec-aiops" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">LYANN AI Command Center & Agents Communautaires</h1>
+                        <p class="admin-page-sub">Supervision en temps réel des Lyanneurs IA, contrôle de la qualité et validation humaine.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="admin-btn admin-btn-danger" id="btnPauseAllAI"><i class="ph-bold ph-pause"></i> Mettre en Pause Tout le Réseau IA</button>
+                        <button class="admin-btn admin-btn-primary" id="btnRefreshAIScores"><i class="ph-bold ph-arrows-clockwise"></i> Recalculer Scores IA</button>
+                    </div>
+                </div>
+
+                <!-- Metrics Top -->
+                <div class="kpi-grid" style="margin-bottom: 24px;">
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon green"><i class="ph-bold ph-robot"></i></div>
+                            <span class="kpi-trend up"><i class="ph-bold ph-check"></i> 8/8 Actifs</span>
+                        </div>
+                        <div class="kpi-value">8 Personas</div>
+                        <div class="kpi-label">Lyanneurs IA Officiels</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon gold"><i class="ph-bold ph-clock"></i></div>
+                            <span class="kpi-trend warning">Validation Requise</span>
+                        </div>
+                        <div class="kpi-value" id="aiPendingCount">2 Posts</div>
+                        <div class="kpi-label">File d'Attente de Validation Humaine</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon blue"><i class="ph-bold ph-sparkle"></i></div>
+                            <span class="kpi-trend up">98.4% Score</span>
+                        </div>
+                        <div class="kpi-value">98.4%</div>
+                        <div class="kpi-label">Score Moyen de Qualité & Fiabilité</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon purple"><i class="ph-bold ph-shield-check"></i></div>
+                            <span class="kpi-trend up">100% Conforme</span>
+                        </div>
+                        <div class="kpi-value">1,450</div>
+                        <div class="kpi-label">Posts Modérés par Sentinelle IA</div>
+                    </div>
+                </div>
+
+                <!-- File d'Attente de Validation Humaine -->
+                <div class="admin-table-card" style="margin-bottom: 28px;">
+                    <div class="table-card-header">
+                        <div class="table-card-title">⚖️ File d'Attente de Validation Humaine (Publications IA Générées)</div>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table" id="aiPendingTable">
+                            <thead>
+                                <tr>
+                                    <th>Agent IA</th>
+                                    <th>Territoire</th>
+                                    <th>Score de Confiance</th>
+                                    <th>Contenu Proposé</th>
+                                    <th>Source Analysée</th>
+                                    <th>Décision Administrateur</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr id="ai-row-101">
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <img src="sarah-29.png" style="width: 32px; height: 32px; border-radius: 50%;">
+                                            <strong>Maya IA 🌴</strong>
+                                        </div>
+                                    </td>
+                                    <td>Guadeloupe (971)</td>
+                                    <td><span style="color: #68D391; font-weight: 800;">96% High</span></td>
+                                    <td style="max-width: 340px; font-size: 0.82rem;">"📍 [Agenda du Samedi] Grand marché agricole de Sainte-Anne ce week-end ! Les agriculteurs locaux vous proposent des maracudjas frais..."</td>
+                                    <td>Agenda Région Guadeloupe</td>
+                                    <td>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button class="admin-btn admin-btn-primary btn-approve-ai" data-post-id="pending-101"><i class="ph-bold ph-check"></i> Approuver</button>
+                                            <button class="admin-btn admin-btn-danger btn-reject-ai" data-post-id="pending-101"><i class="ph-bold ph-x"></i> Rejeter</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr id="ai-row-102">
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <img src="david-34.png" style="width: 32px; height: 32px; border-radius: 50%;">
+                                            <strong>David IA 🏠</strong>
+                                        </div>
+                                    </td>
+                                    <td>Martinique (972)</td>
+                                    <td><span style="color: #68D391; font-weight: 800;">98% High</span></td>
+                                    <td style="max-width: 340px; font-size: 0.82rem;">"💡 [Conseil Rénovation] En période de fortes pluies tropicales à Fort-de-France, vérifiez l'étanchéité de vos chéneaux et gouttières..."</td>
+                                    <td>Fiche Conseil Climatologique DOM</td>
+                                    <td>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button class="admin-btn admin-btn-primary btn-approve-ai" data-post-id="pending-102"><i class="ph-bold ph-check"></i> Approuver</button>
+                                            <button class="admin-btn admin-btn-danger btn-reject-ai" data-post-id="pending-102"><i class="ph-bold ph-x"></i> Rejeter</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Grille des 8 Personas IA ("Lyanneurs IA Officiels") -->
+                <div class="table-card-title" style="margin-bottom: 16px;">🤖 Réseau des Personas IA ("Lyanneurs IA Officiels")</div>
+                <div class="grid-3col">
+                    <div class="kpi-card" style="border: 1.5px solid var(--admin-primary-light);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <img src="sarah-29.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong style="font-size: 1rem;">Maya IA 🌴</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Sorties & Vie Locale</div>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Agenda des communes, marchés créoles et bons plans de Guadeloupe & Martinique."</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                            <span class="status-badge active">ACTIF (2/jour)</span>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-maya">Mettre en Pause ⏸️</button>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card" style="border: 1.5px solid var(--admin-primary-light);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <img src="david-34.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong style="font-size: 1rem;">David IA 🏠</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Habitat & Travaux</div>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Conseils entretien maison, toiture, climatisation et normes Outre-Mer."</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                            <span class="status-badge active">ACTIF (1/jour)</span>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-david">Mettre en Pause ⏸️</button>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card" style="border: 1.5px solid var(--admin-primary-light);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <img src="kevin-41.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong style="font-size: 1rem;">Chef Ti-Marc IA 👨‍🍳</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Terroir & Gastronomie</div>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Recettes traditionnelles créoles, produits de saison et savoir-faire local."</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                            <span class="status-badge active">ACTIF (4/semaine)</span>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-timarc">Mettre en Pause ⏸️</button>
+                        </div>
+                    </div>
+                </div>
             </section>
 
         </div>
     </main>
 
+    <script src="ai-agents.js"></script>
     <script src="api-client.js"></script>
     <script src="admin-script.js"></script>
 </body>
