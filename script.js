@@ -1755,7 +1755,7 @@ document.addEventListener('DOMContentLoaded', () => {
             location: 'Le Moule • Guadeloupe (971)',
             territoryKey: 'guadeloupe',
             timeAgo: 'Il y a 2 h',
-            content: 'Un immense merci à Man Saint-Louis pour les conseils de taille de mes fruitiers au Moule. Travail propre, conseils précieux et partage !',
+            content: 'Un immense merci à @Man_Saint-Louis pour les conseils de taille de mes fruitiers au Moule. Travail propre, conseils précieux et partage !',
             images: [
                 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80',
                 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=600&q=80',
@@ -1906,7 +1906,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div class="flash-card-body">
-                        ${post.content}
+                        ${parseMentionsInText(post.content)}
                         ${mediaHTML}
                     </div>
 
@@ -2361,6 +2361,140 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialisation au chargement de la page
     updateHeaderAuthState();
+
+    // ==========================================================================
+    // SYSTÈME DE TAG UTILISATEUR (@mention) & AUTOCOMPLÉTION
+    // ==========================================================================
+    function setupMentionAutocomplete(inputEl) {
+        if (!inputEl) return;
+
+        let dropdown = document.createElement('div');
+        dropdown.className = 'mention-autocomplete-dropdown';
+        document.body.appendChild(dropdown);
+
+        inputEl.addEventListener('input', () => {
+            const val = inputEl.value;
+            const cursorPos = inputEl.selectionStart;
+            const textBeforeCursor = val.slice(0, cursorPos);
+            const lastAtPos = textBeforeCursor.lastIndexOf('@');
+
+            if (lastAtPos !== -1 && lastAtPos < cursorPos) {
+                const query = textBeforeCursor.slice(lastAtPos + 1).toLowerCase();
+                const matchedMembers = LYANN_MEMBERS.filter(m => 
+                    m.name.toLowerCase().includes(query) || m.role.toLowerCase().includes(query)
+                );
+
+                if (matchedMembers.length > 0) {
+                    const rect = inputEl.getBoundingClientRect();
+                    dropdown.style.top = `${window.scrollY + rect.bottom + 4}px`;
+                    dropdown.style.left = `${window.scrollX + rect.left}px`;
+                    dropdown.style.display = 'block';
+
+                    dropdown.innerHTML = matchedMembers.map(m => `
+                        <div class="mention-autocomplete-item" data-member-name="${m.name}">
+                            <img src="${m.avatar}" alt="${m.name}" class="mention-item-avatar">
+                            <div>
+                                <div class="mention-item-name">@${m.name.replace(/\s+/g, '_')}</div>
+                                <div class="mention-item-role">${m.role} • ${m.city}</div>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    dropdown.querySelectorAll('.mention-autocomplete-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            const name = item.dataset.memberName;
+                            const tagText = `@${name.replace(/\s+/g, '_')} `;
+                            inputEl.value = val.slice(0, lastAtPos) + tagText + val.slice(cursorPos);
+                            dropdown.style.display = 'none';
+                            inputEl.focus();
+                        });
+                    });
+                    return;
+                }
+            }
+            dropdown.style.display = 'none';
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target) && e.target !== inputEl) {
+                dropdown.style.display = 'none';
+            }
+        });
+    }
+
+    // Attach mention autocomplete to main text inputs
+    document.querySelectorAll('#flashContentInput, #chatInputField, #searchInput, #modalSearchInput, .modal-input').forEach(el => {
+        setupMentionAutocomplete(el);
+    });
+
+    // Helper to parse @mentions into clickable tags in rendered content
+    function parseMentionsInText(text) {
+        if (!text) return '';
+        return text.replace(/@([A-Za-z0-9_À-ÿ-]+)/g, (match, username) => {
+            const cleanName = username.replace(/_/g, ' ');
+            const matched = LYANN_MEMBERS.find(m => m.name.toLowerCase().includes(cleanName.toLowerCase()));
+            const memberId = matched ? matched.id : 1;
+            return `<a href="#" class="user-mention-tag trigger-quick-profile" data-member-id="${memberId}">${match}</a>`;
+        });
+    }
+
+    // ==========================================================================
+    // LOGIQUE BOUTON "🤝 LYANNER" & RACCOURCIS WHATSAPP / PHONE
+    // ==========================================================================
+    const lyannedConfirmationModal = document.getElementById('lyannedConfirmationModal');
+    const closeLyannedModalBtn = document.getElementById('closeLyannedModalBtn');
+    const lyannedMemberName = document.getElementById('lyannedMemberName');
+    const whatsappShortcutBtn = document.getElementById('whatsappShortcutBtn');
+    const phoneShortcutBtn = document.getElementById('phoneShortcutBtn');
+
+    if (closeLyannedModalBtn) {
+        closeLyannedModalBtn.addEventListener('click', () => {
+            if (lyannedConfirmationModal) lyannedConfirmationModal.classList.remove('active');
+        });
+    }
+
+    function triggerLyannerDeal(memberName = 'David Jean-Baptiste (34 ans)', phone = '+590690001122') {
+        if (lyannedMemberName) lyannedMemberName.textContent = memberName;
+
+        if (whatsappShortcutBtn) {
+            const encodedMsg = encodeURIComponent(`Bonjour ${memberName} ! Nous sommes Lyannés sur LYANN DOM pour nos travaux / échanges.`);
+            whatsappShortcutBtn.href = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodedMsg}`;
+        }
+
+        if (phoneShortcutBtn) {
+            phoneShortcutBtn.href = `tel:${phone}`;
+        }
+
+        // Ajout à l'historique Mes LYANN
+        const tabLyannHistory = document.getElementById('tab-account-lyann');
+        if (tabLyannHistory) {
+            const newItem = document.createElement('div');
+            newItem.className = 'lyann-history-item';
+            newItem.innerHTML = `
+                <div class="lyann-history-info">
+                    <div class="lyann-history-icon"><i class="ph ph-handshake"></i></div>
+                    <div>
+                        <div class="lyann-history-title">Accord LYANN conclu — ${memberName}</div>
+                        <div class="lyann-history-sub">Mise en relation directe • À l'instant</div>
+                    </div>
+                </div>
+                <span class="pill-badge pill-green">Lyannés 🤝</span>
+            `;
+            tabLyannHistory.appendChild(newItem);
+        }
+
+        if (chatModal) chatModal.classList.remove('active');
+        if (quickProfileModal) quickProfileModal.classList.remove('active');
+        if (lyannedConfirmationModal) lyannedConfirmationModal.classList.add('active');
+    }
+
+    document.querySelectorAll('.trigger-lyanner-deal, #chatLyannerBtn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const activeName = chatHeaderName ? chatHeaderName.textContent : 'David Jean-Baptiste (34 ans)';
+            triggerLyannerDeal(activeName);
+        });
+    });
 
     renderFlashFeed();
 

@@ -5548,10 +5548,160 @@ body.user-is-logged-in .logged-out-only {
     margin-bottom: 4px;
 }
 
-.subscription-price-tag {
-    font-size: 1.1rem;
+/* ==========================================================================
+   SYSTÈME DE MENTIONS (@mention) & BOUTON "🤝 LYANNER" (APPEL & WHATSAPP)
+   ========================================================================== */
+
+/* Pilule de Tag @Mention */
+.user-mention-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    background: rgba(74, 124, 89, 0.12);
+    border: 1px solid rgba(74, 124, 89, 0.3);
+    border-radius: var(--radius-full);
+    color: var(--primary-dark);
     font-weight: 800;
-    color: #C9A84C;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+}
+
+.user-mention-tag:hover {
+    background: var(--primary);
+    color: #FFFFFF;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+/* Dropdown Auto-complétion @Mention */
+.mention-autocomplete-dropdown {
+    position: absolute;
+    z-index: 9999;
+    background: #FFFFFF;
+    border: 1.5px solid var(--primary-light);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    max-height: 220px;
+    overflow-y: auto;
+    width: 280px;
+    display: none;
+}
+
+.mention-autocomplete-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: var(--transition);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.mention-autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.mention-autocomplete-item:hover,
+.mention-autocomplete-item.active {
+    background: #EBF3EE;
+}
+
+.mention-item-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.mention-item-name {
+    font-weight: 800;
+    font-size: 0.88rem;
+    color: var(--text);
+    margin-bottom: 2px;
+}
+
+.mention-item-role {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+}
+
+/* Bouton "🤝 LYANNER" & Confirmation Modal */
+.btn-lyanner {
+    background: linear-gradient(135deg, #2E7D32 0%, #4A7C59 100%) !important;
+    color: #FFFFFF !important;
+    font-weight: 800 !important;
+    border: none !important;
+    box-shadow: 0 4px 14px rgba(46, 125, 50, 0.35) !important;
+    transition: var(--transition) !important;
+}
+
+.btn-lyanner:hover {
+    transform: translateY(-2px) scale(1.02) !important;
+    box-shadow: 0 6px 20px rgba(46, 125, 50, 0.45) !important;
+}
+
+/* Raccourcis WhatsApp & Appel Direct */
+.lyanned-shortcuts-box {
+    background: linear-gradient(135deg, #F8F9FA 0%, #EBF3EE 100%);
+    border: 2px solid var(--primary-light);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    text-align: center;
+    margin-top: 16px;
+}
+
+.shortcut-action-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.btn-shortcut-call {
+    background: #25D366;
+    color: #FFFFFF;
+    font-weight: 800;
+    padding: 12px 18px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+    transition: var(--transition);
+}
+
+.btn-shortcut-call:hover {
+    background: #1EBE57;
+    color: #FFFFFF;
+    transform: translateY(-2px);
+}
+
+.btn-shortcut-phone {
+    background: var(--primary-dark);
+    color: #FFFFFF;
+    font-weight: 800;
+    padding: 12px 18px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 12px rgba(44, 76, 56, 0.3);
+    transition: var(--transition);
+}
+
+.btn-shortcut-phone:hover {
+    background: var(--primary);
+    color: #FFFFFF;
+    transform: translateY(-2px);
 }
 
 
