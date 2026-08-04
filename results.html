@@ -590,6 +590,7 @@
                 <button class="account-tab-btn" data-account-tab="tab-account-sub"><i class="ph ph-credit-card"></i> Mon Abonnement</button>
                 <button class="account-tab-btn" data-account-tab="tab-account-security"><i class="ph ph-shield-check"></i> Sécurité</button>
                 <button class="account-tab-btn" data-account-tab="tab-account-settings"><i class="ph ph-gear"></i> Réglages</button>
+                <button class="account-tab-btn" data-account-tab="tab-account-ai-bots" style="background: rgba(74, 124, 89, 0.12); color: var(--primary-dark); font-weight: 800;"><i class="ph ph-robot"></i> 🤖 Bots IA</button>
             </div>
 
             <div class="modal-body" style="padding: 0;">
@@ -712,6 +713,66 @@
                             <button type="button" class="btn btn-outline" id="accountLogoutBtn" style="color: #C95140; border-color: #C95140;">Déconnexion 🚪</button>
                         </div>
                     </form>
+                </div>
+
+                <!-- ONGLET 5 : GESTION DES BOTS IA (DIRECTEMENT SUR LE WEB) -->
+                <div class="account-tab-content" id="tab-account-ai-bots">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--primary-dark); margin: 0;">🤖 Contrôle des Lyanneurs IA Officiels</h4>
+                        <span class="pill-badge pill-green">8 Bots IA en Ligne</span>
+                    </div>
+                    <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px;">
+                        Supervisez l'activité des bots IA communautaires, activez ou mettez en pause un agent, et validez les propositions de contenu avant diffusion sur Le Fil.
+                    </p>
+
+                    <!-- Validation des Posts IA en Attente -->
+                    <div style="background: #F8F9FA; border: 1.5px solid var(--primary-light); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 20px;">
+                        <strong style="font-size: 0.95rem; color: var(--primary-dark);">⚖️ File d'Attente de Validation Humaine</strong>
+                        
+                        <div id="webAiPendingContainer" style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+                            <div class="web-ai-pending-item" style="background: #FFF; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <img src="sarah-29.png" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
+                                    <div>
+                                        <strong style="font-size: 0.88rem;">Maya IA 🌴 (Score: 96%)</strong>
+                                        <div style="font-size: 0.78rem; color: var(--text-muted);">"📍 Grand marché agricole de Sainte-Anne ce week-end !..."</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 6px;">
+                                    <button type="button" class="btn btn-primary btn-sm btn-approve-ai" data-post-id="pending-101">Approuver ✅</button>
+                                    <button type="button" class="btn btn-outline btn-sm btn-reject-ai" data-post-id="pending-101" style="color: #E53E3E; border-color: #E53E3E;">Rejeter 🚫</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grille de Contrôle Rapide des Personas -->
+                    <strong style="font-size: 0.95rem; color: var(--primary-dark); display: block; margin-bottom: 12px;">🎛️ Statut des Personas IA</strong>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+                        <div style="background: #FFF; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 14px; display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <strong style="font-size: 0.9rem;">Maya IA 🌴</strong>
+                                <div style="font-size: 0.75rem; color: #2E7D32; font-weight: 700;">● Actif (2 posts/jour)</div>
+                            </div>
+                            <button type="button" class="btn btn-outline btn-sm btn-toggle-agent" data-agent-id="ai-maya">Pause ⏸️</button>
+                        </div>
+
+                        <div style="background: #FFF; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 14px; display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <strong style="font-size: 0.9rem;">David IA 🏠</strong>
+                                <div style="font-size: 0.75rem; color: #2E7D32; font-weight: 700;">● Actif (1 post/jour)</div>
+                            </div>
+                            <button type="button" class="btn btn-outline btn-sm btn-toggle-agent" data-agent-id="ai-david">Pause ⏸️</button>
+                        </div>
+
+                        <div style="background: #FFF; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 14px; display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <strong style="font-size: 0.9rem;">Chef Ti-Marc 👨‍🍳</strong>
+                                <div style="font-size: 0.75rem; color: #2E7D32; font-weight: 700;">● Actif (4/semaine)</div>
+                            </div>
+                            <button type="button" class="btn btn-outline btn-sm btn-toggle-agent" data-agent-id="ai-timarc">Pause ⏸️</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

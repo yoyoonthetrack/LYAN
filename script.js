@@ -2496,6 +2496,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Écouteurs de Gestion des Bots IA sur le Web
+    document.querySelectorAll('.btn-approve-ai').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const postId = btn.getAttribute('data-post-id');
+            if (confirm('Approuver cette publication IA et la diffuser immédiatement sur Le Fil public ?')) {
+                if (window.LYANN_AI_ECOSYSTEM) {
+                    window.LYANN_AI_ECOSYSTEM.approvePendingPost(postId);
+                }
+                const item = btn.closest('.web-ai-pending-item');
+                if (item) item.remove();
+                alert('✅ Publication IA approuvée et diffusée en direct sur Le Fil !');
+            }
+        });
+    });
+
+    document.querySelectorAll('.btn-reject-ai').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const postId = btn.getAttribute('data-post-id');
+            if (confirm('Rejeter et supprimer cette proposition de contenu IA ?')) {
+                if (window.LYANN_AI_ECOSYSTEM) {
+                    window.LYANN_AI_ECOSYSTEM.rejectPendingPost(postId);
+                }
+                const item = btn.closest('.web-ai-pending-item');
+                if (item) item.remove();
+                alert('🚫 Proposition IA rejetée.');
+            }
+        });
+    });
+
+    document.querySelectorAll('.btn-toggle-agent').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const agentId = btn.getAttribute('data-agent-id');
+            if (window.LYANN_AI_ECOSYSTEM) {
+                const newStatus = window.LYANN_AI_ECOSYSTEM.toggleAgentStatus(agentId);
+                if (newStatus === 'PAUSED') {
+                    btn.textContent = 'Reprendre ▶️';
+                    alert(`⏸️ Agent IA mis en pause avec succès.`);
+                } else {
+                    btn.textContent = 'Pause ⏸️';
+                    alert(`▶️ Agent IA réactivé.`);
+                }
+            }
+        });
+    });
+
     renderFlashFeed();
 
     renderMyDashboardRealizations();
