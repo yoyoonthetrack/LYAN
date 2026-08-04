@@ -78,6 +78,32 @@ body {
     overflow-x: hidden;
 }
 
+/* Overlay de bruit SVG pour éliminer les dégradés plats */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.6;
+}
+
+/* Anneaux de focus d'accessibilité & interactions fluides */
+:focus-visible {
+    outline: 2.5px solid var(--primary);
+    outline-offset: 3px;
+}
+
+/* Boutons tactiles mobile-first */
+.btn, .nav-link, .category-card, .lyan-card, .flash-card {
+    min-height: 44px;
+    touch-action: manipulation;
+}
+
 a {
     text-decoration: none;
     color: inherit;

@@ -2541,6 +2541,98 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // System Toast Notification
+    function showLyanToast(message, icon = '✨') {
+        let toastContainer = document.getElementById('lyanToastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'lyanToastContainer';
+            toastContainer.style.cssText = `
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                pointer-events: none;
+            `;
+            document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            background: #1E2822;
+            color: #FAF7F2;
+            padding: 14px 20px;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+            border: 1px solid rgba(255,255,255,0.15);
+            pointer-events: auto;
+        `;
+        toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+        toastContainer.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        });
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            setTimeout(() => toast.remove(), 400);
+        }, 3200);
+    }
+    window.showLyanToast = showLyanToast;
+
+    // Bouton Retour en Haut Fluide
+    const backToTopBtn = document.createElement('button');
+    backToTopBtn.id = 'backToTopBtn';
+    backToTopBtn.innerHTML = '↑';
+    backToTopBtn.setAttribute('aria-label', 'Retour en haut de page');
+    backToTopBtn.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        left: 24px;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--primary-dark);
+        color: #FFF;
+        border: none;
+        font-size: 1.3rem;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: var(--shadow-lg);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+        transition: var(--transition);
+    `;
+    document.body.appendChild(backToTopBtn);
+
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 400) {
+            backToTopBtn.style.display = 'flex';
+        } else {
+            backToTopBtn.style.display = 'none';
+        }
+    });
+
+    backToTopBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
     renderFlashFeed();
 
     renderMyDashboardRealizations();
