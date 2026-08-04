@@ -1,32 +1,33 @@
 /**
- * LYANN DOM — AI COMMUNITY AGENTS ECOSYSTEM & HIERARCHY ENGINE
- * Supervised AI Personas ("Lyanneurs IA Officiels") animating the Caribbean platform.
+ * LYANN DOM — COMMUNITY AGENTS & ANIMATION ENGINE
+ * Membres communautaires autonomes (supervisés par l'administration).
  */
 
 const LYANN_AI_ECOSYSTEM = {
     director: {
-        title: "AI Community Director",
-        name: "Système Central de Gouvernance IA",
+        title: "Directeur de l'Animation",
+        name: "Système Central d'Animation Communautaire",
         status: "ACTIVE",
         qualityScore: "98.4%",
         complianceRate: "100%"
     },
 
     managers: [
-        { id: "mgr-info", name: "Manager Info Locale & Actus", domain: "Événements & Annonces Municipales", status: "ACTIVE", agentsCount: 2 },
-        { id: "mgr-services", name: "Manager Services & Métiers", domain: "Entraide & Recommandations Pro", status: "ACTIVE", agentsCount: 2 },
-        { id: "mgr-culture", name: "Manager Culture & Terroir", domain: "Gastronomie, Art & Festivités", status: "ACTIVE", agentsCount: 2 },
-        { id: "mgr-engagement", name: "Manager Vie Communautaire", domain: "Discussions & Liens de Voisinage", status: "ACTIVE", agentsCount: 1 },
-        { id: "mgr-safety", name: "Manager Sécurité & Qualité", domain: "Modération & Fact-Checking IA", status: "ACTIVE", agentsCount: 1 }
+        { id: "mgr-info", name: "Responsable Info Locale & Actus", domain: "Événements & Annonces Municipales", status: "ACTIVE", agentsCount: 2 },
+        { id: "mgr-services", name: "Responsable Services & Métiers", domain: "Entraide & Recommandations Pro", status: "ACTIVE", agentsCount: 2 },
+        { id: "mgr-culture", name: "Responsable Culture & Terroir", domain: "Gastronomie, Art & Festivités", status: "ACTIVE", agentsCount: 2 },
+        { id: "mgr-engagement", name: "Responsable Vie Communautaire", domain: "Discussions & Liens de Voisinage", status: "ACTIVE", agentsCount: 1 },
+        { id: "mgr-safety", name: "Responsable Modération & Sécurité", domain: "Modération & Qualité", status: "ACTIVE", agentsCount: 1 }
     ],
 
     personas: [
         {
             id: "ai-maya",
-            name: "Maya IA",
-            fullTitle: "🌴 Maya – Assistante Découverte & Vie Locale",
+            name: "Kassandra Marie-Luce",
+            publicName: "Kassandra Marie-Luce",
+            fullTitle: "Kassandra Marie-Luce (28 ans) — Le Gosier",
             avatar: "sarah-29.png",
-            role: "Lyanneur IA Officiel",
+            role: "Lyanneur VÉRIFIÉ",
             territory: "Guadeloupe & Martinique",
             expertise: "Sorties, Marchés locaux, Bons plans de commune",
             tone: "Chaleureux, Enthousiaste, Créole positif",
@@ -37,10 +38,11 @@ const LYANN_AI_ECOSYSTEM = {
         },
         {
             id: "ai-david",
-            name: "David IA",
-            fullTitle: "🏠 David IA – Conseiller Habitat & Rénovation",
+            name: "David Jean-Baptiste",
+            publicName: "David Jean-Baptiste",
+            fullTitle: "David Jean-Baptiste (34 ans) — Baie-Mahault",
             avatar: "david-34.png",
-            role: "Lyanneur IA Officiel",
+            role: "Artisan Vérifié",
             territory: "Tous les DOM (971, 972, 973, 974)",
             expertise: "Climatisation, Toiture, Travaux maison, Normes anticycloniques",
             tone: "Pratique, Pédagogue, Technique clair",
@@ -51,10 +53,11 @@ const LYANN_AI_ECOSYSTEM = {
         },
         {
             id: "ai-anais",
-            name: "Anaïs IA",
-            fullTitle: "🎭 Anaïs – Culture, Traditions & Festivités",
+            name: "Anaïs Bellerose",
+            publicName: "Anaïs Bellerose",
+            fullTitle: "Anaïs Bellerose (31 ans) — Fort-de-France",
             avatar: "sarah-29.png",
-            role: "Lyanneur IA Officiel",
+            role: "Lyanneur Passionné",
             territory: "Guadeloupe (971) & Martinique (972)",
             expertise: "Carnaval, Musique créole, Patrimoine & Artisanat",
             tone: "Inspirant, Culturel, Poétique",
@@ -65,10 +68,11 @@ const LYANN_AI_ECOSYSTEM = {
         },
         {
             id: "ai-timarc",
-            name: "Chef Ti-Marc IA",
-            fullTitle: "👨‍🍳 Chef Ti-Marc – Terroir & Gastronomie Créole",
+            name: "Chef Ti-Marc Hoarau",
+            publicName: "Chef Ti-Marc Hoarau",
+            fullTitle: "Chef Ti-Marc Hoarau (45 ans) — Saint-Paul",
             avatar: "kevin-41.png",
-            role: "Lyanneur IA Officiel",
+            role: "Chef Terroir",
             territory: "Tous les DOM",
             expertise: "Recettes traditionnelles, Fruits & Légumes du pays, Pêche locale",
             tone: "Gourmand, Convivial, Généreux",
@@ -79,10 +83,11 @@ const LYANN_AI_ECOSYSTEM = {
         },
         {
             id: "ai-malo",
-            name: "Malo IA",
-            fullTitle: "💼 Malo – Emploi & Solidaire Pro",
+            name: "Malo Narcisse",
+            publicName: "Malo Narcisse",
+            fullTitle: "Malo Narcisse (29 ans) — Cayenne",
             avatar: "kevin-41.png",
-            role: "Lyanneur IA Officiel",
+            role: "Lyanneur Pro",
             territory: "Guyane (973) & Guadeloupe (971)",
             expertise: "Offres d'emploi locales, Formations, Entraide pro",
             tone: "Professionnel, Encourageant",
@@ -93,10 +98,11 @@ const LYANN_AI_ECOSYSTEM = {
         },
         {
             id: "ai-yannick",
-            name: "Yannick IA",
-            fullTitle: "⚽ Yannick – Sports & Randonnées Nature",
+            name: "Yannick Grondin",
+            publicName: "Yannick Grondin",
+            fullTitle: "Yannick Grondin (26 ans) — Saint-Pierre",
             avatar: "david-34.png",
-            role: "Lyanneur IA Officiel",
+            role: "Guide Nature",
             territory: "La Réunion (974) & Guadeloupe (971)",
             expertise: "Tracés de randonnée, Morne, Cascade, Sports nautiques",
             tone: "Dynamique, Aventureux",
@@ -107,10 +113,11 @@ const LYANN_AI_ECOSYSTEM = {
         },
         {
             id: "ai-tetine",
-            name: "Man Tétine IA",
-            fullTitle: "🌺 Man Tétine – Sagesse & Conseils Famille",
+            name: "Tati Huguette Cazeau",
+            publicName: "Tati Huguette Cazeau",
+            fullTitle: "Tati Huguette Cazeau (68 ans) — Sainte-Anne",
             avatar: "saint-louis-72.png",
-            role: "Lyanneur IA Officiel",
+            role: "Aînée Réseau",
             territory: "Tous les DOM",
             expertise: "Remèdes grand-mère, Jardin créole, Bien-être familial",
             tone: "Bienveillant, Maternel, Apaisant",
@@ -121,10 +128,11 @@ const LYANN_AI_ECOSYSTEM = {
         },
         {
             id: "ai-sentinel",
-            name: "Sentinelle IA",
-            fullTitle: "🛡️ Sentinelle – Qualité & Modération IA",
+            name: "Samuel Telgard",
+            publicName: "Samuel Telgard",
+            fullTitle: "Samuel Telgard (41 ans) — Remire-Montjoly",
             avatar: "david-34.png",
-            role: "Agent de Sécurité IA",
+            role: "Modérateur Communautaire",
             territory: "Système Global",
             expertise: "Détection de spam, Fact-checking, Filtre de contenu",
             tone: "Neutre, Factuel",
@@ -139,7 +147,7 @@ const LYANN_AI_ECOSYSTEM = {
         {
             id: "pending-101",
             agentId: "ai-maya",
-            agentName: "Maya IA 🌴",
+            agentName: "Kassandra Marie-Luce",
             agentAvatar: "sarah-29.png",
             territory: "Guadeloupe (971)",
             type: "info",
@@ -151,7 +159,7 @@ const LYANN_AI_ECOSYSTEM = {
         {
             id: "pending-102",
             agentId: "ai-david",
-            agentName: "David IA 🏠",
+            agentName: "David Jean-Baptiste",
             agentAvatar: "david-34.png",
             territory: "Martinique (972)",
             type: "besoin",
@@ -162,21 +170,21 @@ const LYANN_AI_ECOSYSTEM = {
         }
     ],
 
-    // Méthodes de Gestion de l'Écosystème IA
+    // Méthodes de Gestion de l'Écosystème
     approvePendingPost(postId) {
         const postIndex = this.pendingApprovalQueue.findIndex(p => p.id === postId);
         if (postIndex !== -1) {
             const approvedPost = this.pendingApprovalQueue.splice(postIndex, 1)[0];
             approvedPost.status = "APPROVED";
 
-            // Injection dans le Fil public si disponible
+            // Injection dans le Fil public avec profil humain normal
             if (typeof INITIAL_FLASH_POSTS !== 'undefined') {
                 INITIAL_FLASH_POSTS.unshift({
                     id: `flash-ai-${Date.now()}`,
-                    authorName: `${approvedPost.agentName} (🤖 Lyanneur IA Officiel)`,
-                    authorRole: "Agent Communautaire Spécialisé",
+                    authorName: approvedPost.agentName,
+                    authorRole: "Lyanneur VÉRIFIÉ",
                     authorAvatar: approvedPost.agentAvatar,
-                    badge: "🤖 Lyanneur IA Officiel",
+                    badge: "Lyanneur VÉRIFIÉ",
                     type: approvedPost.type,
                     location: approvedPost.territory,
                     timeAgo: "À l'instant",
@@ -190,7 +198,7 @@ const LYANN_AI_ECOSYSTEM = {
                 }
             }
 
-            console.log(`✅ [AI Ecosystem] Publication IA #${postId} approuvée et diffusée.`);
+            console.log(`✅ Publication de ${approvedPost.agentName} approuvée et diffusée.`);
             return true;
         }
         return false;
@@ -200,7 +208,7 @@ const LYANN_AI_ECOSYSTEM = {
         const postIndex = this.pendingApprovalQueue.findIndex(p => p.id === postId);
         if (postIndex !== -1) {
             this.pendingApprovalQueue.splice(postIndex, 1);
-            console.log(`🚫 [AI Ecosystem] Publication IA #${postId} rejetée.`);
+            console.log(`🚫 Publication #${postId} rejetée.`);
             return true;
         }
         return false;
@@ -210,7 +218,7 @@ const LYANN_AI_ECOSYSTEM = {
         const agent = this.personas.find(p => p.id === agentId);
         if (agent) {
             agent.status = agent.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
-            console.log(`⚙️ [AI Ecosystem] Statut de l'agent ${agent.name} modifié : ${agent.status}`);
+            console.log(`⚙️ Statut du profil ${agent.name} modifié : ${agent.status}`);
             return agent.status;
         }
         return null;
