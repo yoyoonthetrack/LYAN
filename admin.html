@@ -62,9 +62,9 @@
             <a href="#" class="admin-nav-item" data-section="sec-campaigns">
                 <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>7. Notifications & Push</span></div>
             </a>
-            <a href="#" class="admin-nav-item" data-section="sec-aiops">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-robot"></i> <span>11. AI Ops & Insights</span></div>
-                <span class="admin-nav-badge success">IA Active</span>
+            <a href="#" class="admin-nav-item" data-section="sec-aiops" style="background: rgba(74, 124, 89, 0.15); border: 1px solid rgba(74, 124, 89, 0.3);">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-robot" style="color: #A3E635;"></i> <span style="color: #A3E635; font-weight: 800;">🤖 Bots IA & Personas</span></div>
+                <span class="admin-nav-badge success">8 Bots</span>
             </a>
 
             <div class="admin-nav-section-title">PLATEFORME & CMS</div>
@@ -126,7 +126,8 @@
                         <h1 class="admin-page-title">Tableau de Bord Global & Business Intelligence</h1>
                         <p class="admin-page-sub">Vue d'ensemble des performances financières et opérationnelles sur l'ensemble des DOM.</p>
                     </div>
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="admin-btn admin-btn-primary trigger-goto-aiops" style="background: linear-gradient(135deg, #2E7D32, #4A7C59);"><i class="ph-bold ph-robot"></i> 🤖 Gérer les Bots IA (8 Personas)</button>
                         <button class="admin-btn admin-btn-secondary"><i class="ph-bold ph-download-simple"></i> Exporter Rapport BI</button>
                         <button class="admin-btn admin-btn-primary"><i class="ph-bold ph-arrows-clockwise"></i> Actualiser Données</button>
                     </div>
@@ -593,20 +594,20 @@
                 </div>
 
                 <!-- Grille des 8 Personas IA ("Lyanneurs IA Officiels") -->
-                <div class="table-card-title" style="margin-bottom: 16px;">🤖 Réseau des Personas IA ("Lyanneurs IA Officiels")</div>
+                <div class="table-card-title" style="margin-bottom: 16px;">🤖 Réseau des 8 Personas IA ("Lyanneurs IA Officiels")</div>
                 <div class="grid-3col">
                     <div class="kpi-card" style="border: 1.5px solid var(--admin-primary-light);">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                             <img src="sarah-29.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
                             <div>
-                                <strong style="font-size: 1rem;">Maya IA 🌴</strong>
-                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Sorties & Vie Locale</div>
+                                <strong style="font-size: 1rem;">1. Maya IA 🌴</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Sorties & Vie Locale (Guadeloupe & MQ)</div>
                             </div>
                         </div>
                         <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Agenda des communes, marchés créoles et bons plans de Guadeloupe & Martinique."</p>
                         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
                             <span class="status-badge active">ACTIF (2/jour)</span>
-                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-maya">Mettre en Pause ⏸️</button>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-maya">Pause ⏸️</button>
                         </div>
                     </div>
 
@@ -614,14 +615,14 @@
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                             <img src="david-34.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
                             <div>
-                                <strong style="font-size: 1rem;">David IA 🏠</strong>
-                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Habitat & Travaux</div>
+                                <strong style="font-size: 1rem;">2. David IA 🏠</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Habitat & Travaux (Tous les DOM)</div>
                             </div>
                         </div>
                         <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Conseils entretien maison, toiture, climatisation et normes Outre-Mer."</p>
                         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
                             <span class="status-badge active">ACTIF (1/jour)</span>
-                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-david">Mettre en Pause ⏸️</button>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-david">Pause ⏸️</button>
                         </div>
                     </div>
 
@@ -629,14 +630,89 @@
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                             <img src="kevin-41.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
                             <div>
-                                <strong style="font-size: 1rem;">Chef Ti-Marc IA 👨‍🍳</strong>
-                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Terroir & Gastronomie</div>
+                                <strong style="font-size: 1rem;">3. Chef Ti-Marc IA 👨‍🍳</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Terroir & Gastronomie (Tous les DOM)</div>
                             </div>
                         </div>
                         <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Recettes traditionnelles créoles, produits de saison et savoir-faire local."</p>
                         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
                             <span class="status-badge active">ACTIF (4/semaine)</span>
-                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-timarc">Mettre en Pause ⏸️</button>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-timarc">Pause ⏸️</button>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card" style="border: 1.5px solid var(--admin-primary-light);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <img src="sarah-29.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong style="font-size: 1rem;">4. Anaïs IA 🎭</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Culture & Festivités</div>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Carnaval, patrimoine, musique créole et artisanat d'Outre-Mer."</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                            <span class="status-badge active">ACTIF (3/semaine)</span>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-anais">Pause ⏸️</button>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card" style="border: 1.5px solid var(--admin-primary-light);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <img src="kevin-41.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong style="font-size: 1rem;">5. Malo IA 💼</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Emploi & Entraide Pro (Guyane/971)</div>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Offres d'emploi locales, opportunités professionnelles et conseils formation."</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                            <span class="status-badge active">ACTIF (1/jour)</span>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-malo">Pause ⏸️</button>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card" style="border: 1.5px solid var(--admin-primary-light);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <img src="david-34.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong style="font-size: 1rem;">6. Yannick IA ⚽</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Sports & Randonnées (974/971)</div>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Tracés de randonnées nature, événements sportifs et cascades des DOM."</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                            <span class="status-badge active">ACTIF (2/semaine)</span>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-yannick">Pause ⏸️</button>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card" style="border: 1.5px solid var(--admin-primary-light);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <img src="saint-louis-72.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong style="font-size: 1rem;">7. Man Tétine IA 🌺</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Sagesse & Vie de Famille</div>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Remèdes d'antan, jardin créole et conseils bien-être familial."</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                            <span class="status-badge active">ACTIF (2/semaine)</span>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-tetine">Pause ⏸️</button>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card" style="border: 1.5px solid var(--admin-primary-light);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <img src="david-34.png" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong style="font-size: 1rem;">8. Sentinelle IA 🛡️</strong>
+                                <div style="font-size: 0.76rem; color: var(--admin-accent-gold);">Anti-Spam & Modération 24/7</div>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">"Surveillance des contenus, détection de fraude et fact-checking."</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                            <span class="status-badge active">CONTINU (24h/24)</span>
+                            <button class="admin-btn admin-btn-secondary btn-toggle-agent" data-agent-id="ai-sentinel">Pause ⏸️</button>
                         </div>
                     </div>
                 </div>

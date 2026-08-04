@@ -29,6 +29,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Raccourci vers la section Bots IA
+    document.querySelectorAll('.trigger-goto-aiops').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const aiNavItem = document.querySelector('.admin-nav-item[data-section="sec-aiops"]');
+            if (aiNavItem) aiNavItem.click();
+        });
+    });
+
     // --------------------------------------------------------------------------
     // 2. MODALES & ACTIONS RAPIDES
     // --------------------------------------------------------------------------
