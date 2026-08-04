@@ -422,6 +422,247 @@
         </div>
     </div>
 
+    <!-- ========== MODAL PROFIL PUBLIC RÉSEAU SOCIAL ========== -->
+    <div class="modal-overlay" id="publicMemberProfileModal">
+        <div class="modal-card modal-card-dashboard theme-provider" id="publicProfileThemeCard">
+            <button class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="profile-header-banner public-header-banner">
+                <div class="profile-user-summary">
+                    <div class="profile-photo-container">
+                        <img src="david-34.png" alt="Avatar" id="publicMemberAvatar" class="profile-avatar-large">
+                        <span class="online-dot-lg" title="Membre en ligne"></span>
+                    </div>
+                    <div>
+                        <h2 class="profile-user-name" id="publicMemberName">David Jean-Baptiste (34 ans)</h2>
+                        <span class="profile-role-badge" id="publicMemberRoleBadge">🛠️ Artisan Plombier</span>
+                        <div class="profile-location-text" id="publicMemberLocationText"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
+                    </div>
+                </div>
+
+                <div class="social-action-bar">
+                    <button type="button" class="btn-social btn-recommend" id="recommendMemberBtn">
+                        <i class="ph-fill ph-thumbs-up"></i> Recommander <span id="recommendCountBadge">142</span>
+                    </button>
+                    <button type="button" class="btn-social btn-contact-direct" id="publicContactBtn">
+                        <i class="ph-fill ph-chat-circle-dots"></i> Contacter
+                    </button>
+                    <button type="button" class="btn-social btn-share-profile" id="shareProfileBtn" title="Partager le profil">
+                        <i class="ph ph-share-network"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="profile-tabs">
+                <button class="public-tab-btn active" data-public-tab="pubtab-realizations"><i class="ph ph-image"></i> Réalisations & Travaux</button>
+                <button class="public-tab-btn" data-public-tab="pubtab-about"><i class="ph ph-user"></i> À propos & Tarifs</button>
+                <button class="public-tab-btn" data-public-tab="pubtab-reviews"><i class="ph ph-star"></i> Avis des Voisins (<span id="publicReviewsCount">48</span>)</button>
+            </div>
+
+            <div class="modal-body profile-modal-body">
+                <div class="public-tab-content active" id="pubtab-realizations">
+                    <h4 class="tab-section-title">Galerie des Travaux Réalisés</h4>
+                    <div class="realizations-grid" id="publicRealizationsGrid"></div>
+                </div>
+                <div class="public-tab-content" id="pubtab-about">
+                    <h4 class="tab-section-title">Présentation & Compétences</h4>
+                    <p class="profile-bio-text" id="publicMemberBioText">Spécialiste de la plomberie résidentielle et du dépannage d'urgence sur Baie-Mahault et Grande-Terre.</p>
+                    <div class="about-info-grid">
+                        <div class="info-block">
+                            <span class="info-label">Tarif Indicatif</span>
+                            <strong class="info-val" id="publicMemberRate">À partir de 35€/h</strong>
+                        </div>
+                        <div class="info-block">
+                            <span class="info-label">Badges & Confiance</span>
+                            <strong class="info-val" id="publicMemberBadge">✔ Artisan Vérifié</strong>
+                        </div>
+                    </div>
+                    <h5 style="font-weight: 800; margin: 18px 0 10px;">Compétences clés</h5>
+                    <div class="member-skills-tags" id="publicMemberSkillsContainer"></div>
+                </div>
+                <div class="public-tab-content" id="pubtab-reviews">
+                    <h4 class="tab-section-title">Recommandations & Retours de Voisins</h4>
+                    <div class="activity-list" id="publicMemberReviewsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL MINI-FENÊTRE PROFIL EXPRESS (#quickProfileModal) ========== -->
+    <div class="modal-overlay" id="quickProfileModal">
+        <div class="modal-card modal-card-quick-profile">
+            <button class="modal-close-btn" id="closeQuickProfileModalBtn" aria-label="Fermer" style="top: 14px; right: 14px; color: #FFFFFF;"><i class="ph ph-x"></i></button>
+
+            <div class="quick-profile-header">
+                <img src="david-34.png" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
+                <h3 id="quickProfileName" style="font-size: 1.3rem; margin-bottom: 2px;">David Jean-Baptiste (34 ans)</h3>
+                <div id="quickProfileRole" style="font-size: 0.88rem; opacity: 0.9;">Plomberie & Clim Inverter</div>
+                <div id="quickProfileCity" style="font-size: 0.8rem; opacity: 0.85; margin-top: 4px;"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
+            </div>
+
+            <div class="quick-profile-body">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <span id="quickProfileBadge" class="pill-badge pill-green" style="font-size: 0.78rem;">Artisan Vérifié</span>
+                    <span id="quickProfileRating" style="font-weight: 800; color: #E8B83F;">⭐ 4.9 (48 avis)</span>
+                </div>
+
+                <p id="quickProfileBio" style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 12px;">
+                    Plombier et technicien clim passionné à Baie-Mahault. Dépannage rapide de fuites d'eau, entretien clim et chauffe-eau.
+                </p>
+
+                <div class="quick-skills-list" id="quickProfileSkills">
+                    <span class="quick-skill-pill">Entretien Clim Inverter</span>
+                    <span class="quick-skill-pill">Détection de fuite</span>
+                    <span class="quick-skill-pill">Chauffe-eau</span>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 18px;">
+                    <button class="btn btn-outline start-chat-from-quick" id="quickStartChatBtn" style="flex: 1; justify-content: center; font-size: 0.88rem;">
+                        💬 Discuter
+                    </button>
+                    <button class="btn btn-primary start-booking-from-quick" id="quickStartBookingBtn" style="flex: 1; justify-content: center; font-size: 0.88rem;">
+                        📅 Réserver
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL SYSTÈME DE CHAT DIRECT BETWEEN PROFILES ========== -->
+    <div class="modal-overlay" id="chatModal">
+        <div class="modal-card modal-card-chat">
+            <button class="modal-close-btn" id="closeChatModalBtn" aria-label="Fermer" style="top: 14px; right: 14px; z-index: 10;"><i class="ph ph-x"></i></button>
+
+            <div class="chat-modal-layout">
+                <div class="chat-contacts-sidebar">
+                    <div class="chat-sidebar-header">
+                        <span>💬 Messagerie LYANN</span>
+                    </div>
+                    <div class="chat-contacts-list" id="chatContactsList">
+                        <div class="chat-contact-item active" data-chat-member-id="1">
+                            <div class="chat-contact-avatar-wrap">
+                                <img src="david-34.png" alt="David Jean-Baptiste" class="chat-contact-avatar">
+                                <span class="online-dot"></span>
+                            </div>
+                            <div class="chat-contact-info">
+                                <div class="chat-contact-name">David Jean-Baptiste (34 ans)</div>
+                                <div class="chat-contact-preview">Bonjour ! Je suis dispo cet ap...</div>
+                            </div>
+                        </div>
+
+                        <div class="chat-contact-item" data-chat-member-id="9">
+                            <div class="chat-contact-avatar-wrap">
+                                <img src="huguette-68.png" alt="Tati Huguette Cazeau" class="chat-contact-avatar">
+                                <span class="online-dot"></span>
+                            </div>
+                            <div class="chat-contact-info">
+                                <div class="chat-contact-name">Tati Huguette Cazeau (68 ans)</div>
+                                <div class="chat-contact-preview">Merci beaucoup pour votre aide !</div>
+                            </div>
+                        </div>
+
+                        <div class="chat-contact-item" data-chat-member-id="6">
+                            <div class="chat-contact-avatar-wrap">
+                                <img src="sarah-29.png" alt="Sarah Manicon" class="chat-contact-avatar">
+                            </div>
+                            <div class="chat-contact-info">
+                                <div class="chat-contact-name">Sarah Manicon (29 ans)</div>
+                                <div class="chat-contact-preview">À très bientôt pour la rénovation !</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-main-area">
+                    <div class="chat-header-bar">
+                        <div class="chat-header-user">
+                            <img src="david-34.png" alt="Avatar Active" id="chatHeaderAvatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong id="chatHeaderName" style="font-size: 1rem; color: var(--text);">David Jean-Baptiste (34 ans)</strong>
+                                <div style="font-size: 0.78rem; color: #2E7D32; font-weight: 700;">● En ligne à Baie-Mahault (Guadeloupe)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-messages-scroll" id="chatMessagesContainer">
+                        <div class="chat-msg-bubble received">
+                            Bonjour ! J'ai bien vu votre message pour l'intervention clim. Je peux passer cet après-midi vers 15h à Baie-Mahault.
+                            <div class="chat-msg-time">14:22</div>
+                        </div>
+
+                        <div class="chat-msg-bubble sent">
+                            Bonjour David ! Parfait pour 15h. Merci beaucoup pour votre réactivité !
+                            <div class="chat-msg-time">14:25</div>
+                        </div>
+                    </div>
+
+                    <form id="chatInputForm" class="chat-input-bar">
+                        <input type="text" id="chatInputField" class="chat-input-field" placeholder="Écrivez votre message..." required autocomplete="off">
+                        <button type="submit" class="btn btn-primary" style="padding: 0 18px; height: 44px; border-radius: var(--radius-full);">
+                            <i class="ph ph-paper-plane-right"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL PRISE DE RDV / DEMANDE DE PRESTATION (BOOKING) ========== -->
+    <div class="modal-overlay" id="bookingModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeBookingModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.1rem; color: #4A7C59;">Réservation & Devis LYANN</span>
+                <h3 class="step-title" id="bookingTargetMemberName" style="font-size: 1.35rem; margin-bottom: 4px;">Demande d'intervention</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Remplissez les détails de votre besoin pour réserver un créneau.</p>
+            </div>
+
+            <div class="modal-body">
+                <form id="bookingForm">
+                    <div class="form-group">
+                        <label for="bookingServiceType">Domaine d'intervention</label>
+                        <select id="bookingServiceType" class="modal-input" required>
+                            <option value="climatisation">❄️ Climatisation & Entretien</option>
+                            <option value="plomberie">💧 Plomberie & Dépannage</option>
+                            <option value="electricite">⚡ Électricité & Tableau</option>
+                            <option value="jardin">🌴 Jardin & Espaces Verts</option>
+                            <option value="peinture">🎨 Peinture & Rénovation</option>
+                            <option value="autre">🛠️ Autre service à domicile</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group-row" style="display: flex; gap: 12px;">
+                        <div class="form-group flex-1">
+                            <label for="bookingDate">Date souhaitée</label>
+                            <input type="date" id="bookingDate" class="modal-input" required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label for="bookingTimeSlot">Créneau horaire</label>
+                            <select id="bookingTimeSlot" class="modal-input" required>
+                                <option value="matin">Matin (8h - 12h)</option>
+                                <option value="apres-midi">Après-midi (14h - 18h)</option>
+                                <option value="soiree">Soirée (18h - 20h)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bookingLocation">Commune / Adresse d'intervention</label>
+                        <input type="text" id="bookingLocation" class="modal-input" placeholder="Ex: Baie-Mahault, Fort-de-France..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bookingNotes">Précisions sur votre besoin</label>
+                        <textarea id="bookingNotes" class="modal-input" style="height: 90px; padding: 10px;" placeholder="Explicitez les travaux (ex: clim Split 12000 BTU qui fuit, accès facile...)" required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 10px;">Envoyer la demande de réservation 📅</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

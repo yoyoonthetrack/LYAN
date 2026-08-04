@@ -1341,11 +1341,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Render Realizations
         renderPublicRealizations(member);
 
-        // Open modal
+        // Open modal or fallback to quick profile
         if (searchResultsModal) searchResultsModal.classList.remove('active');
         if (publicMemberProfileModal) {
             publicMemberProfileModal.classList.add('active');
             document.body.style.overflow = 'hidden';
+        } else {
+            openQuickProfileModal(memberId);
         }
     }
 
