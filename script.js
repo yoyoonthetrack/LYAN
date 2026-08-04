@@ -1711,6 +1711,10 @@ document.addEventListener('DOMContentLoaded', () => {
             territoryKey: 'guadeloupe',
             timeAgo: 'Il y a 14 min',
             content: 'Créneau disponible cet après-midi pour révision & entretien clim inverter sur Baie-Mahault ou Le Gosier ! Contactez-moi directement.',
+            images: [
+                'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=600&q=80',
+                'https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=600&q=80'
+            ],
             likes: 14,
             repliesCount: 3,
             memberId: 1
@@ -1726,9 +1730,12 @@ document.addEventListener('DOMContentLoaded', () => {
             territoryKey: 'martinique',
             timeAgo: 'Il y a 42 min',
             content: 'Recherche urgente d\'un bon électricien pour remplacer un tableau secondaire à Schoelcher. Qui me recommandez-vous dans le réseau ?',
+            images: [
+                'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80'
+            ],
             likes: 8,
             repliesCount: 5,
-            memberId: 2
+            memberId: 9
         },
         {
             id: 'flash-3',
@@ -1741,6 +1748,11 @@ document.addEventListener('DOMContentLoaded', () => {
             territoryKey: 'guadeloupe',
             timeAgo: 'Il y a 2 h',
             content: 'Un immense merci à Man Saint-Louis pour les conseils de taille de mes fruitiers au Moule. Travail propre, conseils précieux et partage !',
+            images: [
+                'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80',
+                'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=600&q=80',
+                'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=600&q=80'
+            ],
             likes: 22,
             repliesCount: 2,
             memberId: 5
@@ -1756,6 +1768,7 @@ document.addEventListener('DOMContentLoaded', () => {
             territoryKey: 'guyane',
             timeAgo: 'Il y a 4 h',
             content: 'Attention les voisins avec les grosses pluies d\'hier : pensez à vérifier vos filtres de gouttières et citernes pour éviter les bouchons avant la semaine prochaine.',
+            video: 'https://assets.mixkit.co/videos/preview/mixkit-rain-drops-falling-on-a-window-41662-large.mp4',
             likes: 19,
             repliesCount: 4,
             memberId: 10
@@ -1765,6 +1778,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFlashPosts = [...INITIAL_FLASH_POSTS];
     let activeFeedTypeFilter = 'all';
     let activeFeedTerritoryFilter = 'all';
+    let attachedPhotos = [];
+    let attachedVideo = null;
 
     const flashFeedContainer = document.getElementById('flashFeedContainer');
     const createFlashForm = document.getElementById('createFlashForm');
@@ -1772,6 +1787,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const flashCharCount = document.getElementById('flashCharCount');
     const feedTerritoryFilterSelect = document.getElementById('feedTerritoryFilterSelect');
     const feedPills = document.querySelectorAll('.feed-pill');
+
+    const flashPhotoInput = document.getElementById('flashPhotoInput');
+    const flashVideoInput = document.getElementById('flashVideoInput');
+    const flashMediaPreviewContainer = document.getElementById('flashMediaPreviewContainer');
+    const mediaUploadBadge = document.getElementById('mediaUploadBadge');
+
+    if (flashPhotoInput) {
+        flashPhotoInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files).slice(0, 3);
+            attachedPhotos = files.map(file => URL.createObjectURL(file));
+            updateMediaPreview();
+        });
+    }
+
+    if (flashVideoInput) {
+        flashVideoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                attachedVideo = URL.createObjectURL(file);
+                updateMediaPreview();
+            }
+        });
+    }
+
+    function updateMediaPreview() {
+        if (!flashMediaPreviewContainer) return;
+        flashMediaPreviewContainer.innerHTML = '';
+
+        if (attachedPhotos.length > 0) {
+            if (mediaUploadBadge) {
+                mediaUploadBadge.style.display = 'inline';
+                mediaUploadBadge.textContent = `📷 ${attachedPhotos.length} photo(s) jointe(s)`;
+            }
+            attachedPhotos.forEach(src => {
+                const img = document.createElement('img');
+                img.src = src;
+                img.className = 'flash-media-preview-thumb';
+                flashMediaPreviewContainer.appendChild(img);
+            });
+        } else if (attachedVideo) {
+            if (mediaUploadBadge) {
+                mediaUploadBadge.style.display = 'inline';
+                mediaUploadBadge.textContent = `🎥 Vidéo 30s jointe`;
+            }
+            const vid = document.createElement('video');
+            vid.src = attachedVideo;
+            vid.className = 'flash-media-preview-thumb';
+            vid.muted = true;
+            flashMediaPreviewContainer.appendChild(vid);
+        } else {
+            if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
+        }
+    }
 
     if (flashContentInput && flashCharCount) {
         flashContentInput.addEventListener('input', () => {
@@ -1805,10 +1873,19 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (post.type === 'reco') badgeClass = 'flash-badge-reco';
             else if (post.type === 'info') badgeClass = 'flash-badge-info';
 
+            let mediaHTML = '';
+            if (post.images && post.images.length > 0) {
+                const gridClass = `grid-${Math.min(post.images.length, 3)}`;
+                const imgsHTML = post.images.slice(0, 3).map(src => `<img src="${src}" alt="Médias Flash LYANN" class="flash-media-img">`).join('');
+                mediaHTML = `<div class="flash-card-media-gallery ${gridClass}">${imgsHTML}</div>`;
+            } else if (post.video) {
+                mediaHTML = `<div style="margin-top: 10px;"><video src="${post.video}" controls class="flash-video-player"></video></div>`;
+            }
+
             return `
                 <div class="flash-card" id="${post.id}">
                     <div class="flash-card-header">
-                        <div class="flash-author-block">
+                        <div class="flash-author-block trigger-quick-profile" data-member-id="${post.memberId || 1}" style="cursor: pointer;">
                             <img src="${post.authorAvatar}" alt="${post.authorName}" class="flash-avatar">
                             <div class="flash-author-info">
                                 <strong>${post.authorName} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.88rem;"></i></strong>
@@ -1822,6 +1899,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <div class="flash-card-body">
                         ${post.content}
+                        ${mediaHTML}
                     </div>
 
                     <div class="flash-card-footer">
@@ -1830,7 +1908,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="flash-action-btn btn-like-flash" data-flash-id="${post.id}">
                                 <i class="ph-fill ph-heart"></i> <span class="like-count">${post.likes}</span>
                             </button>
-                            <button class="flash-action-btn btn-reply-flash" data-author-name="${post.authorName}">
+                            <button class="flash-action-btn btn-open-chat-direct" data-member-name="${post.authorName}" data-member-avatar="${post.authorAvatar}">
                                 <i class="ph ph-chat-circle-dots"></i> <span>Répondre</span>
                             </button>
                             <button class="flash-action-btn btn-share-flash" data-flash-id="${post.id}">
@@ -1842,36 +1920,40 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }).join('');
 
-        // Attach event listeners to flash cards
+        attachFlashFeedListeners();
+    }
+
+    function attachFlashFeedListeners() {
         document.querySelectorAll('.btn-like-flash').forEach(btn => {
             btn.addEventListener('click', () => {
                 const countSpan = btn.querySelector('.like-count');
-                const isLiked = btn.classList.contains('liked');
-                let count = parseInt(countSpan.textContent, 10) || 0;
-
-                if (isLiked) {
-                    btn.classList.remove('liked');
-                    countSpan.textContent = count - 1;
-                } else {
-                    btn.classList.add('liked');
-                    countSpan.textContent = count + 1;
+                if (countSpan) {
+                    let count = parseInt(countSpan.textContent) || 0;
+                    if (btn.classList.contains('liked')) {
+                        countSpan.textContent = count - 1;
+                        btn.classList.remove('liked');
+                        btn.style.color = '';
+                    } else {
+                        countSpan.textContent = count + 1;
+                        btn.classList.add('liked');
+                        btn.style.color = '#E63B2E';
+                    }
                 }
             });
         });
 
-        document.querySelectorAll('.btn-reply-flash').forEach(btn => {
+        document.querySelectorAll('.btn-open-chat-direct').forEach(btn => {
             btn.addEventListener('click', () => {
-                const authorName = btn.dataset.authorName;
-                openContactMemberModal(authorName);
+                const name = btn.dataset.memberName || 'Lyanneur';
+                const avatar = btn.dataset.memberAvatar || 'david-34.png';
+                openChatWithUser(name, avatar);
             });
         });
 
-        document.querySelectorAll('.btn-share-flash').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(window.location.href);
-                    alert('🔗 Lien du Flash copié dans votre presse-papier !');
-                }
+        document.querySelectorAll('.trigger-quick-profile').forEach(element => {
+            element.addEventListener('click', () => {
+                const memberId = parseInt(element.dataset.memberId) || 1;
+                openQuickProfileModal(memberId);
             });
         });
     }
@@ -1899,23 +1981,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 id: `flash-${Date.now()}`,
                 authorName: 'Vous (Membre LYANN)',
                 authorRole: 'Lyanneur Actif',
-                authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+                authorAvatar: 'david-34.png',
                 badge: badgeText,
                 type: type,
                 location: location,
                 territoryKey: territoryKey,
                 timeAgo: 'À l\'instant',
                 content: text,
+                images: attachedPhotos.length > 0 ? [...attachedPhotos] : null,
+                video: attachedVideo ? attachedVideo : null,
                 likes: 1,
                 repliesCount: 0,
                 memberId: 99
             };
 
             currentFlashPosts.unshift(newFlash);
+            attachedPhotos = [];
+            attachedVideo = null;
+            if (flashMediaPreviewContainer) flashMediaPreviewContainer.innerHTML = '';
+            if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
+
             renderFlashFeed();
             createFlashForm.reset();
             if (flashCharCount) flashCharCount.textContent = '0';
-            alert('🎉 Votre Flash a été publié en direct sur Le Fil LYANN !');
+            alert('🎉 Votre Flash multimédia a été publié en direct sur Le Fil LYANN !');
         });
     }
 
@@ -1932,6 +2021,148 @@ document.addEventListener('DOMContentLoaded', () => {
         feedTerritoryFilterSelect.addEventListener('change', (e) => {
             activeFeedTerritoryFilter = e.target.value;
             renderFlashFeed();
+        });
+    }
+
+    // ==========================================================================
+    // LOGIQUE DE CHAT DIRECT INTERACTIF (#chatModal)
+    // ==========================================================================
+    const chatModal = document.getElementById('chatModal');
+    const closeChatModalBtn = document.getElementById('closeChatModalBtn');
+    const chatHeaderName = document.getElementById('chatHeaderName');
+    const chatHeaderAvatar = document.getElementById('chatHeaderAvatar');
+    const chatMessagesContainer = document.getElementById('chatMessagesContainer');
+    const chatInputForm = document.getElementById('chatInputForm');
+    const chatInputField = document.getElementById('chatInputField');
+
+    if (closeChatModalBtn) {
+        closeChatModalBtn.addEventListener('click', () => {
+            if (chatModal) chatModal.classList.remove('active');
+        });
+    }
+
+    function openChatWithUser(name, avatar) {
+        if (chatHeaderName) chatHeaderName.textContent = name;
+        if (chatHeaderAvatar) chatHeaderAvatar.src = avatar;
+
+        if (chatMessagesContainer) {
+            chatMessagesContainer.innerHTML = `
+                <div class="chat-msg-bubble received">
+                    Bonjour ! Je suis ${name}. Comment puis-je vous aider pour vos projets ou travaux ?
+                    <div class="chat-msg-time">À l'instant</div>
+                </div>
+            `;
+        }
+
+        if (chatModal) chatModal.classList.add('active');
+    }
+
+    if (chatInputForm) {
+        chatInputForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = chatInputField ? chatInputField.value.trim() : '';
+            if (!text) return;
+
+            const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const sentBubble = document.createElement('div');
+            sentBubble.className = 'chat-msg-bubble sent';
+            sentBubble.innerHTML = `${text} <div class="chat-msg-time">${timeNow}</div>`;
+            chatMessagesContainer.appendChild(sentBubble);
+
+            chatInputField.value = '';
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+
+            // Simulation de réponse automatique du membre sous 1.2s
+            setTimeout(() => {
+                const activeName = chatHeaderName ? chatHeaderName.textContent.split(' ')[0] : 'Votre voisin';
+                const replies = [
+                    `C'est bien noté ! Je regarde mes disponibilités et je vous réponds précisément dans quelques instants. 👍`,
+                    `Merci pour votre message ! Je peux me déplacer pour un premier constat gratuit si vous souhaitez.`,
+                    `Super ! On s'organise ainsi. À très vite sur LYANN.`
+                ];
+                const randomReply = replies[Math.floor(Math.random() * replies.length)];
+
+                const replyBubble = document.createElement('div');
+                replyBubble.className = 'chat-msg-bubble received';
+                replyBubble.innerHTML = `${randomReply} <div class="chat-msg-time">${timeNow}</div>`;
+                chatMessagesContainer.appendChild(replyBubble);
+                chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+            }, 1200);
+        });
+    }
+
+    // Connect trigger buttons to open chat direct
+    document.querySelectorAll('.open-chat-trigger, .btn-open-chat').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const name = btn.dataset.memberName || 'David Jean-Baptiste (34 ans)';
+            const avatar = btn.dataset.memberAvatar || 'david-34.png';
+            openChatWithUser(name, avatar);
+        });
+    });
+
+    // ==========================================================================
+    // LOGIQUE DE LA MINI-FENÊTRE PROFIL EXPRESS (#quickProfileModal)
+    // ==========================================================================
+    const quickProfileModal = document.getElementById('quickProfileModal');
+    const closeQuickProfileModalBtn = document.getElementById('closeQuickProfileModalBtn');
+    const quickAvatarImg = document.getElementById('quickAvatarImg');
+    const quickProfileName = document.getElementById('quickProfileName');
+    const quickProfileRole = document.getElementById('quickProfileRole');
+    const quickProfileCity = document.getElementById('quickProfileCity');
+    const quickProfileBadge = document.getElementById('quickProfileBadge');
+    const quickProfileRating = document.getElementById('quickProfileRating');
+    const quickProfileBio = document.getElementById('quickProfileBio');
+    const quickProfileSkills = document.getElementById('quickProfileSkills');
+    const quickStartChatBtn = document.getElementById('quickStartChatBtn');
+    const quickStartBookingBtn = document.getElementById('quickStartBookingBtn');
+
+    let currentQuickMember = null;
+
+    if (closeQuickProfileModalBtn) {
+        closeQuickProfileModalBtn.addEventListener('click', () => {
+            if (quickProfileModal) quickProfileModal.classList.remove('active');
+        });
+    }
+
+    function openQuickProfileModal(memberId) {
+        const member = LYANN_MEMBERS.find(m => m.id === memberId) || LYANN_MEMBERS[0];
+        currentQuickMember = member;
+
+        if (quickAvatarImg) quickAvatarImg.src = member.avatar;
+        if (quickProfileName) quickProfileName.textContent = member.name;
+        if (quickProfileRole) quickProfileRole.textContent = member.role;
+        if (quickProfileCity) quickProfileCity.innerHTML = `<i class="ph ph-map-pin"></i> ${member.city}, ${member.locationName}`;
+        if (quickProfileBadge) quickProfileBadge.textContent = member.badge;
+        if (quickProfileRating) quickProfileRating.textContent = `⭐ ${member.rating} (${member.reviewsCount} avis)`;
+        if (quickProfileBio) quickProfileBio.textContent = member.bio;
+
+        if (quickProfileSkills) {
+            quickProfileSkills.innerHTML = member.skills.map(s => `<span class="quick-skill-pill">${s}</span>`).join('');
+        }
+
+        if (quickProfileModal) quickProfileModal.classList.add('active');
+    }
+
+    if (quickStartChatBtn) {
+        quickStartChatBtn.addEventListener('click', () => {
+            if (quickProfileModal) quickProfileModal.classList.remove('active');
+            if (currentQuickMember) {
+                openChatWithUser(currentQuickMember.name, currentQuickMember.avatar);
+            }
+        });
+    }
+
+    if (quickStartBookingBtn) {
+        quickStartBookingBtn.addEventListener('click', () => {
+            if (quickProfileModal) quickProfileModal.classList.remove('active');
+            const bookingModal = document.getElementById('bookingModal');
+            const targetNameEl = document.getElementById('bookingTargetMemberName');
+            if (targetNameEl && currentQuickMember) {
+                targetNameEl.textContent = `Réserver avec ${currentQuickMember.name}`;
+            }
+            if (bookingModal) bookingModal.classList.add('active');
         });
     }
 

@@ -1578,6 +1578,127 @@
         </div>
     </div>
 
+    <!-- ========== MODAL SYSTÈME DE CHAT DIRECT BETWEEN PROFILES ========== -->
+    <div class="modal-overlay" id="chatModal">
+        <div class="modal-card modal-card-chat">
+            <button class="modal-close-btn" id="closeChatModalBtn" aria-label="Fermer" style="top: 14px; right: 14px; z-index: 10;"><i class="ph ph-x"></i></button>
+
+            <div class="chat-modal-layout">
+                <!-- Sidebar contacts -->
+                <div class="chat-contacts-sidebar">
+                    <div class="chat-sidebar-header">
+                        <span>💬 Messagerie LYANN</span>
+                    </div>
+                    <div class="chat-contacts-list" id="chatContactsList">
+                        <div class="chat-contact-item active" data-chat-member-id="1">
+                            <div class="chat-contact-avatar-wrap">
+                                <img src="david-34.png" alt="David Jean-Baptiste" class="chat-contact-avatar">
+                                <span class="online-dot"></span>
+                            </div>
+                            <div class="chat-contact-info">
+                                <div class="chat-contact-name">David Jean-Baptiste (34 ans)</div>
+                                <div class="chat-contact-preview">Bonjour ! Je suis dispo cet ap...</div>
+                            </div>
+                        </div>
+
+                        <div class="chat-contact-item" data-chat-member-id="9">
+                            <div class="chat-contact-avatar-wrap">
+                                <img src="huguette-68.png" alt="Tati Huguette Cazeau" class="chat-contact-avatar">
+                                <span class="online-dot"></span>
+                            </div>
+                            <div class="chat-contact-info">
+                                <div class="chat-contact-name">Tati Huguette Cazeau (68 ans)</div>
+                                <div class="chat-contact-preview">Merci beaucoup pour votre aide !</div>
+                            </div>
+                        </div>
+
+                        <div class="chat-contact-item" data-chat-member-id="6">
+                            <div class="chat-contact-avatar-wrap">
+                                <img src="sarah-29.png" alt="Sarah Manicon" class="chat-contact-avatar">
+                            </div>
+                            <div class="chat-contact-info">
+                                <div class="chat-contact-name">Sarah Manicon (29 ans)</div>
+                                <div class="chat-contact-preview">À très bientôt pour la rénovation !</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Main Area -->
+                <div class="chat-main-area">
+                    <div class="chat-header-bar">
+                        <div class="chat-header-user">
+                            <img src="david-34.png" alt="Avatar Active" id="chatHeaderAvatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong id="chatHeaderName" style="font-size: 1rem; color: var(--text);">David Jean-Baptiste (34 ans)</strong>
+                                <div style="font-size: 0.78rem; color: #2E7D32; font-weight: 700;">● En ligne à Baie-Mahault (Guadeloupe)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-messages-scroll" id="chatMessagesContainer">
+                        <div class="chat-msg-bubble received">
+                            Bonjour ! J'ai bien vu votre message pour l'intervention clim. Je peux passer cet après-midi vers 15h à Baie-Mahault.
+                            <div class="chat-msg-time">14:22</div>
+                        </div>
+
+                        <div class="chat-msg-bubble sent">
+                            Bonjour David ! Parfait pour 15h. Merci beaucoup pour votre réactivité !
+                            <div class="chat-msg-time">14:25</div>
+                        </div>
+                    </div>
+
+                    <form id="chatInputForm" class="chat-input-bar">
+                        <input type="text" id="chatInputField" class="chat-input-field" placeholder="Écrivez votre message..." required autocomplete="off">
+                        <button type="submit" class="btn btn-primary" style="padding: 0 18px; height: 44px; border-radius: var(--radius-full);">
+                            <i class="ph ph-paper-plane-right"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL MINI-FENÊTRE PROFIL EXPRESS (#quickProfileModal) ========== -->
+    <div class="modal-overlay" id="quickProfileModal">
+        <div class="modal-card modal-card-quick-profile">
+            <button class="modal-close-btn" id="closeQuickProfileModalBtn" aria-label="Fermer" style="top: 14px; right: 14px; color: #FFFFFF;"><i class="ph ph-x"></i></button>
+
+            <div class="quick-profile-header">
+                <img src="david-34.png" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
+                <h3 id="quickProfileName" style="font-size: 1.3rem; margin-bottom: 2px;">David Jean-Baptiste (34 ans)</h3>
+                <div id="quickProfileRole" style="font-size: 0.88rem; opacity: 0.9;">Plomberie & Clim Inverter</div>
+                <div id="quickProfileCity" style="font-size: 0.8rem; opacity: 0.85; margin-top: 4px;"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
+            </div>
+
+            <div class="quick-profile-body">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <span id="quickProfileBadge" class="pill-badge pill-green" style="font-size: 0.78rem;">Artisan Vérifié</span>
+                    <span id="quickProfileRating" style="font-weight: 800; color: #E8B83F;">⭐ 4.9 (48 avis)</span>
+                </div>
+
+                <p id="quickProfileBio" style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 12px;">
+                    Plombier et technicien clim passionné à Baie-Mahault. Dépannage rapide de fuites d'eau, entretien clim et chauffe-eau.
+                </p>
+
+                <div class="quick-skills-list" id="quickProfileSkills">
+                    <span class="quick-skill-pill">Entretien Clim Inverter</span>
+                    <span class="quick-skill-pill">Détection de fuite</span>
+                    <span class="quick-skill-pill">Chauffe-eau</span>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 18px;">
+                    <button class="btn btn-outline start-chat-from-quick" id="quickStartChatBtn" style="flex: 1; justify-content: center; font-size: 0.88rem;">
+                        💬 Discuter
+                    </button>
+                    <button class="btn btn-primary start-booking-from-quick" id="quickStartBookingBtn" style="flex: 1; justify-content: center; font-size: 0.88rem;">
+                        📅 Réserver
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

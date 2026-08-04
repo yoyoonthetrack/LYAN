@@ -126,7 +126,26 @@
                                 <div class="composer-char-counter"><span id="flashCharCount">0</span>/280</div>
                             </div>
 
-                            <div class="composer-options-row">
+                            <!-- Barre d'ajout de médias (Photos / Vidéo 30s) -->
+                            <div class="flash-media-upload-bar">
+                                <label class="media-upload-btn" title="Ajouter jusqu'à 3 photos">
+                                    <i class="ph-fill ph-image" style="color: #4A7C59; font-size: 1.1rem;"></i>
+                                    <span>Photos (3 max)</span>
+                                    <input type="file" id="flashPhotoInput" accept="image/*" multiple style="display: none;">
+                                </label>
+
+                                <label class="media-upload-btn" title="Ajouter une courte vidéo (30s max)">
+                                    <i class="ph-fill ph-video-camera" style="color: #E8B83F; font-size: 1.1rem;"></i>
+                                    <span>Vidéo (30s max)</span>
+                                    <input type="file" id="flashVideoInput" accept="video/*" style="display: none;">
+                                </label>
+
+                                <span id="mediaUploadBadge" style="font-size: 0.8rem; color: #4A7C59; font-weight: 700; display: none;"></span>
+                            </div>
+
+                            <div class="flash-media-preview-container" id="flashMediaPreviewContainer"></div>
+
+                            <div class="composer-options-row" style="margin-top: 14px;">
                                 <div class="composer-type-selector">
                                     <label for="flashTypeSelect"><i class="ph ph-tag"></i> Type :</label>
                                     <select id="flashTypeSelect" class="composer-select">
