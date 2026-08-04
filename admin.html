@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LYANN Enterprise — Command Center & Back-Office Administration</title>
+    
+    <!-- Google Fonts & Phosphor Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Admin Stylesheet -->
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body class="admin-body">
+
+    <!-- ==========================================================================
+         SIDEBAR NAVIGATION (11 PÔLES OPÉRATIONNELS)
+         ========================================================================== -->
+    <aside class="admin-sidebar">
+        <div class="admin-brand">
+            <div class="admin-brand-logo"><i class="ph-bold ph-shield-check"></i></div>
+            <div>
+                <div class="admin-brand-title">LYANN Enterprise</div>
+                <span class="admin-brand-badge">DOM Command</span>
+            </div>
+        </div>
+
+        <nav class="admin-nav">
+            <div class="admin-nav-section-title">PILOTAGE GÉNÉRAL</div>
+            <a href="#" class="admin-nav-item active" data-section="sec-overview">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-chart-line-up"></i> <span>1. BI & Tableau de Bord</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-users">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-users"></i> <span>2. Utilisateurs & KYC</span></div>
+                <span class="admin-nav-badge warning">3 KYC</span>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-bookings">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-calendar-check"></i> <span>3. Prestations & Litiges</span></div>
+                <span class="admin-nav-badge danger">1 Litige</span>
+            </a>
+
+            <div class="admin-nav-section-title">SÉCURITÉ & SUPPORT</div>
+            <a href="#" class="admin-nav-item" data-section="sec-moderation">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-shield-warning"></i> <span>4. Modération & AI Fraud</span></div>
+                <span class="admin-nav-badge danger">2 Signalements</span>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-support">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-headset"></i> <span>5. Support & Tickets SLA</span></div>
+                <span class="admin-nav-badge success">4 Ouverts</span>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-security">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-lock-key"></i> <span>10. Sécurité & Audit Logs</span></div>
+            </a>
+
+            <div class="admin-nav-section-title">FINANCE & CROISSANCE</div>
+            <a href="#" class="admin-nav-item" data-section="sec-finance">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-bank"></i> <span>6. Finance & Payouts</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-campaigns">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>7. Notifications & Push</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-aiops">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-robot"></i> <span>11. AI Ops & Insights</span></div>
+                <span class="admin-nav-badge success">IA Active</span>
+            </a>
+
+            <div class="admin-nav-section-title">PLATEFORME & CMS</div>
+            <a href="#" class="admin-nav-item" data-section="sec-cms">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-article"></i> <span>8. CMS & FAQ</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-ops">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-sliders"></i> <span>9. Ops & Feature Flags</span></div>
+            </a>
+        </nav>
+
+        <div class="admin-sidebar-footer">
+            <a href="index.html" class="admin-btn admin-btn-secondary" style="width: 100%; justify-content: center;">
+                <i class="ph-bold ph-arrow-left"></i> Retour au Site Public
+            </a>
+        </div>
+    </aside>
+
+    <!-- ==========================================================================
+         MAIN EXECUTIVE WORKSPACE
+         ========================================================================== -->
+    <main class="admin-main">
+        <!-- Header Sticky -->
+        <header class="admin-header">
+            <div class="admin-header-left">
+                <div class="admin-search-bar">
+                    <i class="ph-bold ph-magnifying-glass"></i>
+                    <input type="text" id="globalAdminSearch" placeholder="Rechercher membre, réservation, ticket ou IP...">
+                </div>
+                <div class="admin-env-pill">
+                    <i class="ph-bold ph-circle-wavy-check"></i> Production • DOM All (971, 972, 973, 974)
+                </div>
+            </div>
+
+            <div class="admin-header-right">
+                <div class="admin-icon-btn" title="Alertes Sécurité">
+                    <i class="ph-bold ph-bell"></i>
+                    <span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: #E53E3E; border-radius: 50%;"></span>
+                </div>
+                <div class="admin-user-profile">
+                    <img src="david-34.png" alt="Admin Avatar" class="admin-avatar">
+                    <div class="admin-user-info">
+                        <div class="admin-user-name">David Jean-Baptiste</div>
+                        <div class="admin-user-role">Super Admin • CTO</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Body -->
+        <div class="admin-content">
+
+            <!-- ==========================================================================
+                 PÔLE 1 : TABLEAU DE BORD GLOBAL & ANALYTICS BI
+                 ========================================================================== -->
+            <section id="sec-overview" class="admin-section active">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Tableau de Bord Global & Business Intelligence</h1>
+                        <p class="admin-page-sub">Vue d'ensemble des performances financières et opérationnelles sur l'ensemble des DOM.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="admin-btn admin-btn-secondary"><i class="ph-bold ph-download-simple"></i> Exporter Rapport BI</button>
+                        <button class="admin-btn admin-btn-primary"><i class="ph-bold ph-arrows-clockwise"></i> Actualiser Données</button>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon green"><i class="ph-bold ph-currency-eur"></i></div>
+                            <span class="kpi-trend up"><i class="ph-bold ph-trend-up"></i> +18.4%</span>
+                        </div>
+                        <div class="kpi-value">48,920 €</div>
+                        <div class="kpi-label">Volume d'Affaires Brut (GMV Mois)</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon gold"><i class="ph-bold ph-wallet"></i></div>
+                            <span class="kpi-trend up"><i class="ph-bold ph-trend-up"></i> +12.1%</span>
+                        </div>
+                        <div class="kpi-value">7,338 €</div>
+                        <div class="kpi-label">Revenu Net Commissions (15% MRR)</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon blue"><i class="ph-bold ph-users"></i></div>
+                            <span class="kpi-trend up"><i class="ph-bold ph-trend-up"></i> +240 membres</span>
+                        </div>
+                        <div class="kpi-value">12,480</div>
+                        <div class="kpi-label">Membres Actifs (MAU DOM)</div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-icon purple"><i class="ph-bold ph-handshake"></i></div>
+                            <span class="kpi-trend up"><i class="ph-bold ph-trend-up"></i> 98.6%</span>
+                        </div>
+                        <div class="kpi-value">1,420</div>
+                        <div class="kpi-label">Prestations "LYANNÉS" Réussies</div>
+                    </div>
+                </div>
+
+                <!-- Direct Charts & Analytics Row -->
+                <div class="grid-2col" style="margin-bottom: 28px;">
+                    <div class="admin-table-card" style="padding: 24px;">
+                        <div class="table-card-title" style="margin-bottom: 16px;">📈 Courbe de Croissance du Chiffre d'Affaires (MRR 2026)</div>
+                        <div style="height: 220px; background: rgba(255,255,255,0.02); border: 1px dashed var(--admin-border); border-radius: 12px; display: flex; align-items: flex-end; justify-content: space-around; padding: 20px 10px;">
+                            <div style="height: 35%; width: 35px; background: var(--admin-primary); border-radius: 6px 6px 0 0;" title="Jan : 18k€"></div>
+                            <div style="height: 45%; width: 35px; background: var(--admin-primary); border-radius: 6px 6px 0 0;" title="Fév : 24k€"></div>
+                            <div style="height: 60%; width: 35px; background: var(--admin-primary); border-radius: 6px 6px 0 0;" title="Mar : 31k€"></div>
+                            <div style="height: 70%; width: 35px; background: var(--admin-primary); border-radius: 6px 6px 0 0;" title="Avr : 36k€"></div>
+                            <div style="height: 82%; width: 35px; background: var(--admin-primary); border-radius: 6px 6px 0 0;" title="Mai : 42k€"></div>
+                            <div style="height: 100%; width: 35px; background: linear-gradient(135deg, var(--admin-primary-dark), #A3E635); border-radius: 6px 6px 0 0;" title="Juin : 48.9k€"></div>
+                        </div>
+                    </div>
+
+                    <div class="admin-table-card" style="padding: 24px;">
+                        <div class="table-card-title" style="margin-bottom: 16px;">🌴 Répartition Géographique (DOM)</div>
+                        <div style="display: flex; flex-direction: column; gap: 14px;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                                    <span>🇬🇵 Guadeloupe (971)</span>
+                                    <strong>42% (5,241 membres)</strong>
+                                </div>
+                                <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: 42%; height: 100%; background: #38A169;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                                    <span>🇲🇶 Martinique (972)</span>
+                                    <strong>36% (4,492 membres)</strong>
+                                </div>
+                                <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: 36%; height: 100%; background: #60A5FA;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                                    <span>🇬🇫 Guyane (973)</span>
+                                    <strong>14% (1,747 membres)</strong>
+                                </div>
+                                <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: 14%; height: 100%; background: #FBBF24;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                                    <span>🇷🇪 La Réunion (974)</span>
+                                    <strong>8% (998 membres)</strong>
+                                </div>
+                                <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: 8%; height: 100%; background: #C084FC;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 2 : GESTION DES UTILISATEURS & VALIDATION KYC
+                 ========================================================================== -->
+            <section id="sec-users" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Gestion des Membres & Vérification KYC</h1>
+                        <p class="admin-page-sub">Contrôle d'accès, validation des pièces d'identité et vérification des prestataires.</p>
+                    </div>
+                </div>
+
+                <div class="admin-table-card">
+                    <div class="table-card-header">
+                        <div class="table-card-title">Membres Inscrits (12,480)</div>
+                        <div class="table-filters">
+                            <select class="admin-select">
+                                <option>Tous les territoires DOM</option>
+                                <option>Guadeloupe (971)</option>
+                                <option>Martinique (972)</option>
+                                <option>Guyane (973)</option>
+                                <option>La Réunion (974)</option>
+                            </select>
+                            <select class="admin-select">
+                                <option>Tous les statuts KYC</option>
+                                <option>Vérifiés</option>
+                                <option>En attente de validation</option>
+                                <option>Suspendus</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Membre</th>
+                                    <th>Rôle & Spécialité</th>
+                                    <th>Territoire</th>
+                                    <th>Statut KYC</th>
+                                    <th>Abonnement</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <img src="david-34.png" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                                            <div>
+                                                <strong>David Jean-Baptiste (34 ans)</strong>
+                                                <div style="font-size: 0.76rem; color: var(--admin-text-muted);">david@lyan-dom.com</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>🛠️ Électricien & Climaticien</td>
+                                    <td>Baie-Mahault, Guadeloupe</td>
+                                    <td><span class="status-badge verified">VÉRIFIÉ ✔</span></td>
+                                    <td><span style="color: #FBBF24; font-weight: 800;">Lyanneur PRO (59,90 €)</span></td>
+                                    <td>
+                                        <button class="admin-btn admin-btn-secondary btn-suspend-user" data-user-name="David Jean-Baptiste"><i class="ph-bold ph-prohibit"></i> Suspendre</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <img src="kevin-41.png" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                                            <div>
+                                                <strong>Kevin Bellerose (41 ans)</strong>
+                                                <div style="font-size: 0.76rem; color: var(--admin-text-muted);">kevin@bellerose.gf</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>🌿 Artisan Paysagiste</td>
+                                    <td>Cayenne, Guyane</td>
+                                    <td><span class="status-badge pending">KYC EN ATTENTE</span></td>
+                                    <td>Lyanneur Ultime</td>
+                                    <td>
+                                        <button class="admin-btn admin-btn-primary btn-approve-kyc" data-user-name="Kevin Bellerose"><i class="ph-bold ph-check"></i> Approuver KYC</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <img src="huguette-68.png" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                                            <div>
+                                                <strong>Tati Huguette Cazeau (68 ans)</strong>
+                                                <div style="font-size: 0.76rem; color: var(--admin-text-muted);">huguette@cazeau.mq</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>🔍 Habitant (Demandeur)</td>
+                                    <td>Fort-de-France, Martinique</td>
+                                    <td><span class="status-badge verified">VÉRIFIÉ ✔</span></td>
+                                    <td>Lyanneur Gratuit</td>
+                                    <td>
+                                        <button class="admin-btn admin-btn-secondary btn-suspend-user" data-user-name="Tati Huguette Cazeau"><i class="ph-bold ph-prohibit"></i> Suspendre</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 5 : SUPPORT CLIENT & TICKETS SLA
+                 ========================================================================== -->
+            <section id="sec-support" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Support Client & Gestion des Tickets SLA</h1>
+                        <p class="admin-page-sub">Traitement des réclamations, assistance aux utilisateurs et suivi du temps de réponse.</p>
+                    </div>
+                </div>
+
+                <div class="admin-table-card">
+                    <div class="table-card-header">
+                        <div class="table-card-title">Tickets de Support Ouverts (4)</div>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID Ticket</th>
+                                    <th>Demandeur</th>
+                                    <th>Sujet & Description</th>
+                                    <th>Priorité SLA</th>
+                                    <th>Statut</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>#T-1082</strong></td>
+                                    <td>Sarah Manicon (29 ans)</td>
+                                    <td>Question facturation abonnement PRO en Guadeloupe</td>
+                                    <td><span style="color: #FBBF24; font-weight: 800;">HAUTE (2h SLA)</span></td>
+                                    <td><span class="status-badge open">OUVERT</span></td>
+                                    <td>
+                                        <button class="admin-btn admin-btn-primary btn-resolve-ticket" data-ticket-id="T-1082"><i class="ph-bold ph-check-circle"></i> Résoudre</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 6 : FINANCE & PAYOUTS PRESTATAIRES
+                 ========================================================================== -->
+            <section id="sec-finance" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Finance, Commissions & Déblocage Payouts</h1>
+                        <p class="admin-page-sub">Gestion des versements prestataires, Stripe Connect, facturation et export comptables.</p>
+                    </div>
+                </div>
+
+                <div class="admin-table-card">
+                    <div class="table-card-header">
+                        <div class="table-card-title">Virements Prestataires en Attente de Libération (SEPA / Stripe Connect)</div>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Prestataire</th>
+                                    <th>Montant Prestation</th>
+                                    <th>Commission LYANN (15%)</th>
+                                    <th>Net à Verser</th>
+                                    <th>Banque / RIB DOM</th>
+                                    <th>Action Virement</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>David Jean-Baptiste</strong></td>
+                                    <td>350.00 €</td>
+                                    <td>52.50 €</td>
+                                    <td><strong style="color: #68D391;">297.50 €</strong></td>
+                                    <td>Crédit Agricole Guadeloupe (FR76...)</td>
+                                    <td>
+                                        <button class="admin-btn admin-btn-primary btn-release-payout" data-provider="David Jean-Baptiste" data-amount="297.50 €">
+                                            <i class="ph-bold ph-paper-plane"></i> Déclencher le Virement
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 9 : OPERATIONS & FEATURE FLAGS
+                 ========================================================================== -->
+            <section id="sec-ops" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Opérations, Feature Flags & Interrupteurs Système</h1>
+                        <p class="admin-page-sub">Activer/désactiver des fonctionnalités en temps réel et basculer en mode maintenance.</p>
+                    </div>
+                </div>
+
+                <div class="grid-equal">
+                    <div class="toggle-card">
+                        <div>
+                            <strong style="font-size: 1.05rem;">🚨 Mode Maintenance Global</strong>
+                            <p style="font-size: 0.82rem; color: var(--admin-text-muted);">Redirige les visiteurs publics vers une page d'attente d'urgence.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="globalMaintenanceToggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-card">
+                        <div>
+                            <strong style="font-size: 1.05rem;">💬 Chat Direct Inter-Membres</strong>
+                            <p style="font-size: 0.82rem; color: var(--admin-text-muted);">Active le système de messagerie privée avec pièces jointes.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked class="feature-flag-input" data-feature="Chat Direct">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-card">
+                        <div>
+                            <strong style="font-size: 1.05rem;">🏷️ Mentions sociales `@`</strong>
+                            <p style="font-size: 0.82rem; color: var(--admin-text-muted);">Autorise l'autocomplétion des tags `@nom` dans le Fil et les posts.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked class="feature-flag-input" data-feature="Mentions Sociales @">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-card">
+                        <div>
+                            <strong style="font-size: 1.05rem;">🤝 Bouton "LYANNER" WhatsApp Direct</strong>
+                            <p style="font-size: 0.82rem; color: var(--admin-text-muted);">Affiche les raccourcis d'appel direct et WhatsApp lors de l'accord.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" checked class="feature-flag-input" data-feature="Raccourcis WhatsApp & Appel">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script src="admin-script.js"></script>
+</body>
+</html>
