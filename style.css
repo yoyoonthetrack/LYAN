@@ -353,18 +353,22 @@ h1, h2, h3, h4 {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: nowrap;
 }
 
 .nav-links {
     display: flex;
     align-items: center;
-    gap: 32px;
+    gap: 22px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
 }
 
 .nav-links a {
     font-weight: 600;
-    font-size: 0.98rem;
+    font-size: 0.95rem;
     color: var(--text);
+    white-space: nowrap;
     transition: var(--transition);
 }
 
@@ -2650,16 +2654,30 @@ h1, h2, h3, h4 {
     }
 }
 
+/* Bascule du menu mobile à <= 1024px pour garantir une seule ligne d'entête */
+@media (max-width: 1024px) {
+    .nav-links {
+        display: none !important;
+    }
+
+    .mobile-menu-btn {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: var(--radius-sm);
+        background: var(--bg);
+        border: 1px solid var(--border);
+    }
+}
+
 /* --------------------------------------------------------------------------
    3. STANDARD SMARTPHONES (<= 768px)
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
     .navbar {
         top: 12px;
-    }
-
-    .nav-links {
-        display: none;
     }
 
     .mobile-menu-btn {
