@@ -1705,7 +1705,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // MOTEUR EN DIRECT DU FIL LYANN (FLASH & ÉCHOS DU QUARTIER)
+    // MOTEUR EN DIRECT DU LAKOU (POSTER UN LYANN & ÉCHOS DU QUARTIER)
     // ==========================================================================
     const INITIAL_FLASH_POSTS = [
         {
@@ -1770,7 +1770,7 @@ document.addEventListener('DOMContentLoaded', () => {
             authorName: 'Kevin Bellerose',
             authorRole: 'Lyanneur PRO',
             authorAvatar: 'kevin-41.png',
-            badge: '📢 Info Quartier',
+            badge: '📢 Info Lakou',
             type: 'info',
             location: 'Cayenne • Guyane (973)',
             territoryKey: 'guyane',
@@ -1868,8 +1868,8 @@ document.addEventListener('DOMContentLoaded', () => {
             flashFeedContainer.innerHTML = `
                 <div class="text-center" style="padding: 40px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed var(--border);">
                     <i class="ph ph-chats-teardrop" style="font-size: 2.5rem; color: var(--primary-light); margin-bottom: 10px;"></i>
-                    <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px;">Aucun Flash pour le moment</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Soyez le premier à publier dans cette catégorie !</p>
+                    <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px;">Aucun Lyann dans le Lakou pour le moment</h4>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Soyez le premier à poster un Lyann dans le Lakou !</p>
                 </div>
             `;
             return;
@@ -1884,7 +1884,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let mediaHTML = '';
             if (post.images && post.images.length > 0) {
                 const gridClass = `grid-${Math.min(post.images.length, 3)}`;
-                const imgsHTML = post.images.slice(0, 3).map(src => `<img src="${src}" alt="Médias Flash LYANN" class="flash-media-img">`).join('');
+                const imgsHTML = post.images.slice(0, 3).map(src => `<img src="${src}" alt="Médias Lyann LYANN" class="flash-media-img">`).join('');
                 mediaHTML = `<div class="flash-card-media-gallery ${gridClass}">${imgsHTML}</div>`;
             } else if (post.video) {
                 mediaHTML = `<div style="margin-top: 10px;"><video src="${post.video}" controls class="flash-video-player"></video></div>`;
@@ -1938,14 +1938,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (countSpan) {
                     let count = parseInt(countSpan.textContent) || 0;
                     if (btn.classList.contains('liked')) {
-                        countSpan.textContent = count - 1;
                         btn.classList.remove('liked');
-                        btn.style.color = '';
+                        count--;
                     } else {
-                        countSpan.textContent = count + 1;
                         btn.classList.add('liked');
-                        btn.style.color = '#E63B2E';
+                        count++;
                     }
+                    countSpan.textContent = count;
                 }
             });
         });
@@ -1973,12 +1972,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const type = document.getElementById('flashTypeSelect')?.value || 'dispo';
             const location = document.getElementById('flashTerritorySelect')?.value || 'Guadeloupe (971)';
 
-            if (!text) return;
+            if (!text && attachedPhotos.length === 0 && !attachedVideo) {
+                alert('Veuillez écrire un message ou ajouter une photo/vidéo à votre Lyann.');
+                return;
+            }
 
             let badgeText = '⚡ Disponibilité';
             if (type === 'besoin') badgeText = '🔍 Besoin';
             else if (type === 'reco') badgeText = '⭐ Recommandation';
-            else if (type === 'info') badgeText = '📢 Info Quartier';
+            else if (type === 'info') badgeText = '📢 Info Lakou';
 
             let territoryKey = 'guadeloupe';
             if (location.includes('Martinique')) territoryKey = 'martinique';
@@ -2012,7 +2014,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderFlashFeed();
             createFlashForm.reset();
             if (flashCharCount) flashCharCount.textContent = '0';
-            alert('🎉 Votre Flash multimédia a été publié en direct sur Le Fil LYANN !');
+            alert('✨ Votre Lyann a été publié avec succès dans le Lakou !');
         });
     }
 
