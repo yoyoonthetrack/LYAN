@@ -1696,6 +1696,247 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ==========================================================================
+    // MOTEUR EN DIRECT DU FIL LYANN (FLASH & ÉCHOS DU QUARTIER)
+    // ==========================================================================
+    const INITIAL_FLASH_POSTS = [
+        {
+            id: 'flash-1',
+            authorName: 'David M.',
+            authorRole: 'Artisan Clim & Froid',
+            authorAvatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=200&q=80',
+            badge: '⚡ Disponibilité',
+            type: 'dispo',
+            location: 'Baie-Mahault • Guadeloupe (971)',
+            territoryKey: 'guadeloupe',
+            timeAgo: 'Il y a 14 min',
+            content: 'Créneau disponible cet après-midi pour révision & entretien clim inverter sur Baie-Mahault ou Le Gosier ! Contactez-moi directement.',
+            likes: 14,
+            repliesCount: 3,
+            memberId: 1
+        },
+        {
+            id: 'flash-2',
+            authorName: 'Marie L.',
+            authorRole: 'Habitante vérifiée',
+            authorAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+            badge: '🔍 Besoin',
+            type: 'besoin',
+            location: 'Fort-de-France • Martinique (972)',
+            territoryKey: 'martinique',
+            timeAgo: 'Il y a 42 min',
+            content: 'Recherche urgente d\'un bon électricien pour remplacer un tableau secondaire à Schoelcher. Qui me recommandez-vous dans le réseau ?',
+            likes: 8,
+            repliesCount: 5,
+            memberId: 2
+        },
+        {
+            id: 'flash-3',
+            authorName: 'Élodie R.',
+            authorRole: 'Voisine Recommandée',
+            authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+            badge: '⭐ Recommandation',
+            type: 'reco',
+            location: 'Le Moule • Guadeloupe (971)',
+            territoryKey: 'guadeloupe',
+            timeAgo: 'Il y a 2 h',
+            content: 'Un immense merci à Marc B. pour la rénovation complète de ma terrasse en bois au Moule. Travail propre, rapide et tarif très réglo. Je recommande à 100% !',
+            likes: 22,
+            repliesCount: 2,
+            memberId: 5
+        },
+        {
+            id: 'flash-4',
+            authorName: 'Jean-Michel T.',
+            authorRole: 'Lyanneur PRO',
+            authorAvatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80',
+            badge: '📢 Info Quartier',
+            type: 'info',
+            location: 'Cayenne • Guyane (973)',
+            territoryKey: 'guyane',
+            timeAgo: 'Il y a 4 h',
+            content: 'Attention les voisins avec les grosses pluies d\'hier : pensez à vérifier vos filtres de gouttières et citernes pour éviter les bouchons avant la semaine prochaine.',
+            likes: 19,
+            repliesCount: 4,
+            memberId: 3
+        }
+    ];
+
+    let currentFlashPosts = [...INITIAL_FLASH_POSTS];
+    let activeFeedTypeFilter = 'all';
+    let activeFeedTerritoryFilter = 'all';
+
+    const flashFeedContainer = document.getElementById('flashFeedContainer');
+    const createFlashForm = document.getElementById('createFlashForm');
+    const flashContentInput = document.getElementById('flashContentInput');
+    const flashCharCount = document.getElementById('flashCharCount');
+    const feedTerritoryFilterSelect = document.getElementById('feedTerritoryFilterSelect');
+    const feedPills = document.querySelectorAll('.feed-pill');
+
+    if (flashContentInput && flashCharCount) {
+        flashContentInput.addEventListener('input', () => {
+            flashCharCount.textContent = flashContentInput.value.length;
+        });
+    }
+
+    function renderFlashFeed() {
+        if (!flashFeedContainer) return;
+
+        let filtered = currentFlashPosts.filter(post => {
+            const matchType = activeFeedTypeFilter === 'all' || post.type === activeFeedTypeFilter;
+            const matchTerritory = activeFeedTerritoryFilter === 'all' || post.territoryKey === activeFeedTerritoryFilter;
+            return matchType && matchTerritory;
+        });
+
+        if (filtered.length === 0) {
+            flashFeedContainer.innerHTML = `
+                <div class="text-center" style="padding: 40px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed var(--border);">
+                    <i class="ph ph-chats-teardrop" style="font-size: 2.5rem; color: var(--primary-light); margin-bottom: 10px;"></i>
+                    <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px;">Aucun Flash pour le moment</h4>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Soyez le premier à publier dans cette catégorie !</p>
+                </div>
+            `;
+            return;
+        }
+
+        flashFeedContainer.innerHTML = filtered.map(post => {
+            let badgeClass = 'flash-badge-dispo';
+            if (post.type === 'besoin') badgeClass = 'flash-badge-besoin';
+            else if (post.type === 'reco') badgeClass = 'flash-badge-reco';
+            else if (post.type === 'info') badgeClass = 'flash-badge-info';
+
+            return `
+                <div class="flash-card" id="${post.id}">
+                    <div class="flash-card-header">
+                        <div class="flash-author-block">
+                            <img src="${post.authorAvatar}" alt="${post.authorName}" class="flash-avatar">
+                            <div class="flash-author-info">
+                                <strong>${post.authorName} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.88rem;"></i></strong>
+                                <span>${post.authorRole} • 📍 ${post.location}</span>
+                            </div>
+                        </div>
+                        <div class="flash-meta-badges">
+                            <span class="${badgeClass}">${post.badge}</span>
+                        </div>
+                    </div>
+
+                    <div class="flash-card-body">
+                        ${post.content}
+                    </div>
+
+                    <div class="flash-card-footer">
+                        <span class="flash-time-tag"><i class="ph ph-clock"></i> ${post.timeAgo}</span>
+                        <div class="flash-actions-bar">
+                            <button class="flash-action-btn btn-like-flash" data-flash-id="${post.id}">
+                                <i class="ph-fill ph-heart"></i> <span class="like-count">${post.likes}</span>
+                            </button>
+                            <button class="flash-action-btn btn-reply-flash" data-author-name="${post.authorName}">
+                                <i class="ph ph-chat-circle-dots"></i> <span>Répondre</span>
+                            </button>
+                            <button class="flash-action-btn btn-share-flash" data-flash-id="${post.id}">
+                                <i class="ph ph-share-network"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Attach event listeners to flash cards
+        document.querySelectorAll('.btn-like-flash').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const countSpan = btn.querySelector('.like-count');
+                const isLiked = btn.classList.contains('liked');
+                let count = parseInt(countSpan.textContent, 10) || 0;
+
+                if (isLiked) {
+                    btn.classList.remove('liked');
+                    countSpan.textContent = count - 1;
+                } else {
+                    btn.classList.add('liked');
+                    countSpan.textContent = count + 1;
+                }
+            });
+        });
+
+        document.querySelectorAll('.btn-reply-flash').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const authorName = btn.dataset.authorName;
+                openContactMemberModal(authorName);
+            });
+        });
+
+        document.querySelectorAll('.btn-share-flash').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(window.location.href);
+                    alert('🔗 Lien du Flash copié dans votre presse-papier !');
+                }
+            });
+        });
+    }
+
+    if (createFlashForm) {
+        createFlashForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = flashContentInput ? flashContentInput.value.trim() : '';
+            const type = document.getElementById('flashTypeSelect')?.value || 'dispo';
+            const location = document.getElementById('flashTerritorySelect')?.value || 'Guadeloupe (971)';
+
+            if (!text) return;
+
+            let badgeText = '⚡ Disponibilité';
+            if (type === 'besoin') badgeText = '🔍 Besoin';
+            else if (type === 'reco') badgeText = '⭐ Recommandation';
+            else if (type === 'info') badgeText = '📢 Info Quartier';
+
+            let territoryKey = 'guadeloupe';
+            if (location.includes('Martinique')) territoryKey = 'martinique';
+            else if (location.includes('Guyane')) territoryKey = 'guyane';
+            else if (location.includes('Réunion')) territoryKey = 'reunion';
+
+            const newFlash = {
+                id: `flash-${Date.now()}`,
+                authorName: 'Vous (Membre LYANN)',
+                authorRole: 'Lyanneur Actif',
+                authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+                badge: badgeText,
+                type: type,
+                location: location,
+                territoryKey: territoryKey,
+                timeAgo: 'À l\'instant',
+                content: text,
+                likes: 1,
+                repliesCount: 0,
+                memberId: 99
+            };
+
+            currentFlashPosts.unshift(newFlash);
+            renderFlashFeed();
+            createFlashForm.reset();
+            if (flashCharCount) flashCharCount.textContent = '0';
+            alert('🎉 Votre Flash a été publié en direct sur Le Fil LYANN !');
+        });
+    }
+
+    feedPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            feedPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            activeFeedTypeFilter = pill.dataset.filterType;
+            renderFlashFeed();
+        });
+    });
+
+    if (feedTerritoryFilterSelect) {
+        feedTerritoryFilterSelect.addEventListener('change', (e) => {
+            activeFeedTerritoryFilter = e.target.value;
+            renderFlashFeed();
+        });
+    }
+
+    renderFlashFeed();
+
     renderMyDashboardRealizations();
     updateStepUI();
 });
