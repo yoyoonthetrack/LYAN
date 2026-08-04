@@ -1218,6 +1218,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (googleAuthBtn) {
         googleAuthBtn.addEventListener('click', () => {
+            localStorage.setItem('lyan_user_logged_in', 'true');
+            updateHeaderAuthState();
             alert('🟢 Authentification Google réussie ! Bienvenue sur votre espace LYANN.');
             openProfileDashboard('provider');
         });
@@ -1226,7 +1228,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            openProfileDashboard('provider');
+            localStorage.setItem('lyan_user_logged_in', 'true');
+            updateHeaderAuthState();
+            alert('🎉 Connexion réussie ! Bienvenue sur votre espace LYANN.');
+            closeLoginModal();
         });
     }
 
@@ -2331,16 +2336,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function updateHeaderAuthState() {
+        const isLoggedIn = localStorage.getItem('lyan_user_logged_in') === 'true';
+        if (isLoggedIn) {
+            document.body.classList.add('user-is-logged-in');
+        } else {
+            document.body.classList.remove('user-is-logged-in');
+        }
+    }
+
     const accountLogoutBtn = document.getElementById('accountLogoutBtn');
     if (accountLogoutBtn) {
         accountLogoutBtn.addEventListener('click', () => {
             if (confirm('Êtes-vous sûr de vouloir vous déconnecter de votre espace LYANN ?')) {
+                localStorage.setItem('lyan_user_logged_in', 'false');
+                updateHeaderAuthState();
                 if (userAccountModal) userAccountModal.classList.remove('active');
                 document.body.style.overflow = '';
-                alert('🚪 Vous êtes désormais déconnecté. À très bientôt sur LYANN DOM !');
+                alert('🚪 Vous êtes désormais déconnecté. Les boutons Connexion & S\'inscrire sont de nouveau affichés.');
             }
         });
     }
+
+    // Initialisation au chargement de la page
+    updateHeaderAuthState();
 
     renderFlashFeed();
 

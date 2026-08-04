@@ -5324,11 +5324,29 @@ input:checked + .slider:before {
 /* ==========================================================================
    ESPACE MON COMPTE & BOUTON PROFIL HEADER (.nav-profile-btn & #userAccountModal)
    ========================================================================== */
+/* Logique d'affichage conditionnel selon l'état de connexion */
+.logged-in-only {
+    display: none !important;
+}
+
+.logged-out-only {
+    display: inline-flex !important;
+}
+
+/* Quand l'utilisateur est connecté (.user-is-logged-in sur body) */
+body.user-is-logged-in .logged-in-only {
+    display: inline-flex !important;
+}
+
+body.user-is-logged-in .logged-out-only {
+    display: none !important;
+}
+
 .nav-profile-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 12px 4px 4px;
+    gap: 6px;
+    padding: 3px 10px 3px 3px;
     background: rgba(74, 124, 89, 0.08);
     border: 1.5px solid var(--primary-light);
     border-radius: var(--radius-full);
@@ -5337,7 +5355,7 @@ input:checked + .slider:before {
     text-decoration: none;
     color: var(--text);
     font-weight: 700;
-    font-size: 0.88rem;
+    font-size: 0.82rem;
 }
 
 .nav-profile-btn:hover {
