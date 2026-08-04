@@ -1,0 +1,105 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "LYANN DOM Multi-Client Platform API",
+    "description": "API REST unifiée et sécurisée pour les applications Web, iOS Native, Android Native et Back-Office Admin LYANN DOM.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Équipe Technique LYANN DOM",
+      "email": "dev@lyan-dom.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.lyan-dom.com/v1",
+      "description": "Serveur de Production DOM"
+    },
+    {
+      "url": "http://localhost:3000/v1",
+      "description": "Environnement de Développement Local"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Authentification d'un membre (Web & Mobile)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "example": "david@lyan-dom.com" },
+                  "password": { "type": "string", "example": "secret123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentification réussie, retourne le Token JWT et le profil membre"
+          }
+        }
+      }
+    },
+    "/members": {
+      "get": {
+        "summary": "Liste et filtrage des prestataires et habitants",
+        "parameters": [
+          { "name": "territory", "in": "query", "type": "string", "description": "guadeloupe, martinique, guyane, reunion" },
+          { "name": "category", "in": "query", "type": "string" },
+          { "name": "query", "in": "query", "type": "string" }
+        ],
+        "responses": {
+          "200": { "description": "Liste des membres correspondant aux critères" }
+        }
+      }
+    },
+    "/feed/posts": {
+      "get": {
+        "summary": "Récupération des publications du Fil en direct avec mentions @",
+        "responses": {
+          "200": { "description": "Liste paginée des posts du Fil" }
+        }
+      },
+      "post": {
+        "summary": "Publication d'un nouveau post Flash avec médias (3 photos / vidéo 30s)",
+        "responses": {
+          "201": { "description": "Post créé avec succès" }
+        }
+      }
+    },
+    "/deals/lyanner": {
+      "post": {
+        "summary": "Validation d'un accord 'LYANNER' (Appel Direct & WhatsApp)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "targetMemberId": { "type": "integer", "example": 1 },
+                  "memberName": { "type": "string", "example": "David Jean-Baptiste" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Accord validé, raccourcis de contact générés" }
+        }
+      }
+    },
+    "/admin/kpis": {
+      "get": {
+        "summary": "Rapport Business Intelligence & KPIs Back-Office (MRR, GMV, Territoires)",
+        "responses": {
+          "200": { "description": "Métriques globales réservées aux administrateurs" }
+        }
+      }
+    }
+  }
+}
