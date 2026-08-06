@@ -2734,16 +2734,17 @@ h1, h2, h3, h4 {
     }
 }
 
-/* Bascule du menu mobile à <= 1024px pour garantir une seule ligne d'entête */
-@media (max-width: 1024px) {
+/* Bascule du menu compact à <= 1150px pour garantir une seule ligne d'entête parfaite lors du redimensionnement */
+@media (max-width: 1150px) {
     .nav-links {
         display: none !important;
     }
 
     .mobile-header-actions {
         display: flex !important;
-        align-items: center;
-        gap: 10px;
+        align-items: center !important;
+        gap: 12px !important;
+        margin-left: auto !important;
     }
 
     .mobile-menu-btn {
@@ -2757,7 +2758,7 @@ h1, h2, h3, h4 {
         border: 1px solid var(--border);
     }
 
-    body.user-is-logged-in .mobile-profile-btn {
+    body.user-is-logged-in .mobile-header-actions .nav-profile-btn {
         display: inline-flex !important;
     }
 }
