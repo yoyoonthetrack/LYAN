@@ -376,10 +376,28 @@ h1, h2, h3, h4 {
 }
 
 .nav-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: nowrap;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+}
+
+.logo {
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    margin-right: auto !important;
+}
+
+.mobile-header-actions {
+    display: none;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 12px !important;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
 }
 
 .nav-links {
