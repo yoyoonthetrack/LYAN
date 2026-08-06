@@ -404,6 +404,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (mobileMenuClose) mobileMenuClose.addEventListener('click', closeMenu);
 
+        mobileMenuOverlay.addEventListener('click', (e) => {
+            if (e.target === mobileMenuOverlay) {
+                closeMenu();
+            }
+        });
+
         mobileMenuOverlay.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', closeMenu);
         });

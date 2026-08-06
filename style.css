@@ -6202,6 +6202,52 @@ body.user-is-logged-in .logged-out-only {
     justify-content: space-between;
 }
 
+/* Mobile Touch Ergonomics & Responsiveness Refinements */
+@media (max-width: 768px) {
+    .floating-chat-badge {
+        bottom: 20px;
+        right: 16px;
+        width: 52px;
+        height: 52px;
+    }
+    .floating-chat-badge i {
+        font-size: 1.5rem;
+    }
+    .speed-dial-wrapper {
+        bottom: 20px;
+        left: 16px;
+    }
+    .speed-dial-trigger {
+        width: 52px;
+        height: 52px;
+        font-size: 1.4rem;
+    }
+    .speed-dial-menu {
+        bottom: 64px;
+    }
+    .modal-card-user-account {
+        width: 98% !important;
+        max-height: 94vh !important;
+    }
+    .account-modal-header {
+        padding: 16px 20px;
+    }
+    .account-avatar-lg {
+        width: 50px;
+        height: 50px;
+    }
+    .account-user-name {
+        font-size: 1.15rem;
+    }
+    .account-tabs-nav {
+        padding: 0 10px;
+    }
+    .account-tab-btn {
+        padding: 12px 14px;
+        font-size: 0.82rem;
+    }
+}
+
 
 
 
