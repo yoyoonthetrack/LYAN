@@ -3486,7 +3486,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sdActionBokantaj.addEventListener('click', (e) => {
                 e.preventDefault();
                 speedDialWrapper.classList.remove('active');
-                openAccountTab('tab-acc-bokantaj');
+                openAccountTab('tab-acc-activities');
             });
         }
 
@@ -3496,7 +3496,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sdActionCreateService.addEventListener('click', (e) => {
                 e.preventDefault();
                 speedDialWrapper.classList.remove('active');
-                openAccountTab('tab-acc-services');
+                openAccountTab('tab-acc-profile-services');
             });
         }
 
@@ -3506,7 +3506,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sdActionMakeRequest.addEventListener('click', (e) => {
                 e.preventDefault();
                 speedDialWrapper.classList.remove('active');
-                openAccountTab('tab-acc-demandes');
+                openAccountTab('tab-acc-activities');
             });
         }
 

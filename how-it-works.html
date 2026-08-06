@@ -734,5 +734,247 @@
             </a>
         </div>
     </div>
+    <!-- ========== MODAL ESPACE MON COMPTE (#userAccountModal - 6 HUBS UNIFIÉS) ========== -->
+    <div class="modal-overlay" id="userAccountModal">
+        <div class="modal-card modal-card-user-account">
+            <button class="modal-close-btn" id="closeUserAccountModalBtn" aria-label="Fermer" style="color: #FFFFFF; top: 16px; right: 16px; z-index: 10;"><i class="ph ph-x"></i></button>
+
+            <div class="account-modal-header">
+                <div class="account-user-profile-summary">
+                    <img src="david-34.png" alt="Avatar Utilisateur" id="accountModalAvatar" class="account-avatar-lg">
+                    <div>
+                        <h3 class="account-user-name" id="accountModalName">David Jean-Baptiste</h3>
+                        <div class="account-user-meta">
+                            <span id="accountModalTerritory"><i class="ph ph-map-pin"></i> Guadeloupe (971) • @david971</span>
+                            <span class="pill-badge pill-green" id="accountModalBadge" style="font-size: 0.75rem;">🌟 Lyanneur Plus</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BARRE DES 6 GRANDS HUBS REGROUPÉS -->
+            <div class="account-tabs-nav">
+                <button class="account-tab-btn active" data-account-tab="tab-acc-dashboard"><i class="ph ph-layout"></i> Tableau de bord</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-profile-services"><i class="ph ph-user"></i> Mon Profil & Services</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-activities"><i class="ph ph-briefcase"></i> Mes Activités & Échanges</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-finances"><i class="ph ph-credit-card"></i> Finances & Paiements</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-reputation"><i class="ph ph-star"></i> Avis & Vérification</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-settings-sec"><i class="ph ph-gear"></i> Réglages & Sécurité</button>
+            </div>
+
+            <div class="modal-body" style="padding: 24px; max-height: 75vh; overflow-y: auto;">
+                
+                <!-- HUB 1 : TABLEAU DE BORD -->
+                <div class="account-tab-content active" id="tab-acc-dashboard">
+                    <div class="profile-dashboard-grid">
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val">4.9 ★</span>
+                            <span class="profile-kpi-label">Note moyenne (38 avis)</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val">34</span>
+                            <span class="profile-kpi-label">Missions réalisées</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val">12</span>
+                            <span class="profile-kpi-label">Demandes publiées</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val">15 min</span>
+                            <span class="profile-kpi-label">Temps moyen de réponse</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val" style="color: #2E7D32;">1 450,00 €</span>
+                            <span class="profile-kpi-label">Revenus du mois</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val" style="color: #C95140;">280,00 €</span>
+                            <span class="profile-kpi-label">Dépenses du mois</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <div class="profile-section-title">
+                            <span>🔔 Activité récente & Alertes</span>
+                            <span class="pill-badge pill-green">Compte 100% Vérifié ✅</span>
+                        </div>
+                        <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                            Bienvenue sur votre Espace Unique LYANN. Votre compte est unifié : vous pouvez simultanément proposer des services, faire des demandes et recevoir des paiements sans changer de profil.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- HUB 2 : MON PROFIL & SERVICES -->
+                <div class="account-tab-content" id="tab-acc-profile-services">
+                    <!-- Section Profil Public -->
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">👤 Profil Public & Présentation</h4>
+                        <form id="publicProfileForm">
+                            <div class="form-group" style="margin-bottom: 14px;">
+                                <label>Bio / Présentation</label>
+                                <textarea class="modal-input" style="height: 75px;" placeholder="Présentez-vous à la communauté...">Artisan passionné avec 8 ans d'expérience en climatisation et plomberie en Guadeloupe.</textarea>
+                            </div>
+                            <div class="form-group-row" style="display: flex; gap: 12px; margin-bottom: 14px;">
+                                <div class="form-group flex-1">
+                                    <label>Compétences</label>
+                                    <input type="text" class="modal-input" value="Climatisation, Plomberie, Électricité, Jardinage">
+                                </div>
+                                <div class="form-group flex-1">
+                                    <label>Rayon d'intervention (km)</label>
+                                    <input type="number" class="modal-input" value="30">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">Mettre à jour mon profil 💾</button>
+                        </form>
+                    </div>
+
+                    <!-- Section Mes Services -->
+                    <div class="profile-section-card">
+                        <div class="profile-section-title">
+                            <span>🛠️ Offres de Services Proposées</span>
+                            <button class="btn btn-primary btn-sm" id="btnAddNewServiceHub">+ Nouveau service</button>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div style="background: #F8F9FA; padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="font-size: 0.92rem; color: var(--primary-dark);">Entretien & Révision Climatisation Inverter</strong>
+                                    <div style="font-size: 0.78rem; color: var(--text-muted);">60.00 € / unité • Déplacement inclus</div>
+                                </div>
+                                <span class="pill-badge pill-green">Actif ●</span>
+                            </div>
+                            <div style="background: #F8F9FA; padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="font-size: 0.92rem; color: var(--primary-dark);">Taille de Palmiers & Entretien Espaces Verts</strong>
+                                    <div style="font-size: 0.78rem; color: var(--text-muted);">Sur devis / Heure • Matériel inclus</div>
+                                </div>
+                                <span class="pill-badge pill-green">Actif ●</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section Disponibilités -->
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">📅 Horaires & Disponibilités</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">Lundi au Samedi : 07:30 — 18:00. Dimanche : Indisponible.</p>
+                    </div>
+                </div>
+
+                <!-- HUB 3 : MES ACTIVITÉS & ÉCHANGES -->
+                <div class="account-tab-content" id="tab-acc-activities">
+                    <!-- Section Demandes -->
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">📝 Mes Demandes d'Intervention (Acheteur)</h4>
+                        <div style="background: #F8F9FA; padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; justify-content: space-between;">
+                            <div>
+                                <strong style="font-size: 0.92rem;">Recherche électricien pour tableau triphasé</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">Publié le 02/08/2026 • Baie-Mahault</div>
+                            </div>
+                            <span class="pill-badge pill-gold">En cours ⏳</span>
+                        </div>
+                    </div>
+
+                    <!-- Section Missions -->
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">💼 Mes Missions Réalisées (Intervenant)</h4>
+                        <div style="background: #F8F9FA; padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; justify-content: space-between;">
+                            <div>
+                                <strong style="font-size: 0.92rem;">Pose de Split 12000 BTU — Le Gosier</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">Client : Sarah L. • Montant : 450,00 €</div>
+                            </div>
+                            <span class="pill-badge pill-green">Terminé & Payé ✅</span>
+                        </div>
+                    </div>
+
+                    <!-- Section Bokantaj -->
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">📡 Mes Publications Bokantaj</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">3 annonces et posts actifs partagés sur le réseau territorial.</p>
+                    </div>
+                </div>
+
+                <!-- HUB 4 : FINANCES & PAIEMENTS -->
+                <div class="account-tab-content" id="tab-acc-finances">
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">💳 Tableau de Bord Stripe Connect & Solde</h4>
+                        <div class="profile-dashboard-grid" style="margin-bottom: 16px;">
+                            <div class="profile-kpi-card" style="background: #E8F5E9;">
+                                <span class="profile-kpi-val" style="color: #2E7D32;">890,00 €</span>
+                                <span class="profile-kpi-label">Solde disponible</span>
+                            </div>
+                            <div class="profile-kpi-card" style="background: #FFF8E1;">
+                                <span class="profile-kpi-val" style="color: #D4A843;">320,00 €</span>
+                                <span class="profile-kpi-label">Solde en séquestre</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="btnInstantPayoutHub">Virement instantané vers mon IBAN 🏦</button>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">👑 Mon Formule d'Abonnement : Lyanneur Plus</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">Accès illimité à la messagerie directe, zéro commission sur les 5 premières prestations du mois.</p>
+                        <button class="btn btn-outline btn-sm">Changer de formule d'abonnement</button>
+                    </div>
+                </div>
+
+                <!-- HUB 5 : AVIS & VÉRIFICATION -->
+                <div class="account-tab-content" id="tab-acc-reputation">
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">⭐ Avis & Évaluations (38 avis • 4.9/5)</h4>
+                        <div style="background: #FFFDF5; border: 1px solid #FFE5A3; padding: 12px; border-radius: var(--radius-md);">
+                            <strong style="color: #D4A843;">★★★★★ "Travail d'une précision remarquable et très ponctuel !"</strong>
+                            <p style="font-size: 0.78rem; color: var(--text); margin-top: 4px;">Par Huguette C. • Il y a 2 jours</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">🛡️ Statut de Vérification & KYC</h4>
+                        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 0.88rem;">
+                            <li>✅ Email vérifié (david@lyann.app)</li>
+                            <li>✅ Mobile vérifié (+590 690 ** ** 22)</li>
+                            <li>✅ CNI / Passeport validé (Stripe KYC)</li>
+                            <li>✅ SIREN & Assurance Pro validés</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- HUB 6 : RÉGLAGES & SÉCURITÉ -->
+                <div class="account-tab-content" id="tab-acc-settings-sec">
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">🔔 Notifications</h4>
+                        <label style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; margin-bottom: 8px;">
+                            <input type="checkbox" checked> Notifications SMS pour les nouveaux messages
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem;">
+                            <input type="checkbox" checked> Notifications Email pour les devis et paiements
+                        </label>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">🔒 Confidentialité & RGPD</h4>
+                        <label style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; margin-bottom: 10px;">
+                            <input type="checkbox"> Mode incognito (Masquer la présence en ligne)
+                        </label>
+                        <button class="btn btn-outline btn-sm">Télécharger mes données personnelles (ZIP)</button>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">🔑 Sécurité du Compte</h4>
+                        <form id="accountSecurityFormHub">
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label>Mot de passe actuel</label>
+                                <input type="password" class="modal-input" placeholder="••••••••">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label>Nouveau mot de passe</label>
+                                <input type="password" class="modal-input" placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">Mettre à jour 🔒</button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
 </body>
 </html>
