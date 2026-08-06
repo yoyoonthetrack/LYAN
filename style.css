@@ -2740,6 +2740,12 @@ h1, h2, h3, h4 {
         display: none !important;
     }
 
+    .mobile-header-actions {
+        display: flex !important;
+        align-items: center;
+        gap: 10px;
+    }
+
     .mobile-menu-btn {
         display: flex !important;
         align-items: center;
@@ -2749,6 +2755,10 @@ h1, h2, h3, h4 {
         border-radius: var(--radius-sm);
         background: var(--bg);
         border: 1px solid var(--border);
+    }
+
+    body.user-is-logged-in .mobile-profile-btn {
+        display: inline-flex !important;
     }
 }
 

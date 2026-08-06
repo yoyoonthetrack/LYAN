@@ -3480,6 +3480,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Raccourci 0 : Ouvrir mon profil & réglages
+        const sdActionOpenProfile = document.getElementById('sdActionOpenProfile');
+        if (sdActionOpenProfile) {
+            sdActionOpenProfile.addEventListener('click', (e) => {
+                e.preventDefault();
+                speedDialWrapper.classList.remove('active');
+                openAccountTab('tab-acc-dashboard');
+            });
+        }
+
         // Raccourci 1 : Publier un Bokantaj
         const sdActionBokantaj = document.getElementById('sdActionBokantaj');
         if (sdActionBokantaj) {
