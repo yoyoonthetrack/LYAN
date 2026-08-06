@@ -2395,15 +2395,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Activate mobile conversation view
+        const chatLayout = document.querySelector('.chat-modal-layout');
+        if (chatLayout) chatLayout.classList.add('mobile-conversation-active');
+
         // Hide overlays
         closeAllOverlays();
         
         // Auto adapt simulation role to match logical test path
         if (name === "Tati Huguette Cazeau") {
-            // We want to act as provider (Artisan) chatting with a client
             setSimulatedRole('provider');
         } else {
-            // We chat as client with David or Sarah (Artisans)
             setSimulatedRole('client');
         }
 
@@ -2415,6 +2417,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (chatModal) chatModal.classList.add('active');
+    }
+
+    // Bouton retour aux contacts sur mobile
+    const chatBackBtn = document.querySelector('.chat-back-to-contacts-btn');
+    if (chatBackBtn) {
+        chatBackBtn.addEventListener('click', () => {
+            const chatLayout = document.querySelector('.chat-modal-layout');
+            if (chatLayout) chatLayout.classList.remove('mobile-conversation-active');
+        });
     }
 
     function setSimulatedRole(role) {

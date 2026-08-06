@@ -94,12 +94,12 @@
                     <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
                 </div>
                                                 <nav class="mobile-nav-list">
-                    <a href="#" class="open-account-modal-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 8px;">
+                    <a href="index.html" class="active">ACCUEIL <i class="ph ph-caret-right"></i></a>
+                    <a href="#" class="open-account-modal-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin: 6px 0;">
                         <img src="david-34.png" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
                         MON PROFIL & RÉGLAGES
                         <i class="ph ph-caret-right" style="margin-left: auto;"></i>
                     </a>
-                    <a href="index.html" class="active">ACCUEIL <i class="ph ph-caret-right"></i></a>
                     <a href="results.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-magnifying-glass" style="color: #E5B345; font-size: 1.25rem;"></i> RECHERCHER <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="feed.html">BOKANTAJ <span class="nav-live-dot"></span></a>
                     <a href="how-it-works.html">COMMENT ÇA MARCHE <i class="ph ph-caret-right"></i></a>
@@ -1237,7 +1237,7 @@
                 </div>
 
                 <!-- PUB TAB 2 : À PROPOS -->
-                <div class="public-tab-content" id="pubtab-about">
+                <div class="public-tab-content active" id="pubtab-about">
                     <h4 class="tab-section-title">Présentation & Compétences</h4>
                     <p class="profile-bio-text" id="publicMemberBioText">Spécialiste de la plomberie résidentielle et du dépannage d'urgence sur Baie-Mahault et Grande-Terre.</p>
                     
@@ -1259,7 +1259,7 @@
                 </div>
 
                 <!-- PUB TAB 3 : AVIS VOISINS -->
-                <div class="public-tab-content" id="pubtab-reviews">
+                <div class="public-tab-content active" id="pubtab-reviews">
                     <h4 class="tab-section-title">Recommandations & Retours de Voisins</h4>
                     <div class="activity-list" id="publicMemberReviewsList">
                         <!-- Reviews list -->
@@ -1669,7 +1669,8 @@
                 <div class="chat-main-area">
                     <!-- HEADER BAR -->
                     <div class="chat-header-bar" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
-                        <div class="chat-header-user">
+                        <div class="chat-header-user" style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="chat-back-to-contacts-btn" style="display: none;"><i class="ph ph-arrow-left"></i> Contacts</button>
                             <img src="david-34.png" alt="Avatar Active" id="chatHeaderAvatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                             <div>
                                 <strong id="chatHeaderName" style="font-size: 1rem; color: var(--text);">David Jean-Baptiste</strong>
