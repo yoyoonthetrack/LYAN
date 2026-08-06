@@ -119,13 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.btn-approve-ai').forEach(btn => {
         btn.addEventListener('click', () => {
             const postId = btn.getAttribute('data-post-id');
-            if (confirm('Approuver cette publication IA et la diffuser immédiatement sur Le Fil public ?')) {
+            if (confirm('Approuver cette publication IA et la diffuser immédiatement sur Bokantaj public ?')) {
                 if (window.LYANN_AI_ECOSYSTEM) {
                     window.LYANN_AI_ECOSYSTEM.approvePendingPost(postId);
                 }
                 const row = document.getElementById(`ai-row-${postId.replace('pending-', '')}`);
                 if (row) row.remove();
-                alert('✅ Publication IA approuvée et diffusée sur Le Fil !');
+                alert('✅ Publication IA approuvée et diffusée sur Bokantaj !');
             }
         });
     });
@@ -538,9 +538,293 @@ document.addEventListener('DOMContentLoaded', () => {
             const activePill = document.querySelector('.period-pill.active');
             const key = activePill ? activePill.getAttribute('data-period') : '30d';
             updateAnalyticsDashboard(key);
+            refreshDashboardData();
             alert('🔄 Données analytiques et métriques BI synchronisées en temps réel.');
         });
     }
+
+    // ==========================================================================
+    // MODULE FINANCIER & ARBITRAGE DES LITIGES (DYNAMIQUE)
+    // ==========================================================================
+    let activeArbitrationTxId = null;
+
+    function renderAdminTransactions() {
+        const body = document.getElementById('adminTransactionsTableBody');
+        if (!body) return;
+        
+        const txs = window.LYANN_PAYMENTS.getTransactions();
+        body.innerHTML = '';
+        
+        txs.forEach(t => {
+            const row = document.createElement('tr');
+            let statusLabel = '';
+            if (t.status === 'en_cours') {
+                statusLabel = '<span class="status-badge active" style="background:#3182CE; color:white;">EN COURS</span>';
+            } else if (t.status === 'termine') {
+                statusLabel = '<span class="status-badge verified" style="background:#4A7C59; color:white;">TERMINÉ ✔</span>';
+            } else if (t.status === 'litige') {
+                statusLabel = '<span class="status-badge suspended" style="background:#E76F51; color:white; font-weight:800;">LITIGE ⚠️</span>';
+            } else if (t.status === 'rembourse') {
+                statusLabel = '<span class="status-badge suspended" style="background:#718096; color:white;">REMBOURSÉ</span>';
+            } else {
+                statusLabel = `<span class="status-badge open">${t.status}</span>`;
+            }
+
+            const validsCount = t.milestones.filter(m => m.status === 'approved').length;
+            const milestonesText = t.requiresMilestones ? `${validsCount} / ${t.milestones.length}` : 'Prestation unique';
+
+            row.innerHTML = `
+                <td><strong>#${t.id}</strong></td>
+                <td>${t.customerName}</td>
+                <td>${t.providerName}</td>
+                <td>${t.title}</td>
+                <td style="font-family: monospace; font-weight:700;">${t.amount.toFixed(2)} €</td>
+                <td style="font-family: monospace;">${t.commissionAmount.toFixed(2)} €</td>
+                <td>${statusLabel}</td>
+                <td>${milestonesText}</td>
+            `;
+            body.appendChild(row);
+        });
+    }
+
+    function renderAdminWallets() {
+        const body = document.getElementById('adminWalletsTableBody');
+        if (!body) return;
+        
+        const wallets = window.LYANN_PAYMENTS.getWallets();
+        const members = {
+            1: "David Jean-Baptiste",
+            2: "Marie-Line Popotte",
+            3: "Jean-Michel Télèphe"
+        };
+        body.innerHTML = '';
+        
+        Object.entries(wallets).forEach(([id, w]) => {
+            const row = document.createElement('tr');
+            let kycBadge = '';
+            if (w.kycStatus === 'verified') {
+                kycBadge = '<span class="status-badge verified" style="background:#4A7C59; color:white;">VÉRIFIÉ ✔</span>';
+            } else if (w.kycStatus === 'pending') {
+                kycBadge = '<span class="status-badge open" style="background:#D69E2E; color:white;">EN COURS ⏳</span>';
+            } else {
+                kycBadge = '<span class="status-badge suspended" style="background:#E53E3E; color:white;">INCOMPLET ❌</span>';
+            }
+
+            row.innerHTML = `
+                <td><strong>${members[id] || 'Prestataire #' + id}</strong></td>
+                <td style="font-family: monospace; font-size: 0.8rem;">${w.stripeAccountId}</td>
+                <td>${kycBadge}</td>
+                <td style="font-family: monospace; font-weight:700;">${w.pendingBalance.toFixed(2)} €</td>
+                <td style="font-family: monospace; font-weight:700; color:#81E6D9;">${w.availableBalance.toFixed(2)} €</td>
+            `;
+            body.appendChild(row);
+        });
+    }
+
+    function updateAdminFinancesSummary() {
+        const metrics = window.LYANN_PAYMENTS.getBIReport();
+        const elGmv = document.getElementById('adminGmvDisplay');
+        const elEscrow = document.getElementById('adminEscrowDisplay');
+        const elCom = document.getElementById('adminCommissionsDisplay');
+        const elProt = document.getElementById('adminProtectionsDisplay');
+
+        if (elGmv) elGmv.textContent = `${metrics.gmv.toFixed(2)} €`;
+        if (elEscrow) elEscrow.textContent = `${metrics.pendingEscrowFunds.toFixed(2)} €`;
+        if (elCom) elCom.textContent = `${metrics.platformFeeRevenue.toFixed(2)} €`;
+        if (elProt) elProt.textContent = `${metrics.protectionRevenue.toFixed(2)} €`;
+
+        // Écraser les KPIs BI du haut de page
+        const biGmv = document.getElementById('kpiGmvVal');
+        const biCom = document.getElementById('kpiCommVal');
+        if (biGmv) biGmv.textContent = `${metrics.gmv.toFixed(2)} €`;
+        if (biCom) biCom.textContent = `${metrics.platformFeeRevenue.toFixed(2)} €`;
+    }
+
+    function checkActiveDisputes() {
+        const card = document.getElementById('adminDisputeArbitrationCard');
+        if (!card) return;
+
+        const txs = window.LYANN_PAYMENTS.getTransactions();
+        const disputeTx = txs.find(t => t.status === 'litige' && t.dispute && t.dispute.status === 'open');
+
+        if (!disputeTx) {
+            card.style.display = 'none';
+            activeArbitrationTxId = null;
+            return;
+        }
+
+        activeArbitrationTxId = disputeTx.id;
+        card.style.display = 'block';
+
+        // Détails
+        const details = document.getElementById('arbitrationDisputeDetails');
+        const disp = disputeTx.dispute;
+        details.innerHTML = `
+            <div><strong>ID Prestation :</strong> #${disputeTx.id}</div>
+            <div><strong>Nom Litige :</strong> ${disp.id}</div>
+            <div><strong>Projet :</strong> ${disputeTx.title}</div>
+            <div><strong>Client (Demandeur) :</strong> ${disputeTx.customerName}</div>
+            <div><strong>Prestataire :</strong> ${disputeTx.providerName}</div>
+            <div><strong>Motif :</strong> <span style="color:#FC8181; font-weight:700;">${disp.reason}</span></div>
+            <div style="margin-top: 8px; font-style: italic; background:rgba(0,0,0,0.1); padding:8px; border-radius:4px;">"${disp.description}"</div>
+        `;
+
+        // Preuves
+        const evidence = document.getElementById('arbitrationEvidenceList');
+        evidence.innerHTML = '';
+        if (disp.evidenceFiles.length === 0) {
+            evidence.innerHTML = '<span style="font-size:0.8rem; color:var(--admin-text-muted);">Aucune preuve photo.</span>';
+        } else {
+            disp.evidenceFiles.forEach(file => {
+                if (file.url && file.url !== '#') {
+                    const img = document.createElement('img');
+                    img.src = file.url;
+                    img.alt = file.name;
+                    img.style.width = '65px';
+                    img.style.height = '65px';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '6px';
+                    img.style.border = '1px solid var(--admin-border)';
+                    evidence.appendChild(img);
+                } else {
+                    const span = document.createElement('span');
+                    span.textContent = `📎 ${file.name}`;
+                    span.style.fontSize = '0.78rem';
+                    evidence.appendChild(span);
+                }
+            });
+        }
+
+        // Dialogue
+        const chat = document.getElementById('arbitrationChatBox');
+        chat.innerHTML = '';
+        disp.messages.forEach(msg => {
+            const bubble = document.createElement('div');
+            bubble.style.padding = '6px 10px';
+            bubble.style.borderRadius = '6px';
+            bubble.style.marginBottom = '6px';
+            bubble.style.lineHeight = '1.3';
+            if (msg.sender === 'client') {
+                bubble.style.background = 'rgba(123, 197, 227, 0.12)';
+                bubble.style.alignSelf = 'flex-start';
+                bubble.innerHTML = `<span style="color:#7BC5E3; font-weight:700;">Client:</span> ${msg.text}`;
+            } else {
+                bubble.style.background = 'rgba(229, 179, 69, 0.12)';
+                bubble.style.alignSelf = 'flex-end';
+                bubble.innerHTML = `<span style="color:#E5B345; font-weight:700;">Prestataire:</span> ${msg.text}`;
+            }
+            chat.appendChild(bubble);
+        });
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function refreshDashboardData() {
+        renderAdminTransactions();
+        renderAdminWallets();
+        updateAdminFinancesSummary();
+        checkActiveDisputes();
+    }
+
+    // Enregistrement des configurations
+    const configForm = document.getElementById('adminFinancesConfigForm');
+    if (configForm) {
+        const rates = window.LYANN_PAYMENTS.getConfig();
+        document.getElementById('configCommissionRate').value = rates.commissionRate;
+        document.getElementById('configProtectionFee').value = rates.protectionFee;
+
+        configForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const r = parseFloat(document.getElementById('configCommissionRate').value);
+            const p = parseFloat(document.getElementById('configProtectionFee').value);
+            window.LYANN_PAYMENTS.saveConfig({ commissionRate: r, protectionFee: p });
+            alert(`🟢 Configuration financière enregistrée ! Taux commission : ${r}%, Protection : ${p}€.`);
+            updateAdminFinancesSummary();
+        });
+    }
+
+    // Arbitration Actions
+    document.getElementById('btnArbitrateRefundClient')?.addEventListener('click', () => {
+        if (activeArbitrationTxId && confirm("Marquer la médiation comme terminée et procéder au remboursement du client ?")) {
+            window.LYANN_PAYMENTS.resolveDispute(activeArbitrationTxId, 'resolved_client');
+            alert("Remboursement client initié.");
+            refreshDashboardData();
+        }
+    });
+
+    document.getElementById('btnArbitratePayProvider')?.addEventListener('click', () => {
+        if (activeArbitrationTxId && confirm("Valider les travaux et libérer les fonds restants au prestataire ?")) {
+            window.LYANN_PAYMENTS.resolveDispute(activeArbitrationTxId, 'resolved_provider');
+            alert("Paiement libéré vers le portefeuille.");
+            refreshDashboardData();
+        }
+    });
+
+    document.getElementById('btnArbitrateSplit50')?.addEventListener('click', () => {
+        if (activeArbitrationTxId && confirm("Fermer le litige avec une répartition amiable de 50/50 ?")) {
+            window.LYANN_PAYMENTS.resolveDispute(activeArbitrationTxId, 'resolved_split');
+            alert("Arbitrage 50/50 enregistré.");
+            refreshDashboardData();
+        }
+    });
+
+    // Événements de synchronisation en direct avec le simulateur
+    window.addEventListener('lyann_payment_tx_changed', refreshDashboardData);
+    window.addEventListener('lyann_payment_wallets_changed', refreshDashboardData);
+    window.addEventListener('lyann_payment_config_changed', refreshDashboardData);
+
+    // Rendu dynamique du journal des notifications
+    function renderNotificationsLogTable() {
+        const tableBody = document.getElementById('notificationsLogTableBody');
+        if (!tableBody) return;
+
+        if (!window.LYANN_NOTIFICATIONS) {
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--admin-text-muted); padding: 24px;">Module de notification indisponible.</td></tr>`;
+            return;
+        }
+
+        const logs = window.LYANN_NOTIFICATIONS.getLogs();
+        if (logs.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--admin-text-muted); padding: 24px;">Aucune notification automatique transmise pour le moment.</td></tr>`;
+            return;
+        }
+
+        tableBody.innerHTML = logs.map(log => {
+            const date = new Date(log.timestamp);
+            const timeStr = date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            const isEmail = log.channel === 'email';
+            const channelBadge = isEmail 
+                ? '<span class="status-badge" style="background: rgba(59, 130, 246, 0.15); color: #3B82F6;"><i class="ph ph-envelope"></i> EMAIL</span>' 
+                : '<span class="status-badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981;"><i class="ph ph-chat-text"></i> SMS</span>';
+            
+            const isSent = log.status === 'sent';
+            const statusBadge = isSent 
+                ? '<span class="status-badge active">TWILIO / SENDGRID ✅</span>' 
+                : '<span class="status-badge" style="background: rgba(229, 175, 47, 0.15); color: #E5AF2F;"><i class="ph ph-monitor"></i> SIMULÉ 🖥️</span>';
+
+            const cleanContent = log.content ? log.content.replace(/<[^>]*>/g, '').trim().substring(0, 80) + '...' : '';
+
+            return `
+                <tr>
+                    <td>${timeStr}</td>
+                    <td><strong>${log.recipientName}</strong></td>
+                    <td style="font-family: monospace; font-size: 0.82rem;">${log.recipientContact}</td>
+                    <td>${channelBadge}</td>
+                    <td>
+                        <div style="font-weight: 700; font-size: 0.85rem; margin-bottom: 2px;">${log.subject}</div>
+                        <div style="font-size: 0.78rem; color: var(--admin-text-muted); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${cleanContent}">${cleanContent}</div>
+                    </td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    window.addEventListener('lyann_notification_sent', renderNotificationsLogTable);
+
+    // Chargement initial
+    refreshDashboardData();
+    renderNotificationsLogTable();
 
     console.log('🚀 Console d\'Administration LYANN Enterprise & Outil BI initialisés.');
 });

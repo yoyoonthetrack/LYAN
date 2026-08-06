@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LYANN — Espace Paiements Sécurisés & Séquestre Escrow</title>
+    <meta name="description" content="Découvrez le tiers de confiance LYANN : Devis par jalons, paiement sécurisé, séquestre de fonds Stripe Connect et résolution des litiges.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Page Specific Styles (Premium Portal Styles) -->
+    <style>
+        .portal-wrapper {
+            max-width: 1200px;
+            margin: 120px auto 60px;
+            padding: 0 20px;
+        }
+
+        .simulator-selector-bar {
+            background: var(--bg-warm);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            gap: 20px;
+            flex-wrap: wrap;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .sim-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sim-info-icon {
+            font-size: 1.8rem;
+            color: var(--primary);
+        }
+
+        .role-toggles {
+            display: flex;
+            background: var(--border);
+            padding: 4px;
+            border-radius: var(--radius-full);
+        }
+
+        .role-toggle-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 20px;
+            border-radius: var(--radius-full);
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .role-toggle-btn.active {
+            background: var(--primary);
+            color: var(--bg-white);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .role-toggle-btn.active.provider-active {
+            background: var(--sand-yellow-dark);
+        }
+
+        .portal-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .portal-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .portal-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .portal-menu-item {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: var(--text);
+            text-align: left;
+        }
+
+        .portal-menu-item:hover, .portal-menu-item.active {
+            border-color: var(--primary);
+            background: var(--pop-emerald-light);
+            color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .portal-menu-item.active-provider {
+            border-color: var(--sand-yellow);
+            background: var(--pop-yellow-light);
+            color: var(--sand-yellow-dark);
+        }
+
+        .portal-menu-item-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.9rem;
+        }
+
+        .portal-menu-item i {
+            font-size: 1.2rem;
+        }
+
+        .portal-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 30px;
+            box-shadow: var(--shadow-sm);
+            min-height: 450px;
+            transition: all 0.3s ease;
+        }
+
+        .portal-card-header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .portal-card-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .portal-card-title.provider-title {
+            color: var(--sand-yellow-dark);
+        }
+
+        /* Stepper de Jalons (Milestone tracking UI) */
+        .stepper-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .stepper-step {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            position: relative;
+            background: var(--bg-white);
+            transition: all 0.25s ease;
+        }
+
+        .stepper-step.active {
+            border-color: var(--sky-blue);
+            box-shadow: 0 0 12px rgba(123, 197, 227, 0.15);
+        }
+
+        .stepper-step.approved {
+            border-color: var(--primary);
+            background: var(--pop-emerald-light);
+        }
+
+        .stepper-step.rejected {
+            border-color: var(--pop-coral);
+            background: var(--pop-coral-light);
+        }
+
+        .step-number-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--border);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--admin-font-mono, monospace);
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .stepper-step.approved .step-number-badge {
+            background: var(--primary);
+            color: var(--bg-white);
+        }
+
+        .stepper-step.rejected .step-number-badge {
+            background: var(--pop-coral);
+            color: var(--bg-white);
+        }
+
+        .stepper-step.active .step-number-badge {
+            background: var(--sky-blue);
+            color: var(--bg-white);
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .step-amount-tag {
+            font-family: var(--admin-font-mono, monospace);
+            color: var(--primary-dark);
+            background: rgba(74, 124, 89, 0.1);
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+        }
+
+        .step-status-tag {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            text-transform: uppercase;
+        }
+
+        .status-pending { background: #E2E8F0; color: #4A5568; }
+        .status-submitted { background: #FFF3D6; color: #8A6200; }
+        .status-approved { background: #C6F6D5; color: #22543D; }
+        .status-rejected { background: #FED7D7; color: #742A2A; }
+
+        /* Wallet Cards Style */
+        .wallet-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .wallet-balance-box {
+            background: var(--bg-warm);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wallet-balance-box.available {
+            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+            color: var(--bg-white);
+            border: none;
+        }
+
+        .wallet-balance-box.available .balance-amount {
+            color: var(--sand-yellow-light);
+        }
+
+        .balance-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+
+        .balance-amount {
+            font-size: 2rem;
+            font-weight: 800;
+            font-family: var(--admin-font-mono, monospace);
+            margin: 10px 0;
+            display: block;
+        }
+
+        /* Dispute Messaging UI */
+        .dispute-chat-box {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            height: 250px;
+            overflow-y: auto;
+            padding: 16px;
+            background: var(--bg-warm);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .chat-message {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .chat-message.client {
+            background: var(--sky-blue-light);
+            color: var(--sky-blue-dark);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-message.provider {
+            background: var(--pop-yellow-light);
+            color: var(--sand-yellow-dark);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-message.admin {
+            background: #EBF3EE;
+            color: var(--primary-dark);
+            align-self: center;
+            text-align: center;
+            font-weight: 600;
+            max-width: 90%;
+        }
+
+        .chat-message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            display: block;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        /* Forms Styling */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 0.95rem;
+            background: var(--bg-white);
+            color: var(--text);
+            transition: border-color 0.25s ease;
+        }
+
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Toast system */
+        .portal-toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--bg-dark);
+            color: var(--bg-white);
+            padding: 16px 24px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 10000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .portal-toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .portal-toast-icon {
+            color: var(--sand-yellow);
+            font-size: 1.3rem;
+        }
+    </style>
+</head>
+<body class="payment-portal-page">
+
+    <!-- ========== NAVIGATION ========== -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">
+                <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon-svg">
+                    <defs>
+                        <linearGradient id="lyanGradient" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="55%" stop-color="#80A86E"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                        <linearGradient id="lyanRoof" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                    <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                    <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                    <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                          stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                </svg>
+                <div class="logo-text-block">
+                    <span class="logo-title">LYANN</span>
+                    <span class="logo-subtitle">LE LIEN QUI COMPTE</span>
+                </div>
+            </a>
+            
+            <div class="nav-links">
+                <a href="results.html">RECHERCHER</a>
+                <a href="feed.html">BOKANTAJ <span class="nav-live-dot"></span></a>
+                <a href="pricing.html">NOS OFFRES</a>
+                <a href="payment-portal.html" class="active">PAIEMENT SÉCURISÉ 🔒</a>
+                <a href="about.html">NOTRE HISTOIRE</a>
+                <a href="index.html?action=login" class="btn btn-outline logged-out-only">CONNEXION</a>
+                <a href="index.html?action=signup" class="btn btn-primary btn-signup-nav logged-out-only">S'INSCRIRE</a>
+                <button class="nav-profile-btn open-account-modal-trigger logged-in-only" title="Mon Espace (Réglages, Abonnement, Historique)">
+                    <div class="nav-profile-avatar-wrap">
+                        <img src="david-34.png" alt="Mon Profil" class="nav-profile-avatar">
+                        <span class="nav-profile-status-dot"></span>
+                    </div>
+                </button>
+            </div>
+            
+            <button class="mobile-menu-btn" aria-label="Ouvrir le menu">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay" id="mobileMenu">
+        <div class="mobile-menu-content">
+            <div>
+                <div class="mobile-menu-header">
+                    <span class="logo-title" style="font-weight: 800; font-size: 1.2rem; color: var(--primary-dark);">LYANN DOM</span>
+                    <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
+                </div>
+                <nav class="mobile-nav-list">
+                    <a href="index.html">ACCUEIL <i class="ph ph-caret-right"></i></a>
+                    <a href="results.html">RECHERCHER <i class="ph ph-caret-right"></i></a>
+                    <a href="feed.html">BOKANTAJ <span class="nav-live-dot"></span></a>
+                    <a href="pricing.html">NOS OFFRES <i class="ph ph-caret-right"></i></a>
+                    <a href="payment-portal.html" class="active">PAIEMENT SÉCURISÉ 🔒 <i class="ph ph-caret-right"></i></a>
+                    <a href="how-it-works.html">COMMENT ÇA MARCHE <i class="ph ph-caret-right"></i></a>
+                    <a href="about.html">NOTRE HISTOIRE <i class="ph ph-caret-right"></i></a>
+                </nav>
+            </div>
+
+            <!-- Docked Action Buttons at Bottom -->
+            <div class="mobile-menu-docked-footer">
+                <a href="index.html?action=login" class="btn btn-outline" style="width: 100%; justify-content: center;">Connexion</a>
+                <a href="index.html?action=signup" class="btn btn-primary" style="width: 100%; justify-content: center;">S'inscrire à LYANN 🚀</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== CORE PORTAL WRAPPER ========== -->
+    <div class="portal-wrapper">
+        
+        <!-- SIMULATOR CONTROL BAR -->
+        <div class="simulator-selector-bar">
+            <div class="sim-info">
+                <i class="ph ph-swap sim-info-icon"></i>
+                <div>
+                    <h4 style="font-weight: 800; color: var(--primary-dark); font-size: 1rem; margin-bottom: 2px;">Interface de Simulation Financière & Connect</h4>
+                    <p style="font-size: 0.78rem; color: var(--text-muted);">Basculez de rôle pour simuler le parcours client/prestataire en temps réel.</p>
+                </div>
+            </div>
+
+            <div class="role-toggles">
+                <button class="role-toggle-btn active" id="btnToggleClient">
+                    <i class="ph-fill ph-user-circle"></i> Espace Client (Habitant)
+                </button>
+                <button class="role-toggle-btn" id="btnToggleProvider">
+                    <i class="ph-fill ph-wrench"></i> Espace Prestataire (Pro)
+                </button>
+            </div>
+        </div>
+
+        <!-- PORTAL GRID LAYOUT -->
+        <div class="portal-grid">
+            
+            <!-- LEFT NAVIGATION MENU -->
+            <aside class="portal-sidebar" id="portalMenuContainer">
+                <!-- Injected dynamically based on role -->
+            </aside>
+
+            <!-- RIGHT WORKSPACE INTERACTIVE CARD -->
+            <main class="portal-card" id="portalCardWorkspace">
+                <!-- Injected dynamically based on selected menu item -->
+            </main>
+
+        </div>
+    </div>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer" style="background: var(--bg-dark); color: var(--bg-white); padding: 40px 0; border-top-left-radius: 4rem; border-top-right-radius: 4rem; margin-top: 80px;">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <span style="font-family: 'Outfit', sans-serif; font-weight: 800; color: var(--sand-yellow);">LYANN DOM</span>
+                <p style="font-size: 0.75rem; color: #A3B5A8; margin-top: 4px;">Le tiers de confiance financier des Antilles & de la Réunion.</p>
+            </div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: #A3B5A8; display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 8px; height: 8px; background: #4A7C59; border-radius: 50%; box-shadow: 0 0 8px #4A7C59;"></span>
+                MODULE STRIPE CONNECT : OPÉRATIONNEL
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========== TOAST SYSTEM ========== -->
+    <div class="portal-toast" id="portalToast">
+        <i class="ph ph-circle-wavy-check portal-toast-icon"></i>
+        <span id="portalToastText">Notification système</span>
+    </div>
+
+    <!-- Script imports -->
+    <script src="notifications-service.js"></script>
+    <script src="payment-script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let currentRole = 'client'; // client or provider
+            let currentTab = 'requests'; // client tabs: requests, approval, tracking, dispute / provider tabs: quote, milestones, wallet, stripe_connect
+            let selectedTransactionId = null;
+
+            // DOM References
+            const btnToggleClient = document.getElementById('btnToggleClient');
+            const btnToggleProvider = document.getElementById('btnToggleProvider');
+            const portalMenuContainer = document.getElementById('portalMenuContainer');
+            const portalCardWorkspace = document.getElementById('portalCardWorkspace');
+            const portalToast = document.getElementById('portalToast');
+            const portalToastText = document.getElementById('portalToastText');
+
+            // ------------------------------------------------------------------
+            // ROLE AND MENU NAVIGATION RENDERERS
+            // ------------------------------------------------------------------
+            function showToast(text, type = 'success') {
+                portalToastText.textContent = text;
+                portalToast.classList.add('show');
+                setTimeout(() => {
+                    portalToast.classList.remove('show');
+                }, 4000);
+            }
+
+            function setRole(role) {
+                currentRole = role;
+                if (role === 'client') {
+                    btnToggleClient.classList.add('active');
+                    btnToggleClient.classList.remove('provider-active');
+                    btnToggleProvider.classList.remove('active', 'provider-active');
+                    currentTab = 'requests';
+                } else {
+                    btnToggleProvider.classList.add('active', 'provider-active');
+                    btnToggleClient.classList.remove('active');
+                    currentTab = 'quote';
+                }
+                renderMenu();
+                renderWorkspace();
+            }
+
+            btnToggleClient.addEventListener('click', () => setRole('client'));
+            btnToggleProvider.addEventListener('click', () => setRole('provider'));
+
+            function renderMenu() {
+                portalMenuContainer.innerHTML = '';
+                const items = currentRole === 'client' ? [
+                    { id: 'requests', label: '1. Demander un service', icon: 'ph-plus-circle' },
+                    { id: 'approval', label: '2. Devis reçus', icon: 'ph-receipt' },
+                    { id: 'tracking', label: '3. Suivi & Jalons (Escrow)', icon: 'ph-stepper-card' },
+                    { id: 'dispute', label: '4. Litiges & Médiation', icon: 'ph-shield-warning' }
+                ] : [
+                    { id: 'quote', label: '1. Répondre aux demandes', icon: 'ph-pencil-line' },
+                    { id: 'milestones', label: '2. Suivi de chantier', icon: 'ph-hard-hat' },
+                    { id: 'wallet', label: '3. Portefeuille & Gains', icon: 'ph-wallet' },
+                    { id: 'stripe_connect', label: '4. Compte Stripe Connect', icon: 'ph-bank' }
+                ];
+
+                items.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.className = `portal-menu-item ${currentTab === item.id ? (currentRole === 'provider' ? 'active-provider active' : 'active') : ''}`;
+                    btn.innerHTML = `
+                        <div class="portal-menu-item-left">
+                            <i class="ph ${item.icon}"></i>
+                            <span>${item.label}</span>
+                        </div>
+                        <i class="ph ph-caret-right"></i>
+                    `;
+                    btn.addEventListener('click', () => {
+                        currentTab = item.id;
+                        renderMenu();
+                        renderWorkspace();
+                    });
+                    portalMenuContainer.appendChild(btn);
+                });
+            }
+
+            // ------------------------------------------------------------------
+            // WORKSPACE RENDERING LOGIC (CLIENT VIEW)
+            // ------------------------------------------------------------------
+            function renderWorkspace() {
+                portalCardWorkspace.innerHTML = '';
+                const txs = window.LYANN_PAYMENTS.getTransactions();
+
+                if (currentRole === 'client') {
+                    switch (currentTab) {
+                        case 'requests':
+                            renderClientRequestsForm();
+                            break;
+                        case 'approval':
+                            renderClientApprovalTab(txs);
+                            break;
+                        case 'tracking':
+                            renderClientTrackingTab(txs);
+                            break;
+                        case 'dispute':
+                            renderClientDisputeTab(txs);
+                            break;
+                    }
+                } else {
+                    switch (currentTab) {
+                        case 'quote':
+                            renderProviderQuoteTab(txs);
+                            break;
+                        case 'milestones':
+                            renderProviderMilestonesTab(txs);
+                            break;
+                        case 'wallet':
+                            renderProviderWalletTab();
+                            break;
+                        case 'stripe_connect':
+                            renderStripeConnectTab();
+                            break;
+                    }
+                }
+            }
+
+            // CLIENT: TAB 1 - Demande de service
+            function renderClientRequestsForm() {
+                portalCardWorkspace.innerHTML = `
+                    <div class="portal-card-header">
+                        <div class="portal-card-title"><i class="ph ph-plus-circle"></i> Créer une demande de service</div>
+                    </div>
+                    <form id="newRequestForm">
+                        <div class="form-group">
+                            <label for="reqTitle">Intitulé du service désiré</label>
+                            <input type="text" id="reqTitle" class="form-input" placeholder="Ex: Réfection plomberie cuisine, Pose clim..." required>
+                        </div>
+                        <div class="form-group">
+                            <label for="reqDesc">Description précise des travaux / tâches</label>
+                            <textarea id="reqDesc" class="form-textarea" rows="4" placeholder="Décrivez votre besoin. Photos et vidéos sont recommandées pour le devis." required></textarea>
+                        </div>
+                        <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <label for="reqLocation">Territoire DOM</label>
+                                <select id="reqLocation" class="form-select">
+                                    <option value="Guadeloupe (971)">Guadeloupe (971)</option>
+                                    <option value="Martinique (972)">Martinique (972)</option>
+                                    <option value="Guyane (973)">Guyane (973)</option>
+                                    <option value="La Réunion (974)">La Réunion (974)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="reqBudget">Budget approximatif (Optionnel)</label>
+                                <input type="number" id="reqBudget" class="form-input" placeholder="Ex: 300">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Photos / Médias d'illustration</label>
+                            <div style="border: 2px dashed var(--border); padding: 20px; text-align: center; border-radius: var(--radius-md); background: var(--bg-warm);">
+                                <i class="ph ph-image-square" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 8px; display: block;"></i>
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">Glissez vos images ou cliquez ici</span>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 10px;">
+                            Publier la Demande de Service 🚀
+                        </button>
+                    </form>
+                `;
+
+                document.getElementById('newRequestForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const title = document.getElementById('reqTitle').value;
+                    const desc = document.getElementById('reqDesc').value;
+                    const loc = document.getElementById('reqLocation').value;
+                    const budget = document.getElementById('reqBudget').value;
+
+                    // Créer la demande en base
+                    const newTx = window.LYANN_PAYMENTS.createServiceRequest({
+                        title: title,
+                        description: desc,
+                        location: loc,
+                        budget: budget ? parseFloat(budget) : null,
+                        customerName: "Huguette Élisabeth",
+                        customerId: 101,
+                        providerName: "David Jean-Baptiste", // Assigner à David par défaut pour la simulation simple
+                        providerId: 1
+                    });
+
+                    showToast(`Demande de service #${newTx.id} publiée avec succès !`);
+                    currentTab = 'approval';
+                    renderMenu();
+                    renderWorkspace();
+                });
+            }
+
+            // CLIENT: TAB 2 - Approbation & Paiement
+            function renderClientApprovalTab(txs) {
+                const pendingQuoteTxs = txs.filter(t => t.customerId === 101 && (t.status === 'devis_recu' || t.status === 'devis_attente'));
+
+                portalCardWorkspace.innerHTML = `
+                    <div class="portal-card-header">
+                        <div class="portal-card-title"><i class="ph ph-receipt"></i> Devis et Tarifications Reçus</div>
+                    </div>
+                `;
+
+                if (pendingQuoteTxs.length === 0) {
+                    portalCardWorkspace.innerHTML += `
+                        <div style="text-align: center; padding: 40px 0; color: var(--text-muted);">
+                            <i class="ph ph-smiley-blank" style="font-size: 3rem; display: block; margin-bottom: 12px;"></i>
+                            Aucun devis en attente d'approbation actuellement.
+                        </div>
+                    `;
+                    return;
+                }
+
+                pendingQuoteTxs.forEach(tx => {
+                    const card = document.createElement('div');
+                    card.style.border = '1px solid var(--border)';
+                    card.style.borderRadius = 'var(--radius-lg)';
+                    card.style.padding = '20px';
+                    card.style.marginBottom = '20px';
+                    card.style.background = 'var(--bg-warm)';
+
+                    if (tx.status === 'devis_attente') {
+                        card.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="font-weight: 800;">${tx.title}</h4>
+                                <span class="step-status-tag status-pending">Attente Devis</span>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">${tx.requestDetails.description}</p>
+                            <div style="font-size: 0.78rem; color: var(--text-muted);">Prestation assignée à : <strong>${tx.providerName}</strong></div>
+                        `;
+                    } else {
+                        // Devis reçu
+                        const quote = tx.quoteDetails;
+                        const config = window.LYANN_PAYMENTS.getConfig();
+                        const subtotal = tx.amount;
+                        const platformFee = tx.commissionAmount;
+                        const protectionFee = config.protectionFee;
+                        const totalWithProtection = subtotal + platformFee + protectionFee;
+                        const totalWithoutProtection = subtotal + platformFee;
+
+                        let milestonesHtml = '';
+                        if (tx.requiresMilestones) {
+                            milestonesHtml = `
+                                <div style="margin: 16px 0; padding: 12px; background: var(--bg-white); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                                    <h5 style="font-weight: 800; font-size: 0.85rem; margin-bottom: 10px; color: var(--primary-dark);">
+                                        <i class="ph ph-git-commit"></i> Plan de Travail par Jalons Requis (>200€) :
+                                    </h5>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        ${tx.milestones.map(m => `
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; border-left: 2px solid var(--sky-blue); padding-left: 10px;">
+                                                <div><strong>${m.title}</strong> (${m.percentage}%)</div>
+                                                <div style="font-family: monospace;">${m.amount.toFixed(2)} €</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        card.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="font-weight: 800;">${tx.title}</h4>
+                                <span class="step-status-tag status-submitted">Devis Reçu</span>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">${tx.requestDetails.description}</p>
+                            
+                            <!-- Cost Breakdown -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 0.82rem; margin-bottom: 16px;">
+                                <div>
+                                    <div style="margin-bottom: 4px;">🛠️ Main d'œuvre : <strong>${quote.labour.toFixed(2)} €</strong></div>
+                                    <div style="margin-bottom: 4px;">🚗 Déplacement : <strong>${quote.travel.toFixed(2)} €</strong></div>
+                                    <div style="margin-bottom: 4px;">🧱 Fournitures : <strong>${quote.materials.toFixed(2)} €</strong></div>
+                                    <div style="margin-bottom: 4px;">📦 Location matériel : <strong>${quote.equipment.toFixed(2)} €</strong></div>
+                                </div>
+                                <div style="border-left: 1px solid var(--border); padding-left: 20px;">
+                                    <div style="margin-bottom: 4px;">🛡️ Garantie : <strong>${quote.warranty}</strong></div>
+                                    <div style="margin-bottom: 4px; font-style: italic;">Note pro : "${quote.notes}"</div>
+                                </div>
+                            </div>
+
+                            ${milestonesHtml}
+
+                            <!-- Payment checkout screen -->
+                            <div style="background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 18px; margin-top: 14px;">
+                                <h5 style="font-weight: 800; font-size: 0.9rem; margin-bottom: 12px;">🔒 Sécuriser les fonds via Stripe Connect</h5>
+                                
+                                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; margin-bottom: 14px;">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span>Prestation (Total Devis) :</span>
+                                        <strong style="font-family: monospace;">${subtotal.toFixed(2)} €</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span>Frais plateforme LYANN (${tx.commissionRate}%) :</span>
+                                        <strong style="font-family: monospace;">${platformFee.toFixed(2)} €</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;">
+                                            <input type="checkbox" id="chkProtection-${tx.id}" checked> 
+                                            🛡️ Protection LYANN (Médiation + Aide litiges) :
+                                        </label>
+                                        <strong style="font-family: monospace;">+ ${protectionFee.toFixed(2)} €</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 1rem; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;">
+                                        <strong>Total à sécuriser :</strong>
+                                        <strong style="color: var(--primary-dark); font-family: monospace;" id="totalAmountDisplay-${tx.id}">${totalWithProtection.toFixed(2)} €</strong>
+                                    </div>
+                                </div>
+
+                                <!-- Credit Card & Pay Simulation buttons -->
+                                <div style="display: flex; flex-direction: column; gap: 10px;">
+                                    <button class="btn btn-primary" id="btnPayNow-${tx.id}" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #4A7C59, #35583F);">
+                                        🔒 Payer & Séquestrer les fonds avec Stripe Connect
+                                    </button>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button class="btn btn-outline" style="flex: 1; justify-content: center; height: 38px; font-size: 0.8rem; border-color: var(--border);">
+                                             Pay
+                                        </button>
+                                        <button class="btn btn-outline" style="flex: 1; justify-content: center; height: 38px; font-size: 0.8rem; border-color: var(--border);">
+                                            G Pay
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        // Event binding for checkbox change
+                        const chk = card.querySelector(`#chkProtection-${tx.id}`);
+                        const totalDisp = card.querySelector(`#totalAmountDisplay-${tx.id}`);
+                        chk.addEventListener('change', () => {
+                            const activeTot = chk.checked ? totalWithProtection : totalWithoutProtection;
+                            totalDisp.textContent = `${activeTot.toFixed(2)} €`;
+                        });
+
+                        // Event binding for payment button
+                        card.querySelector(`#btnPayNow-${tx.id}`).addEventListener('click', () => {
+                            window.LYANN_PAYMENTS.approveQuotationAndPay(tx.id, chk.checked, {
+                                method: "Stripe Checkout (Visa ending in 4242)"
+                            });
+                            showToast(`Fonds sécurisés avec succès pour la prestation ${tx.id} !`);
+                            currentTab = 'tracking';
+                            renderMenu();
+                            renderWorkspace();
+                        });
+                    }
+
+                    portalCardWorkspace.appendChild(card);
+                });
+            }
+
+            // CLIENT: TAB 3 - Suivi & Jalons (Escrow)
+            function renderClientTrackingTab(txs) {
+                const activeTxs = txs.filter(t => t.customerId === 101 && (t.status === 'en_cours' || t.status === 'termine'));
+
+                portalCardWorkspace.innerHTML = `
+                    <div class="portal-card-header">
+                        <div class="portal-card-title"><i class="ph ph-stepper-card"></i> Suivi de Chantier & Libération Escrow</div>
+                    </div>
+                `;
+
+                if (activeTxs.length === 0) {
+                    portalCardWorkspace.innerHTML += `
+                        <div style="text-align: center; padding: 40px 0; color: var(--text-muted);">
+                            <i class="ph ph-folder-open" style="font-size: 3rem; display: block; margin-bottom: 12px;"></i>
+                            Aucun projet actif en cours de réalisation ou de paiement.
+                        </div>
+                    `;
+                    return;
+                }
+
+                activeTxs.forEach(tx => {
+                    const card = document.createElement('div');
+                    card.style.border = '1px solid var(--border)';
+                    card.style.borderRadius = 'var(--radius-lg)';
+                    card.style.padding = '20px';
+                    card.style.marginBottom = '30px';
+                    card.style.background = 'var(--bg-warm)';
+
+                    // Calcul de la progression financière
+                    const totalAmount = tx.amount;
+                    const releasedAmount = tx.milestones.reduce((acc, m) => acc + (m.status === 'approved' ? m.amount : 0), tx.requiresMilestones ? 0 : tx.amount);
+                    const pendingAmount = totalAmount - releasedAmount;
+                    const percentApproved = tx.requiresMilestones ? Math.round((releasedAmount / totalAmount) * 100) : (tx.status === 'termine' ? 100 : 0);
+
+                    let milestonesStepper = '';
+                    if (tx.requiresMilestones) {
+                        milestonesStepper = `
+                            <div class="stepper-container">
+                                <h5 style="font-weight: 800; font-size: 0.9rem; color: var(--primary-dark); margin-bottom: 8px;">Jalons de livraison :</h5>
+                                ${tx.milestones.map(m => {
+                                    let actionButton = '';
+                                    let photoHtml = '';
+
+                                    if (m.status === 'submitted') {
+                                        actionButton = `
+                                            <div style="display: flex; gap: 8px; margin-top: 14px;">
+                                                <button class="btn btn-primary btn-approve-milestone" data-tx-id="${tx.id}" data-milestone-id="${m.id}" style="padding: 6px 12px; font-size: 0.78rem;">
+                                                    Approuver & Libérer les fonds 💸
+                                                </button>
+                                                <button class="btn btn-outline btn-reject-milestone-trigger" data-tx-id="${tx.id}" data-milestone-id="${m.id}" style="padding: 6px 12px; font-size: 0.78rem; color: var(--pop-coral); border-color: var(--pop-coral);">
+                                                    Refuser / Corriger
+                                                </button>
+                                                <button class="btn btn-outline btn-dispute-trigger" data-tx-id="${tx.id}" style="padding: 6px 12px; font-size: 0.78rem; color: #E76F51; border-color: #E76F51; background: #FFF5F2;">
+                                                    Déclarer un Litige ⚠️
+                                                </button>
+                                            </div>
+                                        `;
+                                    }
+
+                                    if (m.photos && m.photos.length > 0) {
+                                        photoHtml = `
+                                            <div style="margin-top: 10px; display: flex; gap: 8px;">
+                                                ${m.photos.map(p => `
+                                                    <img src="${p}" alt="Livrable" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);">
+                                                `).join('')}
+                                            </div>
+                                        `;
+                                    }
+
+                                    return `
+                                        <div class="stepper-step ${m.status === 'approved' ? 'approved' : (m.status === 'rejected' ? 'rejected' : (m.status === 'submitted' ? 'active' : ''))}">
+                                            <div class="step-number-badge">${m.id}</div>
+                                            <div class="step-content">
+                                                <div class="step-title-row">
+                                                    <span>${m.title}</span>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="step-status-tag status-${m.status}">${m.status === 'submitted' ? 'À Valider' : m.status}</span>
+                                                        <span class="step-amount-tag">${m.amount.toFixed(2)} €</span>
+                                                    </div>
+                                                </div>
+                                                <p style="font-size: 0.8rem; color: var(--text-muted);">${m.description}</p>
+                                                ${m.completionComments ? `<div style="font-size: 0.78rem; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.03); border-radius: 4px; font-style: italic;"><strong>Justificatif pro :</strong> "${m.completionComments}"</div>` : ''}
+                                                ${m.rejectionComments ? `<div style="font-size: 0.78rem; margin-top: 6px; padding: 6px; background: rgba(231,111,81,0.08); border-radius: 4px; color: var(--pop-coral); font-style: italic;"><strong>Consigne de correction :</strong> "${m.rejectionComments}"</div>` : ''}
+                                                ${photoHtml}
+                                                ${actionButton}
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `;
+                    } else {
+                        // Pas de jalons, paiement complet en une fois
+                        milestonesStepper = `
+                            <div style="padding: 16px; background: var(--bg-white); border-radius: var(--radius-md); border: 1px solid var(--border); margin-top: 14px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <h5 style="font-weight: 800; font-size: 0.9rem;">Prestation unique (<200€)</h5>
+                                        <p style="font-size: 0.8rem; color: var(--text-muted);">Libération globale à la livraison des travaux.</p>
+                                    </div>
+                                    <span class="step-status-tag status-${tx.status === 'termine' ? 'approved' : 'submitted'}">${tx.status === 'termine' ? 'Libéré' : 'Séquestré'}</span>
+                                </div>
+                                ${tx.status === 'en_cours' ? `
+                                    <div style="display: flex; gap: 8px; margin-top: 14px;">
+                                        <button class="btn btn-primary btn-approve-full" data-tx-id="${tx.id}">
+                                            Débloquer le Paiement Complet 💸
+                                        </button>
+                                        <button class="btn btn-outline btn-dispute-trigger" data-tx-id="${tx.id}" style="color: #E76F51; border-color: #E76F51;">
+                                            Déclarer un Litige ⚠️
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                            <div>
+                                <h4 style="font-weight: 800; margin-bottom: 2px;">${tx.title}</h4>
+                                <span style="font-size: 0.78rem; color: var(--text-muted);">Prestataire : <strong>${tx.providerName}</strong></span>
+                            </div>
+                            <span class="step-status-tag status-${tx.status === 'termine' ? 'approved' : 'submitted'}">${tx.status === 'termine' ? 'Terminé' : 'En Cours'}</span>
+                        </div>
+
+                        <!-- Financièrement Escrow Box -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; text-align: center;">
+                            <div style="padding: 10px; background: var(--bg-white); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                                <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Séquestré Stripe</div>
+                                <strong style="font-size: 1.1rem; color: var(--primary-dark); font-family: monospace;">${pendingAmount.toFixed(2)} €</strong>
+                            </div>
+                            <div style="padding: 10px; background: var(--bg-white); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                                <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Libéré au Pro</div>
+                                <strong style="font-size: 1.1rem; color: var(--primary-dark); font-family: monospace;">${releasedAmount.toFixed(2)} €</strong>
+                            </div>
+                            <div style="padding: 10px; background: var(--bg-white); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                                <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Progression</div>
+                                <strong style="font-size: 1.1rem; color: var(--sky-blue-dark);">${percentApproved}%</strong>
+                            </div>
+                        </div>
+
+                        ${milestonesStepper}
+                    `;
+
+                    // Event binding
+                    card.querySelectorAll('.btn-approve-milestone').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const txId = btn.getAttribute('data-tx-id');
+                            const mId = parseInt(btn.getAttribute('data-milestone-id'));
+                            window.LYANN_PAYMENTS.approveMilestone(txId, mId);
+                            showToast("Jalon approuvé ! Les fonds correspondants ont été libérés dans le portefeuille du prestataire.");
+                            renderWorkspace();
+                        });
+                    });
+
+                    card.querySelectorAll('.btn-reject-milestone-trigger').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const txId = btn.getAttribute('data-tx-id');
+                            const mId = parseInt(btn.getAttribute('data-milestone-id'));
+                            const comments = prompt("Veuillez indiquer au prestataire les corrections à apporter pour valider ce jalon :");
+                            if (comments) {
+                                window.LYANN_PAYMENTS.rejectMilestone(txId, mId, comments);
+                                showToast("Demande de correction transmise au prestataire.");
+                                renderWorkspace();
+                            }
+                        });
+                    });
+
+                    card.querySelectorAll('.btn-dispute-trigger').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const txId = btn.getAttribute('data-tx-id');
+                            selectedTransactionId = txId;
+                            const desc = prompt("Décrivez précisément le motif de votre réclamation pour ouvrir le litige :");
+                            if (desc) {
+                                window.LYANN_PAYMENTS.openDispute(txId, {
+                                    reporter: "client",
+                                    reason: "Prestation non conforme / abandon",
+                                    description: desc
+                                });
+                                showToast("⚠️ Litige ouvert ! Les fonds restants sont gelés. Un administrateur LYANN va analyser le dossier.", "warning");
+                                currentTab = 'dispute';
+                                renderMenu();
+                                renderWorkspace();
+                            }
+                        });
+                    });
+
+                    card.querySelectorAll('.btn-approve-full').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const txId = btn.getAttribute('data-tx-id');
+                            // Libérer l'intégralité (dans le mock, équivaut à tout approuver)
+                            const txsList = window.LYANN_PAYMENTS.getTransactions();
+                            const matched = txsList.find(t => t.id === txId);
+                            if (matched) {
+                                const wallets = window.LYANN_PAYMENTS.getWallets();
+                                const pw = wallets[matched.providerId];
+                                if (pw) {
+                                    pw.pendingBalance -= matched.amount;
+                                    pw.availableBalance += matched.amount;
+                                    pw.releasedPayments += matched.amount;
+                                    pw.completedPaymentsCount++;
+                                }
+                                window.LYANN_PAYMENTS.saveWallets(wallets);
+                                matched.status = 'termine';
+                                window.LYANN_PAYMENTS.saveTransactions(txsList);
+                                showToast("Fonds entièrement libérés ! Paiement du prestataire finalisé.");
+                                renderWorkspace();
+                            }
+                        });
+                    });
+
+                    portalCardWorkspace.appendChild(card);
+                });
+            }
+
+            // CLIENT: TAB 4 - Litiges & Médiation
+            function renderClientDisputeTab(txs) {
+                const disputeTxs = txs.filter(t => t.customerId === 101 && t.dispute);
+
+                portalCardWorkspace.innerHTML = `
+                    <div class="portal-card-header">
+                        <div class="portal-card-title"><i class="ph ph-shield-warning"></i> Centre de Résolution des Litiges</div>
+                    </div>
+                `;
+
+                if (disputeTxs.length === 0) {
+                    portalCardWorkspace.innerHTML += `
+                        <div style="text-align: center; padding: 40px 0; color: var(--text-muted);">
+                            <i class="ph ph-shield-check" style="font-size: 3rem; display: block; margin-bottom: 12px; color: var(--primary);"></i>
+                            Aucun litige actif. Vos transactions sont parfaitement sécurisées.
+                        </div>
+                    `;
+                    return;
+                }
+
+                disputeTxs.forEach(tx => {
+                    const disp = tx.dispute;
+                    const card = document.createElement('div');
+                    card.style.border = '1px solid var(--border)';
+                    card.style.borderRadius = 'var(--radius-lg)';
+                    card.style.padding = '20px';
+                    card.style.marginBottom = '25px';
+                    card.style.background = 'var(--bg-warm)';
+
+                    let statusHtml = '';
+                    if (disp.status === 'open') {
+                        statusHtml = `<span class="step-status-tag status-submitted">Médiation LYANN en cours</span>`;
+                    } else if (disp.status === 'resolved_client') {
+                        statusHtml = `<span class="step-status-tag status-rejected">Litige Résolu — Remboursé Client</span>`;
+                    } else if (disp.status === 'resolved_provider') {
+                        statusHtml = `<span class="step-status-tag status-approved">Litige Résolu — Payé Prestataire</span>`;
+                    } else if (disp.status === 'resolved_split') {
+                        statusHtml = `<span class="step-status-tag status-pending">Litige Résolu — Partagé 50/50</span>`;
+                    }
+
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                            <div>
+                                <h4 style="font-weight: 800;">Réf Litige: ${disp.id}</h4>
+                                <span style="font-size: 0.78rem; color: var(--text-muted);">Projet: <strong>${tx.title}</strong> • Montant gelé: <strong>${tx.amount.toFixed(2)} €</strong></span>
+                            </div>
+                            ${statusHtml}
+                        </div>
+
+                        <p style="font-size: 0.85rem; padding: 10px; background: var(--bg-white); border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 16px;">
+                            <strong>Description initiale du conflit :</strong> "${disp.description}"
+                        </p>
+
+                        <!-- Dialogue de médiation -->
+                        <h5 style="font-weight: 800; font-size: 0.82rem; margin-bottom: 8px;">Fil d'échange contradictoire (Visible par l'administrateur) :</h5>
+                        <div class="dispute-chat-box" id="disputeChat-${tx.id}">
+                            ${disp.messages.map(msg => `
+                                <div class="chat-message ${msg.sender}">
+                                    <strong>${msg.sender === 'client' ? 'Vous (Client)' : (msg.sender === 'provider' ? 'Prestataire' : 'Admin LYANN')} :</strong>
+                                    <div>${msg.text}</div>
+                                    <span class="chat-message-time">${new Date(msg.time).toLocaleTimeString()}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        ${disp.status === 'open' ? `
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="chatInput-${tx.id}" class="form-input" placeholder="Ajouter un argument ou répondre au prestataire..." style="flex: 1;">
+                                <button class="btn btn-primary btn-send-message" data-tx-id="${tx.id}" style="padding: 10px 20px;">Envoyer</button>
+                            </div>
+                        ` : `
+                            <div style="text-align: center; font-size: 0.8rem; font-weight: 700; color: var(--primary-dark); padding: 10px; background: rgba(74, 124, 89, 0.1); border-radius: var(--radius-md);">
+                                Ce litige a été classé par la médiation administrative de LYANN. Le dossier est désormais archivé.
+                            </div>
+                        `}
+                    `;
+
+                    // Message sender binding
+                    const btnSend = card.querySelector(`.btn-send-message`);
+                    if (btnSend) {
+                        btnSend.addEventListener('click', () => {
+                            const input = card.querySelector(`#chatInput-${tx.id}`);
+                            if (input.value.trim() !== '') {
+                                window.LYANN_PAYMENTS.sendDisputeMessage(tx.id, 'client', input.value.trim());
+                                input.value = '';
+                                renderWorkspace();
+                            }
+                        });
+                    }
+
+                    portalCardWorkspace.appendChild(card);
+                });
+            }
+
+            // ------------------------------------------------------------------
+            // WORKSPACE RENDERING LOGIC (PROVIDER VIEW)
+            // ------------------------------------------------------------------
+            
+            // PROVIDER: TAB 1 - Devis / Propositions
+            function renderProviderQuoteTab(txs) {
+                const waitingTxs = txs.filter(t => t.providerId === 1 && t.status === 'devis_attente');
+
+                portalCardWorkspace.innerHTML = `
+                    <div class="portal-card-header">
+                        <div class="portal-card-title provider-title"><i class="ph ph-pencil-line"></i> Demandes Reçues (Attente de Devis)</div>
+                    </div>
+                `;
+
+                if (waitingTxs.length === 0) {
+                    portalCardWorkspace.innerHTML += `
+                        <div style="text-align: center; padding: 40px 0; color: var(--text-muted);">
+                            <i class="ph ph-clipboard" style="font-size: 3rem; display: block; margin-bottom: 12px;"></i>
+                            Aucune demande de devis en attente.
+                        </div>
+                    `;
+                    return;
+                }
+
+                waitingTxs.forEach(tx => {
+                    const card = document.createElement('div');
+                    card.style.border = '1px solid var(--border)';
+                    card.style.borderRadius = 'var(--radius-lg)';
+                    card.style.padding = '20px';
+                    card.style.marginBottom = '25px';
+                    card.style.background = 'var(--bg-warm)';
+
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h4 style="font-weight: 800;">${tx.title}</h4>
+                            <span class="step-status-tag status-pending">À Deviser</span>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+                            <strong>Description client :</strong> "${tx.requestDetails.description}"
+                        </p>
+                        <div style="font-size: 0.8rem; margin-bottom: 16px;">
+                            📍 Lieu: <strong>${tx.requestDetails.location}</strong> | 📅 Planning souhaité: <strong>${tx.requestDetails.schedule}</strong>
+                        </div>
+
+                        <!-- Devis Form -->
+                        <form class="quote-form-submit" data-tx-id="${tx.id}">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                                <div>
+                                    <label style="font-size:0.75rem; font-weight:700;">👨‍🔧 Main d'œuvre (€)</label>
+                                    <input type="number" class="form-input val-labour" value="250" required style="padding:8px;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem; font-weight:700;">🚗 Déplacement (€)</label>
+                                    <input type="number" class="form-input val-travel" value="40" required style="padding:8px;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem; font-weight:700;">🧱 Fournitures (€)</label>
+                                    <input type="number" class="form-input val-materials" value="110" required style="padding:8px;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem; font-weight:700;">📦 Location Matériel (€)</label>
+                                    <input type="number" class="form-input val-equipment" value="50" required style="padding:8px;">
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                                <div>
+                                    <label style="font-size:0.75rem; font-weight:700;">🛡️ Garantie incluse</label>
+                                    <input type="text" class="form-input val-warranty" value="Garantie décennale installation clim" style="padding:8px;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem; font-weight:700;">📝 Note / Note de précision</label>
+                                    <input type="text" class="form-input val-notes" value="Tirage au vide et raccordements complets inclus" style="padding:8px;">
+                                </div>
+                            </div>
+
+                            <!-- Milestones block (exceeds €200 automatically with default values) -->
+                            <div style="margin-top: 14px; padding: 12px; background: var(--bg-white); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                                <h5 style="font-weight: 800; font-size: 0.85rem; margin-bottom: 10px; color: var(--sand-yellow-dark);">
+                                    ⚠️ Plan de Travail par Jalons Obligatoire (>200€)
+                                </h5>
+                                <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom: 10px;">La somme des pourcentages des jalons doit être exactement égale à 100%.</p>
+                                
+                                <div style="display: flex; flex-direction: column; gap: 10px;">
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <span style="font-size:0.8rem; font-weight:700; width:50px;">Jalon 1</span>
+                                        <input type="text" class="form-input val-m1-title" value="Préparation & Fixation" style="flex:2; padding:6px;">
+                                        <input type="number" class="form-input val-m1-pct" value="30" style="width:70px; padding:6px;" placeholder="%">
+                                    </div>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <span style="font-size:0.8rem; font-weight:700; width:50px;">Jalon 2</span>
+                                        <input type="text" class="form-input val-m2-title" value="Pose & Raccordement" style="flex:2; padding:6px;">
+                                        <input type="number" class="form-input val-m2-pct" value="40" style="width:70px; padding:6px;" placeholder="%">
+                                    </div>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <span style="font-size:0.8rem; font-weight:700; width:50px;">Jalon 3</span>
+                                        <input type="text" class="form-input val-m3-title" value="Mise en service & Finitions" style="flex:2; padding:6px;">
+                                        <input type="number" class="form-input val-m3-pct" value="30" style="width:70px; padding:6px;" placeholder="%">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:14px; background:var(--sand-yellow-dark);">
+                                Envoyer le Devis & le Plan de Jalons au Client 🤝
+                            </button>
+                        </form>
+                    `;
+
+                    // Submit Quotation event
+                    card.querySelector('.quote-form-submit').addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const txId = card.querySelector('.quote-form-submit').getAttribute('data-tx-id');
+                        const labour = parseFloat(card.querySelector('.val-labour').value);
+                        const travel = parseFloat(card.querySelector('.val-travel').value);
+                        const materials = parseFloat(card.querySelector('.val-materials').value);
+                        const equipment = parseFloat(card.querySelector('.val-equipment').value);
+                        const warranty = card.querySelector('.val-warranty').value;
+                        const notes = card.querySelector('.val-notes').value;
+
+                        const total = labour + travel + materials + equipment;
+
+                        // Milestones percentages
+                        const m1_title = card.querySelector('.val-m1-title').value;
+                        const m1_pct = parseInt(card.querySelector('.val-m1-pct').value);
+                        const m2_title = card.querySelector('.val-m2-title').value;
+                        const m2_pct = parseInt(card.querySelector('.val-m2-pct').value);
+                        const m3_title = card.querySelector('.val-m3-title').value;
+                        const m3_pct = parseInt(card.querySelector('.val-m3-pct').value);
+
+                        if ((m1_pct + m2_pct + m3_pct) !== 100) {
+                            alert("❌ Erreur : La somme des pourcentages des jalons doit être exactement égale à 100%.");
+                            return;
+                        }
+
+                        window.LYANN_PAYMENTS.submitQuotation(txId, {
+                            total: total,
+                            labour: labour,
+                            travel: travel,
+                            materials: materials,
+                            equipment: equipment,
+                            warranty: warranty,
+                            notes: notes,
+                            milestones: [
+                                { title: m1_title, percentage: m1_pct, description: "Première phase de chantier" },
+                                { title: m2_title, percentage: m2_pct, description: "Seconde phase / installation principale" },
+                                { title: m3_title, percentage: m3_pct, description: "Phase finale et nettoyage" }
+                            ]
+                        });
+
+                        showToast(`Devis & plan de travail transmis pour le projet ${txId} !`);
+                        currentTab = 'milestones';
+                        renderMenu();
+                        renderWorkspace();
+                    });
+
+                    portalCardWorkspace.appendChild(card);
+                });
+            }
+
+            // PROVIDER: TAB 2 - Suivi de Chantier & Validation Jalons
+            function renderProviderMilestonesTab(txs) {
+                const activeTxs = txs.filter(t => t.providerId === 1 && (t.status === 'en_cours' || t.status === 'litige'));
+
+                portalCardWorkspace.innerHTML = `
+                    <div class="portal-card-header">
+                        <div class="portal-card-title provider-title"><i class="ph ph-hard-hat"></i> Gestion de vos chantiers actifs</div>
+                    </div>
+                `;
+
+                if (activeTxs.length === 0) {
+                    portalCardWorkspace.innerHTML += `
+                        <div style="text-align: center; padding: 40px 0; color: var(--text-muted);">
+                            <i class="ph ph-activity" style="font-size: 3rem; display: block; margin-bottom: 12px;"></i>
+                            Aucun chantier actif nécessitant des livrables.
+                        </div>
+                    `;
+                    return;
+                }
+
+                activeTxs.forEach(tx => {
+                    const card = document.createElement('div');
+                    card.style.border = '1px solid var(--border)';
+                    card.style.borderRadius = 'var(--radius-lg)';
+                    card.style.padding = '20px';
+                    card.style.marginBottom = '25px';
+                    card.style.background = 'var(--bg-warm)';
+
+                    let milestonesListHtml = '';
+                    if (tx.requiresMilestones) {
+                        milestonesListHtml = `
+                            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 14px;">
+                                ${tx.milestones.map(m => {
+                                    let actionHtml = '';
+                                    if (m.status === 'pending' || m.status === 'rejected') {
+                                        actionHtml = `
+                                            <div style="margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 10px;">
+                                                <h6 style="font-weight:700; font-size:0.75rem; margin-bottom:6px;">Soumettre la fin de ce jalon :</h6>
+                                                <div style="display: flex; gap: 8px;">
+                                                    <input type="text" id="comments-${tx.id}-${m.id}" class="form-input" placeholder="Justifiez de la réalisation (ex: Finitions posées et vérifiées)" style="padding:6px; font-size:0.75rem; flex:1;">
+                                                    <button class="btn btn-primary btn-submit-milestone-pro" data-tx-id="${tx.id}" data-milestone-id="${m.id}" style="padding:6px 12px; font-size:0.75rem; background: var(--sand-yellow-dark);">
+                                                        Soumettre Jalon 🚀
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }
+
+                                    return `
+                                        <div style="border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--bg-white);">
+                                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                <strong>${m.id}. ${m.title} (${m.percentage}%)</strong>
+                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                    <span class="step-status-tag status-${m.status}">${m.status}</span>
+                                                    <span style="font-family: monospace; font-size: 0.8rem; font-weight:700;">${m.amount.toFixed(2)} €</span>
+                                                </div>
+                                            </div>
+                                            ${m.rejectionComments ? `<div style="font-size:0.75rem; color:var(--pop-coral); margin-top:4px; font-style:italic;">⚠️ Rejet client : "${m.rejectionComments}"</div>` : ''}
+                                            ${actionHtml}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `;
+                    } else {
+                        // Pas de jalons
+                        milestonesListHtml = `
+                            <div style="padding: 12px; background: var(--bg-white); border-radius: 8px; border: 1px solid var(--border); margin-top: 10px; text-align: center;">
+                                Prestation unique de <strong>${tx.amount.toFixed(2)} €</strong>. Le paiement sera libéré par le client une fois le travail complètement terminé.
+                            </div>
+                        `;
+                    }
+
+                    // Litige bandeau
+                    let disputeAlert = '';
+                    if (tx.status === 'litige') {
+                        disputeAlert = `
+                            <div style="background: rgba(231,111,81,0.15); color: #C0392B; border: 1px solid var(--pop-coral); border-radius: 8px; padding: 12px; margin-bottom: 14px; font-size:0.8rem; font-weight: 700; display:flex; align-items:center; gap: 8px;">
+                                <i class="ph ph-warning-octagon" style="font-size: 1.3rem;"></i>
+                                Attention : Ce chantier est actuellement sous le coup d'un LITIGE. Les fonds restants sont bloqués. Basculez sur l'onglet litige pour en savoir plus.
+                            </div>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div>
+                                <h4 style="font-weight: 800;">${tx.title}</h4>
+                                <span style="font-size: 0.78rem; color: var(--text-muted);">Client: <strong>${tx.customerName}</strong></span>
+                            </div>
+                            <span class="step-status-tag status-${tx.status === 'litige' ? 'rejected' : 'submitted'}">${tx.status}</span>
+                        </div>
+
+                        ${disputeAlert}
+                        ${milestonesListHtml}
+                    `;
+
+                    // Event listeners for submission
+                    card.querySelectorAll('.btn-submit-milestone-pro').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const txId = btn.getAttribute('data-tx-id');
+                            const mId = parseInt(btn.getAttribute('data-milestone-id'));
+                            const comments = card.querySelector(`#comments-${txId}-${mId}`).value;
+
+                            window.LYANN_PAYMENTS.submitMilestoneCompletion(txId, mId, {
+                                comments: comments || "Jalon terminé, en attente de vérification",
+                                photos: ["https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80"] // Simulate photo upload
+                            });
+
+                            showToast(`Jalon ${mId} soumis pour validation au client.`);
+                            renderWorkspace();
+                        });
+                    });
+
+                    portalCardWorkspace.appendChild(card);
+                });
+            }
+
+            // PROVIDER: TAB 3 - Portefeuille & Retraits
+            function renderProviderWalletTab() {
+                const wallets = window.LYANN_PAYMENTS.getWallets();
+                const myWallet = wallets[1]; // David Jean-Baptiste
+
+                portalCardWorkspace.innerHTML = `
+                    <div class="portal-card-header">
+                        <div class="portal-card-title provider-title"><i class="ph ph-wallet"></i> Votre Portefeuille LYANN</div>
+                        <span style="font-family: monospace; font-size: 0.8rem; background: var(--bg-warm); padding: 4px 10px; border-radius: var(--radius-sm);">Connect ID: ${myWallet.stripeAccountId}</span>
+                    </div>
+
+                    <!-- Balance cards grid -->
+                    <div class="wallet-card-grid">
+                        <div class="wallet-balance-box available">
+                            <span class="balance-label">Disponible immédiatement</span>
+                            <span class="balance-amount">${myWallet.availableBalance.toFixed(2)} €</span>
+                            <span style="font-size:0.72rem; opacity:0.9;">Prêt pour virement vers votre banque</span>
+                        </div>
+                        <div class="wallet-balance-box">
+                            <span class="balance-label" style="color:var(--text-muted);">En Séquestre (Escrow)</span>
+                            <span class="balance-amount" style="color:var(--primary-dark);">${myWallet.pendingBalance.toFixed(2)} €</span>
+                            <span style="font-size:0.72rem; color:var(--text-muted);">En attente de validation client</span>
+                        </div>
+                    </div>
+
+                    <!-- Withdrawal form -->
+                    <div style="background: var(--bg-warm); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 30px;">
+                        <h5 style="font-weight: 800; font-size: 0.9rem; margin-bottom: 12px;"><i class="ph ph-bank"></i> Demande de reversement Stripe Connect Payout</h5>
+                        
+                        ${myWallet.kycStatus !== 'verified' ? `
+                            <div style="background: rgba(229,179,69,0.15); color: var(--sand-yellow-dark); border: 1px solid var(--sand-yellow); border-radius: 8px; padding: 12px; font-size: 0.8rem; font-weight:700;">
+                                ⚠️ Reversements impossibles : Votre dossier d'identité KYC est en cours de validation ou incomplet. Veuillez compléter votre compte Stripe Connect.
+                            </div>
+                        ` : `
+                            <form id="payoutForm">
+                                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 12px;">
+                                    <div>
+                                        <label style="font-size: 0.8rem;">Montant à retirer (€)</label>
+                                        <input type="number" id="payoutAmount" class="form-input" min="1" max="${myWallet.availableBalance}" value="${myWallet.availableBalance}" required style="padding: 8px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.8rem;">IBAN de virement enregistré</label>
+                                        <input type="text" id="payoutIban" class="form-input" value="FR76 3000 6000 0001 2345 6789 001" readonly style="padding: 8px; background: #e2e8f0;">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="background: var(--sand-yellow-dark); width: 100%; justify-content: center;">
+                                    Transférer immédiatement vers ma banque (24h/Stripe Instant Payout) 💸
+                                </button>
+                            </form>
+                        `}
+                    </div>
+
+                    <!-- Payout logs -->
+                    <h5 style="font-weight: 800; font-size: 0.9rem; margin-bottom: 12px;">Historique des Virements Effectués :</h5>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid var(--border); padding-bottom: 8px;">
+                                <th style="padding: 8px 0;">Référence</th>
+                                <th>Date</th>
+                                <th>IBAN</th>
+                                <th>Montant</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${myWallet.withdrawals.map(w => `
+                                <tr style="border-bottom: 1px solid var(--border);">
+                                    <td style="padding: 10px 0; font-family: monospace;">${w.id}</td>
+                                    <td>${new Date(w.date).toLocaleDateString()}</td>
+                                    <td style="font-family: monospace;">... ${w.iban.slice(-8)}</td>
+                                    <td style="font-family: monospace; font-weight:700;">${w.amount.toFixed(2)} €</td>
+                                    <td><span class="step-status-tag status-approved">Validé</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                // Payout Form submit event
+                const form = document.getElementById('payoutForm');
+                if (form) {
+                    form.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const amount = parseFloat(document.getElementById('payoutAmount').value);
+                        const iban = document.getElementById('payoutIban').value;
+
+                        const wid = window.LYANN_PAYMENTS.requestPayout(1, amount, iban);
+                        if (wid) {
+                            showToast(`Virement #${wid} de ${amount}€ exécuté avec succès vers votre banque via Stripe Connect.`);
+                            renderWorkspace();
+                        } else {
+                            alert("Solde insuffisant ou erreur de validation.");
+                        }
+                    });
+                }
+            }
+
+            // PROVIDER: TAB 4 - Stripe Connect KYC
+            function renderStripeConnectTab() {
+                const wallets = window.LYANN_PAYMENTS.getWallets();
+                const myWallet = wallets[1];
+
+                portalCardWorkspace.innerHTML = `
+                    <div class="portal-card-header">
+                        <div class="portal-card-title provider-title"><i class="ph ph-bank"></i> Espace Identité Stripe Connect & KYC</div>
+                    </div>
+
+                    <div style="background: var(--bg-warm); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 25px; margin-bottom: 25px; text-align: center;">
+                        <img src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=400&q=80" alt="Stripe Verify" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto 16px; border: 3px solid var(--border);">
+                        
+                        <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px;">Vérification d'Identité pour les reversements</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 500px; margin: 0 auto 16px;">
+                            Pour recevoir des fonds et effectuer des retraits vers votre compte bancaire, les régulations européennes imposent une vérification KYC (Know Your Customer) via notre partenaire Stripe.
+                        </p>
+
+                        <div style="margin-bottom: 20px;">
+                            Statut actuel de votre compte : 
+                            <span class="step-status-tag status-${myWallet.kycStatus === 'verified' ? 'approved' : (myWallet.kycStatus === 'pending' ? 'submitted' : 'rejected')}">
+                                ${myWallet.kycStatus === 'verified' ? 'Identité Validée ✔' : (myWallet.kycStatus === 'pending' ? 'Dossier en Cours d\'Examen ⏳' : 'Action Requise ❌')}
+                            </span>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                            <button class="btn btn-primary" id="btnSimKycUpload" style="background: var(--sand-yellow-dark);">
+                                <i class="ph ph-upload"></i> Envoyer pièce d'identité (Simulé)
+                            </button>
+                            <button class="btn btn-outline" id="btnSimKycReset" style="border-color: var(--border);">
+                                Réinitialiser statut KYC
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // KYC Buttons binding
+                document.getElementById('btnSimKycUpload').addEventListener('click', () => {
+                    window.LYANN_PAYMENTS.updateKycStatus(1, 'pending');
+                    showToast("Fichier transmis à Stripe Connect. Statut passé à 'En attente d'examen'.");
+                    renderWorkspace();
+                });
+
+                document.getElementById('btnSimKycReset').addEventListener('click', () => {
+                    window.LYANN_PAYMENTS.updateKycStatus(1, 'unverified');
+                    showToast("Statut KYC réinitialisé. Compte non vérifié.");
+                    renderWorkspace();
+                });
+            }
+
+            // Initial load
+            setRole('client');
+        });
+    </script>
+</body>
+</html>

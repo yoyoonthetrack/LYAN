@@ -622,56 +622,79 @@
             </section>
 
             <!-- ==========================================================================
-                 PÔLE 3 : PRESTATIONS, RÉSERVATIONS & LITIGES
+                 PÔLE 3 : PRESTATIONS, RÉSERVATIONS & LITIGES (DYNAMIQUE)
                  ========================================================================== -->
             <section id="sec-bookings" class="admin-section">
                 <div class="admin-page-header">
                     <div>
                         <h1 class="admin-page-title">Prestations, Réservations & Arbitrage des Litiges</h1>
-                        <p class="admin-page-sub">Suivi en direct des commandes d'entraide et traitement des remboursements en 1-clic.</p>
+                        <p class="admin-page-sub">Suivi en direct du séquestre de fonds (Escrow) et traitement des résolutions des conflits.</p>
                     </div>
                 </div>
 
+                <!-- CONSOLE D'ARBITRAGE DES LITIGES (S'affiche si litiges ouverts) -->
+                <div class="admin-table-card" id="adminDisputeArbitrationCard" style="margin-bottom: 24px; border: 1px solid var(--admin-accent-danger); display: none;">
+                    <div class="table-card-header" style="background: rgba(231,111,81,0.15);">
+                        <div class="table-card-title" style="color: var(--admin-accent-danger);">
+                            <i class="ph-bold ph-shield-warning"></i> Centre de Médiation & d'Arbitrage des Litiges en Direct
+                        </div>
+                    </div>
+                    <div style="padding: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;">Dossier du Litige</h4>
+                                <div id="arbitrationDisputeDetails" style="font-size: 0.85rem; color: var(--admin-text-muted); background: rgba(255,255,255,0.02); padding: 12px; border-radius: var(--admin-radius-md); border: 1px solid var(--admin-border); margin-bottom: 12px;">
+                                    <!-- Dynamic dispute details -->
+                                </div>
+                                <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;">Preuves déposées</h4>
+                                <div id="arbitrationEvidenceList" style="display: flex; gap: 10px; margin-bottom: 12px;">
+                                    <!-- Preuves images -->
+                                </div>
+                            </div>
+                            <div style="border-left: 1px solid var(--admin-border); padding-left: 20px;">
+                                <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;">Fil de Discussion Contradictoire</h4>
+                                <div id="arbitrationChatBox" style="height: 180px; overflow-y: auto; background: rgba(0,0,0,0.2); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); padding: 10px; font-size: 0.8rem; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                                    <!-- Dialogue client pro -->
+                                </div>
+                                
+                                <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 8px;">Décision d'Arbitrage</h4>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="admin-btn admin-btn-danger" id="btnArbitrateRefundClient" style="flex: 1; justify-content: center; font-size: 0.78rem;">
+                                        <i class="ph-bold ph-arrow-u-down-left"></i> Rembourser Client (100%)
+                                    </button>
+                                    <button class="admin-btn admin-btn-primary" id="btnArbitratePayProvider" style="flex: 1; justify-content: center; font-size: 0.78rem; background: var(--admin-brand-primary);">
+                                        <i class="ph-bold ph-check-circle"></i> Payer Prestataire (100%)
+                                    </button>
+                                    <button class="admin-btn admin-btn-secondary" id="btnArbitrateSplit50" style="flex: 1; justify-content: center; font-size: 0.78rem;">
+                                        ⚖️ Partager 50 / 50
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LISTE GLOBALE DES TRANSACTIONS -->
                 <div class="admin-table-card">
                     <div class="table-card-header">
-                        <div class="table-card-title">Réservations Récentes & Arbitrages (1 Litige en cours)</div>
+                        <div class="table-card-title">Suivi des Transactions & Compte Escrow Séquestre</div>
                     </div>
                     <div class="admin-table-wrapper">
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>ID Réservation</th>
+                                    <th>ID Prestation</th>
                                     <th>Demandeur</th>
                                     <th>Prestataire</th>
-                                    <th>Service</th>
-                                    <th>Montant</th>
-                                    <th>Statut</th>
-                                    <th>Action Arbitrage</th>
+                                    <th>Intitulé du Service</th>
+                                    <th>Total Devis</th>
+                                    <th>Com. plateforme</th>
+                                    <th>Statut Escrow</th>
+                                    <th>Jalons validés</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>#RES-9041</strong></td>
-                                    <td>Tati Huguette Cazeau</td>
-                                    <td>David Jean-Baptiste</td>
-                                    <td>Entretien Clim Inverter (Baie-Mahault)</td>
-                                    <td>85.00 €</td>
-                                    <td><span class="status-badge active">CONFIRMÉ ✅</span></td>
-                                    <td><button class="admin-btn admin-btn-secondary">Détails</button></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>#RES-8820</strong></td>
-                                    <td>Sarah Manicon</td>
-                                    <td>Kevin Bellerose</td>
-                                    <td>Taille de Haie & Jardinage (Cayenne)</td>
-                                    <td>120.00 €</td>
-                                    <td><span class="status-badge suspended">LITIGE OUVERT ⚠️</span></td>
-                                    <td>
-                                        <button class="admin-btn admin-btn-danger btn-refund-booking" data-res-id="8820">
-                                            <i class="ph-bold ph-arrow-u-down-left"></i> Rembourser Client (120€)
-                                        </button>
-                                    </td>
-                                </tr>
+                            <tbody id="adminTransactionsTableBody">
+                                <!-- Injected dynamically via admin-script.js -->
                             </tbody>
                         </table>
                     </div>
@@ -770,47 +793,76 @@
             </section>
 
             <!-- ==========================================================================
-                 PÔLE 6 : FINANCE & PAYOUTS PRESTATAIRES
+                 PÔLE 6 : FINANCE & PAYOUTS PRESTATAIRES (DYNAMIQUE)
                  ========================================================================== -->
             <section id="sec-finance" class="admin-section">
                 <div class="admin-page-header">
                     <div>
                         <h1 class="admin-page-title">Finance, Commissions & Déblocage Payouts</h1>
-                        <p class="admin-page-sub">Gestion des versements prestataires, Stripe Connect, facturation et export comptables.</p>
+                        <p class="admin-page-sub">Gestion des versements prestataires, configuration des taux et surveillance des comptes Stripe Connect.</p>
                     </div>
                 </div>
 
-                <div class="admin-table-card">
-                    <div class="table-card-header">
-                        <div class="table-card-title">Virements Prestataires en Attente de Libération (SEPA / Stripe Connect)</div>
+                <!-- RÉSUMÉ FINANCIER GLOBAL DE LA PLATEFORME -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div style="background: var(--admin-card-bg); padding: 18px; border-radius: var(--admin-radius-md); border: 1px solid var(--admin-border);">
+                        <div style="font-size: 0.72rem; color: var(--admin-text-muted); text-transform: uppercase; font-weight: 700;">Volume de Transaction (GMV)</div>
+                        <strong style="font-size: 1.6rem; color: var(--admin-accent-blue); font-family: var(--admin-font-mono);" id="adminGmvDisplay">0.00 €</strong>
                     </div>
-                    <div class="admin-table-wrapper">
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Prestataire</th>
-                                    <th>Montant Prestation</th>
-                                    <th>Commission LYANN (15%)</th>
-                                    <th>Net à Verser</th>
-                                    <th>Banque / RIB DOM</th>
-                                    <th>Action Virement</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>David Jean-Baptiste</strong></td>
-                                    <td>350.00 €</td>
-                                    <td>52.50 €</td>
-                                    <td><strong style="color: #68D391;">297.50 €</strong></td>
-                                    <td>Crédit Agricole Guadeloupe (FR76...)</td>
-                                    <td>
-                                        <button class="admin-btn admin-btn-primary btn-release-payout" data-provider="David Jean-Baptiste" data-amount="297.50 €">
-                                            <i class="ph-bold ph-paper-plane"></i> Déclencher le Virement
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div style="background: var(--admin-card-bg); padding: 18px; border-radius: var(--admin-radius-md); border: 1px solid var(--admin-border);">
+                        <div style="font-size: 0.72rem; color: var(--admin-text-muted); text-transform: uppercase; font-weight: 700;">Fonds en Escrow (Séquestre)</div>
+                        <strong style="font-size: 1.6rem; color: var(--admin-accent-gold); font-family: var(--admin-font-mono);" id="adminEscrowDisplay">0.00 €</strong>
+                    </div>
+                    <div style="background: var(--admin-card-bg); padding: 18px; border-radius: var(--admin-radius-md); border: 1px solid var(--admin-border);">
+                        <div style="font-size: 0.72rem; color: var(--admin-text-muted); text-transform: uppercase; font-weight: 700;">Revenus Commissions LYANN</div>
+                        <strong style="font-size: 1.6rem; color: var(--admin-accent-success); font-family: var(--admin-font-mono);" id="adminCommissionsDisplay">0.00 €</strong>
+                    </div>
+                    <div style="background: var(--admin-card-bg); padding: 18px; border-radius: var(--admin-radius-md); border: 1px solid var(--admin-border);">
+                        <div style="font-size: 0.72rem; color: var(--admin-text-muted); text-transform: uppercase; font-weight: 700;">Revenus Protection LYANN</div>
+                        <strong style="font-size: 1.6rem; color: var(--admin-accent-success); font-family: var(--admin-font-mono);" id="adminProtectionsDisplay">0.00 €</strong>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <!-- TABLEAU DES COMPTES CONNECTÉS STRIPE -->
+                    <div class="admin-table-card" style="margin-bottom: 0; flex: 2;">
+                        <div class="table-card-header">
+                            <div class="table-card-title">Statut des Portefeuilles Prestataires & KYC Stripe Connect</div>
+                        </div>
+                        <div class="admin-table-wrapper">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Prestataire</th>
+                                        <th>Compte Stripe</th>
+                                        <th>KYC Identité</th>
+                                        <th>Solde Séquestre</th>
+                                        <th>Solde Disponible</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminWalletsTableBody">
+                                    <!-- Dynamic wallet lines -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- CONFIGURATION DES CONFIGS FINANCIÈRES -->
+                    <div class="admin-table-card" style="margin-bottom: 0; padding: 20px; flex: 1;">
+                        <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--admin-text-main); margin-bottom: 12px;">Configuration Financière</h4>
+                        <form id="adminFinancesConfigForm">
+                            <div style="margin-bottom: 14px;">
+                                <label style="display: block; font-size: 0.78rem; color: var(--admin-text-muted); margin-bottom: 6px;">Commission Plateforme (%)</label>
+                                <input type="number" step="0.1" id="configCommissionRate" class="modal-input" style="background: rgba(255,255,255,0.05); color: #FFF; border: 1px solid var(--admin-border-light); font-size:0.85rem; padding:8px;" value="3.0">
+                            </div>
+                            <div style="margin-bottom: 14px;">
+                                <label style="display: block; font-size: 0.78rem; color: var(--admin-text-muted); margin-bottom: 6px;">Frais Protection LYANN (€)</label>
+                                <input type="number" step="0.05" id="configProtectionFee" class="modal-input" style="background: rgba(255,255,255,0.05); color: #FFF; border: 1px solid var(--admin-border-light); font-size:0.85rem; padding:8px;" value="4.90">
+                            </div>
+                            <button type="submit" class="admin-btn admin-btn-primary" style="width: 100%; justify-content: center; background: var(--admin-brand-primary);">
+                                Enregistrer les Paramètres
+                            </button>
+                        </form>
                     </div>
                 </div>
             </section>
@@ -858,6 +910,33 @@
                             </div>
                             <button type="submit" class="admin-btn admin-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Diffuser la Campagne Immédiatement</button>
                         </form>
+                    </div>
+                </div>
+
+                <!-- TABLE DES LOGS DE NOTIFICATIONS -->
+                <div class="admin-table-card">
+                    <div class="table-card-header" style="border-top: 1px solid var(--admin-border-light);">
+                        <div class="table-card-title">📬 Journal des Alertes Transmises (Intégration SendGrid & Twilio)</div>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Horodatage</th>
+                                    <th>Destinataire</th>
+                                    <th>Contact</th>
+                                    <th>Canal</th>
+                                    <th>Aperçu du Message</th>
+                                    <th>Statut API</th>
+                                </tr>
+                            </thead>
+                            <tbody id="notificationsLogTableBody">
+                                <!-- Injecté par admin-script.js -->
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--admin-text-muted); padding: 24px;">Aucune notification envoyée pour le moment.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
@@ -1003,7 +1082,7 @@
                     <div class="toggle-card">
                         <div>
                             <strong style="font-size: 1.05rem;">🏷️ Mentions sociales `@`</strong>
-                            <p style="font-size: 0.82rem; color: var(--admin-text-muted);">Autorise l'autocomplétion des tags `@nom` dans le Fil et les posts.</p>
+                            <p style="font-size: 0.82rem; color: var(--admin-text-muted);">Autorise l'autocomplétion des tags `@nom` dans Bokantaj et les posts.</p>
                         </div>
                         <label class="switch">
                             <input type="checkbox" checked class="feature-flag-input" data-feature="Mentions Sociales @">
@@ -1022,6 +1101,8 @@
                         </label>
                     </div>
                 </div>
+            </section>
+
             <!-- ==========================================================================
                  PÔLE 11 : LYANN AI COMMAND CENTER & AGENTS COMMUNAUTAIRES
                  ========================================================================== -->
@@ -1265,6 +1346,8 @@
 
     <script src="ai-agents.js"></script>
     <script src="api-client.js"></script>
+    <script src="notifications-service.js"></script>
+    <script src="payment-script.js"></script>
     <script src="admin-script.js"></script>
 </body>
 </html>

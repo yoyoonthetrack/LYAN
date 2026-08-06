@@ -177,7 +177,7 @@ const LYANN_AI_ECOSYSTEM = {
             const approvedPost = this.pendingApprovalQueue.splice(postIndex, 1)[0];
             approvedPost.status = "APPROVED";
 
-            // Injection dans le Fil public avec profil humain normal
+            // Injection dans Bokantaj public avec profil humain normal
             if (typeof INITIAL_FLASH_POSTS !== 'undefined') {
                 INITIAL_FLASH_POSTS.unshift({
                     id: `flash-ai-${Date.now()}`,

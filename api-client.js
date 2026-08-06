@@ -3,14 +3,33 @@
  * Unified JavaScript SDK used by Web Application, Mobile WebView, and Back-Office Admin.
  */
 
+// Safe storage wrapper to prevent crashes under file:// when localStorage is disabled or blocked
+const safeStorage = {
+    _cache: {},
+    getItem(key) {
+        try {
+            return window.localStorage.getItem(key);
+        } catch (e) {
+            return this._cache[key] || null;
+        }
+    },
+    setItem(key, value) {
+        try {
+            window.localStorage.setItem(key, value);
+        } catch (e) {
+            this._cache[key] = String(value);
+        }
+    }
+};
+
 const LYANN_API_CLIENT = {
     baseUrl: "https://api.lyan-dom.com/v1",
     clientPlatform: "Web-SDK-Client",
-    authToken: localStorage.getItem('lyan_jwt_token') || null,
+    authToken: safeStorage.getItem('lyan_jwt_token') || null,
 
     setAuthToken(token) {
         this.authToken = token;
-        localStorage.setItem('lyan_jwt_token', token);
+        safeStorage.setItem('lyan_jwt_token', token);
     },
 
     async request(endpoint, options = {}) {

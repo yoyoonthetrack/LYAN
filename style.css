@@ -1114,28 +1114,78 @@ h1, h2, h3, h4 {
     padding: 60px 0 30px;
 }
 
-.footer-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.footer-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
     margin-bottom: 40px;
-    padding-bottom: 30px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 40px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    align-items: start;
 }
 
-.footer-links {
+.footer-brand-col {
     display: flex;
-    gap: 24px;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.footer-links a {
-    color: rgba(255,255,255,0.7);
-    transition: var(--transition);
+.footer-brand-col .footer-desc {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    max-width: 420px;
 }
 
-.footer-links a:hover { color: var(--sand-yellow); }
+.footer-territoires-pills {
+    font-size: 0.82rem;
+    color: #E5B345;
+    font-weight: 600;
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+}
 
-.footer-bottom { text-align: center; color: rgba(255,255,255,0.5); font-size: 0.9rem; }
+.footer-links-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.footer-links-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.footer-links-group a {
+    color: rgba(255, 255, 255, 0.75);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.footer-links-group a:hover {
+    color: #E5B345;
+    transform: translateX(4px);
+}
+
+.footer-bottom { 
+    text-align: center; 
+    color: rgba(255,255,255,0.5); 
+    font-size: 0.9rem; 
+}
+
+@media (max-width: 768px) {
+    .footer-grid-2col {
+        grid-template-columns: 1fr;
+        gap: 36px;
+    }
+    .footer-links-col {
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+}
 
 /* ==========================================================================
    PARCOURS D'INSCRIPTION INTERACTIF (MODAL MULTI-ÉTAPES)
@@ -4389,8 +4439,9 @@ input:checked + .slider:before {
     box-shadow: 0 4px 12px rgba(74, 124, 89, 0.25);
 }
 
-/* Posts / Cartes Flash */
-.flash-feed-list {
+/* Posts / Cartes Lyann */
+.flash-feed-list,
+.lyann-feed-list {
     display: flex;
     flex-direction: column;
     gap: 18px;
@@ -4455,7 +4506,7 @@ input:checked + .slider:before {
     flex-wrap: wrap;
 }
 
-/* Types de Flash Badges */
+/* Types de Lyann Badges */
 .flash-badge-dispo {
     background: #FFF3D6;
     color: #8A6200;
@@ -5146,6 +5197,125 @@ input:checked + .slider:before {
     display: flex;
     flex-direction: column;
     background: #FFFFFF;
+    position: relative; /* added */
+}
+
+/* Custom styles for in-chat payment & tracking */
+.chat-overlay-pane {
+    position: absolute;
+    top: 109px; /* height of header (73px) + role simulator bar (36px) */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #FFFFFF;
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-top: 1px solid var(--border);
+    animation: fadeInNotif 0.2s ease-out;
+}
+#chatTrackingOverlay.chat-overlay-pane {
+    justify-content: flex-start;
+    top: 73px; /* Just below header */
+}
+.role-pill {
+    padding: 3px 12px;
+    font-size: 0.72rem;
+    border-radius: var(--radius-full);
+    border: 1px solid #D1D5DB;
+    background: #F3F4F6;
+    color: #374151;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.role-pill.active {
+    background: var(--primary) !important;
+    color: #FFFFFF !important;
+    border-color: var(--primary) !important;
+}
+.devis-card-bubble {
+    background: #FFFFFF;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin: 8px 0;
+    width: 80%;
+    box-shadow: var(--shadow-sm);
+}
+.devis-card-bubble.received {
+    border-color: #E2E8F0;
+    align-self: flex-start;
+}
+.devis-card-bubble.sent {
+    border-color: var(--primary-light);
+    align-self: flex-end;
+}
+.devis-header {
+    border-bottom: 1.5px solid var(--border);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.devis-title {
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: var(--primary-dark);
+}
+.devis-amount {
+    font-weight: 800;
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+.devis-milestones-list {
+    margin: 8px 0;
+    padding-left: 0;
+    list-style: none;
+}
+.devis-milestone-item {
+    font-size: 0.8rem;
+    padding: 4px 0;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px dashed rgba(0,0,0,0.05);
+}
+.devis-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+.devis-actions button {
+    flex: 1;
+    padding: 8px;
+    font-size: 0.8rem;
+    border-radius: var(--radius-sm);
+}
+.tracking-milestone-card {
+    background: #F9FAFB;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.tracking-milestone-card.approved {
+    border-left: 5px solid #10B981;
+}
+.tracking-milestone-card.submitted {
+    border-left: 5px solid #F59E0B;
+}
+.tracking-milestone-card.pending {
+    border-left: 5px solid #9CA3AF;
+}
+
+@keyframes fadeInNotif {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .chat-header-bar {
@@ -5282,7 +5452,7 @@ input:checked + .slider:before {
 }
 
 /* ==========================================================================
-   MÉDIAS MULTIMÉDIAS SUR LE FIL LYANN (3 PHOTOS MAX / VIDÉO 30S)
+   MÉDIAS MULTIMÉDIAS SUR LE LAKOU (3 PHOTOS MAX / VIDÉO 30S)
    ========================================================================== */
 .flash-media-upload-bar {
     display: flex;
@@ -5739,6 +5909,129 @@ body.user-is-logged-in .logged-out-only {
     background: var(--primary);
     color: #FFFFFF;
     transform: translateY(-2px);
+}
+
+/* Navigation buttons styling consistent sizing */
+.nav-links .btn {
+    padding: 8px 18px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.05em;
+    height: auto !important;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.nav-links .btn-outline {
+    background: #FFFFFF;
+    color: var(--primary-dark) !important;
+    border: 2px solid rgba(74, 124, 89, 0.4);
+}
+.nav-links .btn-primary {
+    background: var(--gradient-logo);
+    color: white !important;
+    border: none;
+}
+
+/* Floating chat badge in bottom-right corner */
+.floating-chat-badge {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 25px rgba(74, 124, 89, 0.35);
+    cursor: pointer;
+    z-index: 999;
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+.floating-chat-badge:hover {
+    transform: scale(1.08) translateY(-3px);
+    box-shadow: 0 15px 30px rgba(74, 124, 89, 0.45);
+}
+.floating-chat-badge i {
+    font-size: 1.8rem;
+}
+.floating-chat-badge-notif {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 14px;
+    height: 14px;
+    background-color: #C95140;
+    border: 2px solid white;
+    border-radius: 50%;
+    display: none;
+}
+.floating-chat-badge-notif.active {
+    display: block;
+    animation: pulseNotif 2s infinite;
+}
+
+@keyframes pulseNotif {
+    0% { transform: scale(0.9); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.8; }
+    100% { transform: scale(0.9); opacity: 1; }
+}
+
+/* Notifications Dropdown Styling */
+.nav-notif-btn:hover {
+    background: rgba(74, 124, 89, 0.1);
+    color: var(--primary);
+}
+.nav-notif-dropdown {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.notif-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    transition: background 0.2s;
+    cursor: pointer;
+    text-align: left;
+}
+.notif-item:hover {
+    background: #F8F9FA;
+}
+.notif-item-icon {
+    font-size: 1.15rem;
+    padding: 6px;
+    border-radius: 50%;
+    background: rgba(74, 124, 89, 0.1);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.notif-item-body {
+    flex: 1;
+}
+.notif-item-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+}
+.notif-item-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-top: 2px;
+}
+.notif-item-time {
+    font-size: 0.68rem;
+    color: #A19F9A;
+    margin-top: 4px;
 }
 
 

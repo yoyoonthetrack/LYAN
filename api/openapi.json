@@ -100,6 +100,62 @@
           "200": { "description": "Métriques globales réservées aux administrateurs" }
         }
       }
+    },
+    "/payments/request": {
+      "post": {
+        "summary": "Création d'une demande de service par un client (Web/iOS/Android)",
+        "responses": {
+          "201": { "description": "Demande créée avec succès, en attente de devis" }
+        }
+      }
+    },
+    "/payments/quote": {
+      "post": {
+        "summary": "Soumission d'un devis et plan de jalons par un prestataire",
+        "responses": {
+          "200": { "description": "Devis transmis pour examen client" }
+        }
+      }
+    },
+    "/payments/pay": {
+      "post": {
+        "summary": "Paiement client et séquestre des fonds (Stripe Connect direct charges)",
+        "responses": {
+          "200": { "description": "Fonds sécurisés dans le compte séquestre Connect" }
+        }
+      }
+    },
+    "/payments/milestone/approve": {
+      "post": {
+        "summary": "Approbation client d'un jalon libérant les fonds associés (Transfer Connect)",
+        "responses": {
+          "200": { "description": "Fonds libérés avec succès vers le portefeuille" }
+        }
+      }
+    },
+    "/payments/dispute/open": {
+      "post": {
+        "summary": "Ouverture d'un litige gelant le solde séquestre d'une prestation",
+        "responses": {
+          "200": { "description": "Litige enregistré, blocage des fonds Connect actif" }
+        }
+      }
+    },
+    "/payments/dispute/arbitrate": {
+      "post": {
+        "summary": "Arbitrage administratif d'un litige (Remboursement, Paiement ou Split 50/50)",
+        "responses": {
+          "200": { "description": "Arbitrage finalisé, fonds redistribués" }
+        }
+      }
+    },
+    "/payments/wallet/payout": {
+      "post": {
+        "summary": "Demande de virement SEPA instantané depuis le solde disponible (Stripe Payouts)",
+        "responses": {
+          "200": { "description": "Virement initié avec succès" }
+        }
+      }
     }
   }
 }

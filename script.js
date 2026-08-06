@@ -4,6 +4,84 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    // Safe storage wrapper to prevent crashes under file:// when localStorage is disabled or blocked
+    const safeStorage = {
+        _cache: {},
+        getItem(key) {
+            try {
+                const val = window.localStorage.getItem(key);
+                return val;
+            } catch (e) {
+                return this._cache[key] || null;
+            }
+        },
+        setItem(key, value) {
+            try {
+                window.localStorage.setItem(key, value);
+            } catch (e) {
+                this._cache[key] = String(value);
+            }
+        },
+        removeItem(key) {
+            try {
+                window.localStorage.removeItem(key);
+            } catch (e) {
+                delete this._cache[key];
+            }
+        }
+    };
+
+    // Initialize Stripe client if window.Stripe is loaded
+    let stripe = null;
+    let stripeElements = null;
+    let stripeCardElement = null;
+
+    if (typeof window.Stripe === 'function') {
+        try {
+            stripe = window.Stripe('pk_test_51U1RkJLqYzmscXLuhSGcKl7bJCulQQNEpW3liLdvEV9QFhlEhrHOZHZnN3puoJdxmy1ubusRttj5F9Z0i7gKYO6b00s7BHyn6G');
+            stripeElements = stripe.elements();
+            stripeCardElement = stripeElements.create('card', {
+                style: {
+                    base: {
+                        fontSize: '15px',
+                        color: '#32325d',
+                        fontFamily: '"Outfit", sans-serif',
+                        '::placeholder': { color: '#aab7c4' }
+                    },
+                    invalid: { color: '#fa755a', iconColor: '#fa755a' }
+                }
+            });
+            console.log("💳 Real Stripe Elements client initialized.");
+        } catch (e) {
+            console.error("⚠️ Failed to initialize Stripe client:", e);
+        }
+    }
+
+    // ==========================================================================
+    // DÉTECTION DES PARAMÈTRES URL POUR OUVERTURE AUTOMATIQUE DES MODALS
+    // (Permet la redirection cross-page : about.html?action=login → ouvre le modal)
+    // ==========================================================================
+    const urlParams = new URLSearchParams(window.location.search);
+    const actionParam = urlParams.get('action');
+    if (actionParam) {
+        // Nettoyer l'URL sans recharger la page
+        try {
+            window.history.replaceState({}, '', window.location.pathname);
+        } catch (err) {
+            console.warn("replaceState bloqué en protocole local (file://) :", err);
+        }
+        // Déclencher l'ouverture après initialisation complète
+        setTimeout(() => {
+            if (actionParam === 'login') {
+                const loginModal = document.getElementById('loginModal');
+                if (loginModal) { loginModal.classList.add('active'); document.body.style.overflow = 'hidden'; }
+            } else if (actionParam === 'signup') {
+                const signupModal = document.getElementById('signupModal');
+                if (signupModal) { signupModal.classList.add('active'); document.body.style.overflow = 'hidden'; }
+            }
+        }, 300);
+    }
+
     // ==========================================================================
     // BASE DE DONNÉES DES MEMBRES LYANN (VISAGES ET TALENTS DES DOM)
     // ==========================================================================
@@ -1121,8 +1199,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (modalFinishBtn) {
         modalFinishBtn.addEventListener('click', () => {
+            safeStorage.setItem('lyan_user_logged_in', 'true');
+            updateHeaderAuthState();
             closeSignupModal();
-            alert(`Félicitations ${userSignupData.firstName} ! Votre compte LYANN est prêt.`);
+            alert(`Félicitations ${userSignupData.firstName || ''} ! Votre compte LYANN est prêt. Vous êtes désormais connecté.`);
             currentStep = 1;
             updateStepUI();
         });
@@ -1219,7 +1299,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (googleAuthBtn) {
         googleAuthBtn.addEventListener('click', () => {
-            localStorage.setItem('lyan_user_logged_in', 'true');
+            safeStorage.setItem('lyan_user_logged_in', 'true');
             updateHeaderAuthState();
             alert('🟢 Authentification Google réussie ! Bienvenue sur votre espace LYANN.');
             openProfileDashboard('provider');
@@ -1229,7 +1309,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            localStorage.setItem('lyan_user_logged_in', 'true');
+            safeStorage.setItem('lyan_user_logged_in', 'true');
             updateHeaderAuthState();
             alert('🎉 Connexion réussie ! Bienvenue sur votre espace LYANN.');
             closeLoginModal();
@@ -1262,6 +1342,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
+            safeStorage.setItem('lyan_user_logged_in', 'false');
+            updateHeaderAuthState();
             closeProfileDashboard();
             alert('Vous êtes déconnecté.');
         });
@@ -1537,7 +1619,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // DESTINATION ET INTERACTIONS DE TOUS LES BOUTONS DU SITE
     // ==========================================================================
 
-    // 1. Clic sur les tuiles de catégories -> Redirige vers la page dédiée Annuaire results.html
+    // 1. Clic sur les tuiles de catégories -> Redirige vers la page dédiée Recherche results.html
     document.querySelectorAll('.category-card-trigger').forEach(card => {
         card.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1705,7 +1787,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // MOTEUR EN DIRECT DU LAKOU (POSTER UN LYANN & ÉCHOS DU QUARTIER)
+    // MOTEUR EN DIRECT DU BOKANTAJ (POSTER UN LYANN & ÉCHOS DU QUARTIER)
     // ==========================================================================
     const INITIAL_FLASH_POSTS = [
         {
@@ -1770,7 +1852,7 @@ document.addEventListener('DOMContentLoaded', () => {
             authorName: 'Kevin Bellerose',
             authorRole: 'Lyanneur PRO',
             authorAvatar: 'kevin-41.png',
-            badge: '📢 Info Lakou',
+            badge: '📢 Info Bokantaj',
             type: 'info',
             location: 'Cayenne • Guyane (973)',
             territoryKey: 'guyane',
@@ -1868,8 +1950,8 @@ document.addEventListener('DOMContentLoaded', () => {
             flashFeedContainer.innerHTML = `
                 <div class="text-center" style="padding: 40px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed var(--border);">
                     <i class="ph ph-chats-teardrop" style="font-size: 2.5rem; color: var(--primary-light); margin-bottom: 10px;"></i>
-                    <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px;">Aucun Lyann dans le Lakou pour le moment</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Soyez le premier à poster un Lyann dans le Lakou !</p>
+                    <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px;">Aucun Lyann dans Bokantaj pour le moment</h4>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Soyez le premier à poster un Lyann dans Bokantaj !</p>
                 </div>
             `;
             return;
@@ -1980,7 +2062,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let badgeText = '⚡ Disponibilité';
             if (type === 'besoin') badgeText = '🔍 Besoin';
             else if (type === 'reco') badgeText = '⭐ Recommandation';
-            else if (type === 'info') badgeText = '📢 Info Lakou';
+            else if (type === 'info') badgeText = '📢 Info Bokantaj';
 
             let territoryKey = 'guadeloupe';
             if (location.includes('Martinique')) territoryKey = 'martinique';
@@ -2014,7 +2096,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderFlashFeed();
             createFlashForm.reset();
             if (flashCharCount) flashCharCount.textContent = '0';
-            alert('✨ Votre Lyann a été publié avec succès dans le Lakou !');
+             alert('✨ Votre Lyann a été publié avec succès dans Bokantaj !');
         });
     }
 
@@ -2035,7 +2117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // LOGIQUE DE CHAT DIRECT INTERACTIF (#chatModal)
+    // LOGIQUE DE CHAT DIRECT INTERACTIF (#chatModal) AVEC DÉROULEMENT TRANSACTIONNEL
     // ==========================================================================
     const chatModal = document.getElementById('chatModal');
     const closeChatModalBtn = document.getElementById('closeChatModalBtn');
@@ -2045,28 +2127,1032 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatInputForm = document.getElementById('chatInputForm');
     const chatInputField = document.getElementById('chatInputField');
 
-    if (closeChatModalBtn) {
-        closeChatModalBtn.addEventListener('click', () => {
-            if (chatModal) chatModal.classList.remove('active');
+    // UI Buttons and Overlays
+    const chatProposeBtn = document.getElementById('chatProposeBtn');
+    const chatTrackingBtn = document.getElementById('chatTrackingBtn');
+    const btnChatRoleClient = document.getElementById('btnChatRoleClient');
+    const btnChatRoleProvider = document.getElementById('btnChatRoleProvider');
+
+    const chatActionChoicesOverlay = document.getElementById('chatActionChoicesOverlay');
+    const chatDirectPriceForm = document.getElementById('chatDirectPriceForm');
+    const chatMilestoneDevisForm = document.getElementById('chatMilestoneDevisForm');
+    const chatCheckoutOverlay = document.getElementById('chatCheckoutOverlay');
+    const chatTrackingOverlay = document.getElementById('chatTrackingOverlay');
+    const chatSubmitProofOverlay = document.getElementById('chatSubmitProofOverlay');
+
+    // Overlay Inputs / Forms
+    const directPriceForm = document.getElementById('directPriceForm');
+    const dpDescription = document.getElementById('dpDescription');
+    const dpAmount = document.getElementById('dpAmount');
+
+    const milestoneDevisForm = document.getElementById('milestoneDevisForm');
+    const mdTitle = document.getElementById('mdTitle');
+    const mdTotalAmount = document.getElementById('mdTotalAmount');
+    const mdJ1Title = document.getElementById('mdJ1Title');
+    const mdJ1Percent = document.getElementById('mdJ1Percent');
+    const mdJ2Title = document.getElementById('mdJ2Title');
+    const mdJ2Percent = document.getElementById('mdJ2Percent');
+    const mdJ3Title = document.getElementById('mdJ3Title');
+    const mdJ3Percent = document.getElementById('mdJ3Percent');
+
+    const checkoutPaymentForm = document.getElementById('checkoutPaymentForm');
+    const coPrestationTitle = document.getElementById('coPrestationTitle');
+    const coDevisAmount = document.getElementById('coDevisAmount');
+    const coLyannFee = document.getElementById('coLyannFee');
+    const coAssuranceCheck = document.getElementById('coAssuranceCheck');
+    const coAssuranceFee = document.getElementById('coAssuranceFee');
+    const coTotalAmount = document.getElementById('coTotalAmount');
+    const btnCancelCheckout = document.getElementById('btnCancelCheckout');
+
+    const trackingMilestonesList = document.getElementById('trackingMilestonesList');
+    const btnExitTracking = document.getElementById('btnExitTracking');
+
+    const submitProofForm = document.getElementById('submitProofForm');
+    const proofMilestoneTitle = document.getElementById('proofMilestoneTitle');
+    const proofComments = document.getElementById('proofComments');
+    const proofPhotoSelect = document.getElementById('proofPhotoSelect');
+    const btnCancelProof = document.getElementById('btnCancelProof');
+
+    // Active state variables
+    let currentRole = 'client'; // 'client' or 'provider'
+    let activeContactName = 'David Jean-Baptiste';
+    let activeContactAvatar = 'david-34.png';
+    let activeDevisForCheckout = null;
+    let activeMilestoneForProof = null;
+
+    // Persisted mock chat conversations
+    const CHAT_STORAGE_KEY = 'lyann_chat_conversations';
+    
+    function getConversations() {
+        const data = safeStorage.getItem(CHAT_STORAGE_KEY);
+        if (data) return JSON.parse(data);
+        
+        // Default history for David Jean-Baptiste
+        const defaults = {
+            "David Jean-Baptiste": [
+                { senderRole: "provider", text: "Bonjour ! J'ai bien vu votre message pour l'intervention clim. Je peux passer cet après-midi vers 15h à Baie-Mahault.", type: "text", timestamp: "14:22" },
+                { senderRole: "client", text: "Bonjour David ! Parfait pour 15h. Merci beaucoup pour votre réactivité !", type: "text", timestamp: "14:25" }
+            ],
+            "Tati Huguette Cazeau": [
+                { senderRole: "client", text: "Bonjour ! Est-ce que vous seriez disponible ce week-end pour m'aider à nettoyer mon jardin ?", type: "text", timestamp: "Hier" },
+                { senderRole: "provider", text: "Bonjour Huguette ! Oui tout à fait, je peux venir samedi matin avec mes outils.", type: "text", timestamp: "Hier" }
+            ],
+            "Sarah Manicon": [
+                { senderRole: "provider", text: "Bonjour ! Je prépare le devis pour la rénovation de votre salle de bain comme convenu.", type: "text", timestamp: "Mardi" }
+            ]
+        };
+        safeStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(defaults));
+        return defaults;
+    }
+
+    function saveConversations(convs) {
+        safeStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(convs));
+    }
+
+    function updateActionButtonsVisibility() {
+        // Only provider can propose a deal
+        if (currentRole === 'provider') {
+            if (chatProposeBtn) chatProposeBtn.style.display = 'block';
+        } else {
+            if (chatProposeBtn) chatProposeBtn.style.display = 'none';
+        }
+
+        // Show tracking button if active transaction exists for this contact
+        const transactions = window.LYANN_PAYMENTS ? window.LYANN_PAYMENTS.getTransactions() : [];
+        const activeTx = transactions.find(t => 
+            (t.providerName.includes(activeContactName) || t.customerName.includes(activeContactName)) && 
+            (t.status === 'en_cours' || t.status === 'litige')
+        );
+
+        if (activeTx && chatTrackingBtn) {
+            chatTrackingBtn.style.display = 'block';
+            chatTrackingBtn.onclick = () => openTrackingOverlay(activeTx.id);
+        } else if (chatTrackingBtn) {
+            chatTrackingBtn.style.display = 'none';
+        }
+    }
+
+    function renderActiveConversation() {
+        if (!chatMessagesContainer) return;
+        chatMessagesContainer.innerHTML = '';
+
+        const convs = getConversations();
+        const messages = convs[activeContactName] || [];
+
+        messages.forEach((msg, idx) => {
+            const isSent = (currentRole === 'client' && msg.senderRole === 'client') || 
+                           (currentRole === 'provider' && msg.senderRole === 'provider');
+            
+            if (msg.type === 'devis') {
+                const bubble = document.createElement('div');
+                bubble.className = `devis-card-bubble ${isSent ? 'sent' : 'received'}`;
+                
+                let milestonesHTML = '';
+                if (msg.devisData.milestones && msg.devisData.milestones.length > 0) {
+                    milestonesHTML = `<ul class="devis-milestones-list">`;
+                    msg.devisData.milestones.forEach(m => {
+                        milestonesHTML += `
+                            <li class="devis-milestone-item">
+                                <span>📌 ${m.title}</span>
+                                <strong>${m.percentage}% (${((msg.devisData.amount * m.percentage) / 100).toFixed(2)} €)</strong>
+                            </li>
+                        `;
+                    });
+                    milestonesHTML += `</ul>`;
+                }
+
+                let statusHTML = '';
+                if (msg.devisData.status === 'pending') {
+                    if (!isSent) {
+                        statusHTML = `
+                            <div class="devis-actions">
+                                <button type="button" class="btn btn-outline btn-decline-devis" data-idx="${idx}" style="border-color: #E63B2E; color: #E63B2E; background: transparent;">Décliner</button>
+                                <button type="button" class="btn btn-primary btn-accept-devis" data-idx="${idx}" style="background: #2E7D32; border-color: #2E7D32; color: white;">Accepter & Payer</button>
+                            </div>
+                        `;
+                    } else {
+                        statusHTML = `
+                            <div style="font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-top: 10px; font-style: italic;">
+                                ⏳ En attente de décision du client...
+                            </div>
+                        `;
+                    }
+                } else if (msg.devisData.status === 'approved') {
+                    statusHTML = `
+                        <div style="background: #E8F5E9; color: #2E7D32; font-weight: 700; font-size: 0.8rem; text-align: center; padding: 6px; border-radius: var(--radius-sm); margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>✅ Validé & Payé (Fonds séquestrés)</span>
+                            <button type="button" class="btn btn-outline" onclick="window.openTrackingById('${msg.devisData.txId}')" style="font-size: 0.72rem; padding: 3px 8px; border-color: #2E7D32; color: #2E7D32; background: white;">Suivi 🛠️</button>
+                        </div>
+                    `;
+                } else if (msg.devisData.status === 'declined') {
+                    statusHTML = `
+                        <div style="background: #FFEBEE; color: #C62828; font-weight: 700; font-size: 0.8rem; text-align: center; padding: 6px; border-radius: var(--radius-sm); margin-top: 10px;">
+                            ❌ Proposition déclinée
+                        </div>
+                    `;
+                }
+
+                bubble.innerHTML = `
+                    <div class="devis-header">
+                        <span class="devis-title">📄 ${msg.devisData.title}</span>
+                        <span class="devis-amount">${msg.devisData.amount.toFixed(2)} €</span>
+                    </div>
+                    <div style="font-size: 0.82rem; color: var(--text); margin-bottom: 8px;">${msg.devisData.description}</div>
+                    ${milestonesHTML}
+                    ${statusHTML}
+                    <div class="chat-msg-time" style="margin-top: 6px; text-align: right;">${msg.timestamp}</div>
+                `;
+                chatMessagesContainer.appendChild(bubble);
+            } else if (msg.type === 'review_prompt') {
+                const bubble = document.createElement('div');
+                bubble.className = 'devis-card-bubble received';
+                bubble.style.cssText = "border: 2px solid #E5B345; background: #FFFDF5; margin: 12px 0; border-radius: var(--radius-lg); padding: 14px;";
+                
+                if (msg.reviewSubmitted) {
+                    const starsStr = '★'.repeat(msg.reviewData.stars) + '☆'.repeat(5 - msg.reviewData.stars);
+                    bubble.innerHTML = `
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.8rem; margin-bottom: 2px;">🌟</div>
+                            <strong style="color: var(--primary-dark); font-size: 0.95rem; display: block;">Avis publié avec succès !</strong>
+                            <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Merci d'aider la communauté LYANN à grandir dans la confiance.</p>
+                            <div style="margin-top: 6px; font-weight: 700; color: #E5B345; font-size: 1.1rem; letter-spacing: 2px;">
+                                ${starsStr}
+                            </div>
+                            <div style="font-size: 0.8rem; font-style: italic; color: var(--text); margin-top: 6px; background: white; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid #FFE5A3;">
+                                "${msg.reviewData.comment}"
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const reviewSubtext = (currentRole === 'provider')
+                        ? "Laissez un avis pour votre lyanné afin d'aider au mieux les prochains lyanneurs."
+                        : "Mettez un avis à votre lyanneur afin d'aider au mieux les prochains lyannés.";
+
+                    bubble.innerHTML = `
+                        <div class="review-prompt-card" style="text-align: center;">
+                            <div style="font-size: 1.5rem; margin-bottom: 2px;">🎉</div>
+                            <h4 style="font-weight: 800; font-size: 0.98rem; color: var(--primary-dark); margin: 0 0 4px 0;">Wouaw, quel lyann de qualité ! 🌟</h4>
+                            <p style="font-size: 0.8rem; color: var(--text); margin-bottom: 12px; line-height: 1.4;">
+                                ${reviewSubtext}
+                            </p>
+                            
+                            <div class="star-rating-selector" data-idx="${idx}" style="display: flex; justify-content: center; gap: 8px; font-size: 1.8rem; color: #E5B345; cursor: pointer; margin-bottom: 10px;">
+                                <span class="star-btn" data-star="1">★</span>
+                                <span class="star-btn" data-star="2">★</span>
+                                <span class="star-btn" data-star="3">★</span>
+                                <span class="star-btn" data-star="4">★</span>
+                                <span class="star-btn" data-star="5" style="color: #E5B345;">★</span>
+                            </div>
+                            
+                            <textarea class="review-comment-input modal-input" data-idx="${idx}" placeholder="Rédigez votre commentaire (soin, ponctualité, amabilité...)" style="width: 100%; height: 60px; font-size: 0.8rem; resize: none; margin-bottom: 10px; box-sizing: border-box;"></textarea>
+
+                            <button type="button" class="btn btn-primary btn-submit-review" data-idx="${idx}" style="width: 100%; justify-content: center; background: #E5B345; border-color: #E5B345; color: #1A1A1A; font-weight: 800; font-size: 0.85rem;">
+                                Publier mon avis 🚀
+                            </button>
+                        </div>
+                    `;
+                }
+                chatMessagesContainer.appendChild(bubble);
+            } else if (msg.type === 'status') {
+                const bubble = document.createElement('div');
+                bubble.style.cssText = "align-self: center; background: #ECEFF1; color: #374151; font-size: 0.78rem; font-weight: 600; padding: 6px 14px; border-radius: 12px; margin: 8px 0; max-width: 90%; text-align: center; border: 1px solid #CFD8DC;";
+                bubble.innerHTML = `📢 ${msg.text}`;
+                chatMessagesContainer.appendChild(bubble);
+            } else {
+                // Text messages
+                const bubble = document.createElement('div');
+                bubble.className = `chat-msg-bubble ${isSent ? 'sent' : 'received'}`;
+                bubble.innerHTML = `${msg.text} <div class="chat-msg-time">${msg.timestamp}</div>`;
+                chatMessagesContainer.appendChild(bubble);
+            }
         });
+
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        updateActionButtonsVisibility();
+        bindDevisBubbleButtons();
     }
 
     function openChatWithUser(name, avatar) {
+        activeContactName = name;
+        activeContactAvatar = avatar;
+
         if (chatHeaderName) chatHeaderName.textContent = name;
         if (chatHeaderAvatar) chatHeaderAvatar.src = avatar;
 
-        if (chatMessagesContainer) {
-            chatMessagesContainer.innerHTML = `
-                <div class="chat-msg-bubble received">
-                    Bonjour ! Je suis ${name}. Comment puis-je vous aider pour vos projets ou travaux ?
-                    <div class="chat-msg-time">À l'instant</div>
-                </div>
-            `;
+        // Reset sidebar active states
+        document.querySelectorAll('.chat-contact-item').forEach(item => {
+            const itemTitle = item.querySelector('.chat-contact-name');
+            if (itemTitle && itemTitle.textContent === name) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+
+        // Hide overlays
+        closeAllOverlays();
+        
+        // Auto adapt simulation role to match logical test path
+        if (name === "Tati Huguette Cazeau") {
+            // We want to act as provider (Artisan) chatting with a client
+            setSimulatedRole('provider');
+        } else {
+            // We chat as client with David or Sarah (Artisans)
+            setSimulatedRole('client');
+        }
+
+        renderActiveConversation();
+
+        // Set pre-written message in the input field when initiating chat as client
+        if (currentRole === 'client' && chatInputField) {
+            chatInputField.value = `Bonjour @${name}, vos services m'intéressent, êtes-vous disponible pour en discuter ?`;
         }
 
         if (chatModal) chatModal.classList.add('active');
     }
 
+    function setSimulatedRole(role) {
+        currentRole = role;
+        if (role === 'client') {
+            if (btnChatRoleClient) btnChatRoleClient.classList.add('active');
+            if (btnChatRoleProvider) btnChatRoleProvider.classList.remove('active');
+        } else {
+            if (btnChatRoleClient) btnChatRoleClient.classList.remove('active');
+            if (btnChatRoleProvider) btnChatRoleProvider.classList.add('active');
+        }
+        renderActiveConversation();
+    }
+
+    // Close Chat Modal click action
+    if (closeChatModalBtn) {
+        closeChatModalBtn.addEventListener('click', () => {
+            if (chatModal) {
+                chatModal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+    }
+
+    // Role Simulator click actions
+    if (btnChatRoleClient) {
+        btnChatRoleClient.addEventListener('click', () => setSimulatedRole('client'));
+    }
+    if (btnChatRoleProvider) {
+        btnChatRoleProvider.addEventListener('click', () => setSimulatedRole('provider'));
+    }
+
+    // Propose Quotation trigger
+    if (chatProposeBtn) {
+        chatProposeBtn.addEventListener('click', () => {
+            closeAllOverlays();
+            if (chatActionChoicesOverlay) chatActionChoicesOverlay.style.display = 'flex';
+        });
+    }
+
+    // Handle choices
+    const btnChooseDirectPrice = document.getElementById('btnChooseDirectPrice');
+    const btnChooseMilestoneDevis = document.getElementById('btnChooseMilestoneDevis');
+    
+    if (btnChooseDirectPrice) {
+        btnChooseDirectPrice.addEventListener('click', () => {
+            closeAllOverlays();
+            if (chatDirectPriceForm) chatDirectPriceForm.style.display = 'flex';
+        });
+    }
+
+    if (btnChooseMilestoneDevis) {
+        btnChooseMilestoneDevis.addEventListener('click', () => {
+            closeAllOverlays();
+            if (chatMilestoneDevisForm) chatMilestoneDevisForm.style.display = 'flex';
+        });
+    }
+
+    // Close buttons on overlays
+    document.querySelectorAll('.chat-overlay-pane .cancel-overlay-btn, .chat-overlay-pane .close-overlay-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeAllOverlays();
+        });
+    });
+
+    function closeAllOverlays() {
+        if (chatActionChoicesOverlay) chatActionChoicesOverlay.style.display = 'none';
+        if (chatDirectPriceForm) chatDirectPriceForm.style.display = 'none';
+        if (chatMilestoneDevisForm) chatMilestoneDevisForm.style.display = 'none';
+        if (chatCheckoutOverlay) chatCheckoutOverlay.style.display = 'none';
+        if (chatTrackingOverlay) chatTrackingOverlay.style.display = 'none';
+        if (chatSubmitProofOverlay) chatSubmitProofOverlay.style.display = 'none';
+    }
+
+    // SUBMIT DIRECT PRICE
+    if (directPriceForm) {
+        directPriceForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const desc = dpDescription.value.trim();
+            const val = parseFloat(dpAmount.value);
+
+            if (!desc || isNaN(val)) return;
+
+            const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const convs = getConversations();
+            
+            const newDevisMsg = {
+                senderRole: "provider",
+                text: desc,
+                type: "devis",
+                timestamp: timeNow,
+                devisData: {
+                    title: "Tarif Direct Rapide",
+                    description: desc,
+                    amount: val,
+                    status: "pending",
+                    milestones: [] // Direct price has no milestones
+                }
+            };
+
+            if (!convs[activeContactName]) convs[activeContactName] = [];
+            convs[activeContactName].push(newDevisMsg);
+            saveConversations(convs);
+
+            dpDescription.value = '';
+            dpAmount.value = '';
+            
+            closeAllOverlays();
+            renderActiveConversation();
+
+            // Send notification
+            if (window.LYANN_NOTIFICATIONS) {
+                window.LYANN_NOTIFICATIONS.sendSMS(
+                    '+590690001122',
+                    activeContactName,
+                    `LYANN: Le prestataire vous propose un Tarif Direct de ${val.toFixed(2)} € pour: "${desc}". Ouvrez Bokantaj pour valider.`
+                );
+            }
+        });
+    }
+
+    // SUBMIT MILESTONE DEVIS
+    if (milestoneDevisForm) {
+        milestoneDevisForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const title = mdTitle.value.trim();
+            const total = parseFloat(mdTotalAmount.value);
+
+            const p1 = parseInt(mdJ1Percent.value) || 0;
+            const p2 = parseInt(mdJ2Percent.value) || 0;
+            const p3 = parseInt(mdJ3Percent.value) || 0;
+
+            const t1 = mdJ1Title.value.trim() || 'Jalon 1';
+            const t2 = mdJ2Title.value.trim() || 'Jalon 2';
+            const t3 = mdJ3Title.value.trim() || 'Jalon 3';
+
+            if (!title || isNaN(total)) return;
+
+            if (p1 + p2 + p3 !== 100) {
+                alert("⚠️ Erreur : La somme des pourcentages des jalons doit être exactement égale à 100%. (Actuellement : " + (p1+p2+p3) + "%)");
+                return;
+            }
+
+            const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const convs = getConversations();
+
+            const milestones = [
+                { title: t1, percentage: p1 },
+                { title: t2, percentage: p2 },
+                { title: t3, percentage: p3 }
+            ];
+
+            const newDevisMsg = {
+                senderRole: "provider",
+                text: title,
+                type: "devis",
+                timestamp: timeNow,
+                devisData: {
+                    title: title,
+                    description: "Chantier à jalons multiples avec libération de fonds progressive.",
+                    amount: total,
+                    status: "pending",
+                    milestones: milestones
+                }
+            };
+
+            if (!convs[activeContactName]) convs[activeContactName] = [];
+            convs[activeContactName].push(newDevisMsg);
+            saveConversations(convs);
+
+            mdTitle.value = '';
+            mdTotalAmount.value = '';
+            mdJ1Title.value = '';
+            mdJ1Percent.value = '';
+            mdJ2Title.value = '';
+            mdJ2Percent.value = '';
+            mdJ3Title.value = '';
+            mdJ3Percent.value = '';
+
+            closeAllOverlays();
+            renderActiveConversation();
+
+            // Send notification
+            if (window.LYANN_NOTIFICATIONS) {
+                window.LYANN_NOTIFICATIONS.sendEmail(
+                    'client@lyann-dom.com',
+                    'Client Bokantaj',
+                    `📄 Nouveau devis reçu pour "${title}"`,
+                    `<p>Le prestataire vous propose un devis détaillé de <strong>${total.toFixed(2)} €</strong> réparti en ${milestones.length} jalons.</p>`
+                );
+            }
+        });
+    }
+
+    // BIND DEVIS CARDS ACTIONS
+    function bindDevisBubbleButtons() {
+        document.querySelectorAll('.btn-accept-devis').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(btn.dataset.idx);
+                const convs = getConversations();
+                const msg = convs[activeContactName][idx];
+                
+                if (msg && msg.type === 'devis') {
+                    openCheckoutOverlay(msg, idx);
+                }
+            });
+        });
+
+        document.querySelectorAll('.btn-decline-devis').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(btn.dataset.idx);
+                const convs = getConversations();
+                const msg = convs[activeContactName][idx];
+                
+                if (msg && msg.type === 'devis') {
+                    msg.devisData.status = 'declined';
+                    
+                    // Add declination system log to history
+                    convs[activeContactName].push({
+                        senderRole: currentRole,
+                        text: "Proposition déclinée par le client. Retour à la discussion.",
+                        type: "status",
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    });
+
+                    saveConversations(convs);
+                    renderActiveConversation();
+
+                    if (window.LYANN_NOTIFICATIONS) {
+                        window.LYANN_NOTIFICATIONS.sendSMS(
+                            '+590690001122',
+                            activeContactName,
+                            `LYANN: Le client a décliné votre offre de devis. Reprenez la discussion pour convenir d'un nouvel accord.`
+                        );
+                    }
+                }
+            });
+        });
+
+        // Bind review prompt star ratings & submission
+        document.querySelectorAll('.star-rating-selector').forEach(starContainer => {
+            const stars = starContainer.querySelectorAll('.star-btn');
+            stars.forEach(star => {
+                star.addEventListener('click', () => {
+                    const rating = parseInt(star.getAttribute('data-star'));
+                    starContainer.setAttribute('data-selected-rating', rating);
+                    stars.forEach(s => {
+                        const sVal = parseInt(s.getAttribute('data-star'));
+                        s.style.color = sVal <= rating ? '#E5B345' : '#D1D5DB';
+                    });
+                });
+            });
+        });
+
+        document.querySelectorAll('.btn-submit-review').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const msgIdx = parseInt(btn.getAttribute('data-idx'));
+                const container = btn.closest('.review-prompt-card');
+                const starContainer = container ? container.querySelector('.star-rating-selector') : null;
+                const commentInput = container ? container.querySelector('.review-comment-input') : null;
+
+                const rating = parseInt(starContainer ? (starContainer.getAttribute('data-selected-rating') || '5') : '5');
+                const comment = commentInput ? (commentInput.value.trim() || 'Prestation de très bonne qualité !') : 'Prestation de très bonne qualité !';
+
+                // Update conversation message
+                const convs = getConversations();
+                if (convs[activeContactName] && convs[activeContactName][msgIdx]) {
+                    convs[activeContactName][msgIdx].reviewSubmitted = true;
+                    convs[activeContactName][msgIdx].reviewData = {
+                        stars: rating,
+                        comment: comment,
+                        date: new Date().toLocaleDateString()
+                    };
+
+                    // Append status log
+                    convs[activeContactName].push({
+                        senderRole: "client",
+                        text: `⭐ Avis de ${rating}/5 publié pour ${activeContactName} : "${comment}"`,
+                        type: "status",
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    });
+
+                    // Trigger notification SMS / Email log
+                    if (window.LYANN_NOTIFICATIONS) {
+                        window.LYANN_NOTIFICATIONS.sendSMS(
+                            '+590690001122',
+                            activeContactName,
+                            `LYANN: Le client a laissé un avis ${rating}/5 étoile(s) pour votre intervention : "${comment}". Merci pour votre professionnalisme !`
+                        );
+                    }
+
+                    saveConversations(convs);
+                    renderActiveConversation();
+
+                    if (typeof showNotificationToast === 'function') {
+                        showNotificationToast('🌟 Merci ! Votre avis a été publié avec succès.');
+                    }
+                }
+            });
+        });
+    }
+
+    // OPEN SECURE CHECKOUT OVERLAY
+    function openCheckoutOverlay(msg, index) {
+        activeDevisForCheckout = { msg, index };
+
+        if (coPrestationTitle) coPrestationTitle.textContent = msg.devisData.title;
+        
+        recalculateCheckoutFees();
+
+        // Bind recalculation on check box toggle
+        if (coAssuranceCheck) {
+            coAssuranceCheck.onchange = () => recalculateCheckoutFees();
+        }
+
+        // Toggle layout between fake card fields and Stripe card fields
+        const fakeCardFields = document.getElementById('fakeCardFields');
+        const stripeCardFields = document.getElementById('stripeCardFields');
+        if (stripe && stripeCardElement) {
+            if (fakeCardFields) fakeCardFields.style.display = 'none';
+            if (stripeCardFields) {
+                stripeCardFields.style.display = 'block';
+                // Mount elements to the div
+                try {
+                    stripeCardElement.mount('#stripeCardElement');
+                } catch (e) {
+                    console.log("Stripe Elements card already mounted or mounting ignored:", e);
+                }
+            }
+        } else {
+            if (fakeCardFields) fakeCardFields.style.display = 'block';
+            if (stripeCardFields) stripeCardFields.style.display = 'none';
+        }
+
+        if (chatCheckoutOverlay) chatCheckoutOverlay.style.display = 'flex';
+    }
+
+    function recalculateCheckoutFees() {
+        if (!activeDevisForCheckout) return;
+        const baseAmount = activeDevisForCheckout.msg.devisData.amount;
+        const serviceFee = baseAmount * 0.03; // 3% commission
+        const wantsAssurance = coAssuranceCheck ? coAssuranceCheck.checked : true;
+        const assuranceFee = wantsAssurance ? (baseAmount * 0.07) : 0.00; // 7% assurance
+        const total = baseAmount + serviceFee + assuranceFee;
+
+        if (coDevisAmount) coDevisAmount.textContent = baseAmount.toFixed(2) + " €";
+        if (coLyannFee) coLyannFee.textContent = serviceFee.toFixed(2) + " €";
+        if (coAssuranceFee) coAssuranceFee.textContent = assuranceFee.toFixed(2) + " €";
+        if (coTotalAmount) coTotalAmount.textContent = total.toFixed(2) + " €";
+    }
+
+    if (btnCancelCheckout) {
+        btnCancelCheckout.addEventListener('click', () => {
+            if (chatCheckoutOverlay) chatCheckoutOverlay.style.display = 'none';
+        });
+    }
+
+    // CHECKOUT FORM SUBMISSION
+    if (checkoutPaymentForm) {
+        checkoutPaymentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            if (!activeDevisForCheckout || !window.LYANN_PAYMENTS) return;
+            const { msg, index } = activeDevisForCheckout;
+
+            // 1. Create Service request
+            const txRequest = window.LYANN_PAYMENTS.createServiceRequest({
+                title: msg.devisData.title,
+                customerName: "Habitant Test (Client)",
+                customerId: 105,
+                providerName: activeContactName,
+                providerId: 1, // David is mock provider ID 1
+                description: msg.devisData.description
+            });
+
+            // 2. Submit quote data to mock DB
+            const quoteData = {
+                total: msg.devisData.amount,
+                labour: msg.devisData.amount * 0.7,
+                travel: 15,
+                materials: msg.devisData.amount * 0.2,
+                equipment: 15,
+                milestones: msg.devisData.milestones || []
+            };
+            window.LYANN_PAYMENTS.submitQuotation(txRequest.id, quoteData);
+
+            // 3. Approve and pay transaction
+            const hasAssurance = coAssuranceCheck ? coAssuranceCheck.checked : true;
+            let payMethodName = "Carte Bancaire (Simulée)";
+            if (stripe && stripeCardElement) {
+                payMethodName = "Stripe Elements Card";
+                console.log("🔒 Verify transaction with Stripe Elements key pk_test_51U1R...");
+                alert("🔒 Validation Stripe Elements réussie !\n\nNuméro de Carte de Test validé. Les fonds sont mis en séquestre sur votre clé Stripe Connect test.");
+            }
+            const updatedTx = window.LYANN_PAYMENTS.approveQuotationAndPay(txRequest.id, hasAssurance, { method: payMethodName });
+
+            // 4. Update local chat database message status
+            const convs = getConversations();
+            convs[activeContactName][index].devisData.status = 'approved';
+            convs[activeContactName][index].devisData.txId = updatedTx.id;
+
+            // Append status log
+            convs[activeContactName].push({
+                senderRole: "client",
+                text: `Paiement sécurisé de ${updatedTx.totalPaid.toFixed(2)} € validé. Les fonds sont en séquestre Stripe Connect. Début du chantier !`,
+                type: "status",
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+
+            // If direct price (no milestones), invite review prompt directly
+            if (!msg.devisData.milestones || msg.devisData.milestones.length === 0) {
+                convs[activeContactName].push({
+                    senderRole: "provider",
+                    type: "review_prompt",
+                    reviewSubmitted: false,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                });
+            }
+
+            saveConversations(convs);
+            closeAllOverlays();
+            renderActiveConversation();
+
+            // Show Toast notification if toast helper exists
+            if (typeof showNotificationToast === 'function') {
+                showNotificationToast('💳 Paiement validé & fonds sécurisés !');
+            }
+        });
+    }
+
+    // OPEN SHARED PROGRESS TRACKING OVERLAY
+    function openTrackingOverlay(txId) {
+        if (!window.LYANN_PAYMENTS) return;
+        
+        const txs = window.LYANN_PAYMENTS.getTransactions();
+        const tx = txs.find(t => t.id === txId);
+        if (!tx) return;
+
+        if (trackingMilestonesList) {
+            trackingMilestonesList.innerHTML = '';
+            
+            if (tx.requiresMilestones && tx.milestones.length > 0) {
+                tx.milestones.forEach(m => {
+                    const card = document.createElement('div');
+                    card.className = `tracking-milestone-card ${m.status}`;
+                    
+                    let statusLabel = '';
+                    let actionButtonHTML = '';
+
+                    if (m.status === 'approved') {
+                        statusLabel = `<span style="color: #10B981; font-weight:700;"><i class="ph ph-check-circle"></i> Validé • Fonds libérés (${m.amount.toFixed(2)} €)</span>`;
+                    } else if (m.status === 'submitted') {
+                        statusLabel = `<span style="color: #F59E0B; font-weight:700;"><i class="ph ph-clock"></i> Jalon Terminé • En attente de validation client</span>`;
+                        
+                        let proofHTML = '';
+                        if (m.photos && m.photos.length > 0) {
+                            proofHTML = `
+                                <div style="margin-top: 8px; border: 1px solid var(--border); border-radius: 6px; overflow:hidden;">
+                                    <img src="${m.photos[0]}" alt="Preuve" style="width:100%; height:120px; object-fit:cover; display:block;">
+                                </div>
+                            `;
+                        }
+
+                        if (currentRole === 'client') {
+                            actionButtonHTML = `
+                                <div style="display:flex; gap:8px; margin-top:10px;">
+                                    <button type="button" class="btn btn-outline" onclick="window.triggerDisputeMilestone('${tx.id}', ${m.id})" style="border-color: #E63B2E; color:#E63B2E; padding:5px 10px; font-size:0.75rem; background:transparent;">Signaler un problème</button>
+                                    <button type="button" class="btn btn-primary" onclick="window.approveMilestoneById('${tx.id}', ${m.id})" style="background:#2E7D32; border-color:#2E7D32; padding:5px 10px; font-size:0.75rem; color:white;">Libérer les fonds</button>
+                                </div>
+                            `;
+                        }
+                        
+                        statusLabel += `
+                            <div style="font-size:0.8rem; background:#FFFBEB; padding:8px; border-radius:4px; margin-top:8px; border:1px solid #FDE68A;">
+                                <strong>Commentaires artisan :</strong> "${m.completionComments || 'Aucun commentaire'}"
+                                ${proofHTML}
+                            </div>
+                        `;
+                    } else if (m.status === 'rejected') {
+                        statusLabel = `<span style="color: #C62828; font-weight:700;"><i class="ph ph-warning"></i> Signalement • Modifications demandées</span>`;
+                        if (m.rejectionComments) {
+                            statusLabel += `<div style="font-size:0.8rem; background:#FFEBEE; color:#C62828; padding:8px; border-radius:4px; margin-top:6px;">Motif: "${m.rejectionComments}"</div>`;
+                        }
+
+                        if (currentRole === 'provider') {
+                            actionButtonHTML = `<button type="button" class="btn btn-primary" onclick="window.openSubmitProofForm('${tx.id}', ${m.id}, '${m.title}')" style="margin-top:8px; padding:5px 10px; font-size:0.75rem; background:var(--primary); color:white; border:none;">Déclarer à nouveau terminé</button>`;
+                        }
+                    } else {
+                        statusLabel = `<span style="color: #9CA3AF; font-weight:700;"><i class="ph ph-circle"></i> Travaux en cours par l'artisan</span>`;
+                        
+                        if (currentRole === 'provider') {
+                            actionButtonHTML = `<button type="button" class="btn btn-primary" onclick="window.openSubmitProofForm('${tx.id}', ${m.id}, '${m.title}')" style="margin-top:8px; padding:5px 10px; font-size:0.75rem; background:var(--primary); color:white; border:none;">Déclarer terminé</button>`;
+                        }
+                    }
+
+                    card.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <strong style="font-size:0.9rem;">${m.title}</strong>
+                            <span style="font-size:0.85rem; font-weight:800; color:var(--primary);">${m.amount.toFixed(2)} € (${m.percentage}%)</span>
+                        </div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">${m.description}</div>
+                        <div style="margin-top:4px;">${statusLabel}</div>
+                        ${actionButtonHTML}
+                    `;
+                    trackingMilestonesList.appendChild(card);
+                });
+            } else {
+                // Single direct price tracking card
+                const isPaid = tx.status === 'en_cours' || tx.status === 'termine';
+                const card = document.createElement('div');
+                card.className = `tracking-milestone-card ${tx.status === 'termine' ? 'approved' : 'pending'}`;
+                
+                let statusLabel = '';
+                let actionButtonHTML = '';
+
+                if (tx.status === 'termine') {
+                    statusLabel = `<span style="color: #10B981; font-weight:700;"><i class="ph ph-check-circle"></i> Validé • Fonds transférés à l'artisan</span>`;
+                } else if (tx.status === 'litige') {
+                    statusLabel = `<span style="color: #C62828; font-weight:700;"><i class="ph ph-warning"></i> Litige Ouvert • Arbitrage en cours</span>`;
+                } else {
+                    statusLabel = `<span style="color: #F59E0B; font-weight:700;"><i class="ph ph-clock"></i> Travaux en cours</span>`;
+                    
+                    if (currentRole === 'client') {
+                        actionButtonHTML = `
+                            <div style="display:flex; gap:8px; margin-top:10px;">
+                                <button type="button" class="btn btn-outline" onclick="window.triggerDisputeDirect('${tx.id}')" style="border-color: #E63B2E; color:#E63B2E; padding:5px 10px; font-size:0.75rem; background:transparent;">Signaler un litige</button>
+                                <button type="button" class="btn btn-primary" onclick="window.releaseDirectFunds('${tx.id}')" style="background:#2E7D32; border-color:#2E7D32; padding:5px 10px; font-size:0.75rem; color:white;">Valider & Libérer le paiement</button>
+                            </div>
+                        `;
+                    } else {
+                        statusLabel = `<span style="color: #F59E0B; font-weight:700;"><i class="ph ph-clock"></i> Chantier en cours, en attente de la validation finale du client</span>`;
+                    }
+                }
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong style="font-size:0.9rem;">Prestation Unique : ${tx.title}</strong>
+                        <span style="font-size:0.85rem; font-weight:800; color:var(--primary);">${tx.amount.toFixed(2)} €</span>
+                    </div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">${tx.requestDetails ? tx.requestDetails.description : ''}</div>
+                    <div style="margin-top:6px;">${statusLabel}</div>
+                    ${actionButtonHTML}
+                `;
+                trackingMilestonesList.appendChild(card);
+            }
+        }
+
+        if (chatTrackingOverlay) chatTrackingOverlay.style.display = 'flex';
+    }
+
+    // Expose tracking launcher globally so devis cards or other parts can invoke it
+    window.openTrackingById = function(txId) {
+        openTrackingOverlay(txId);
+    };
+
+    if (btnExitTracking) {
+        btnExitTracking.addEventListener('click', () => {
+            if (chatTrackingOverlay) chatTrackingOverlay.style.display = 'none';
+            renderActiveConversation();
+        });
+    }
+
+    // SUBMIT PROOF OVERLAY POPULATOR
+    window.openSubmitProofForm = function(txId, milestoneId, title) {
+        activeMilestoneForProof = { txId, milestoneId };
+        if (proofMilestoneTitle) proofMilestoneTitle.textContent = title;
+        if (chatSubmitProofOverlay) chatSubmitProofOverlay.style.display = 'flex';
+    };
+
+    if (btnCancelProof) {
+        btnCancelProof.addEventListener('click', () => {
+            if (chatSubmitProofOverlay) chatSubmitProofOverlay.style.display = 'none';
+        });
+    }
+
+    // SUBMIT PROOF LOGIC
+    if (submitProofForm) {
+        submitProofForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!activeMilestoneForProof || !window.LYANN_PAYMENTS) return;
+            
+            const { txId, milestoneId } = activeMilestoneForProof;
+            const comments = proofComments.value.trim();
+            const photo = proofPhotoSelect.value;
+
+            if (!comments) return;
+
+            // Submit completion details
+            window.LYANN_PAYMENTS.submitMilestoneCompletion(txId, milestoneId, {
+                comments: comments,
+                photos: [photo]
+            });
+
+            // Get transaction object to write info inside conversation
+            const txs = window.LYANN_PAYMENTS.getTransactions();
+            const tx = txs.find(t => t.id === txId);
+            const milestone = tx.milestones.find(m => m.id === milestoneId);
+
+            const convs = getConversations();
+            convs[activeContactName].push({
+                senderRole: "provider",
+                text: `Jalon "${milestone.title}" déclaré terminé par le prestataire. Commentaires : "${comments}". Preuve photo envoyée.`,
+                type: "status",
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            saveConversations(convs);
+
+            // Clean inputs
+            proofComments.value = '';
+
+            closeAllOverlays();
+            openTrackingOverlay(txId);
+        });
+    }
+
+    // CLIENT APPROVAL FOR MILESTONES
+    window.approveMilestoneById = function(txId, milestoneId) {
+        if (!window.LYANN_PAYMENTS) return;
+        
+        const tx = window.LYANN_PAYMENTS.approveMilestone(txId, milestoneId);
+        if (!tx) return;
+
+        const milestone = tx.milestones.find(m => m.id === milestoneId);
+        
+        // Write status message in chat conversation logs
+        const convs = getConversations();
+        convs[activeContactName].push({
+            senderRole: "client",
+            text: `Jalon "${milestone.title}" validé par le client ! La somme de ${milestone.amount.toFixed(2)} € a été libérée et transférée sur le compte bancaire de l'artisan.`,
+            type: "status",
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+
+        // Check if all milestones are validated
+        const allCompleted = tx.milestones.every(m => m.status === 'approved');
+        if (allCompleted) {
+            tx.status = 'termine';
+            window.LYANN_PAYMENTS.saveTransactions(window.LYANN_PAYMENTS.getTransactions().map(t => t.id === txId ? tx : t));
+            
+            convs[activeContactName].push({
+                senderRole: "client",
+                text: `🏆 Chantier entièrement validé et terminé avec succès sur LYANN !`,
+                type: "status",
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+
+            // System review prompt invitation
+            convs[activeContactName].push({
+                senderRole: "provider",
+                type: "review_prompt",
+                reviewSubmitted: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+        }
+
+        saveConversations(convs);
+        openTrackingOverlay(txId);
+    };
+
+    // CLIENT DISPUTE FOR MILESTONES
+    window.triggerDisputeMilestone = function(txId, milestoneId) {
+        if (!window.LYANN_PAYMENTS) return;
+        
+        const feedback = prompt("Veuillez saisir le motif du signalement / corrections demandées :");
+        if (!feedback) return;
+
+        window.LYANN_PAYMENTS.rejectMilestone(txId, milestoneId, feedback);
+
+        // Notify dispute / reject
+        const convs = getConversations();
+        convs[activeContactName].push({
+            senderRole: "client",
+            text: `⚠️ Corrections demandées sur le jalon. Motif : "${feedback}"`,
+            type: "status",
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        saveConversations(convs);
+
+        openTrackingOverlay(txId);
+    };
+
+    // DIRECT PRICE SYSTEM - CLIENT VALIDATION
+    window.releaseDirectFunds = function(txId) {
+        if (!window.LYANN_PAYMENTS) return;
+        
+        const txs = window.LYANN_PAYMENTS.getTransactions();
+        const idx = txs.findIndex(t => t.id === txId);
+        if (idx === -1) return;
+
+        const tx = txs[idx];
+        tx.status = 'termine';
+
+        // Transfer funds to provider wallet
+        const wallets = window.LYANN_PAYMENTS.getWallets();
+        const wallet = wallets[tx.providerId];
+        if (wallet) {
+            wallet.pendingBalance = Math.max(0, wallet.pendingBalance - tx.amount);
+            wallet.availableBalance += tx.amount;
+            wallet.releasedPayments += tx.amount;
+            wallet.completedPaymentsCount++;
+        }
+
+        window.LYANN_PAYMENTS.saveWallets(wallets);
+        window.LYANN_PAYMENTS.saveTransactions(txs);
+
+        const convs = getConversations();
+        convs[activeContactName].push({
+            senderRole: "client",
+            text: `Validation finale effectuée ! La somme de ${tx.amount.toFixed(2)} € a été libérée et transférée sur le compte Stripe Connect de l'artisan.`,
+            type: "status",
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        saveConversations(convs);
+
+        openTrackingOverlay(txId);
+    };
+
+    // DIRECT PRICE SYSTEM - DISPUTE
+    window.triggerDisputeDirect = function(txId) {
+        if (!window.LYANN_PAYMENTS) return;
+
+        const reason = prompt("Pourquoi signalez-vous cette prestation ? (Litige)");
+        if (!reason) return;
+
+        window.LYANN_PAYMENTS.openDispute(txId, {
+            reporter: 'client',
+            reason: 'Litige Tarif Direct',
+            description: reason
+        });
+
+        const convs = getConversations();
+        convs[activeContactName].push({
+            senderRole: "client",
+            text: `⚠️ Litige déclaré sur la prestation. Motif : "${reason}". Le support LYANN intervient pour arbitrer.`,
+            type: "status",
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        saveConversations(convs);
+
+        openTrackingOverlay(txId);
+    };
+
+    // STANDARD CHAT MESSAGE SEND
     if (chatInputForm) {
         chatInputForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -2074,31 +3160,44 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!text) return;
 
             const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const convs = getConversations();
 
-            const sentBubble = document.createElement('div');
-            sentBubble.className = 'chat-msg-bubble sent';
-            sentBubble.innerHTML = `${text} <div class="chat-msg-time">${timeNow}</div>`;
-            chatMessagesContainer.appendChild(sentBubble);
+            const newMsg = {
+                senderRole: currentRole, // client or provider
+                text: text,
+                type: "text",
+                timestamp: timeNow
+            };
+
+            if (!convs[activeContactName]) convs[activeContactName] = [];
+            convs[activeContactName].push(newMsg);
+            saveConversations(convs);
 
             chatInputField.value = '';
-            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+            renderActiveConversation();
 
-            // Simulation de réponse automatique du membre sous 1.2s
-            setTimeout(() => {
-                const activeName = chatHeaderName ? chatHeaderName.textContent.split(' ')[0] : 'Votre voisin';
-                const replies = [
-                    `C'est bien noté ! Je regarde mes disponibilités et je vous réponds précisément dans quelques instants. 👍`,
-                    `Merci pour votre message ! Je peux me déplacer pour un premier constat gratuit si vous souhaitez.`,
-                    `Super ! On s'organise ainsi. À très vite sur LYANN.`
-                ];
-                const randomReply = replies[Math.floor(Math.random() * replies.length)];
+            // Simulated response from active neighbor after 1.5s (only if user acts as client)
+            if (currentRole === 'client') {
+                setTimeout(() => {
+                    const activeName = activeContactName.split(' ')[0];
+                    const replies = [
+                        `C'est bien noté ! Je regarde mes disponibilités et je vous réponds précisément dans quelques instants. 👍`,
+                        `Merci pour votre message ! Je peux me déplacer pour un premier constat gratuit si vous souhaitez.`,
+                        `Super ! On s'organise ainsi. À très vite sur LYANN.`
+                    ];
+                    const randomReply = replies[Math.floor(Math.random() * replies.length)];
 
-                const replyBubble = document.createElement('div');
-                replyBubble.className = 'chat-msg-bubble received';
-                replyBubble.innerHTML = `${randomReply} <div class="chat-msg-time">${timeNow}</div>`;
-                chatMessagesContainer.appendChild(replyBubble);
-                chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
-            }, 1200);
+                    const botConvs = getConversations();
+                    botConvs[activeContactName].push({
+                        senderRole: "provider",
+                        text: randomReply,
+                        type: "text",
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    });
+                    saveConversations(botConvs);
+                    renderActiveConversation();
+                }, 1500);
+            }
         });
     }
 
@@ -2108,6 +3207,17 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const name = btn.dataset.memberName || 'David Jean-Baptiste';
             const avatar = btn.dataset.memberAvatar || 'david-34.png';
+            openChatWithUser(name, avatar);
+        });
+    });
+
+    // Sidebar Contact clicks inside chat contacts list
+    document.querySelectorAll('.chat-contact-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const nameEl = item.querySelector('.chat-contact-name');
+            const name = nameEl ? nameEl.textContent : 'David Jean-Baptiste';
+            const avatarEl = item.querySelector('.chat-contact-avatar');
+            const avatar = avatarEl ? avatarEl.getAttribute('src') : 'david-34.png';
             openChatWithUser(name, avatar);
         });
     });
@@ -2233,6 +3343,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bookingForm) {
         bookingForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            
+            // Récupérer le nom du prestataire ciblé
+            const targetNameEl = document.getElementById('bookingTargetMemberName');
+            let providerName = 'David Jean-Baptiste';
+            if (targetNameEl && targetNameEl.textContent) {
+                providerName = targetNameEl.textContent.replace('Réserver avec ', '');
+            }
+
+            // Déclencher les notifications de réservation via Twilio & SendGrid
+            if (window.LYANN_NOTIFICATIONS) {
+                // Notifier le prestataire (ex: David Jean-Baptiste) par SMS
+                window.LYANN_NOTIFICATIONS.sendSMS(
+                    '+590690001122', 
+                    providerName, 
+                    `Bonjour ${providerName}, vous avez reçu une nouvelle demande de réservation de la part de David. Connectez-vous à LYANN pour y répondre.`
+                );
+
+                // Notifier le prestataire par Email
+                window.LYANN_NOTIFICATIONS.sendEmail(
+                    'prestataire@lyann-dom.com',
+                    providerName,
+                    '🤝 Nouvelle demande de réservation sur LYANN DOM',
+                    `
+                    <p>Une nouvelle demande de rendez-vous a été déposée pour votre activité.</p>
+                    <p><strong>Détails du client :</strong> David (Baie-Mahault, Guadeloupe)</p>
+                    <p>Rendez-vous dans votre Espace Prestataire sur LYANN DOM pour envoyer votre devis par jalon et sécuriser le paiement.</p>
+                    `
+                );
+            }
+
             alert('🎉 Votre demande de réservation et de devis a été transmise avec succès ! Vous recevrez une confirmation sous 2h.');
             if (bookingModal) bookingModal.classList.remove('active');
             bookingForm.reset();
@@ -2340,7 +3480,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateHeaderAuthState() {
-        const isLoggedIn = localStorage.getItem('lyan_user_logged_in') === 'true';
+        const isLoggedIn = safeStorage.getItem('lyan_user_logged_in') === 'true';
         if (isLoggedIn) {
             document.body.classList.add('user-is-logged-in');
         } else {
@@ -2352,7 +3492,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (accountLogoutBtn) {
         accountLogoutBtn.addEventListener('click', () => {
             if (confirm('Êtes-vous sûr de vouloir vous déconnecter de votre espace LYANN ?')) {
-                localStorage.setItem('lyan_user_logged_in', 'false');
+                safeStorage.setItem('lyan_user_logged_in', 'false');
                 updateHeaderAuthState();
                 if (userAccountModal) userAccountModal.classList.remove('active');
                 document.body.style.overflow = '';
@@ -2502,13 +3642,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.btn-approve-ai').forEach(btn => {
         btn.addEventListener('click', () => {
             const postId = btn.getAttribute('data-post-id');
-            if (confirm('Approuver cette publication IA et la diffuser immédiatement sur Le Fil public ?')) {
+            if (confirm('Approuver cette publication IA et la diffuser immédiatement sur Bokantaj public ?')) {
                 if (window.LYANN_AI_ECOSYSTEM) {
                     window.LYANN_AI_ECOSYSTEM.approvePendingPost(postId);
                 }
                 const item = btn.closest('.web-ai-pending-item');
                 if (item) item.remove();
-                alert('✅ Publication IA approuvée et diffusée en direct sur Le Fil !');
+                alert('✅ Publication IA approuvée et diffusée en direct sur Bokantaj !');
             }
         });
     });
@@ -2635,8 +3775,192 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    renderFlashFeed();
+    // ==========================================================================
+    // BOUTON FLOTTANT DE MESSAGERIE (BOKANTAJ) & SYSTÈME DE NOTIFICATIONS
+    // ==========================================================================
+    // 1. Bouton Flottant Messagerie (en bas à droite)
+    const floatingChat = document.createElement('div');
+    floatingChat.className = 'floating-chat-badge';
+    floatingChat.title = 'Ouvrir Bokantaj (Messagerie)';
+    floatingChat.innerHTML = `
+        <i class="ph ph-chat-circle-dots"></i>
+        <span class="floating-chat-badge-notif" id="floatingChatNotif"></span>
+    `;
+    document.body.appendChild(floatingChat);
 
+    floatingChat.addEventListener('click', () => {
+        const chatModal = document.getElementById('chatModal');
+        if (chatModal) {
+            openChatWithUser(activeContactName, activeContactAvatar);
+            const notif = document.getElementById('floatingChatNotif');
+            if (notif) notif.classList.remove('active');
+        } else {
+            window.location.href = 'feed.html?action=openchat';
+        }
+    });
+
+    // Auto-ouvrir la discussion si le paramètre URL est présent
+    const chatActionParam = urlParams.get('action');
+    if (chatActionParam === 'openchat') {
+        const nameParam = urlParams.get('name');
+        setTimeout(() => {
+            if (nameParam) {
+                openChatWithUser(decodeURIComponent(nameParam), "david-34.png");
+            } else {
+                openChatWithUser("David Jean-Baptiste", "david-34.png");
+            }
+        }, 500);
+    }
+
+    // 2. Bouton & Dropdown de Notifications (dans la Navbar)
+    const navLinksContainer = document.querySelector('.nav-links');
+    if (navLinksContainer) {
+        const notifLi = document.createElement('div');
+        notifLi.className = 'nav-notif-container logged-in-only';
+        notifLi.style.position = 'relative';
+        notifLi.style.marginRight = '12px';
+        notifLi.style.display = 'flex';
+        notifLi.style.alignItems = 'center';
+        notifLi.innerHTML = `
+            <button class="nav-notif-btn" id="navNotifBtn" title="Notifications" style="background: none; border: none; font-size: 1.35rem; cursor: pointer; color: var(--text); position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; transition: background 0.3s; padding: 0;">
+                <i class="ph ph-bell"></i>
+                <span class="nav-notif-badge" id="navNotifBadge" style="position: absolute; top: 4px; right: 4px; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1.5px solid white; display: none;">0</span>
+            </button>
+            
+            <div class="nav-notif-dropdown" id="navNotifDropdown" style="display: none; position: absolute; top: 50px; right: 0; width: 320px; background: white; border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 1000; overflow: hidden; padding: 12px 0;">
+                <div style="padding: 0 16px 8px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 800; font-size: 0.95rem; color: var(--primary-dark);">Notifications</span>
+                    <button type="button" id="clearAllNotifsBtn" style="background: none; border: none; font-size: 0.75rem; color: var(--primary); cursor: pointer; font-weight: 700; padding: 0;">Tout effacer</button>
+                </div>
+                <div class="nav-notif-list" id="navNotifList" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column;">
+                    <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                        <i class="ph ph-bell-slash" style="font-size: 1.6rem; display: block; margin-bottom: 6px; opacity: 0.6;"></i>
+                        Aucune nouvelle notification
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const profileBtn = navLinksContainer.querySelector('.open-account-modal-trigger');
+        if (profileBtn) {
+            navLinksContainer.insertBefore(notifLi, profileBtn);
+        } else {
+            navLinksContainer.appendChild(notifLi);
+        }
+
+        // Toggle dropdown listener
+        const navNotifBtn = document.getElementById('navNotifBtn');
+        const navNotifDropdown = document.getElementById('navNotifDropdown');
+        if (navNotifBtn && navNotifDropdown) {
+            navNotifBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navNotifDropdown.style.display = navNotifDropdown.style.display === 'none' ? 'block' : 'none';
+            });
+            document.addEventListener('click', () => {
+                navNotifDropdown.style.display = 'none';
+            });
+            navNotifDropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
+
+        // Action Effacer
+        const clearAllNotifsBtn = document.getElementById('clearAllNotifsBtn');
+        if (clearAllNotifsBtn) {
+            clearAllNotifsBtn.addEventListener('click', () => {
+                if (window.LYANN_NOTIFICATIONS && typeof window.LYANN_NOTIFICATIONS.clearLogs === 'function') {
+                    window.LYANN_NOTIFICATIONS.clearLogs();
+                } else {
+                    safeStorage.removeItem('lyann_notifications_log');
+                }
+                loadAndRenderNotifs();
+                const notif = document.getElementById('floatingChatNotif');
+                if (notif) notif.classList.remove('active');
+            });
+        }
+    }
+
+    // Fonction de rendu des notifications
+    function loadAndRenderNotifs() {
+        const navNotifList = document.getElementById('navNotifList');
+        const navNotifBadge = document.getElementById('navNotifBadge');
+        if (!navNotifList) return;
+
+        let logs = [];
+        if (window.LYANN_NOTIFICATIONS && typeof window.LYANN_NOTIFICATIONS.getLogs === 'function') {
+            logs = window.LYANN_NOTIFICATIONS.getLogs();
+        }
+
+        if (logs.length === 0) {
+            navNotifList.innerHTML = `
+                <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                    <i class="ph ph-bell-slash" style="font-size: 1.6rem; display: block; margin-bottom: 6px; opacity: 0.6;"></i>
+                    Aucune nouvelle notification
+                </div>
+            `;
+            if (navNotifBadge) navNotifBadge.style.display = 'none';
+            return;
+        }
+
+        if (navNotifBadge) {
+            navNotifBadge.textContent = logs.length;
+            navNotifBadge.style.display = 'flex';
+        }
+
+        navNotifList.innerHTML = '';
+        logs.forEach(log => {
+            const item = document.createElement('div');
+            item.className = 'notif-item';
+            
+            let icon = '<i class="ph ph-envelope"></i>';
+            let title = 'Notification';
+            if (log.channel === 'sms') {
+                icon = '<i class="ph ph-chat-text"></i>';
+                title = `💬 SMS à ${log.recipientName}`;
+            } else {
+                icon = '<i class="ph ph-envelope"></i>';
+                title = `✉️ E-mail à ${log.recipientName}`;
+            }
+
+            const dateObj = new Date(log.timestamp);
+            const dateStr = isNaN(dateObj.getTime()) ? 'À l\'instant' : dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            item.innerHTML = `
+                <div class="notif-item-icon">${icon}</div>
+                <div class="notif-item-body">
+                    <div class="notif-item-title" style="font-weight: 700; font-size: 0.82rem; color: var(--primary-dark);">${title}</div>
+                    <div class="notif-item-text" style="font-size: 0.76rem; color: var(--text); margin-top: 2px;">${log.content}</div>
+                    <div class="notif-item-time" style="font-size: 0.68rem; color: #888; margin-top: 4px;">${dateStr}</div>
+                </div>
+            `;
+            
+            item.addEventListener('click', () => {
+                const chatModal = document.getElementById('chatModal');
+                if (chatModal) {
+                    openChatWithUser(log.recipientName || "David Jean-Baptiste", "david-34.png");
+                } else {
+                    window.location.href = `feed.html?action=openchat&name=${encodeURIComponent(log.recipientName || "David Jean-Baptiste")}`;
+                }
+                if (navNotifDropdown) navNotifDropdown.style.display = 'none';
+            });
+            
+            navNotifList.appendChild(item);
+        });
+    }
+
+    // Écouteur d'envoi de notification
+    window.addEventListener('lyann_notification_sent', () => {
+        loadAndRenderNotifs();
+        const notif = document.getElementById('floatingChatNotif');
+        if (notif) notif.classList.add('active');
+    });
+
+    // Chargement initial au bout de 600ms
+    setTimeout(() => {
+        loadAndRenderNotifs();
+    }, 600);
+
+    renderFlashFeed();
     renderMyDashboardRealizations();
     updateStepUI();
 });

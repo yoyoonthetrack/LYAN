@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LYANN — Le Lakou • Espace d'Échange du Quartier</title>
-    <meta name="description" content="Découvrez les échos, disponibilités d'artisans, besoins urgents et recommandations dans le Lakou de LYANN.">
+    <title>LYANN — Bokantaj • Espace d'Échange du Quartier</title>
+    <meta name="description" content="Découvrez les échos, disponibilités d'artisans, besoins urgents et recommandations dans Bokantaj de LYANN.">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,7 +50,7 @@
             
             <div class="nav-links">
                 <a href="results.html">RECHERCHER</a>
-                <a href="feed.html" class="active">LE LAKOU <span class="nav-live-dot"></span></a>
+                <a href="feed.html" class="active">BOKANTAJ <span class="nav-live-dot"></span></a>
                 <a href="pricing.html">NOS OFFRES</a>
                 <a href="about.html">NOTRE HISTOIRE</a>
                 <a href="#login" class="btn btn-outline open-login-trigger logged-out-only">CONNEXION</a>
@@ -80,7 +80,7 @@
                 <nav class="mobile-nav-list">
                     <a href="index.html">ACCUEIL <i class="ph ph-caret-right"></i></a>
                     <a href="results.html">RECHERCHER <i class="ph ph-caret-right"></i></a>
-                    <a href="feed.html" class="active">LE LAKOU <span class="nav-live-dot"></span></a>
+                    <a href="feed.html" class="active">BOKANTAJ <span class="nav-live-dot"></span></a>
                     <a href="pricing.html">NOS OFFRES <i class="ph ph-caret-right"></i></a>
                     <a href="how-it-works.html">COMMENT ÇA MARCHE <i class="ph ph-caret-right"></i></a>
                     <a href="about.html">NOTRE HISTOIRE <i class="ph ph-caret-right"></i></a>
@@ -95,18 +95,18 @@
         </div>
     </div>
 
-    <!-- ========== HERO PAGE LE LAKOU ========== -->
+    <!-- ========== HERO PAGE BOKANTAJ ========== -->
     <section class="feed-hero-section">
         <div class="container">
             <div class="feed-hero-content text-center">
                 <span class="pill-badge pill-emerald"><i class="ph-fill ph-broadcast"></i> La Place du Quartier</span>
-                <h1 class="feed-page-title">Bienvenue dans le Lakou</h1>
-                <p class="feed-page-subtitle">Disponibilités d'artisans en temps réel, demandes d'habitants et entraide partagées dans le Lakou par les voisins d'Outre-Mer.</p>
+                <h1 class="feed-page-title">Bienvenue sur Bokantaj</h1>
+                <p class="feed-page-subtitle">Disponibilités d'artisans en temps réel, demandes d'habitants et entraide partagées sur Bokantaj par les voisins d'Outre-Mer.</p>
             </div>
         </div>
     </section>
 
-    <!-- ========== CONTENU PRINCIPAL DU LAKOU ========== -->
+    <!-- ========== CONTENU PRINCIPAL DE BOKANTAJ ========== -->
     <section class="feed-main-section section">
         <div class="container">
             <div class="feed-layout-grid">
@@ -121,14 +121,14 @@
                                 <span>Vous</span>
                             </div>
                             <div class="composer-title-block">
-                                <h4>Postez un Lyann dans le Lakou</h4>
-                                <p>Partagez une disponibilité, un besoin ou un mot pour les voisins du Lakou.</p>
+                                <h4>Postez un Lyann dans Bokantaj</h4>
+                                <p>Partagez une disponibilité, un besoin ou un mot pour les voisins de Bokantaj.</p>
                             </div>
                         </div>
 
                         <form id="createFlashForm">
                             <div class="composer-textarea-wrapper">
-                                <textarea id="flashContentInput" placeholder="Exprimez-vous ou partagez un besoin dans le Lakou... (ex: Disponible cet après-midi pour pose clim...)" maxlength="280" required></textarea>
+                                <textarea id="flashContentInput" placeholder="Exprimez-vous ou partagez un besoin dans Bokantaj... (ex: Disponible cet après-midi pour pose clim...)" maxlength="280" required></textarea>
                                 <div class="composer-char-counter"><span id="flashCharCount">0</span>/280</div>
                             </div>
 
@@ -178,10 +178,10 @@
                         </form>
                     </div>
 
-                    <!-- BARRE DE FILTRES DU LAKOU -->
+                    <!-- BARRE DE FILTRES DE BOKANTAJ -->
                     <div class="feed-filters-bar">
                         <div class="feed-pills-filter">
-                            <button class="feed-pill active" data-filter-type="all">Tout le Lakou</button>
+                            <button class="feed-pill active" data-filter-type="all">Tout Bokantaj</button>
                             <button class="feed-pill" data-filter-type="dispo">⚡ Disponibilités</button>
                             <button class="feed-pill" data-filter-type="besoin">🔍 Besoins</button>
                             <button class="feed-pill" data-filter-type="reco">⭐ Recommandations</button>
@@ -199,9 +199,9 @@
                         </div>
                     </div>
 
-                    <!-- FLUX DE FLASHS (INJECTÉ PAR SCRIPT.JS) -->
+                    <!-- FLUX DE LYANNS (INJECTÉ PAR SCRIPT.JS) -->
                     <div class="flash-feed-list" id="flashFeedContainer">
-                        <!-- Injected dynamic Flash cards -->
+                        <!-- Injected dynamic Lyann cards -->
                     </div>
 
                 </main>
@@ -279,73 +279,53 @@
         </div>
     </section>
 
-    <!-- ========== FOOTER ========== -->
+        <!-- ========== FOOTER ========== -->
     <footer class="footer">
         <div class="container">
-            <div class="footer-grid">
-                <div class="footer-brand">
+            <div class="footer-grid-2col">
+                <!-- Colonne 1 : Marque & Présentation -->
+                <div class="footer-brand-col">
                     <a href="index.html" class="logo">
                         <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoofFooter)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoofNav)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                             <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
                             <circle cx="50" cy="42" r="7" fill="#709C7D"/>
                             <circle cx="66" cy="46" r="7" fill="#E5B345"/>
                             <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
-                                  stroke="url(#lyanGradientFooter)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
-                            <defs>
-                                <linearGradient id="lyanGradientFooter" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0%" stop-color="#4A7C59"/>
-                                    <stop offset="55%" stop-color="#80A86E"/>
-                                    <stop offset="100%" stop-color="#E5B345"/>
-                                </linearGradient>
-                                <linearGradient id="lyanRoofFooter" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0%" stop-color="#4A7C59"/>
-                                    <stop offset="100%" stop-color="#E5B345"/>
-                                </linearGradient>
-                            </defs>
+                                  stroke="url(#lyanGradientNav)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
                         </svg>
                         <div class="logo-text-block">
-                            <span class="logo-title">LYANN</span>
-                            <span class="logo-subtitle">LE LIEN QUI COMPTE</span>
+                            <span class="logo-title" style="color: #FAF7F2;">LYANN</span>
+                            <span class="logo-subtitle" style="color: #E5B345;">LE LIEN QUI COMPTE</span>
                         </div>
                     </a>
-                    <p class="footer-desc">LYANN est la plateforme d'entraide et de mise en relation de confiance dédiée à la Guadeloupe, la Martinique, la Guyane et La Réunion.</p>
+                    <p class="footer-desc">Le premier réseau de confiance qui connecte les habitants et les talents de quartier dans tous les DOM.</p>
+                    <div class="footer-territoires-pills">
+                        Guadeloupe • Martinique • Guyane • La Réunion • Saint-Martin
+                    </div>
                 </div>
 
-                <div class="footer-links-column">
-                    <h4>Navigation</h4>
-                    <ul>
-                        <li><a href="index.html">Accueil</a></li>
-                        <li><a href="results.html">Rechercher un Talent</a></li>
-                        <li><a href="feed.html">Le Lakou</a></li>
-                        <li><a href="pricing.html">Nos Offres & Tarifs</a></li>
-                        <li><a href="how-it-works.html">Comment ça marche</a></li>
-                        <li><a href="about.html">Notre Histoire</a></li>
-                    </ul>
-                </div>
-
-                <div class="footer-links-column">
-                    <h4>Territoires DOM</h4>
-                    <ul>
-                        <li><a href="results.html?location=guadeloupe">Guadeloupe (971)</a></li>
-                        <li><a href="results.html?location=martinique">Martinique (972)</a></li>
-                        <li><a href="results.html?location=guyane">Guyane (973)</a></li>
-                        <li><a href="results.html?location=reunion">La Réunion (974)</a></li>
-                    </ul>
-                </div>
-
-                <div class="footer-links-column">
-                    <h4>Informations Légales</h4>
-                    <ul>
-                        <li><a href="#" class="open-privacy-trigger">Politique de confidentialité</a></li>
-                        <li><a href="#" class="open-terms-trigger">Conditions Générales (CGU)</a></li>
-                        <li><a href="#" class="open-contact-trigger">Nous contacter</a></li>
-                    </ul>
+                <!-- Colonne 2 : Liens Utiles -->
+                <div class="footer-links-col">
+                    <div class="footer-links-group">
+                        <a href="index.html">Accueil</a>
+                        <a href="about.html">Notre Histoire</a>
+                        <a href="how-it-works.html">Comment ça marche</a>
+                        <a href="results.html">Trouver un service</a>
+                        <a href="pricing.html">Tarifs & Offres</a>
+                    </div>
+                    <div class="footer-links-group">
+                        <a href="#" class="open-signup-trigger">Inscrire mon activité</a>
+                        <a href="#" class="open-login-trigger">Espace Membre</a>
+                        <a href="#privacy" class="open-privacy-trigger">Confidentialité</a>
+                        <a href="#terms" class="open-terms-trigger">Conditions</a>
+                        <a href="#contact" class="open-contact-trigger">Contact</a>
+                    </div>
                 </div>
             </div>
 
             <div class="footer-bottom">
-                <p>&copy; 2026 LYANN DOM. Tous droits réservés. Le lien qui compte dans nos territoires.</p>
+                <p>&copy; 2026 LYANN DOM. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
             </div>
         </div>
     </footer>
@@ -420,11 +400,213 @@
         </div>
     </div>
 
-    <!-- ========== MODAL INSCRIPTION MODULAIRE ========== -->
+    <!-- ========== MODAL PARCOURS D'INSCRIPTION INTERACTIF ========== -->
     <div class="modal-overlay" id="signupModal">
-        <div class="modal-card modal-card-large">
-            <button class="modal-close-btn" id="closeSignupModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
-            <div id="signupWorkflowContainer"></div>
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeSignupBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                              stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                    </svg>
+                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Inscription LYANN</span>
+                </div>
+                <div class="step-indicator">
+                    <span class="step-count" id="stepCountText">Étape 1 sur 4</span>
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                </div>
+            </div>
+
+            <!-- Modal Body / Steps -->
+            <div class="modal-body">
+                <!-- STEP 1 : CHOIX DU RÔLE -->
+                <div class="modal-step active" id="modalStep1">
+                    <h3 class="step-title">Bienvenue sur LYANN !</h3>
+                    <p class="step-desc">Quelle est la raison principale de votre venue aujourd'hui ?</p>
+                    
+                    <div class="choice-cards-grid">
+                        <div class="choice-card" data-role="provider">
+                            <div class="choice-card-icon">🛠️</div>
+                            <h4>Je propose mes services</h4>
+                            <p>Vous êtes un professionnel ou un particulier talentueux souhaitant aider vos voisins.</p>
+                        </div>
+                        <div class="choice-card" data-role="seeker">
+                            <div class="choice-card-icon">🔍</div>
+                            <h4>Je cherche quelqu'un</h4>
+                            <p>Vous avez un besoin, un dépannage ou un projet à réaliser près de chez vous.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2 : SELECTION DES CATÉGORIES -->
+                <div class="modal-step" id="modalStep2">
+                    <h3 class="step-title" id="step2Title">Vos domaines d'intervention</h3>
+                    <p class="step-desc" id="step2Desc">Sélectionnez une ou plusieurs catégories (vous pourrez les modifier plus tard).</p>
+
+                    <div class="category-selection-grid">
+                        <div class="cat-select-card" data-cat="maison"><i class="ph-fill ph-house"></i><span>Maison</span></div>
+                        <div class="cat-select-card" data-cat="electricite"><i class="ph-fill ph-lightning"></i><span>Électricité</span></div>
+                        <div class="cat-select-card" data-cat="plomberie"><i class="ph-fill ph-drop"></i><span>Plomberie</span></div>
+                        <div class="cat-select-card" data-cat="peinture"><i class="ph-fill ph-paint-brush"></i><span>Peinture</span></div>
+                        <div class="cat-select-card" data-cat="jardin"><i class="ph-fill ph-tree"></i><span>Jardin</span></div>
+                        <div class="cat-select-card" data-cat="nettoyage"><i class="ph-fill ph-sparkle"></i><span>Nettoyage</span></div>
+                        <div class="cat-select-card" data-cat="montage"><i class="ph-fill ph-package"></i><span>Montage</span></div>
+                        <div class="cat-select-card" data-cat="climatisation"><i class="ph-fill ph-wind"></i><span>Climatisation</span></div>
+                        <div class="cat-select-card" data-cat="bricolage"><i class="ph-fill ph-wrench"></i><span>Bricolage</span></div>
+                        <div class="cat-select-card" data-cat="menage"><i class="ph-fill ph-broom"></i><span>Ménage</span></div>
+                        <div class="cat-select-card" data-cat="babysitting"><i class="ph-fill ph-baby"></i><span>Baby-sitting</span></div>
+                        <div class="cat-select-card" data-cat="aide-personne"><i class="ph-fill ph-first-aid-kit"></i><span>Aide à la personne</span></div>
+                        <div class="cat-select-card" data-cat="demenagement"><i class="ph-fill ph-truck"></i><span>Déménagement</span></div>
+                    </div>
+                </div>
+
+                <!-- STEP 3 : LOCALISATION DOM -->
+                <div class="modal-step" id="modalStep3">
+                    <h3 class="step-title">Où vous situez-vous ?</h3>
+                    <p class="step-desc">LYANN connecte les habitants et talents au sein de chaque territoire.</p>
+
+                    <div class="form-group">
+                        <label for="modalTerritorySelect">Votre territoire DOM</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-map-pin"></i>
+                            <select id="modalTerritorySelect" class="modal-input">
+                                <option value="" disabled selected>Choisissez votre région</option>
+                                <option value="Guadeloupe (971)">Guadeloupe (971)</option>
+                                <option value="Martinique (972)">Martinique (972)</option>
+                                <option value="Guyane (973)">Guyane (973)</option>
+                                <option value="La Réunion (974)">La Réunion (974)</option>
+                                <option value="St-Martin / St-Barth">St-Martin / St-Barth</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modalCityInput">Ville / Commune</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-buildings"></i>
+                            <input type="text" id="modalCityInput" class="modal-input" placeholder="Ex: Baie-Mahault, Fort-de-France, Saint-Denis..." autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4 : CHOIX DE L'ABONNEMENT -->
+                <div class="modal-step" id="modalStep4">
+                    <h3 class="step-title">Choisissez votre Formule LYANN</h3>
+                    <p class="step-desc">Sélectionnez l'offre adaptée à vos besoins. Vous pourrez en changer à tout moment.</p>
+
+                    <div class="modal-plan-choice-grid">
+                        <div class="modal-plan-card selected" data-plan="lyanneur">
+                            <div class="modal-plan-header">
+                                <span class="plan-badge badge-lyanneur">LYANNEUR</span>
+                                <span class="modal-plan-price" style="color: #4A7C59;">Gratuit</span>
+                            </div>
+                            <div class="modal-plan-title">Lyanneur</div>
+                            <div class="modal-plan-desc">5 photos • 1 seule catégorie • Positionnement standard</div>
+                        </div>
+
+                        <div class="modal-plan-card" data-plan="plus">
+                            <div class="modal-plan-header">
+                                <span class="plan-badge badge-plus">LYANNEUR +</span>
+                                <span class="modal-plan-price" style="color: #62B9C7;">9,90€/mois</span>
+                            </div>
+                            <div class="modal-plan-title">Lyanneur Plus</div>
+                            <div class="modal-plan-desc">Réponses illimitées • 20 photos • Multi-catégories • Profil vérifié</div>
+                        </div>
+
+                        <div class="modal-plan-card plan-ultime-card" data-plan="ultime">
+                            <div class="modal-plan-header">
+                                <span class="plan-badge badge-ultime">ULTIME</span>
+                                <span class="modal-plan-price" style="color: #C9961A;">29,90€/mois</span>
+                            </div>
+                            <div class="modal-plan-title">Lyanneur Ultime ⭐</div>
+                            <div class="modal-plan-desc">Tout Plus + Mise en avant sponsorisée + Portfolio illimité + Contact direct</div>
+                        </div>
+
+                        <div class="modal-plan-card plan-pro-card" data-plan="pro">
+                            <div class="modal-plan-header">
+                                <div class="pro-official-badge-preview" style="margin-bottom:0; padding: 2px 8px; font-size: 0.7rem;">
+                                    <i class="ph-fill ph-shield-check" style="color: #E8B83F;"></i> PRO VÉRIFIÉ
+                                </div>
+                                <span class="modal-plan-price" style="color: #173F36;">59,90€/mois</span>
+                            </div>
+                            <div class="modal-plan-title">Lyanneur PRO</div>
+                            <div class="modal-plan-desc">Entreprises & Artisans (Contrôle SIRET & Assurance par l'équipe)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 5 : CRÉATION DE COMPTE -->
+                <div class="modal-step" id="modalStep5">
+                    <h3 class="step-title">Créer votre compte</h3>
+                    <p class="step-desc">Dernière étape pour rejoindre le réseau de confiance LYANN.</p>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="modalFirstName">Prénom</label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-user"></i>
+                                <input type="text" id="modalFirstName" class="modal-input" placeholder="Votre prénom">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="modalLastName">Nom</label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-user"></i>
+                                <input type="text" id="modalLastName" class="modal-input" placeholder="Votre nom">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modalEmail">Adresse Email</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-envelope"></i>
+                            <input type="email" id="modalEmail" class="modal-input" placeholder="votre.email@exemple.com">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modalPhone">Numéro de Téléphone</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-phone"></i>
+                            <input type="tel" id="modalPhone" class="modal-input" placeholder="06 90 ...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 6 : CONFIRMATION & SUCCÈS -->
+                <div class="modal-step" id="modalStep6">
+                    <div class="success-screen">
+                        <div class="success-icon">🎉</div>
+                        <h3 class="step-title">Félicitations !</h3>
+                        <p class="step-desc">Votre profil LYANN a été créé avec succès.</p>
+
+                        <div class="recap-box">
+                            <div class="recap-item"><span>Profil :</span><span id="recapRoleText">Talent de confiance</span></div>
+                            <div class="recap-item"><span>Territoire :</span><span id="recapTerritoryText">Guadeloupe</span></div>
+                            <div class="recap-item"><span>Catégories :</span><span id="recapCategoriesText">Maison, Jardin</span></div>
+                            <div class="recap-item"><span>Formule choisie :</span><span id="recapPlanText" style="font-weight: 800; color: #4A7C59;">Lyanneur (Gratuit)</span></div>
+                        </div>
+
+                        <button class="btn btn-primary btn-lg" id="modalFinishBtn" style="width: 100%;">Découvrir mon espace LYANN</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-outline" id="prevStepBtn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i> Précédent</button>
+                <button class="btn btn-primary" id="nextStepBtn">Continuer <i class="ph ph-arrow-right"></i></button>
+            </div>
         </div>
     </div>
 
@@ -579,32 +761,215 @@
                     </div>
                 </div>
 
+                <!-- Chat Main Area -->
                 <div class="chat-main-area">
-                    <div class="chat-header-bar" style="display: flex; align-items: center; justify-content: space-between;">
+                    <!-- HEADER BAR -->
+                    <div class="chat-header-bar" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
                         <div class="chat-header-user">
                             <img src="david-34.png" alt="Avatar Active" id="chatHeaderAvatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                             <div>
                                 <strong id="chatHeaderName" style="font-size: 1rem; color: var(--text);">David Jean-Baptiste</strong>
-                                <div style="font-size: 0.78rem; color: #2E7D32; font-weight: 700;">● En ligne à Baie-Mahault (Guadeloupe)</div>
+                                <div style="font-size: 0.78rem; color: #2E7D32; font-weight: 700;">● En ligne à Baie-Mahault</div>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-lyanner trigger-lyanner-deal" id="chatLyannerBtn" style="padding: 8px 16px; font-size: 0.88rem; border-radius: var(--radius-full);">
-                            🤝 LYANNER
-                        </button>
-                    </div>
-
-                    <div class="chat-messages-scroll" id="chatMessagesContainer">
-                        <div class="chat-msg-bubble received">
-                            Bonjour ! J'ai bien vu votre message pour l'intervention clim. Je peux passer cet après-midi vers 15h à Baie-Mahault.
-                            <div class="chat-msg-time">14:22</div>
-                        </div>
-
-                        <div class="chat-msg-bubble sent">
-                            Bonjour David ! Parfait pour 15h. Merci beaucoup pour votre réactivité !
-                            <div class="chat-msg-time">14:25</div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" class="btn btn-outline" id="chatTrackingBtn" style="display:none; padding: 6px 12px; font-size: 0.82rem; border-radius: var(--radius-full); border-color: var(--primary);">
+                                🛠️ Suivi du chantier
+                            </button>
+                            <button type="button" class="btn btn-lyanner" id="chatProposeBtn" style="padding: 6px 12px; font-size: 0.82rem; border-radius: var(--radius-full);">
+                                🤝 Proposer un prix
+                            </button>
                         </div>
                     </div>
 
+                    <!-- SIMULATOR ROLE BAR -->
+                    <div class="chat-simulator-role-bar" style="display: flex; justify-content: space-between; align-items: center; background: #FFF9E6; padding: 6px 16px; border-bottom: 1px solid #FFE5A3; font-size: 0.78rem;">
+                        <span style="font-weight: 700; color: #B25E00;"><i class="ph ph-sliders"></i> SIMULATEUR DE RÔLE :</span>
+                        <div class="role-selector-pills" style="display: flex; gap: 6px;">
+                            <button type="button" class="role-pill active" id="btnChatRoleClient" style="background: var(--primary); color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">👤 Client</button>
+                            <button type="button" class="role-pill" id="btnChatRoleProvider" style="background: #E0E0E0; color: #333; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">🛠️ Prestataire</button>
+                        </div>
+                    </div>
+
+                    <!-- MESSAGES WRAPPER -->
+                    <div class="chat-messages-scroll" id="chatMessagesContainer" style="flex:1; overflow-y:auto; padding: 16px;">
+                        <!-- Messages dynamically rendered -->
+                    </div>
+
+                    <!-- OVERLAY: ACTION CHOICES (DIRECT OR DETAILED DEVIS) -->
+                    <div id="chatActionChoicesOverlay" class="chat-overlay-pane" style="display: none;">
+                        <div style="padding: 20px; text-align: center;">
+                            <h4 style="font-weight: 800; margin-bottom: 15px;">Quelle prestation souhaitez-vous proposer ?</h4>
+                            <div style="display: flex; gap: 12px; justify-content: center;">
+                                <button type="button" class="btn btn-outline" id="btnChooseDirectPrice" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px;">
+                                    <strong style="display: block; font-size: 1rem;">Tarif Direct</strong>
+                                    <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">Pour les petits montants (- de 200€)</span>
+                                </button>
+                                <button type="button" class="btn btn-primary" id="btnChooseMilestoneDevis" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px; background: var(--primary);">
+                                    <strong style="display: block; font-size: 1rem; color: white;">Devis par Jalons</strong>
+                                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.9; color: white;">Étapes de chantier et paiement progressif</span>
+                                </button>
+                            </div>
+                            <button type="button" class="btn btn-outline close-overlay-btn" style="margin-top: 15px; border: none; font-size: 0.85rem;">Annuler</button>
+                        </div>
+                    </div>
+
+                    <!-- OVERLAY: DIRECT PRICE FORM -->
+                    <div id="chatDirectPriceForm" class="chat-overlay-pane" style="display: none;">
+                        <form id="directPriceForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer un Tarif Direct (-200€)</h4>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Description de la prestation</label>
+                                <input type="text" id="dpDescription" class="modal-input" placeholder="Ex: Réparation fuite évier cuisine" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant proposé (€)</label>
+                                <input type="number" id="dpAmount" class="modal-input" placeholder="Ex: 80" min="5" max="199" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Envoyer l'offre</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- OVERLAY: DETAILED DEVIS FORM -->
+                    <div id="chatMilestoneDevisForm" class="chat-overlay-pane" style="display: none;">
+                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Créer un Devis détaillé</h4>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Libellé général du chantier</label>
+                                <input type="text" id="mdTitle" class="modal-input" placeholder="Ex: Rénovation peinture salon" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant total (€)</label>
+                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="200" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            
+                            <!-- Fixed Milestones Structure for Simple/Aesthetic UX -->
+                            <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 8px; color: var(--primary-dark);">Jalons de paiement (Répartition en %)</label>
+                                
+                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 1:</span>
+                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <span style="font-size: 0.8rem;">%</span>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 2:</span>
+                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <span style="font-size: 0.8rem;">%</span>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 3:</span>
+                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <span style="font-size: 0.8rem;">%</span>
+                                </div>
+                                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des jalons doit faire 100%.</p>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Envoyer le Devis</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- OVERLAY: CHECKOUT / SECURE PAYMENT -->
+                    <div id="chatCheckoutOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
+                        <div style="padding: 20px; overflow-y: auto; max-height: 380px;">
+                            <h4 style="font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; color: var(--primary-dark);">
+                                <i class="ph ph-shield-check"></i> Paiement Sécurisé LYANN
+                            </h4>
+                            
+                            <div class="checkout-summary-box" style="background: #F9FBF9; border: 1px solid var(--border); padding: 12px; border-radius: var(--radius-md); margin-bottom: 15px; font-size: 0.88rem;">
+                                <div style="font-weight: 700; margin-bottom: 8px;" id="coPrestationTitle">Prestation</div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span>Montant des travaux :</span>
+                                    <strong id="coDevisAmount">0.00 €</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span>Frais de service Lyann (3%) :</span>
+                                    <strong id="coLyannFee">0.00 €</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem;">
+                                        <input type="checkbox" id="coAssuranceCheck" checked style="accent-color: var(--primary);">
+                                        Assurance Relais Lyann (7% - Garantie de relais)
+                                    </label>
+                                    <strong id="coAssuranceFee">0.00 €</strong>
+                                </div>
+                                <div style="border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 800; font-size: 1rem; color: var(--primary-dark);">
+                                    <span>Total à régler :</span>
+                                    <span id="coTotalAmount">0.00 €</span>
+                                </div>
+                            </div>
+
+                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;">
+                                <div>
+                                    <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Numéro de carte</label>
+                                    <input type="text" class="modal-input" placeholder="4242 4242 4242 4242" required style="width: 100%; box-sizing: border-box;" value="4242 4242 4242 4242">
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Date d'expiration</label>
+                                        <input type="text" class="modal-input" placeholder="MM/AA" required style="width: 100%; box-sizing: border-box;" value="12/29">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">CVC</label>
+                                        <input type="text" class="modal-input" placeholder="123" required style="width: 100%; box-sizing: border-box;" value="123">
+                                    </div>
+                                </div>
+                                <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+                                    🔒 Cryptage SSL 256-bit • Fonds bloqués sur compte de séquestre Stripe Connect
+                                </div>
+                                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                    <button type="button" id="btnCancelCheckout" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
+                                    <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center; background: #2E7D32;">Payer & Bloquer</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- OVERLAY: SHARED TRACKING / SUIVI DE CHANTIER -->
+                    <div id="chatTrackingOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF; flex-direction: column;">
+                        <div style="padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="font-weight: 800; margin: 0; color: var(--primary-dark);">🛠️ Suivi du chantier</h4>
+                            <button type="button" id="btnExitTracking" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.75rem; border-radius: var(--radius-sm);">Retour au chat 💬</button>
+                        </div>
+                        <div style="flex: 1; overflow-y: auto; padding: 16px;" id="trackingMilestonesList">
+                            <!-- Milestones dynamically rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
+                    <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
+                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
+                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
+                                <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve (Simulé)</label>
+                                <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
+                                    <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
+                                    <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>
+                                    <option value="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80">📸 Photo 3 - Finitions et Nettoyage</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Jalon</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- INPUT BAR -->
                     <form id="chatInputForm" class="chat-input-bar">
                         <input type="text" id="chatInputField" class="chat-input-field" placeholder="Écrivez votre message..." required autocomplete="off">
                         <button type="submit" class="btn btn-primary" style="padding: 0 18px; height: 44px; border-radius: var(--radius-full);">
@@ -730,7 +1095,7 @@
                             <div class="lyann-history-icon"><i class="ph ph-lightning"></i></div>
                             <div>
                                 <div class="lyann-history-title">Remplacement Tableau Électrique — Schoelcher</div>
-                                <div class="lyann-history-sub">Demande postée sur Le Fil • Il y a 1 semaine</div>
+                                <div class="lyann-history-sub">Demande postée sur Bokantaj • Il y a 1 semaine</div>
                             </div>
                         </div>
                         <span class="pill-badge" style="background: #EBF3EE; color: var(--primary-dark);">Répondu 💬</span>
@@ -743,7 +1108,7 @@
                         <div>
                             <span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 800; color: var(--primary-light); letter-spacing: 0.5px;">Offre Actuelle</span>
                             <div class="subscription-plan-title">Lyanneur Plus (Habitant VIP)</div>
-                            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">Mise en relation prioritaire, annuaire illimité & soutien réseau local.</p>
+                            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">Mise en relation prioritaire, recherche illimitée & soutien réseau local.</p>
                         </div>
                         <div style="text-align: right;">
                             <div class="subscription-price-tag">9,90 € / mois</div>
@@ -827,7 +1192,7 @@
                         <span class="pill-badge pill-green">8 Bots IA en Ligne</span>
                     </div>
                     <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px;">
-                        Supervisez l'activité des bots IA communautaires, activez ou mettez en pause un agent, et validez les propositions de contenu avant diffusion sur Le Fil.
+                        Supervisez l'activité des bots IA communautaires, activez ou mettez en pause un agent, et validez les propositions de contenu avant diffusion sur Bokantaj.
                     </p>
 
                     <!-- Validation des Posts IA en Attente -->
@@ -984,6 +1349,9 @@
 
     <script src="ai-agents.js"></script>
     <script src="api-client.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="payment-script.js"></script>
+    <script src="notifications-service.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
