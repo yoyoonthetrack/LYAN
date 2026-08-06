@@ -6034,6 +6034,13 @@ body.user-is-logged-in .logged-out-only {
     margin-top: 4px;
 }
 
+/* Navbar Search Icon Link */
+.nav-search-icon-link:hover {
+    transform: scale(1.12);
+    background: rgba(229, 179, 69, 0.35) !important;
+    box-shadow: 0 4px 12px rgba(229, 179, 69, 0.3);
+}
+
 
 
 
