@@ -3435,18 +3435,106 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Gestion des onglets Mon Compte
+    // Gestion des onglets Mon Compte (15 Onglets)
     accountTabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetTab = btn.getAttribute('data-account-tab');
-            accountTabBtns.forEach(b => b.classList.remove('active'));
-            accountTabContents.forEach(c => c.classList.remove('active'));
+            const allBtns = document.querySelectorAll('.account-tab-btn');
+            const allContents = document.querySelectorAll('.account-tab-content');
+            
+            allBtns.forEach(b => b.classList.remove('active'));
+            allContents.forEach(c => c.classList.remove('active'));
 
             btn.classList.add('active');
             const targetEl = document.getElementById(targetTab);
             if (targetEl) targetEl.classList.add('active');
         });
     });
+
+    // ==========================================================================
+    // LOGIQUE BOUTON FLOTTANT SPEED-DIAL (ACTIONS RAPIDES)
+    // ==========================================================================
+    const speedDialWrapper = document.getElementById('speedDialWrapper');
+    const speedDialTrigger = document.getElementById('speedDialTrigger');
+
+    if (speedDialTrigger && speedDialWrapper) {
+        speedDialTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            speedDialWrapper.classList.toggle('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!speedDialWrapper.contains(e.target)) {
+                speedDialWrapper.classList.remove('active');
+            }
+        });
+
+        // Helper pour ouvrir un onglet spécifique du modal Mon Profil
+        function openAccountTab(tabId) {
+            if (userAccountModal) {
+                userAccountModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+
+                const targetBtn = document.querySelector(`.account-tab-btn[data-account-tab="${tabId}"]`);
+                if (targetBtn) targetBtn.click();
+            }
+        }
+
+        // Raccourci 1 : Publier un Bokantaj
+        const sdActionBokantaj = document.getElementById('sdActionBokantaj');
+        if (sdActionBokantaj) {
+            sdActionBokantaj.addEventListener('click', (e) => {
+                e.preventDefault();
+                speedDialWrapper.classList.remove('active');
+                openAccountTab('tab-acc-bokantaj');
+            });
+        }
+
+        // Raccourci 2 : Créer un service
+        const sdActionCreateService = document.getElementById('sdActionCreateService');
+        if (sdActionCreateService) {
+            sdActionCreateService.addEventListener('click', (e) => {
+                e.preventDefault();
+                speedDialWrapper.classList.remove('active');
+                openAccountTab('tab-acc-services');
+            });
+        }
+
+        // Raccourci 3 : Faire une demande
+        const sdActionMakeRequest = document.getElementById('sdActionMakeRequest');
+        if (sdActionMakeRequest) {
+            sdActionMakeRequest.addEventListener('click', (e) => {
+                e.preventDefault();
+                speedDialWrapper.classList.remove('active');
+                openAccountTab('tab-acc-demandes');
+            });
+        }
+
+        // Raccourci 4 : Scanner un QR Code
+        const sdActionScanQR = document.getElementById('sdActionScanQR');
+        if (sdActionScanQR) {
+            sdActionScanQR.addEventListener('click', (e) => {
+                e.preventDefault();
+                speedDialWrapper.classList.remove('active');
+                alert('📷 Scanner QR Code activé ! Placez le QR Code du lyanneur en face de la caméra.');
+            });
+        }
+
+        // Raccourci 5 : Contacter un lyanneur
+        const sdActionContactUser = document.getElementById('sdActionContactUser');
+        if (sdActionContactUser) {
+            sdActionContactUser.addEventListener('click', (e) => {
+                e.preventDefault();
+                speedDialWrapper.classList.remove('active');
+                const chatModal = document.getElementById('chatModal');
+                if (chatModal) {
+                    openChatWithUser("David Jean-Baptiste", "david-34.png");
+                } else {
+                    window.location.href = 'feed.html?action=openchat';
+                }
+            });
+        }
+    }
 
     // Formulaire Sécurité
     const accountSecurityForm = document.getElementById('accountSecurityForm');

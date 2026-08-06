@@ -936,7 +936,7 @@
         </div>
     </div>
 
-    <!-- ========== MODAL ESPACE MON COMPTE (#userAccountModal) ========== -->
+        <!-- ========== MODAL ESPACE MON COMPTE (#userAccountModal) ========== -->
     <div class="modal-overlay" id="userAccountModal">
         <div class="modal-card modal-card-user-account">
             <button class="modal-close-btn" id="closeUserAccountModalBtn" aria-label="Fermer" style="color: #FFFFFF; top: 16px; right: 16px; z-index: 10;"><i class="ph ph-x"></i></button>
@@ -945,12 +945,244 @@
                 <div class="account-user-profile-summary">
                     <img src="david-34.png" alt="Avatar Utilisateur" id="accountModalAvatar" class="account-avatar-lg">
                     <div>
-                        <h3 class="account-user-name" id="accountModalName">Mon Compte LYANN</h3>
+                        <h3 class="account-user-name" id="accountModalName">David Jean-Baptiste</h3>
                         <div class="account-user-meta">
-                            <span id="accountModalTerritory"><i class="ph ph-map-pin"></i> Guadeloupe (971)</span>
-                            <span class="pill-badge pill-green" id="accountModalBadge" style="font-size: 0.75rem;">Lyanneur Plus</span>
+                            <span id="accountModalTerritory"><i class="ph ph-map-pin"></i> Guadeloupe (971) • @david971</span>
+                            <span class="pill-badge pill-green" id="accountModalBadge" style="font-size: 0.75rem;">🌟 Lyanneur Plus</span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- BARRE DES 15 ONGLETS MON PROFIL -->
+            <div class="account-tabs-nav">
+                <button class="account-tab-btn active" data-account-tab="tab-acc-dashboard"><i class="ph ph-layout"></i> Tableau de bord</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-public-profile"><i class="ph ph-user"></i> Profil Public</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-services"><i class="ph ph-wrench"></i> Mes Services</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-demandes"><i class="ph ph-file-plus"></i> Mes Demandes</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-missions"><i class="ph ph-briefcase"></i> Mes Missions</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-payments"><i class="ph ph-currency-eur"></i> Paiements</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-verification"><i class="ph ph-shield-check"></i> Vérification</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-availability"><i class="ph ph-calendar"></i> Disponibilités</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-messages"><i class="ph ph-chat-circle-text"></i> Messagerie</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-reviews"><i class="ph ph-star"></i> Avis</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-bokantaj"><i class="ph ph-broadcast"></i> Bokantaj</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-notifications"><i class="ph ph-bell"></i> Notifications</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-privacy"><i class="ph ph-lock-key"></i> Confidentialité</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-subscription"><i class="ph ph-crown"></i> Abonnement</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-security"><i class="ph ph-key"></i> Sécurité</button>
+            </div>
+
+            <div class="modal-body" style="padding: 24px; max-height: 75vh; overflow-y: auto;">
+                
+                <!-- 1. TABLEAU DE BORD -->
+                <div class="account-tab-content active" id="tab-acc-dashboard">
+                    <div class="profile-dashboard-grid">
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val">4.9 ★</span>
+                            <span class="profile-kpi-label">Note moyenne (38 avis)</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val">34</span>
+                            <span class="profile-kpi-label">Missions réalisées</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val">12</span>
+                            <span class="profile-kpi-label">Demandes publiées</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val">15 min</span>
+                            <span class="profile-kpi-label">Temps moyen de réponse</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val" style="color: #2E7D32;">1 450,00 €</span>
+                            <span class="profile-kpi-label">Revenus du mois</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val" style="color: #C95140;">280,00 €</span>
+                            <span class="profile-kpi-label">Dépenses du mois</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <div class="profile-section-title">
+                            <span>🔔 Activité récente & Notifications</span>
+                            <span class="pill-badge pill-green">Compte 100% Vérifié ✅</span>
+                        </div>
+                        <p style="font-size: 0.88rem; color: var(--text-muted);">Bienvenue sur votre Espace Unique LYANN. Vous pouvez simultanément proposer des services, faire des demandes et gérer vos paiements sans changer de profil.</p>
+                    </div>
+                </div>
+
+                <!-- 2. MON PROFIL PUBLIC -->
+                <div class="account-tab-content" id="tab-acc-public-profile">
+                    <h4 class="profile-section-title">👤 Informations visibles sur votre profil public</h4>
+                    <form id="publicProfileForm">
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label>Bio / Présentation</label>
+                            <textarea class="modal-input" style="height: 80px;" placeholder="Présentez-vous à la communauté...">Artisan passionné avec 8 ans d'expérience en climatisation et plomberie en Guadeloupe.</textarea>
+                        </div>
+                        <div class="form-group-row" style="display: flex; gap: 12px; margin-bottom: 16px;">
+                            <div class="form-group flex-1">
+                                <label>Compétences (séparées par des virgules)</label>
+                                <input type="text" class="modal-input" value="Climatisation, Plomberie, Électricité, Jardinage">
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>Rayon d'intervention (km)</label>
+                                <input type="number" class="modal-input" value="30">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Enregistrer mon profil public 💾</button>
+                    </form>
+                </div>
+
+                <!-- 3. MES SERVICES -->
+                <div class="account-tab-content" id="tab-acc-services">
+                    <div class="profile-section-title">
+                        <span>🛠️ Mes offres de services actives</span>
+                        <button class="btn btn-primary btn-sm" id="btnAddNewService">+ Créer un service</button>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="background: #F8F9FA; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 0.95rem; color: var(--primary-dark);">Entretien & Révision Climatisation Inverter</strong>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">Tarif : 60.00 € / unité • Déplacement inclus • 971</div>
+                            </div>
+                            <span class="pill-badge pill-green">Actif ●</span>
+                        </div>
+                        <div style="background: #F8F9FA; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 0.95rem; color: var(--primary-dark);">Taille de Palmiers & Entretien Espaces Verts</strong>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">Tarif : Sur devis / Heure • Matériel inclus</div>
+                            </div>
+                            <span class="pill-badge pill-green">Actif ●</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. MES DEMANDES -->
+                <div class="account-tab-content" id="tab-acc-demandes">
+                    <h4 class="profile-section-title">📝 Historique de mes demandes publiées (Acheteur)</h4>
+                    <div style="background: #F8F9FA; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 10px; display: flex; justify-content: space-between;">
+                        <div>
+                            <strong>Recherche d'un électricien pour tableau triphasé</strong>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Demandé le 02/08/2026 • Baie-Mahault</div>
+                        </div>
+                        <span class="pill-badge pill-gold">En cours ⏳</span>
+                    </div>
+                </div>
+
+                <!-- 5. MES MISSIONS -->
+                <div class="account-tab-content" id="tab-acc-missions">
+                    <h4 class="profile-section-title">💼 Missions réalisées en tant que prestataire</h4>
+                    <div style="background: #F8F9FA; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; justify-content: space-between;">
+                        <div>
+                            <strong>Pose de Split 12000 BTU — Le Gosier</strong>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Client : Sarah L. • Montant : 450,00 €</div>
+                        </div>
+                        <span class="pill-badge pill-green">Terminé & Payé ✅</span>
+                    </div>
+                </div>
+
+                <!-- 6. PAIEMENTS -->
+                <div class="account-tab-content" id="tab-acc-payments">
+                    <h4 class="profile-section-title">💳 Tableau de Bord Stripe Connect & Portefeuille</h4>
+                    <div class="profile-dashboard-grid" style="margin-bottom: 16px;">
+                        <div class="profile-kpi-card" style="background: #E8F5E9;">
+                            <span class="profile-kpi-val" style="color: #2E7D32;">890,00 €</span>
+                            <span class="profile-kpi-label">Solde disponible</span>
+                        </div>
+                        <div class="profile-kpi-card" style="background: #FFF8E1;">
+                            <span class="profile-kpi-val" style="color: #D4A843;">320,00 €</span>
+                            <span class="profile-kpi-label">Solde en séquestre</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="btnInstantPayout">Virement instantané vers mon IBAN 🏦</button>
+                </div>
+
+                <!-- 7. VÉRIFICATION -->
+                <div class="account-tab-content" id="tab-acc-verification">
+                    <h4 class="profile-section-title">🛡️ Statut de vérification de votre compte</h4>
+                    <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px;">
+                        <li>✅ Email vérifié (david@lyann.app)</li>
+                        <li>✅ Téléphone mobile vérifié (+590 690 ** ** 22)</li>
+                        <li>✅ Carte Nationale d'Identité validée (Stripe KYC)</li>
+                        <li>✅ SIREN Entreprise & Assurance Professionnelle à jour</li>
+                    </ul>
+                </div>
+
+                <!-- 8. DISPONIBILITÉS -->
+                <div class="account-tab-content" id="tab-acc-availability">
+                    <h4 class="profile-section-title">📅 Horaires de travail & Synchronisation Agenda</h4>
+                    <p style="font-size: 0.88rem; color: var(--text-muted);">Lundi au Samedi : 07:30 — 18:00. Dimanche : Indisponible.</p>
+                </div>
+
+                <!-- 9. MESSAGERIE -->
+                <div class="account-tab-content" id="tab-acc-messages">
+                    <h4 class="profile-section-title">💬 Mes conversations Bokantaj</h4>
+                    <p style="font-size: 0.88rem; color: var(--text-muted);">Utilisez le bouton flottant de messagerie en bas à droite pour ouvrir le panneau complet.</p>
+                </div>
+
+                <!-- 10. AVIS -->
+                <div class="account-tab-content" id="tab-acc-reviews">
+                    <h4 class="profile-section-title">⭐ Avis reçus & donnés (38 avis • 4.9/5)</h4>
+                    <div style="background: #FFFDF5; border: 1px solid #FFE5A3; padding: 12px; border-radius: var(--radius-md);">
+                        <strong style="color: #D4A843;">★★★★★ "Travail d'une précision remarquable et très ponctuel !"</strong>
+                        <p style="font-size: 0.8rem; color: var(--text); margin-top: 4px;">Par Huguette C. • Il y a 2 jours</p>
+                    </div>
+                </div>
+
+                <!-- 11. BOKANTAJ -->
+                <div class="account-tab-content" id="tab-acc-bokantaj">
+                    <h4 class="profile-section-title">📡 Mes publications sur le fil Bokantaj</h4>
+                    <p style="font-size: 0.88rem; color: var(--text-muted);">3 annonces actives publiées sur le réseau territorial.</p>
+                </div>
+
+                <!-- 12. NOTIFICATIONS -->
+                <div class="account-tab-content" id="tab-acc-notifications">
+                    <h4 class="profile-section-title">🔔 Préférences de notifications</h4>
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem; margin-bottom: 8px;">
+                        <input type="checkbox" checked> Notifications SMS pour les nouveaux messages
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
+                        <input type="checkbox" checked> Notifications Email pour les devis et paiements
+                    </label>
+                </div>
+
+                <!-- 13. CONFIDENTIALITÉ -->
+                <div class="account-tab-content" id="tab-acc-privacy">
+                    <h4 class="profile-section-title">🔒 Réglages de confidentialité & RGPD</h4>
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem; margin-bottom: 12px;">
+                        <input type="checkbox"> Activer le mode incognito (Masquer ma présence en ligne)
+                    </label>
+                    <button class="btn btn-outline btn-sm">Télécharger mes données personnelles (ZIP)</button>
+                </div>
+
+                <!-- 14. ABONNEMENT -->
+                <div class="account-tab-content" id="tab-acc-subscription">
+                    <h4 class="profile-section-title">👑 Votre formule actuelle : Lyanneur Plus</h4>
+                    <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;">Accès illimité à la messagerie directe, zéro commission sur les 5 premières prestations du mois.</p>
+                    <button class="btn btn-primary">Changer de formule d'abonnement 🚀</button>
+                </div>
+
+                <!-- 15. SÉCURITÉ -->
+                <div class="account-tab-content" id="tab-acc-security">
+                    <h4 class="profile-section-title">🔑 Sécurité & Authentification</h4>
+                    <form id="accountSecurityForm">
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label>Mot de passe actuel</label>
+                            <input type="password" class="modal-input" placeholder="••••••••">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label>Nouveau mot de passe</label>
+                            <input type="password" class="modal-input" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Mettre à jour mon mot de passe 🔒</button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
                 </div>
             </div>
 
@@ -1252,5 +1484,34 @@
     <script src="payment-script.js"></script>
     <script src="notifications-service.js"></script>
     <script src="script.js"></script>
+
+    <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->
+    <div class="speed-dial-wrapper" id="speedDialWrapper">
+        <button class="speed-dial-trigger" id="speedDialTrigger" title="Actions Rapides Lyann" aria-label="Menu d'actions rapides">
+            <i class="ph ph-plus"></i>
+        </button>
+        <div class="speed-dial-menu">
+            <a href="#" class="speed-dial-item" id="sdActionBokantaj">
+                <span class="speed-dial-icon"><i class="ph ph-chat-circle-dots"></i></span>
+                Publier un Bokantaj
+            </a>
+            <a href="#" class="speed-dial-item" id="sdActionCreateService">
+                <span class="speed-dial-icon"><i class="ph ph-wrench"></i></span>
+                Créer un service
+            </a>
+            <a href="#" class="speed-dial-item" id="sdActionMakeRequest">
+                <span class="speed-dial-icon"><i class="ph ph-file-plus"></i></span>
+                Faire une demande
+            </a>
+            <a href="#" class="speed-dial-item" id="sdActionScanQR">
+                <span class="speed-dial-icon"><i class="ph ph-qr-code"></i></span>
+                Scanner un QR Code
+            </a>
+            <a href="#" class="speed-dial-item" id="sdActionContactUser">
+                <span class="speed-dial-icon"><i class="ph ph-paper-plane-tilt"></i></span>
+                Contacter un lyanneur
+            </a>
+        </div>
+    </div>
 </body>
 </html>
