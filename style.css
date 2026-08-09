@@ -6021,6 +6021,9 @@ body.user-is-logged-in .logged-out-only {
 }
 .nav-notif-dropdown {
     transition: opacity 0.2s ease, transform 0.2s ease;
+    overflow-x: hidden !important;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 .notif-item {
     padding: 10px 16px;
@@ -6047,18 +6050,30 @@ body.user-is-logged-in .logged-out-only {
 }
 .notif-item-body {
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 .notif-item-title {
     font-size: 0.82rem;
     font-weight: 700;
     color: var(--text);
     line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .notif-item-text {
     font-size: 0.75rem;
     color: var(--text-muted);
     line-height: 1.4;
     margin-top: 2px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 .notif-item-time {
     font-size: 0.68rem;

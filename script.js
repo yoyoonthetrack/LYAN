@@ -3942,7 +3942,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="nav-notif-badge" id="navNotifBadge" style="position: absolute; top: 4px; right: 4px; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1.5px solid white; display: none;">0</span>
             </button>
             
-            <div class="nav-notif-dropdown" id="navNotifDropdown" style="display: none; position: absolute; top: 50px; right: 0; width: 320px; background: white; border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 1000; overflow: hidden; padding: 12px 0;">
+            <div class="nav-notif-dropdown" id="navNotifDropdown" style="display: none; position: absolute; top: 50px; right: 0; width: 360px; max-width: 92vw; background: white; border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 1000; overflow: hidden; padding: 12px 0;">
                 <div style="padding: 0 16px 8px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-weight: 800; font-size: 0.95rem; color: var(--primary-dark);">Notifications</span>
                     <button type="button" id="clearAllNotifsBtn" style="background: none; border: none; font-size: 0.75rem; color: var(--primary); cursor: pointer; font-weight: 700; padding: 0;">Tout effacer</button>
