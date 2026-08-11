@@ -176,7 +176,7 @@
                         <i class="ph-fill ph-shield-check"></i>
                     </div>
                     <h3>4. Réalisez en toute sérénité</h3>
-                    <p>Les fonds du paiement sont conservés en toute sécurité sous séquestre jusqu'à la fin des travaux. Le versement automatique est déclenché sur votre IBAN dès validation.</p>
+                    <p>Les fonds du paiement sont conservés en toute sécurité par Stripe jusqu'à la fin des travaux. Le versement automatique est déclenché sur votre IBAN dès validation.</p>
                 </div>
 
                 <div class="detail-step-card">
@@ -218,7 +218,7 @@
 
                 <div style="background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: var(--radius-lg); padding: 28px; text-align: left;">
                     <div style="font-size: 2.2rem; margin-bottom: 12px; color: #80A86E;"><i class="ph-fill ph-shield-check"></i></div>
-                    <h4 style="font-size: 1.15rem; color: #FFFFFF; font-weight: 800; margin-bottom: 8px;">Fonds Protégés sous Séquestre</h4>
+                    <h4 style="font-size: 1.15rem; color: #FFFFFF; font-weight: 800; margin-bottom: 8px;">Fonds Protégés via Stripe</h4>
                     <p style="font-size: 0.88rem; color: rgba(255, 255, 255, 0.8); line-height: 1.5; margin: 0;">Lorsque vous validez une prestation, le montant est réservé en toute sécurité. L'intervenant travaille avec la garantie absolue d’être payé.</p>
                 </div>
 
@@ -250,7 +250,7 @@
                 <div class="charter-card">
                     <div class="charter-icon"><i class="ph-fill ph-lock-key"></i></div>
                     <h4>Paiements Sécurisés & Protection</h4>
-                    <p>Des transactions garanties du devis jusqu'à la livraison finale de la mission. Les fonds restent sous séquestre sécurisé.</p>
+                    <p>Des transactions garanties du devis jusqu'à la livraison finale de la mission. Les fonds restent protégés via Stripe Connect.</p>
                 </div>
 
                 <div class="charter-card">
@@ -304,7 +304,7 @@
                         <i class="ph ph-caret-down"></i>
                     </button>
                     <div class="faq-answer">
-                        <p>Lorsque vous convenez d'une mission, le paiement est bloqué en toute sécurité sous séquestre. L'intervenant sait que les fonds sont réservés, et le demandeur garde l'assurance que le versement n'a lieu qu'une fois la prestation validée.</p>
+                        <p>Lorsque vous convenez d'une mission, le paiement est bloqué en toute sécurité via Stripe. L'intervenant sait que les fonds sont réservés, et le demandeur garde l'assurance que le versement n'a lieu qu'une fois la prestation validée.</p>
                     </div>
                 </div>
 
@@ -695,6 +695,8 @@
     <script src="https://js.stripe.com/v3/"></script>
     <script src="payment-script.js"></script>
     <script src="notifications-service.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="api-client.js"></script>
     <script src="script.js"></script>
     <script>
         // Logique spécifique du commutateur de rôle sur la page Comment ça marche
@@ -923,7 +925,7 @@
                             </div>
                             <div class="profile-kpi-card" style="background: #FFF8E1;">
                                 <span class="profile-kpi-val" style="color: #D4A843;">320,00 €</span>
-                                <span class="profile-kpi-label">Solde en séquestre</span>
+                                <span class="profile-kpi-label">Paiements en cours</span>
                             </div>
                         </div>
                         <button class="btn btn-primary" id="btnInstantPayoutHub">Virement instantané vers mon IBAN 🏦</button>

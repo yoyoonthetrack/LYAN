@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LYANN — Espace Paiements Sécurisés & Séquestre Escrow</title>
-    <meta name="description" content="Découvrez le tiers de confiance LYANN : Devis par jalons, paiement sécurisé, séquestre de fonds Stripe Connect et résolution des litiges.">
+    <title>LYANN — Espace Paiements Sécurisés</title>
+    <meta name="description" content="Découvrez le tiers de confiance LYANN : Devis par jalons, paiement sécurisé, protection des fonds via Stripe Connect et résolution des litiges.">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -872,7 +872,7 @@
                                 <!-- Credit Card & Pay Simulation buttons -->
                                 <div style="display: flex; flex-direction: column; gap: 10px;">
                                     <button class="btn btn-primary" id="btnPayNow-${tx.id}" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #4A7C59, #35583F);">
-                                        🔒 Payer & Séquestrer les fonds avec Stripe Connect
+                                        🔒 Payer & Sécuriser les fonds via Stripe Connect
                                     </button>
                                     <div style="display: flex; gap: 10px;">
                                         <button class="btn btn-outline" style="flex: 1; justify-content: center; height: 38px; font-size: 0.8rem; border-color: var(--border);">
@@ -1515,7 +1515,7 @@
                             <span style="font-size:0.72rem; opacity:0.9;">Prêt pour virement vers votre banque</span>
                         </div>
                         <div class="wallet-balance-box">
-                            <span class="balance-label" style="color:var(--text-muted);">En Séquestre (Escrow)</span>
+                            <span class="balance-label" style="color:var(--text-muted);">Paiements en cours</span>
                             <span class="balance-amount" style="color:var(--primary-dark);">${myWallet.pendingBalance.toFixed(2)} €</span>
                             <span style="font-size:0.72rem; color:var(--text-muted);">En attente de validation client</span>
                         </div>

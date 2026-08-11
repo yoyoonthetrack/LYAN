@@ -85,306 +85,49 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================================
     // BASE DE DONNÉES DES MEMBRES LYANN (VISAGES ET TALENTS DES DOM)
     // ==========================================================================
-    const LYANN_MEMBERS = [
-        // GUADELOUPE (971)
+    let LYANN_MEMBERS = [
         {
             id: 1,
             name: "David Jean-Baptiste",
-            role: "Plomberie & Clim Inverter",
+            role: "Plomberie & Clim",
             category: "plomberie",
-            keywords: ["plomberie", "plombier", "fuite", "eau", "sanitaire", "robinet", "tuyau", "dépannage", "chauffe-eau", "clim"],
+            keywords: ["plomberie", "clim"],
             location: "guadeloupe",
             locationName: "Guadeloupe (971)",
             city: "Baie-Mahault",
             rating: 4.9,
             reviewsCount: 48,
             avatar: "david-34.png",
-            bio: "Plombier et technicien clim passionné à Baie-Mahault. Dépannage rapide de fuites d'eau, entretien clim et chauffe-eau.",
-            skills: ["Détection de fuite", "Entretien Clim Inverter", "Remplacement chauffe-eau", "Débouchage express"],
+            bio: "Plombier",
+            skills: ["Détection de fuite"],
             badge: "Profil vérifié", isPro: true,
             hourlyRate: "À partir de 35€/h"
-        },
-        {
-            id: 2,
-            name: "Marie-Line Popotte",
-            role: "Peinture Intérieure & Rénovation",
-            category: "peinture",
-            keywords: ["peinture", "peintre", "mural", "rénovation", "décoration", "enduit", "plâtre"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Les Abymes",
-            rating: 5.0,
-            reviewsCount: 36,
-            avatar: "sarah-29.png",
-            bio: "Peintre d'intérieur minutieuse aux Abymes. Je redonne des couleurs et de la fraîcheur tropicale à vos pièces de vie.",
-            skills: ["Peinture mur & plafond", "Enduit lissage", "Protection anti-humidité", "Conseil couleurs"],
-            badge: "Profil vérifié", isPro: false,
-            hourlyRate: "À partir de 30€/h"
-        },
-        {
-            id: 3,
-            name: "Jean-Michel Télèphe",
-            role: "Électricité & Rénovation Moteurs",
-            category: "electricite",
-            keywords: ["électricité", "électricien", "panne", "tableau", "prise", "lumière", "câblage", "réparer"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Le Gosier",
-            rating: 4.8,
-            reviewsCount: 31,
-            avatar: "david-34.png",
-            bio: "Mise aux normes, rénovation électrique globale et dépannage rapide sur Le Gosier et environs.",
-            skills: ["Tableau électrique", "Dépannage d'urgence", "Éclairage LED", "Mise aux normes"],
-            badge: "Profil vérifié", isPro: true,
-            hourlyRate: "À partir de 40€/h"
-        },
-        {
-            id: 4,
-            name: "Man Saint-Louis",
-            role: "Jardinier & Plantes Créoles",
-            category: "jardin",
-            keywords: ["jardin", "jardinier", "élagage", "pelouse", "tonte", "haie", "entretien", "plantes", "palmier"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Sainte-Anne",
-            rating: 4.9,
-            reviewsCount: 25,
-            avatar: "saint-louis-72.png",
-            bio: "Sage du jardin et passionné de botanique créole à Sainte-Anne. Entretien doux, taille de palmiers et conseils de terre.",
-            skills: ["Taille de haies", "Élagage palmiers", "Jardin médicinal créole", "Arrosage"],
-            badge: "Profil vérifié", isPro: false,
-            hourlyRate: "À partir de 25€/h"
-        },
-        {
-            id: 5,
-            name: "Élodie Rutil",
-            role: "Ménage & Entretien Maison",
-            category: "menage",
-            keywords: ["ménage", "nettoyage", "maison", "propreté", "entretien", "vitres", "repassage"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Le Moule",
-            rating: 5.0,
-            reviewsCount: 22,
-            avatar: "sarah-29.png",
-            bio: "Ménage à domicile et entretien méticuleux de votre intérieur au Moule. Ponctuelle et de confiance.",
-            skills: ["Ménage régulier", "Lavage de vitres", "Repassage", "Désinfection"],
-            badge: "Profil vérifié", isPro: false,
-            hourlyRate: "À partir de 20€/h"
-        },
-        {
-            id: 15,
-            name: "Clarisse Vatin",
-            role: "Baby-sitting & Garde d'enfants",
-            category: "babysitting",
-            keywords: ["baby-sitting", "babysitting", "garde d'enfants", "enfant", "bébé", "sortie d'école", "aide aux devoirs"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Baie-Mahault",
-            rating: 5.0,
-            reviewsCount: 32,
-            avatar: "sarah-29.png",
-            bio: "Diplômée de la petite enfance. Garde bienveillante, activités créatives et aide aux devoirs.",
-            skills: ["Garde périscolaire", "Bébés & Enfants", "Secourisme PSC1", "Aide aux devoirs"],
-            badge: "Profil vérifié", isPro: true,
-            hourlyRate: "À partir de 15€/h"
-        },
-        {
-            id: 16,
-            name: "Tati Rosalie Théophile",
-            role: "Aide à la personne & Seniors",
-            category: "aide-personne",
-            keywords: ["aide à la personne", "aide aux seniors", "compagnie", "courses", "repas", "autonomie", "auxiliaire"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Le Gosier",
-            rating: 4.9,
-            reviewsCount: 28,
-            avatar: "huguette-68.png",
-            bio: "Accompagnement bienveillant pour personnes âgées ou en perte d'autonomie. Présence chaleureuse et aide au quotidien.",
-            skills: ["Aide aux repas créoles", "Accompagnement courses", "Lecture & Compagnie", "Stimulation douce"],
-            badge: "Profil vérifié", isPro: true,
-            hourlyRate: "À partir de 18€/h"
-        },
-
-        // MARTINIQUE (972)
-        {
-            id: 6,
-            name: "Sarah Manicon",
-            role: "Coiffure & Rénovation",
-            category: "peinture",
-            keywords: ["peinture", "peintre", "mural", "rénovation", "décoration", "coup de neuf", "coiffure"],
-            location: "martinique",
-            locationName: "Martinique (972)",
-            city: "Fort-de-France",
-            rating: 5.0,
-            reviewsCount: 29,
-            avatar: "sarah-29.png",
-            bio: "Artisan passionnée par la beauté et la rénovation des intérieurs antillais à Fort-de-France. Garantie satisfaction !",
-            skills: ["Peinture acrylique", "Coiffure & Tresses", "Ravalement", "Décoration"],
-            badge: "Profil vérifié", isPro: true,
-            hourlyRate: "Devis gratuit"
-        },
-        {
-            id: 17,
-            name: "Aurélie Bellerose",
-            role: "Baby-sitting & Sortie d'école",
-            category: "babysitting",
-            keywords: ["baby-sitting", "babysitting", "garde d'enfants", "enfant", "sortie d'école", "nounou"],
-            location: "martinique",
-            locationName: "Martinique (972)",
-            city: "Fort-de-France",
-            rating: 5.0,
-            reviewsCount: 21,
-            avatar: "sarah-29.png",
-            bio: "Garde d'enfants en soirée et les week-ends. Jeux d'éveil, goûters et sérénité pour les parents.",
-            skills: ["Soirées & Week-ends", "Jeux ludiques", "Garde à domicile", "Préparation repas"],
-            badge: "Profil vérifié", isPro: false,
-            hourlyRate: "À partir de 14€/h"
-        },
-        {
-            id: 7,
-            name: "Nicolas Bellerose",
-            role: "Bricolage & Multi-services",
-            category: "bricolage",
-            keywords: ["bricolage", "bricoleur", "monter un meuble", "meuble", "étagère", "fixation", "ikea", "petit travail"],
-            location: "martinique",
-            locationName: "Martinique (972)",
-            city: "Le Lamentin",
-            rating: 4.9,
-            reviewsCount: 35,
-            avatar: "kevin-41.png",
-            bio: "Polyvalent et minutieux au Lamentin pour tous vos petits travaux de maison et montages de meubles en kit.",
-            skills: ["Montage meuble", "Fixation TV mural", "Pose de rideaux", "Petits dépannages"],
-            badge: "Profil vérifié", isPro: false,
-            hourlyRate: "À partir de 25€/h"
-        },
-        {
-            id: 8,
-            name: "Christophe Vatin",
-            role: "Climatisation & Frigoriste",
-            category: "climatisation",
-            keywords: ["climatisation", "clim", "froid", "frigoriste", "entretien clim", "dépannage clim", "nettoyage clim"],
-            location: "martinique",
-            locationName: "Martinique (972)",
-            city: "Schoelcher",
-            rating: 4.9,
-            reviewsCount: 42,
-            avatar: "kevin-41.png",
-            bio: "Pose, entretien et désinfection complète de climatiseurs Split pour particuliers et pros.",
-            skills: ["Nettoyage antibactérien", "Recharge gaz", "Dépannage fuite", "Installation neuve"],
-            badge: "Profil vérifié", isPro: true,
-            hourlyRate: "À partir de 45€/h"
-        },
-        {
-            id: 9,
-            name: "Tati Huguette Cazeau",
-            role: "Jardinage & Cuisine Créole",
-            category: "jardin",
-            keywords: ["jardin", "jardinier", "plantes", "entretien", "fleurs", "cour", "cuisine"],
-            location: "martinique",
-            locationName: "Martinique (972)",
-            city: "Sainte-Luce",
-            rating: 5.0,
-            reviewsCount: 19,
-            avatar: "huguette-68.png",
-            bio: "Transmission et passion des vergers et jardins créoles à Sainte-Luce. Entretien doux, recettes traditionnelles et partage.",
-            skills: ["Plantes tropicales", "Taille arbres fruitiers", "Conseils botaniques", "Cuisine créole"],
-            badge: "Profil vérifié", isPro: false,
-            hourlyRate: "À partir de 20€/h"
-        },
-
-        // GUYANE (973)
-        {
-            id: 10,
-            name: "Kevin Bellerose",
-            role: "Électricité Pro & Dépannage",
-            category: "electricite",
-            keywords: ["déménagement", "déménager", "transport", "camion", "carton", "portage", "manutention", "électricité"],
-            location: "guyane",
-            locationName: "Guyane (973)",
-            city: "Cayenne",
-            rating: 4.9,
-            reviewsCount: 27,
-            avatar: "kevin-41.png",
-            bio: "Électricien professionnel et technicien généraliste à Cayenne. Dépannage de tableaux, éclairage et moteurs en sécurité.",
-            skills: ["Habilitation électrique", "Rénovation atelier", "Dépannage d'urgence", "Objets lourds"],
-            badge: "Profil vérifié", isPro: true,
-            hourlyRate: "À partir de 38€/h"
-        },
-        {
-            id: 11,
-            name: "Corinne Narcisse",
-            role: "Menuiserie & Aménagement Bois",
-            category: "menuiserie",
-            keywords: ["menuiserie", "menuisier", "bois", "porte", "fenêtre", "placard", "terrasse", "sur mesure"],
-            location: "guyane",
-            locationName: "Guyane (973)",
-            city: "Kourou",
-            rating: 5.0,
-            reviewsCount: 20,
-            avatar: "sarah-29.png",
-            bio: "Création et rénovation d'ouvrages en bois, terrasses créoles et agencements d'intérieur à Kourou.",
-            skills: ["Terrasse bois", "Pose portes/fenêtres", "Dressing sur mesure", "Réparation meuble"],
-            badge: "Profil vérifié", isPro: true,
-            hourlyRate: "Devis sous 24h"
-        },
-
-        // LA RÉUNION (974)
-        {
-            id: 12,
-            name: "Cédric Flavien",
-            role: "Bricolage & Multi-services",
-            category: "bricolage",
-            keywords: ["bricolage", "bricoleur", "monter un meuble", "réparer", "étagère", "électricité", "plomberie"],
-            location: "reunion",
-            locationName: "La Réunion (974)",
-            city: "Saint-Denis",
-            rating: 5.0,
-            reviewsCount: 38,
-            avatar: "david-34.png",
-            bio: "Montage de meubles, étagères, fixation, petits dépannages à Saint-Denis... Toujours avec le sourire et le soin !",
-            skills: ["Montage meuble", "Fixation lourde", "Petite électricité", "Peinture retouches"],
-            badge: "Profil vérifié", isPro: false,
-            hourlyRate: "À partir de 28€/h"
-        },
-        {
-            id: 13,
-            name: "Romain Payet",
-            role: "Entretien Jardin & Paysage",
-            category: "jardin",
-            keywords: ["jardin", "jardinier", "élagage", "gazon", "taille", "entretien", "plantes", "cour"],
-            location: "reunion",
-            locationName: "La Réunion (974)",
-            city: "Saint-Paul",
-            rating: 4.9,
-            reviewsCount: 45,
-            avatar: "david-34.png",
-            bio: "Entretien régulier ou ponctuel de vos jardins réunionnais, débroussaillage et taille à Saint-Paul.",
-            skills: ["Débroussaillage", "Taille de haies", "Création massif fleurs", "Nettoyage terrasse"],
-            badge: "Profil vérifié", isPro: true,
-            hourlyRate: "À partir de 26€/h"
-        },
-
-        // ST-MARTIN / ST-BARTH
-        {
-            id: 14,
-            name: "Guillaume Saint-Martin",
-            role: "Climatisation & Électricité Villa",
-            category: "climatisation",
-            keywords: ["climatisation", "clim", "électricité", "panne", "maintenance", "villa"],
-            location: "saint-martin",
-            locationName: "St-Martin / St-Barth",
-            city: "Marigot",
-            rating: 5.0,
-            reviewsCount: 12,
-            avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=400&q=80",
-            bio: "Maintenance haute qualité de climatiseurs et réseaux électriques pour villas et appartements.",
-            skills: ["Clim Inverter", "Maintenance préventive", "Dépannage express", "Tableau électrique"],
-            badge: "Profil vérifié", isPro: true,
-            hourlyRate: "À partir de 50€/h"
         }
     ];
+
+    if (window.LYANN_API_CLIENT) {
+        window.LYANN_API_CLIENT.getMembers().then(({ data }) => {
+            if (data && data.length > 0) {
+                LYANN_MEMBERS = data.map(p => ({
+                    id: p.id,
+                    name: `${p.first_name} ${p.last_name}`,
+                    role: p.professional_status || "Service",
+                    category: "general",
+                    location: p.territory,
+                    locationName: p.territory,
+                    city: p.city,
+                    rating: 5.0,
+                    reviewsCount: 0,
+                    avatar: p.avatar_url || "default-avatar.png",
+                    bio: p.bio,
+                    skills: [],
+                    badge: p.kyc_verified ? "Profil vérifié" : "",
+                    isPro: p.is_pro,
+                    hourlyRate: "Sur devis"
+                }));
+            }
+        }).catch(console.error);
+    }
 
     // --- Mobile Menu ---
     const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
@@ -1204,13 +947,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (modalFinishBtn) {
-        modalFinishBtn.addEventListener('click', () => {
-            safeStorage.setItem('lyan_user_logged_in', 'true');
-            updateHeaderAuthState();
-            closeSignupModal();
-            alert(`Félicitations ${userSignupData.firstName || ''} ! Votre compte LYANN est prêt. Vous êtes désormais connecté.`);
-            currentStep = 1;
-            updateStepUI();
+        modalFinishBtn.addEventListener('click', async () => {
+            const password = 'password123'; // Demander mot de passe dans une vraie UI
+            try {
+                const { data, error } = await window.LYANN_API_CLIENT.signUp(
+                    userSignupData.email,
+                    password,
+                    {
+                        first_name: userSignupData.firstName,
+                        last_name: userSignupData.firstName, // Simplifié pour le moment
+                        territory: userSignupData.territory,
+                        city: userSignupData.city,
+                        is_pro: userSignupData.role === 'provider',
+                        professional_status: userSignupData.role === 'provider' ? 'PROFESSIONAL' : 'NONE'
+                    }
+                );
+                
+                if (error) throw error;
+
+                safeStorage.setItem('lyan_user_logged_in', 'true');
+                updateHeaderAuthState();
+                closeSignupModal();
+                alert(`Félicitations ${userSignupData.firstName || ''} ! Votre compte LYANN est prêt.`);
+                currentStep = 1;
+                updateStepUI();
+            } catch (err) {
+                alert('Erreur inscription : ' + err.message);
+            }
         });
     }
 
@@ -1313,12 +1076,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            safeStorage.setItem('lyan_user_logged_in', 'true');
-            updateHeaderAuthState();
-            alert('🎉 Connexion réussie ! Bienvenue sur votre espace LYANN.');
-            closeLoginModal();
+            const email = loginForm.querySelector('input[type="email"]')?.value;
+            const password = loginForm.querySelector('input[type="password"]')?.value || 'password123';
+            
+            try {
+                const { data, error } = await window.LYANN_API_CLIENT.login(email, password);
+                if (error) throw error;
+                
+                safeStorage.setItem('lyan_user_logged_in', 'true');
+                updateHeaderAuthState();
+                alert('🎉 Connexion réussie ! Bienvenue sur votre espace LYANN.');
+                closeLoginModal();
+            } catch (err) {
+                alert('Erreur de connexion : ' + err.message);
+            }
         });
     }
 
@@ -1951,81 +1724,52 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================================
     // MOTEUR EN DIRECT DU BOKANTAJ (POSTER UN LYANN & ÉCHOS DU QUARTIER)
     // ==========================================================================
-    const INITIAL_FLASH_POSTS = [
+    let INITIAL_FLASH_POSTS = [
         {
             id: 'flash-1',
             authorName: 'David Jean-Baptiste',
-            authorRole: 'Artisan Clim & Froid',
+            authorRole: 'Artisan',
             authorAvatar: 'david-34.png',
             badge: '⚡ Disponibilité',
             type: 'dispo',
-            location: 'Baie-Mahault • Guadeloupe (971)',
+            location: 'Guadeloupe',
             territoryKey: 'guadeloupe',
             timeAgo: 'Il y a 14 min',
-            content: 'Créneau disponible cet après-midi pour révision & entretien clim inverter sur Baie-Mahault ou Le Gosier ! Contactez-moi directement.',
-            images: [
-                'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=600&q=80',
-                'https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=600&q=80'
-            ],
+            content: 'Créneau disponible.',
+            images: [],
             likes: 14,
             repliesCount: 3,
             memberId: 1
-        },
-        {
-            id: 'flash-2',
-            authorName: 'Tati Huguette Cazeau',
-            authorRole: 'Habitante vérifiée',
-            authorAvatar: 'huguette-68.png',
-            badge: '🔍 Besoin',
-            type: 'besoin',
-            location: 'Fort-de-France • Martinique (972)',
-            territoryKey: 'martinique',
-            timeAgo: 'Il y a 42 min',
-            content: 'Recherche urgente d\'un bon électricien pour remplacer un tableau secondaire à Schoelcher. Qui me recommandez-vous dans le réseau ?',
-            images: [
-                'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80'
-            ],
-            likes: 8,
-            repliesCount: 5,
-            memberId: 9
-        },
-        {
-            id: 'flash-3',
-            authorName: 'Élodie Rutil',
-            authorRole: 'Voisine Recommandée',
-            authorAvatar: 'sarah-29.png',
-            badge: '⭐ Recommandation',
-            type: 'reco',
-            location: 'Le Moule • Guadeloupe (971)',
-            territoryKey: 'guadeloupe',
-            timeAgo: 'Il y a 2 h',
-            content: 'Un immense merci à @Man_Saint-Louis pour les conseils de taille de mes fruitiers au Moule. Travail propre, conseils précieux et partage !',
-            images: [
-                'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80',
-                'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=600&q=80',
-                'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=600&q=80'
-            ],
-            likes: 22,
-            repliesCount: 2,
-            memberId: 5
-        },
-        {
-            id: 'flash-4',
-            authorName: 'Kevin Bellerose',
-            authorRole: 'Lyanneur PRO',
-            authorAvatar: 'kevin-41.png',
-            badge: '📢 Info Bokantaj',
-            type: 'info',
-            location: 'Cayenne • Guyane (973)',
-            territoryKey: 'guyane',
-            timeAgo: 'Il y a 4 h',
-            content: 'Attention les voisins avec les grosses pluies d\'hier : pensez à vérifier vos filtres de gouttières et citernes pour éviter les bouchons avant la semaine prochaine.',
-            video: 'https://assets.mixkit.co/videos/preview/mixkit-rain-drops-falling-on-a-window-41662-large.mp4',
-            likes: 19,
-            repliesCount: 4,
-            memberId: 10
         }
     ];
+
+    if (window.LYANN_API_CLIENT) {
+        window.LYANN_API_CLIENT.getFeed().then(({ data }) => {
+            if (data && data.length > 0) {
+                INITIAL_FLASH_POSTS = data.map(post => ({
+                    id: post.id,
+                    authorName: `${post.profiles.first_name} ${post.profiles.last_name}`,
+                    authorRole: 'Lyanneur',
+                    authorAvatar: post.profiles.avatar_url || 'default-avatar.png',
+                    badge: post.post_type === 'dispo' ? '⚡ Disponibilité' : (post.post_type === 'besoin' ? '🔍 Besoin' : '📢 Info Bokantaj'),
+                    type: post.post_type,
+                    location: post.territory,
+                    territoryKey: post.territory.toLowerCase(),
+                    timeAgo: 'Récemment',
+                    content: post.content,
+                    images: post.media_urls || [],
+                    likes: 0,
+                    repliesCount: 0,
+                    memberId: post.author_id
+                }));
+                // Try to render if possible
+                if (typeof renderFlashFeed === 'function') {
+                    // Try to wait for the UI to be ready
+                    setTimeout(() => renderFlashFeed(INITIAL_FLASH_POSTS), 1000);
+                }
+            }
+        }).catch(console.error);
+    }
 
     let currentFlashPosts = [...INITIAL_FLASH_POSTS];
     let activeFeedTypeFilter = 'all';

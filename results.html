@@ -689,14 +689,7 @@
                         </div>
                     </div>
 
-                    <!-- SIMULATOR ROLE BAR -->
-                    <div class="chat-simulator-role-bar" style="display: flex; justify-content: space-between; align-items: center; background: #FFF9E6; padding: 6px 16px; border-bottom: 1px solid #FFE5A3; font-size: 0.78rem;">
-                        <span style="font-weight: 700; color: #B25E00;"><i class="ph ph-sliders"></i> SIMULATEUR DE RÔLE :</span>
-                        <div class="role-selector-pills" style="display: flex; gap: 6px;">
-                            <button type="button" class="role-pill active" id="btnChatRoleClient" style="background: var(--primary); color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">👤 Client</button>
-                            <button type="button" class="role-pill" id="btnChatRoleProvider" style="background: #E0E0E0; color: #333; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">🛠️ Prestataire</button>
-                        </div>
-                    </div>
+                    <!-- Role determined automatically by mission context -->
 
                     <!-- MESSAGES WRAPPER -->
                     <div class="chat-messages-scroll" id="chatMessagesContainer" style="flex:1; overflow-y:auto; padding: 16px;">
@@ -805,7 +798,7 @@
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem;">
                                         <input type="checkbox" id="coAssuranceCheck" checked style="accent-color: var(--primary);">
-                                        Assurance Relais Lyann (7% - Garantie de relais)
+                                        Protection Lyann (7% - Garantie de bonne fin)
                                     </label>
                                     <strong id="coAssuranceFee">0.00 €</strong>
                                 </div>
@@ -831,7 +824,7 @@
                                     </div>
                                 </div>
                                 <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
-                                    🔒 Cryptage SSL 256-bit • Fonds bloqués sur compte de séquestre Stripe Connect
+                                    🔒 Cryptage SSL 256-bit • Paiement sécurisé via Stripe Connect
                                 </div>
                                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                                     <button type="button" id="btnCancelCheckout" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
@@ -1113,7 +1106,7 @@
                             </div>
                             <div class="profile-kpi-card" style="background: #FFF8E1;">
                                 <span class="profile-kpi-val" style="color: #D4A843;">320,00 €</span>
-                                <span class="profile-kpi-label">Solde en séquestre</span>
+                                <span class="profile-kpi-label">Paiements en cours</span>
                             </div>
                         </div>
                         <button class="btn btn-primary" id="btnInstantPayoutHub">Virement instantané vers mon IBAN 🏦</button>
@@ -1222,10 +1215,11 @@
     </div>
 
     <script src="ai-agents.js"></script>
-    <script src="api-client.js"></script>
-    <script src="https://js.stripe.com/v3/"></script>
+        <script src="https://js.stripe.com/v3/"></script>
     <script src="payment-script.js"></script>
     <script src="notifications-service.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="api-client.js"></script>
     <script src="script.js"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->
