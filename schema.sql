@@ -1,4 +1,4 @@
--- LYANN DOM V1 - SUPABASE SCHEMA
+-- LYANN DOM V1 - SUPABASE SCHEMA (V2 Mission Paradigm)
 -- Execute this script in your Supabase SQL Editor.
 
 -- Enable required extensions
@@ -99,41 +99,27 @@ CREATE TABLE requests (
 );
 
 -- ==============================================================================
--- 6. MESSAGING
+-- 6. MISSIONS (Contextual logic: Who asks who)
 -- ==============================================================================
-CREATE TABLE conversations (
+CREATE TABLE missions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    requester_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    helper_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     related_request_id UUID REFERENCES requests(id) ON DELETE SET NULL,
     related_service_id UUID REFERENCES services(id) ON DELETE SET NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
-);
-
-CREATE TABLE conversation_participants (
-    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    joined_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-    PRIMARY KEY (conversation_id, user_id)
-);
-
-CREATE TABLE messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
-    sender_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    content TEXT,
-    attachment_url TEXT,
-    is_read BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+    status TEXT DEFAULT 'DISCUSSION', -- DISCUSSION, PROPOSED, AGREED, PAYMENT_PENDING, IN_PROGRESS, WORK_MARKED_COMPLETE, COMPLETED, DISPUTED
+    total_amount NUMERIC,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
 -- ==============================================================================
--- 7. QUOTES & MILESTONES (Devis)
+-- 7. QUOTES & MILESTONES (Devis linked to missions)
 -- ==============================================================================
 CREATE TABLE quotes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    mission_id UUID REFERENCES missions(id) ON DELETE CASCADE,
     quote_number TEXT UNIQUE NOT NULL,
-    provider_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    client_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    related_request_id UUID REFERENCES requests(id) ON DELETE SET NULL,
     description TEXT,
     status TEXT DEFAULT 'DRAFT', -- DRAFT, SENT, VIEWED, ACCEPTED, DECLINED, REVISED
     current_version INTEGER DEFAULT 1,
@@ -165,17 +151,61 @@ CREATE TABLE milestones (
 );
 
 -- ==============================================================================
--- 8. REVIEWS & RECOMMENDATIONS
+-- 8. MESSAGING (Linked to missions for unified chat)
+-- ==============================================================================
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    mission_id UUID REFERENCES missions(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE conversation_participants (
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    PRIMARY KEY (conversation_id, user_id)
+);
+
+CREATE TABLE messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    content TEXT,
+    attachment_url TEXT,
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- ==============================================================================
+-- 9. PAYMENTS
+-- ==============================================================================
+CREATE TABLE payments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    mission_id UUID REFERENCES missions(id) ON DELETE SET NULL,
+    quote_id UUID REFERENCES quotes(id) ON DELETE SET NULL,
+    payer_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    recipient_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    amount NUMERIC NOT NULL,
+    currency TEXT DEFAULT 'eur',
+    status TEXT DEFAULT 'PENDING', -- PENDING, SUCCEEDED, FAILED, REFUNDED
+    stripe_payment_intent_id TEXT UNIQUE,
+    stripe_transfer_id TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- ==============================================================================
+-- 10. REVIEWS & RECOMMENDATIONS
 -- ==============================================================================
 CREATE TABLE reviews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     author_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     target_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    quote_id UUID REFERENCES quotes(id) ON DELETE SET NULL,
+    mission_id UUID REFERENCES missions(id) ON DELETE SET NULL,
     rating INTEGER CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-    UNIQUE(author_id, quote_id) -- Only one review per mission
+    UNIQUE(author_id, mission_id) -- Only one review per mission
 );
 
 CREATE TABLE recommendations (
@@ -186,7 +216,7 @@ CREATE TABLE recommendations (
 );
 
 -- ==============================================================================
--- 9. BOKANTAJ (Feed)
+-- 11. BOKANTAJ (Feed)
 -- ==============================================================================
 CREATE TABLE bokantaj_posts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -210,10 +240,12 @@ CREATE TABLE bokantaj_likes (
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE missions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversation_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quotes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bokantaj_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bokantaj_likes ENABLE ROW LEVEL SECURITY;
 
@@ -225,6 +257,11 @@ CREATE POLICY "Users can update their own profile" ON profiles FOR UPDATE USING 
 -- Services: Public read, owner manage
 CREATE POLICY "Services are viewable by everyone" ON services FOR SELECT USING (true);
 CREATE POLICY "Users can manage their own services" ON services FOR ALL USING (auth.uid() = owner_id);
+
+-- Missions: Involved parties can view and update
+CREATE POLICY "Involved parties can view missions" ON missions FOR SELECT USING (auth.uid() = requester_id OR auth.uid() = helper_id);
+CREATE POLICY "Users can create missions" ON missions FOR INSERT WITH CHECK (auth.uid() = requester_id OR auth.uid() = helper_id);
+CREATE POLICY "Involved parties can update missions" ON missions FOR UPDATE USING (auth.uid() = requester_id OR auth.uid() = helper_id);
 
 -- Conversations & Messages: Only participants can read/write
 CREATE POLICY "Users can view their conversations" ON conversations FOR SELECT USING (
@@ -245,10 +282,19 @@ CREATE POLICY "Participants can send messages" ON messages FOR INSERT WITH CHECK
     EXISTS (SELECT 1 FROM conversation_participants WHERE conversation_id = messages.conversation_id AND user_id = auth.uid())
 );
 
--- Quotes: Provider and Client can view. Provider creates/updates. Client can accept/reject.
-CREATE POLICY "Involved parties can view quotes" ON quotes FOR SELECT USING (auth.uid() = provider_id OR auth.uid() = client_id);
-CREATE POLICY "Providers can create quotes" ON quotes FOR INSERT WITH CHECK (auth.uid() = provider_id);
-CREATE POLICY "Providers and Clients can update quotes" ON quotes FOR UPDATE USING (auth.uid() = provider_id OR auth.uid() = client_id);
+-- Quotes: RLS using subquery to missions table
+CREATE POLICY "Involved parties can view quotes" ON quotes FOR SELECT USING (
+    EXISTS (SELECT 1 FROM missions WHERE id = quotes.mission_id AND (requester_id = auth.uid() OR helper_id = auth.uid()))
+);
+CREATE POLICY "Involved parties can create quotes" ON quotes FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM missions WHERE id = quotes.mission_id AND (requester_id = auth.uid() OR helper_id = auth.uid()))
+);
+CREATE POLICY "Involved parties can update quotes" ON quotes FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM missions WHERE id = quotes.mission_id AND (requester_id = auth.uid() OR helper_id = auth.uid()))
+);
+
+-- Payments: Only payer and recipient can view
+CREATE POLICY "Involved parties can view payments" ON payments FOR SELECT USING (auth.uid() = payer_id OR auth.uid() = recipient_id);
 
 -- Bokantaj: Public read, owner manage, authenticated users can like
 CREATE POLICY "Posts are viewable by everyone" ON bokantaj_posts FOR SELECT USING (true);

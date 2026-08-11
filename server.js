@@ -116,9 +116,9 @@ app.post('/v1/payments/onboarding-link', async (req, res) => {
 // Create Payment Intent (Destination Charge)
 app.post('/v1/payments/create-intent', async (req, res) => {
     try {
-        const { quoteId, amount, destinationAccountId } = req.body;
+        const { missionId, amount, destinationAccountId } = req.body;
 
-        if (!quoteId || !amount || !destinationAccountId) {
+        if (!missionId || !amount || !destinationAccountId) {
             return res.status(400).json({ error: 'Missing parameters' });
         }
 
@@ -133,7 +133,7 @@ app.post('/v1/payments/create-intent', async (req, res) => {
                 destination: destinationAccountId,
             },
             metadata: {
-                quoteId: quoteId
+                missionId: missionId
             }
         });
 
@@ -168,12 +168,13 @@ app.post('/v1/payments/webhook', async (req, res) => {
         switch (event.type) {
             case 'payment_intent.succeeded':
                 const paymentIntent = event.data.object;
-                const quoteId = paymentIntent.metadata.quoteId;
+                const missionId = paymentIntent.metadata.missionId;
                 console.log(`💰 PaymentIntent for ${paymentIntent.amount} was successful!`);
                 
-                // Update Quote / Milestone Status in Supabase
-                if (quoteId) {
-                    await supabase.from('quotes').update({ status: 'PAID' }).eq('id', quoteId);
+                // Update Mission Status and Payment Record in Supabase
+                if (missionId) {
+                    await supabase.from('missions').update({ status: 'IN_PROGRESS' }).eq('id', missionId);
+                    await supabase.from('payments').update({ status: 'SUCCEEDED' }).eq('stripe_payment_intent_id', paymentIntent.id);
                 }
                 break;
             case 'payment_method.attached':

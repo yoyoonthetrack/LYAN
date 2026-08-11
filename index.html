@@ -55,6 +55,7 @@
             
                         <div class="nav-links"><a href="results.html" title="Rechercher un talent ou un service" class="nav-search-icon-link" style="display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%; background: rgba(229, 179, 69, 0.18); color: #E5B345; transition: transform 0.2s ease, background 0.2s ease;"><i class="ph ph-magnifying-glass" style="font-size: 1.3rem; font-weight: bold; color: #E5B345;"></i></a>
                 <a href="feed.html">BOKANTAJ <span class="nav-live-dot"></span></a>
+                <a href="#" class="open-chat-trigger logged-in-only" title="Ma Messagerie" style="display: flex; align-items: center; gap: 6px;"><i class="ph ph-chat-circle-dots"></i> Messages</a>
                 <a href="how-it-works.html">COMMENT ÇA MARCHE</a>
                 <a href="about.html">NOTRE HISTOIRE</a>
                 <a href="#login" class="btn btn-outline open-login-trigger logged-out-only">CONNEXION</a>
@@ -98,6 +99,7 @@
                     </a>
                     <a href="results.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-magnifying-glass" style="color: #E5B345; font-size: 1.25rem;"></i> RECHERCHER <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="feed.html">BOKANTAJ <span class="nav-live-dot"></span></a>
+                    <a href="#" class="open-chat-trigger logged-in-only" style="display: flex; align-items: center; gap: 8px;"><i class="ph ph-chat-circle-dots"></i> Messages</a>
                     <a href="how-it-works.html">COMMENT ÇA MARCHE <i class="ph ph-caret-right"></i></a>
                     <a href="about.html">NOTRE HISTOIRE <i class="ph ph-caret-right"></i></a>
                 </nav>
@@ -988,7 +990,7 @@
 
     <!-- ========== MODAL DASHBOARD / ESPACE PROFIL BICOLORE ========== -->
     <div class="modal-overlay" id="profileDashboardModal">
-        <div class="modal-card modal-card-dashboard theme-provider" id="profileCardTheme">
+        <div class="modal-card modal-card-dashboard" id="profileCardTheme">
             <button class="modal-close-btn" id="closeProfileModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
 
             <!-- Profile Banner / Role Switcher Header -->
@@ -1000,182 +1002,125 @@
                     </div>
                     <div>
                         <h2 class="profile-user-name" id="profileUserName">David M.</h2>
-                        <span class="profile-role-badge" id="profileRoleBadge">🛠️ Espace Talent (Prestataire)</span>
+                        <span class="profile-role-badge" id="profileRoleBadge">Membre LYANN</span>
                         <div class="profile-location-text" id="profileLocationText"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
-                    </div>
-                </div>
-
-                <!-- Bicolore Role Switcher Toggle -->
-                <div class="role-switch-container">
-                    <span class="role-switch-label">Mode d'affichage :</span>
-                    <div class="role-toggle-group">
-                        <button type="button" class="role-toggle-btn active" id="btnRoleProvider" data-role-theme="provider">
-                            🛠️ Talent
-                        </button>
-                        <button type="button" class="role-toggle-btn" id="btnRoleSeeker" data-role-theme="seeker">
-                            🔍 Habitant
-                        </button>
                     </div>
                 </div>
             </div>
 
             <!-- Profile Tabs Bar -->
             <div class="profile-tabs">
-                <button class="profile-tab-btn active" data-tab="tab-identity"><i class="ph ph-user"></i> Mon Profil</button>
-                <button class="profile-tab-btn" data-tab="tab-domain"><i class="ph ph-wrench"></i> Domaine & Services</button>
-                <button class="profile-tab-btn" data-tab="tab-realizations" id="tabRealizationsBtn"><i class="ph ph-image"></i> Mes Réalisations</button>
-                <button class="profile-tab-btn" data-tab="tab-activity"><i class="ph ph-clipboard-text"></i> Mes Demandes & Avis</button>
+                <button class="profile-tab-btn active" data-tab="tab-overview"><i class="ph ph-squares-four"></i> Vue d'ensemble</button>
+                <button class="profile-tab-btn" data-tab="tab-requests"><i class="ph ph-hand-waving"></i> Mes demandes</button>
+                <button class="profile-tab-btn" data-tab="tab-services"><i class="ph ph-wrench"></i> Mes services</button>
+                <button class="profile-tab-btn" data-tab="tab-missions"><i class="ph ph-briefcase"></i> Mes missions</button>
+                <button class="profile-tab-btn" data-tab="tab-payments"><i class="ph ph-credit-card"></i> Paiements</button>
+                <button class="profile-tab-btn" data-tab="tab-reviews"><i class="ph ph-star"></i> Avis & recommandations</button>
                 <button class="profile-tab-btn" data-tab="tab-settings"><i class="ph ph-gear"></i> Paramètres</button>
             </div>
 
             <!-- Profile Content Body -->
             <div class="modal-body profile-modal-body">
-                <!-- TAB 1 : MON PROFIL -->
-                <div class="profile-tab-content active" id="tab-identity">
-                    <h4 class="tab-section-title">Informations Personnelles & Coordonnées</h4>
-                    <form id="profileIdentityForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Prénom</label>
-                                <div class="input-with-icon"><i class="ph ph-user"></i><input type="text" class="modal-input" id="profileFirstNameInput" value="David"></div>
-                            </div>
-                            <div class="form-group">
-                                <label>Nom</label>
-                                <div class="input-with-icon"><i class="ph ph-user"></i><input type="text" class="modal-input" id="profileLastNameInput" value="M."></div>
-                            </div>
+                <!-- TAB 1 : VUE D'ENSEMBLE -->
+                <div class="profile-tab-content active" id="tab-overview">
+                    <h4 class="tab-section-title">Bonjour <span id="overviewFirstName">David</span> 👋</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div style="background: var(--bg-alt); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
+                            <div style="font-size: 2rem; font-weight: 800; color: var(--primary);">0</div>
+                            <div style="font-size: 0.8rem; font-weight: 600;">Demandes actives</div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Adresse email</label>
-                                <div class="input-with-icon"><i class="ph ph-envelope"></i><input type="email" class="modal-input" id="profileEmailInput" value="david.m@lyann-dom.com"></div>
-                            </div>
-                            <div class="form-group">
-                                <label>Téléphone</label>
-                                <div class="input-with-icon"><i class="ph ph-phone"></i><input type="tel" class="modal-input" id="profilePhoneInput" value="06 90 12 34 56"></div>
-                            </div>
+                        <div style="background: var(--bg-alt); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
+                            <div style="font-size: 2rem; font-weight: 800; color: var(--primary-dark);">0</div>
+                            <div style="font-size: 0.8rem; font-weight: 600;">Services proposés</div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Département DOM</label>
-                                <div class="input-with-icon">
-                                    <i class="ph ph-map-pin"></i>
-                                    <select class="modal-input" id="profileTerritorySelect">
-                                        <option value="Guadeloupe (971)" selected>Guadeloupe (971)</option>
-                                        <option value="Martinique (972)">Martinique (972)</option>
-                                        <option value="Guyane (973)">Guyane (973)</option>
-                                        <option value="La Réunion (974)">La Réunion (974)</option>
-                                        <option value="St-Martin / St-Barth">St-Martin / St-Barth</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Commune</label>
-                                <div class="input-with-icon"><i class="ph ph-buildings"></i><input type="text" class="modal-input" id="profileCityInput" value="Baie-Mahault"></div>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Enregistrer mon profil</button>
-                    </form>
-                </div>
-
-                <!-- TAB 2 : DOMAINE D'ACTIVITÉ & SERVICES -->
-                <div class="profile-tab-content" id="tab-domain">
-                    <h4 class="tab-section-title" id="domainTabTitle">Réglages du Domaine d'Activité & Compétences</h4>
-                    <form id="profileDomainForm">
-                        <div class="form-group">
-                            <label>Intitulé de votre spécialité / activité principal</label>
-                            <div class="input-with-icon"><i class="ph ph-briefcase"></i><input type="text" class="modal-input" id="profileRoleInput" value="Plombier & Sanitaire"></div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Tarif horaire ou Forfait indicatif</label>
-                                <div class="input-with-icon"><i class="ph ph-currency-eur"></i><input type="text" class="modal-input" id="profileRateInput" value="À partir de 35€/h"></div>
-                            </div>
-                            <div class="form-group">
-                                <label>Zone d'intervention (km)</label>
-                                <div class="input-with-icon"><i class="ph ph-navigation-arrow"></i><input type="text" class="modal-input" value="Jusqu'à 30 km autour de Baie-Mahault"></div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Présentation publique & Bio</label>
-                            <textarea class="modal-input" style="padding-left: 16px; height: 90px; resize: none;" id="profileBioInput">Spécialiste de la plomberie résidentielle et du dépannage d'urgence sur Baie-Mahault et Grande-Terre.</textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Diplômes, Certifications & Badges</label>
-                            <div class="input-with-icon"><i class="ph ph-certificate"></i><input type="text" class="modal-input" value="Artisan Vérifié • CAP Plomberie Sanitaire • Garantie Décennale"></div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Mettre à jour mon offre</button>
-                    </form>
-                </div>
-
-                <!-- TAB 3 : MES DEMANDES & AVIS -->
-                <div class="profile-tab-content" id="tab-activity">
-                    <h4 class="tab-section-title">Activité Récente & Recommandations de Voisins</h4>
-                    
-                    <div class="profile-stats-row">
-                        <div class="profile-stat-card">
-                            <span class="stat-num">24</span>
-                            <span class="stat-lbl">Missions réalisées</span>
-                        </div>
-                        <div class="profile-stat-card">
-                            <span class="stat-num">★ 4.9</span>
-                            <span class="stat-lbl">Note moyenne</span>
-                        </div>
-                        <div class="profile-stat-card">
-                            <span class="stat-num">100%</span>
-                            <span class="stat-lbl">Taux de réponse</span>
+                        <div style="background: var(--bg-alt); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
+                            <div style="font-size: 2rem; font-weight: 800; color: var(--secondary);">0</div>
+                            <div style="font-size: 0.8rem; font-weight: 600;">Missions en cours</div>
                         </div>
                     </div>
+                    <h4 class="tab-section-title" style="margin-top: 30px;">Action requise</h4>
+                    <div id="overviewActionsList">
+                        <div class="empty-state-message">Tout est à jour.</div>
+                    </div>
+                </div>
 
-                    <div class="activity-list">
-                        <div class="activity-item">
-                            <div class="activity-icon"><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></div>
-                            <div class="activity-details">
-                                <strong>Réparation fuite d'eau d'urgence</strong>
-                                <span>Demandé par Marie L. (Le Gosier) • Réalisé le 24 Juillet 2026</span>
-                                <div class="review-quote">"Intervention rapide et impeccable. David m'a sauvée !" ⭐⭐⭐⭐⭐</div>
+                <!-- TAB 2 : MES DEMANDES -->
+                <div class="profile-tab-content" id="tab-requests">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h4 class="tab-section-title" style="margin: 0;">Mes Besoins</h4>
+                        <button class="btn btn-primary" onclick="openPublishModal()" style="padding: 6px 12px; font-size: 0.85rem;"><i class="ph ph-plus"></i> Demander de l'aide</button>
+                    </div>
+                    <div id="myRequestsList">
+                        <div class="empty-state-message">Vous n'avez pas encore publié de demande.</div>
+                    </div>
+                </div>
+
+                <!-- TAB 3 : MES SERVICES -->
+                <div class="profile-tab-content" id="tab-services">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h4 class="tab-section-title" style="margin: 0;">Ce que je propose</h4>
+                        <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;"><i class="ph ph-plus"></i> Ajouter un service</button>
+                    </div>
+                    <div id="myServicesList">
+                        <div class="empty-state-message">Vous ne proposez aucun service pour le moment.</div>
+                    </div>
+                </div>
+
+                <!-- TAB 4 : MES MISSIONS -->
+                <div class="profile-tab-content" id="tab-missions">
+                    <h4 class="tab-section-title">Mes missions</h4>
+                    <div id="myMissionsList">
+                        <div class="empty-state-message">Aucune mission en cours.</div>
+                    </div>
+                </div>
+
+                <!-- TAB 5 : PAIEMENTS -->
+                <div class="profile-tab-content" id="tab-payments">
+                    <h4 class="tab-section-title">Espace Financier</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h5 style="margin-bottom: 10px; font-weight: 700;">Ce que j'ai payé</h5>
+                            <div id="paymentsSentList" style="background: var(--bg-alt); padding: 15px; border-radius: 12px; border: 1px solid var(--border); min-height: 100px;">
+                                <div class="empty-state-message" style="margin: 0;">Aucun paiement.</div>
                             </div>
                         </div>
-                        <div class="activity-item">
-                            <div class="activity-icon"><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></div>
-                            <div class="activity-details">
-                                <strong>Installation chauffe-eau solaire</strong>
-                                <span>Demandé par Thomas P. (Baie-Mahault) • Réalisé le 15 Juillet 2026</span>
-                                <div class="review-quote">"Très professionnel, explications claires et chantier propre." ⭐⭐⭐⭐⭐</div>
+                        <div>
+                            <h5 style="margin-bottom: 10px; font-weight: 700;">Ce que j'ai reçu</h5>
+                            <div id="paymentsReceivedList" style="background: var(--bg-alt); padding: 15px; border-radius: 12px; border: 1px solid var(--border); min-height: 100px;">
+                                <div class="empty-state-message" style="margin: 0;">Aucun versement.</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- TAB 5 : MES RÉALISATIONS -->
-                <div class="profile-tab-content" id="tab-realizations">
-                    <div class="realizations-header-row">
-                        <h4 class="tab-section-title" style="margin-bottom: 0;">Galerie de mes Travaux & Chantiers</h4>
-                        <button type="button" class="btn btn-primary btn-sm" id="openAddRealizationBtn">
-                            <i class="ph ph-plus"></i> Ajouter une réalisation
-                        </button>
-                    </div>
-                    <p class="section-subtitle" style="margin-bottom: 20px; font-size: 0.9rem;">Montrez la qualité de votre travail aux habitants de votre quartier.</p>
-                    
-                    <div class="realizations-grid" id="myRealizationsGrid">
-                        <!-- Dynamic portfolio items inserted here -->
+                <!-- TAB 6 : AVIS & RECOMMANDATIONS -->
+                <div class="profile-tab-content" id="tab-reviews">
+                    <h4 class="tab-section-title">Avis & Recommandations</h4>
+                    <div id="myReviewsList">
+                        <div class="empty-state-message">Aucun avis reçu.</div>
                     </div>
                 </div>
 
-                <!-- TAB 4 : PARAMÈTRES -->
+                <!-- TAB 7 : PARAMETRES -->
                 <div class="profile-tab-content" id="tab-settings">
-                    <h4 class="tab-section-title">Sécurité & Notifications</h4>
-                    <div class="form-group">
-                        <label>Notifications SMS & WhatsApp pour chaque nouvelle demande</label>
-                        <label class="remember-checkbox" style="margin-top: 6px;"><input type="checkbox" checked> Recevoir les alertes d'intervention instantanées</label>
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <i class="ph ph-gear" style="font-size: 3rem; color: var(--text-light); margin-bottom: 15px;"></i>
+                        <h4 style="font-weight: 800; font-size: 1.2rem; margin-bottom: 10px;">Paramètres du compte</h4>
+                        <p style="color: var(--text-light); font-size: 0.95rem; margin-bottom: 20px;">
+                            Gérez vos informations personnelles, moyens de paiement, et versements.
+                        </p>
+                        <button class="btn btn-outline" id="btnOpenFullSettings">Ouvrir les Paramètres Détaillés</button>
                     </div>
-                    <div class="form-group">
-                        <label>Visibilité dans le réseau des talents</label>
-                        <label class="remember-checkbox" style="margin-top: 6px;"><input type="checkbox" checked> Rendre mon profil visible aux voisins de mon département</label>
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border);">
+                        <h4 style="font-weight: 800; font-size: 1rem; color: #E63B2E; margin-bottom: 10px;">Zone de Test</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">Réinitialisez toutes les données locales (chat, historique, cache) pour recommencer un parcours propre.</p>
+                        <button class="btn" style="background-color: #E63B2E; color: white; border: none;" onclick="resetLocalData()">⚠️ Effacer toutes les données locales</button>
                     </div>
-                    <div class="settings-actions">
+                    <div class="settings-actions" style="margin-top: 20px;">
                         <button type="button" class="btn btn-outline" id="logoutBtn" style="color: #E76F51; border-color: #E76F51;"><i class="ph ph-sign-out"></i> Se déconnecter</button>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -1662,219 +1607,45 @@
                 <!-- Chat Main Area -->
                 <div class="chat-main-area">
                     <!-- HEADER BAR -->
-                    <div class="chat-header-bar" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);">
+                    <div class="chat-header-bar" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
                         <div class="chat-header-user" style="display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="chat-back-to-contacts-btn" style="display: none;"><i class="ph ph-arrow-left"></i> Contacts</button>
-                            <img src="david-34.png" alt="Avatar Active" id="chatHeaderAvatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            <button type="button" class="chat-back-to-contacts-btn" style="display: none;"><i class="ph ph-arrow-left"></i></button>
+                            <img src="" alt="Avatar" id="chatHeaderAvatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                             <div>
-                                <strong id="chatHeaderName" style="font-size: 1rem; color: var(--text);">David Jean-Baptiste</strong>
-                                <div style="font-size: 0.78rem; color: #2E7D32; font-weight: 700;">● En ligne à Baie-Mahault</div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <strong id="chatHeaderName" style="font-size: 1rem; color: var(--text);">Nom</strong>
+                                    <span id="chatDevAiBadge" class="profile-role-badge" style="display: none; background: #6366f1; color: white; padding: 2px 6px; font-size: 0.65rem;">Profil IA</span>
+                                </div>
+                                <div id="chatMissionContext" style="font-size: 0.8rem; color: var(--primary); font-weight: 700; margin-top: 2px; display: none;">
+                                    <!-- Context injected here. Ex: Réparation portail • 80€ -->
+                                </div>
                             </div>
                         </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button type="button" class="btn btn-outline" id="chatTrackingBtn" style="display:none; padding: 6px 12px; font-size: 0.82rem; border-radius: var(--radius-full); border-color: var(--primary);">
-                                🛠️ Suivi du chantier
-                            </button>
-                            <button type="button" class="btn btn-lyanner" id="chatProposeBtn" style="padding: 6px 12px; font-size: 0.82rem; border-radius: var(--radius-full);">
-                                🤝 Proposer un prix
+                        <div style="display: flex; gap: 8px;" id="chatHeaderActionBtns">
+                            <button type="button" class="btn btn-outline" id="chatViewMissionBtn" style="display:none; padding: 6px 12px; font-size: 0.82rem; border-radius: var(--radius-full);">
+                                Voir la mission
                             </button>
                         </div>
                     </div>
 
-                    <!-- Role determined automatically by mission context -->
-
                     <!-- MESSAGES WRAPPER -->
-                    <div class="chat-messages-scroll" id="chatMessagesContainer" style="flex:1; overflow-y:auto; padding: 16px;">
+                    <div class="chat-messages-scroll" id="chatMessagesContainer" style="flex:1; overflow-y:auto; padding: 16px; display: flex; flex-direction: column; gap: 15px;">
                         <!-- Messages dynamically rendered -->
                     </div>
 
-                    <!-- OVERLAY: ACTION CHOICES (DIRECT OR DETAILED DEVIS) -->
-                    <div id="chatActionChoicesOverlay" class="chat-overlay-pane" style="display: none;">
-                        <div style="padding: 20px; text-align: center;">
-                            <h4 style="font-weight: 800; margin-bottom: 15px;">Quelle prestation souhaitez-vous proposer ?</h4>
-                            <div style="display: flex; gap: 12px; justify-content: center;">
-                                <button type="button" class="btn btn-outline" id="btnChooseDirectPrice" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px;">
-                                    <strong style="display: block; font-size: 1rem;">Tarif Direct</strong>
-                                    <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">Pour les petits montants (- de 200€)</span>
-                                </button>
-                                <button type="button" class="btn btn-primary" id="btnChooseMilestoneDevis" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px; background: var(--primary);">
-                                    <strong style="display: block; font-size: 1rem; color: white;">Devis par Jalons</strong>
-                                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.9; color: white;">Étapes de chantier et paiement progressif</span>
-                                </button>
-                            </div>
-                            <button type="button" class="btn btn-outline close-overlay-btn" style="margin-top: 15px; border: none; font-size: 0.85rem;">Annuler</button>
-                        </div>
+                    <!-- CONTEXTUAL ACTIONS BAR -->
+                    <div id="chatContextualActionsBar" style="padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border-light); background: var(--bg-alt);">
+                        <!-- Buttons injected dynamically -->
                     </div>
 
-                    <!-- OVERLAY: DIRECT PRICE FORM -->
-                    <div id="chatDirectPriceForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="directPriceForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
-                            <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer un Tarif Direct (-200€)</h4>
-                            <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Description de la prestation</label>
-                                <input type="text" id="dpDescription" class="modal-input" placeholder="Ex: Réparation fuite évier cuisine" required style="width: 100%; box-sizing: border-box;">
-                            </div>
-                            <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant proposé (€)</label>
-                                <input type="number" id="dpAmount" class="modal-input" placeholder="Ex: 80" min="5" max="199" required style="width: 100%; box-sizing: border-box;">
-                            </div>
-                            <div style="display: flex; gap: 10px; margin-top: 8px;">
-                                <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
-                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Envoyer l'offre</button>
-                            </div>
+                    <!-- INPUT AREA -->
+                    <div class="chat-input-area" style="padding: 16px; border-top: 1px solid var(--border);">
+                        <form id="chatInputForm" style="display: flex; gap: 10px; align-items: flex-end; margin:0;">
+                            <button type="button" class="btn-chat-attach" id="chatAttachBtn" title="Ajouter une pièce jointe"><i class="ph ph-paperclip"></i></button>
+                            <textarea id="chatInputField" class="modal-input" placeholder="Écrivez un message..." rows="1" style="flex: 1; resize: none; min-height: 44px; padding-top: 12px;"></textarea>
+                            <button type="submit" class="btn btn-primary" style="padding: 0 18px; height: 44px; border-radius: var(--radius-full);"><i class="ph-fill ph-paper-plane-right"></i></button>
                         </form>
                     </div>
-
-                    <!-- OVERLAY: DETAILED DEVIS FORM -->
-                    <div id="chatMilestoneDevisForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;">
-                            <h4 style="font-weight: 800; margin-bottom: 5px;">Créer un Devis détaillé</h4>
-                            <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Libellé général du chantier</label>
-                                <input type="text" id="mdTitle" class="modal-input" placeholder="Ex: Rénovation peinture salon" required style="width: 100%; box-sizing: border-box;">
-                            </div>
-                            <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant total (€)</label>
-                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="200" required style="width: 100%; box-sizing: border-box;">
-                            </div>
-                            
-                            <!-- Fixed Milestones Structure for Simple/Aesthetic UX -->
-                            <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 8px; color: var(--primary-dark);">Jalons de paiement (Répartition en %)</label>
-                                
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 1:</span>
-                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
-                                </div>
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 2:</span>
-                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
-                                </div>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 3:</span>
-                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
-                                </div>
-                                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des jalons doit faire 100%.</p>
-                            </div>
-
-                            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                                <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
-                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Envoyer le Devis</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- OVERLAY: CHECKOUT / SECURE PAYMENT -->
-                    <div id="chatCheckoutOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
-                        <div style="padding: 20px; overflow-y: auto; max-height: 380px;">
-                            <h4 style="font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; color: var(--primary-dark);">
-                                <i class="ph ph-shield-check"></i> Paiement Sécurisé LYANN
-                            </h4>
-                            
-                            <div class="checkout-summary-box" style="background: #F9FBF9; border: 1px solid var(--border); padding: 12px; border-radius: var(--radius-md); margin-bottom: 15px; font-size: 0.88rem;">
-                                <div style="font-weight: 700; margin-bottom: 8px;" id="coPrestationTitle">Prestation</div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                    <span>Montant des travaux :</span>
-                                    <strong id="coDevisAmount">0.00 €</strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                    <span>Frais de service Lyann (3%) :</span>
-                                    <strong id="coLyannFee">0.00 €</strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem;">
-                                        <input type="checkbox" id="coAssuranceCheck" checked style="accent-color: var(--primary);">
-                                        Protection Lyann (7% - Garantie de bonne fin)
-                                    </label>
-                                    <strong id="coAssuranceFee">0.00 €</strong>
-                                </div>
-                                <div style="border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 800; font-size: 1rem; color: var(--primary-dark);">
-                                    <span>Total à régler :</span>
-                                    <span id="coTotalAmount">0.00 €</span>
-                                </div>
-                            </div>
-
-                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;">
-                                <div id="fakeCardFields">
-                                    <div>
-                                        <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Numéro de carte</label>
-                                        <input type="text" class="modal-input" placeholder="4242 4242 4242 4242" required style="width: 100%; box-sizing: border-box;" value="4242 4242 4242 4242">
-                                    </div>
-                                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                                        <div style="flex: 1;">
-                                            <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Date d'expiration</label>
-                                            <input type="text" class="modal-input" placeholder="MM/AA" required style="width: 100%; box-sizing: border-box;" value="12/29">
-                                        </div>
-                                        <div style="flex: 1;">
-                                            <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">CVC</label>
-                                            <input type="text" class="modal-input" placeholder="123" required style="width: 100%; box-sizing: border-box;" value="123">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div id="stripeCardFields" style="display: none;">
-                                    <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 6px;">Carte Bancaire (Sécurisé par Stripe)</label>
-                                    <div id="stripeCardElement" style="border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; background: #fff; min-height: 40px; box-sizing: border-box;"></div>
-                                    <div id="stripeCardErrors" role="alert" style="color: #C95140; font-size: 0.75rem; margin-top: 6px;"></div>
-                                </div>
-                                <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
-                                    🔒 Cryptage SSL 256-bit • Paiement sécurisé via Stripe Connect
-                                </div>
-                                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                                    <button type="button" id="btnCancelCheckout" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
-                                    <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center; background: #2E7D32;">Payer & Bloquer</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- OVERLAY: SHARED TRACKING / SUIVI DE CHANTIER -->
-                    <div id="chatTrackingOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF; flex-direction: column;">
-                        <div style="padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                            <h4 style="font-weight: 800; margin: 0; color: var(--primary-dark);">🛠️ Suivi du chantier</h4>
-                            <button type="button" id="btnExitTracking" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.75rem; border-radius: var(--radius-sm);">Retour au chat 💬</button>
-                        </div>
-                        <div style="flex: 1; overflow-y: auto; padding: 16px;" id="trackingMilestonesList">
-                            <!-- Milestones dynamically rendered here -->
-                        </div>
-                    </div>
-
-                    <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
-                    <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
-                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
-                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
-                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
-                            <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
-                                <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
-                            </div>
-                            <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve (Simulé)</label>
-                                <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
-                                    <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
-                                    <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>
-                                    <option value="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80">📸 Photo 3 - Finitions et Nettoyage</option>
-                                </select>
-                            </div>
-                            <div style="display: flex; gap: 10px; margin-top: 8px;">
-                                <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
-                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Jalon</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- INPUT BAR -->
-                    <form id="chatInputForm" class="chat-input-bar">
-                        <input type="text" id="chatInputField" class="chat-input-field" placeholder="Écrivez votre message..." required autocomplete="off">
-                        <button type="submit" class="btn btn-primary" style="padding: 0 18px; height: 44px; border-radius: var(--radius-full);">
-                            <i class="ph ph-paper-plane-right"></i>
-                        </button>
-                    </form>
                 </div>
             </div>
         </div>
@@ -2203,6 +1974,9 @@
     <script src="notifications-service.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="api-client.js"></script>
+    <script src="dialog.js"></script>
+    <script src="chat-logic.js"></script>
+    <script src="ai-simulator.js"></script>
     <script src="script.js"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->
@@ -2237,5 +2011,25 @@
             </a>
         </div>
     </div>
+
+    <!-- ========== LYANN CUSTOM DIALOG SYSTEM ========== -->
+    <div class="modal-overlay" id="lyannDialogOverlay" style="z-index: 10000; display: none; align-items: center; justify-content: center;">
+        <div class="lyann-dialog-card">
+            <div class="lyann-dialog-icon" id="lyannDialogIcon">
+                <i class="ph ph-info"></i>
+            </div>
+            <h3 class="lyann-dialog-title" id="lyannDialogTitle">Information</h3>
+            <p class="lyann-dialog-message" id="lyannDialogMessage">Message text goes here.</p>
+            
+            <div id="lyannDialogInputContainer" style="display: none; margin-top: 16px; width: 100%;">
+                <input type="text" id="lyannDialogInput" class="modal-input" placeholder="Votre réponse..." style="width: 100%;">
+            </div>
+            
+            <div class="lyann-dialog-actions" id="lyannDialogActions">
+                <!-- Buttons injected dynamically -->
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

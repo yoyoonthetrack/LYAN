@@ -50,38 +50,6 @@
             color: var(--primary);
         }
 
-        .role-toggles {
-            display: flex;
-            background: var(--border);
-            padding: 4px;
-            border-radius: var(--radius-full);
-        }
-
-        .role-toggle-btn {
-            background: transparent;
-            border: none;
-            padding: 8px 20px;
-            border-radius: var(--radius-full);
-            font-weight: 700;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .role-toggle-btn.active {
-            background: var(--primary);
-            color: var(--bg-white);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .role-toggle-btn.active.provider-active {
-            background: var(--sand-yellow-dark);
-        }
-
         .portal-grid {
             display: grid;
             grid-template-columns: 280px 1fr;
@@ -519,14 +487,7 @@
                 </div>
             </div>
 
-            <div class="role-toggles">
-                <button class="role-toggle-btn active" id="btnToggleClient">
-                    <i class="ph-fill ph-user-circle"></i> Espace Client (Habitant)
-                </button>
-                <button class="role-toggle-btn" id="btnToggleProvider">
-                    <i class="ph-fill ph-wrench"></i> Espace Prestataire (Pro)
-                </button>
-            </div>
+            
         </div>
 
         <!-- PORTAL GRID LAYOUT -->
@@ -575,22 +536,7 @@
             let selectedTransactionId = null;
 
             // DOM References
-            const btnToggleClient = document.getElementById('btnToggleClient');
-            const btnToggleProvider = document.getElementById('btnToggleProvider');
-            const portalMenuContainer = document.getElementById('portalMenuContainer');
-            const portalCardWorkspace = document.getElementById('portalCardWorkspace');
-            const portalToast = document.getElementById('portalToast');
-            const portalToastText = document.getElementById('portalToastText');
-
-            // ------------------------------------------------------------------
-            // ROLE AND MENU NAVIGATION RENDERERS
-            // ------------------------------------------------------------------
-            function showToast(text, type = 'success') {
-                portalToastText.textContent = text;
-                portalToast.classList.add('show');
-                setTimeout(() => {
-                    portalToast.classList.remove('show');
-                }, 4000);
+            , 4000);
             }
 
             function setRole(role) {
