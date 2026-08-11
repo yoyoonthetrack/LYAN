@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "david-34.png",
             bio: "Plombier et technicien clim passionné à Baie-Mahault. Dépannage rapide de fuites d'eau, entretien clim et chauffe-eau.",
             skills: ["Détection de fuite", "Entretien Clim Inverter", "Remplacement chauffe-eau", "Débouchage express"],
-            badge: "Artisan Vérifié",
+            badge: "Profil vérifié", isPro: true,
             hourlyRate: "À partir de 35€/h"
         },
         {
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "sarah-29.png",
             bio: "Peintre d'intérieur minutieuse aux Abymes. Je redonne des couleurs et de la fraîcheur tropicale à vos pièces de vie.",
             skills: ["Peinture mur & plafond", "Enduit lissage", "Protection anti-humidité", "Conseil couleurs"],
-            badge: "Voisine Recommandée",
+            badge: "Profil vérifié", isPro: false,
             hourlyRate: "À partir de 30€/h"
         },
         {
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "david-34.png",
             bio: "Mise aux normes, rénovation électrique globale et dépannage rapide sur Le Gosier et environs.",
             skills: ["Tableau électrique", "Dépannage d'urgence", "Éclairage LED", "Mise aux normes"],
-            badge: "Électricien Vérifié",
+            badge: "Profil vérifié", isPro: true,
             hourlyRate: "À partir de 40€/h"
         },
         {
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "saint-louis-72.png",
             bio: "Sage du jardin et passionné de botanique créole à Sainte-Anne. Entretien doux, taille de palmiers et conseils de terre.",
             skills: ["Taille de haies", "Élagage palmiers", "Jardin médicinal créole", "Arrosage"],
-            badge: "Membre Doyen Réputé",
+            badge: "Profil vérifié", isPro: false,
             hourlyRate: "À partir de 25€/h"
         },
         {
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "sarah-29.png",
             bio: "Ménage à domicile et entretien méticuleux de votre intérieur au Moule. Ponctuelle et de confiance.",
             skills: ["Ménage régulier", "Lavage de vitres", "Repassage", "Désinfection"],
-            badge: "Membre Recommandé",
+            badge: "Profil vérifié", isPro: false,
             hourlyRate: "À partir de 20€/h"
         },
         {
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "sarah-29.png",
             bio: "Diplômée de la petite enfance. Garde bienveillante, activités créatives et aide aux devoirs.",
             skills: ["Garde périscolaire", "Bébés & Enfants", "Secourisme PSC1", "Aide aux devoirs"],
-            badge: "Nounou Vérifiée",
+            badge: "Profil vérifié", isPro: true,
             hourlyRate: "À partir de 15€/h"
         },
         {
@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "huguette-68.png",
             bio: "Accompagnement bienveillant pour personnes âgées ou en perte d'autonomie. Présence chaleureuse et aide au quotidien.",
             skills: ["Aide aux repas créoles", "Accompagnement courses", "Lecture & Compagnie", "Stimulation douce"],
-            badge: "Auxiliaire Recommandée",
+            badge: "Profil vérifié", isPro: true,
             hourlyRate: "À partir de 18€/h"
         },
 
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "sarah-29.png",
             bio: "Artisan passionnée par la beauté et la rénovation des intérieurs antillais à Fort-de-France. Garantie satisfaction !",
             skills: ["Peinture acrylique", "Coiffure & Tresses", "Ravalement", "Décoration"],
-            badge: "Artisan Vérifié",
+            badge: "Profil vérifié", isPro: true,
             hourlyRate: "Devis gratuit"
         },
         {
@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "sarah-29.png",
             bio: "Garde d'enfants en soirée et les week-ends. Jeux d'éveil, goûters et sérénité pour les parents.",
             skills: ["Soirées & Week-ends", "Jeux ludiques", "Garde à domicile", "Préparation repas"],
-            badge: "Baby-sitter Vérifiée",
+            badge: "Profil vérifié", isPro: false,
             hourlyRate: "À partir de 14€/h"
         },
         {
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "kevin-41.png",
             bio: "Polyvalent et minutieux au Lamentin pour tous vos petits travaux de maison et montages de meubles en kit.",
             skills: ["Montage meuble", "Fixation TV mural", "Pose de rideaux", "Petits dépannages"],
-            badge: "Super Bricoleur",
+            badge: "Profil vérifié", isPro: false,
             hourlyRate: "À partir de 25€/h"
         },
         {
@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "kevin-41.png",
             bio: "Pose, entretien et désinfection complète de climatiseurs Split pour particuliers et pros.",
             skills: ["Nettoyage antibactérien", "Recharge gaz", "Dépannage fuite", "Installation neuve"],
-            badge: "Climaticien Agréé",
+            badge: "Profil vérifié", isPro: true,
             hourlyRate: "À partir de 45€/h"
         },
         {
@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "huguette-68.png",
             bio: "Transmission et passion des vergers et jardins créoles à Sainte-Luce. Entretien doux, recettes traditionnelles et partage.",
             skills: ["Plantes tropicales", "Taille arbres fruitiers", "Conseils botaniques", "Cuisine créole"],
-            badge: "Membre Senior Réputé",
+            badge: "Profil vérifié", isPro: false,
             hourlyRate: "À partir de 20€/h"
         },
 
@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "kevin-41.png",
             bio: "Électricien professionnel et technicien généraliste à Cayenne. Dépannage de tableaux, éclairage et moteurs en sécurité.",
             skills: ["Habilitation électrique", "Rénovation atelier", "Dépannage d'urgence", "Objets lourds"],
-            badge: "Technicien PRO Vérifié",
+            badge: "Profil vérifié", isPro: true,
             hourlyRate: "À partir de 38€/h"
         },
         {
@@ -326,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "sarah-29.png",
             bio: "Création et rénovation d'ouvrages en bois, terrasses créoles et agencements d'intérieur à Kourou.",
             skills: ["Terrasse bois", "Pose portes/fenêtres", "Dressing sur mesure", "Réparation meuble"],
-            badge: "Artisan Bois Vérifié",
+            badge: "Profil vérifié", isPro: true,
             hourlyRate: "Devis sous 24h"
         },
 
@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "david-34.png",
             bio: "Montage de meubles, étagères, fixation, petits dépannages à Saint-Denis... Toujours avec le sourire et le soin !",
             skills: ["Montage meuble", "Fixation lourde", "Petite électricité", "Peinture retouches"],
-            badge: "Talent Recommandé",
+            badge: "Profil vérifié", isPro: false,
             hourlyRate: "À partir de 28€/h"
         },
         {
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "david-34.png",
             bio: "Entretien régulier ou ponctuel de vos jardins réunionnais, débroussaillage et taille à Saint-Paul.",
             skills: ["Débroussaillage", "Taille de haies", "Création massif fleurs", "Nettoyage terrasse"],
-            badge: "Jardinier Pro",
+            badge: "Profil vérifié", isPro: true,
             hourlyRate: "À partir de 26€/h"
         },
 
@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=400&q=80",
             bio: "Maintenance haute qualité de climatiseurs et réseaux électriques pour villas et appartements.",
             skills: ["Clim Inverter", "Maintenance préventive", "Dépannage express", "Tableau électrique"],
-            badge: "Expert Vérifié",
+            badge: "Profil vérifié", isPro: true,
             hourlyRate: "À partir de 50€/h"
         }
     ];
@@ -1419,13 +1419,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (locEl) locEl.innerHTML = `<i class="ph ph-map-pin"></i> ${member.city}, ${member.locationName}`;
         if (bioEl) bioEl.textContent = `"${member.bio}"`;
         if (rateEl) rateEl.textContent = member.hourlyRate;
-        if (badgeEl) badgeEl.textContent = `✔ ${member.badge}`;
+        // Render simplified badges (max 2)
+        if (badgeEl) {
+            let badgeHTML = '';
+            if (member.badge) badgeHTML += '<span class="badge-pill badge-verified"><i class="ph-fill ph-seal-check"></i> Profil vérifié</span>';
+            if (member.isPro) badgeHTML += ' <span class="badge-pill badge-pro">PRO</span>';
+            badgeEl.innerHTML = badgeHTML;
+        }
         if (reviewsCountEl) reviewsCountEl.textContent = member.reviewsCount;
 
-        // Recommendation count
+        // Recommendation count — check if already recommended by this user
         const currentCount = memberRecommendations[member.id] || Math.floor(member.reviewsCount * 3.5);
         if (recommendCountBadge) recommendCountBadge.textContent = currentCount;
-        if (recommendMemberBtn) recommendMemberBtn.classList.remove('liked');
+        const myRecos = JSON.parse(safeStorage.getItem('lyann_my_recommendations') || '[]');
+        if (recommendMemberBtn) {
+            if (myRecos.includes(member.id)) {
+                recommendMemberBtn.classList.add('liked');
+            } else {
+                recommendMemberBtn.classList.remove('liked');
+            }
+        }
 
         // Skills pills
         if (skillsContainer) {
@@ -1452,36 +1465,161 @@ document.addEventListener('DOMContentLoaded', () => {
             ? member.realizations
             : DEFAULT_REALIZATIONS;
 
-        publicRealizationsGrid.innerHTML = realizations.map(item => `
-            <div class="realization-card">
+        publicRealizationsGrid.innerHTML = realizations.map((item, idx) => `
+            <div class="realization-card" data-project-idx="${idx}" onclick="window.LYANN_openProjectDetail(${idx})">
                 <div class="realization-img-wrapper">
-                    <img src="${item.img}" alt="${item.title}" class="realization-img">
+                    <img src="${item.coverImg || item.img}" alt="${item.title}" class="realization-img">
                     <span class="realization-tag-city">📍 ${item.city}</span>
+                    ${(item.photos && item.photos.length > 1) ? '<span class="realization-photo-count" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:white;padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:700;"><i class="ph ph-images"></i> ' + item.photos.length + '</span>' : ''}
                 </div>
                 <div class="realization-info">
                     <h5 class="realization-title">${item.title}</h5>
+                    ${item.category ? '<span class="realization-category-pill">' + item.category + '</span>' : ''}
+                    ${item.date ? '<span class="realization-date">' + item.date + '</span>' : ''}
                     <p class="realization-desc">${item.desc}</p>
                 </div>
             </div>
         `).join('');
+
+        // Store realizations for project detail modal
+        window._currentProfileRealizations = realizations;
     }
+
+    // ===== PROJECT DETAIL MODAL (Lightbox Multi-Photos) =====
+    window.LYANN_openProjectDetail = function(idx) {
+        const realizations = window._currentProfileRealizations || DEFAULT_REALIZATIONS;
+        const project = realizations[idx];
+        if (!project) return;
+
+        const photos = project.photos || [project.coverImg || project.img];
+        let currentPhotoIdx = 0;
+
+        // Create or get overlay
+        let overlay = document.getElementById('projectDetailOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'project-detail-overlay';
+            overlay.id = 'projectDetailOverlay';
+            document.body.appendChild(overlay);
+        }
+
+        const dotsHTML = photos.map((_, i) => `<button class="carousel-dot${i === 0 ? ' active' : ''}" data-dot="${i}"></button>`).join('');
+
+        overlay.innerHTML = `
+            <div class="project-detail-card">
+                <button class="project-detail-close" id="closeProjectDetail"><i class="ph ph-x"></i></button>
+                <div class="project-carousel" id="projectCarousel">
+                    ${photos.map((p, i) => `<img src="${p}" alt="${project.title} - Photo ${i+1}" class="${i === 0 ? 'active' : ''}" data-photo-idx="${i}">`).join('')}
+                    ${photos.length > 1 ? `
+                        <button class="carousel-btn prev" id="carouselPrev"><i class="ph ph-caret-left"></i></button>
+                        <button class="carousel-btn next" id="carouselNext"><i class="ph ph-caret-right"></i></button>
+                        <div class="carousel-dots">${dotsHTML}</div>
+                    ` : ''}
+                    <span class="project-carousel-counter" id="carouselCounter">1 / ${photos.length}</span>
+                    <button class="btn-fullscreen-photo" id="btnFullscreenPhoto"><i class="ph ph-arrows-out"></i> Plein écran</button>
+                </div>
+                <div class="project-detail-body">
+                    <h3>${project.title}</h3>
+                    <div class="project-detail-meta">
+                        ${project.city ? '<span><i class="ph ph-map-pin"></i> ' + project.city + '</span>' : ''}
+                        ${project.category ? '<span><i class="ph ph-tag"></i> ' + project.category + '</span>' : ''}
+                        ${project.date ? '<span><i class="ph ph-calendar"></i> ' + project.date + '</span>' : ''}
+                    </div>
+                    <p class="project-detail-desc">${project.desc}</p>
+                </div>
+            </div>
+        `;
+
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+
+        function showPhoto(idx) {
+            currentPhotoIdx = idx;
+            overlay.querySelectorAll('.project-carousel img').forEach((img, i) => {
+                img.classList.toggle('active', i === idx);
+            });
+            overlay.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === idx);
+            });
+            const counter = overlay.querySelector('#carouselCounter');
+            if (counter) counter.textContent = (idx + 1) + ' / ' + photos.length;
+        }
+
+        // Navigation
+        const prevBtn = overlay.querySelector('#carouselPrev');
+        const nextBtn = overlay.querySelector('#carouselNext');
+        if (prevBtn) prevBtn.onclick = () => showPhoto((currentPhotoIdx - 1 + photos.length) % photos.length);
+        if (nextBtn) nextBtn.onclick = () => showPhoto((currentPhotoIdx + 1) % photos.length);
+
+        // Dots
+        overlay.querySelectorAll('.carousel-dot').forEach(dot => {
+            dot.onclick = () => showPhoto(parseInt(dot.dataset.dot));
+        });
+
+        // Swipe mobile
+        let touchStartX = 0;
+        const carousel = overlay.querySelector('#projectCarousel');
+        if (carousel) {
+            carousel.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+            carousel.addEventListener('touchend', (e) => {
+                const diff = touchStartX - e.changedTouches[0].clientX;
+                if (Math.abs(diff) > 50) {
+                    if (diff > 0) showPhoto((currentPhotoIdx + 1) % photos.length);
+                    else showPhoto((currentPhotoIdx - 1 + photos.length) % photos.length);
+                }
+            });
+        }
+
+        // Fullscreen
+        const fsBtn = overlay.querySelector('#btnFullscreenPhoto');
+        if (fsBtn) {
+            fsBtn.onclick = () => {
+                let fsOverlay = document.getElementById('fullscreenPhotoOverlay');
+                if (!fsOverlay) {
+                    fsOverlay = document.createElement('div');
+                    fsOverlay.className = 'fullscreen-photo-overlay';
+                    fsOverlay.id = 'fullscreenPhotoOverlay';
+                    document.body.appendChild(fsOverlay);
+                }
+                fsOverlay.innerHTML = '<img src="' + photos[currentPhotoIdx] + '" alt="Plein écran">';
+                fsOverlay.classList.add('active');
+                fsOverlay.onclick = () => fsOverlay.classList.remove('active');
+            };
+        }
+
+        // Close
+        overlay.querySelector('#closeProjectDetail').onclick = () => {
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        };
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+    };
 
     function renderMyDashboardRealizations() {
         const myRealizationsGrid = document.getElementById('myRealizationsGrid');
         if (!myRealizationsGrid) return;
 
-        myRealizationsGrid.innerHTML = DEFAULT_REALIZATIONS.map(item => `
-            <div class="realization-card">
+        myRealizationsGrid.innerHTML = DEFAULT_REALIZATIONS.map((item, idx) => `
+            <div class="realization-card" onclick="window.LYANN_openProjectDetail(${idx})">
                 <div class="realization-img-wrapper">
-                    <img src="${item.img}" alt="${item.title}" class="realization-img">
+                    <img src="${item.coverImg || item.img}" alt="${item.title}" class="realization-img">
                     <span class="realization-tag-city">📍 ${item.city}</span>
+                    ${(item.photos && item.photos.length > 1) ? '<span class="realization-photo-count" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:white;padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:700;"><i class="ph ph-images"></i> ' + item.photos.length + '</span>' : ''}
                 </div>
                 <div class="realization-info">
                     <h5 class="realization-title">${item.title}</h5>
+                    ${item.category ? '<span class="realization-category-pill">' + item.category + '</span>' : ''}
                     <p class="realization-desc">${item.desc}</p>
                 </div>
             </div>
         `).join('');
+
+        window._currentProfileRealizations = DEFAULT_REALIZATIONS;
     }
 
     // Attach profile click events to search results and talents cards
@@ -1507,16 +1645,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Recommend button (+1 count)
+    // Recommend button — 1 recommandation unique par utilisateur (toggle)
     if (recommendMemberBtn) {
         recommendMemberBtn.addEventListener('click', () => {
             if (!currentVisitingMember) return;
-            const currentCount = parseInt(recommendCountBadge.textContent, 10) || 100;
-            const newCount = currentCount + 1;
-            memberRecommendations[currentVisitingMember.id] = newCount;
-            recommendCountBadge.textContent = newCount;
-            recommendMemberBtn.classList.add('liked');
-            alert(`👍 Merci ! Vous avez recommandé ${currentVisitingMember.name} auprès des voisins.`);
+            
+            // Empêcher de se recommander soi-même (userId simulé = 0)
+            const simulatedUserId = 0;
+            if (currentVisitingMember.id === simulatedUserId) return;
+
+            const myRecos = JSON.parse(safeStorage.getItem('lyann_my_recommendations') || '[]');
+            let currentCount = parseInt(recommendCountBadge.textContent, 10) || 0;
+
+            if (myRecos.includes(currentVisitingMember.id)) {
+                // Déjà recommandé → retirer
+                myRecos.splice(myRecos.indexOf(currentVisitingMember.id), 1);
+                currentCount = Math.max(0, currentCount - 1);
+                memberRecommendations[currentVisitingMember.id] = currentCount;
+                recommendCountBadge.textContent = currentCount;
+                recommendMemberBtn.classList.remove('liked');
+            } else {
+                // Nouvelle recommandation
+                myRecos.push(currentVisitingMember.id);
+                currentCount++;
+                memberRecommendations[currentVisitingMember.id] = currentCount;
+                recommendCountBadge.textContent = currentCount;
+                recommendMemberBtn.classList.add('liked');
+            }
+            safeStorage.setItem('lyann_my_recommendations', JSON.stringify(myRecos));
         });
     }
 
@@ -1711,7 +1867,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (badge) {
                 let currentCount = parseInt(badge.textContent, 10) || 142;
                 badge.textContent = currentCount + 1;
-                alert('👍 Merci ! Votre recommandation a été enregistrée avec succès.');
+                // Recommendation logic handled by main recommendMemberBtn handler
             }
         });
     }
@@ -2021,13 +2177,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function attachFlashFeedListeners() {
         document.querySelectorAll('.btn-like-flash').forEach(btn => {
+            // Guard against double-binding listeners
+            if (btn.dataset.listenersBound === 'true') return;
+            btn.dataset.listenersBound = 'true';
+            
             btn.addEventListener('click', () => {
                 const countSpan = btn.querySelector('.like-count');
                 if (countSpan) {
                     let count = parseInt(countSpan.textContent) || 0;
                     if (btn.classList.contains('liked')) {
                         btn.classList.remove('liked');
-                        count--;
+                        count = Math.max(0, count - 1);
                     } else {
                         btn.classList.add('liked');
                         count++;
@@ -2579,19 +2739,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 { title: t3, percentage: p3 }
             ];
 
+            // Generate unique devis ID
+            const devisIdNum = Math.floor(Math.random() * 9000) + 1000;
+            const devisId = 'LY-' + new Date().getFullYear() + '-' + devisIdNum;
+
             const newDevisMsg = {
                 senderRole: "provider",
                 text: title,
                 type: "devis",
                 timestamp: timeNow,
                 devisData: {
+                    devisId: devisId,
                     title: title,
                     description: "Chantier à jalons multiples avec libération de fonds progressive.",
                     amount: total,
                     status: "pending",
-                    milestones: milestones
+                    currentVersion: 1,
+                    versions: [{
+                        version: 1,
+                        amount: total,
+                        milestones: milestones.map((m, i) => ({
+                            id: 'ms-' + (i + 1),
+                            title: m.title,
+                            percentage: m.percentage,
+                            amount: Math.round(total * m.percentage / 100),
+                            status: 'pending',
+                            order: i + 1
+                        })),
+                        createdAt: new Date().toISOString(),
+                        createdBy: 'provider'
+                    }],
+                    milestones: milestones.map((m, i) => ({
+                        id: 'ms-' + (i + 1),
+                        title: m.title,
+                        percentage: m.percentage,
+                        amount: Math.round(total * m.percentage / 100),
+                        status: 'pending',
+                        order: i + 1
+                    }))
                 }
             };
+
+            // Log to audit trail
+            LYANN_logDevisEvent(devisId, 'devis_created', 'provider', null, { amount: total, milestones: milestones.length });
 
             if (!convs[activeContactName]) convs[activeContactName] = [];
             convs[activeContactName].push(newDevisMsg);
@@ -2691,6 +2881,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rating = parseInt(starContainer ? (starContainer.getAttribute('data-selected-rating') || '5') : '5');
                 const comment = commentInput ? (commentInput.value.trim() || 'Prestation de très bonne qualité !') : 'Prestation de très bonne qualité !';
 
+                // Collect review photos if any
+                const photoContainer = container ? container.querySelector('.review-photos-preview') : null;
+                const reviewPhotos = [];
+                if (photoContainer) {
+                    photoContainer.querySelectorAll('img').forEach(img => reviewPhotos.push(img.src));
+                }
+
                 // Update conversation message
                 const convs = getConversations();
                 if (convs[activeContactName] && convs[activeContactName][msgIdx]) {
@@ -2698,6 +2895,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     convs[activeContactName][msgIdx].reviewData = {
                         stars: rating,
                         comment: comment,
+                        photos: reviewPhotos,
                         date: new Date().toLocaleDateString()
                     };
 
@@ -4078,4 +4276,184 @@ document.addEventListener('DOMContentLoaded', () => {
     renderFlashFeed();
     renderMyDashboardRealizations();
     updateStepUI();
+
+
+    // ==========================================================================
+    // DEVIS AUDIT TRAIL & VERSIONING SYSTEM
+    // ==========================================================================
+
+    // Audit Trail Logger
+    window.LYANN_logDevisEvent = function(devisId, action, userId, oldValue, newValue) {
+        const trail = JSON.parse(safeStorage.getItem('lyann_devis_audit_trail') || '{}');
+        if (!trail[devisId]) trail[devisId] = [];
+        trail[devisId].push({
+            action: action,
+            userId: userId,
+            timestamp: new Date().toISOString(),
+            oldValue: oldValue,
+            newValue: newValue
+        });
+        safeStorage.setItem('lyann_devis_audit_trail', JSON.stringify(trail));
+    };
+
+    // Revise Devis (provider side)
+    window.LYANN_reviseDevis = function(contactName, msgIdx, newAmount, newMilestones, motif) {
+        const convs = getConversations();
+        const msg = convs[contactName] && convs[contactName][msgIdx];
+        if (!msg || msg.type !== 'devis') return false;
+
+        const devisData = msg.devisData;
+        const oldAmount = devisData.amount;
+        const oldVersion = devisData.currentVersion || 1;
+        const newVersion = oldVersion + 1;
+
+        // Save new version
+        if (!devisData.versions) devisData.versions = [];
+        devisData.versions.push({
+            version: newVersion,
+            amount: newAmount,
+            milestones: newMilestones,
+            motif: motif,
+            createdAt: new Date().toISOString(),
+            createdBy: 'provider'
+        });
+
+        devisData.currentVersion = newVersion;
+        devisData.amount = newAmount;
+        devisData.milestones = newMilestones;
+        devisData.status = 'pending_revision';
+
+        // Add revision message to conversation
+        const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const diff = newAmount - oldAmount;
+        const diffStr = diff >= 0 ? '+' + diff.toFixed(0) + ' €' : diff.toFixed(0) + ' €';
+
+        convs[contactName].push({
+            senderRole: 'provider',
+            text: `📋 Devis révisé — ${devisData.devisId}`,
+            type: 'devis-revision',
+            timestamp: timeNow,
+            revisionData: {
+                devisId: devisData.devisId,
+                oldAmount: oldAmount,
+                newAmount: newAmount,
+                diff: diff,
+                diffStr: diffStr,
+                motif: motif,
+                version: newVersion,
+                msgIdx: msgIdx
+            }
+        });
+
+        saveConversations(convs);
+
+        // Audit trail
+        LYANN_logDevisEvent(devisData.devisId, 'devis_revised', 'provider', { amount: oldAmount, version: oldVersion }, { amount: newAmount, version: newVersion, motif: motif });
+
+        return true;
+    };
+
+    // Accept Devis Revision (client side)
+    window.LYANN_acceptRevision = function(contactName, devisMsgIdx) {
+        const convs = getConversations();
+        const msg = convs[contactName] && convs[contactName][devisMsgIdx];
+        if (!msg || msg.type !== 'devis') return;
+
+        msg.devisData.status = 'accepted';
+
+        const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        convs[contactName].push({
+            senderRole: 'client',
+            text: '✅ Nouveau devis accepté (v' + msg.devisData.currentVersion + ') — ' + msg.devisData.amount.toFixed(0) + ' €',
+            type: 'status',
+            timestamp: timeNow
+        });
+
+        saveConversations(convs);
+        LYANN_logDevisEvent(msg.devisData.devisId, 'devis_revision_accepted', 'client', null, { version: msg.devisData.currentVersion });
+
+        if (typeof renderActiveConversation === 'function') renderActiveConversation();
+    };
+
+    // Milestone Management Functions
+    window.LYANN_addMilestone = function(contactName, devisMsgIdx, milestone) {
+        const convs = getConversations();
+        const msg = convs[contactName] && convs[contactName][devisMsgIdx];
+        if (!msg || msg.type !== 'devis') return;
+
+        const ms = msg.devisData.milestones || [];
+        milestone.id = 'ms-' + (ms.length + 1);
+        milestone.status = 'pending';
+        milestone.order = ms.length + 1;
+        ms.push(milestone);
+        msg.devisData.milestones = ms;
+
+        // Recalculate total
+        msg.devisData.amount = ms.reduce((sum, m) => sum + (m.amount || 0), 0);
+        msg.devisData.status = 'pending_revision';
+
+        saveConversations(convs);
+        LYANN_logDevisEvent(msg.devisData.devisId, 'milestone_added', 'provider', null, { milestone: milestone.title, amount: milestone.amount });
+    };
+
+    window.LYANN_removeMilestone = function(contactName, devisMsgIdx, milestoneId) {
+        const convs = getConversations();
+        const msg = convs[contactName] && convs[contactName][devisMsgIdx];
+        if (!msg || msg.type !== 'devis') return false;
+
+        const ms = msg.devisData.milestones || [];
+        const msIdx = ms.findIndex(m => m.id === milestoneId);
+        if (msIdx === -1) return false;
+
+        // Protection: cannot remove paid/validated/completed milestones
+        const milestone = ms[msIdx];
+        if (['paid', 'validated', 'completed'].includes(milestone.status)) {
+            return false; // Protected milestone
+        }
+
+        ms.splice(msIdx, 1);
+        // Reorder
+        ms.forEach((m, i) => m.order = i + 1);
+        msg.devisData.milestones = ms;
+        msg.devisData.amount = ms.reduce((sum, m) => sum + (m.amount || 0), 0);
+        msg.devisData.status = 'pending_revision';
+
+        saveConversations(convs);
+        LYANN_logDevisEvent(msg.devisData.devisId, 'milestone_removed', 'provider', { milestone: milestone.title, amount: milestone.amount }, null);
+        return true;
+    };
+
+    window.LYANN_updateMilestone = function(contactName, devisMsgIdx, milestoneId, updates) {
+        const convs = getConversations();
+        const msg = convs[contactName] && convs[contactName][devisMsgIdx];
+        if (!msg || msg.type !== 'devis') return false;
+
+        const ms = msg.devisData.milestones || [];
+        const milestone = ms.find(m => m.id === milestoneId);
+        if (!milestone) return false;
+
+        // Protection: cannot modify paid/validated/completed milestones
+        if (['paid', 'validated', 'completed'].includes(milestone.status)) {
+            return false;
+        }
+
+        const oldValues = { title: milestone.title, amount: milestone.amount };
+        if (updates.title !== undefined) milestone.title = updates.title;
+        if (updates.amount !== undefined) milestone.amount = updates.amount;
+        if (updates.order !== undefined) milestone.order = updates.order;
+
+        msg.devisData.amount = ms.reduce((sum, m) => sum + (m.amount || 0), 0);
+        msg.devisData.status = 'pending_revision';
+
+        saveConversations(convs);
+        LYANN_logDevisEvent(msg.devisData.devisId, 'milestone_updated', 'provider', oldValues, updates);
+        return true;
+    };
+
+    // Get Devis Audit Trail
+    window.LYANN_getDevisAuditTrail = function(devisId) {
+        const trail = JSON.parse(safeStorage.getItem('lyann_devis_audit_trail') || '{}');
+        return trail[devisId] || [];
+    };
+
 });
