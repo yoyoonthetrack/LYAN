@@ -971,6 +971,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`Félicitations ${userSignupData.firstName || ''} ! Votre compte LYANN est prêt.`);
                 currentStep = 1;
                 updateStepUI();
+                openProfileDashboard('provider');
             } catch (err) {
                 alert('Erreur inscription : ' + err.message);
             }
@@ -1089,6 +1090,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateHeaderAuthState();
                 alert('🎉 Connexion réussie ! Bienvenue sur votre espace LYANN.');
                 closeLoginModal();
+                openProfileDashboard('provider');
             } catch (err) {
                 alert('Erreur de connexion : ' + err.message);
             }
@@ -3378,10 +3380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openAccountModalTriggers.forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            if (userAccountModal) {
-                userAccountModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
+            openProfileDashboard('provider');
         });
     });
 
