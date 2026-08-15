@@ -1525,7 +1525,7 @@
                     <!-- HEADER BAR -->
                     <div class="chat-header-bar" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
                         <div class="chat-header-user" style="display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="chat-back-to-contacts-btn" style="display: none;"><i class="ph ph-arrow-left"></i></button>
+                            <button type="button" class="chat-back-to-contacts-btn" style="display: none;"><i class="ph ph-arrow-left"></i> Contacts</button>
                             <img src="" alt="Avatar" id="chatHeaderAvatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                             <div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -1538,20 +1538,204 @@
                             </div>
                         </div>
                         <div style="display: flex; gap: 8px;" id="chatHeaderActionBtns">
+                            <button type="button" class="btn btn-outline" id="chatTrackingBtn" style="display:none; padding: 6px 12px; font-size: 0.82rem; border-radius: var(--radius-full); border-color: var(--primary);">
+                                🛠️ Suivi du chantier
+                            </button>
                             <button type="button" class="btn btn-outline" id="chatViewMissionBtn" style="display:none; padding: 6px 12px; font-size: 0.82rem; border-radius: var(--radius-full);">
                                 Voir la mission
                             </button>
+                            <button type="button" class="btn btn-lyanner" id="chatProposeBtn" style="padding: 6px 12px; font-size: 0.82rem; border-radius: var(--radius-full);">
+                                🤝 Proposer un prix
+                            </button>
                         </div>
                     </div>
+
+                    <!-- MISSION CONTEXT HEADER -->
+                    <div id="chatMissionContext" style="display: none; padding: 8px 16px; background: var(--bg-alt); border-bottom: 1px solid var(--border-light); font-size: 0.82rem; font-weight: 600; color: var(--text);"></div>
+
+                    <!-- CONTEXTUAL ACTIONS BAR (Proposer un prix, Accepter, etc.) -->
+                    <div id="chatContextualActionsBar" style="padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border-light); background: var(--bg-alt);">
+                    </div>
+
+                    <!-- DEV AI BADGE (Hidden) -->
+                    <div id="chatDevAiBadge" style="display: none;"></div>
 
                     <!-- MESSAGES WRAPPER -->
                     <div class="chat-messages-scroll" id="chatMessagesContainer" style="flex:1; overflow-y:auto; padding: 16px; display: flex; flex-direction: column; gap: 15px;">
                         <!-- Messages dynamically rendered -->
                     </div>
 
-                    <!-- CONTEXTUAL ACTIONS BAR -->
-                    <div id="chatContextualActionsBar" style="padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border-light); background: var(--bg-alt);">
-                        <!-- Buttons injected dynamically -->
+                    <!-- OVERLAY: ACTION CHOICES (DIRECT OR DETAILED DEVIS) -->
+                    <div id="chatActionChoicesOverlay" class="chat-overlay-pane" style="display: none;">
+                        <div style="padding: 20px; text-align: center;">
+                            <h4 style="font-weight: 800; margin-bottom: 15px;">Quelle prestation souhaitez-vous proposer ?</h4>
+                            <div style="display: flex; gap: 12px; justify-content: center;">
+                                <button type="button" class="btn btn-outline" id="btnChooseDirectPrice" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px;">
+                                    <strong style="display: block; font-size: 1rem;">Tarif Direct</strong>
+                                    <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">Pour les petits montants (- de 200€)</span>
+                                </button>
+                                <button type="button" class="btn btn-primary" id="btnChooseMilestoneDevis" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px; background: var(--primary);">
+                                    <strong style="display: block; font-size: 1rem; color: white;">Devis par Jalons</strong>
+                                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.9; color: white;">Étapes de chantier et paiement progressif</span>
+                                </button>
+                            </div>
+                            <button type="button" class="btn btn-outline close-overlay-btn" style="margin-top: 15px; border: none; font-size: 0.85rem;">Annuler</button>
+                        </div>
+                    </div>
+
+                    <!-- OVERLAY: DIRECT PRICE FORM -->
+                    <div id="chatDirectPriceForm" class="chat-overlay-pane" style="display: none;">
+                        <form id="directPriceForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer un Tarif Direct (-200€)</h4>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Description de la prestation</label>
+                                <input type="text" id="dpDescription" class="modal-input" placeholder="Ex: Réparation fuite évier cuisine" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant proposé (€)</label>
+                                <input type="number" id="dpAmount" class="modal-input" placeholder="Ex: 80" min="5" max="199" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Envoyer l'offre</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- OVERLAY: DETAILED DEVIS FORM -->
+                    <div id="chatMilestoneDevisForm" class="chat-overlay-pane" style="display: none;">
+                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Créer un Devis détaillé</h4>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Libellé général du chantier</label>
+                                <input type="text" id="mdTitle" class="modal-input" placeholder="Ex: Rénovation peinture salon" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant total (€)</label>
+                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="200" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            
+                            <!-- Fixed Milestones Structure for Simple/Aesthetic UX -->
+                            <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 8px; color: var(--primary-dark);">Jalons de paiement (Répartition en %)</label>
+                                
+                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 1:</span>
+                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <span style="font-size: 0.8rem;">%</span>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 2:</span>
+                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <span style="font-size: 0.8rem;">%</span>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 3:</span>
+                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <span style="font-size: 0.8rem;">%</span>
+                                </div>
+                                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des jalons doit faire 100%.</p>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Envoyer le Devis</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- OVERLAY: CHECKOUT / SECURE PAYMENT -->
+                    <div id="chatCheckoutOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
+                        <div style="padding: 20px; overflow-y: auto; max-height: 380px;">
+                            <h4 style="font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; color: var(--primary-dark);">
+                                <i class="ph ph-shield-check"></i> Paiement Sécurisé LYANN
+                            </h4>
+                            
+                            <div class="checkout-summary-box" style="background: #F9FBF9; border: 1px solid var(--border); padding: 12px; border-radius: var(--radius-md); margin-bottom: 15px; font-size: 0.88rem;">
+                                <div style="font-weight: 700; margin-bottom: 8px;" id="coPrestationTitle">Prestation</div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span>Montant des travaux :</span>
+                                    <strong id="coDevisAmount">0.00 €</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span>Frais de service Lyann (3%) :</span>
+                                    <strong id="coLyannFee">0.00 €</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem;">
+                                        <input type="checkbox" id="coAssuranceCheck" checked style="accent-color: var(--primary);">
+                                        Protection Lyann (7% - Garantie de bonne fin)
+                                    </label>
+                                    <strong id="coAssuranceFee">0.00 €</strong>
+                                </div>
+                                <div style="border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 800; font-size: 1rem; color: var(--primary-dark);">
+                                    <span>Total à régler :</span>
+                                    <span id="coTotalAmount">0.00 €</span>
+                                </div>
+                            </div>
+
+                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;">
+                                <div>
+                                    <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Numéro de carte</label>
+                                    <input type="text" class="modal-input" placeholder="4242 4242 4242 4242" required style="width: 100%; box-sizing: border-box;" value="4242 4242 4242 4242">
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Date d'expiration</label>
+                                        <input type="text" class="modal-input" placeholder="MM/AA" required style="width: 100%; box-sizing: border-box;" value="12/29">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">CVC</label>
+                                        <input type="text" class="modal-input" placeholder="123" required style="width: 100%; box-sizing: border-box;" value="123">
+                                    </div>
+                                </div>
+                                <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+                                    🔒 Cryptage SSL 256-bit • Paiement sécurisé via Stripe Connect
+                                </div>
+                                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                    <button type="button" id="btnCancelCheckout" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
+                                    <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center; background: #2E7D32;">Payer & Bloquer</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- OVERLAY: SHARED TRACKING / SUIVI DE CHANTIER -->
+                    <div id="chatTrackingOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF; flex-direction: column;">
+                        <div style="padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="font-weight: 800; margin: 0; color: var(--primary-dark);">🛠️ Suivi du chantier</h4>
+                            <button type="button" id="btnExitTracking" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.75rem; border-radius: var(--radius-sm);">Retour au chat 💬</button>
+                        </div>
+                        <div style="flex: 1; overflow-y: auto; padding: 16px;" id="trackingMilestonesList">
+                            <!-- Milestones dynamically rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
+                    <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
+                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
+                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
+                                <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve (Simulé)</label>
+                                <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
+                                    <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
+                                    <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>
+                                    <option value="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80">📸 Photo 3 - Finitions et Nettoyage</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Jalon</button>
+                            </div>
+                        </form>
                     </div>
 
                     <!-- INPUT AREA -->
