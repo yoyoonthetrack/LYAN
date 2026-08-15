@@ -128,7 +128,7 @@ async function getChatMessages(contactId) {
     }
 }
 
-window.addMessageToContact = async function (contactId, msgObj) {
+async function addMessageToContact(contactId, msgObj) {
     const userId = getMyId();
     if (userId === "me" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
         saveLocalChatMessage(contactId, msgObj);
@@ -177,6 +177,8 @@ window.addMessageToContact = async function (contactId, msgObj) {
         await renderMessages();
     }
 }
+window.addMessageToContact = addMessageToContact;
+
 window.openChatWithUser = async function (name, avatar, contactId = name) {
     const modal = document.getElementById('chatModal');
     if (!modal) {
@@ -588,33 +590,47 @@ function initChatSubmitAndContacts() {
     if (directPriceForm) {
         directPriceForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const descInput = document.getElementById('dpDescription');
-            const amountInput = document.getElementById('dpAmount');
-            const desc = descInput ? descInput.value.trim() : '';
-            const amount = amountInput ? parseFloat(amountInput.value) : 0;
+            try {
+                const descInput = document.getElementById('dpDescription');
+                const amountInput = document.getElementById('dpAmount');
+                const desc = descInput ? descInput.value.trim() : '';
+                const amount = amountInput ? parseFloat(amountInput.value) : 0;
 
-            if (!desc || isNaN(amount) || amount <= 0 || !currentChatContact) return;
+                if (!currentChatContact) {
+                    throw new Error("Aucun contact sélectionné pour la discussion.");
+                }
 
-            // Submit offer
-            await window.LYANN_API_CLIENT.mockProposePrice(getMyId(), currentChatContact.id, amount, desc);
+                if (!desc || isNaN(amount) || amount <= 0) {
+                    if (window.lyannAlert) window.lyannAlert("Veuillez remplir tous les champs correctement.");
+                    else alert("Veuillez remplir tous les champs correctement.");
+                    return;
+                }
 
-            // Add system card
-            addMessageToContact(currentChatContact.id, {
-                type: 'system_card',
-                cardType: 'PRICE_PROPOSAL',
-                sender: getMyId(),
-                amount: amount,
-                title: desc,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            });
+                // Submit offer
+                await window.LYANN_API_CLIENT.mockProposePrice(getMyId(), currentChatContact.id, amount, desc);
 
-            // Clean & close
-            if (descInput) descInput.value = '';
-            if (amountInput) amountInput.value = '';
-            closeAllOverlays();
-            refreshChatUI();
+                // Add system card
+                await addMessageToContact(currentChatContact.id, {
+                    type: 'system_card',
+                    cardType: 'PRICE_PROPOSAL',
+                    sender: getMyId(),
+                    amount: amount,
+                    title: desc,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                });
 
-            window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId: 'PROPOSE_PRICE', contactId: currentChatContact.id } }));
+                // Clean & close
+                if (descInput) descInput.value = '';
+                if (amountInput) amountInput.value = '';
+                closeAllOverlays();
+                refreshChatUI();
+
+                window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId: 'PROPOSE_PRICE', contactId: currentChatContact.id } }));
+            } catch (err) {
+                console.error("Error in directPriceForm submit:", err);
+                if (window.lyannAlert) window.lyannAlert("Erreur lors de l'envoi de l'offre : " + err.message);
+                else alert("Erreur lors de l'envoi de l'offre : " + err.message);
+            }
         });
     }
 
@@ -623,42 +639,58 @@ function initChatSubmitAndContacts() {
     if (milestoneDevisForm) {
         milestoneDevisForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const titleInput = document.getElementById('mdTitle');
-            const totalInput = document.getElementById('mdTotalAmount');
-            const title = titleInput ? titleInput.value.trim() : '';
-            const total = totalInput ? parseFloat(totalInput.value) : 0;
+            try {
+                const titleInput = document.getElementById('mdTitle');
+                const totalInput = document.getElementById('mdTotalAmount');
+                const title = titleInput ? titleInput.value.trim() : '';
+                const total = totalInput ? parseFloat(totalInput.value) : 0;
 
-            const p1 = parseInt(document.getElementById('mdJ1Percent')?.value) || 0;
-            const p2 = parseInt(document.getElementById('mdJ2Percent')?.value) || 0;
-            const p3 = parseInt(document.getElementById('mdJ3Percent')?.value) || 0;
+                const p1 = parseInt(document.getElementById('mdJ1Percent')?.value) || 0;
+                const p2 = parseInt(document.getElementById('mdJ2Percent')?.value) || 0;
+                const p3 = parseInt(document.getElementById('mdJ3Percent')?.value) || 0;
 
-            if (!title || isNaN(total) || total <= 0 || !currentChatContact) return;
+                if (!currentChatContact) {
+                    throw new Error("Aucun contact sélectionné pour la discussion.");
+                }
 
-            if (p1 + p2 + p3 !== 100) {
-                window.lyannAlert("⚠️ Erreur : La somme des pourcentages des jalons doit être exactement égale à 100%. (Actuellement : " + (p1+p2+p3) + "%)");
-                return;
+                if (!title || isNaN(total) || total <= 0) {
+                    if (window.lyannAlert) window.lyannAlert("Veuillez remplir tous les champs correctement.");
+                    else alert("Veuillez remplir tous les champs correctement.");
+                    return;
+                }
+
+                if (p1 + p2 + p3 !== 100) {
+                    const msg = "⚠️ Erreur : La somme des pourcentages des jalons doit être exactement égale à 100%. (Actuellement : " + (p1+p2+p3) + "%)";
+                    if (window.lyannAlert) window.lyannAlert(msg);
+                    else alert(msg);
+                    return;
+                }
+
+                // Propose Devis total
+                await window.LYANN_API_CLIENT.mockProposePrice(getMyId(), currentChatContact.id, total, title);
+
+                // Add system card
+                await addMessageToContact(currentChatContact.id, {
+                    type: 'system_card',
+                    cardType: 'PRICE_PROPOSAL',
+                    sender: getMyId(),
+                    amount: total,
+                    title: `${title} (Devis à Jalons)`,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                });
+
+                // Clean & close
+                if (titleInput) titleInput.value = '';
+                if (totalInput) totalInput.value = '';
+                closeAllOverlays();
+                refreshChatUI();
+
+                window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId: 'PROPOSE_PRICE', contactId: currentChatContact.id } }));
+            } catch (err) {
+                console.error("Error in milestoneDevisForm submit:", err);
+                if (window.lyannAlert) window.lyannAlert("Erreur lors de l'envoi du devis : " + err.message);
+                else alert("Erreur lors de l'envoi du devis : " + err.message);
             }
-
-            // Propose Devis total
-            await window.LYANN_API_CLIENT.mockProposePrice(getMyId(), currentChatContact.id, total, title);
-
-            // Add system card
-            addMessageToContact(currentChatContact.id, {
-                type: 'system_card',
-                cardType: 'PRICE_PROPOSAL',
-                sender: getMyId(),
-                amount: total,
-                title: `${title} (Devis à Jalons)`,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            });
-
-            // Clean & close
-            if (titleInput) titleInput.value = '';
-            if (totalInput) totalInput.value = '';
-            closeAllOverlays();
-            refreshChatUI();
-
-            window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId: 'PROPOSE_PRICE', contactId: currentChatContact.id } }));
         });
     }
 
