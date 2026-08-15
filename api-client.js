@@ -8,6 +8,11 @@ const SUPABASE_URL = 'https://gzispjfoywklpqatjyop.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6aXNwamZveXdrbHBxYXRqeW9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0MTE4ODcsImV4cCI6MjEwMTk4Nzg4N30.oPJvkDVffQ4EaxDy2V7Jj7veusCVGTnM2BUBKXnoQ0A';
 
 let supabase;
+function isUUID(str) {
+    if (typeof str !== 'string') return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+}
 if (window.supabase) {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log("⚡ Supabase client initialized.");
@@ -137,94 +142,244 @@ const LYANN_API_CLIENT = {
     // Gets the active mission between two users
     
     async getActiveMissionBetween(userId1, userId2) {
-        if (!this.supabase) return null;
-        // Supabase doesn't have an easy OR inside EQ for two columns, so we use string OR
-        const { data, error } = await this.supabase
-            .from('missions')
-            .select('*')
-            .or(`and(requester_id.eq.${userId1},helper_id.eq.${userId2}),and(requester_id.eq.${userId2},helper_id.eq.${userId1})`)
-            .order('created_at', { ascending: false })
-            .limit(1);
-        
-        if (error) {
-            console.error(error);
-            return null;
+        if (!isUUID(userId1) || !isUUID(userId2) || !this.supabase) {
+            const missions = getMockMissions();
+            const matched = missions.filter(m => 
+                (m.requester_id === userId1 && m.helper_id === userId2) ||
+                (m.requester_id === userId2 && m.helper_id === userId1)
+            );
+            return matched.length > 0 ? matched[matched.length - 1] : null;
         }
-        return data && data.length > 0 ? data[0] : null;
+        try {
+            const { data, error } = await this.supabase
+                .from('missions')
+                .select('*')
+                .or(`and(requester_id.eq.${userId1},helper_id.eq.${userId2}),and(requester_id.eq.${userId2},helper_id.eq.${userId1})`)
+                .order('created_at', { ascending: false })
+                .limit(1);
+            if (error) throw error;
+            return data && data.length > 0 ? data[0] : null;
+        } catch (e) {
+            console.warn("Supabase active mission fetch failed, falling back to local:", e);
+            const missions = getMockMissions();
+            const matched = missions.filter(m => 
+                (m.requester_id === userId1 && m.helper_id === userId2) ||
+                (m.requester_id === userId2 && m.helper_id === userId1)
+            );
+            return matched.length > 0 ? matched[matched.length - 1] : null;
+        }
     },
 
-
-    
     async mockProposePrice(proposerId, receiverId, amount, description) {
-        if (!this.supabase) return null;
-        let mission = await this.getActiveMissionBetween(proposerId, receiverId);
+        if (!isUUID(proposerId) || !isUUID(receiverId) || !this.supabase) {
+            const missions = getMockMissions();
+            let mission = missions.find(m => 
+                (m.requester_id === proposerId && m.helper_id === receiverId) ||
+                (m.requester_id === receiverId && m.helper_id === proposerId)
+            );
 
-        if (!mission || mission.status === 'COMPLETED' || mission.status === 'CANCELLED') {
-            const { data, error } = await this.supabase.from('missions').insert({
-                requester_id: receiverId, 
-                helper_id: proposerId,    
-                title: description || "Service demandé",
-                agreed_price: amount,
-                status: 'PROPOSED',
-                proposed_by: proposerId
-            }).select().single();
-            if (error) console.error(error);
-            return data;
-        } else {
-            const { data, error } = await this.supabase.from('missions').update({
-                agreed_price: amount,
-                status: 'PROPOSED',
-                proposed_by: proposerId,
-                title: description || mission.title
-            }).eq('id', mission.id).select().single();
-            if (error) console.error(error);
-            return data;
+            if (!mission || mission.status === 'COMPLETED' || mission.status === 'CANCELLED') {
+                mission = {
+                    id: generateId(),
+                    requester_id: receiverId,
+                    helper_id: proposerId,
+                    title: description || "Service demandé",
+                    agreed_price: amount,
+                    status: 'PROPOSED',
+                    proposed_by: proposerId
+                };
+                missions.push(mission);
+            } else {
+                mission.agreed_price = amount;
+                mission.status = 'PROPOSED';
+                mission.proposed_by = proposerId;
+                mission.title = description || mission.title;
+            }
+            saveMockMissions(missions);
+            return mission;
+        }
+        try {
+            let mission = await this.getActiveMissionBetween(proposerId, receiverId);
+            if (!mission || mission.status === 'COMPLETED' || mission.status === 'CANCELLED') {
+                const { data, error } = await this.supabase.from('missions').insert({
+                    requester_id: receiverId, 
+                    helper_id: proposerId,    
+                    title: description || "Service demandé",
+                    agreed_price: amount,
+                    status: 'PROPOSED',
+                    proposed_by: proposerId
+                }).select().single();
+                if (error) throw error;
+                return data;
+            } else {
+                const { data, error } = await this.supabase.from('missions').update({
+                    agreed_price: amount,
+                    status: 'PROPOSED',
+                    proposed_by: proposerId,
+                    title: description || mission.title
+                }).eq('id', mission.id).select().single();
+                if (error) throw error;
+                return data;
+            }
+        } catch (e) {
+            console.warn("Supabase mockProposePrice failed, falling back to local:", e);
+            const missions = getMockMissions();
+            let mission = missions.find(m => 
+                (m.requester_id === proposerId && m.helper_id === receiverId) ||
+                (m.requester_id === receiverId && m.helper_id === proposerId)
+            );
+            if (!mission || mission.status === 'COMPLETED' || mission.status === 'CANCELLED') {
+                mission = {
+                    id: generateId(),
+                    requester_id: receiverId,
+                    helper_id: proposerId,
+                    title: description || "Service demandé",
+                    agreed_price: amount,
+                    status: 'PROPOSED',
+                    proposed_by: proposerId
+                };
+                missions.push(mission);
+            } else {
+                mission.agreed_price = amount;
+                mission.status = 'PROPOSED';
+                mission.proposed_by = proposerId;
+                mission.title = description || mission.title;
+            }
+            saveMockMissions(missions);
+            return mission;
         }
     },
 
-
-    
-    async mockAcceptPrice(missionId, ...args) {
-        if (!this.supabase) return null;
-        const { data, error } = await this.supabase.from('missions').update({ status: 'AGREED' }).eq('id', missionId).select().single();
-        if (error) console.error(error);
-        return data;
+    async mockAcceptPrice(missionId, userId) {
+        if (!isUUID(missionId) || !this.supabase) {
+            const missions = getMockMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'AGREED';
+                saveMockMissions(missions);
+            }
+            return mission;
+        }
+        try {
+            const { data, error } = await this.supabase.from('missions').update({ status: 'AGREED' }).eq('id', missionId).select().single();
+            if (error) throw error;
+            return data;
+        } catch (e) {
+            console.warn("Supabase mockAcceptPrice failed, falling back to local:", e);
+            const missions = getMockMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'AGREED';
+                saveMockMissions(missions);
+            }
+            return mission;
+        }
     },
 
-
-    
-    async mockPayMission(missionId, ...args) {
-        if (!this.supabase) return null;
-        const { data, error } = await this.supabase.from('missions').update({ status: 'IN_PROGRESS', payment_status: 'PAID_ESCROW' }).eq('id', missionId).select().single();
-        if (error) console.error(error);
-        return data;
+    async mockPayMission(missionId) {
+        if (!isUUID(missionId) || !this.supabase) {
+            const missions = getMockMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'IN_PROGRESS';
+                mission.payment_status = 'PAID_ESCROW';
+                saveMockMissions(missions);
+            }
+            return mission;
+        }
+        try {
+            const { data, error } = await this.supabase.from('missions').update({ status: 'IN_PROGRESS', payment_status: 'PAID_ESCROW' }).eq('id', missionId).select().single();
+            if (error) throw error;
+            return data;
+        } catch (e) {
+            console.warn("Supabase mockPayMission failed, falling back to local:", e);
+            const missions = getMockMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'IN_PROGRESS';
+                mission.payment_status = 'PAID_ESCROW';
+                saveMockMissions(missions);
+            }
+            return mission;
+        }
     },
 
-
-    
-    async mockMarkMissionDone(missionId, ...args) {
-        if (!this.supabase) return null;
-        const { data, error } = await this.supabase.from('missions').update({ status: 'WORK_MARKED_COMPLETE' }).eq('id', missionId).select().single();
-        if (error) console.error(error);
-        return data;
+    async mockMarkMissionDone(missionId) {
+        if (!isUUID(missionId) || !this.supabase) {
+            const missions = getMockMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'WORK_MARKED_COMPLETE';
+                saveMockMissions(missions);
+            }
+            return mission;
+        }
+        try {
+            const { data, error } = await this.supabase.from('missions').update({ status: 'WORK_MARKED_COMPLETE' }).eq('id', missionId).select().single();
+            if (error) throw error;
+            return data;
+        } catch (e) {
+            console.warn("Supabase mockMarkMissionDone failed, falling back to local:", e);
+            const missions = getMockMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'WORK_MARKED_COMPLETE';
+                saveMockMissions(missions);
+            }
+            return mission;
+        }
     },
 
-
-    
-    async mockConfirmMissionCompletion(missionId, ...args) {
-        if (!this.supabase) return null;
-        const { data, error } = await this.supabase.from('missions').update({ status: 'COMPLETED' }).eq('id', missionId).select().single();
-        if (error) console.error(error);
-        return data;
+    async mockConfirmMissionCompletion(missionId) {
+        if (!isUUID(missionId) || !this.supabase) {
+            const missions = getMockMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'COMPLETED';
+                saveMockMissions(missions);
+            }
+            return mission;
+        }
+        try {
+            const { data, error } = await this.supabase.from('missions').update({ status: 'COMPLETED' }).eq('id', missionId).select().single();
+            if (error) throw error;
+            return data;
+        } catch (e) {
+            console.warn("Supabase mockConfirmMissionCompletion failed, falling back to local:", e);
+            const missions = getMockMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'COMPLETED';
+                saveMockMissions(missions);
+            }
+            return mission;
+        }
     },
 
-
-    
-    async mockReportProblem(missionId, ...args) {
-        if (!this.supabase) return null;
-        const { data, error } = await this.supabase.from('missions').update({ status: 'DISPUTE' }).eq('id', missionId).select().single();
-        if (error) console.error(error);
-        return data;
+    async mockReportProblem(missionId) {
+        if (!isUUID(missionId) || !this.supabase) {
+            const missions = getMockMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'DISPUTE';
+                saveMockMissions(missions);
+            }
+            return mission;
+        }
+        try {
+            const { data, error } = await this.supabase.from('missions').update({ status: 'DISPUTE' }).eq('id', missionId).select().single();
+            if (error) throw error;
+            return data;
+        } catch (e) {
+            console.warn("Supabase mockReportProblem failed, falling back to local:", e);
+            const missions = getMockMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (mission) {
+                mission.status = 'DISPUTE';
+                saveMockMissions(missions);
+            }
+            return mission;
+        }
     },
 
 
