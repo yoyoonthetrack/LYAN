@@ -369,54 +369,83 @@
         { name: "Yveline Placide", age: 30, role: "Voisine solidaire", cat: "citoyen", city: "Saint-Jean", loc: "saint-martin", locName: "St-Martin / St-Barth", rate: "N/A", img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80", bio: "Habitante de Saint-Jean. Disponible pour aider à garder des animaux ou faire les courses de temps en temps.", skills: ["Garde chat", "Entraide", "Voisins"] }
     ];
 
-    const menAvatars = [
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1489980508314-941910ded1f4?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1530268729831-4b0b9e170218?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1512485694743-9c9538b4e6e0?auto=format&fit=crop&w=150&q=80"
-    ];
+    const memberOverrides = [
+        // 2 CHINESE (5%)
+        { name: "Mei-Ling Wong", age: 31, avatar: "https://images.unsplash.com/photo-1541823709867-1b206113e597?auto=format&fit=crop&w=150&q=80" },
+        { name: "Julien Wong", age: 29, avatar: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=150&q=80" },
 
-    const womenAvatars = [
-        "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1542206395-9feb3edaa68d?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1509305717901-8414512c868f?auto=format&fit=crop&w=150&q=80",
-        "https://images.unsplash.com/photo-1523824921871-d6f1a15151f1?auto=format&fit=crop&w=150&q=80"
-    ];
+        // 3 INDIAN (5%)
+        { name: "Ramesh Rangasamy", age: 42, avatar: "https://images.unsplash.com/photo-1607990283143-e81e7a2c93ab?auto=format&fit=crop&w=150&q=80" },
+        { name: "Devi Rangasamy", age: 35, avatar: "https://images.unsplash.com/photo-1602491453631-e2a5ad90a131?auto=format&fit=crop&w=150&q=80" },
+        { name: "Sanjay Rangasamy", age: 50, avatar: "https://images.unsplash.com/photo-1598257006458-087169a1f08d?auto=format&fit=crop&w=150&q=80" },
 
-    const maleFirstNames = ["Jocelyn", "Hugues", "Marius", "Thierry", "Ludovic", "Rodrigue", "Fabrice", "Wilfrid", "Lucien", "Albert", "Gérard", "Guy-Albert", "Firmin", "Martial", "Aimé", "Pascal", "Max", "Charles", "Georges", "Henri", "René", "Gaston", "Bruno", "Gilbert", "Raymond", "Serge"];
+        // 5 WHITE (10%)
+        { name: "Mathilde Aubry", age: 28, avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&q=80" },
+        { name: "Sébastien Gautier", age: 34, avatar: "https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=150&q=80" },
+        { name: "Benoît de Jaham", age: 42, avatar: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&w=150&q=80" },
+        { name: "Claire Huyghues-Despointes", age: 55, avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80" },
+        { name: "Pierre-Yves Lemoine", age: 45, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" },
+
+        // 40 BLACK (80%) - MEN
+        { name: "Jocelyn Cabort", age: 52, avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" },
+        { name: "Hugues Zami", age: 45, avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80" },
+        { name: "Marius Placide", age: 29, avatar: "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=150&q=80" },
+        { name: "Thierry Vindex", age: 34, avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80" },
+        { name: "Ludovic Clamy", age: 25, avatar: "https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4?auto=format&fit=crop&w=150&q=80" },
+        { name: "Rodrigue Marie-Joseph", age: 31, avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=150&q=80" },
+        { name: "Fabrice Létang", age: 40, avatar: "https://images.unsplash.com/photo-1512485694743-9c9538b4e6e0?auto=format&fit=crop&w=150&q=80" },
+        { name: "Wilfrid Rapon", age: 37, avatar: "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?auto=format&fit=crop&w=150&q=80" },
+        { name: "Lucien Cabort", age: 48, avatar: "https://images.unsplash.com/photo-1489980508314-941910ded1f4?auto=format&fit=crop&w=150&q=80" },
+        { name: "Albert Lise", age: 65, avatar: "https://images.unsplash.com/photo-1530268729831-4b0b9e170218?auto=format&fit=crop&w=150&q=80" },
+        { name: "Gérard Zami", age: 55, avatar: "https://images.unsplash.com/photo-1514543258389-c5a2817e5752?auto=format&fit=crop&w=150&q=80" },
+        { name: "Guy-Albert Gace", age: 39, avatar: "https://images.unsplash.com/photo-1496345875659-11f7dd282d1d?auto=format&fit=crop&w=150&q=80" },
+        { name: "Firmin Monlouis", age: 51, avatar: "https://images.unsplash.com/photo-1520155707335-10b7b1ce2b14?auto=format&fit=crop&w=150&q=80" },
+        { name: "Martial Tinaut", age: 33, avatar: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=150&q=80" },
+        { name: "Aimé Zéphir", age: 46, avatar: "https://images.unsplash.com/photo-1534312527009-56c7016453e6?auto=format&fit=crop&w=150&q=80" },
+        { name: "Pascal Agathe", age: 43, avatar: "https://images.unsplash.com/photo-1522384908269-26615b1404ac?auto=format&fit=crop&w=150&q=80" },
+        { name: "Max Hoarau", age: 42, avatar: "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=150&q=80" },
+        { name: "Charles Payet", age: 36, avatar: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80" },
+        { name: "Georges Payet", age: 48, avatar: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=150&q=80" },
+        { name: "Henri Payet", age: 60, avatar: "https://images.unsplash.com/photo-1579038773863-c05000830627?auto=format&fit=crop&w=150&q=80" },
+
+        // 40 BLACK (80%) - WOMEN
+        { name: "Murielle Placide", age: 38, avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=150&q=80" },
+        { name: "Clotilde Belair", age: 61, avatar: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&w=150&q=80" },
+        { name: "Chantal Gendrey", age: 47, avatar: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=150&q=80" },
+        { name: "Mireille Sapotille", age: 54, avatar: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80" },
+        { name: "Ghislaine Rosalie", age: 50, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" },
+        { name: "Christiane Fostin", age: 58, avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=150&q=80" },
+        { name: "Roselyne Dacosta", age: 32, avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80" },
+        { name: "Yveline Rosalie", age: 23, avatar: "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=150&q=80" },
+        { name: "Francine Moutoussamy", age: 44, avatar: "https://images.unsplash.com/photo-1542206395-9feb3edaa68d?auto=format&fit=crop&w=150&q=80" },
+        { name: "Solange Silvestre", age: 28, avatar: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=150&q=80" },
+        { name: "Monique Carpin", age: 59, avatar: "https://images.unsplash.com/photo-1509305717901-8414512c868f?auto=format&fit=crop&w=150&q=80" },
+        { name: "Ginette Tacite", age: 64, avatar: "https://images.unsplash.com/photo-1523824921871-d6f1a15151f1?auto=format&fit=crop&w=150&q=80" },
+        { name: "Josiane Périac", age: 24, avatar: "https://images.unsplash.com/photo-1534751516642-a131ffd10b7f?auto=format&fit=crop&w=150&q=80" },
+        { name: "Sylviane Lurel", age: 53, avatar: "https://images.unsplash.com/photo-1525134479668-1bee5c7c684a?auto=format&fit=crop&w=150&q=80" },
+        { name: "Eliane Hoarau", age: 49, avatar: "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=150&q=80" },
+        { name: "Patricia Grondin", age: 57, avatar: "https://images.unsplash.com/photo-1515023115689-589c33041d3c?auto=format&fit=crop&w=150&q=80" },
+        { name: "Nicole Payet", age: 33, avatar: "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&w=150&q=80" },
+        { name: "Claudette Payet", age: 25, avatar: "https://images.unsplash.com/photo-1598550476439-6847785fce6e?auto=format&fit=crop&w=150&q=80" },
+        { name: "Yolande Payet", age: 45, avatar: "https://images.unsplash.com/photo-1601412436009-d964bd02edbc?auto=format&fit=crop&w=150&q=80" },
+        { name: "Marcelle Placide", age: 54, avatar: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=150&q=80" }
+    ];
 
     const additionalMembers = ADDITIONAL_MEMBERS_DATA.map((m, index) => {
-        const firstName = m.name.split(' ')[0];
-        const isMale = maleFirstNames.includes(firstName);
-        const avatarPool = isMale ? menAvatars : womenAvatars;
-        const avatarUrl = avatarPool[index % avatarPool.length];
+        const override = memberOverrides[index % memberOverrides.length];
 
         return {
             id: 200 + index,
-            name: `${m.name} (${m.age} ans)`,
+            name: `${override.name} (${override.age} ans)`,
             role: m.role,
             category: m.cat,
-            keywords: [m.cat, m.role.toLowerCase(), m.city.toLowerCase(), m.name.toLowerCase(), ...m.skills.map(s => s.toLowerCase())],
+            keywords: [m.cat, m.role.toLowerCase(), m.city.toLowerCase(), override.name.toLowerCase(), ...m.skills.map(s => s.toLowerCase())],
             location: m.loc,
             locationName: m.locName,
             city: m.city,
             rating: +(4.5 + Math.random() * 0.5).toFixed(1),
             reviewsCount: Math.floor(5 + Math.random() * 45),
-            avatar: avatarUrl,
+            avatar: override.avatar,
             bio: m.bio,
             skills: m.skills,
             badge: m.cat === 'citoyen' ? "Voisin Solidaire" : "Lyanneur Vérifié",
