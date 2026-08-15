@@ -370,65 +370,110 @@
     ];
 
     const memberOverrides = [
-        // 2 CHINESE (5%)
-        { name: "Mei-Ling Wong", age: 31, avatar: "https://images.unsplash.com/photo-1541823709867-1b206113e597?auto=format&fit=crop&w=150&q=80" },
-        { name: "Julien Wong", age: 29, avatar: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=150&q=80" },
-
-        // 3 INDIAN (5%)
-        { name: "Ramesh Rangasamy", age: 42, avatar: "https://images.unsplash.com/photo-1607990283143-e81e7a2c93ab?auto=format&fit=crop&w=150&q=80" },
-        { name: "Devi Rangasamy", age: 35, avatar: "https://images.unsplash.com/photo-1602491453631-e2a5ad90a131?auto=format&fit=crop&w=150&q=80" },
-        { name: "Sanjay Rangasamy", age: 50, avatar: "https://images.unsplash.com/photo-1598257006458-087169a1f08d?auto=format&fit=crop&w=150&q=80" },
-
-        // 5 WHITE (10%)
-        { name: "Mathilde Aubry", age: 28, avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&q=80" },
-        { name: "Sébastien Gautier", age: 34, avatar: "https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=150&q=80" },
-        { name: "Benoît de Jaham", age: 42, avatar: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&w=150&q=80" },
-        { name: "Claire Huyghues-Despointes", age: 55, avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80" },
-        { name: "Pierre-Yves Lemoine", age: 45, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" },
-
-        // 40 BLACK (80%) - MEN
+        // Index 0: Jocelyn Cabort (m, 52) - Plomberie (Black)
         { name: "Jocelyn Cabort", age: 52, avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" },
+        // Index 1: Hugues Zami (m, 45) - Climatisation (Black)
         { name: "Hugues Zami", age: 45, avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80" },
-        { name: "Marius Placide", age: 29, avatar: "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=150&q=80" },
-        { name: "Thierry Vindex", age: 34, avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80" },
-        { name: "Ludovic Clamy", age: 25, avatar: "https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4?auto=format&fit=crop&w=150&q=80" },
-        { name: "Rodrigue Marie-Joseph", age: 31, avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=150&q=80" },
-        { name: "Fabrice Létang", age: 40, avatar: "https://images.unsplash.com/photo-1512485694743-9c9538b4e6e0?auto=format&fit=crop&w=150&q=80" },
-        { name: "Wilfrid Rapon", age: 37, avatar: "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?auto=format&fit=crop&w=150&q=80" },
-        { name: "Lucien Cabort", age: 48, avatar: "https://images.unsplash.com/photo-1489980508314-941910ded1f4?auto=format&fit=crop&w=150&q=80" },
-        { name: "Albert Lise", age: 65, avatar: "https://images.unsplash.com/photo-1530268729831-4b0b9e170218?auto=format&fit=crop&w=150&q=80" },
-        { name: "Gérard Zami", age: 55, avatar: "https://images.unsplash.com/photo-1514543258389-c5a2817e5752?auto=format&fit=crop&w=150&q=80" },
-        { name: "Guy-Albert Gace", age: 39, avatar: "https://images.unsplash.com/photo-1496345875659-11f7dd282d1d?auto=format&fit=crop&w=150&q=80" },
-        { name: "Firmin Monlouis", age: 51, avatar: "https://images.unsplash.com/photo-1520155707335-10b7b1ce2b14?auto=format&fit=crop&w=150&q=80" },
-        { name: "Martial Tinaut", age: 33, avatar: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=150&q=80" },
-        { name: "Aimé Zéphir", age: 46, avatar: "https://images.unsplash.com/photo-1534312527009-56c7016453e6?auto=format&fit=crop&w=150&q=80" },
-        { name: "Pascal Agathe", age: 43, avatar: "https://images.unsplash.com/photo-1522384908269-26615b1404ac?auto=format&fit=crop&w=150&q=80" },
-        { name: "Max Hoarau", age: 42, avatar: "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=150&q=80" },
-        { name: "Charles Payet", age: 36, avatar: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80" },
-        { name: "Georges Payet", age: 48, avatar: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=150&q=80" },
-        { name: "Henri Payet", age: 60, avatar: "https://images.unsplash.com/photo-1579038773863-c05000830627?auto=format&fit=crop&w=150&q=80" },
-
-        // 40 BLACK (80%) - WOMEN
-        { name: "Murielle Placide", age: 38, avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=150&q=80" },
-        { name: "Clotilde Belair", age: 61, avatar: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&w=150&q=80" },
+        // Index 2: Murielle Placide (f, 38) - Ménage (Chinese)
+        { name: "Mei-Ling Wong", age: 38, avatar: "https://images.unsplash.com/photo-1541823709867-1b206113e597?auto=format&fit=crop&w=150&q=80" },
+        // Index 3: Clotilde Belair (f, 61) - Aide Seniors (Black)
+        { name: "Clotilde Belair", age: 61, avatar: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80" },
+        // Index 4: Marius Placide (m, 29) - Bricolage (Indian)
+        { name: "Ramesh Rangasamy", age: 29, avatar: "https://images.unsplash.com/photo-1607990283143-e81e7a2c93ab?auto=format&fit=crop&w=150&q=80" },
+        // Index 5: Thierry Vindex (m, 34) - Peinture (White)
+        { name: "Sébastien Gautier", age: 34, avatar: "https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=150&q=80" },
+        // Index 6: Chantal Gendrey (f, 47) - Baby-sitting (Black)
         { name: "Chantal Gendrey", age: 47, avatar: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=150&q=80" },
-        { name: "Mireille Sapotille", age: 54, avatar: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80" },
-        { name: "Ghislaine Rosalie", age: 50, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" },
-        { name: "Christiane Fostin", age: 58, avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=150&q=80" },
-        { name: "Roselyne Dacosta", age: 32, avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80" },
-        { name: "Yveline Rosalie", age: 23, avatar: "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=150&q=80" },
-        { name: "Francine Moutoussamy", age: 44, avatar: "https://images.unsplash.com/photo-1542206395-9feb3edaa68d?auto=format&fit=crop&w=150&q=80" },
-        { name: "Solange Silvestre", age: 28, avatar: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=150&q=80" },
-        { name: "Monique Carpin", age: 59, avatar: "https://images.unsplash.com/photo-1509305717901-8414512c868f?auto=format&fit=crop&w=150&q=80" },
-        { name: "Ginette Tacite", age: 64, avatar: "https://images.unsplash.com/photo-1523824921871-d6f1a15151f1?auto=format&fit=crop&w=150&q=80" },
-        { name: "Josiane Périac", age: 24, avatar: "https://images.unsplash.com/photo-1534751516642-a131ffd10b7f?auto=format&fit=crop&w=150&q=80" },
-        { name: "Sylviane Lurel", age: 53, avatar: "https://images.unsplash.com/photo-1525134479668-1bee5c7c684a?auto=format&fit=crop&w=150&q=80" },
-        { name: "Eliane Hoarau", age: 49, avatar: "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=150&q=80" },
-        { name: "Patricia Grondin", age: 57, avatar: "https://images.unsplash.com/photo-1515023115689-589c33041d3c?auto=format&fit=crop&w=150&q=80" },
-        { name: "Nicole Payet", age: 33, avatar: "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&w=150&q=80" },
-        { name: "Claudette Payet", age: 25, avatar: "https://images.unsplash.com/photo-1598550476439-6847785fce6e?auto=format&fit=crop&w=150&q=80" },
-        { name: "Yolande Payet", age: 45, avatar: "https://images.unsplash.com/photo-1601412436009-d964bd02edbc?auto=format&fit=crop&w=150&q=80" },
-        { name: "Marcelle Placide", age: 54, avatar: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=150&q=80" }
+        // Index 7: Ludovic Clamy (m, 25) - Jardinage (Chinese)
+        { name: "Julien Wong", age: 25, avatar: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=150&q=80" },
+        // Index 8: Mireille Sapotille (f, 54) - Citoyenne (Black)
+        { name: "Mireille Sapotille", age: 54, avatar: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&w=150&q=80" },
+        // Index 9: Rodrigue Marie-Joseph (m, 31) - Menuiserie (Black)
+        { name: "Rodrigue Marie-Joseph", age: 31, avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80" },
+
+        // Index 10: Fabrice Létang (m, 40) - Électricité (Black)
+        { name: "Fabrice Létang", age: 40, avatar: "https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4?auto=format&fit=crop&w=150&q=80" },
+        // Index 11: Ghislaine Rosalie (f, 50) - Aide Seniors (Indian)
+        { name: "Devi Rangasamy", age: 50, avatar: "https://images.unsplash.com/photo-1602491453631-e2a5ad90a131?auto=format&fit=crop&w=150&q=80" },
+        // Index 12: Wilfrid Rapon (m, 37) - Jardinier (Black)
+        { name: "Wilfrid Rapon", age: 37, avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=150&q=80" },
+        // Index 13: Christiane Fostin (f, 58) - Citoyenne (White)
+        { name: "Claire Huyghues-Despointes", age: 58, avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80" },
+        // Index 14: Lucien Cabort (m, 48) - Bricolage (White)
+        { name: "Benoît de Jaham", age: 48, avatar: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&w=150&q=80" },
+        // Index 15: Roselyne Dacosta (f, 32) - Citoyenne (Black)
+        { name: "Roselyne Dacosta", age: 32, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" },
+        // Index 16: Albert Lise (m, 65) - Cuisine (Indian)
+        { name: "Sanjay Rangasamy", age: 65, avatar: "https://images.unsplash.com/photo-1598257006458-087169a1f08d?auto=format&fit=crop&w=150&q=80" },
+        // Index 17: Yveline Rosalie (f, 23) - Baby-sitting (White)
+        { name: "Mathilde Aubry", age: 23, avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&q=80" },
+        // Index 18: Gérard Zami (m, 55) - Plomberie (Black)
+        { name: "Gérard Zami", age: 55, avatar: "https://images.unsplash.com/photo-1512485694743-9c9538b4e6e0?auto=format&fit=crop&w=150&q=80" },
+        // Index 19: Francine Moutoussamy (f, 44) - Couture (Black)
+        { name: "Francine Moutoussamy", age: 44, avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=150&q=80" },
+
+        // Index 20: Guy-Albert Gace (m, 39) - Électricien (White)
+        { name: "Pierre-Yves Lemoine", age: 39, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" },
+        // Index 21: Solange Silvestre (f, 28) - Ménage (Black)
+        { name: "Solange Silvestre", age: 28, avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80" },
+        // Index 22: Firmin Monlouis (m, 51) - Jardinage (Black)
+        { name: "Firmin Monlouis", age: 51, avatar: "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?auto=format&fit=crop&w=150&q=80" },
+        // Index 23: Monique Carpin (f, 59) - Citoyenne (Black)
+        { name: "Monique Carpin", age: 59, avatar: "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=150&q=80" },
+        // Index 24: Martial Tinaut (m, 33) - Bricolage (Black)
+        { name: "Martial Tinaut", age: 33, avatar: "https://images.unsplash.com/photo-1489980508314-941910ded1f4?auto=format&fit=crop&w=150&q=80" },
+        // Index 25: Ginette Tacite (f, 64) - Aide Seniors (Black)
+        { name: "Ginette Tacite", age: 64, avatar: "https://images.unsplash.com/photo-1542206395-9feb3edaa68d?auto=format&fit=crop&w=150&q=80" },
+        // Index 26: Aimé Zéphir (m, 46) - Peintre (Black)
+        { name: "Aimé Zéphir", age: 46, avatar: "https://images.unsplash.com/photo-1530268729831-4b0b9e170218?auto=format&fit=crop&w=150&q=80" },
+        // Index 27: Josiane Périac (f, 24) - Baby-sitting (Black)
+        { name: "Josiane Périac", age: 24, avatar: "https://images.unsplash.com/photo-1509305717901-8414512c868f?auto=format&fit=crop&w=150&q=80" },
+        // Index 28: Pascal Agathe (m, 43) - Plomberie (Black)
+        { name: "Pascal Agathe", age: 43, avatar: "https://images.unsplash.com/photo-1514543258389-c5a2817e5752?auto=format&fit=crop&w=150&q=80" },
+        // Index 29: Sylviane Lurel (f, 53) - Citoyenne (Black)
+        { name: "Sylviane Lurel", age: 53, avatar: "https://images.unsplash.com/photo-1523824921871-d6f1a15151f1?auto=format&fit=crop&w=150&q=80" },
+
+        // Index 30: Max Hoarau (m, 42) - Climatisation (Black)
+        { name: "Max Hoarau", age: 42, avatar: "https://images.unsplash.com/photo-1496345875659-11f7dd282d1d?auto=format&fit=crop&w=150&q=80" },
+        // Index 31: Eliane Hoarau (f, 49) - Aide (Black)
+        { name: "Eliane Hoarau", age: 49, avatar: "https://images.unsplash.com/photo-1534751516642-a131ffd10b7f?auto=format&fit=crop&w=150&q=80" },
+        // Index 32: Charles Payet (m, 36) - Jardinier (Black)
+        { name: "Charles Payet", age: 36, avatar: "https://images.unsplash.com/photo-1520155707335-10b7b1ce2b14?auto=format&fit=crop&w=150&q=80" },
+        // Index 33: Patricia Grondin (f, 57) - Citoyenne (Black)
+        { name: "Patricia Grondin", age: 57, avatar: "https://images.unsplash.com/photo-1525134479668-1bee5c7c684a?auto=format&fit=crop&w=150&q=80" },
+        // Index 34: Georges Payet (m, 48) - Bricolage (Black)
+        { name: "Georges Payet", age: 48, avatar: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=150&q=80" },
+        // Index 35: Nicole Payet (f, 33) - Ménage (Black)
+        { name: "Nicole Payet", age: 33, avatar: "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=150&q=80" },
+        // Index 36: Henri Payet (m, 60) - Électricien (Black)
+        { name: "Henri Payet", age: 60, avatar: "https://images.unsplash.com/photo-1534312527009-56c7016453e6?auto=format&fit=crop&w=150&q=80" },
+        // Index 37: Claudette Payet (f, 25) - Baby-sitting (Black)
+        { name: "Claudette Payet", age: 25, avatar: "https://images.unsplash.com/photo-1515023115689-589c33041d3c?auto=format&fit=crop&w=150&q=80" },
+        // Index 38: René Payet (m, 51) - Peinture (Black)
+        { name: "René Payet", age: 51, avatar: "https://images.unsplash.com/photo-1522384908269-26615b1404ac?auto=format&fit=crop&w=150&q=80" },
+        // Index 39: Yolande Payet (f, 45) - Citoyenne (Black)
+        { name: "Yolande Payet", age: 45, avatar: "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&w=150&q=80" },
+
+        // Index 40: Gaston Placide (m, 47) - Électricien (Black)
+        { name: "Gaston Placide", age: 47, avatar: "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=150&q=80" },
+        // Index 41: Marcelle Placide (f, 54) - Aide (Black)
+        { name: "Marcelle Placide", age: 54, avatar: "https://images.unsplash.com/photo-1598550476439-6847785fce6e?auto=format&fit=crop&w=150&q=80" },
+        // Index 42: Bruno Placide (m, 38) - Bricolage (Black)
+        { name: "Bruno Placide", age: 38, avatar: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80" },
+        // Index 43: Thérèse Placide (f, 63) - Citoyenne (Black)
+        { name: "Thérèse Placide", age: 63, avatar: "https://images.unsplash.com/photo-1601412436009-d964bd02edbc?auto=format&fit=crop&w=150&q=80" },
+        // Index 44: Gilbert Placide (m, 52) - Jardinier (Black)
+        { name: "Gilbert Placide", age: 52, avatar: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=150&q=80" },
+        // Index 45: Jacqueline Placide (f, 29) - Ménage (Black)
+        { name: "Jacqueline Placide", age: 29, avatar: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=150&q=80" },
+        // Index 46: Raymond Placide (m, 35) - Plomberie (Black)
+        { name: "Raymond Placide", age: 35, avatar: "https://images.unsplash.com/photo-1579038773863-c05000830627?auto=format&fit=crop&w=150&q=80" },
+        // Index 47: Marie-Andrée Placide (f, 41) - Baby-sitting (Black)
+        { name: "Marie-Andrée Placide", age: 41, avatar: "https://images.unsplash.com/photo-1609010697446-11f2155278f0?auto=format&fit=crop&w=150&q=80" },
+        // Index 48: Serge Placide (m, 55) - Peinture (Black)
+        { name: "Serge Placide", age: 55, avatar: "https://images.unsplash.com/photo-1581338834647-b0ae4070ab95?auto=format&fit=crop&w=150&q=80" },
+        // Index 49: Yveline Placide (f, 30) - Citoyenne (Black)
+        { name: "Yveline Placide", age: 30, avatar: "https://images.unsplash.com/photo-1615022702135-77b5a420a5ee?auto=format&fit=crop&w=150&q=80" }
     ];
 
     const additionalMembers = ADDITIONAL_MEMBERS_DATA.map((m, index) => {
