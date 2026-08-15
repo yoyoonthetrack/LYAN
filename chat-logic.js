@@ -151,34 +151,51 @@ window.addMessageToContact = async function (contactId, msgObj) {
         await renderMessages();
     }
 }
-
 window.openChatWithUser = async function (name, avatar, contactId = name) {
     const modal = document.getElementById('chatModal');
     if (!modal) {
         window.location.href = `index.html?action=openchat&name=${encodeURIComponent(name)}`;
         return;
     }
+    
+    // Ensure contact exists in local storage conversations list
+    let storedMsgs = {};
+    try {
+        const stored = localStorage.getItem(CHAT_MSG_KEY);
+        if (stored) storedMsgs = JSON.parse(stored);
+    } catch(e) {}
+    if (!storedMsgs[contactId]) {
+        storedMsgs[contactId] = [];
+        localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(storedMsgs));
+    }
+
+    // Auto-resolve avatar from LYANN_MEMBERS if it is a default placeholder or missing
+    if ((!avatar || avatar === "david-34.png") && name !== "David Jean-Baptiste" && window.LYANN_MEMBERS) {
+        const member = window.LYANN_MEMBERS.find(m => m.name === name || `${m.name} (${m.age} ans)` === name);
+        if (member) avatar = member.avatar;
+    }
+
     currentChatContact = { id: contactId, name, avatar };
 
     // Update Header
-    document.getElementById('chatHeaderName').textContent = name;
-    document.getElementById('chatHeaderAvatar').src = avatar;
+    const headerName = document.getElementById('chatHeaderName');
+    const headerAvatar = document.getElementById('chatHeaderAvatar');
+    if (headerName) headerName.textContent = name;
+    if (headerAvatar) headerAvatar.src = avatar;
 
     // Highlight active contact in sidebar list
     document.querySelectorAll('.chat-contact-item').forEach(item => {
-        const nameEl = item.querySelector('.chat-contact-name');
-        if (nameEl && nameEl.textContent.trim() === name.trim()) {
+        const cid = item.getAttribute('data-chat-member-id');
+        if (cid === contactId) {
             item.classList.add('active');
         } else {
             item.classList.remove('active');
         }
     });
 
-    // DEV AI Badge (Permanently hidden to not disclose AI status in frontend)
+    // DEV AI Badge (Permanently hidden)
     const aiBadge = document.getElementById('chatDevAiBadge');
-    if (aiBadge) {
-        aiBadge.style.display = 'none';
-    }
+    if (aiBadge) aiBadge.style.display = 'none';
 
     // Modal Display
     if (modal) {
@@ -193,6 +210,11 @@ window.openChatWithUser = async function (name, avatar, contactId = name) {
 
     // Trigger AI if it's the first time we open
     window.dispatchEvent(new CustomEvent('lyann_chat_opened', { detail: { contactId } }));
+
+    // Re-render sidebar to include the new contact if not present
+    if (typeof window.renderChatContacts === 'function') {
+        window.renderChatContacts();
+    }
 
     refreshChatUI();
 };
@@ -419,17 +441,109 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Bind contacts in UI
-    document.querySelectorAll('.chat-contact-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            const nameEl = item.querySelector('.chat-contact-name');
-            const avatarEl = item.querySelector('.chat-contact-avatar');
-            const name = nameEl ? nameEl.textContent.trim() : 'David Jean-Baptiste';
-            const avatar = avatarEl ? avatarEl.getAttribute('src') : 'david-34.png';
-            openChatWithUser(name, avatar, name); // Using name as ID for mock
-        });
-    });
+    // Initialize & render chat contacts sidebar dynamically
+    function initializeChatContacts() {
+        let data = {};
+        try {
+            const stored = localStorage.getItem(CHAT_MSG_KEY);
+            if (stored) data = JSON.parse(stored);
+        } catch(e) {}
+        
+        // Ensure default contacts exist
+        if (!data["David Jean-Baptiste"]) {
+            data["David Jean-Baptiste"] = [
+                { id: "m1", text: "Bonjour ! Je suis dispo cet après-midi pour votre problème électrique.", sender: "them", timestamp: "14:32", type: "text" }
+            ];
+        }
+        if (!data["Tati Huguette Cazeau"]) {
+            data["Tati Huguette Cazeau"] = [
+                { id: "m2", text: "Merci beaucoup pour votre aide ! Le portail fonctionne parfaitement.", sender: "them", timestamp: "Hier", type: "text" }
+            ];
+        }
+        if (!data["Sarah Manicon"]) {
+            data["Sarah Manicon"] = [
+                { id: "m3", text: "À très bientôt pour la rénovation de la cuisine !", sender: "them", timestamp: "Lundi", type: "text" }
+            ];
+        }
+        localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
+    }
 
+    function renderChatContacts() {
+        const listContainer = document.getElementById('chatContactsList');
+        if (!listContainer) return;
+        
+        const defaultContacts = [
+            { id: "David Jean-Baptiste", name: "David Jean-Baptiste", avatar: "david-34.png", preview: "Bonjour ! Je suis dispo cet ap..." },
+            { id: "Tati Huguette Cazeau", name: "Tati Huguette Cazeau", avatar: "huguette-68.png", preview: "Merci beaucoup pour votre aide !" },
+            { id: "Sarah Manicon", name: "Sarah Manicon", avatar: "sarah-29.png", preview: "À très bientôt pour la rénovation !" }
+        ];
+
+        let storedMsgs = {};
+        try {
+            const stored = localStorage.getItem(CHAT_MSG_KEY);
+            if (stored) storedMsgs = JSON.parse(stored);
+        } catch(e) {}
+
+        const contactList = [...defaultContacts];
+        Object.keys(storedMsgs).forEach(contactId => {
+            if (!contactList.some(c => c.id === contactId)) {
+                // Find avatar from member list
+                let avatar = 'david-34.png';
+                if (window.LYANN_MEMBERS) {
+                    const member = window.LYANN_MEMBERS.find(m => m.name === contactId || `${m.name} (${m.age} ans)` === contactId);
+                    if (member) avatar = member.avatar;
+                }
+                
+                const msgs = storedMsgs[contactId] || [];
+                const lastMsg = msgs[msgs.length - 1];
+                const preview = lastMsg ? (lastMsg.sender === 'me' ? 'Vous : ' + lastMsg.text : lastMsg.text) : 'Nouvelle conversation';
+
+                contactList.push({
+                    id: contactId,
+                    name: contactId,
+                    avatar: avatar,
+                    preview: preview
+                });
+            }
+        });
+
+        listContainer.innerHTML = contactList.map(c => {
+            const isActive = currentChatContact && currentChatContact.id === c.id;
+            const lastMsgs = storedMsgs[c.id] || [];
+            const lastMsg = lastMsgs[lastMsgs.length - 1];
+            const previewText = lastMsg ? (lastMsg.sender === 'me' ? 'Vous : ' + lastMsg.text : lastMsg.text) : c.preview;
+            return `
+                <div class="chat-contact-item ${isActive ? 'active' : ''}" data-chat-member-id="${c.id}" style="cursor: pointer;">
+                    <div class="chat-contact-avatar-wrap">
+                        <img src="${c.avatar}" alt="${c.name}" class="chat-contact-avatar" onerror="this.src='david-34.png'">
+                        <span class="online-dot"></span>
+                    </div>
+                    <div class="chat-contact-info">
+                        <div class="chat-contact-name">${c.name}</div>
+                        <div class="chat-contact-preview">${previewText}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Re-bind click events
+        listContainer.querySelectorAll('.chat-contact-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const contactId = item.getAttribute('data-chat-member-id');
+                const contact = contactList.find(c => c.id === contactId);
+                if (contact) {
+                    openChatWithUser(contact.name, contact.avatar, contact.id);
+                }
+            });
+        });
+    }
+
+    window.renderChatContacts = renderChatContacts;
+
+    initializeChatContacts();
+    renderChatContacts();
+
+    // Bind triggers to open chat directly
     document.querySelectorAll('.btn-open-chat, .btn-open-chat-direct, .open-chat-trigger').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
