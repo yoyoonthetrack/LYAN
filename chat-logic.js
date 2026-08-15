@@ -269,19 +269,21 @@ window.refreshChatUI = async function () {
     // 3. Render Actions
     const actions = window.LYANN_API_CLIENT.getAvailableMissionActions(getMyId(), mission);
     const actionContainer = document.getElementById('chatContextualActionsBar');
-    actionContainer.innerHTML = '';
+    if (actionContainer) {
+        actionContainer.innerHTML = '';
 
-    actions.forEach(action => {
-        const btn = document.createElement('button');
-        btn.className = action.type === 'primary' ? 'btn btn-primary' : (action.type === 'outline' ? 'btn btn-outline' : 'btn btn-secondary');
-        if (action.type === 'disabled') btn.disabled = true;
-        btn.style.padding = '6px 12px';
-        btn.style.fontSize = '0.82rem';
-        btn.textContent = action.label;
+        actions.forEach(action => {
+            const btn = document.createElement('button');
+            btn.className = action.type === 'primary' ? 'btn btn-primary' : (action.type === 'outline' ? 'btn btn-outline' : 'btn btn-secondary');
+            if (action.type === 'disabled') btn.disabled = true;
+            btn.style.padding = '6px 12px';
+            btn.style.fontSize = '0.82rem';
+            btn.textContent = action.label;
 
-        btn.onclick = () => handleChatAction(action.id, mission);
-        actionContainer.appendChild(btn);
-    });
+            btn.onclick = () => handleChatAction(action.id, mission);
+            actionContainer.appendChild(btn);
+        });
+    }
 
     // 4. Render Messages
     await renderMessages();

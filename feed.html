@@ -731,6 +731,17 @@
 
                     <!-- Role determined automatically by mission context -->
 
+                    <!-- MISSION CONTEXT HEADER -->
+                    <div id="chatMissionContext" style="display: none; padding: 8px 16px; background: var(--bg-alt); border-bottom: 1px solid var(--border-light); font-size: 0.82rem; font-weight: 600; color: var(--text);"></div>
+                    <button type="button" class="btn btn-outline" id="chatViewMissionBtn" style="display: none; margin: 6px 16px; padding: 4px 10px; font-size: 0.75rem;">Voir la mission</button>
+
+                    <!-- CONTEXTUAL ACTIONS BAR (Proposer un prix, Accepter, etc.) -->
+                    <div id="chatContextualActionsBar" style="padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border-light); background: var(--bg-alt);">
+                    </div>
+
+                    <!-- DEV AI BADGE (Hidden) -->
+                    <div id="chatDevAiBadge" style="display: none;"></div>
+
                     <!-- MESSAGES WRAPPER -->
                     <div class="chat-messages-scroll" id="chatMessagesContainer" style="flex:1; overflow-y:auto; padding: 16px;">
                         <!-- Messages dynamically rendered -->
