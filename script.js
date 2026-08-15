@@ -2392,6 +2392,213 @@ document.addEventListener('DOMContentLoaded', () => {
         return trail[devisId] || [];
     };
 
+    // ==========================================================================
+    // SYSTEME DE RECHERCHE ACTIF PAR COMMUNE & DEPARTEMENT DES ILES
+    // ==========================================================================
+
+    const TERRITORY_CITIES = {
+        guadeloupe: [
+            "Les Abymes", "Baie-Mahault", "Le Gosier", "Sainte-Anne", "Petit-Bourg", 
+            "Le Moule", "Sainte-Rose", "Capesterre-Belle-Eau", "Pointe-à-Pitre", 
+            "Morne-à-l'Eau", "Lamentin", "Saint-François", "Basse-Terre", 
+            "Saint-Claude", "Trois-Rivières", "Gourbeyre", "Vieux-Habitants", 
+            "Bouillante", "Port-Louis", "Grand-Bourg", "Petit-Canal", "Deshaies", 
+            "Anse-Bertrand", "Capesterre-de-Marie-Galante", "Pointe-Noire", 
+            "Saint-Louis", "Goyave", "Vieux-Fort", "La Désirade", 
+            "Terre-de-Haut", "Terre-de-Bas"
+        ],
+        martinique: [
+            "Fort-de-France", "Le Lamentin", "Le Robert", "Schœlcher", "Sainte-Marie", 
+            "Ducos", "Saint-Joseph", "La Trinité", "Rivière-Pilote", "Le François", 
+            "Rivière-Salée", "Gros-Morne", "Sainte-Luce", "Saint-Esprit", "Le Marin", 
+            "Les Trois-Îlets", "Le Vauclin", "Case-Pilote", "Saint-Pierre", 
+            "Les Anses-d'Arlet", "Le Carbet", "Basse-Pointe", "Lorrain", 
+            "Bellefontaine", "Morne-Rouge", "Ajoupa-Bouillon", "Macouba", 
+            "Grand'Rivière", "Prêcheur", "Fond-Saint-Denis", "Marigot", "Sainte-Anne", 
+            "Diamant", "Morne-Vert"
+        ],
+        guyane: [
+            "Cayenne", "Saint-Laurent-du-Maroni", "Kourou", "Matoury", "Remire-Montjoly", 
+            "Macouria", "Maripasoula", "Mana", "Apatou", "Grand-Santi", "Sinnamary", 
+            "Roura", "Saint-Georges", "Iracoubo", "Camopi", "Awala-Yalimapo", 
+            "Montsinéry-Tonnegrande", "Regina", "Ouanary", "Saül", "Saint-Élie"
+        ],
+        reunion: [
+            "Saint-Denis", "Saint-Paul", "Saint-Pierre", "Le Tampon", "Saint-André", 
+            "Saint-Louis", "Le Port", "Saint-Joseph", "Saint-Benoît", "Sainte-Marie", 
+            "Possession", "Sainte-Suzanne", "L'Étang-Salé", "Petite-Île", "Bras-Panon", 
+            "Les Avirons", "Salazie", "Cilaos", "Entre-Deux", "Plaine-des-Palmistes", 
+            "Trois-Bassins", "Sainte-Rose", "Saint-Philippe"
+        ],
+        "saint-martin": [
+            "Marigot", "Grand-Case", "Quartier-d'Orléans", "Gustavia", "Saint-Jean"
+        ]
+    };
+
+    function updateCityDropdown() {
+        const locationSelect = document.getElementById('locationSelect');
+        const citySelect = document.getElementById('citySelect');
+        if (!locationSelect || !citySelect) return;
+
+        const selectedTerritory = locationSelect.value;
+        const cities = TERRITORY_CITIES[selectedTerritory] || [];
+
+        // Save selected city
+        const oldVal = citySelect.value;
+
+        // Keep "Toutes les communes" option
+        citySelect.innerHTML = '<option value="" selected>Toutes les communes</option>';
+
+        cities.forEach(city => {
+            const opt = document.createElement('option');
+            opt.value = city;
+            opt.textContent = city;
+            citySelect.appendChild(opt);
+        });
+
+        // Restore value if still valid
+        if (cities.includes(oldVal)) {
+            citySelect.value = oldVal;
+        }
+    }
+
+    function bindDynamicTalentCards() {
+        document.querySelectorAll('#searchResultsContainer .talent-card-trigger').forEach(card => {
+            card.addEventListener('click', (e) => {
+                e.preventDefault();
+                const memberId = card.getAttribute('data-member-id');
+                if (memberId) {
+                    openPublicMemberProfile(memberId);
+                }
+            });
+        });
+    }
+
+    function performSearch(userTriggered = false) {
+        const searchInput = document.getElementById('searchInput');
+        const locationSelect = document.getElementById('locationSelect');
+        const citySelect = document.getElementById('citySelect');
+        const container = document.getElementById('searchResultsContainer');
+
+        if (!container) return;
+
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const territory = locationSelect ? locationSelect.value : 'guadeloupe';
+        const city = citySelect ? citySelect.value : '';
+
+        // Filter members
+        const matched = LYANN_MEMBERS.filter(m => {
+            // Match territory
+            if (m.location !== territory) return false;
+            
+            // Match city
+            if (city && m.city !== city) return false;
+            
+            // Match query (name, role, or keywords)
+            if (query) {
+                const nameMatch = m.name.toLowerCase().includes(query);
+                const roleMatch = m.role.toLowerCase().includes(query);
+                const bioMatch = m.bio.toLowerCase().includes(query);
+                const keywordMatch = m.keywords && m.keywords.some(k => k.toLowerCase().includes(query));
+                if (!nameMatch && !roleMatch && !bioMatch && !keywordMatch) return false;
+            }
+            
+            return true;
+        });
+
+        // Render cards
+        if (matched.length === 0) {
+            container.innerHTML = `<div class="empty-state-message" style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-muted);">Aucun lyanneur ne correspond à vos critères de recherche.</div>`;
+        } else {
+            container.innerHTML = matched.map(m => {
+                const postalCode = m.location === 'guadeloupe' ? '971' : 
+                                   (m.location === 'martinique' ? '972' : 
+                                   (m.location === 'guyane' ? '973' : 
+                                   (m.location === 'reunion' ? '974' : '978')));
+                return `
+                    <div class="talent-card talent-card-trigger" data-member-id="${m.id}" style="cursor: pointer;">
+                        <div class="talent-photo">
+                            <img src="${m.avatar}" alt="${m.name}">
+                        </div>
+                        <h3>${m.name.split(' (')[0]}</h3>
+                        <span class="talent-role">${m.role} · ${m.city} (${postalCode})</span>
+                        <div class="talent-stars">★★★★★</div>
+                        <blockquote>"${m.bio}"</blockquote>
+                    </div>
+                `;
+            }).join('');
+            
+            bindDynamicTalentCards();
+        }
+
+        // Open modal if on index.html and user triggered
+        const path = window.location.pathname || '';
+        if (userTriggered && (path.includes('index.html') || path === '/' || path.endsWith('/'))) {
+            const searchResultsModal = document.getElementById('searchResultsModal');
+            if (searchResultsModal) {
+                searchResultsModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+    }
+
+    // Bind location select change
+    const locationSelect = document.getElementById('locationSelect');
+    if (locationSelect) {
+        locationSelect.addEventListener('change', updateCityDropdown);
+        updateCityDropdown();
+    }
+
+    // Bind form submit
+    const heroSearchForm = document.getElementById('heroSearchForm');
+    if (heroSearchForm) {
+        heroSearchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            performSearch(true);
+        });
+    }
+
+    // Bind close button of search modal
+    const closeSearchResultsModalBtn = document.getElementById('closeSearchResultsModalBtn');
+    if (closeSearchResultsModalBtn) {
+        closeSearchResultsModalBtn.addEventListener('click', () => {
+            if (searchResultsModal) searchResultsModal.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+    }
+
+    // Pre-fill search inputs on load if present in query string
+    // Pre-fill search inputs on load if present in query string
+    const searchUrlParams = new URLSearchParams(window.location.search);
+    if (searchUrlParams.has('searchInput') || searchUrlParams.has('locationSelect') || searchUrlParams.has('citySelect') || searchUrlParams.has('category')) {
+        const q = searchUrlParams.get('searchInput') || '';
+        const loc = searchUrlParams.get('locationSelect') || searchUrlParams.get('category') || '';
+        const city = searchUrlParams.get('citySelect') || '';
+        
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) searchInput.value = q;
+        
+        if (locationSelect && loc) {
+            const options = Array.from(locationSelect.options).map(o => o.value);
+            if (options.includes(loc.toLowerCase())) {
+                locationSelect.value = loc.toLowerCase();
+                updateCityDropdown();
+            }
+        }
+        
+        setTimeout(() => {
+            const citySelect = document.getElementById('citySelect');
+            if (citySelect && city) citySelect.value = city;
+            performSearch(false);
+        }, 100);
+    } else {
+        // Initial search to display all members on results.html by default
+        const path = window.location.pathname || '';
+        if (path.includes('results.html')) {
+            performSearch(false);
+        }
+    }
+
 });
 // --- TEST ZONE: Reset Local Data ---
 window.resetLocalData = function() {
