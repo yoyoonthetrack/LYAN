@@ -4,7 +4,19 @@
 
 const CHAT_MSG_KEY = 'lyann_mock_chat_msgs';
 let currentChatContact = null;
-function getMyId() { return window.getMyId() || "me"; }
+function getMyId() {
+    try {
+        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+            // Synchronous check via cached session (supabase-js v2 stores it)
+            const storageKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+            if (storageKey) {
+                const session = JSON.parse(localStorage.getItem(storageKey));
+                if (session && session.user && session.user.id) return session.user.id;
+            }
+        }
+    } catch(e) {}
+    return "me";
+}
 
 
 function getLocalChatMessages(contactId) {
