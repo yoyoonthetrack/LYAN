@@ -50,9 +50,15 @@ function saveLocalChatMessage(contactId, msgObj) {
     localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
 }
 
+function isUUID(str) {
+    if (typeof str !== 'string') return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+}
+
 async function getChatMessages(contactId) {
     const userId = getMyId();
-    if (userId === "me" || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+    if (userId === "me" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
         return getLocalChatMessages(contactId);
     }
 
@@ -104,7 +110,7 @@ async function getChatMessages(contactId) {
 
 window.addMessageToContact = async function (contactId, msgObj) {
     const userId = getMyId();
-    if (userId === "me" || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+    if (userId === "me" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
         saveLocalChatMessage(contactId, msgObj);
         if (currentChatContact && currentChatContact.id === contactId) {
             await renderMessages();
