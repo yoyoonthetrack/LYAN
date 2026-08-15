@@ -5620,8 +5620,24 @@ body.user-is-logged-in .logged-out-only {
     border-radius: 50%;
 }
 
-/* Modale Espace Mon Compte & Profil Public (Centrée Fixe • 94vh de haut en bas) */
-.modal-card-user-account,
+/* Modale Espace Mon Compte (Sidebar-based layout on desktop) */
+.modal-card-user-account {
+    max-width: 1040px !important;
+    width: 95% !important;
+    height: 94vh !important;
+    max-height: 94vh !important;
+    margin: auto !important;
+    padding: 0 !important;
+    overflow: hidden;
+    display: grid !important;
+    grid-template-rows: auto 1fr !important;
+    grid-template-columns: 280px 1fr !important;
+    grid-template-areas:
+        "header header"
+        "sidebar content" !important;
+    border-radius: var(--radius-xl) !important;
+}
+
 .modal-card-public-profile {
     max-width: 960px !important;
     width: 95% !important;
@@ -5636,6 +5652,7 @@ body.user-is-logged-in .logged-out-only {
 }
 
 .account-modal-header {
+    grid-area: header !important;
     background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
     color: #FFFFFF;
     padding: 24px 28px;
@@ -5673,20 +5690,24 @@ body.user-is-logged-in .logged-out-only {
     gap: 10px;
 }
 
-/* Barre d'onglets Mon Compte */
+/* Barre d'onglets Mon Compte (Sidebar gauche par défaut) */
 .account-tabs-nav {
+    grid-area: sidebar !important;
     display: flex;
+    flex-direction: column;
     background: #F4F6F4;
-    border-bottom: 1px solid var(--border);
-    padding: 0 20px;
-    overflow-x: auto;
+    border-right: 1px solid var(--border);
+    border-bottom: none;
+    padding: 20px 0;
+    overflow-y: auto;
 }
 
 .account-tab-btn {
-    padding: 14px 18px;
+    padding: 14px 24px;
     background: transparent;
     border: none;
-    border-bottom: 3px solid transparent;
+    border-left: 3px solid transparent;
+    border-bottom: none;
     font-size: 0.9rem;
     font-weight: 700;
     color: var(--text-muted);
@@ -5695,17 +5716,30 @@ body.user-is-logged-in .logged-out-only {
     white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
 }
 
 .account-tab-btn:hover {
     color: var(--primary);
+    background: rgba(74, 124, 89, 0.04);
 }
 
 .account-tab-btn.active {
     color: var(--primary-dark);
-    border-bottom-color: var(--primary-dark);
+    border-left-color: var(--primary-dark);
+    border-bottom-color: transparent;
     background: #FFFFFF;
+}
+
+.modal-card-user-account .modal-body {
+    grid-area: content !important;
+    padding: 32px !important;
+    max-height: 100% !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+    background: #FFFFFF !important;
 }
 
 .account-tab-content {
@@ -6262,8 +6296,13 @@ body.user-is-logged-in .logged-out-only {
         bottom: 64px;
     }
     .modal-card-user-account {
+        display: flex !important;
+        flex-direction: column !important;
         width: 98% !important;
         max-height: 94vh !important;
+        grid-template-rows: none !important;
+        grid-template-columns: none !important;
+        grid-template-areas: none !important;
     }
     .account-modal-header {
         padding: 16px 20px;
@@ -6276,11 +6315,33 @@ body.user-is-logged-in .logged-out-only {
         font-size: 1.15rem;
     }
     .account-tabs-nav {
-        padding: 0 10px;
+        display: flex !important;
+        flex-direction: row !important;
+        background: #F4F6F4 !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--border) !important;
+        padding: 0 10px !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
     }
     .account-tab-btn {
-        padding: 12px 14px;
-        font-size: 0.82rem;
+        padding: 12px 14px !important;
+        font-size: 0.82rem !important;
+        border-left: none !important;
+        border-bottom: 3px solid transparent !important;
+        width: auto !important;
+        text-align: center !important;
+        gap: 8px !important;
+    }
+    .account-tab-btn.active {
+        border-left-color: transparent !important;
+        border-bottom-color: var(--primary-dark) !important;
+        background: #FFFFFF !important;
+    }
+    .modal-card-user-account .modal-body {
+        padding: 20px !important;
+        max-height: 75vh !important;
+        overflow-y: auto !important;
     }
 
     /* Optimisation Chat Messagerie Mobile (#chatModal) */
