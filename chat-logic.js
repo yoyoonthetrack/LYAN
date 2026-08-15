@@ -590,6 +590,8 @@ function initChatSubmitAndContacts() {
     if (directPriceForm) {
         directPriceForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (window.lyannAlert) window.lyannAlert("DEBUG: Soumission du Tarif Direct détectée !");
+            else alert("DEBUG: Soumission du Tarif Direct détectée !");
             try {
                 const descInput = document.getElementById('dpDescription');
                 const amountInput = document.getElementById('dpAmount');
@@ -639,6 +641,8 @@ function initChatSubmitAndContacts() {
     if (milestoneDevisForm) {
         milestoneDevisForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (window.lyannAlert) window.lyannAlert("DEBUG: Soumission du Devis par Jalons détectée !");
+            else alert("DEBUG: Soumission du Devis par Jalons détectée !");
             try {
                 const titleInput = document.getElementById('mdTitle');
                 const totalInput = document.getElementById('mdTotalAmount');
