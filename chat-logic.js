@@ -174,11 +174,9 @@ window.openChatWithUser = async function (name, avatar, contactId = name) {
         }
     });
 
-    // DEV AI Badge
+    // DEV AI Badge (Permanently hidden to not disclose AI status in frontend)
     const aiBadge = document.getElementById('chatDevAiBadge');
-    if (window.DEMO_AI_ENABLED) {
-        aiBadge.style.display = 'inline-block';
-    } else {
+    if (aiBadge) {
         aiBadge.style.display = 'none';
     }
 
