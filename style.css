@@ -552,7 +552,7 @@ h1, h2, h3, h4 {
 
 .hero-container {
     display: grid;
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: 1fr 250px;
     gap: 40px;
     align-items: center;
 }
@@ -611,11 +611,11 @@ h1, h2, h3, h4 {
 }
 
 .search-input-wrapper:nth-child(2) {
-    flex: 1.2 1 140px;
+    flex: 1.4 1 170px;
 }
 
 .search-input-wrapper:nth-child(3) {
-    flex: 1.4 1 150px;
+    flex: 1.6 1 180px;
 }
 
 .search-input-wrapper:focus-within {
@@ -802,7 +802,7 @@ h1, h2, h3, h4 {
 
 .hero-visual {
     position: relative;
-    max-width: 340px;
+    max-width: 250px;
     width: 100%;
     justify-self: center;
 }
