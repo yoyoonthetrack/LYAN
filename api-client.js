@@ -65,11 +65,72 @@ const LYANN_API_CLIENT = {
         return await this.supabase.auth.signOut();
     },
 
+    
+    async updateProfile(userId, profileData) {
+        if (!this.supabase) return { error: { message: 'Supabase non configuré' } };
+        return await this.supabase
+            .from('profiles')
+            .update(profileData)
+            .eq('id', userId);
+    },
+
     async getSession() {
         if (!this.supabase) return { data: { session: null } };
         return await this.supabase.auth.getSession();
     },
 
+    async getUser() {
+        if (!this.supabase) return { data: { user: null } };
+        return await this.supabase.auth.getUser();
+    },
+
+    async getProfile(userId) {
+        if (!this.supabase) return { data: null };
+        return await this.supabase.from('profiles').select('*').eq('id', userId).single();
+    },
+
+    async getMembers(territory = 'all', query = '') {
+        if (!this.supabase) return { data: [] };
+        let req = this.supabase.from('profiles').select('*');
+        if (territory && territory !== 'all') {
+            req = req.eq('territory', territory);
+        }
+        if (query) {
+            req = req.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,bio.ilike.%${query}%`);
+        }
+        return await req;
+    },
+
+    async getFeed() {
+        if (!this.supabase) return { data: [] };
+        return await this.supabase.from('bokantaj_posts').select(`
+            *,
+            profiles(first_name, last_name, avatar_url)
+        `).order('created_at', { ascending: false });
+    },
+
+    async getQuotes(userId) {
+        if (!this.supabase) return { data: [] };
+        return await this.supabase.from('quotes').select(`
+            *,
+            provider:profiles!provider_id(first_name, last_name, avatar_url),
+            client:profiles!client_id(first_name, last_name, avatar_url)
+        `).or(`provider_id.eq.${userId},client_id.eq.${userId}`);
+    },
+
+    async serverRequest(endpoint, body = {}) {
+        const session = await this.getSession();
+        const token = session?.data?.session?.access_token;
+        
+        return fetch(`http://localhost:3000${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(body)
+        }).then(res => res.json());
+    },
 
     // --- MOCK BACKEND METHODS (Overrides for testing the AI Journey) ---
     

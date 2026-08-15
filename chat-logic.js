@@ -9,13 +9,13 @@ function getMyId() { return window.getMyId() || "me"; }
 
 async function getChatMessages(contactId) {
     if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) return [];
-    
+
     // Check if conversation exists
     let { data: convs, error: convErr } = await window.LYANN_API_CLIENT.supabase
         .from('conversation_participants')
         .select('conversation_id')
         .eq('user_id', getMyId());
-        
+
     // Find shared conversation
     let sharedConvId = null;
     if (convs && convs.length > 0) {
@@ -25,22 +25,22 @@ async function getChatMessages(contactId) {
             .select('conversation_id')
             .eq('user_id', contactId)
             .in('conversation_id', convIds);
-            
+
         if (shared && shared.length > 0) {
             sharedConvId = shared[0].conversation_id;
         }
     }
-    
+
     if (!sharedConvId) return [];
-    
+
     const { data: msgs, error } = await window.LYANN_API_CLIENT.supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', sharedConvId)
         .order('created_at', { ascending: true });
-        
+
     if (error) { console.error(error); return []; }
-    
+
     // Map to old format
     return msgs.map(m => ({
         id: m.id,
@@ -55,10 +55,10 @@ async function getChatMessages(contactId) {
 
 
 
-window.addMessageToContact = async function(contactId, msgObj) {
+window.addMessageToContact = async function (contactId, msgObj) {
     if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) return;
     const supabase = window.LYANN_API_CLIENT.supabase;
-    
+
     // Find or create conversation
     let { data: convs } = await supabase.from('conversation_participants').select('conversation_id').eq('user_id', getMyId());
     let sharedConvId = null;
@@ -67,7 +67,7 @@ window.addMessageToContact = async function(contactId, msgObj) {
         const { data: shared } = await supabase.from('conversation_participants').select('conversation_id').eq('user_id', contactId).in('conversation_id', convIds);
         if (shared && shared.length > 0) sharedConvId = shared[0].conversation_id;
     }
-    
+
     if (!sharedConvId) {
         // Create
         const { data: newConv } = await supabase.from('conversations').insert({}).select().single();
@@ -77,29 +77,33 @@ window.addMessageToContact = async function(contactId, msgObj) {
             { conversation_id: sharedConvId, user_id: contactId }
         ]);
     }
-    
+
     // Insert message
     const contentToSave = msgObj.type === 'transactional' ? JSON.stringify(msgObj.txData) : msgObj.text;
-    
+
     await supabase.from('messages').insert({
         conversation_id: sharedConvId,
         sender_id: msgObj.sender === 'me' ? getMyId() : contactId,
         content: contentToSave
     });
-    
+
     if (currentChatContact && currentChatContact.id === contactId) {
-        await await renderMessages();
+        await renderMessages();
     }
 }
-}
 
-window.openChatWithUser = async function(name, avatar, contactId = name) {
+window.openChatWithUser = async function (name, avatar, contactId = name) {
+    const modal = document.getElementById('chatModal');
+    if (!modal) {
+        window.location.href = `index.html?action=openchat&name=${encodeURIComponent(name)}`;
+        return;
+    }
     currentChatContact = { id: contactId, name, avatar };
-    
+
     // Update Header
     document.getElementById('chatHeaderName').textContent = name;
     document.getElementById('chatHeaderAvatar').src = avatar;
-    
+
     // DEV AI Badge
     const aiBadge = document.getElementById('chatDevAiBadge');
     if (window.DEMO_AI_ENABLED) {
@@ -109,30 +113,32 @@ window.openChatWithUser = async function(name, avatar, contactId = name) {
     }
 
     // Modal Display
-    const modal = document.getElementById('chatModal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
     document.body.style.overflow = 'hidden';
-    
+
     // Activate Layout
     const chatLayout = document.querySelector('.chat-modal-layout');
     if (chatLayout) chatLayout.classList.add('mobile-conversation-active');
 
     // Trigger AI if it's the first time we open
-    window.dispatchEvent(new CustomEvent('lyann_chat_opened', { detail: { contactId }}));
+    window.dispatchEvent(new CustomEvent('lyann_chat_opened', { detail: { contactId } }));
 
     refreshChatUI();
 };
 
-window.refreshChatUI = function() {
+window.refreshChatUI = async function () {
     if (!currentChatContact) return;
-    
+
     // 1. Find active mission context
     const mission = await window.LYANN_API_CLIENT.getActiveMissionBetween(getMyId(), currentChatContact.id);
-    
+
     // 2. Render Header Context
     const contextBox = document.getElementById('chatMissionContext');
     const viewMissionBtn = document.getElementById('chatViewMissionBtn');
-    
+
     if (mission) {
         contextBox.style.display = 'block';
         contextBox.innerHTML = `${mission.title} • ${mission.agreed_price}€ <span style="color:#E63B2E">(${mission.status})</span>`;
@@ -147,7 +153,7 @@ window.refreshChatUI = function() {
     const actions = window.LYANN_API_CLIENT.getAvailableMissionActions(getMyId(), mission);
     const actionContainer = document.getElementById('chatContextualActionsBar');
     actionContainer.innerHTML = '';
-    
+
     actions.forEach(action => {
         const btn = document.createElement('button');
         btn.className = action.type === 'primary' ? 'btn btn-primary' : (action.type === 'outline' ? 'btn btn-outline' : 'btn btn-secondary');
@@ -155,7 +161,7 @@ window.refreshChatUI = function() {
         btn.style.padding = '6px 12px';
         btn.style.fontSize = '0.82rem';
         btn.textContent = action.label;
-        
+
         btn.onclick = () => handleChatAction(action.id, mission);
         actionContainer.appendChild(btn);
     });
@@ -164,15 +170,15 @@ window.refreshChatUI = function() {
     await renderMessages();
 }
 
-function handleChatAction(actionId, mission) {
+async function handleChatAction(actionId, mission) {
     const contactId = currentChatContact.id;
-    
+
     if (actionId === 'PROPOSE_PRICE') {
         const amount = await window.lyannPrompt("Quel montant proposez-vous (en €) ?");
         if (!amount) return;
         const desc = await window.lyannPrompt("Description de l'intervention (ex: Réparation portail) :");
         if (!desc) return;
-        
+
         window.LYANN_API_CLIENT.mockProposePrice(getMyId(), contactId, parseFloat(amount), desc);
         addMessageToContact(contactId, {
             type: 'system_card',
@@ -180,10 +186,10 @@ function handleChatAction(actionId, mission) {
             sender: getMyId(),
             amount: parseFloat(amount),
             title: desc,
-            timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
     }
-    
+
     else if (actionId === 'ACCEPT_PRICE') {
         window.LYANN_API_CLIENT.mockAcceptPrice(mission.id, getMyId());
         addMessageToContact(contactId, {
@@ -191,7 +197,7 @@ function handleChatAction(actionId, mission) {
             cardType: 'AGREEMENT_REACHED',
             amount: mission.agreed_price,
             title: mission.title,
-            timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
     }
 
@@ -202,7 +208,7 @@ function handleChatAction(actionId, mission) {
             type: 'system_card',
             cardType: 'PAYMENT_CONFIRMED',
             amount: mission.agreed_price,
-            timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
     }
 
@@ -213,7 +219,7 @@ function handleChatAction(actionId, mission) {
             cardType: 'WORK_DONE',
             title: mission.title,
             sender: getMyId(),
-            timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
     }
 
@@ -222,7 +228,7 @@ function handleChatAction(actionId, mission) {
         addMessageToContact(contactId, {
             type: 'system_card',
             cardType: 'MISSION_COMPLETED',
-            timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
     }
 
@@ -234,33 +240,33 @@ function handleChatAction(actionId, mission) {
             type: 'text',
             sender: getMyId(),
             text: `⚠️ Signalement : ${reason}`,
-            timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
     }
 
     refreshChatUI();
-    window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId, contactId }}));
+    window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId, contactId } }));
 }
 
 async function renderMessages() {
     const container = document.getElementById('chatMessagesContainer');
     if (!container) return;
     container.innerHTML = '';
-    
+
     const all = getChatMessages();
     const msgs = all[currentChatContact.id] || [];
 
     msgs.forEach(msg => {
         const div = document.createElement('div');
         const isMe = msg.sender === getMyId();
-        
+
         if (msg.type === 'text') {
             div.className = `chat-msg-bubble ${isMe ? 'sent' : 'received'}`;
             div.innerHTML = `${msg.text} <div class="chat-msg-time" style="text-align:right; margin-top:4px;">${msg.timestamp}</div>`;
-        } 
+        }
         else if (msg.type === 'system_card') {
             div.className = `chat-msg-card ${isMe ? 'align-right' : 'align-left'}`;
-            
+
             if (msg.cardType === 'PRICE_PROPOSAL') {
                 const name = isMe ? 'Vous proposez' : `${currentChatContact.name} vous propose`;
                 div.innerHTML = `
@@ -300,7 +306,7 @@ async function renderMessages() {
                 `;
             }
             else if (msg.cardType === 'MISSION_COMPLETED') {
-                div.className = 'chat-msg-card align-left'; 
+                div.className = 'chat-msg-card align-left';
                 div.style.margin = '10px auto';
                 div.style.background = 'rgba(46,125,50,0.1)';
                 div.innerHTML = `
@@ -311,7 +317,7 @@ async function renderMessages() {
                 `;
             }
         }
-        
+
         container.appendChild(div);
     });
 
@@ -327,16 +333,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const input = document.getElementById('chatInputField');
             const text = input.value.trim();
             if (!text || !currentChatContact) return;
-            
+
             addMessageToContact(currentChatContact.id, {
                 type: 'text',
                 sender: getMyId(),
                 text: text,
-                timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             });
             input.value = '';
-            
-            window.dispatchEvent(new CustomEvent('lyann_chat_message_sent', { detail: { text, contactId: currentChatContact.id }}));
+
+            window.dispatchEvent(new CustomEvent('lyann_chat_message_sent', { detail: { text, contactId: currentChatContact.id } }));
         });
     }
 
@@ -369,7 +375,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
             const modal = document.getElementById('chatModal');
-            if (modal) modal.style.display = 'none';
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.remove('active');
+            }
             document.body.style.overflow = 'auto';
             const chatLayout = document.querySelector('.chat-modal-layout');
             if (chatLayout) chatLayout.classList.remove('mobile-conversation-active');
@@ -387,10 +396,10 @@ let missionSubscription = null;
 function setupRealtime() {
     if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) return;
     const supabase = window.LYANN_API_CLIENT.supabase;
-    
+
     if (chatSubscription) supabase.removeChannel(chatSubscription);
     if (missionSubscription) supabase.removeChannel(missionSubscription);
-    
+
     chatSubscription = supabase.channel('public:messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
             if (currentChatContact) {
@@ -399,7 +408,7 @@ function setupRealtime() {
             }
         })
         .subscribe();
-        
+
     missionSubscription = supabase.channel('public:missions')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, payload => {
             if (currentChatContact) {

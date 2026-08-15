@@ -2,35 +2,349 @@
  * LYANN - Script (Community, Trust, Member Search & Interactive Signup Workflow)
  */
 
+    const LYANN_MEMBERS = [
+        // GUADELOUPE (971)
+        {
+            id: 1,
+            name: "David Jean-Baptiste (34 ans)",
+            role: "Plomberie & Clim Inverter",
+            category: "plomberie",
+            keywords: ["plomberie", "plombier", "fuite", "eau", "sanitaire", "robinet", "tuyau", "dépannage", "chauffe-eau", "clim"],
+            location: "guadeloupe",
+            locationName: "Guadeloupe (971)",
+            city: "Baie-Mahault",
+            rating: 4.9,
+            reviewsCount: 48,
+            avatar: "david-34.png",
+            bio: "Plombier et technicien clim passionné à Baie-Mahault. Dépannage rapide de fuites d'eau, entretien clim et chauffe-eau.",
+            skills: ["Détection de fuite", "Entretien Clim Inverter", "Remplacement chauffe-eau", "Débouchage express"],
+            badge: "Artisan Vérifié",
+            hourlyRate: "À partir de 35€/h"
+        },
+        {
+            id: 2,
+            name: "Marie-Line Popotte (39 ans)",
+            role: "Peinture Intérieure & Rénovation",
+            category: "peinture",
+            keywords: ["peinture", "peintre", "mural", "rénovation", "décoration", "enduit", "plâtre"],
+            location: "guadeloupe",
+            locationName: "Guadeloupe (971)",
+            city: "Les Abymes",
+            rating: 5.0,
+            reviewsCount: 36,
+            avatar: "sarah-29.png",
+            bio: "Peintre d'intérieur minutieuse aux Abymes. Je redonne des couleurs et de la fraîcheur tropicale à vos pièces de vie.",
+            skills: ["Peinture mur & plafond", "Enduit lissage", "Protection anti-humidité", "Conseil couleurs"],
+            badge: "Voisine Recommandée",
+            hourlyRate: "À partir de 30€/h"
+        },
+        {
+            id: 3,
+            name: "Jean-Michel Télèphe (45 ans)",
+            role: "Électricité & Rénovation Moteurs",
+            category: "electricite",
+            keywords: ["électricité", "électricien", "panne", "tableau", "prise", "lumière", "câblage", "réparer"],
+            location: "guadeloupe",
+            locationName: "Guadeloupe (971)",
+            city: "Le Gosier",
+            rating: 4.8,
+            reviewsCount: 31,
+            avatar: "david-34.png",
+            bio: "Mise aux normes, rénovation électrique globale et dépannage rapide sur Le Gosier et environs.",
+            skills: ["Tableau électrique", "Dépannage d'urgence", "Éclairage LED", "Mise aux normes"],
+            badge: "Électricien Vérifié",
+            hourlyRate: "À partir de 40€/h"
+        },
+        {
+            id: 4,
+            name: "Man Saint-Louis (72 ans)",
+            role: "Jardinier & Plantes Créoles",
+            category: "jardin",
+            keywords: ["jardin", "jardinier", "élagage", "pelouse", "tonte", "haie", "entretien", "plantes", "palmier"],
+            location: "guadeloupe",
+            locationName: "Guadeloupe (971)",
+            city: "Sainte-Anne",
+            rating: 4.9,
+            reviewsCount: 25,
+            avatar: "saint-louis-72.png",
+            bio: "Sage du jardin et passionné de botanique créole à Sainte-Anne. Entretien doux, taille de palmiers et conseils de terre.",
+            skills: ["Taille de haies", "Élagage palmiers", "Jardin médicinal créole", "Arrosage"],
+            badge: "Membre Doyen Réputé",
+            hourlyRate: "À partir de 25€/h"
+        },
+        {
+            id: 5,
+            name: "Élodie Rutil (27 ans)",
+            role: "Ménage & Entretien Maison",
+            category: "menage",
+            keywords: ["ménage", "nettoyage", "maison", "propreté", "entretien", "vitres", "repassage"],
+            location: "guadeloupe",
+            locationName: "Guadeloupe (971)",
+            city: "Le Moule",
+            rating: 5.0,
+            reviewsCount: 22,
+            avatar: "sarah-29.png",
+            bio: "Ménage à domicile et entretien méticuleux de votre intérieur au Moule. Ponctuelle et de confiance.",
+            skills: ["Ménage régulier", "Lavage de vitres", "Repassage", "Désinfection"],
+            badge: "Membre Recommandé",
+            hourlyRate: "À partir de 20€/h"
+        },
+        {
+            id: 15,
+            name: "Clarisse Vatin (31 ans)",
+            role: "Baby-sitting & Garde d'enfants",
+            category: "babysitting",
+            keywords: ["baby-sitting", "babysitting", "garde d'enfants", "enfant", "bébé", "sortie d'école", "aide aux devoirs"],
+            location: "guadeloupe",
+            locationName: "Guadeloupe (971)",
+            city: "Baie-Mahault",
+            rating: 5.0,
+            reviewsCount: 32,
+            avatar: "sarah-29.png",
+            bio: "Diplômée de la petite enfance. Garde bienveillante, activités créatives et aide aux devoirs.",
+            skills: ["Garde périscolaire", "Bébés & Enfants", "Secourisme PSC1", "Aide aux devoirs"],
+            badge: "Nounou Vérifiée",
+            hourlyRate: "À partir de 15€/h"
+        },
+        {
+            id: 16,
+            name: "Tati Rosalie Théophile (63 ans)",
+            role: "Aide à la personne & Seniors",
+            category: "aide-personne",
+            keywords: ["aide à la personne", "aide aux seniors", "compagnie", "courses", "repas", "autonomie", "auxiliaire"],
+            location: "guadeloupe",
+            locationName: "Guadeloupe (971)",
+            city: "Le Gosier",
+            rating: 4.9,
+            reviewsCount: 28,
+            avatar: "huguette-68.png",
+            bio: "Accompagnement bienveillant pour personnes âgées ou en perte d'autonomie. Présence chaleureuse et aide au quotidien.",
+            skills: ["Aide aux repas créoles", "Accompagnement courses", "Lecture & Compagnie", "Stimulation douce"],
+            badge: "Auxiliaire Recommandée",
+            hourlyRate: "À partir de 18€/h"
+        },
+
+        // MARTINIQUE (972)
+        {
+            id: 6,
+            name: "Sarah Manicon (29 ans)",
+            role: "Coiffure & Rénovation",
+            category: "peinture",
+            keywords: ["peinture", "peintre", "mural", "rénovation", "décoration", "coup de neuf", "coiffure"],
+            location: "martinique",
+            locationName: "Martinique (972)",
+            city: "Fort-de-France",
+            rating: 5.0,
+            reviewsCount: 29,
+            avatar: "sarah-29.png",
+            bio: "Artisan passionnée par la beauté et la rénovation des intérieurs antillais à Fort-de-France. Garantie satisfaction !",
+            skills: ["Peinture acrylique", "Coiffure & Tresses", "Ravalement", "Décoration"],
+            badge: "Artisan Vérifié",
+            hourlyRate: "Devis gratuit"
+        },
+        {
+            id: 17,
+            name: "Aurélie Bellerose (26 ans)",
+            role: "Baby-sitting & Sortie d'école",
+            category: "babysitting",
+            keywords: ["baby-sitting", "babysitting", "garde d'enfants", "enfant", "sortie d'école", "nounou"],
+            location: "martinique",
+            locationName: "Martinique (972)",
+            city: "Fort-de-France",
+            rating: 5.0,
+            reviewsCount: 21,
+            avatar: "sarah-29.png",
+            bio: "Garde d'enfants en soirée et les week-ends. Jeux d'éveil, goûters et sérénité pour les parents.",
+            skills: ["Soirées & Week-ends", "Jeux ludiques", "Garde à domicile", "Préparation repas"],
+            badge: "Baby-sitter Vérifiée",
+            hourlyRate: "À partir de 14€/h"
+        },
+        {
+            id: 7,
+            name: "Nicolas Bellerose (36 ans)",
+            role: "Bricolage & Multi-services",
+            category: "bricolage",
+            keywords: ["bricolage", "bricoleur", "monter un meuble", "meuble", "étagère", "fixation", "ikea", "petit travail"],
+            location: "martinique",
+            locationName: "Martinique (972)",
+            city: "Le Lamentin",
+            rating: 4.9,
+            reviewsCount: 35,
+            avatar: "kevin-41.png",
+            bio: "Polyvalent et minutieux au Lamentin pour tous vos petits travaux de maison et montages de meubles en kit.",
+            skills: ["Montage meuble", "Fixation TV mural", "Pose de rideaux", "Petits dépannages"],
+            badge: "Super Bricoleur",
+            hourlyRate: "À partir de 25€/h"
+        },
+        {
+            id: 8,
+            name: "Christophe Vatin (42 ans)",
+            role: "Climatisation & Frigoriste",
+            category: "climatisation",
+            keywords: ["climatisation", "clim", "froid", "frigoriste", "entretien clim", "dépannage clim", "nettoyage clim"],
+            location: "martinique",
+            locationName: "Martinique (972)",
+            city: "Schoelcher",
+            rating: 4.9,
+            reviewsCount: 42,
+            avatar: "kevin-41.png",
+            bio: "Pose, entretien et désinfection complète de climatiseurs Split pour particuliers et pros.",
+            skills: ["Nettoyage antibactérien", "Recharge gaz", "Dépannage fuite", "Installation neuve"],
+            badge: "Climaticien Agréé",
+            hourlyRate: "À partir de 45€/h"
+        },
+        {
+            id: 9,
+            name: "Tati Huguette Cazeau (68 ans)",
+            role: "Jardinage & Cuisine Créole",
+            category: "jardin",
+            keywords: ["jardin", "jardinier", "plantes", "entretien", "fleurs", "cour", "cuisine"],
+            location: "martinique",
+            locationName: "Martinique (972)",
+            city: "Sainte-Luce",
+            rating: 5.0,
+            reviewsCount: 19,
+            avatar: "huguette-68.png",
+            bio: "Transmission et passion des vergers et jardins créoles à Sainte-Luce. Entretien doux, recettes traditionnelles et partage.",
+            skills: ["Plantes tropicales", "Taille arbres fruitiers", "Conseils botaniques", "Cuisine créole"],
+            badge: "Membre Senior Réputé",
+            hourlyRate: "À partir de 20€/h"
+        },
+
+        // GUYANE (973)
+        {
+            id: 10,
+            name: "Kevin Bellerose (41 ans)",
+            role: "Électricité Pro & Dépannage",
+            category: "electricite",
+            keywords: ["déménagement", "déménager", "transport", "camion", "carton", "portage", "manutention", "électricité"],
+            location: "guyane",
+            locationName: "Guyane (973)",
+            city: "Cayenne",
+            rating: 4.9,
+            reviewsCount: 27,
+            avatar: "kevin-41.png",
+            bio: "Électricien professionnel et technicien généraliste à Cayenne. Dépannage de tableaux, éclairage et moteurs en sécurité.",
+            skills: ["Habilitation électrique", "Rénovation atelier", "Dépannage d'urgence", "Objets lourds"],
+            badge: "Technicien PRO Vérifié",
+            hourlyRate: "À partir de 38€/h"
+        },
+        {
+            id: 11,
+            name: "Corinne Narcisse (33 ans)",
+            role: "Menuiserie & Aménagement Bois",
+            category: "menuiserie",
+            keywords: ["menuiserie", "menuisier", "bois", "porte", "fenêtre", "placard", "terrasse", "sur mesure"],
+            location: "guyane",
+            locationName: "Guyane (973)",
+            city: "Kourou",
+            rating: 5.0,
+            reviewsCount: 20,
+            avatar: "sarah-29.png",
+            bio: "Création et rénovation d'ouvrages en bois, terrasses créoles et agencements d'intérieur à Kourou.",
+            skills: ["Terrasse bois", "Pose portes/fenêtres", "Dressing sur mesure", "Réparation meuble"],
+            badge: "Artisan Bois Vérifié",
+            hourlyRate: "Devis sous 24h"
+        },
+
+        // LA RÉUNION (974)
+        {
+            id: 12,
+            name: "Cédric Flavien (38 ans)",
+            role: "Bricolage & Multi-services",
+            category: "bricolage",
+            keywords: ["bricolage", "bricoleur", "monter un meuble", "réparer", "étagère", "électricité", "plomberie"],
+            location: "reunion",
+            locationName: "La Réunion (974)",
+            city: "Saint-Denis",
+            rating: 5.0,
+            reviewsCount: 38,
+            avatar: "david-34.png",
+            bio: "Montage de meubles, étagères, fixation, petits dépannages à Saint-Denis... Toujours avec le sourire et le soin !",
+            skills: ["Montage meuble", "Fixation lourde", "Petite électricité", "Peinture retouches"],
+            badge: "Talent Recommandé",
+            hourlyRate: "À partir de 28€/h"
+        },
+        {
+            id: 13,
+            name: "Romain Payet (35 ans)",
+            role: "Entretien Jardin & Paysage",
+            category: "jardin",
+            keywords: ["jardin", "jardinier", "élagage", "gazon", "taille", "entretien", "plantes", "cour"],
+            location: "reunion",
+            locationName: "La Réunion (974)",
+            city: "Saint-Paul",
+            rating: 4.9,
+            reviewsCount: 45,
+            avatar: "david-34.png",
+            bio: "Entretien régulier ou ponctuel de vos jardins réunionnais, débroussaillage et taille à Saint-Paul.",
+            skills: ["Débroussaillage", "Taille de haies", "Création massif fleurs", "Nettoyage terrasse"],
+            badge: "Jardinier Pro",
+            hourlyRate: "À partir de 26€/h"
+        },
+
+        // ST-MARTIN / ST-BARTH
+        {
+            id: 14,
+            name: "Guillaume Saint-Martin (44 ans)",
+            role: "Climatisation & Électricité Villa",
+            category: "climatisation",
+            keywords: ["climatisation", "clim", "électricité", "panne", "maintenance", "villa"],
+            location: "saint-martin",
+            locationName: "St-Martin / St-Barth",
+            city: "Marigot",
+            rating: 5.0,
+            reviewsCount: 12,
+            avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=400&q=80",
+            bio: "Maintenance haute qualité de climatiseurs et réseaux électriques pour villas et appartements.",
+            skills: ["Clim Inverter", "Maintenance préventive", "Dépannage express", "Tableau électrique"],
+            badge: "Expert Vérifié",
+            hourlyRate: "À partir de 50€/h"
+        }
+    ];
+    window.LYANN_MEMBERS = LYANN_MEMBERS;
+
 document.addEventListener('DOMContentLoaded', () => {
+    let activeContactName = 'David Jean-Baptiste';
+    let activeContactAvatar = 'david-34.png';
+
+    // === SCROLL REVEAL ANIMATION (IntersectionObserver) ===
+    const revealElements = document.querySelectorAll('.reveal');
+    if (revealElements.length > 0) {
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    revealObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+        revealElements.forEach(el => revealObserver.observe(el));
+    }
+
+    // === ONBOARDING TRIGGERS ===
+    document.querySelectorAll('.open-signup-trigger').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (typeof window.openOnboarding === 'function') {
+                window.openOnboarding();
+            }
+        });
+    });
+
 
     // Safe storage wrapper to prevent crashes under file:// when localStorage is disabled or blocked
     const safeStorage = {
         _cache: {},
         getItem(key) {
-            
-            try {
-                if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-                    const { data, error } = await window.LYANN_API_CLIENT.login(email, password);
-                    if (error) throw error;
-                }
-                safeStorage.setItem('lyan_user_logged_in', 'true');
-                await updateHeaderAuthState();
-                window.lyannAlert('🎉 Connexion réussie ! Bienvenue sur votre espace LYANN.');
-                closeLoginModal();
-            } catch (err) {
-                window.lyannAlert('Erreur de connexion : ' + err.message);
-            }
-
-        });
-    }
-
-    if (btnRoleProvider) {
-        btnRoleProvider.addEventListener('click', () => setDashboardRoleTheme('provider'));
-    }
-    if (btnRoleSeeker) {
-        btnRoleSeeker.addEventListener('click', () => setDashboardRoleTheme('seeker'));
-    }
+            try { return localStorage.getItem(key) || this._cache[key] || null; } catch (e) { return this._cache[key] || null; }
+        },
+        setItem(key, value) {
+            try { localStorage.setItem(key, value); } catch (e) {}
+            this._cache[key] = value;
+        }
+    };
 
     // --- Profile Tabs Switcher ---
     const profileTabBtns = document.querySelectorAll('.profile-tab-btn');
@@ -48,6 +362,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetEl) targetEl.classList.add('active');
         });
     });
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    const searchResultsModal = document.getElementById('searchResultsModal');
 
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
@@ -1023,6 +1340,74 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
+    // LOGIQUE DE LA MODALE DE CONNEXION (#loginModal)
+    // ==========================================================================
+    const loginModal = document.getElementById('loginModal');
+    const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
+    const loginTriggers = document.querySelectorAll('a[href="#login"], .open-login-trigger');
+    const loginForm = document.getElementById('loginForm');
+
+    function openLoginModal() {
+        const onboardingModal = document.getElementById('onboardingModal');
+        if (onboardingModal) onboardingModal.classList.remove('active');
+        if (loginModal) {
+            loginModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    window.openLoginModal = openLoginModal;
+
+    function closeLoginModal() {
+        if (loginModal) {
+            loginModal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+    window.closeLoginModal = closeLoginModal;
+
+    if (closeLoginModalBtn) {
+        closeLoginModalBtn.addEventListener('click', closeLoginModal);
+    }
+
+    loginTriggers.forEach(trigger => {
+        trigger.addEventListener('click', (e) => {
+            e.preventDefault();
+            openLoginModal();
+        });
+    });
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginForm.querySelector('input[type="email"]')?.value;
+            const password = loginForm.querySelector('input[type="password"]')?.value || 'password123';
+            try {
+                if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+                    const { data, error } = await window.LYANN_API_CLIENT.login(email, password);
+                    if (error) throw error;
+                }
+                safeStorage.setItem('lyan_user_logged_in', 'true');
+                await updateHeaderAuthState();
+                window.lyannAlert('🎉 Connexion réussie ! Bienvenue sur votre espace LYANN.');
+                closeLoginModal();
+            } catch (err) {
+                window.lyannAlert('Erreur de connexion : ' + err.message);
+            }
+        });
+    }
+
+    const switchToSignupBtn = document.getElementById('switchToSignupBtn');
+    if (switchToSignupBtn) {
+        switchToSignupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeLoginModal();
+            if (typeof window.openOnboarding === 'function') {
+                window.openOnboarding();
+            }
+        });
+    }
+
+    // ==========================================================================
     // LOGIQUE MARKETPLACE END-TO-END (BOOKING, MOT DE PASSE OUBLIÉ, SIGNALEMENT)
     // ==========================================================================
     const passwordResetModal = document.getElementById('passwordResetModal');
@@ -1155,7 +1540,10 @@ document.addEventListener('DOMContentLoaded', () => {
     openAccountModalTriggers.forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            openProfileDashboard('provider');
+            if (userAccountModal) {
+                userAccountModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
         });
     });
 
@@ -1342,7 +1730,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    }
 
     const accountLogoutBtn = document.getElementById('accountLogoutBtn');
     if (accountLogoutBtn) {
@@ -1360,6 +1747,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.lyannAlert('🚪 Vous êtes désormais déconnecté. Les boutons Connexion & S\'inscrire sont de nouveau affichés.');
                 }
             });
+        });
     }
 
     // Initialisation au chargement de la page
@@ -1510,7 +1898,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const item = btn.closest('.web-ai-pending-item');
                 if (item) item.remove();
                 window.lyannAlert('✅ Publication IA approuvée et diffusée en direct sur Bokantaj !');
-            }
+            }});
         });
     });
 
@@ -1524,7 +1912,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const item = btn.closest('.web-ai-pending-item');
                 if (item) item.remove();
                 window.lyannAlert('🚫 Proposition IA rejetée.');
-            }
+            }});
         });
     });
 
@@ -1661,6 +2049,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Auto-ouvrir la discussion si le paramètre URL est présent
+    const urlParams = new URLSearchParams(window.location.search);
     const chatActionParam = urlParams.get('action');
     if (chatActionParam === 'openchat') {
         const nameParam = urlParams.get('name');
@@ -1823,7 +2212,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderFlashFeed();
     renderMyDashboardRealizations();
-    updateStepUI();
 
 
     // ==========================================================================
@@ -2012,5 +2400,5 @@ window.resetLocalData = function() {
         sessionStorage.clear();
         window.lyannAlert("Tout a été effacé avec succès. La page va se recharger.");
         window.location.reload();
-    }
+    }});
 };

@@ -54,13 +54,14 @@
                 <a href="about.html">NOTRE HISTOIRE</a>
                 <a href="#login" class="btn btn-outline open-login-trigger logged-out-only">CONNEXION</a>
                 <a href="#" class="btn btn-primary btn-signup-nav open-signup-trigger logged-out-only">S'INSCRIRE</a>
+                <a href="#" class="nav-msg-btn open-chat-trigger logged-in-only" title="Ma Messagerie" style="display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%; background: rgba(74, 124, 89, 0.12); color: var(--primary); transition: transform 0.2s ease, background 0.2s ease; margin-right: 8px;">
+                    <i class="ph ph-chat-circle-dots" style="font-size: 1.3rem;"></i>
+                </a>
                 <button class="nav-profile-btn open-account-modal-trigger logged-in-only" title="Mon Espace (Réglages, Abonnement, Historique)">
                     <div class="nav-profile-avatar-wrap">
                         <img src="david-34.png" alt="Mon Profil" class="nav-profile-avatar">
                         <span class="nav-profile-status-dot"></span>
                     </div>
-                </button>
-            </div>
                 </button>
             </div>
             
@@ -410,9 +411,10 @@
     </div>
 
     <!-- ========== MODAL PARCOURS D'INSCRIPTION INTERACTIF ========== -->
-    <div class="modal-overlay" id="signupModal">
+        <!-- ========== MODAL ONBOARDING (COMPTE UNIQUE) ========== -->
+    <div class="modal-overlay" id="onboardingModal">
         <div class="modal-card">
-            <button class="modal-close-btn" id="closeSignupBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <button class="modal-close-btn" id="closeOnboardingBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
 
             <!-- Modal Header -->
             <div class="modal-header">
@@ -425,201 +427,136 @@
                         <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
                               stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
                     </svg>
-                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Inscription LYANN</span>
+                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Créer mon Compte LYANN</span>
                 </div>
                 <div class="step-indicator">
-                    <span class="step-count" id="stepCountText">Étape 1 sur 4</span>
+                    <span class="step-count" id="obStepCountText">Étape 1 sur 3</span>
                 </div>
                 <div class="progress-bar-track">
-                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                    <div class="progress-bar-fill" id="obProgressBarFill"></div>
                 </div>
             </div>
 
-            <!-- Modal Body / Steps -->
-            <div class="modal-body">
-                <!-- STEP 1 : CHOIX DU RÔLE -->
-                <div class="modal-step active" id="modalStep1">
+            <!-- Modal Body -->
+            <div class="modal-body" id="obModalBody">
+                
+                <!-- STEP 1 : INTENTION -->
+                <div class="modal-step active" id="obStep1">
                     <h3 class="step-title">Bienvenue sur LYANN !</h3>
-                    <p class="step-desc">Quelle est la raison principale de votre venue aujourd'hui ?</p>
+                    <p class="step-desc">LYANN est une communauté. Aujourd'hui vous cherchez de l'aide, demain vous pourrez en proposer. Que souhaitez-vous faire pour commencer ?</p>
                     
                     <div class="choice-cards-grid">
-                        <div class="choice-card" data-role="provider">
-                            <div class="choice-card-icon">🛠️</div>
-                            <h4>Je propose mes services</h4>
-                            <p>Vous êtes un professionnel ou un particulier talentueux souhaitant aider vos voisins.</p>
-                        </div>
-                        <div class="choice-card" data-role="seeker">
+                        <div class="choice-card" data-intent="need_help">
                             <div class="choice-card-icon">🔍</div>
                             <h4>Je cherche quelqu'un</h4>
-                            <p>Vous avez un besoin, un dépannage ou un projet à réaliser près de chez vous.</p>
+                            <p>J'ai un besoin ou un projet et je cherche un talent de confiance.</p>
+                        </div>
+                        <div class="choice-card" data-intent="offer_help">
+                            <div class="choice-card-icon">🤝</div>
+                            <h4>Je propose mon aide</h4>
+                            <p>Je souhaite proposer mes services à la communauté.</p>
+                        </div>
+                        <div class="choice-card" data-intent="discover">
+                            <div class="choice-card-icon">👀</div>
+                            <h4>Je veux juste découvrir</h4>
+                            <p>Je souhaite explorer le réseau LYANN pour l'instant.</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- STEP 2 : SELECTION DES CATÉGORIES -->
-                <div class="modal-step" id="modalStep2">
-                    <h3 class="step-title" id="step2Title">Vos domaines d'intervention</h3>
-                    <p class="step-desc" id="step2Desc">Sélectionnez une ou plusieurs catégories (vous pourrez les modifier plus tard).</p>
-
-                    <div class="category-selection-grid">
-                        <div class="cat-select-card" data-cat="maison"><i class="ph-fill ph-house"></i><span>Maison</span></div>
-                        <div class="cat-select-card" data-cat="electricite"><i class="ph-fill ph-lightning"></i><span>Électricité</span></div>
-                        <div class="cat-select-card" data-cat="plomberie"><i class="ph-fill ph-drop"></i><span>Plomberie</span></div>
-                        <div class="cat-select-card" data-cat="peinture"><i class="ph-fill ph-paint-brush"></i><span>Peinture</span></div>
-                        <div class="cat-select-card" data-cat="jardin"><i class="ph-fill ph-tree"></i><span>Jardin</span></div>
-                        <div class="cat-select-card" data-cat="nettoyage"><i class="ph-fill ph-sparkle"></i><span>Nettoyage</span></div>
-                        <div class="cat-select-card" data-cat="montage"><i class="ph-fill ph-package"></i><span>Montage</span></div>
-                        <div class="cat-select-card" data-cat="climatisation"><i class="ph-fill ph-wind"></i><span>Climatisation</span></div>
-                        <div class="cat-select-card" data-cat="bricolage"><i class="ph-fill ph-wrench"></i><span>Bricolage</span></div>
-                        <div class="cat-select-card" data-cat="menage"><i class="ph-fill ph-broom"></i><span>Ménage</span></div>
-                        <div class="cat-select-card" data-cat="babysitting"><i class="ph-fill ph-baby"></i><span>Baby-sitting</span></div>
-                        <div class="cat-select-card" data-cat="aide-personne"><i class="ph-fill ph-first-aid-kit"></i><span>Aide à la personne</span></div>
-                        <div class="cat-select-card" data-cat="demenagement"><i class="ph-fill ph-truck"></i><span>Déménagement</span></div>
-                    </div>
-                </div>
-
-                <!-- STEP 3 : LOCALISATION DOM -->
-                <div class="modal-step" id="modalStep3">
-                    <h3 class="step-title">Où vous situez-vous ?</h3>
-                    <p class="step-desc">LYANN connecte les habitants et talents au sein de chaque territoire.</p>
-
-                    <div class="form-group">
-                        <label for="modalTerritorySelect">Votre territoire DOM</label>
-                        <div class="input-with-icon">
-                            <i class="ph ph-map-pin"></i>
-                            <select id="modalTerritorySelect" class="modal-input">
-                                <option value="" disabled selected>Choisissez votre région</option>
-                                <option value="Guadeloupe (971)">Guadeloupe (971)</option>
-                                <option value="Martinique (972)">Martinique (972)</option>
-                                <option value="Guyane (973)">Guyane (973)</option>
-                                <option value="La Réunion (974)">La Réunion (974)</option>
-                                <option value="St-Martin / St-Barth">St-Martin / St-Barth</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="modalCityInput">Ville / Commune</label>
-                        <div class="input-with-icon">
-                            <i class="ph ph-buildings"></i>
-                            <input type="text" id="modalCityInput" class="modal-input" placeholder="Ex: Baie-Mahault, Fort-de-France, Saint-Denis..." autocomplete="off">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STEP 4 : CHOIX DE L'ABONNEMENT -->
-                <div class="modal-step" id="modalStep4">
-                    <h3 class="step-title">Choisissez votre Formule LYANN</h3>
-                    <p class="step-desc">Sélectionnez l'offre adaptée à vos besoins. Vous pourrez en changer à tout moment.</p>
-
-                    <div class="modal-plan-choice-grid">
-                        <div class="modal-plan-card selected" data-plan="lyanneur">
-                            <div class="modal-plan-header">
-                                <span class="plan-badge badge-lyanneur">LYANNEUR</span>
-                                <span class="modal-plan-price" style="color: #4A7C59;">Gratuit</span>
-                            </div>
-                            <div class="modal-plan-title">Lyanneur</div>
-                            <div class="modal-plan-desc">5 photos • 1 seule catégorie • Positionnement standard</div>
-                        </div>
-
-                        <div class="modal-plan-card" data-plan="plus">
-                            <div class="modal-plan-header">
-                                <span class="plan-badge badge-plus">LYANNEUR +</span>
-                                <span class="modal-plan-price" style="color: #62B9C7;">9,90€/mois</span>
-                            </div>
-                            <div class="modal-plan-title">Lyanneur Plus</div>
-                            <div class="modal-plan-desc">Réponses illimitées • 20 photos • Multi-catégories • Profil vérifié</div>
-                        </div>
-
-                        <div class="modal-plan-card plan-ultime-card" data-plan="ultime">
-                            <div class="modal-plan-header">
-                                <span class="plan-badge badge-ultime">ULTIME</span>
-                                <span class="modal-plan-price" style="color: #C9961A;">29,90€/mois</span>
-                            </div>
-                            <div class="modal-plan-title">Lyanneur Ultime ⭐</div>
-                            <div class="modal-plan-desc">Tout Plus + Mise en avant sponsorisée + Portfolio illimité + Contact direct</div>
-                        </div>
-
-                        <div class="modal-plan-card plan-pro-card" data-plan="pro">
-                            <div class="modal-plan-header">
-                                <div class="pro-official-badge-preview" style="margin-bottom:0; padding: 2px 8px; font-size: 0.7rem;">
-                                    <i class="ph-fill ph-shield-check" style="color: #E8B83F;"></i> PRO VÉRIFIÉ
-                                </div>
-                                <span class="modal-plan-price" style="color: #173F36;">59,90€/mois</span>
-                            </div>
-                            <div class="modal-plan-title">Lyanneur PRO</div>
-                            <div class="modal-plan-desc">Entreprises & Artisans (Contrôle SIRET & Assurance par l'équipe)</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STEP 5 : CRÉATION DE COMPTE -->
-                <div class="modal-step" id="modalStep5">
-                    <h3 class="step-title">Créer votre compte</h3>
-                    <p class="step-desc">Dernière étape pour rejoindre le réseau de confiance LYANN.</p>
+                <!-- STEP 2 : INFORMATIONS -->
+                <div class="modal-step" id="obStep2">
+                    <h3 class="step-title">Faisons connaissance</h3>
+                    <p class="step-desc">Ces informations seront visibles par la communauté pour créer un lien de confiance.</p>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="modalFirstName">Prénom</label>
+                            <label for="obFirstName">Prénom</label>
                             <div class="input-with-icon">
                                 <i class="ph ph-user"></i>
-                                <input type="text" id="modalFirstName" class="modal-input" placeholder="Votre prénom">
+                                <input type="text" id="obFirstName" class="modal-input" placeholder="Votre prénom">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="modalLastName">Nom</label>
+                            <label for="obLastName">Nom</label>
                             <div class="input-with-icon">
                                 <i class="ph ph-user"></i>
-                                <input type="text" id="modalLastName" class="modal-input" placeholder="Votre nom">
+                                <input type="text" id="obLastName" class="modal-input" placeholder="Votre nom">
                             </div>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="modalEmail">Adresse Email</label>
+                        <label for="obEmail">Adresse Email</label>
                         <div class="input-with-icon">
                             <i class="ph ph-envelope"></i>
-                            <input type="email" id="modalEmail" class="modal-input" placeholder="votre.email@exemple.com">
+                            <input type="email" id="obEmail" class="modal-input" placeholder="votre.email@exemple.com">
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="modalPhone">Numéro de Téléphone</label>
+                        <label for="obPassword">Mot de passe</label>
                         <div class="input-with-icon">
-                            <i class="ph ph-phone"></i>
-                            <input type="tel" id="modalPhone" class="modal-input" placeholder="06 90 ...">
+                            <i class="ph ph-lock"></i>
+                            <input type="password" id="obPassword" class="modal-input" placeholder="Min. 8 caractères">
                         </div>
                     </div>
                 </div>
 
-                <!-- STEP 6 : CONFIRMATION & SUCCÈS -->
-                <div class="modal-step" id="modalStep6">
+                <!-- STEP 3 : LA PROMESSE LYANN -->
+                <div class="modal-step" id="obStep3">
+                    <div class="success-screen" style="text-align: left; padding: 1rem;">
+                        <div class="success-icon" style="margin: 0 auto 1.5rem auto;">🤝</div>
+                        <h3 class="step-title" style="text-align: center;">L'Engagement LYANN</h3>
+                        <p class="step-desc" style="text-align: center;">En rejoignant LYANN, vous rejoignez une communauté basée sur l'entraide et le respect.</p>
+                        
+                        <div style="background: rgba(74, 124, 89, 0.05); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(74, 124, 89, 0.1); margin-top: 1.5rem;">
+                            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem;">
+                                <li style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                                    <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.2rem; margin-top: 2px;"></i>
+                                    <span style="font-size: 0.95rem; color: #2D3748;"><strong>Un seul compte pour tout :</strong> Demandez de l'aide aujourd'hui, proposez vos services demain.</span>
+                                </li>
+                                <li style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                                    <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.2rem; margin-top: 2px;"></i>
+                                    <span style="font-size: 0.95rem; color: #2D3748;"><strong>Bienveillance & Respect :</strong> Chaque échange doit être courtois et constructif.</span>
+                                </li>
+                                <li style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                                    <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.2rem; margin-top: 2px;"></i>
+                                    <span style="font-size: 0.95rem; color: #2D3748;"><strong>Sécurité avant tout :</strong> Vos données sont protégées. Nous encourageons les profils authentiques.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4 : SUCCÈS -->
+                <div class="modal-step" id="obStep4">
                     <div class="success-screen">
                         <div class="success-icon">🎉</div>
-                        <h3 class="step-title">Félicitations !</h3>
-                        <p class="step-desc">Votre profil LYANN a été créé avec succès.</p>
+                        <h3 class="step-title">Bienvenue, <span id="obSuccessName">Membre</span> !</h3>
+                        <p class="step-desc">Votre Compte Unique LYANN a été créé avec succès.</p>
+                        
+                        <p style="margin: 1.5rem 0; font-size: 0.95rem; color: #4A5568;">
+                            Vous pouvez dès maintenant personnaliser votre profil, ajouter vos compétences, ou rechercher un talent.
+                        </p>
 
-                        <div class="recap-box">
-                            <div class="recap-item"><span>Profil :</span><span id="recapRoleText">Talent de confiance</span></div>
-                            <div class="recap-item"><span>Territoire :</span><span id="recapTerritoryText">Guadeloupe</span></div>
-                            <div class="recap-item"><span>Catégories :</span><span id="recapCategoriesText">Maison, Jardin</span></div>
-                            <div class="recap-item"><span>Formule choisie :</span><span id="recapPlanText" style="font-weight: 800; color: #4A7C59;">Lyanneur (Gratuit)</span></div>
+                        <div style="display: flex; gap: 1rem; width: 100%; margin-top: 1rem;">
+                            <button class="btn btn-outline" id="obBtnFinalAction" style="flex: 1;">Commencer l'exploration</button>
+                            <button class="btn btn-primary" id="obBtnFinalProfile" style="flex: 1;">Compléter mon profil</button>
                         </div>
-
-                        <button class="btn btn-primary btn-lg" id="modalFinishBtn" style="width: 100%;">Découvrir mon espace LYANN</button>
                     </div>
                 </div>
+
             </div>
 
             <!-- Modal Footer -->
-            <div class="modal-footer" id="modalFooter">
-                <button class="btn btn-outline" id="prevStepBtn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i> Précédent</button>
-                <button class="btn btn-primary" id="nextStepBtn">Continuer <i class="ph ph-arrow-right"></i></button>
+            <div class="modal-footer" id="obModalFooter">
+                <button class="btn btn-outline" id="obPrevBtn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i> Précédent</button>
+                <button class="btn btn-primary" id="obNextBtn">Continuer <i class="ph ph-arrow-right"></i></button>
             </div>
         </div>
     </div>
 
-    <!-- ========== MODAL PROFIL PUBLIC RÉSEAU SOCIAL ========== -->
     <div class="modal-overlay" id="publicMemberProfileModal">
         <div class="modal-card modal-card-dashboard theme-provider" id="publicProfileThemeCard">
             <button class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
@@ -1281,6 +1218,7 @@
 
             </div>
         </div>
+    </div>
 
     <!-- ========== MODAL CONFIRMATION "VOUS ÊTES LYANNÉS !" (APPEL & WHATSAPP DIRECT) ========== -->
     <div class="modal-overlay" id="lyannedConfirmationModal">
@@ -1323,6 +1261,7 @@
     <script src="notifications-service.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="api-client.js"></script>
+    <script src="chat-logic.js"></script>
     <script src="script.js"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->
@@ -1357,5 +1296,6 @@
             </a>
         </div>
     </div>
+    <script src="onboarding.js"></script>
 </body>
 </html>
