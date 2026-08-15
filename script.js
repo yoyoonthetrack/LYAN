@@ -369,23 +369,60 @@
         { name: "Yveline Placide", age: 30, role: "Voisine solidaire", cat: "citoyen", city: "Saint-Jean", loc: "saint-martin", locName: "St-Martin / St-Barth", rate: "N/A", img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80", bio: "Habitante de Saint-Jean. Disponible pour aider à garder des animaux ou faire les courses de temps en temps.", skills: ["Garde chat", "Entraide", "Voisins"] }
     ];
 
-    const additionalMembers = ADDITIONAL_MEMBERS_DATA.map((m, index) => ({
-        id: 200 + index,
-        name: `${m.name} (${m.age} ans)`,
-        role: m.role,
-        category: m.cat,
-        keywords: [m.cat, m.role.toLowerCase(), m.city.toLowerCase(), m.name.toLowerCase(), ...m.skills.map(s => s.toLowerCase())],
-        location: m.loc,
-        locationName: m.locName,
-        city: m.city,
-        rating: +(4.5 + Math.random() * 0.5).toFixed(1),
-        reviewsCount: Math.floor(5 + Math.random() * 45),
-        avatar: m.img,
-        bio: m.bio,
-        skills: m.skills,
-        badge: m.cat === 'citoyen' ? "Voisin Solidaire" : "Lyanneur Vérifié",
-        hourlyRate: m.rate === 'N/A' ? "Entraide gratuite" : `À partir de ${m.rate}`
-    }));
+    const menAvatars = [
+        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1488161628813-04466f872be2?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1512485694743-9c9538b4e6e0?auto=format&fit=crop&w=150&q=80"
+    ];
+
+    const womenAvatars = [
+        "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1542206395-9feb3edaa68d?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80",
+        "https://images.unsplash.com/photo-1523824921871-d6f1a15151f1?auto=format&fit=crop&w=150&q=80"
+    ];
+
+    const maleFirstNames = ["Jocelyn", "Hugues", "Marius", "Thierry", "Ludovic", "Rodrigue", "Fabrice", "Wilfrid", "Lucien", "Albert", "Gérard", "Guy-Albert", "Firmin", "Martial", "Aimé", "Pascal", "Max", "Charles", "Georges", "Henri", "René", "Gaston", "Bruno", "Gilbert", "Raymond", "Serge"];
+
+    const additionalMembers = ADDITIONAL_MEMBERS_DATA.map((m, index) => {
+        const firstName = m.name.split(' ')[0];
+        const isMale = maleFirstNames.includes(firstName);
+        const avatarPool = isMale ? menAvatars : womenAvatars;
+        const avatarUrl = avatarPool[index % avatarPool.length];
+
+        return {
+            id: 200 + index,
+            name: `${m.name} (${m.age} ans)`,
+            role: m.role,
+            category: m.cat,
+            keywords: [m.cat, m.role.toLowerCase(), m.city.toLowerCase(), m.name.toLowerCase(), ...m.skills.map(s => s.toLowerCase())],
+            location: m.loc,
+            locationName: m.locName,
+            city: m.city,
+            rating: +(4.5 + Math.random() * 0.5).toFixed(1),
+            reviewsCount: Math.floor(5 + Math.random() * 45),
+            avatar: avatarUrl,
+            bio: m.bio,
+            skills: m.skills,
+            badge: m.cat === 'citoyen' ? "Voisin Solidaire" : "Lyanneur Vérifié",
+            hourlyRate: m.rate === 'N/A' ? "Entraide gratuite" : `À partir de ${m.rate}`
+        };
+    });
 
     LYANN_MEMBERS.push(...additionalMembers);
 
