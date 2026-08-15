@@ -514,6 +514,11 @@ async function renderMessages() {
 
 // Intercept form submit and initialize chat contacts
 function initChatSubmitAndContacts() {
+    const dpForm = document.getElementById('directPriceForm');
+    const mdForm = document.getElementById('milestoneDevisForm');
+    if (window.lyannAlert) window.lyannAlert("DEBUG STARTUP: directPriceForm = " + (!!dpForm) + ", milestoneDevisForm = " + (!!mdForm));
+    else alert("DEBUG STARTUP: directPriceForm = " + (!!dpForm) + ", milestoneDevisForm = " + (!!mdForm));
+
     const form = document.getElementById('chatInputForm');
     const input = document.getElementById('chatInputField');
 
