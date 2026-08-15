@@ -176,6 +176,11 @@ window.openChatWithUser = async function (name, avatar, contactId = name) {
     }
 
     currentChatContact = { id: contactId, name, avatar };
+    
+    // Save last active contact
+    try {
+        localStorage.setItem('lyann_last_active_contact', JSON.stringify({ id: contactId, name, avatar }));
+    } catch(e) {}
 
     // Update Header
     const headerName = document.getElementById('chatHeaderName');

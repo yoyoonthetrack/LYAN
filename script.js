@@ -1855,7 +1855,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 speedDialWrapper.classList.remove('active');
                 const chatModal = document.getElementById('chatModal');
                 if (chatModal) {
-                    openChatWithUser("David Jean-Baptiste", "david-34.png");
+                    let targetName = 'David Jean-Baptiste';
+                    let targetAvatar = 'david-34.png';
+                    try {
+                        const stored = localStorage.getItem('lyann_last_active_contact');
+                        if (stored) {
+                            const parsed = JSON.parse(stored);
+                            targetName = parsed.name;
+                            targetAvatar = parsed.avatar;
+                        }
+                    } catch(e) {}
+                    openChatWithUser(targetName, targetAvatar, targetName);
                 } else {
                     window.location.href = 'feed.html?action=openchat';
                 }
@@ -2236,7 +2246,17 @@ document.addEventListener('DOMContentLoaded', () => {
     floatingChat.addEventListener('click', () => {
         const chatModal = document.getElementById('chatModal');
         if (chatModal) {
-            openChatWithUser(activeContactName, activeContactAvatar);
+            let targetName = 'David Jean-Baptiste';
+            let targetAvatar = 'david-34.png';
+            try {
+                const stored = localStorage.getItem('lyann_last_active_contact');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    targetName = parsed.name;
+                    targetAvatar = parsed.avatar;
+                }
+            } catch(e) {}
+            openChatWithUser(targetName, targetAvatar, targetName);
             const notif = document.getElementById('floatingChatNotif');
             if (notif) notif.classList.remove('active');
         } else {
@@ -2253,7 +2273,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (nameParam) {
                 openChatWithUser(decodeURIComponent(nameParam), "david-34.png");
             } else {
-                openChatWithUser("David Jean-Baptiste", "david-34.png");
+                let targetName = 'David Jean-Baptiste';
+                let targetAvatar = 'david-34.png';
+                try {
+                    const stored = localStorage.getItem('lyann_last_active_contact');
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        targetName = parsed.name;
+                        targetAvatar = parsed.avatar;
+                    }
+                } catch(e) {}
+                openChatWithUser(targetName, targetAvatar, targetName);
             }
         }, 500);
     }
