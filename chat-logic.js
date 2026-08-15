@@ -424,14 +424,15 @@ async function renderMessages() {
     container.scrollTop = container.scrollHeight;
 }
 
-// Intercept form submit
-document.addEventListener('DOMContentLoaded', () => {
+// Intercept form submit and initialize chat contacts
+function initChatSubmitAndContacts() {
     const form = document.getElementById('chatInputForm');
+    const input = document.getElementById('chatInputField');
+
     if (form) {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            const input = document.getElementById('chatInputField');
-            const text = input.value.trim();
+            const text = input ? input.value.trim() : '';
             if (!text || !currentChatContact) return;
 
             addMessageToContact(currentChatContact.id, {
@@ -440,9 +441,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 text: text,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             });
-            input.value = '';
+            if (input) input.value = '';
 
             window.dispatchEvent(new CustomEvent('lyann_chat_message_sent', { detail: { text, contactId: currentChatContact.id } }));
+        });
+    }
+
+    // Submit on Enter key (unless Shift is pressed)
+    if (input && form) {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                form.dispatchEvent(new Event('submit'));
+            }
         });
     }
 
@@ -557,12 +568,9 @@ document.addEventListener('DOMContentLoaded', () => {
             openChatWithUser(name, avatar, name);
         });
     });
-});
+}
 
-window.addEventListener('lyann_missions_updated', () => refreshChatUI());
-
-// Handle Chat Close Button
-document.addEventListener('DOMContentLoaded', () => {
+function initChatCloseBtn() {
     const closeBtn = document.getElementById('closeChatModalBtn');
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
@@ -576,7 +584,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (chatLayout) chatLayout.classList.remove('mobile-conversation-active');
         });
     }
-});
+}
+
+window.addEventListener('lyann_missions_updated', () => refreshChatUI());
+
+// Safe startup execution
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initChatSubmitAndContacts();
+        initChatCloseBtn();
+    });
+} else {
+    initChatSubmitAndContacts();
+    initChatCloseBtn();
+}
 
 
 // ---------------------------------------------------------
