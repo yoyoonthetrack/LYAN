@@ -616,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let memberRecommendations = {};
 
     function openPublicMemberProfile(memberId) {
-        const member = LYANN_MEMBERS.find(m => m.id == memberId) || LYANN_MEMBERS[0];
+        const member = LYANN_MEMBERS.find(m => String(m.id) === String(memberId)) || LYANN_MEMBERS[0];
         currentVisitingMember = member;
 
         const avatarEl = document.getElementById('publicMemberAvatar');
@@ -1496,7 +1496,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openQuickProfileModal(memberId) {
-        const member = LYANN_MEMBERS.find(m => m.id === memberId) || LYANN_MEMBERS[0];
+        const member = LYANN_MEMBERS.find(m => String(m.id) === String(memberId)) || LYANN_MEMBERS[0];
         currentQuickMember = member;
 
         if (quickAvatarImg) quickAvatarImg.src = member.avatar;
