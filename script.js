@@ -848,7 +848,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const talentCard = e.target.closest('.talent-card');
         if (talentCard && !e.target.closest('a') && !e.target.closest('button')) {
-            openPublicMemberProfile(1); // Opens sample talent profile
+            const memberId = talentCard.getAttribute('data-member-id') || 1;
+            openPublicMemberProfile(memberId);
         }
     });
 
