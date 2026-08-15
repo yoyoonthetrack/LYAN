@@ -2,6 +2,35 @@
 // LYANN CUSTOM DIALOG SYSTEM
 // ==========================================================================
 
+// Dynamically inject dialog markup if missing on the page
+function ensureDialogMarkup() {
+    let overlay = document.getElementById('lyannDialogOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'lyannDialogOverlay';
+        overlay.style.cssText = 'z-index: 10000; display: none; align-items: center; justify-content: center;';
+        overlay.innerHTML = `
+            <div class="lyann-dialog-card">
+                <div class="lyann-dialog-icon" id="lyannDialogIcon">
+                    <i class="ph ph-info"></i>
+                </div>
+                <h3 class="lyann-dialog-title" id="lyannDialogTitle">Information</h3>
+                <p class="lyann-dialog-message" id="lyannDialogMessage">Message text goes here.</p>
+                
+                <div id="lyannDialogInputContainer" style="display: none; margin-top: 16px; width: 100%;">
+                    <input type="text" id="lyannDialogInput" class="modal-input" placeholder="Votre réponse..." style="width: 100%;">
+                </div>
+                
+                <div class="lyann-dialog-actions" id="lyannDialogActions">
+                    <!-- Buttons injected dynamically -->
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+}
+
 window.lyannAlert = function(message, type = 'info') {
     return new Promise((resolve) => {
         showDialog({
@@ -53,6 +82,8 @@ function getTitleForType(type) {
 }
 
 function showDialog({ type, title, message, showInput, buttons }) {
+    ensureDialogMarkup();
+
     const overlay = document.getElementById('lyannDialogOverlay');
     const iconEl = document.getElementById('lyannDialogIcon');
     const titleEl = document.getElementById('lyannDialogTitle');
