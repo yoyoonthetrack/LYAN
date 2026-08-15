@@ -7,85 +7,145 @@ let currentChatContact = null;
 function getMyId() { return window.getMyId() || "me"; }
 
 
-async function getChatMessages(contactId) {
-    if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) return [];
-
-    // Check if conversation exists
-    let { data: convs, error: convErr } = await window.LYANN_API_CLIENT.supabase
-        .from('conversation_participants')
-        .select('conversation_id')
-        .eq('user_id', getMyId());
-
-    // Find shared conversation
-    let sharedConvId = null;
-    if (convs && convs.length > 0) {
-        const convIds = convs.map(c => c.conversation_id);
-        const { data: shared } = await window.LYANN_API_CLIENT.supabase
-            .from('conversation_participants')
-            .select('conversation_id')
-            .eq('user_id', contactId)
-            .in('conversation_id', convIds);
-
-        if (shared && shared.length > 0) {
-            sharedConvId = shared[0].conversation_id;
-        }
+function getLocalChatMessages(contactId) {
+    let data = {};
+    try {
+        const stored = localStorage.getItem(CHAT_MSG_KEY);
+        if (stored) data = JSON.parse(stored);
+    } catch(e) {
+        console.error(e);
     }
-
-    if (!sharedConvId) return [];
-
-    const { data: msgs, error } = await window.LYANN_API_CLIENT.supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', sharedConvId)
-        .order('created_at', { ascending: true });
-
-    if (error) { console.error(error); return []; }
-
-    // Map to old format
-    return msgs.map(m => ({
-        id: m.id,
-        text: m.content,
-        sender: m.sender_id === getMyId() ? 'me' : 'them',
-        timestamp: new Date(m.created_at).getTime(),
-        type: m.content.startsWith('{') ? 'transactional' : 'text', // Simple hack for now
-        txData: m.content.startsWith('{') ? JSON.parse(m.content) : null
-    }));
+    
+    if (!data[contactId]) {
+        if (contactId === "David Jean-Baptiste") {
+            data[contactId] = [
+                { id: "m1", text: "Bonjour ! Je suis dispo cet après-midi pour votre problème électrique.", sender: "them", timestamp: "14:32", type: "text" }
+            ];
+        } else if (contactId === "Tati Huguette Cazeau") {
+            data[contactId] = [
+                { id: "m2", text: "Merci beaucoup pour votre aide ! Le portail fonctionne parfaitement.", sender: "them", timestamp: "Hier", type: "text" }
+            ];
+        } else if (contactId === "Sarah Manicon") {
+            data[contactId] = [
+                { id: "m3", text: "À très bientôt pour la rénovation de la cuisine !", sender: "them", timestamp: "Lundi", type: "text" }
+            ];
+        } else {
+            data[contactId] = [];
+        }
+        localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
+    }
+    return data[contactId];
 }
 
+function saveLocalChatMessage(contactId, msgObj) {
+    let data = {};
+    try {
+        const stored = localStorage.getItem(CHAT_MSG_KEY);
+        if (stored) data = JSON.parse(stored);
+    } catch(e) {
+        console.error(e);
+    }
+    if (!data[contactId]) data[contactId] = [];
+    data[contactId].push(msgObj);
+    localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
+}
 
+async function getChatMessages(contactId) {
+    const userId = getMyId();
+    if (userId === "me" || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+        return getLocalChatMessages(contactId);
+    }
 
+    try {
+        // Check if conversation exists
+        let { data: convs } = await window.LYANN_API_CLIENT.supabase
+            .from('conversation_participants')
+            .select('conversation_id')
+            .eq('user_id', getMyId());
+
+        // Find shared conversation
+        let sharedConvId = null;
+        if (convs && convs.length > 0) {
+            const convIds = convs.map(c => c.conversation_id);
+            const { data: shared } = await window.LYANN_API_CLIENT.supabase
+                .from('conversation_participants')
+                .select('conversation_id')
+                .eq('user_id', contactId)
+                .in('conversation_id', convIds);
+
+            if (shared && shared.length > 0) {
+                sharedConvId = shared[0].conversation_id;
+            }
+        }
+
+        if (!sharedConvId) return [];
+
+        const { data: msgs, error } = await window.LYANN_API_CLIENT.supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', sharedConvId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        return msgs.map(m => ({
+            id: m.id,
+            text: m.content,
+            sender: m.sender_id === getMyId() ? 'me' : 'them',
+            timestamp: new Date(m.created_at).getTime(),
+            type: m.content.startsWith('{') ? 'transactional' : 'text',
+            txData: m.content.startsWith('{') ? JSON.parse(m.content) : null
+        }));
+    } catch(e) {
+        console.warn("Supabase chat query failed, falling back to local:", e);
+        return getLocalChatMessages(contactId);
+    }
+}
 
 window.addMessageToContact = async function (contactId, msgObj) {
-    if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) return;
-    const supabase = window.LYANN_API_CLIENT.supabase;
-
-    // Find or create conversation
-    let { data: convs } = await supabase.from('conversation_participants').select('conversation_id').eq('user_id', getMyId());
-    let sharedConvId = null;
-    if (convs && convs.length > 0) {
-        const convIds = convs.map(c => c.conversation_id);
-        const { data: shared } = await supabase.from('conversation_participants').select('conversation_id').eq('user_id', contactId).in('conversation_id', convIds);
-        if (shared && shared.length > 0) sharedConvId = shared[0].conversation_id;
+    const userId = getMyId();
+    if (userId === "me" || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+        saveLocalChatMessage(contactId, msgObj);
+        if (currentChatContact && currentChatContact.id === contactId) {
+            await renderMessages();
+        }
+        return;
     }
 
-    if (!sharedConvId) {
-        // Create
-        const { data: newConv } = await supabase.from('conversations').insert({}).select().single();
-        sharedConvId = newConv.id;
-        await supabase.from('conversation_participants').insert([
-            { conversation_id: sharedConvId, user_id: getMyId() },
-            { conversation_id: sharedConvId, user_id: contactId }
-        ]);
+    try {
+        const supabase = window.LYANN_API_CLIENT.supabase;
+
+        // Find or create conversation
+        let { data: convs } = await supabase.from('conversation_participants').select('conversation_id').eq('user_id', getMyId());
+        let sharedConvId = null;
+        if (convs && convs.length > 0) {
+            const convIds = convs.map(c => c.conversation_id);
+            const { data: shared } = await supabase.from('conversation_participants').select('conversation_id').eq('user_id', contactId).in('conversation_id', convIds);
+            if (shared && shared.length > 0) sharedConvId = shared[0].conversation_id;
+        }
+
+        if (!sharedConvId) {
+            // Create
+            const { data: newConv } = await supabase.from('conversations').insert({}).select().single();
+            sharedConvId = newConv.id;
+            await supabase.from('conversation_participants').insert([
+                { conversation_id: sharedConvId, user_id: getMyId() },
+                { conversation_id: sharedConvId, user_id: contactId }
+            ]);
+        }
+
+        // Insert message
+        const contentToSave = msgObj.type === 'transactional' ? JSON.stringify(msgObj.txData) : msgObj.text;
+
+        await supabase.from('messages').insert({
+            conversation_id: sharedConvId,
+            sender_id: msgObj.sender === 'me' ? getMyId() : contactId,
+            content: contentToSave
+        });
+    } catch(e) {
+        console.warn("Supabase message send failed, saving locally:", e);
+        saveLocalChatMessage(contactId, msgObj);
     }
-
-    // Insert message
-    const contentToSave = msgObj.type === 'transactional' ? JSON.stringify(msgObj.txData) : msgObj.text;
-
-    await supabase.from('messages').insert({
-        conversation_id: sharedConvId,
-        sender_id: msgObj.sender === 'me' ? getMyId() : contactId,
-        content: contentToSave
-    });
 
     if (currentChatContact && currentChatContact.id === contactId) {
         await renderMessages();
@@ -103,6 +163,16 @@ window.openChatWithUser = async function (name, avatar, contactId = name) {
     // Update Header
     document.getElementById('chatHeaderName').textContent = name;
     document.getElementById('chatHeaderAvatar').src = avatar;
+
+    // Highlight active contact in sidebar list
+    document.querySelectorAll('.chat-contact-item').forEach(item => {
+        const nameEl = item.querySelector('.chat-contact-name');
+        if (nameEl && nameEl.textContent.trim() === name.trim()) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
 
     // DEV AI Badge
     const aiBadge = document.getElementById('chatDevAiBadge');
@@ -253,16 +323,21 @@ async function renderMessages() {
     if (!container) return;
     container.innerHTML = '';
 
-    const all = getChatMessages();
-    const msgs = all[currentChatContact.id] || [];
+    const msgs = await getChatMessages(currentChatContact.id);
 
     msgs.forEach(msg => {
         const div = document.createElement('div');
         const isMe = msg.sender === getMyId();
 
+        let timeStr = msg.timestamp;
+        if (typeof msg.timestamp === 'number') {
+            const d = new Date(msg.timestamp);
+            timeStr = isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
         if (msg.type === 'text') {
             div.className = `chat-msg-bubble ${isMe ? 'sent' : 'received'}`;
-            div.innerHTML = `${msg.text} <div class="chat-msg-time" style="text-align:right; margin-top:4px;">${msg.timestamp}</div>`;
+            div.innerHTML = `${msg.text} <div class="chat-msg-time" style="text-align:right; margin-top:4px;">${timeStr}</div>`;
         }
         else if (msg.type === 'system_card') {
             div.className = `chat-msg-card ${isMe ? 'align-right' : 'align-left'}`;
@@ -351,8 +426,8 @@ document.addEventListener('DOMContentLoaded', () => {
         item.addEventListener('click', (e) => {
             const nameEl = item.querySelector('.chat-contact-name');
             const avatarEl = item.querySelector('.chat-contact-avatar');
-            const name = nameEl ? nameEl.textContent : 'Contact';
-            const avatar = avatarEl ? avatarEl.getAttribute('src') : '';
+            const name = nameEl ? nameEl.textContent.trim() : 'David Jean-Baptiste';
+            const avatar = avatarEl ? avatarEl.getAttribute('src') : 'david-34.png';
             openChatWithUser(name, avatar, name); // Using name as ID for mock
         });
     });
@@ -360,8 +435,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.btn-open-chat, .btn-open-chat-direct, .open-chat-trigger').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            const name = btn.dataset.memberName || 'Contact';
-            const avatar = btn.dataset.memberAvatar || '';
+            const name = btn.dataset.memberName || 'David Jean-Baptiste';
+            const avatar = btn.dataset.memberAvatar || 'david-34.png';
             openChatWithUser(name, avatar, name);
         });
     });
