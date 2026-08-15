@@ -241,13 +241,17 @@ window.refreshChatUI = async function () {
     const viewMissionBtn = document.getElementById('chatViewMissionBtn');
 
     if (mission) {
-        contextBox.style.display = 'block';
-        contextBox.innerHTML = `${mission.title} • ${mission.agreed_price}€ <span style="color:#E63B2E">(${mission.status})</span>`;
-        viewMissionBtn.style.display = 'block';
-        viewMissionBtn.onclick = () => window.lyannAlert("Redirection vers la vue détaillée de la mission (à implémenter)");
+        if (contextBox) {
+            contextBox.style.display = 'block';
+            contextBox.innerHTML = `${mission.title} • ${mission.agreed_price}€ <span style="color:#E63B2E">(${mission.status})</span>`;
+        }
+        if (viewMissionBtn) {
+            viewMissionBtn.style.display = 'block';
+            viewMissionBtn.onclick = () => window.lyannAlert("Redirection vers la vue détaillée de la mission (à implémenter)");
+        }
     } else {
-        contextBox.style.display = 'none';
-        viewMissionBtn.style.display = 'none';
+        if (contextBox) contextBox.style.display = 'none';
+        if (viewMissionBtn) viewMissionBtn.style.display = 'none';
     }
 
     // 3. Render Actions
