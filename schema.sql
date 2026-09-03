@@ -177,7 +177,7 @@ CREATE TABLE messages (
 );
 
 -- ==============================================================================
--- 9. PAYMENTS
+-- 9. PAYMENTS & TRANSFERS (Separate Charges and Transfers Paradigm)
 -- ==============================================================================
 CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -185,11 +185,19 @@ CREATE TABLE payments (
     quote_id UUID REFERENCES quotes(id) ON DELETE SET NULL,
     payer_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     recipient_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
-    amount NUMERIC NOT NULL,
+    amount_paid_by_customer NUMERIC NOT NULL,
+    lyann_commission_amount NUMERIC NOT NULL,
+    lyann_protection_fee NUMERIC NOT NULL,
+    provider_payout_amount NUMERIC NOT NULL,
     currency TEXT DEFAULT 'eur',
-    status TEXT DEFAULT 'PENDING', -- PENDING, SUCCEEDED, FAILED, REFUNDED
+    customer_payment_status TEXT DEFAULT 'PAYMENT_REQUIRED', -- PAYMENT_REQUIRED, PAYMENT_PROCESSING, CUSTOMER_PAID, FUNDS_SECURED, REFUNDED, FAILED
+    provider_transfer_status TEXT DEFAULT 'PENDING_WORK', -- PENDING_WORK, WORK_COMPLETED, CUSTOMER_VALIDATED, PROVIDER_TRANSFER_PENDING, PROVIDER_TRANSFERRED, DISPUTED
     stripe_payment_intent_id TEXT UNIQUE,
-    stripe_transfer_id TEXT,
+    stripe_transfer_id TEXT UNIQUE,
+    idempotency_key_transfer TEXT UNIQUE,
+    customer_paid_at TIMESTAMP WITH TIME ZONE,
+    customer_validated_at TIMESTAMP WITH TIME ZONE,
+    provider_transferred_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
@@ -325,3 +333,275 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- ==============================================================================
+-- 12. ENTERPRISE BACK-OFFICE ADMIN & RBAC SCHEMA
+-- ==============================================================================
+
+-- Admin Roles Table
+CREATE TABLE admin_roles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL UNIQUE,
+    slug TEXT NOT NULL UNIQUE,
+    description TEXT,
+    is_system BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Seed default system admin roles
+INSERT INTO admin_roles (name, slug, description, is_system) VALUES
+('OWNER', 'owner', 'Propriétaire Super Administrateur avec tous les droits', true),
+('ADMINISTRATOR', 'administrator', 'Administrateur Général de la plateforme', true),
+('SUPPORT', 'support', 'Gestion du support client et tickets', true),
+('FINANCE', 'finance', 'Gestion comptable, paiements et remboursements', true),
+('MODERATION', 'moderation', 'Modération des contenus et profilage', true),
+('INSURANCE', 'insurance', 'Gestion de la Protection LYANN et réclamations', true);
+
+-- Admin Permissions Table
+CREATE TABLE admin_permissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code TEXT NOT NULL UNIQUE,
+    module TEXT NOT NULL,
+    label TEXT NOT NULL,
+    description TEXT
+);
+
+-- Admin Role Permissions Junction
+CREATE TABLE admin_role_permissions (
+    role_id UUID REFERENCES admin_roles(id) ON DELETE CASCADE,
+    permission_id UUID REFERENCES admin_permissions(id) ON DELETE CASCADE,
+    PRIMARY KEY (role_id, permission_id)
+);
+
+-- Admin Users Table
+CREATE TABLE admin_users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    username TEXT UNIQUE NOT NULL,
+    role_id UUID REFERENCES admin_roles(id) ON DELETE RESTRICT,
+    is_owner BOOLEAN DEFAULT false,
+    status TEXT DEFAULT 'ACTIVE', -- ACTIVE, SUSPENDED, REVOKED
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Audit Logs Table (Every administrative action logged)
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    actor_id UUID REFERENCES admin_users(id) ON DELETE SET NULL,
+    actor_username TEXT NOT NULL,
+    action TEXT NOT NULL,
+    module TEXT NOT NULL,
+    resource_type TEXT,
+    resource_id TEXT,
+    access_reason TEXT, -- Mandatory for private messaging access
+    old_values JSONB,
+    new_values JSONB,
+    ip_address TEXT,
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Feature Flags Table (Real-time toggles)
+CREATE TABLE feature_flags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    key TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    enabled BOOLEAN DEFAULT true,
+    target_audience TEXT DEFAULT 'ALL', -- ALL, ADMIN_ONLY, BETA_TESTERS, PERCENTAGE
+    allowed_territories TEXT[] DEFAULT ARRAY['guadeloupe', 'martinique', 'guyane', 'reunion'],
+    rollout_percentage INTEGER DEFAULT 100,
+    updated_by UUID REFERENCES admin_users(id),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Seed Default Feature Flags
+INSERT INTO feature_flags (key, name, description, enabled) VALUES
+('bokantaj_feed', 'Fil Bokantaj & Publications', 'Autoriser les publications sur le fil Bokantaj', true),
+('stripe_payments', 'Paiements Sécurisés Stripe', 'Activer le système de réservation et de paiement', true),
+('subscriptions_pro', 'Abonnements & Formules Pro', 'Activer la gestion des abonnements mensuels', true),
+('protection_lyann', 'Protection & Assurance LYANN', 'Activer la couverture Garantie LYANN', true),
+('ai_bots_automation', 'Bots IA & Publications Automatisées', 'Activer les bots IA de simulation et d''animation', true),
+('new_user_registration', 'Nouvelles Inscriptions', 'Autoriser la création de nouveaux comptes', true);
+
+-- Support Tickets Table
+CREATE TABLE support_tickets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    ticket_number TEXT UNIQUE NOT NULL,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    assigned_to UUID REFERENCES admin_users(id) ON DELETE SET NULL,
+    subject TEXT NOT NULL,
+    category TEXT,
+    priority TEXT DEFAULT 'MEDIUM', -- LOW, MEDIUM, HIGH, CRITICAL
+    status TEXT DEFAULT 'NEW', -- NEW, OPEN, WAITING_CLIENT, IN_PROGRESS, RESOLVED, CLOSED
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Protection / Insurance Claims Table
+CREATE TABLE insurance_claims (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    claim_number TEXT UNIQUE NOT NULL,
+    mission_id UUID REFERENCES missions(id) ON DELETE CASCADE,
+    claimant_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    incident_date DATE NOT NULL,
+    description TEXT NOT NULL,
+    evidence_urls TEXT[],
+    status TEXT DEFAULT 'NEW', -- NEW, IN_REVIEW, DOCS_REQUESTED, APPROVED, REJECTED, REFUNDED, CLOSED
+    payout_amount NUMERIC,
+    decision_notes TEXT,
+    handled_by UUID REFERENCES admin_users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Disputes Table
+CREATE TABLE disputes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    dispute_number TEXT UNIQUE NOT NULL,
+    mission_id UUID REFERENCES missions(id) ON DELETE CASCADE,
+    initiator_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    status TEXT DEFAULT 'OPENED', -- OPENED, UNDER_INVESTIGATION, RESOLVED_REFUND, RESOLVED_PAYOUT, CLOSED
+    frozen_amount NUMERIC NOT NULL,
+    internal_notes TEXT,
+    handled_by UUID REFERENCES admin_users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- AI Bots Table
+CREATE TABLE ai_bots (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bot_name TEXT NOT NULL,
+    avatar_url TEXT,
+    territory TEXT DEFAULT 'guadeloupe',
+    personality TEXT,
+    tone TEXT,
+    publishing_frequency TEXT DEFAULT 'DAILY',
+    validation_mode TEXT DEFAULT 'MANUAL', -- AUTO, MANUAL, DRAFT
+    status TEXT DEFAULT 'ACTIVE', -- ACTIVE, PAUSED
+    total_posts_count INTEGER DEFAULT 0,
+    last_active_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- AI Bot Activities Table
+CREATE TABLE ai_bot_activities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bot_id UUID REFERENCES ai_bots(id) ON DELETE CASCADE,
+    action_type TEXT NOT NULL, -- POST, COMMENT
+    content TEXT NOT NULL,
+    target_post_id UUID REFERENCES bokantaj_posts(id) ON DELETE SET NULL,
+    status TEXT DEFAULT 'PENDING_VALIDATION', -- PUBLISHED, PENDING_VALIDATION, REJECTED, DRAFT
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Subscriptions Plans Table
+CREATE TABLE subscriptions_plans (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    price_monthly NUMERIC NOT NULL,
+    description TEXT,
+    features JSONB,
+    display_order INTEGER DEFAULT 1,
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Enable RLS on Admin Tables
+ALTER TABLE admin_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
+
+-- Only authenticated admin users can query admin tables
+CREATE POLICY "Admin users can access admin_users" ON admin_users FOR ALL USING (
+    EXISTS (SELECT 1 FROM admin_users au WHERE au.user_id = auth.uid() AND au.status = 'ACTIVE')
+);
+CREATE POLICY "Admin users can view audit logs" ON audit_logs FOR SELECT USING (
+    EXISTS (SELECT 1 FROM admin_users au WHERE au.user_id = auth.uid() AND au.status = 'ACTIVE')
+);
+CREATE POLICY "Public read feature flags" ON feature_flags FOR SELECT USING (true);
+
+-- ==============================================================================
+-- 14. MATCHING ENGINE TABLES & INDEXES
+-- ==============================================================================
+
+-- User Matching Preferences & Spatial Area
+CREATE TABLE IF NOT EXISTS user_matching_preferences (
+    user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+    matching_enabled BOOLEAN DEFAULT true,
+    service_radius_km NUMERIC DEFAULT 20.0,
+    matching_latitude NUMERIC,
+    matching_longitude NUMERIC,
+    public_city TEXT,
+    public_area TEXT,
+    availability JSONB DEFAULT '["disponible_aujourdhui", "cette_semaine"]'::jsonb,
+    mobility JSONB DEFAULT '["vehicule_personnel"]'::jsonb,
+    equipment JSONB DEFAULT '[]'::jsonb,
+    max_daily_notifications INT DEFAULT 5,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Internal Skills & Taxonomy Mapping
+CREATE TABLE IF NOT EXISTS user_matching_skills (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    domain_id TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    subcategory_id TEXT,
+    skill_slug TEXT NOT NULL,
+    source TEXT DEFAULT 'declared', -- declared, verified_by_history, professional_verified
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Taxonomy & Normalized Tags Reference
+CREATE TABLE IF NOT EXISTS internal_taxonomy_tags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    slug TEXT UNIQUE NOT NULL,
+    label TEXT NOT NULL,
+    domain_id TEXT,
+    category_id TEXT,
+    synonyms TEXT[] DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Targeted Progressive Matching Dispatches
+CREATE TABLE IF NOT EXISTS matching_dispatches (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    request_id TEXT NOT NULL,
+    requester_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    matched_user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    batch_number INT DEFAULT 1,
+    matching_score NUMERIC NOT NULL,
+    score_breakdown JSONB,
+    human_reasons TEXT[] DEFAULT '{}',
+    status TEXT DEFAULT 'notified', -- notified, viewed, responded, declined
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Indexes for spatial, skill, and preference performance
+CREATE INDEX IF NOT EXISTS idx_user_matching_skills_user ON user_matching_skills(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_matching_skills_slug ON user_matching_skills(skill_slug);
+CREATE INDEX IF NOT EXISTS idx_user_matching_skills_category ON user_matching_skills(category_id);
+CREATE INDEX IF NOT EXISTS idx_matching_dispatches_request ON matching_dispatches(request_id);
+CREATE INDEX IF NOT EXISTS idx_matching_dispatches_matched_user ON matching_dispatches(matched_user_id);
+
+-- RLS Policies
+ALTER TABLE user_matching_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_matching_skills ENABLE ROW LEVEL SECURITY;
+ALTER TABLE matching_dispatches ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own matching preferences" ON user_matching_preferences FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own matching preferences" ON user_matching_preferences FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can view their own matching skills" ON user_matching_skills FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view matching dispatches sent to them" ON matching_dispatches FOR SELECT USING (auth.uid() = matched_user_id OR auth.uid() = requester_id);
+
+

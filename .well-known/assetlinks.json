@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.lyann.mobile",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:83:C5:E0:14:B8:C9:F6:4F:37:C3:58:3B:3F:8A:2A:2E:8D:18:24:28:2A:2E:8D:18:24:28:2A:2E:8D"
+      ]
+    }
+  }
+]

@@ -1,0 +1,66 @@
+{
+  "domains": [
+    {
+      "slug": "maison-travaux",
+      "name": "Maison & Travaux",
+      "categories": [
+        {
+          "slug": "plomberie",
+          "name": "Plomberie",
+          "subcategories": [
+            { "slug": "fuite", "name": "Réparation de fuite", "questions": ["Est-ce que l'eau coule en continu ?", "Avez-vous pu couper l'arrivée d'eau ?"] },
+            { "slug": "installation", "name": "Installation sanitaire", "questions": ["Quel type d'équipement souhaitez-vous installer ?", "Les arrivées d'eau sont-elles déjà prêtes ?"] }
+          ]
+        },
+        {
+          "slug": "electricite",
+          "name": "Électricité",
+          "subcategories": [
+            { "slug": "panne", "name": "Recherche de panne", "questions": ["La panne concerne-t-elle toute la maison ou une seule pièce ?"] }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "transport",
+      "name": "Transport & Déménagement",
+      "categories": [
+        {
+          "slug": "transport-objet",
+          "name": "Transport d'objet",
+          "subcategories": [
+            { "slug": "volumineux", "name": "Objet encombrant (meuble, électroménager)", "questions": ["Faut-il porter l'objet dans des escaliers ?", "Avez-vous besoin d'aide pour charger/décharger ?"] },
+            { "slug": "demenagement", "name": "Petit déménagement", "questions": ["Quel est le volume approximatif à déménager ?"] }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "aide-accompagnement",
+      "name": "Aide & Accompagnement",
+      "categories": [
+        {
+          "slug": "courses",
+          "name": "Courses & Livraison",
+          "subcategories": [
+            { "slug": "accompagnement-courses", "name": "Accompagnement pour courses", "questions": ["La personne à accompagner a-t-elle des difficultés de mobilité ?", "Possédez-vous un véhicule ou le Lyanner doit-il venir avec le sien ?"] }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "informatique",
+      "name": "Informatique & Numérique",
+      "categories": [
+        {
+          "slug": "ordinateur",
+          "name": "Ordinateur",
+          "subcategories": [
+            { "slug": "depannage-panne", "name": "Dépannage / Panne matérielle", "questions": ["Quel est le modèle exact de l'ordinateur ?", "S'allume-t-il encore un minimum (bruit, voyant) ?"] },
+            { "slug": "virus", "name": "Désinfection (Virus/Lenteur)", "questions": ["L'ordinateur est-il particulièrement lent depuis récemment ?"] }
+          ]
+        }
+      ]
+    }
+  ]
+}

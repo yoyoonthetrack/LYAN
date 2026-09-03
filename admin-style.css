@@ -871,9 +871,23 @@ input:checked + .slider:before { transform: translateX(22px); }
 
 /* Responsive */
 @media (max-width: 1024px) {
-    .admin-sidebar { width: 80px; }
-    .admin-sidebar .admin-brand-title, .admin-nav-item span, .admin-nav-section-title { display: none; }
-    .admin-main { margin-left: 80px; }
+    .hamburger-menu-btn#toggleAdminSidebarMobileBtn {
+        display: inline-flex !important;
+    }
+    .admin-sidebar {
+        transform: translateX(-100%);
+        width: 280px !important;
+        box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5);
+    }
+    .admin-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    .admin-sidebar .admin-brand-title, .admin-nav-item span, .admin-nav-section-title {
+        display: block !important;
+    }
+    .admin-main {
+        margin-left: 0 !important;
+    }
     .grid-2col, .grid-equal, .grid-3col { grid-template-columns: 1fr; }
     .analytics-control-bar { flex-direction: column; align-items: stretch; }
 }

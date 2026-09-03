@@ -4,16 +4,161 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // --------------------------------------------------------------------------
-    // 1. NAVIGATION INTER-MODULES (11 PÔLES OPÉRATIONNELS)
+    // 0. ACTIVE ADMIN USER SESSION & RBAC PERMISSIONS ENGINE
+    // --------------------------------------------------------------------------
+    window.currentAdminUser = {
+        username: 'Yoyoothetrack',
+        fullName: 'Yoyoothetrack',
+        role: 'OWNER',
+        isOwner: true,
+        permissions: ['*'] // Owner has absolute unrevokable permissions
+    };
+
+    window.checkAdminPermission = function(permissionCode) {
+        if (!window.currentAdminUser) return false;
+        if (window.currentAdminUser.isOwner || window.currentAdminUser.permissions.includes('*')) {
+            return true;
+        }
+        return window.currentAdminUser.permissions.includes(permissionCode);
+    };
+
+    function recordAdminAuditLog(action, moduleName, resourceType, resourceId, accessReason = null, oldVals = null, newVals = null) {
+        if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.logAuditAction === 'function') {
+            window.LYANN_API_CLIENT.logAuditAction(
+                window.currentAdminUser.username,
+                action,
+                moduleName,
+                resourceType,
+                resourceId,
+                accessReason,
+                oldVals,
+                newVals
+            );
+        }
+
+        // Prepend to audit log table if visible
+        const auditTableBody = document.querySelector('#auditLogsAdminTable tbody');
+        if (auditTableBody) {
+            const tr = document.createElement('tr');
+            const nowStr = new Date().toLocaleString('fr-FR');
+            tr.innerHTML = `
+                <td style="font-family: var(--admin-font-mono);">${nowStr}</td>
+                <td><strong style="color: var(--admin-brand-yellow);">${window.currentAdminUser.username} (${window.currentAdminUser.role})</strong></td>
+                <td><span class="status-badge verified">${action}</span></td>
+                <td>${moduleName}</td>
+                <td>${resourceType} (${resourceId || 'N/A'})</td>
+                <td>${accessReason || 'Action administrative validée'}</td>
+            `;
+            auditTableBody.insertBefore(tr, auditTableBody.firstChild);
+        }
+    }
+    window.recordAdminAuditLog = recordAdminAuditLog;
+
+    // Record initial admin session startup log
+    recordAdminAuditLog('ADMIN_SESSION_START', 'Système Admin', 'Session', 'Yoyoothetrack', 'Connexion Propriétaire Super Administrateur');
+
+    // --------------------------------------------------------------------------
+    // 0.B COMMAND PALETTE (⌘ K / CTRL + K)
+    // --------------------------------------------------------------------------
+    const cmdPaletteModal = document.getElementById('adminCommandPaletteModal');
+    const cmdPaletteInput = document.getElementById('commandPaletteInput');
+    const openCmdBtn = document.getElementById('openCommandPaletteBtn');
+
+    function toggleCommandPalette() {
+        if (!cmdPaletteModal) return;
+        cmdPaletteModal.classList.toggle('active');
+        if (cmdPaletteModal.classList.contains('active') && cmdPaletteInput) {
+            cmdPaletteInput.value = '';
+            cmdPaletteInput.focus();
+        }
+    }
+
+    if (openCmdBtn) {
+        openCmdBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleCommandPalette();
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            toggleCommandPalette();
+        }
+        if (e.key === 'Escape' && cmdPaletteModal && cmdPaletteModal.classList.contains('active')) {
+            cmdPaletteModal.classList.remove('active');
+        }
+    });
+
+    if (cmdPaletteInput) {
+        cmdPaletteInput.addEventListener('input', () => {
+            const query = cmdPaletteInput.value.toLowerCase().trim();
+            const resultsBox = document.getElementById('commandPaletteResults');
+            if (!resultsBox) return;
+
+            if (!query) {
+                resultsBox.innerHTML = `
+                    <div style="font-size: 0.75rem; color: var(--admin-text-muted); padding: 6px 12px; font-weight: 800; text-transform: uppercase;">Accès Rapide Pôles</div>
+                    <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-overview\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-chart-line-up"></i> BI & Tableau de Bord</div>
+                    <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-users\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-users"></i> Utilisateurs & KYC</div>
+                    <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-finances\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-bank"></i> Finances & Stripe Connect</div>
+                    <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-aiops\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-robot"></i> Bots IA & Animation</div>
+                `;
+                return;
+            }
+
+            const matchingNavs = Array.from(document.querySelectorAll('.admin-nav-item')).filter(nav => nav.textContent.toLowerCase().includes(query));
+            resultsBox.innerHTML = matchingNavs.map(nav => {
+                const secId = nav.getAttribute('data-section');
+                return `<div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'${secId}\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-arrow-right"></i> ${nav.textContent.trim()}</div>`;
+            }).join('') || `<div style="padding: 12px; font-size: 0.85rem; color: var(--admin-text-muted);">Aucun résultat trouvé pour "${query}"</div>`;
+        });
+    }
+
+    // --------------------------------------------------------------------------
+    // 0.C MESSAGERIE PRIVÉE ENCADRÉE (AUDIT LOGGED MANDATORY REASON)
+    // --------------------------------------------------------------------------
+    const btnRequestChatAccess = document.getElementById('btnRequestChatAccess');
+    if (btnRequestChatAccess) {
+        btnRequestChatAccess.addEventListener('click', () => {
+            const reason = prompt("⚠️ ACCÈS PRIVILÉGIÉ À LA MESSAGERIE PRIVÉE\n\nVeuillez indiquer le motif obligatoire de consultation (ex: Litige #562, Réclamation Fraude, Support Ticket #1082) :");
+            if (reason && reason.trim().length >= 5) {
+                recordAdminAuditLog('PRIVATE_CHAT_ACCESSED', 'Messagerie Encadrée', 'Conversation', 'ALL_ACTIVE', reason.trim());
+                alert(`🔓 Accès accordé sous le motif : "${reason.trim()}". L'opération a été inscrite dans les Audit Logs.`);
+            } else if (reason !== null) {
+                alert("❌ Consultation refusée : Le motif doit comporter au moins 5 caractères pour être valide.");
+            }
+        });
+    }
+
+    // --------------------------------------------------------------------------
+    // 1. NAVIGATION INTER-MODULES (25 PÔLES OPÉRATIONNELS)
     // --------------------------------------------------------------------------
     const navItems = document.querySelectorAll('.admin-nav-item');
     const sections = document.querySelectorAll('.admin-section');
+    const toggleAdminSidebarMobileBtn = document.getElementById('toggleAdminSidebarMobileBtn');
+
+    if (toggleAdminSidebarMobileBtn) {
+        toggleAdminSidebarMobileBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const sidebar = document.querySelector('.admin-sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('mobile-open');
+            }
+        });
+    }
 
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             const targetSectionId = item.getAttribute('data-section');
             if (!targetSectionId) return;
+
+            // Fermeture du drawer sur mobile
+            const sidebar = document.querySelector('.admin-sidebar');
+            if (sidebar) {
+                sidebar.classList.remove('mobile-open');
+            }
 
             // Mise à jour de la classe active sur le menu
             navItems.forEach(nav => nav.classList.remove('active'));
@@ -255,6 +400,67 @@ document.addEventListener('DOMContentLoaded', () => {
                 const text = row.textContent.toLowerCase();
                 row.style.display = text.includes(query) ? '' : 'none';
             });
+        });
+    }
+
+    // --------------------------------------------------------------------------
+    // MOTEUR DE SIMULATION DE MATCHING TEMPS RÉEL DANS L'ADMIN
+    // --------------------------------------------------------------------------
+    const btnExecuteAdminSimulation = document.getElementById('btnExecuteAdminSimulation');
+    const btnRunMatchingSimulation = document.getElementById('btnRunMatchingSimulation');
+    const adminSimulationQuery = document.getElementById('adminSimulationQuery');
+    const adminSimulationResultsContainer = document.getElementById('adminSimulationResultsContainer');
+
+    function executeAdminMatchingSimulation() {
+        if (!adminSimulationQuery || !adminSimulationResultsContainer) return;
+        const queryText = adminSimulationQuery.value || "J'ai une fuite sous mon évier à Sainte-Anne";
+        
+        if (window.LyannMatchingEngine) {
+            const classified = window.LyannMatchingEngine.classifyNeed(queryText);
+            const matchResult = window.LyannMatchingEngine.findMatchingLyanneursForNeed(classified, window.LYANN_MEMBERS || []);
+            const dispatchResult = window.LyannMatchingEngine.dispatchTargetedNeedNotifications(classified, window.LYANN_MEMBERS || [], 5);
+
+            let html = `<div style="color: #38BDF8; font-weight: bold; margin-bottom: 8px;">[CLASSIFICATION COMPRISE PAR LYANN]</div>`;
+            html += `<div>• Texte brut: <span style="color: #FACC15;">"${classified.raw_text}"</span></div>`;
+            html += `<div>• Domaine: <span style="color: #4ADE80;">${classified.domain}</span> | Catégorie: <span style="color: #4ADE80;">${classified.category}</span></div>`;
+            html += `<div>• Localisation: <span style="color: #38BDF8;">${classified.location_name}</span> (${classified.latitude}, ${classified.longitude})</div>`;
+            html += `<div>• Tags requis: <code>${classified.required_skills.join(', ')}</code></div>`;
+            
+            html += `<div style="color: #38BDF8; font-weight: bold; margin-top: 14px; margin-bottom: 8px;">[CANDIDATS LYANNEURS RECONNUS & SCORE (DÉTERMINISTE + SCORING)]</div>`;
+            if (matchResult.lyanneurs.length === 0) {
+                html += `<div style="color: #F87171;">Aucun candidat direct dans le rayon exact. Fallback Bokantaj actif.</div>`;
+            } else {
+                matchResult.lyanneurs.forEach((cand, idx) => {
+                    html += `<div style="background: rgba(255,255,255,0.05); padding: 8px 12px; margin-bottom: 6px; border-radius: 6px; border-left: 3px solid #4ADE80;">`;
+                    html += `<strong>#${idx + 1} ${cand.display_name}</strong> · ${cand.role} (${cand.public_location})<br>`;
+                    html += `<small style="color: #94A3B8;">Distance: ${cand.distance_km} km | Note: ${cand.rating} ★ (${cand.reviewsCount} avis) | ${cand.badge}</small><br>`;
+                    html += `<small style="color: #FACC15;">Raisons humaines: ${cand.human_reasons.join(' · ')}</small>`;
+                    html += `</div>`;
+                });
+            }
+
+            html += `<div style="color: #38BDF8; font-weight: bold; margin-top: 14px; margin-bottom: 8px;">[DIFFUSION CIBLÉE & NOTIFICATIONS]</div>`;
+            html += `<div style="color: #4ADE80;">${dispatchResult.human_summary}</div>`;
+            
+            adminSimulationResultsContainer.innerHTML = html;
+        } else {
+            adminSimulationResultsContainer.innerHTML = `<div style="color: #F87171;">Moteur LyannMatchingEngine non initialisé.</div>`;
+        }
+    }
+
+    if (btnExecuteAdminSimulation) {
+        btnExecuteAdminSimulation.addEventListener('click', (e) => {
+            e.preventDefault();
+            executeAdminMatchingSimulation();
+        });
+    }
+
+    if (btnRunMatchingSimulation) {
+        btnRunMatchingSimulation.addEventListener('click', (e) => {
+            e.preventDefault();
+            const taxonomyNav = document.querySelector('.admin-nav-item[data-section="sec-taxonomy"]');
+            if (taxonomyNav) taxonomyNav.click();
+            setTimeout(() => executeAdminMatchingSimulation(), 100);
         });
     }
 

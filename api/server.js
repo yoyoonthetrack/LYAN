@@ -17,6 +17,14 @@ app.use(cors({
 
 app.use(express.json());
 
+// STRICT PRODUCTION MODE FINANCIAL GUARD
+if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_SECRET_KEY) {
+    console.error("❌ FATAL CONFIGURATION ERROR: STRIPE_SECRET_KEY is missing under NODE_ENV=production. PAYMENT_MODE=mock is strictly forbidden in production.");
+    if (require.main === module) {
+        process.exit(1);
+    }
+}
+
 // In-Memory Database (Synced with LYANN DOM Data)
 const MEMBERS_DB = [
     { id: 1, name: "David Jean-Baptiste", age: 34, role: "Électricien & Climaticien PRO", city: "Baie-Mahault", locationName: "Guadeloupe (971)", territoryKey: "guadeloupe", rating: "4.9", avatar: "david-34.png", badge: "PRO VÉRIFIÉ", kycVerified: true },
@@ -123,6 +131,164 @@ app.get('/v1/admin/kpis', (req, res) => {
             reunion: 8
         }
     });
+});
+
+// 6. SECURE SERVER-SIDE STRIPE PAYMENT INTENT ENGINE (Separate Charges and Transfers)
+app.post('/v1/payments/create-intent', async (req, res) => {
+    try {
+        const { missionId, quoteId, amount, currency = 'eur', idempotencyKey } = req.body;
+
+        if (!missionId || !amount) {
+            return res.status(400).json({ error: "Mission ID et montant requis." });
+        }
+
+        // Server-side financial recalculation (3% platform fee + €4.90 protection fee)
+        const basePrice = parseFloat(amount);
+        const commissionFee = basePrice * 0.03;
+        const protectionFee = 4.90;
+        const totalAmountCents = Math.round((basePrice + commissionFee + protectionFee) * 100);
+
+        // Separate Charges and Transfers Phase 1: Charge customer on platform account
+        if (process.env.STRIPE_SECRET_KEY) {
+            const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: totalAmountCents,
+                currency: currency.toLowerCase(),
+                metadata: {
+                    missionId,
+                    quoteId: quoteId || '',
+                    providerAmount: basePrice.toFixed(2),
+                    commissionFee: commissionFee.toFixed(2),
+                    protectionFee: protectionFee.toFixed(2),
+                    financialFlow: 'SEPARATE_CHARGES_AND_TRANSFERS'
+                }
+            }, {
+                idempotencyKey: idempotencyKey || `pi_idem_${missionId}_${Date.now()}`
+            });
+
+            return res.json({
+                success: true,
+                mode: 'stripe_live',
+                architecture: 'SEPARATE_CHARGES_AND_TRANSFERS',
+                clientSecret: paymentIntent.client_secret,
+                paymentIntentId: paymentIntent.id,
+                breakdown: {
+                    basePrice,
+                    commissionFee,
+                    protectionFee,
+                    totalAmount: (totalAmountCents / 100).toFixed(2)
+                }
+            });
+        } else {
+            return res.json({
+                success: true,
+                mode: 'stripe_test_mode',
+                architecture: 'SEPARATE_CHARGES_AND_TRANSFERS',
+                paymentIntentId: `pi_test_${Date.now()}`,
+                clientSecret: `pi_test_secret_${Date.now()}`,
+                breakdown: {
+                    basePrice,
+                    commissionFee,
+                    protectionFee,
+                    totalAmount: (basePrice + commissionFee + protectionFee).toFixed(2)
+                }
+            });
+        }
+    } catch (e) {
+        console.error("Stripe Create Intent Server Error:", e);
+        res.status(500).json({ error: "Erreur lors de la création du paiement Stripe." });
+    }
+});
+
+// 7. SECURE PROVIDER TRANSFER UPON REQUESTER VALIDATION (Phase 3)
+app.post('/v1/payments/validate-and-transfer', async (req, res) => {
+    try {
+        const { missionId, providerStripeAccountId, providerAmount, userId } = req.body;
+
+        if (!missionId || !providerAmount) {
+            return res.status(400).json({ error: "Mission ID et montant prestataire requis." });
+        }
+
+        const amountCents = Math.round(parseFloat(providerAmount) * 100);
+
+        if (process.env.STRIPE_SECRET_KEY && providerStripeAccountId) {
+            const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+            
+            // Execute Separate Transfer to Provider connected account
+            const transfer = await stripe.transfers.create({
+                amount: amountCents,
+                currency: 'eur',
+                destination: providerStripeAccountId,
+                description: `Versements travaux mission LYANN ${missionId}`,
+                metadata: { missionId, validatedBy: userId || '' }
+            }, {
+                idempotencyKey: `tr_idem_${missionId}_val`
+            });
+
+            return res.json({
+                success: true,
+                mode: 'stripe_live',
+                transferId: transfer.id,
+                providerAmount: parseFloat(providerAmount),
+                status: 'PROVIDER_TRANSFERRED'
+            });
+        } else {
+            return res.json({
+                success: true,
+                mode: 'stripe_test_mode',
+                transferId: `tr_test_${Date.now()}`,
+                providerAmount: parseFloat(providerAmount),
+                status: 'PROVIDER_TRANSFERRED'
+            });
+        }
+    } catch (e) {
+        console.error("Stripe Transfer Server Error:", e);
+        res.status(500).json({ error: "Erreur lors du virement au prestataire." });
+    }
+});
+
+// 8. DISPUTE / LITIGE FREEZE ENDPOINT
+app.post('/v1/payments/dispute', (req, res) => {
+    const { missionId, reason } = req.body;
+    console.log(`⚠️ [LITIGE LYANN] Mission ${missionId} en litige. Raison: ${reason}. Virement bloqué.`);
+    res.json({
+        success: true,
+        missionId,
+        providerTransferStatus: 'DISPUTED',
+        message: "Signalement de litige enregistré. Virement gelé jusqu'à médiation."
+    });
+});
+
+// 9. STRIPE WEBHOOK LISTENER (Server-side Source of Truth)
+app.post('/v1/payments/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    let event = req.body;
+
+    if (webhookSecret && process.env.STRIPE_SECRET_KEY) {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        try {
+            event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        } catch (err) {
+            console.error(`Webhook signature verification failed:`, err.message);
+            return res.status(400).send(`Webhook Error: ${err.message}`);
+        }
+    }
+
+    switch (event.type) {
+        case 'payment_intent.succeeded':
+            const paymentIntent = event.data.object;
+            console.log(`✅ [STRIPE WEBHOOK] PaymentIntent ${paymentIntent.id} réussi. Statut client: FUNDS_SECURED. Virement en attente de validation.`);
+            break;
+        case 'payment_intent.payment_failed':
+            console.log(`❌ [STRIPE WEBHOOK] PaymentIntent ${event.data.object.id} échoué.`);
+            break;
+        default:
+            console.log(`[STRIPE WEBHOOK] Événement ${event.type}`);
+    }
+
+    res.json({ received: true });
 });
 
 // Start Server

@@ -38,7 +38,7 @@ app.use(cors({
 // Use raw body for Stripe Webhook signature verification
 app.use('/v1/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(bodyParser.json());
-app.use(express.static(__dirname));
+app.use(express.static(__dirname, { dotfiles: 'allow' }));
 
 // SendGrid Mail Service Init
 if (process.env.SENDGRID_API_KEY) {
