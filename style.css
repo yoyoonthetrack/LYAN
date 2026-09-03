@@ -541,7 +541,8 @@ h1, h2, h3, h4 {
     display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
-    gap: 10px !important;
+    gap: 12px !important;
+    margin-left: auto !important;
     flex-shrink: 0 !important;
 }
 
@@ -578,13 +579,7 @@ h1, h2, h3, h4 {
 }
 
 .nav-links {
-    display: flex;
-    align-items: center;
-    gap: 22px;
-    flex-wrap: nowrap;
-    white-space: nowrap;
-    margin-left: auto;
-    margin-right: 16px;
+    display: none !important;
 }
 
 .nav-links a {
