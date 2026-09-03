@@ -2990,8 +2990,8 @@ h1, h2, h3, h4 {
     }
 }
 
-/* Bascule du menu compact à <= 1150px pour garantir une seule ligne d'entête parfaite lors du redimensionnement */
-@media (max-width: 1150px) {
+/* Bascule du menu compact à <= 1380px pour garantir une ligne d'entête parfaite sur tous les ordinateurs portables et tablettes */
+@media (max-width: 1380px) {
     .nav-links {
         display: none !important;
     }
@@ -3003,15 +3003,11 @@ h1, h2, h3, h4 {
         margin-left: auto !important;
     }
 
-    .mobile-menu-btn {
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        width: 44px;
-        height: 44px;
-        border-radius: var(--radius-sm);
-        background: var(--bg);
-        border: 1px solid var(--border);
+    .mobile-menu-btn,
+    .hamburger-menu-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     body.user-is-logged-in .mobile-header-actions .nav-profile-btn {

@@ -21,7 +21,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260903-2">
 </head>
 <body class="feed-page">
 
@@ -71,6 +71,10 @@
                 </button>
                 <button class="btn btn-outline btn-logout-trigger logged-in-only" title="Se déconnecter" style="margin-left: 8px; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; border-color: rgba(225, 29, 72, 0.4); color: #E11D48; font-weight: 700; cursor: pointer;">
                     <i class="ph-bold ph-sign-out"></i> Déconnexion
+                </button>
+                <button class="hamburger-menu-btn open-drawer-trigger" aria-label="Menu Principal" onclick="if(typeof window.openLyannHamburgerDrawer==='function') window.openLyannHamburgerDrawer();" style="margin-left: 8px;">
+                    <i class="ph-bold ph-list" style="font-size: 1.25rem;"></i>
+                    <span class="hamburger-btn-label" style="font-size: 0.85rem; font-weight: 800; letter-spacing: 0.05em; margin-left: 5px;">MENU</span>
                 </button>
             </div>
             
@@ -1561,7 +1565,7 @@
     <script src="chat-logic.js"></script>
     <script src="ai-simulator.js"></script>
     <script src="ai-classifier.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=20260903-2"></script>
     <script src="profile-completion.js"></script>
 
     <!-- ========== MODAL PARCOURS COMPLÉTION DE PROFIL (#modalCompleteProfile) ========== -->
