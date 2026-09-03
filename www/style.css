@@ -550,7 +550,7 @@ h1, h2, h3, h4 {
 }
 
 .mobile-header-actions {
-    display: flex;
+    display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
     gap: 10px !important;
@@ -558,24 +558,24 @@ h1, h2, h3, h4 {
     flex-shrink: 0 !important;
 }
 
-/* Hamburger Menu Button - Prominent & Visible */
+/* Hamburger Menu Button - Prominent & Visible on ALL Screens (Desktop + Mobile) */
 .hamburger-menu-btn,
 .mobile-menu-btn {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    border-radius: 14px;
-    background: rgba(74, 124, 89, 0.12);
-    border: 1.5px solid rgba(74, 124, 89, 0.25);
-    color: var(--primary-dark);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 1.4rem;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 6px rgba(74, 124, 89, 0.12);
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    border-radius: 14px !important;
+    background: rgba(74, 124, 89, 0.12) !important;
+    border: 1.5px solid rgba(74, 124, 89, 0.25) !important;
+    color: var(--primary-dark) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    font-size: 1.4rem !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 2px 6px rgba(74, 124, 89, 0.12) !important;
 }
 
 .hamburger-menu-btn:hover,
@@ -626,12 +626,14 @@ h1, h2, h3, h4 {
 }
 
 .mobile-menu-btn {
-    display: none;
-    background: none;
-    border: none;
-    font-size: 1.8rem;
-    color: var(--text);
-    cursor: pointer;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(74, 124, 89, 0.12) !important;
+    border: 1.5px solid rgba(74, 124, 89, 0.25) !important;
+    font-size: 1.4rem !important;
+    color: var(--primary-dark) !important;
+    cursor: pointer !important;
 }
 
 /* Mobile Overlay */

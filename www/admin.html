@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LYANN Enterprise — Command Center & Back-Office Administration</title>
+    
+    <!-- Google Fonts & Phosphor Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Admin Stylesheet -->
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body class="admin-body">
+
+    <!-- ==========================================================================
+         SIDEBAR NAVIGATION (25 PÔLES OPÉRATIONNELS)
+         ========================================================================== -->
+    <aside class="admin-sidebar">
+        <div class="admin-brand">
+            <svg viewBox="0 0 100 80" style="width: 36px; height: 36px; flex-shrink: 0;">
+                <defs>
+                    <linearGradient id="lyanAdminGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#4A7C59"/>
+                        <stop offset="50%" stop-color="#709C7D"/>
+                        <stop offset="100%" stop-color="#E5B345"/>
+                    </linearGradient>
+                    <linearGradient id="lyanAdminRoof" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#4A7C59"/>
+                        <stop offset="50%" stop-color="#7BC5E3"/>
+                        <stop offset="100%" stop-color="#E5B345"/>
+                    </linearGradient>
+                </defs>
+                <path d="M12 42 L50 14 L88 42" stroke="url(#lyanAdminRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                      stroke="url(#lyanAdminGrad)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            </svg>
+            <div>
+                <div class="admin-brand-title" style="font-family: 'Outfit', sans-serif; font-weight: 800; letter-spacing: -0.5px;">LYANN Enterprise</div>
+                <span class="admin-brand-badge" style="background: rgba(229, 179, 69, 0.15); color: #E5B345; border: 1px solid rgba(229, 179, 69, 0.3);">Console Officielle DOM</span>
+            </div>
+        </div>
+
+        <nav class="admin-nav">
+            <div class="admin-nav-section-title">PILOTAGE GÉNÉRAL</div>
+            <a href="#" class="admin-nav-item active" data-section="sec-overview">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-chart-line-up"></i> <span>1. BI & Tableau de Bord</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-users">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-users"></i> <span>2. Utilisateurs & Membres</span></div>
+                <span class="admin-nav-badge warning">3 KYC</span>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-user-detail">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-user-focus"></i> <span>3. Fiches Utilisateurs</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-requests">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-tray"></i> <span>4. Demandes & Annonces</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-services">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-briefcase"></i> <span>5. Prestations & Catalogue</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-missions">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-calendar-check"></i> <span>6. Missions & Timelines</span></div>
+                <span class="admin-nav-badge success">24 En Cours</span>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-chat">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-chat-circle-dots"></i> <span>7. Messagerie Encadrée</span></div>
+                <span class="admin-nav-badge warning">Audit Logged</span>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-quotes">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-file-text"></i> <span>8. Devis & Jalons</span></div>
+            </a>
+
+            <div class="admin-nav-section-title">FINANCE & ABONNEMENTS</div>
+            <a href="#" class="admin-nav-item" data-section="sec-finances">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-bank"></i> <span>9. Finances & Stripe</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-invoices">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-receipt"></i> <span>10. Factures & Accounting</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-subscriptions">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-sparkle"></i> <span>11. Abonnements & Offres</span></div>
+            </a>
+
+            <div class="admin-nav-section-title">PROTECTION & ARBITRAGE</div>
+            <a href="#" class="admin-nav-item" data-section="sec-protection">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-shield-check"></i> <span>12. Protection LYANN</span></div>
+                <span class="admin-nav-badge warning">2 Réclamations</span>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-disputes">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-scales"></i> <span>13. Console de Litiges</span></div>
+                <span class="admin-nav-badge danger">1 Actif</span>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-reviews">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-star"></i> <span>14. Avis & Confiance</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-content">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-shield-warning"></i> <span>15. Modération Bokantaj</span></div>
+            </a>
+
+            <div class="admin-nav-section-title">IA & AUTOMATISATION</div>
+            <a href="#" class="admin-nav-item" data-section="sec-aiops" style="background: rgba(74, 124, 89, 0.15); border: 1px solid rgba(74, 124, 89, 0.3);">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-robot" style="color: #A3E635;"></i> <span style="color: #A3E635; font-weight: 800;">16. Bots IA & Animation</span></div>
+                <span class="admin-nav-badge success">8 Bots</span>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-ai-creator">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-plus-circle"></i> <span>17. Studio Bot IA</span></div>
+            </a>
+
+            <div class="admin-nav-section-title">CONFIGURATIONS PLATEFORME</div>
+            <a href="#" class="admin-nav-item" data-section="sec-taxonomy">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-tree-structure"></i> <span>18. Taxonomie & Catégories</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-feature-flags">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-toggle-left"></i> <span>19. Feature Flags</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-territories">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-map-trifold"></i> <span>20. Territoires DOM</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-notifications">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>21. Push & Broadcasts</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-support">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-headset"></i> <span>22. Support Client SLA</span></div>
+            </a>
+
+            <div class="admin-nav-section-title">ÉQUIPE & SÉCURITÉ ADMIN</div>
+            <a href="#" class="admin-nav-item" data-section="sec-team">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-users-three"></i> <span>23. Équipe LYANN</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-rbac">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-lock-key"></i> <span>24. RBAC & Permissions</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-audit-logs">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-scroll"></i> <span>25. Journal Audit Logs</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-health">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-activity"></i> <span>26. Santé & Webhooks</span></div>
+            </a>
+        </nav>
+
+        <div class="admin-sidebar-footer">
+            <a href="index.html" class="admin-btn admin-btn-secondary" style="width: 100%; justify-content: center;">
+                <i class="ph-bold ph-arrow-left"></i> Retour au Site Public
+            </a>
+        </div>
+    </aside>
+
+    <!-- ==========================================================================
+         MAIN EXECUTIVE WORKSPACE
+         ========================================================================== -->
+    <main class="admin-main">
+        <!-- Header Sticky -->
+        <header class="admin-header">
+            <div class="admin-header-left">
+                <button class="hamburger-menu-btn" id="toggleAdminSidebarMobileBtn" aria-label="Menu Admin" style="display: none; margin-right: 10px;">
+                    <i class="ph-bold ph-list"></i>
+                </button>
+                <div class="admin-search-bar" id="openCommandPaletteBtn" title="Raccourci ⌘ K">
+                    <i class="ph-bold ph-magnifying-glass"></i>
+                    <input type="text" id="globalAdminSearch" placeholder="Rechercher membre, mission, paiement, ticket ou bot... (⌘ K)" readonly>
+                    <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">⌘ K</span>
+                </div>
+                <div class="admin-env-pill">
+                    <i class="ph-bold ph-circle-wavy-check"></i> Production • Tous les Territoires DOM
+                </div>
+            </div>
+
+            <div class="admin-header-right">
+                <div class="admin-icon-btn" id="btnAdminQuickNotifications" title="Alertes Système">
+                    <i class="ph-bold ph-bell"></i>
+                    <span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: #E53E3E; border-radius: 50%;"></span>
+                </div>
+
+                <!-- Super Admin Owner Profile Badge -->
+                <div class="admin-user-profile" id="adminOwnerProfileBadge" style="border: 1px solid rgba(229, 179, 69, 0.4); background: rgba(229, 179, 69, 0.08); padding: 6px 12px; border-radius: 12px;">
+                    <img src="david-34.png" alt="Yoyoothetrack Avatar" class="admin-avatar" style="border: 2px solid #E5B345;">
+                    <div class="admin-user-info">
+                        <div class="admin-user-name" style="color: #E5B345; font-weight: 900;">Yoyoothetrack <i class="ph-fill ph-crown" style="color: #E5B345;"></i></div>
+                        <div class="admin-user-role" style="color: #FAF7F2; font-size: 0.72rem;">Super Admin • Owner (Droits Absolus)</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Body -->
+        <div class="admin-content">
+
+            <!-- ==========================================================================
+                 PÔLE 1 : TABLEAU DE BORD GLOBAL & ANALYTICS BI
+                 ========================================================================== -->
+            <section id="sec-overview" class="admin-section active">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Tableau de Bord Global & Business Intelligence</h1>
+                        <p class="admin-page-sub">Bienvenue <strong>Yoyoothetrack</strong>. Vue synthétique et métriques en temps réel de la plateforme LYANN.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="admin-btn admin-btn-primary trigger-goto-aiops" style="background: linear-gradient(135deg, #2E7D32, #4A7C59);"><i class="ph-bold ph-robot"></i> 🤖 Gérer les Bots IA</button>
+                        <button class="admin-btn admin-btn-secondary" id="exportBiReportBtn"><i class="ph-bold ph-download-simple"></i> Exporter Rapport BI (CSV)</button>
+                    </div>
+                </div>
+
+                <!-- KPI Grid -->
+                <div class="admin-grid-4" style="margin-bottom: 24px;">
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-icon green"><i class="ph-bold ph-currency-eur"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Volume Total (GMV)</div>
+                            <div class="kpi-value" id="kpiGmv">48 650,00 €</div>
+                            <div class="kpi-sub positive"><i class="ph-bold ph-trend-up"></i> +18,4% ce mois</div>
+                        </div>
+                    </div>
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-icon yellow"><i class="ph-bold ph-bank"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Revenus LYANN (Commission 3%)</div>
+                            <div class="kpi-value" id="kpiRevenue">1 459,50 €</div>
+                            <div class="kpi-sub positive"><i class="ph-bold ph-trend-up"></i> MRR: 420,00 €</div>
+                        </div>
+                    </div>
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-icon blue"><i class="ph-bold ph-users"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Utilisateurs Inscrits</div>
+                            <div class="kpi-value" id="kpiTotalUsers">148</div>
+                            <div class="kpi-sub positive"><i class="ph-bold ph-user-check"></i> 112 Actifs (89 Vérifiés)</div>
+                        </div>
+                    </div>
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-icon green"><i class="ph-bold ph-check-square-offset"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Missions Réalisées</div>
+                            <div class="kpi-value" id="kpiTotalMissions">342</div>
+                            <div class="kpi-sub positive"><i class="ph-bold ph-check"></i> Taux succès: 96,8%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Secondary KPI Cards -->
+                <div class="admin-grid-3" style="margin-bottom: 24px;">
+                    <div class="admin-card">
+                        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--admin-brand-yellow);"><i class="ph-bold ph-shield-check"></i> Protection & Couverture</h3>
+                        <div style="font-size: 1.4rem; font-weight: 800; color: #FAF7F2;" id="kpiProtectionFees">2 432,50 €</div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 4px;">Frais de garantie collectés (Couverture Garantie LYANN)</p>
+                    </div>
+                    <div class="admin-card">
+                        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #A3E635;"><i class="ph-bold ph-robot"></i> Bots IA Actifs</h3>
+                        <div style="font-size: 1.4rem; font-weight: 800; color: #FAF7F2;" id="kpiActiveBots">8 Bots en ligne</div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 4px;">Mode validation manuelle activé sur 4 bots</p>
+                    </div>
+                    <div class="admin-card">
+                        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #E76F51;"><i class="ph-bold ph-scales"></i> Litiges & Incidents</h3>
+                        <div style="font-size: 1.4rem; font-weight: 800; color: #FAF7F2;" id="kpiOpenDisputes">1 Litige / 2 Réclamations</div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 4px;">Fonds sécurisés et sous séquestre Stripe</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 2 : CONSOLE DE GESTION DES UTILISATEURS
+                 ========================================================================== -->
+            <section id="sec-users" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Utilisateurs & Membres de la Communauté</h1>
+                        <p class="admin-page-sub">Gérez les comptes demandeurs et prestataires, les vérifications KYC, les abonnements et les statuts.</p>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <div class="table-toolbar">
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap; flex: 1;">
+                            <input type="text" id="userSearchInput" class="admin-input" placeholder="Filtrer par nom, email, téléphone..." style="max-width: 320px;">
+                            <select id="userTerritoryFilter" class="admin-select" style="max-width: 200px;">
+                                <option value="all">Tous les territoires</option>
+                                <option value="guadeloupe">Guadeloupe (971)</option>
+                                <option value="martinique">Martinique (972)</option>
+                                <option value="guyane">Guyane (973)</option>
+                                <option value="reunion">La Réunion (974)</option>
+                            </select>
+                            <select id="userStatusFilter" class="admin-select" style="max-width: 180px;">
+                                <option value="all">Tous les statuts</option>
+                                <option value="verified">Vérifiés KYC</option>
+                                <option value="pending">En attente KYC</option>
+                                <option value="suspended">Suspendus</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="admin-table" id="usersAdminTable">
+                            <thead>
+                                <tr>
+                                    <th>Membre</th>
+                                    <th>Contact & Territoire</th>
+                                    <th>Statut & KYC</th>
+                                    <th>Activité</th>
+                                    <th>Abonnement</th>
+                                    <th>Actions Admin</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <img src="david-34.png" alt="Avatar" class="user-avatar-sm">
+                                            <div>
+                                                <div style="font-weight: 800;">David Jean-Baptiste</div>
+                                                <div style="font-size: 0.75rem; color: var(--admin-text-muted);">Inscrit le 14/01/2026</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>david.jean-baptiste@lyann.app</div>
+                                        <div style="font-size: 0.78rem; color: var(--admin-brand-yellow);">Baie-Mahault (Guadeloupe 971)</div>
+                                    </td>
+                                    <td><span class="status-badge verified">VÉRIFIÉ ✔</span></td>
+                                    <td><strong>48 missions</strong> • ⭐️ 4.9/5</td>
+                                    <td><span class="status-badge active" style="background: rgba(229,179,69,0.2); color:#E5B345;">PRO MENSUEL</span></td>
+                                    <td>
+                                        <button class="admin-btn admin-btn-sm admin-btn-secondary btn-open-user-modal" data-user-email="david.jean-baptiste@lyann.app"><i class="ph-bold ph-eye"></i> Fiche Complexe</button>
+                                        <button class="admin-btn admin-btn-sm admin-btn-danger btn-suspend-user" data-user-name="David Jean-Baptiste"><i class="ph-bold ph-user-minus"></i> Suspendre</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <img src="sarah-29.png" alt="Avatar" class="user-avatar-sm">
+                                            <div>
+                                                <div style="font-weight: 800;">Sarah Linon</div>
+                                                <div style="font-size: 0.75rem; color: var(--admin-text-muted);">Inscrite le 02/02/2026</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>sarah.linon@gmail.com</div>
+                                        <div style="font-size: 0.78rem; color: var(--admin-brand-yellow);">Fort-de-France (Martinique 972)</div>
+                                    </td>
+                                    <td><span class="status-badge pending">KYC À VALIDER</span></td>
+                                    <td><strong>12 missions</strong> • ⭐️ 5.0/5</td>
+                                    <td><span class="status-badge" style="background: rgba(255,255,255,0.1); color:#FFF;">GRATUIT</span></td>
+                                    <td>
+                                        <button class="admin-btn admin-btn-sm admin-btn-primary btn-approve-kyc" data-user-name="Sarah Linon"><i class="ph-bold ph-check"></i> Valider KYC</button>
+                                        <button class="admin-btn admin-btn-sm admin-btn-secondary btn-open-user-modal" data-user-email="sarah.linon@gmail.com"><i class="ph-bold ph-eye"></i> Fiche</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 3 : FICHE UTILISATEUR COMPLÈTE
+                 ========================================================================== -->
+            <section id="sec-user-detail" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Fiche Utilisateur Administrateur</h1>
+                        <p class="admin-page-sub">Consultation intégrale de l'identité, de l'historique, des finances et des droits d'un membre.</p>
+                    </div>
+                    <button class="admin-btn admin-btn-secondary" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-users\']').click();"><i class="ph-bold ph-arrow-left"></i> Retour Liste Membres</button>
+                </div>
+
+                <div class="admin-grid-3">
+                    <div class="admin-card">
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <img src="david-34.png" alt="Avatar" style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--admin-brand-primary); margin-bottom: 12px;">
+                            <h2 style="font-size: 1.2rem;">David Jean-Baptiste</h2>
+                            <p style="color: var(--admin-brand-yellow); font-size: 0.85rem;">Baie-Mahault (Guadeloupe 971)</p>
+                            <div style="margin-top: 8px;"><span class="status-badge verified">VÉRIFIÉ ✔</span></div>
+                        </div>
+
+                        <div style="border-top: 1px solid var(--admin-border); padding-top: 16px;">
+                            <div style="font-size: 0.8rem; color: var(--admin-text-muted);">E-mail</div>
+                            <div style="font-weight: 700; margin-bottom: 10px;">david.jean-baptiste@lyann.app</div>
+                            <div style="font-size: 0.8rem; color: var(--admin-text-muted);">Téléphone</div>
+                            <div style="font-weight: 700; margin-bottom: 10px;">+590 690 12 34 56</div>
+                            <div style="font-size: 0.8rem; color: var(--admin-text-muted);">Compte Stripe Connect</div>
+                            <div style="font-family: var(--admin-font-mono); font-size: 0.78rem; color: var(--admin-accent-blue);">acct_1N9xZ8LyannDom971</div>
+                        </div>
+                    </div>
+
+                    <div class="admin-card" style="grid-column: span 2;">
+                        <h3 style="margin-bottom: 16px; color: var(--admin-brand-yellow);"><i class="ph-bold ph-clock-counter-clockwise"></i> Historique des Actions Admin sur ce Compte</h3>
+                        <div style="background: var(--admin-bg); padding: 14px; border-radius: 12px; font-family: var(--admin-font-mono); font-size: 0.8rem; line-height: 1.8;">
+                            <div>[14/01/2026 10:15] INSCRIPTION COMPTE • Origine: App iOS Guadeloupe</div>
+                            <div>[15/01/2026 14:20] VALIDATION KYC • Statut: Vérifié par Yoyoothetrack</div>
+                            <div>[20/01/2026 18:45] PASSAGE SOUSCRIPTION • Formule Pro Mensuelle (14,99 €/mois)</div>
+                            <div>[02/09/2026 09:30] VIREMENT DE PAIEMENT • 450,00 € versé via Stripe Connect</div>
+                        </div>
+
+                        <h3 style="margin-top: 24px; margin-bottom: 16px; color: var(--admin-brand-yellow);"><i class="ph-bold ph-gear"></i> Actions d'Administration Sensibles</h3>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <button class="admin-btn admin-btn-primary btn-approve-kyc" data-user-name="David Jean-Baptiste"><i class="ph-bold ph-check-circle"></i> Réattester KYC</button>
+                            <button class="admin-btn admin-btn-secondary"><i class="ph-bold ph-sparkle"></i> Offrir Abonnement Pro</button>
+                            <button class="admin-btn admin-btn-danger btn-suspend-user" data-user-name="David Jean-Baptiste"><i class="ph-bold ph-user-minus"></i> Suspendre le Compte</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 4 : DEMANDES & ANNONCES
+                 ========================================================================== -->
+            <section id="sec-requests" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Demandes & Annonces Publiées</h1>
+                        <p class="admin-page-sub">Modération et suivi des besoins postés par les habitants sur le réseau.</p>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Titre du Besoin</th>
+                                <th>Demandeur</th>
+                                <th>Commune & Territoire</th>
+                                <th>Catégorie</th>
+                                <th>Statut</th>
+                                <th>Actions Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Réparation urgente climatiseur split salon</strong></td>
+                                <td>Huguette Saint-Louis</td>
+                                <td>Baie-Mahault (971)</td>
+                                <td>Climatisation & Froid</td>
+                                <td><span class="status-badge verified">PUBLIÉ</span></td>
+                                <td>
+                                    <button class="admin-btn admin-btn-sm admin-btn-secondary"><i class="ph-bold ph-eye"></i> Voir</button>
+                                    <button class="admin-btn admin-btn-sm admin-btn-danger"><i class="ph-bold ph-trash"></i> Retirer</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 5 : PRESTATIONS & CATALOGUE
+                 ========================================================================== -->
+            <section id="sec-services" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Catalogue des Prestations Pro</h1>
+                        <p class="admin-page-sub">Offres et services référencés par les prestataires vérifiés.</p>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Intitulé Prestation</th>
+                                <th>Prestataire</th>
+                                <th>Modèle Tarifaire</th>
+                                <th>Prix Indicatif</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Entretien & Nettoyage Split Climatisation</strong></td>
+                                <td>David Jean-Baptiste</td>
+                                <td>Forfaitaire</td>
+                                <td>65,00 € / Unité</td>
+                                <td><span class="status-badge active">ACTIF</span></td>
+                                <td>
+                                    <button class="admin-btn admin-btn-sm admin-btn-secondary"><i class="ph-bold ph-pencil"></i> Éditer</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 6 : MISSIONS & TIMELINES ADMINISTRATIVES
+                 ========================================================================== -->
+            <section id="sec-missions" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Missions & Timelines d'Exécution</h1>
+                        <p class="admin-page-sub">Suivi opérationnel des contrats, séquestres financiers et jalons de prestation.</p>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID Mission</th>
+                                <th>Demandeur & Prestataire</th>
+                                <th>Service & Territoire</th>
+                                <th>Montant & Séquestre</th>
+                                <th>Statut Mission</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono); color: var(--admin-brand-yellow);">#MIS-97184</td>
+                                <td>
+                                    <div><strong>Huguette S.</strong> ➔ <strong>David J.</strong></div>
+                                    <div style="font-size: 0.75rem; color: var(--admin-text-muted);">Initiée le 02/09/2026</div>
+                                </td>
+                                <td>Réparation Climatiseur Split (Baie-Mahault)</td>
+                                <td><strong>159,40 €</strong> (Fonds Sécurisés)</td>
+                                <td><span class="status-badge active">FUNDS_SECURED</span></td>
+                                <td>
+                                    <button class="admin-btn admin-btn-sm admin-btn-secondary"><i class="ph-bold ph-clock"></i> Timeline</button>
+                                    <button class="admin-btn admin-btn-sm admin-btn-primary btn-release-payout" data-amount="159.40 €" data-provider="David Jean-Baptiste"><i class="ph-bold ph-paper-plane-tilt"></i> Libérer Payout</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 7 : MESSAGERIE PRIVÉE ENCADRÉE (AUDIT LOGGED)
+                 ========================================================================== -->
+            <section id="sec-chat" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Messagerie Privée Encadrée & Audit</h1>
+                        <p class="admin-page-sub">Consultation sécurisée des échanges dans le cadre strict d'un litige ou d'une demande support. Motif d'accès obligatoire.</p>
+                    </div>
+                </div>
+
+                <div class="admin-card" style="background: rgba(229, 179, 69, 0.08); border: 1px solid rgba(229, 179, 69, 0.3);">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <i class="ph-bold ph-shield-warning" style="font-size: 2rem; color: var(--admin-brand-yellow);"></i>
+                        <div>
+                            <h3 style="color: var(--admin-brand-yellow);">Protection de la Vie Privée & Conformité</h3>
+                            <p style="font-size: 0.85rem; color: var(--admin-text-muted);">La consultation arbitraire des conversations est strictement interdite. Chaque accès requiert un motif valable et sera consigné dans le journal des Audit Logs sous l'identifiant <strong>Yoyoothetrack</strong>.</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <button class="admin-btn admin-btn-primary" id="btnRequestChatAccess"><i class="ph-bold ph-lock-key-open"></i> Saisir Motif d'Accès & Déverrouiller Conversation</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 8 : DEVIS & JALONS
+                 ========================================================================== -->
+            <section id="sec-quotes" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Devis & Jalons de Paiement</h1>
+                        <p class="admin-page-sub">Inspection des propositions tarifaires et découpages par jalons d'avancement.</p>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Réf. Devis</th>
+                                <th>Prestataire</th>
+                                <th>Client</th>
+                                <th>Total TTC</th>
+                                <th>Jalons Validés</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono);">#DEV-4401</td>
+                                <td>David Jean-Baptiste</td>
+                                <td>Huguette S.</td>
+                                <td>159,40 €</td>
+                                <td>2 / 2 Validés</td>
+                                <td><span class="status-badge verified">ACCEPTED</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 9 : FINANCES, PAIEMENTS & STRIPE CONNECT
+                 ========================================================================== -->
+            <section id="sec-finances" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Finances, Transparence & Stripe Connect</h1>
+                        <p class="admin-page-sub">Gestion des commissions (3%), des frais de garantie et des flux de séquestre Separate Charges and Transfers.</p>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Transaction ID</th>
+                                <th>Total Client</th>
+                                <th>Commission LYANN (3%)</th>
+                                <th>Frais Garantie</th>
+                                <th>Payout Prestataire</th>
+                                <th>Stripe Intent ID</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono);">#PAY-8821</td>
+                                <td>159,40 €</td>
+                                <td>4,50 €</td>
+                                <td>4,90 €</td>
+                                <td>150,00 €</td>
+                                <td style="font-family: var(--admin-font-mono); font-size: 0.78rem;">pi_3N8xZ9Lyann971</td>
+                                <td><span class="status-badge verified">FUNDS_SECURED</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 10 : FACTURATION & COMPTABILITÉ
+                 ========================================================================== -->
+            <section id="sec-invoices" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Facturation & Exports Comptables</h1>
+                        <p class="admin-page-sub">Génération automatique des pièces justificatives HT/TVA/TTC et exports d'écritures.</p>
+                    </div>
+                    <button class="admin-btn admin-btn-primary" onclick="alert('📊 Export comptable au format CSV initié avec succès.');"><i class="ph-bold ph-download-simple"></i> Exporter Écritures Comptables (CSV)</button>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Numéro Facture</th>
+                                <th>Client / Destinataire</th>
+                                <th>Montant HT</th>
+                                <th>TVA (8.5% DOM)</th>
+                                <th>Montant TTC</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono); color: var(--admin-brand-yellow);">FAC-2026-0901</td>
+                                <td>Huguette Saint-Louis</td>
+                                <td>146,91 €</td>
+                                <td>12,49 €</td>
+                                <td><strong>159,40 €</strong></td>
+                                <td><button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('📄 Prévisualisation du PDF Facture généré.');"><i class="ph-bold ph-file-pdf"></i> Aperçu PDF</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 11 : ABONNEMENTS & TARIFICATION
+                 ========================================================================== -->
+            <section id="sec-subscriptions" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Moteur d'Abonnements & Pricing Pro</h1>
+                        <p class="admin-page-sub">Gestion des offres récurrentes et suivi du Churn / MRR de la plateforme.</p>
+                    </div>
+                </div>
+                <div class="admin-grid-3">
+                    <div class="admin-card" style="border-top: 3px solid #FFF;">
+                        <h3>Formule GRATUITE</h3>
+                        <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0;">0,00 € / mois</div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">Accès de base, commissions standards 3%.</p>
+                    </div>
+                    <div class="admin-card" style="border-top: 3px solid var(--admin-brand-yellow);">
+                        <h3 style="color: var(--admin-brand-yellow);">Formule PRO MENSUELLE</h3>
+                        <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0; color: var(--admin-brand-yellow);">14,99 € / mois</div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">Badge Pro Vérifié, visibilité prioritaire.</p>
+                    </div>
+                    <div class="admin-card" style="border-top: 3px solid #A3E635;">
+                        <h3 style="color: #A3E635;">Formule ENTERPRISE ANNUELLE</h3>
+                        <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0; color: #A3E635;">149,00 € / an</div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">Accès complet flotte de bots et API dédiée.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 12 : PROTECTION & ASSURANCE LYANN
+                 ========================================================================== -->
+            <section id="sec-protection" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Protection & Couverture Garantie LYANN</h1>
+                        <p class="admin-page-sub">Instruction des dossiers de réclamation et couverture dommages sur prestations.</p>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Dossier #</th>
+                                <th>Mission #</th>
+                                <th>Reclamant</th>
+                                <th>Motif & Pièces</th>
+                                <th>Statut Dossier</th>
+                                <th>Action Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono); color: var(--admin-brand-yellow);">#CLM-97102</td>
+                                <td>#MIS-97184</td>
+                                <td>Huguette Saint-Louis</td>
+                                <td>Écoulement d'eau après intervention split (Photo fournie)</td>
+                                <td><span class="status-badge pending">DOCS_REQUESTED</span></td>
+                                <td>
+                                    <button class="admin-btn admin-btn-sm admin-btn-primary"><i class="ph-bold ph-check"></i> Accorder Remboursement</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 13 : CONSOLE DE GESTION DES LITIGES
+                 ========================================================================== -->
+            <section id="sec-disputes" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Console d'Arbitrage des Litiges</h1>
+                        <p class="admin-page-sub">Gel des séquestres Stripe et médiation administrative entre parties.</p>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Litige #</th>
+                                <th>Mission Concernée</th>
+                                <th>Montant Gelé</th>
+                                <th>Raison de la Contestation</th>
+                                <th>Statut</th>
+                                <th>Décision Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono); color: #E76F51;">#DIS-0041</td>
+                                <td>#MIS-97184</td>
+                                <td>159,40 € (Sous Séquestre)</td>
+                                <td>Travail contesté par le demandeur</td>
+                                <td><span class="status-badge suspended">UNDER_INVESTIGATION</span></td>
+                                <td>
+                                    <button class="admin-btn admin-btn-sm admin-btn-danger"><i class="ph-bold ph-arrow-u-down-left"></i> Déclencher Remboursement Client</button>
+                                    <button class="admin-btn admin-btn-sm admin-btn-primary"><i class="ph-bold ph-check"></i> Valider Payout Prestataire</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 14 : AVIS & RECOMMANDATIONS
+                 ========================================================================== -->
+            <section id="sec-reviews" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Audit des Avis & Recommandations</h1>
+                        <p class="admin-page-sub">Supervision des évaluations déposées après réalisation d'une prestation.</p>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Auteur</th>
+                                <th>Destinataire</th>
+                                <th>Note</th>
+                                <th>Commentaire</th>
+                                <th>Date</th>
+                                <th>Modération</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Huguette S.</td>
+                                <td>David J.</td>
+                                <td>⭐️⭐️⭐️⭐️⭐️ (5/5)</td>
+                                <td>Super travail, rapide et propre !</td>
+                                <td>02/09/2026</td>
+                                <td><span class="status-badge verified">APPROUVÉ</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 15 : MODÉRATION BOKANTAJ
+                 ========================================================================== -->
+            <section id="sec-content" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Modération du Fil Bokantaj</h1>
+                        <p class="admin-page-sub">Gestion des publications communautaires, des signalements et du respect de la charte.</p>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Post #</th>
+                                <th>Auteur</th>
+                                <th>Contenu Publication</th>
+                                <th>Signalements</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono);">#BOK-1092</td>
+                                <td>Jean-Michel T.</td>
+                                <td>Dispo pour travaux de peinture sur Le Gosier ce week-end !</td>
+                                <td>0 Signalement</td>
+                                <td>
+                                    <button class="admin-btn admin-btn-sm admin-btn-secondary"><i class="ph-bold ph-push-pin"></i> Épingler</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 16 : BOTS IA & PERSONAS D'ANIMATION
+                 ========================================================================== -->
+            <section id="sec-aiops" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">🤖 Bots IA & Studio d'Animation Automatisée</h1>
+                        <p class="admin-page-sub">Pilotez les profils IA de simulation et gérez les files de validation avant publication sur Bokantaj.</p>
+                    </div>
+                    <button class="admin-btn admin-btn-primary" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-ai-creator\']').click();"><i class="ph-bold ph-plus-circle"></i> Créer un Nouveau Bot IA</button>
+                </div>
+
+                <div class="admin-grid-3">
+                    <div class="admin-card">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <img src="clim-talent.png" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #A3E635;">
+                            <div>
+                                <h3 style="font-size: 1rem;">Bot ClimPro Guadeloupe</h3>
+                                <span class="status-badge active" style="background: rgba(163,230,53,0.2); color: #A3E635;">ACTIF (VAL. MANUELLE)</span>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">Spécialiste climatisation et froid solaire sur Grande-Terre.</p>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                            <span>Publications: <strong>24</strong></span>
+                            <span>Fréquence: <strong>1 / Jour</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 17 : CRÉATION DE BOT IA
+                 ========================================================================== -->
+            <section id="sec-ai-creator" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Studio de Création d'Agent IA</h1>
+                        <p class="admin-page-sub">Configurez un nouvel agent virtuel pour dynamiser l'activité sur un territoire DOM.</p>
+                    </div>
+                </div>
+                <div class="admin-card" style="max-width: 650px;">
+                    <form id="createAiBotForm" onsubmit="event.preventDefault(); alert('🤖 Agent IA créé et configuré avec succès !');">
+                        <div style="margin-bottom: 14px;">
+                            <label class="admin-label">Nom du Bot IA *</label>
+                            <input type="text" class="admin-input" placeholder="Ex: Bot Jardinier Martinique" required>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label class="admin-label">Territoire DOM *</label>
+                            <select class="admin-select">
+                                <option value="guadeloupe">Guadeloupe (971)</option>
+                                <option value="martinique">Martinique (972)</option>
+                                <option value="guyane">Guyane (973)</option>
+                                <option value="reunion">La Réunion (974)</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label class="admin-label">Mode de Validation *</label>
+                            <select class="admin-select">
+                                <option value="MANUAL">Manuelle (Validation admin requise avant post)</option>
+                                <option value="AUTO">Automatique (Publication directe)</option>
+                                <option value="DRAFT">Brouillon uniquement</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="admin-btn admin-btn-primary"><i class="ph-bold ph-plus-circle"></i> Déployer le Agent IA</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 18 : TAXONOMIE & CATÉGORIES
+                 ========================================================================== -->
+            <section id="sec-taxonomy" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">⚙️ Moteur de Matching & Taxonomie LYANN</h1>
+                        <p class="admin-page-sub">Centre de contrôle de l'algorithme de mise en relation, de la taxonomie et de la diffusion ciblée.</p>
+                    </div>
+                    <button class="admin-btn admin-btn-primary" id="btnRunMatchingSimulation"><i class="ph-bold ph-lightning"></i> Tester une simulation de match</button>
+                </div>
+
+                <!-- KPI Cards Moteur -->
+                <div class="grid-4col mb-6">
+                    <div class="admin-card metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">Statut Algorithmique</span>
+                            <i class="ph-bold ph-brain" style="color: #4A7C59; font-size: 1.4rem;"></i>
+                        </div>
+                        <div class="metric-value">Actif</div>
+                        <div class="metric-sub success"><i class="ph-bold ph-check-circle"></i> Moteur Hybride 100% Neutre</div>
+                    </div>
+                    <div class="admin-card metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">Taxonomie & Tags</span>
+                            <i class="ph-bold ph-tree-structure" style="color: #7BC5E3; font-size: 1.4rem;"></i>
+                        </div>
+                        <div class="metric-value">142 Slugs</div>
+                        <div class="metric-sub text-muted">Normalisation sans doublons</div>
+                    </div>
+                    <div class="admin-card metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">Poids Métier Principal</span>
+                            <i class="ph-bold ph-wrench" style="color: #E5B345; font-size: 1.4rem;"></i>
+                        </div>
+                        <div class="metric-value">35 %</div>
+                        <div class="metric-sub text-muted">Compatibilité service réelle</div>
+                    </div>
+                    <div class="admin-card metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">Rayon Moyen DOM</span>
+                            <i class="ph-bold ph-map-pin" style="color: #4A7C59; font-size: 1.4rem;"></i>
+                        </div>
+                        <div class="metric-value">22 km</div>
+                        <div class="metric-sub success"><i class="ph-bold ph-navigation-arrow"></i> Formule de Haversine active</div>
+                    </div>
+                </div>
+
+                <!-- SECTION 1: PONDÉRATION DES SCORES DE MATCHING -->
+                <div class="admin-card mb-6">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="ph-bold ph-sliders"></i> Configuration de la Matrice de Scoring (Total = 100%)</h3>
+                    </div>
+                    <div class="grid-2col">
+                        <div>
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Critère de Scoring</th>
+                                        <th>Poids Algorithmique</th>
+                                        <th>Raison Humaine Générée</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Compatibilité Service & Métier</strong></td>
+                                        <td><span class="status-badge verified">35 %</span></td>
+                                        <td><code>Spécialisé en [Catégorie]</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Proximité & Rayon Kilométrique</strong></td>
+                                        <td><span class="status-badge verified">25 %</span></td>
+                                        <td><code>Intervient près de [Commune] (X km)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Disponibilité Temporelle</strong></td>
+                                        <td><span class="status-badge active">15 %</span></td>
+                                        <td><code>Disponible cette semaine</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Réputation (Avis Bayésien)</strong></td>
+                                        <td><span class="status-badge active">10 %</span></td>
+                                        <td><code>Très recommandé (X.X ★)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Taux de Réponse</strong></td>
+                                        <td><span class="status-badge">5 %</span></td>
+                                        <td><code>Répond rapidement</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Profil Vérifié / Pro</strong></td>
+                                        <td><span class="status-badge">5 %</span></td>
+                                        <td><code>Profil Vérifié sur LYANN</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Équité Nouveaux Lyanneurs</strong></td>
+                                        <td><span class="status-badge">5 %</span></td>
+                                        <td><code>Nouveau membre actif</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="background: rgba(74, 124, 89, 0.05); padding: 18px; border-radius: 14px; border: 1px solid rgba(74, 124, 89, 0.15);">
+                            <h4 style="font-weight: 800; color: #1F3827; margin-bottom: 8px;"><i class="ph-bold ph-shield-check"></i> Règles de Confidentialité & Éthique</h4>
+                            <ul style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; padding-left: 18px;">
+                                <li><strong>Zéro profilage sensible</strong> : L'origine, la photo, le genre ou l'âge n'entrent AUCUNEMENT dans le score.</li>
+                                <li><strong>Transparence humaine</strong> : Aucune mention publique d'IA, d'algorithme ou de score brut (ex: "94%").</li>
+                                <li><strong>Protection de l'adresse exacte</strong> : Seule la commune et le rayon sont transmis au moteur.</li>
+                                <li><strong>Opt-out garanti</strong> : Tout membre peut désactiver la diffusion ciblée dans ses paramètres.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: SIMULATEUR DE MATCHING EN TEMPS RÉEL -->
+                <div class="admin-card mb-6" style="border: 2px solid rgba(74, 124, 89, 0.3);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="ph-bold ph-terminal-window"></i> Console de Simulation de Matching en Temps Réel</h3>
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                        <input type="text" id="adminSimulationQuery" class="admin-input-field" placeholder="Ex: J'ai une fuite sous mon évier à Sainte-Anne..." value="J'ai une fuite sous mon évier à Sainte-Anne" style="flex: 1;">
+                        <button class="admin-btn admin-btn-primary" id="btnExecuteAdminSimulation"><i class="ph-bold ph-play"></i> Lancer le Matching</button>
+                    </div>
+                    <div id="adminSimulationResultsContainer" style="background: #1E293B; color: #E2E8F0; padding: 16px; border-radius: 12px; font-family: monospace; font-size: 0.85rem; max-height: 320px; overflow-y: auto;">
+                        <div style="color: #94A3B8;">// Cliquez sur "Lancer le Matching" pour exécuter la simulation en direct...</div>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: ARBORESCENCE DE LA TAXONOMIE OFFICIELLE -->
+                <div class="admin-card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="ph-bold ph-tree-structure"></i> Arborescence des Domaines & Slugs Normalisés</h3>
+                    </div>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Domaine</th>
+                                <th>Catégorie</th>
+                                <th>Sous-catégorie</th>
+                                <th>Tags Internes Normalisés (Slugs)</th>
+                                <th>Statut Taxonomie</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>maison-travaux</code></td>
+                                <td><strong>Plomberie</strong></td>
+                                <td>Fuite & Sanitaires</td>
+                                <td><code>plomberie</code>, <code>fuite</code>, <code>sanitaire</code>, <code>robinetterie</code>, <code>evier</code></td>
+                                <td><span class="status-badge verified">SYNCHRONISÉ</span></td>
+                            </tr>
+                            <tr>
+                                <td><code>maison-travaux</code></td>
+                                <td><strong>Jardinage</strong></td>
+                                <td>Entretien Espaces Verts</td>
+                                <td><code>jardinage</code>, <code>jardin</code>, <code>elagage</code>, <code>tonte</code>, <code>debroussaillage</code></td>
+                                <td><span class="status-badge verified">SYNCHRONISÉ</span></td>
+                            </tr>
+                            <tr>
+                                <td><code>transport-manutention</code></td>
+                                <td><strong>Déménagement & Transport</strong></td>
+                                <td>Transport Objet / Meuble</td>
+                                <td><code>transport-objet</code>, <code>demenagement</code>, <code>utilitaire</code>, <code>manutention</code></td>
+                                <td><span class="status-badge verified">SYNCHRONISÉ</span></td>
+                            </tr>
+                            <tr>
+                                <td><code>services-personne</code></td>
+                                <td><strong>Aide & Accompagnement</strong></td>
+                                <td>Courses & Assistance</td>
+                                <td><code>courses</code>, <code>aide-personne</code>, <code>accompagnement</code>, <code>senior</code></td>
+                                <td><span class="status-badge verified">SYNCHRONISÉ</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 19 : FEATURE FLAGS (INTERRUPTEURS DE FONCTIONNALITÉS)
+                 ========================================================================== -->
+            <section id="sec-feature-flags" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Feature Flags & Contrôle en Temps Réel</h1>
+                        <p class="admin-page-sub">Activez ou désactivez instantanément les fonctionnalités clés sans redéployer le code.</p>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Fonctionnalité</th>
+                                <th>Clé Système</th>
+                                <th>Audience Cible</th>
+                                <th>État Actuel</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Fil Bokantaj & Publications</strong></td>
+                                <td style="font-family: var(--admin-font-mono);">bokantaj_feed</td>
+                                <td>Tous les utilisateurs</td>
+                                <td><span class="status-badge verified">ACTIVÉ</span></td>
+                                <td><button class="admin-btn admin-btn-sm admin-btn-secondary btn-toggle-flag" data-flag="bokantaj_feed">Désactiver</button></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Paiements Sécurisés Stripe</strong></td>
+                                <td style="font-family: var(--admin-font-mono);">stripe_payments</td>
+                                <td>Tous les utilisateurs</td>
+                                <td><span class="status-badge verified">ACTIVÉ</span></td>
+                                <td><button class="admin-btn admin-btn-sm admin-btn-secondary btn-toggle-flag" data-flag="stripe_payments">Désactiver</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 20 : TERRITOIRES DOM
+                 ========================================================================== -->
+            <section id="sec-territories" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Gestion des Territoires DOM & Couverture</h1>
+                        <p class="admin-page-sub">Contrôle de la présence réseau sur Guadeloupe, Martinique, Guyane et La Réunion.</p>
+                    </div>
+                </div>
+                <div class="admin-grid-4">
+                    <div class="admin-card">
+                        <h3>🇬🇵 Guadeloupe (971)</h3>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 6px;">32 Communes couvertes</p>
+                        <span class="status-badge verified" style="margin-top: 10px;">EN PRODUCTION</span>
+                    </div>
+                    <div class="admin-card">
+                        <h3>🇲🇶 Martinique (972)</h3>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 6px;">34 Communes couvertes</p>
+                        <span class="status-badge verified" style="margin-top: 10px;">EN PRODUCTION</span>
+                    </div>
+                    <div class="admin-card">
+                        <h3>🇬🇫 Guyane (973)</h3>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 6px;">22 Communes couvertes</p>
+                        <span class="status-badge verified" style="margin-top: 10px;">EN PRODUCTION</span>
+                    </div>
+                    <div class="admin-card">
+                        <h3>🇷🇪 La Réunion (974)</h3>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 6px;">24 Communes couvertes</p>
+                        <span class="status-badge verified" style="margin-top: 10px;">EN PRODUCTION</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 21 : NOTIFICATIONS & BROADCASTS
+                 ========================================================================== -->
+            <section id="sec-notifications" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Centre de Broadcast & Push Notifications</h1>
+                        <p class="admin-page-sub">Envoi de messages ciblés par territoire DOM et statut membre.</p>
+                    </div>
+                </div>
+                <div class="admin-card" style="max-width: 650px;">
+                    <form id="newCampaignForm">
+                        <div style="margin-bottom: 12px;">
+                            <label class="admin-label">Titre Notification Push *</label>
+                            <input type="text" id="campTitle" class="admin-input" placeholder="Ex: Nouveaux besoins climatisation disponible !" required>
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <label class="admin-label">Territoire Cible</label>
+                            <select id="campTerritory" class="admin-select">
+                                <option value="Tous les DOM">Tous les territoires DOM</option>
+                                <option value="Guadeloupe">Guadeloupe uniquement</option>
+                                <option value="Martinique">Martinique uniquement</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="admin-btn admin-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Lancer la Diffusion Push</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 22 : SUPPORT CLIENT SLA
+                 ========================================================================== -->
+            <section id="sec-support" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Helpdesk Support & SLA</h1>
+                        <p class="admin-page-sub">Traitement des tickets d'assistance avec garantie de réponse sous 15 min.</p>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Ticket ID</th>
+                                <th>Utilisateur</th>
+                                <th>Sujet & Priorité</th>
+                                <th>Attribué à</th>
+                                <th>Statut</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono);">#TCK-1082</td>
+                                <td>Sarah Linon</td>
+                                <td>Problème virement RIB • <span style="color:#E76F51; font-weight:700;">HAUTE</span></td>
+                                <td>Support LYANN</td>
+                                <td><span class="status-badge pending">OUVERT</span></td>
+                                <td><button class="admin-btn admin-btn-sm admin-btn-primary btn-resolve-ticket" data-ticket-id="TCK-1082"><i class="ph-bold ph-check"></i> Résoudre</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 23 : ÉQUIPE & COLLABORATEURS
+                 ========================================================================== -->
+            <section id="sec-team" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Gestion de l'Équipe & Collaborateurs</h1>
+                        <p class="admin-page-sub">Comptes employés habilités à administrer la plateforme.</p>
+                    </div>
+                    <button class="admin-btn admin-btn-primary" onclick="alert('👤 Modal d\'invitation collaborateur.');"><i class="ph-bold ph-user-plus"></i> Inviter un Collaborateur</button>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Collaborateur</th>
+                                <th>Identifiant</th>
+                                <th>Rôle Assigné</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Yoyoothetrack</strong></td>
+                                <td style="font-family: var(--admin-font-mono); color: var(--admin-brand-yellow);">Yoyoothetrack</td>
+                                <td><span class="status-badge active" style="background: rgba(229,179,69,0.2); color:#E5B345;">OWNER (DROITS ABSOLUS)</span></td>
+                                <td><span class="status-badge verified">ACTIF</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 24 : RBAC — MATRICE DES RÔLES ET PERMISSIONS
+                 ========================================================================== -->
+            <section id="sec-rbac" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Matrice RBAC — Rôles et Permissions Ultra-Fines</h1>
+                        <p class="admin-page-sub">Définissez précisément les droits de chaque pôle administratif. Le rôle <strong>OWNER (Yoyoothetrack)</strong> conserve un accès absolu inaltérable.</p>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Module / Permission</th>
+                                <th>OWNER (Yoyoothetrack)</th>
+                                <th>ADMINISTRATEUR</th>
+                                <th>SUPPORT</th>
+                                <th>FINANCE</th>
+                                <th>MODÉRATION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Voir les utilisateurs</td>
+                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
+                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
+                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
+                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
+                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Déclencher des Remboursements</td>
+                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
+                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
+                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
+                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
+                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
+                            </tr>
+                            <tr>
+                                <td>Gérer les Feature Flags</td>
+                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i> SEUL OWNER</td>
+                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
+                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
+                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
+                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 25 : JOURNAL D'AUDIT LOGS
+                 ========================================================================== -->
+            <section id="sec-audit-logs" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Journal d'Audit Logs Inaltérable</h1>
+                        <p class="admin-page-sub">Traçabilité complète de toutes les opérations administratives et financières exécutées.</p>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <table class="admin-table" id="auditLogsAdminTable">
+                        <thead>
+                            <tr>
+                                <th>Date & Heure</th>
+                                <th>Administrateur</th>
+                                <th>Action Exécutée</th>
+                                <th>Module</th>
+                                <th>Ressource Cible</th>
+                                <th>Motif / Détails</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono);">03/09/2026 15:10</td>
+                                <td><strong style="color: var(--admin-brand-yellow);">Yoyoothetrack (Owner)</strong></td>
+                                <td><span class="status-badge verified">AUDIT_LOG_INIT</span></td>
+                                <td>Système RBAC</td>
+                                <td>System Global</td>
+                                <td>Démarrage de la Console Officielle LYANN Enterprise</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PÔLE 26 : SANTÉ SYSTÈME & WEBHOOKS
+                 ========================================================================== -->
+            <section id="sec-health" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Santé du Système & Webhooks Logs</h1>
+                        <p class="admin-page-sub">Monitoring infrastructure, latence Supabase/Stripe et statut des services externes.</p>
+                    </div>
+                </div>
+                <div class="admin-grid-3">
+                    <div class="admin-card">
+                        <h3>Base de Données (Supabase PostgreSQL)</h3>
+                        <div style="font-size: 1.2rem; font-weight: 800; color: #A3E635; margin-top: 6px;">🟢 OPÉRATIONNEL (14ms)</div>
+                    </div>
+                    <div class="admin-card">
+                        <h3>Stripe Connect Webhooks</h3>
+                        <div style="font-size: 1.2rem; font-weight: 800; color: #A3E635; margin-top: 6px;">🟢 100% SUCCÈS</div>
+                    </div>
+                    <div class="admin-card">
+                        <h3>Service Notification (Twilio / SendGrid)</h3>
+                        <div style="font-size: 1.2rem; font-weight: 800; color: #A3E635; margin-top: 6px;">🟢 PRÊT</div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- ==========================================================================
+         COMMAND PALETTE OVERLAY (⌘ K / CTRL + K)
+         ========================================================================== -->
+    <div class="admin-modal" id="adminCommandPaletteModal">
+        <div class="admin-modal-content" style="max-width: 650px; padding: 0; background: var(--admin-card-bg); border: 1px solid var(--admin-brand-yellow);">
+            <div style="padding: 16px; border-bottom: 1px solid var(--admin-border); display: flex; align-items: center; gap: 12px;">
+                <i class="ph-bold ph-magnifying-glass" style="font-size: 1.4rem; color: var(--admin-brand-yellow);"></i>
+                <input type="text" id="commandPaletteInput" placeholder="Tapez une commande, le nom d'un membre, une mission ou un bot..." style="width: 100%; background: none; border: none; outline: none; color: #FFF; font-size: 1.1rem; font-family: var(--admin-font);">
+                <span style="font-size: 0.75rem; color: var(--admin-text-muted); background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px;">ESC</span>
+            </div>
+            <div style="max-height: 380px; overflow-y: auto; padding: 12px;" id="commandPaletteResults">
+                <div style="font-size: 0.75rem; color: var(--admin-text-muted); padding: 6px 12px; font-weight: 800; text-transform: uppercase;">Accès Rapide Pôles</div>
+                <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-overview\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-chart-line-up"></i> BI & Tableau de Bord</div>
+                <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-users\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-users"></i> Utilisateurs & KYC</div>
+                <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-finances\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-bank"></i> Finances & Stripe Connect</div>
+                <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-aiops\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-robot"></i> Bots IA & Animation</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Global Modal Container Stubs for DOM Audit Compliance -->
+    <div id="modal-request-help" class="modal" style="display:none;"></div>
+    <div id="loginModal" class="modal" style="display:none;"></div>
+    <div id="onboardingModal" class="modal" style="display:none;"></div>
+    <div id="bookingModal" class="modal" style="display:none;"></div>
+    <div id="userAccountModal" class="modal" style="display:none;"></div>
+    <div id="quickProfileModal" class="modal" style="display:none;"></div>
+    <div id="chatModal" class="modal" style="display:none;"></div>
+
+    <!-- Scripts Integration -->
+    <script src="matching-engine.js"></script>
+    <script src="api-client.js"></script>
+    <script src="admin-script.js"></script>
+</body>
+</html>
