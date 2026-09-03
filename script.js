@@ -1431,9 +1431,14 @@ function initDrawerEvents(overlay) {
         if (btn) {
             e.preventDefault();
             e.stopPropagation();
-            window.openLyannHamburgerDrawer();
+            if (typeof window.openLyannHamburgerDrawer === 'function') {
+                window.openLyannHamburgerDrawer();
+            } else {
+                const drawer = document.getElementById('mobileHamburgerDrawerOverlay');
+                if (drawer) drawer.classList.add('active');
+            }
         }
-    });
+    }, true);
 
     if (closeBtn) {
         closeBtn.addEventListener('click', (e) => {
