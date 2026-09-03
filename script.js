@@ -1412,31 +1412,33 @@ function ensureMobileHamburgerDrawer() {
     initDrawerEvents(overlay);
 }
 
+window.openLyannHamburgerDrawer = function() {
+    ensureMobileHamburgerDrawer();
+    const overlay = document.getElementById('mobileHamburgerDrawerOverlay');
+    if (overlay) {
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+};
+
+window.closeLyannHamburgerDrawer = function() {
+    const overlay = document.getElementById('mobileHamburgerDrawerOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+};
+
 function initDrawerEvents(overlay) {
     const closeBtn = overlay.querySelector('#closeMobileDrawerBtn');
     const logoutBtn = overlay.querySelector('#drawerLogoutBtn');
-
-    window.openLyannHamburgerDrawer = function() {
-        overlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    };
-
-    window.closeLyannHamburgerDrawer = function() {
-        overlay.classList.remove('active');
-        document.body.style.overflow = '';
-    };
 
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('#openMobileDrawerBtn, .open-drawer-trigger, .hamburger-menu-btn, .mobile-menu-btn');
         if (btn) {
             e.preventDefault();
             e.stopPropagation();
-            if (typeof window.openLyannHamburgerDrawer === 'function') {
-                window.openLyannHamburgerDrawer();
-            } else {
-                const drawer = document.getElementById('mobileHamburgerDrawerOverlay');
-                if (drawer) drawer.classList.add('active');
-            }
+            window.openLyannHamburgerDrawer();
         }
     }, true);
 
@@ -4774,4 +4776,12 @@ window.rateStar = function(star) {
         else s.classList.remove('active');
     });
 };
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof ensureMobileHamburgerDrawer === 'function') ensureMobileHamburgerDrawer();
+    });
+} else {
+    if (typeof ensureMobileHamburgerDrawer === 'function') ensureMobileHamburgerDrawer();
+}
 
