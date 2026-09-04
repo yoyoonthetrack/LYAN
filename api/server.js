@@ -27,6 +27,7 @@ if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_SECRET_KEY) {
 
 // In-Memory Database (Synced with LYANN DOM Data)
 const MEMBERS_DB = [
+    { id: 10, name: "Jocelyn Cabort", age: 52, role: "Plomberie & Fuites d'eau PRO", city: "Baie-Mahault", locationName: "Guadeloupe (971)", territoryKey: "guadeloupe", rating: "5.0", avatar: "jocelyn-cabort.png", badge: "PRO VÉRIFIÉ", kycVerified: true },
     { id: 1, name: "David Jean-Baptiste", age: 34, role: "Électricien & Climaticien PRO", city: "Baie-Mahault", locationName: "Guadeloupe (971)", territoryKey: "guadeloupe", rating: "4.9", avatar: "david-34.png", badge: "PRO VÉRIFIÉ", kycVerified: true },
     { id: 2, name: "Tati Huguette Cazeau", age: 68, role: "Membre Senior Actif", city: "Fort-de-France", locationName: "Martinique (972)", territoryKey: "martinique", rating: "5.0", avatar: "huguette-68.png", badge: "VOISIN DE CONFIANCE", kycVerified: true },
     { id: 3, name: "Sarah Manicon", age: 29, role: "Design d'Intérieur & Peinture", city: "Le Gosier", locationName: "Guadeloupe (971)", territoryKey: "guadeloupe", rating: "4.85", avatar: "sarah-29.png", badge: "TALENT RECOMMANDÉ", kycVerified: true },

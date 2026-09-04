@@ -35,6 +35,7 @@ const filesToCopy = [
     'huguette-68.png',
     'jardinage-talent.png',
     'kevin-41.png',
+    'jocelyn-cabort.png',
     'saint-louis-72.png',
     'sarah-29.png',
     'senior-menage-talent.png',

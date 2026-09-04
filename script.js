@@ -794,7 +794,24 @@ function injectMobileInterface() {
 }
 
     const LYANN_MEMBERS = [
-        // GUADELOUPE (971)
+        // GUADELOUPE (971) - MEMBRE RÉFÉRENT
+        {
+            id: 100,
+            name: "Jocelyn Cabort (52 ans)",
+            role: "Plomberie & Fuites d'eau PRO",
+            category: "plomberie",
+            keywords: ["plomberie", "plombier", "fuite", "eau", "sanitaire", "jocelyn", "cabort", "dépannage", "chauffe-eau"],
+            location: "guadeloupe",
+            locationName: "Guadeloupe (971)",
+            city: "Baie-Mahault",
+            rating: 5.0,
+            reviewsCount: 64,
+            avatar: "jocelyn-cabort.png",
+            bio: "Plombier chevronné et membre référent à Baie-Mahault. Dépannage rapide de fuites d'eau, débouchage et installation sanitaire.",
+            skills: ["Détection de fuite", "Pose robinet", "Sanitaires", "Dépannage 24/7"],
+            badge: "Artisan Vérifié",
+            hourlyRate: "À partir de 30€/h"
+        },
         {
             id: 1,
             name: "David Jean-Baptiste (34 ans)",
@@ -1091,7 +1108,7 @@ function injectMobileInterface() {
     // BASE COMPLÈTE MEMBRES / PROFILERS EN GUADELOUPE (971) - PAR DENSITÉ
     // ==========================================================================
     const ADDITIONAL_MEMBERS_DATA = [
-        { name: "Jocelyn Cabort", age: 52, role: "Plomberie & Fuites d'eau", cat: "plomberie", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80", bio: "Plombier chevronné à Baie-Mahault. Dépannage rapide de fuites d'eau, débouchage et installation sanitaire.", skills: ["Détection de fuite", "Pose robinet", "Sanitaires"] },
+        { name: "Jocelyn Cabort", age: 52, role: "Plomberie & Fuites d'eau", cat: "plomberie", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "jocelyn-cabort.png", bio: "Plombier chevronné à Baie-Mahault. Dépannage rapide de fuites d'eau, débouchage et installation sanitaire.", skills: ["Détection de fuite", "Pose robinet", "Sanitaires"] },
         { name: "Hugues Zami", age: 45, role: "Climatisation & Électricité", cat: "climatisation", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "40€/h", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80", bio: "Technicien froid et électricité aux Abymes. Pose, entretien et dépannage clim.", skills: ["Clim Inverter", "Câblage", "Dépannage"] },
         { name: "Murielle Placide", age: 38, role: "Ménage & Repassage", cat: "menage", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80", bio: "Ménage soigné à domicile sur Le Gosier. Repassage et entretien régulier.", skills: ["Ménage", "Repassage", "Lavage vitres"] },
         { name: "Clotilde Belair", age: 61, role: "Aide aux repas & Seniors", cat: "aide-personne", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "20€/h", img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80", bio: "Auxiliaire de vie bienveillante. Aide au quotidien pour seniors à Sainte-Anne.", skills: ["Aide repas", "Compagnie", "Courses"] },
@@ -1144,8 +1161,8 @@ function injectMobileInterface() {
     ];
 
     const memberOverrides = [
-        // Index 0: Jocelyn Cabort (m, 52) - Plomberie (Black)
-        { name: "Jocelyn Cabort", age: 52, avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" },
+        // Index 0: Jocelyn Cabort (m, 52) - Plomberie
+        { name: "Jocelyn Cabort", age: 52, avatar: "jocelyn-cabort.png" },
         // Index 1: Hugues Zami (m, 45) - Climatisation (Black)
         { name: "Hugues Zami", age: 45, avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80" },
         // Index 2: Murielle Placide (f, 38) - Ménage (Chinese)
