@@ -2287,18 +2287,7 @@ safeDomReady(() => {
         }
     });
 
-    // Recommander member button
-    const recommendBtn = document.getElementById('recommendMemberBtn');
-    if (recommendBtn) {
-        recommendBtn.addEventListener('click', () => {
-            const badge = document.getElementById('recommendCountBadge');
-            if (badge) {
-                let currentCount = parseInt(badge.textContent, 10) || 142;
-                badge.textContent = currentCount + 1;
-                // Recommendation logic handled by main recommendMemberBtn handler
-            }
-        });
-    }
+
 
     // --- GESTION DE LA MODALE TOUTES LES CATÉGORIES & PROPOSITION D'ACTIVITÉ ---
     const allCategoriesModal = document.getElementById('allCategoriesModal');
@@ -2534,19 +2523,16 @@ safeDomReady(() => {
             return;
         }
 
+        const myLikes = JSON.parse(safeStorage.getItem('lyann_my_likes') || '[]');
+
         flashFeedContainer.innerHTML = filtered.map(post => {
-            let badgeClass = 'flash-badge-dispo';
-            if (post.type === 'besoin') badgeClass = 'flash-badge-besoin';
-            else if (post.type === 'reco') badgeClass = 'flash-badge-reco';
-            else if (post.type === 'info') badgeClass = 'flash-badge-info';
+            const badgeClass = post.badgeType === 'urgente' ? 'badge-pill badge-urgente'
+                            : post.badgeType === 'dispo' ? 'badge-pill badge-dispo'
+                            : 'badge-pill badge-verifie';
 
             let mediaHTML = '';
-            if (post.images && post.images.length > 0) {
-                const gridClass = `grid-${Math.min(post.images.length, 3)}`;
-                const imgsHTML = post.images.slice(0, 3).map(src => `<img src="${src}" alt="Médias Lyann LYANN" class="flash-media-img">`).join('');
-                mediaHTML = `<div class="flash-card-media-gallery ${gridClass}">${imgsHTML}</div>`;
-            } else if (post.video) {
-                mediaHTML = `<div style="margin-top: 10px;"><video src="${post.video}" controls class="flash-video-player"></video></div>`;
+            if (post.image) {
+                mediaHTML = `<div class="flash-media-box"><img src="${post.image}" alt="Media Post" class="flash-media-img"></div>`;
             }
 
             let actionBtnHTML = `<button class="flash-action-btn btn-open-chat-direct" data-member-name="${post.authorName}" data-member-avatar="${post.authorAvatar}"><i class="ph ph-chat-circle-dots"></i> <span>Répondre</span></button>`;
@@ -2555,6 +2541,10 @@ safeDomReady(() => {
             } else if (post.type === 'dispo') {
                 actionBtnHTML = `<button class="flash-action-btn btn-open-chat-direct" data-member-name="${post.authorName}" data-member-avatar="${post.authorAvatar}" data-post-type="dispo" data-post-title="${(post.content || '').replace(/"/g, '&quot;')}"><i class="ph ph-hand-heart"></i> <span>Demander un coup de main</span></button>`;
             }
+
+            const isLiked = myLikes.some(id => id == post.id);
+            const likedClass = isLiked ? ' liked' : '';
+            const displayLikes = isLiked ? Math.max(1, post.likes + 1) : post.likes;
 
             return `
                 <div class="flash-card" id="${post.id}">
@@ -2567,7 +2557,7 @@ safeDomReady(() => {
                             </div>
                         </div>
                         <div class="flash-meta-badges">
-                            <span class="${badgeClass}">${post.badge}</span>
+                            <span class="flash-badge-default">${post.badge}</span>
                         </div>
                     </div>
 
@@ -2579,8 +2569,8 @@ safeDomReady(() => {
                     <div class="flash-card-footer">
                         <span class="flash-time-tag"><i class="ph ph-clock"></i> ${post.timeAgo}</span>
                         <div class="flash-actions-bar">
-                            <button class="flash-action-btn btn-like-flash" data-flash-id="${post.id}">
-                                <i class="ph-fill ph-heart"></i> <span class="like-count">${post.likes}</span>
+                            <button class="flash-action-btn btn-like-flash${likedClass}" data-flash-id="${post.id}">
+                                <i class="ph-fill ph-heart"></i> <span class="like-count">${displayLikes}</span>
                             </button>
                             ${actionBtnHTML}
                             <button class="flash-action-btn btn-share-flash" data-flash-id="${post.id}">
@@ -2602,10 +2592,15 @@ safeDomReady(() => {
             btn.dataset.listenersBound = 'true';
             
             btn.addEventListener('click', () => {
+                const rawId = btn.dataset.flashId;
+                const flashId = !isNaN(rawId) ? parseInt(rawId, 10) : rawId;
+                const myLikes = JSON.parse(safeStorage.getItem('lyann_my_likes') || '[]');
                 const countSpan = btn.querySelector('.like-count');
                 if (countSpan) {
-                    let count = parseInt(countSpan.textContent) || 0;
-                    if (btn.classList.contains('liked')) {
+                    let count = parseInt(countSpan.textContent, 10) || 0;
+                    const idx = myLikes.findIndex(id => id == flashId);
+                    if (btn.classList.contains('liked') || idx !== -1) {
+                        // Un-like: toggle off
                         btn.classList.remove('liked');
                         count = Math.max(0, count - 1);
                     } else {
