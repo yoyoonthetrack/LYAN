@@ -4,6 +4,7 @@
   "description": "Production notification server for LYANN DOM, integrated with SendGrid and Twilio.",
   "main": "server.js",
   "scripts": {
+    "build": "node build_mobile.js",
     "start": "node server.js",
     "build:mobile": "node build_mobile.js",
     "cap:sync": "npx cap sync",

@@ -9428,7 +9428,8 @@ body.is-native-app .navbar,
     border-bottom: 1px solid transparent !important;
     transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
     z-index: 1000 !important;
-    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-top: max(16px, calc(16px + env(safe-area-inset-top, 0px))) !important;
+    padding-bottom: 12px !important;
 }
 
 .bokantaj-native-header.scrolled,
