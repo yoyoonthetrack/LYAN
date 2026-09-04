@@ -2294,41 +2294,43 @@ h1, h2, h3, h4 {
 }
 
 .profile-modal-body {
-    padding: 0 !important;
+    padding: 24px 28px !important;
     flex: 1 !important;
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: row !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    scroll-snap-type: x mandatory !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: block !important;
+    background: #FAFCFA;
+    box-sizing: border-box !important;
 }
 
 .profile-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.profile-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 4px;
+}
+
+.profile-tab-content,
+.public-tab-content {
     display: none !important;
-}
-
-.profile-tab-content {
-    display: block !important;
-    flex-shrink: 0 !important;
     width: 100% !important;
-    height: 100% !important;
     box-sizing: border-box !important;
-    overflow-y: auto !important;
-    scroll-snap-align: start !important;
-    scroll-snap-stop: always !important;
-    padding: 28px 32px !important;
-    margin-bottom: 0 !important;
-    padding-bottom: 32px !important;
-    border-bottom: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    animation: fadeInTab 0.2s ease-in-out;
 }
 
-.profile-tab-content:last-child {
-    border-bottom: none !important;
-    margin-bottom: 0 !important;
-    padding-bottom: 32px !important;
+.profile-tab-content.active,
+.public-tab-content.active {
+    display: block !important;
+}
+
+@keyframes fadeInTab {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .tab-section-title {

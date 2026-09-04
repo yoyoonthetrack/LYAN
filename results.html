@@ -473,20 +473,14 @@
 
             <!-- Public Tabs Bar -->
             <div class="profile-tabs">
-                <button class="public-tab-btn active" data-public-tab="pubtab-realizations"><i class="ph ph-image"></i> Réalisations & Travaux</button>
-                <button class="public-tab-btn" data-public-tab="pubtab-about"><i class="ph ph-user"></i> À propos & Tarifs</button>
+                <button class="public-tab-btn active" data-public-tab="pubtab-about"><i class="ph ph-user"></i> À propos & Tarifs</button>
+                <button class="public-tab-btn" data-public-tab="pubtab-realizations"><i class="ph ph-image"></i> Réalisations & Travaux</button>
                 <button class="public-tab-btn" data-public-tab="pubtab-reviews"><i class="ph ph-star"></i> Avis des Voisins (<span id="publicReviewsCount">48</span>)</button>
             </div>
 
             <!-- Public Body Content -->
             <div class="modal-body profile-modal-body">
-                <!-- PUB TAB 1 : RÉALISATIONS -->
-                <div class="public-tab-content active" id="pubtab-realizations">
-                    <h4 class="tab-section-title">Galerie des Travaux Réalisés</h4>
-                    <div class="realizations-grid" id="publicRealizationsGrid"></div>
-                </div>
-
-                <!-- PUB TAB 2 : À PROPOS -->
+                <!-- PUB TAB 1 : À PROPOS -->
                 <div class="public-tab-content active" id="pubtab-about">
                     <h4 class="tab-section-title">Présentation & Compétences</h4>
                     <p class="profile-bio-text" id="publicMemberBioText">Spécialiste de la plomberie résidentielle et du dépannage d'urgence sur Baie-Mahault et Grande-Terre.</p>
@@ -506,8 +500,14 @@
                     <div class="member-skills-tags" id="publicMemberSkillsContainer"></div>
                 </div>
 
+                <!-- PUB TAB 2 : RÉALISATIONS -->
+                <div class="public-tab-content" id="pubtab-realizations">
+                    <h4 class="tab-section-title">Galerie des Travaux Réalisés</h4>
+                    <div class="realizations-grid" id="publicRealizationsGrid"></div>
+                </div>
+
                 <!-- PUB TAB 3 : AVIS VOISINS -->
-                <div class="public-tab-content active" id="pubtab-reviews">
+                <div class="public-tab-content" id="pubtab-reviews">
                     <h4 class="tab-section-title">Recommandations & Retours de Voisins</h4>
                     <div class="activity-list" id="publicMemberReviewsList"></div>
                 </div>
