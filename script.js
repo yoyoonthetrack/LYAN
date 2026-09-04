@@ -5113,34 +5113,175 @@ safeDomReady(() => {
     }
 
     if(btnSubmit) {
-        btnSubmit.addEventListener('click', () => {
-            // Close modal
-            modalRequestHelp.classList.remove('active');
-            document.body.style.overflow = '';
+        btnSubmit.addEventListener('click', async (e) => {
+            e.preventDefault();
             
-            // Show toast
-            if (window.NotificationService) {
-                window.NotificationService.showToast('success', "Votre demande a été publiée dans Bokantaj !");
+            // Check API Client
+            if (!window.LYANN_API_CLIENT) {
+                alert("Erreur système : API Client indisponible.");
+                return;
             }
-            
-            // Trigger AI Artisan response after 3 seconds
-            setTimeout(() => {
+
+            const currentUser = await window.LYANN_API_CLIENT.getCurrentUser();
+            if (!currentUser) {
                 if (window.NotificationService) {
-                    window.NotificationService.showNotification({
-                        id: 'artisan-offer-1',
-                        title: 'Proposition reçue !',
-                        message: 'Marc (Plombier) a répondu à votre besoin.',
-                        icon: 'ph-fill ph-wrench',
-                        time: 'À l\'instant',
-                        action: 'openChat'
-                    });
+                    window.NotificationService.showToast('warning', "Veuillez vous connecter pour publier votre besoin.");
                 }
-                // Inject the chat if possible
-                triggerSimulatedTransactionChat();
-            }, 3500);
+                modalRequestHelp.classList.remove('active');
+                document.body.style.overflow = '';
+                const authModal = document.getElementById('authModal');
+                if (authModal) authModal.classList.add('active');
+                return;
+            }
+
+            // Extract form inputs
+            const desc = document.getElementById('wizardDescInput')?.value?.trim() || '';
+            const categorySelect = document.getElementById('wizardCategory');
+            const categoryText = categorySelect ? (categorySelect.options[categorySelect.selectedIndex]?.text || categorySelect.value) : 'Général';
+
+            const subCatSelect = document.getElementById('wizardSubCat');
+            const subCatText = subCatSelect ? (subCatSelect.options[subCatSelect.selectedIndex]?.text || subCatSelect.value) : '';
+            
+            const territorySelect = document.getElementById('wizardTerritorySelect');
+            const territoryVal = territorySelect ? (territorySelect.options[territorySelect.selectedIndex]?.text || territorySelect.value) : '971 - Guadeloupe';
+            
+            const citySelect = document.getElementById('wizardCitySelect');
+            const cityVal = citySelect ? citySelect.value : 'Le Gosier';
+
+            const urgencySelect = document.getElementById('wizardDateType');
+            const urgencyVal = urgencySelect ? urgencySelect.value : 'flexible';
+
+            // Budget handling
+            let budgetVal = null;
+            const budgetRadios = document.getElementsByName('wizardBudget');
+            let selectedBudgetChoice = 'devis';
+            for (const r of budgetRadios) {
+                if (r.checked) {
+                    selectedBudgetChoice = r.value;
+                    break;
+                }
+            }
+
+            if (selectedBudgetChoice === 'fixe') {
+                const budgetInput = document.querySelector('#modal-request-help input[type="number"]');
+                if (budgetInput && budgetInput.value) {
+                    budgetVal = parseFloat(budgetInput.value);
+                }
+            }
+
+            const title = subCatText ? `${categoryText} - ${subCatText}` : categoryText;
+            const location = `${cityVal} (${territoryVal})`;
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<i class="ph ph-spinner spin"></i> Publication...';
+
+            try {
+                // Call real Supabase DB API
+                const createdRequest = await window.LYANN_API_CLIENT.createRequest({
+                    title: title,
+                    description: desc,
+                    category: categoryText,
+                    location: location,
+                    budget: budgetVal,
+                    urgency: urgencyVal,
+                    status: 'OPEN'
+                });
+
+                console.log("✅ Real Request successfully inserted into Supabase DB:", createdRequest);
+
+                // Close modal & reset
+                modalRequestHelp.classList.remove('active');
+                document.body.style.overflow = '';
+                const descInput = document.getElementById('wizardDescInput');
+                if (descInput) descInput.value = '';
+
+                // Show success toast
+                if (window.NotificationService) {
+                    window.NotificationService.showToast('success', "Votre demande a été publiée avec succès dans LYANN !");
+                }
+
+                // Dispatch global event and update UI
+                window.dispatchEvent(new CustomEvent('lyann_request_created', { detail: createdRequest }));
+
+                if (typeof window.loadUserRequestsUI === 'function') {
+                    await window.loadUserRequestsUI();
+                }
+
+            } catch (err) {
+                console.error("❌ Erreur publication demande Supabase:", err);
+                if (window.NotificationService) {
+                    window.NotificationService.showToast('error', "Erreur lors de la publication : " + (err.message || "Erreur serveur"));
+                } else {
+                    alert("Erreur lors de la publication : " + (err.message || "Erreur serveur"));
+                }
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'Publier mon besoin <i class="ph ph-paper-plane-right"></i>';
+            }
         });
     }
 });
+
+// --- RENDER USER REAL REQUESTS UNDER 'MES DEMANDES' ---
+window.loadUserRequestsUI = async function() {
+    const container = document.getElementById('myRequestsList');
+    if (!container) return;
+
+    if (!window.LYANN_API_CLIENT) return;
+
+    const user = await window.LYANN_API_CLIENT.getCurrentUser();
+    if (!user) {
+        container.innerHTML = '<div class="empty-state-message">Connectez-vous pour voir vos demandes.</div>';
+        return;
+    }
+
+    try {
+        const requests = await window.LYANN_API_CLIENT.getRequests({ requester_id: user.id });
+        if (!requests || requests.length === 0) {
+            container.innerHTML = '<div class="empty-state-message">Vous n\'avez pas encore publié de demande.</div>';
+            return;
+        }
+
+        let html = '<div class="user-requests-grid" style="display: grid; gap: 12px; margin-top: 10px;">';
+        for (const req of requests) {
+            const dateStr = req.created_at ? new Date(req.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Récemment';
+            const budgetStr = req.budget ? `${req.budget} €` : 'Sur devis';
+            
+            html += `
+                <div class="request-card-item" data-id="${req.id}" style="background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <div>
+                            <span class="badge" style="background: #EBF3EE; color: #2D5A39; font-weight: 700; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; text-transform: uppercase;">${req.category || 'Besoin'}</span>
+                            <h5 style="margin: 6px 0 2px 0; font-size: 1.05rem; font-weight: 700;">${req.title || 'Sans titre'}</h5>
+                        </div>
+                        <span style="font-weight: 800; font-size: 1.1rem; color: var(--primary, #2D5A39);">${budgetStr}</span>
+                    </div>
+                    <p style="font-size: 0.9rem; color: #4a5568; margin-bottom: 12px; line-height: 1.4;">${req.description || 'Pas de description'}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: #718096; border-top: 1px solid #f0f0f0; padding-top: 8px;">
+                        <span><i class="ph ph-map-pin"></i> ${req.location || 'Guadeloupe'}</span>
+                        <span><i class="ph ph-clock"></i> ${dateStr}</span>
+                        <span class="status-pill" style="font-weight: 700; color: #2b6cb0;">● ${req.status || 'OPEN'}</span>
+                    </div>
+                </div>
+            `;
+        }
+        html += '</div>';
+        container.innerHTML = html;
+
+    } catch (e) {
+        console.error("Erreur chargement demandes utilisateur:", e);
+        container.innerHTML = '<div class="empty-state-message">Erreur de chargement des demandes.</div>';
+    }
+};
+
+// Automatically trigger loadUserRequestsUI when profile tab 'tab-requests' is clicked
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.profile-tab-btn[data-tab="tab-requests"]');
+    if (btn && typeof window.loadUserRequestsUI === 'function') {
+        window.loadUserRequestsUI();
+    }
+});
+
 
 
 /* ==========================================================================

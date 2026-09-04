@@ -492,6 +492,39 @@ WITH CHECK (
     auth.uid() = sender_id 
     AND public.is_current_user_conversation_participant(conversation_id)
 );
+
+-- ----------------------------------------------------------------------------
+-- SECTION 9 : SÉCURISATION RLS DE LA TABLE REQUESTS (BESOIN D'UN COUP DE MAIN)
+-- ----------------------------------------------------------------------------
+ALTER TABLE public.requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Requests are viewable by everyone" ON public.requests;
+CREATE POLICY "Requests are viewable by everyone" 
+ON public.requests FOR SELECT 
+USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can insert own requests" ON public.requests;
+CREATE POLICY "Authenticated users can insert own requests" 
+ON public.requests FOR INSERT 
+WITH CHECK (
+    auth.uid() = requester_id
+);
+
+DROP POLICY IF EXISTS "Users can update own requests" ON public.requests;
+CREATE POLICY "Users can update own requests" 
+ON public.requests FOR UPDATE 
+USING (
+    auth.uid() = requester_id 
+    OR public.is_current_user_admin()
+);
+
+DROP POLICY IF EXISTS "Users can delete own requests" ON public.requests;
+CREATE POLICY "Users can delete own requests" 
+ON public.requests FOR DELETE 
+USING (
+    auth.uid() = requester_id 
+    OR public.is_current_user_admin()
+);
 ```
 
 Description: Update 02_security_migration.sql to V3.3 removing full admin access policy and protecting stripe_account_id

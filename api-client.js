@@ -780,7 +780,126 @@ const LYANN_API_CLIENT = {
             return window.LyannMatchingEngine.dispatchTargetedNeedNotifications(needData, window.LYANN_MEMBERS || [], batchSize);
         }
         return { dispatched_count: 0, fallback_message: "Votre besoin est bien publié dans Bokantaj." };
+    },
+
+    // --- REAL HELP REQUESTS API (requests table) ---
+    async createRequest(payload) {
+        if (!this.supabase) {
+            throw new Error("Supabase non initialisé");
+        }
+        
+        // Identity MUST come strictly from session auth.uid()
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) {
+            throw new Error("Utilisateur non connecté");
+        }
+        const authUid = session.user.id;
+
+        // Security enforcement: Reject any attempt to spoof requester_id
+        if (payload.requester_id && payload.requester_id !== authUid) {
+            throw new Error("Sécurité: Falsification de requester_id refusée. L'identité provient uniquement de la session.");
+        }
+
+        const requestData = {
+            id: payload.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined),
+            requester_id: authUid,
+            title: payload.title || "Demande d'aide",
+            description: payload.description || "",
+            category: payload.category || "Général",
+            location: payload.location || "Guadeloupe",
+            budget: payload.budget !== undefined && payload.budget !== null && payload.budget !== '' ? Number(payload.budget) : null,
+            urgency: payload.urgency || "Normale",
+            status: payload.status || "OPEN",
+            created_at: new Date().toISOString()
+        };
+
+        const { data, error } = await this.supabase
+            .from('requests')
+            .insert([requestData])
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Erreur création demande Supabase DB:", error);
+            throw error;
+        }
+        return data;
+    },
+
+    async getRequests(filters = {}) {
+        if (!this.supabase) return [];
+        let query = this.supabase
+            .from('requests')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (filters.requester_id) {
+            query = query.eq('requester_id', filters.requester_id);
+        }
+        if (filters.category) {
+            query = query.eq('category', filters.category);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            console.error("Erreur récupération requests:", error);
+            return [];
+        }
+        return data || [];
+    },
+
+    async updateRequest(requestId, updates) {
+        if (!this.supabase) throw new Error("Supabase non initialisé");
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) throw new Error("Utilisateur non connecté");
+
+        const { data, error } = await this.supabase
+            .from('requests')
+            .update(updates)
+            .eq('id', requestId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async deleteRequest(requestId) {
+        if (!this.supabase) throw new Error("Supabase non initialisé");
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) throw new Error("Utilisateur non connecté");
+
+        const { error } = await this.supabase
+            .from('requests')
+            .delete()
+            .eq('id', requestId);
+
+        if (error) throw error;
+        return true;
+    },
+
+    async uploadRequestPhoto(file) {
+        if (!this.supabase || !file) return null;
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) throw new Error("Utilisateur non connecté");
+
+        const fileExt = file.name ? file.name.split('.').pop() : 'png';
+        const filePath = `${session.user.id}/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+
+        let bucket = 'request-photos';
+        const { data, error } = await this.supabase.storage
+            .from(bucket)
+            .upload(filePath, file, { upsert: true });
+
+        if (error) {
+            console.warn("Storage upload warning (bucket request-photos):", error);
+            return null;
+        }
+
+        const { data: publicUrlData } = this.supabase.storage.from(bucket).getPublicUrl(filePath);
+        return publicUrlData ? publicUrlData.publicUrl : null;
     }
 };
 
 window.LYANN_API_CLIENT = LYANN_API_CLIENT;
+
