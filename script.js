@@ -1387,13 +1387,17 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // 3. Link click inside Mobile Hamburger Drawer
-    const drawerLink = e.target.closest('.mobile-menu-overlay a, #mobileHamburgerDrawerOverlay a, .mobile-nav-list a');
+    // 3. Link or Button click inside Mobile Hamburger Drawer
+    const drawerLink = e.target.closest('.mobile-menu-overlay a, #mobileHamburgerDrawerOverlay a, .mobile-nav-list a, .mobile-menu-docked-footer button, .drawer-logout-btn, .btn-logout-trigger');
     if (drawerLink) {
         const href = drawerLink.getAttribute('href');
 
-        // Always close the drawer overlay immediately on link click
+        // Always close the drawer overlay immediately on link/button click
         window.closeLyannHamburgerDrawer();
+
+        if (drawerLink.classList.contains('btn-logout-trigger') || drawerLink.classList.contains('drawer-logout-btn')) {
+            return;
+        }
 
         // Handle specific modal triggers
         if (drawerLink.classList.contains('open-account-modal-trigger')) {

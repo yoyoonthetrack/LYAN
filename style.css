@@ -7233,6 +7233,11 @@ body.user-is-logged-in .logged-in-only {
     display: inline-flex !important;
 }
 
+body.user-is-logged-in .mobile-nav-list a.logged-in-only,
+body.user-is-logged-in .mobile-menu-docked-footer .logged-in-only {
+    display: flex !important;
+}
+
 body.user-is-logged-in .logged-out-only {
     display: none !important;
 }
