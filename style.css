@@ -266,12 +266,12 @@ h1, h2, h3, h4 {
 }
 
 .section {
-    padding: 110px 0;
+    padding: 64px 0;
     position: relative;
 }
 
 .section-header {
-    margin-bottom: 60px;
+    margin-bottom: 36px;
 }
 
 .section-header h2 {
@@ -3298,6 +3298,53 @@ h1, h2, h3, h4 {
 @media (max-width: 768px) {
     .navbar {
         top: 12px;
+    }
+
+    /* Optimisation des Marges & Espacements Mobile & App */
+    .section {
+        padding: 28px 0 !important;
+    }
+    .section-header {
+        margin-bottom: 20px !important;
+    }
+    .section-header h2 {
+        font-size: 1.8rem !important;
+        margin-bottom: 6px !important;
+    }
+    .section-subtitle {
+        font-size: 0.95rem !important;
+    }
+    .steps-detail-section {
+        padding: 28px 0 !important;
+    }
+    .feed-main-section,
+    .results-main-section,
+    .how-section,
+    .trust-section,
+    .features-section,
+    .testimonials-section,
+    .faq-section {
+        padding: 24px 0 !important;
+    }
+    .hero {
+        padding-top: 20px !important;
+        padding-bottom: 28px !important;
+    }
+    .trust-split-grid,
+    .detailed-steps-grid,
+    .categories-grid,
+    .features-grid {
+        gap: 14px !important;
+    }
+    .flash-composer-card {
+        margin-bottom: 14px !important;
+        padding: 14px !important;
+    }
+    .feed-filters-bar-single-row {
+        margin-bottom: 14px !important;
+    }
+    .feed-lyann-card {
+        margin-bottom: 12px !important;
     }
 
     .mobile-menu-btn {
