@@ -3,7 +3,7 @@
   "name": "lyan-app",
   "cleanUrls": true,
   "trailingSlash": false,
-  "buildCommand": null,
+  "buildCommand": "echo 'Static site deployment ready'",
   "outputDirectory": ".",
   "headers": [
     {
