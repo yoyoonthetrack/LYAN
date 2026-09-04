@@ -124,20 +124,29 @@ ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- SECURITY DEFINER Helper Function (Prevents RLS Recursion)
-CREATE OR REPLACE FUNCTION public.is_conversation_participant(_conversation_id uuid, _user_id uuid)
-RETURNS boolean AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 
-    FROM public.conversation_participants 
-    WHERE conversation_id = _conversation_id 
+-- 5.1 HARDENED SECURITY DEFINER HELPER FUNCTION
+CREATE OR REPLACE FUNCTION public.is_conversation_participant(
+  _conversation_id uuid,
+  _user_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.conversation_participants
+    WHERE conversation_id = _conversation_id
       AND user_id = _user_id
   );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
--- POLICIES FOR conversation_participants
+REVOKE ALL ON FUNCTION public.is_conversation_participant(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_conversation_participant(uuid, uuid) TO authenticated, service_role;
+
+-- 5.2 RLS POLICIES FOR conversation_participants
 DROP POLICY IF EXISTS "Participants can view own participation" ON public.conversation_participants;
 CREATE POLICY "Participants can view own participation" 
 ON public.conversation_participants FOR SELECT 
@@ -151,12 +160,22 @@ DROP POLICY IF EXISTS "Authenticated users can insert participants" ON public.co
 CREATE POLICY "Authenticated users can insert participants" 
 ON public.conversation_participants FOR INSERT 
 WITH CHECK (
-    user_id = auth.uid() 
+    (user_id = auth.uid() AND NOT EXISTS (SELECT 1 FROM public.conversation_participants WHERE conversation_id = conversation_participants.conversation_id))
     OR public.is_conversation_participant(conversation_id, auth.uid())
-    OR auth.role() = 'authenticated'
+    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
 );
 
--- POLICIES FOR conversations
+-- NO UPDATE POLICY DEFINED ON conversation_participants (DENIED BY DEFAULT)
+
+DROP POLICY IF EXISTS "Users can only leave conversations" ON public.conversation_participants;
+CREATE POLICY "Users can only leave conversations" 
+ON public.conversation_participants FOR DELETE 
+USING (
+    user_id = auth.uid() 
+    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
+);
+
+-- 5.3 RLS POLICIES FOR conversations
 DROP POLICY IF EXISTS "Participants can view conversation" ON public.conversations;
 CREATE POLICY "Participants can view conversation" 
 ON public.conversations FOR SELECT 
@@ -170,7 +189,7 @@ CREATE POLICY "Authenticated users can create conversation"
 ON public.conversations FOR INSERT 
 WITH CHECK (auth.role() = 'authenticated');
 
--- POLICIES FOR messages
+-- 5.4 RLS POLICIES FOR messages
 DROP POLICY IF EXISTS "Participants can read messages" ON public.messages;
 CREATE POLICY "Participants can read messages" 
 ON public.messages FOR SELECT 

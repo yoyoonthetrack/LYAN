@@ -127,10 +127,15 @@ const LYANN_API_CLIENT = {
     async getOrCreateConversation(myUserId, targetUserId) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         
+        const sessionRes = await this.getSession();
+        const activeUserId = sessionRes?.data?.session?.user?.id || myUserId;
+        
+        if (!activeUserId) return { error: { message: 'Session utilisateur invalide.' } };
+
         const { data: myConvs } = await this.supabase
             .from('conversation_participants')
             .select('conversation_id')
-            .eq('user_id', myUserId);
+            .eq('user_id', activeUserId);
             
         if (myConvs && myConvs.length > 0) {
             const convIds = myConvs.map(c => c.conversation_id);
@@ -156,7 +161,7 @@ const LYANN_API_CLIENT = {
         const { error: partErr } = await this.supabase
             .from('conversation_participants')
             .insert([
-                { conversation_id: newConv.id, user_id: myUserId },
+                { conversation_id: newConv.id, user_id: activeUserId },
                 { conversation_id: newConv.id, user_id: targetUserId }
             ]);
 
@@ -166,10 +171,12 @@ const LYANN_API_CLIENT = {
 
     async getUserConversations(myUserId) {
         if (!this.supabase) return { data: [] };
+        const sessionRes = await this.getSession();
+        const activeUserId = sessionRes?.data?.session?.user?.id || myUserId;
         return await this.supabase
             .from('conversation_participants')
             .select('conversation_id, conversations(*)')
-            .eq('user_id', myUserId);
+            .eq('user_id', activeUserId);
     },
 
     async getConversationMessages(conversationId) {
@@ -183,9 +190,12 @@ const LYANN_API_CLIENT = {
 
     async sendMessage(conversationId, senderId, content) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const sessionRes = await this.getSession();
+        const activeSenderId = sessionRes?.data?.session?.user?.id || senderId;
+
         return await this.supabase
             .from('messages')
-            .insert({ conversation_id: conversationId, sender_id: senderId, content: content })
+            .insert({ conversation_id: conversationId, sender_id: activeSenderId, content: content })
             .select()
             .single();
     },
