@@ -88,10 +88,13 @@ CREATE TRIGGER on_auth_user_created
 -- ============================================================================
 -- 5. MESSAGING ARCHITECTURE & CONVERSATION PARTICIPANTS RLS
 -- ============================================================================
+-- 5. MESSAGING ARCHITECTURE & CONVERSATION PARTICIPANTS RLS
+-- ============================================================================
 
--- Ensure Tables Exist
+-- Ensure Core Tables Exist
 CREATE TABLE IF NOT EXISTS public.conversations (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    mission_id uuid,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );
@@ -101,7 +104,7 @@ CREATE TABLE IF NOT EXISTS public.conversation_participants (
     conversation_id uuid NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
     user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     joined_at timestamptz DEFAULT now(),
-    UNIQUE (conversation_id, user_id)
+    CONSTRAINT unique_conversation_user UNIQUE (conversation_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.messages (
@@ -112,19 +115,38 @@ CREATE TABLE IF NOT EXISTS public.messages (
     created_at timestamptz DEFAULT now()
 );
 
--- Backfill existing participants from messages without deleting data
+-- Backfill existing participants from historical messages & missions without deleting data
 INSERT INTO public.conversation_participants (conversation_id, user_id)
 SELECT DISTINCT conversation_id, sender_id 
 FROM public.messages 
 WHERE conversation_id IS NOT NULL AND sender_id IS NOT NULL
 ON CONFLICT (conversation_id, user_id) DO NOTHING;
 
--- Enable RLS
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'missions') THEN
+        INSERT INTO public.conversation_participants (conversation_id, user_id)
+        SELECT c.id, m.requester_id
+        FROM public.conversations c
+        JOIN public.missions m ON c.mission_id = m.id
+        WHERE m.requester_id IS NOT NULL
+        ON CONFLICT (conversation_id, user_id) DO NOTHING;
+
+        INSERT INTO public.conversation_participants (conversation_id, user_id)
+        SELECT c.id, m.helper_id
+        FROM public.conversations c
+        JOIN public.missions m ON c.mission_id = m.id
+        WHERE m.helper_id IS NOT NULL
+        ON CONFLICT (conversation_id, user_id) DO NOTHING;
+    END IF;
+END $$;
+
+-- Enable RLS on all messaging tables
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- 5.1 HARDENED SECURITY DEFINER HELPER FUNCTION
+-- 5.1 HARDENED SECURITY DEFINER HELPER FUNCTION (Prevents RLS Recursion)
 CREATE OR REPLACE FUNCTION public.is_conversation_participant(
   _conversation_id uuid,
   _user_id uuid
@@ -146,36 +168,97 @@ $$;
 REVOKE ALL ON FUNCTION public.is_conversation_participant(uuid, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_conversation_participant(uuid, uuid) TO authenticated, service_role;
 
--- 5.2 RLS POLICIES FOR conversation_participants
+-- 5.2 ATOMIC & SECURE CONVERSATION CREATION RPC (Bypasses manual client INSERTs)
+CREATE OR REPLACE FUNCTION public.get_or_create_conversation(
+  p_target_user_id uuid
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_my_id uuid;
+  v_conv_id uuid;
+BEGIN
+  -- Extract authenticated caller ID from session
+  v_my_id := auth.uid();
+  IF v_my_id IS NULL THEN
+    RAISE EXCEPTION 'Non authentifié' USING ERRCODE = '42501';
+  END IF;
+
+  -- Prevent self-conversation
+  IF v_my_id = p_target_user_id THEN
+    RAISE EXCEPTION 'Impossible de créer une conversation avec soi-même' USING ERRCODE = '22000';
+  END IF;
+
+  -- Verify target user exists
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = p_target_user_id) THEN
+    RAISE EXCEPTION 'Utilisateur destinataire introuvable' USING ERRCODE = '23503';
+  END IF;
+
+  -- Search for existing 2-party conversation between auth.uid() and target user
+  SELECT cp1.conversation_id INTO v_conv_id
+  FROM public.conversation_participants cp1
+  JOIN public.conversation_participants cp2 ON cp1.conversation_id = cp2.conversation_id
+  WHERE cp1.user_id = v_my_id
+    AND cp2.user_id = p_target_user_id
+    AND (
+      SELECT COUNT(*) 
+      FROM public.conversation_participants cp3 
+      WHERE cp3.conversation_id = cp1.conversation_id
+    ) = 2
+  LIMIT 1;
+
+  IF v_conv_id IS NOT NULL THEN
+    RETURN v_conv_id;
+  END IF;
+
+  -- Create new conversation and insert exact two participants
+  INSERT INTO public.conversations DEFAULT VALUES RETURNING id INTO v_conv_id;
+
+  INSERT INTO public.conversation_participants (conversation_id, user_id)
+  VALUES 
+    (v_conv_id, v_my_id),
+    (v_conv_id, p_target_user_id);
+
+  RETURN v_conv_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_or_create_conversation(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_or_create_conversation(uuid) TO authenticated, service_role;
+
+-- 5.3 RLS POLICIES FOR conversation_participants
 DROP POLICY IF EXISTS "Participants can view own participation" ON public.conversation_participants;
-CREATE POLICY "Participants can view own participation" 
+DROP POLICY IF EXISTS "Participants can view conversation participants" ON public.conversation_participants;
+CREATE POLICY "Participants can view conversation participants" 
 ON public.conversation_participants FOR SELECT 
 USING (
-    user_id = auth.uid() 
-    OR public.is_conversation_participant(conversation_id, auth.uid())
+    public.is_conversation_participant(conversation_id, auth.uid())
     OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
 );
 
 DROP POLICY IF EXISTS "Authenticated users can insert participants" ON public.conversation_participants;
-CREATE POLICY "Authenticated users can insert participants" 
+DROP POLICY IF EXISTS "No direct insert on participants for standard users" ON public.conversation_participants;
+CREATE POLICY "No direct insert on participants for standard users" 
 ON public.conversation_participants FOR INSERT 
 WITH CHECK (
-    (user_id = auth.uid() AND NOT EXISTS (SELECT 1 FROM public.conversation_participants WHERE conversation_id = conversation_participants.conversation_id))
-    OR public.is_conversation_participant(conversation_id, auth.uid())
-    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
 );
 
 -- NO UPDATE POLICY DEFINED ON conversation_participants (DENIED BY DEFAULT)
 
 DROP POLICY IF EXISTS "Users can only leave conversations" ON public.conversation_participants;
-CREATE POLICY "Users can only leave conversations" 
+DROP POLICY IF EXISTS "Users can only leave their own conversations" ON public.conversation_participants;
+CREATE POLICY "Users can only leave their own conversations" 
 ON public.conversation_participants FOR DELETE 
 USING (
     user_id = auth.uid() 
     OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
 );
 
--- 5.3 RLS POLICIES FOR conversations
+-- 5.4 RLS POLICIES FOR conversations
 DROP POLICY IF EXISTS "Participants can view conversation" ON public.conversations;
 CREATE POLICY "Participants can view conversation" 
 ON public.conversations FOR SELECT 
@@ -189,7 +272,7 @@ CREATE POLICY "Authenticated users can create conversation"
 ON public.conversations FOR INSERT 
 WITH CHECK (auth.role() = 'authenticated');
 
--- 5.4 RLS POLICIES FOR messages
+-- 5.5 RLS POLICIES FOR messages
 DROP POLICY IF EXISTS "Participants can read messages" ON public.messages;
 CREATE POLICY "Participants can read messages" 
 ON public.messages FOR SELECT 

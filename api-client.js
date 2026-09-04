@@ -126,47 +126,12 @@ const LYANN_API_CLIENT = {
 
     async getOrCreateConversation(myUserId, targetUserId) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
-        
-        const sessionRes = await this.getSession();
-        const activeUserId = sessionRes?.data?.session?.user?.id || myUserId;
-        
-        if (!activeUserId) return { error: { message: 'Session utilisateur invalide.' } };
+        const { data, error } = await this.supabase.rpc('get_or_create_conversation', {
+            p_target_user_id: targetUserId
+        });
 
-        const { data: myConvs } = await this.supabase
-            .from('conversation_participants')
-            .select('conversation_id')
-            .eq('user_id', activeUserId);
-            
-        if (myConvs && myConvs.length > 0) {
-            const convIds = myConvs.map(c => c.conversation_id);
-            const { data: shared } = await this.supabase
-                .from('conversation_participants')
-                .select('conversation_id')
-                .eq('user_id', targetUserId)
-                .in('conversation_id', convIds);
-                
-            if (shared && shared.length > 0) {
-                return { data: { id: shared[0].conversation_id } };
-            }
-        }
-
-        const { data: newConv, error: convErr } = await this.supabase
-            .from('conversations')
-            .insert({})
-            .select()
-            .single();
-
-        if (convErr) return { error: convErr };
-
-        const { error: partErr } = await this.supabase
-            .from('conversation_participants')
-            .insert([
-                { conversation_id: newConv.id, user_id: activeUserId },
-                { conversation_id: newConv.id, user_id: targetUserId }
-            ]);
-
-        if (partErr) return { error: partErr };
-        return { data: newConv };
+        if (error) return { error };
+        return { data: { id: data } };
     },
 
     async getUserConversations(myUserId) {
