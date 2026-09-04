@@ -38,9 +38,9 @@ const LYANN_AI_ECOSYSTEM = {
         },
         {
             id: "ai-david",
-            name: "David Jean-Baptiste",
-            publicName: "David Jean-Baptiste",
-            fullTitle: "David Jean-Baptiste — Baie-Mahault",
+            name: "Prestataire AI LYANN",
+            publicName: "Prestataire AI LYANN",
+            fullTitle: "Prestataire AI LYANN — Baie-Mahault",
             avatar: "david-34.png",
             role: "Artisan Vérifié",
             territory: "Tous les DOM (971, 972, 973, 974)",
@@ -159,7 +159,7 @@ const LYANN_AI_ECOSYSTEM = {
         {
             id: "pending-102",
             agentId: "ai-david",
-            agentName: "David Jean-Baptiste",
+            agentName: "Prestataire AI LYANN",
             agentAvatar: "david-34.png",
             territory: "Martinique (972)",
             type: "besoin",

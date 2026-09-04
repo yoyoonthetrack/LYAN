@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-release-payout').forEach(btn => {
         btn.addEventListener('click', () => {
             const amount = btn.getAttribute('data-amount') || '450 €';
-            const provider = btn.getAttribute('data-provider') || 'David Jean-Baptiste';
+            const provider = btn.getAttribute('data-provider') || 'Prestataire LYANN';
             if (confirm(`Déclencher le virement SEPA/Stripe Connect de ${amount} vers ${provider} ?`)) {
                 alert(`💸 Virement de ${amount} initié avec succès vers ${provider}.`);
                 btn.textContent = 'Virement Effectué ✅';
@@ -825,7 +825,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const wallets = window.LYANN_PAYMENTS.getWallets();
         const members = {
-            1: "David Jean-Baptiste",
+            1: "Prestataire LYANN",
             2: "Marie-Line Popotte",
             3: "Jean-Michel Télèphe"
         };
@@ -1070,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             reports = [
                 {
                     id: 'REP-849201',
-                    reporterName: 'David Jean-Baptiste',
+                    reporterName: 'Membre LYANN',
                     targetName: 'Profil Suspect #41',
                     reason: 'spam',
                     reasonLabel: 'Démarchage abusif / Spam',

@@ -135,7 +135,7 @@
                 disputeRate: disputeRate,
                 activeDisputes: activeLitigesCount,
                 topProviders: [
-                    { name: "David Jean-Baptiste", amount: 450, count: 1 },
+                    { name: "Prestataire LYANN", amount: 450, count: 1 },
                     { name: "Marie-Line Popotte", amount: 1200, count: 1 },
                     { name: "Jean-Michel Télèphe", amount: 150, count: 1 }
                 ]

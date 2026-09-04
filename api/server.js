@@ -63,7 +63,7 @@ app.post('/v1/auth/login', (req, res) => {
         token,
         user: {
             id: 1,
-            name: "David Jean-Baptiste",
+            name: "Prestataire LYANN",
             email: email,
             role: "provider",
             territory: "Guadeloupe (971)"

@@ -125,7 +125,7 @@ function getLocalChatMessages(contactId) {
     }
     
     if (!data[contactId]) {
-        if (contactId === "David Jean-Baptiste") {
+        if (contactId === "Prestataire LYANN") {
             data[contactId] = [
                 { id: "m1", text: "Bonjour ! Je suis dispo cet après-midi pour votre problème électrique.", sender: "them", timestamp: "14:32", type: "text", status: "read" }
             ];
@@ -275,7 +275,7 @@ window.openChatWithUser = async function (name, avatar, contactId = name, initia
         localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(storedMsgs));
     }
 
-    if ((!avatar || avatar === "david-34.png") && name !== "David Jean-Baptiste" && window.LYANN_MEMBERS) {
+    if ((!avatar || avatar === "david-34.png") && name !== "Prestataire LYANN" && window.LYANN_MEMBERS) {
         const member = window.LYANN_MEMBERS.find(m => m.name === name || `${m.name} (${m.age} ans)` === name);
         if (member) avatar = member.avatar;
     }
@@ -1474,8 +1474,8 @@ document.addEventListener('touchstart', (e) => {
         } catch(e) {}
         
         // Ensure default contacts exist
-        if (!data["David Jean-Baptiste"]) {
-            data["David Jean-Baptiste"] = [
+        if (!data["Prestataire LYANN"]) {
+            data["Prestataire LYANN"] = [
                 { id: "m1", text: "Bonjour ! Je suis dispo cet après-midi pour votre problème électrique.", sender: "them", timestamp: "14:32", type: "text" }
             ];
         }
@@ -1541,7 +1541,7 @@ document.addEventListener('touchstart', (e) => {
         if (!listContainer) return;
         
         const defaultContacts = [
-            { id: "David Jean-Baptiste", name: "David Jean-Baptiste", avatar: "david-34.png", preview: "Bonjour ! Je suis dispo cet ap..." },
+            { id: "Prestataire LYANN", name: "Prestataire LYANN", avatar: "david-34.png", preview: "Bonjour ! Je suis dispo cet ap..." },
             { id: "Tati Huguette Cazeau", name: "Tati Huguette Cazeau", avatar: "huguette-68.png", preview: "Merci beaucoup pour votre aide !" },
             { id: "Sarah Manicon", name: "Sarah Manicon", avatar: "sarah-29.png", preview: "À très bientôt pour la rénovation !" }
         ];
@@ -1680,7 +1680,7 @@ document.addEventListener('touchstart', (e) => {
     document.querySelectorAll('.btn-open-chat, .btn-open-chat-direct, .open-chat-trigger').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            const name = btn.dataset.memberName || 'David Jean-Baptiste';
+            const name = btn.dataset.memberName || 'Membre LYANN';
             const avatar = btn.dataset.memberAvatar || 'david-34.png';
             openChatWithUser(name, avatar, name);
         });

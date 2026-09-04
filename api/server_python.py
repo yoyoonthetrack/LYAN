@@ -80,7 +80,7 @@ class LyannAPIHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({
                 "success": True,
                 "token": "jwt_token_demo_lyan_dom_2026_secure",
-                "user": { "id": 1, "name": "David Jean-Baptiste", "email": email, "role": "provider" }
+                "user": { "id": 1, "name": "Prestataire LYANN", "email": email, "role": "provider" }
             }).encode('utf-8'))
 
         elif path == '/v1/payments/create-intent':

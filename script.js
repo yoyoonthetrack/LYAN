@@ -306,7 +306,7 @@ function openNotificationsModal() {
                     <div style="display: flex; gap: 12px; padding: 14px; background: var(--bg-alt); border-radius: var(--radius-lg); border-left: 4px solid var(--primary);">
                         <span style="font-size: 1.5rem;">🤝</span>
                         <div>
-                            <strong style="font-size: 0.88rem; display: block; color: var(--text);">David Jean-Baptiste a accepté votre demande</strong>
+                            <strong style="font-size: 0.88rem; display: block; color: var(--text);">Un membre LYANN a accepté votre demande</strong>
                             <span style="font-size: 0.75rem; color: var(--text-muted);">Il y a 15 minutes • Baie-Mahault</span>
                         </div>
                     </div>
@@ -814,7 +814,7 @@ function injectMobileInterface() {
         },
         {
             id: 1,
-            name: "David Jean-Baptiste (34 ans)",
+            name: "David M. (34 ans)",
             role: "Plomberie & Clim Inverter",
             category: "plomberie",
             keywords: ["plomberie", "plombier", "fuite", "eau", "sanitaire", "robinet", "tuyau", "dépannage", "chauffe-eau", "clim"],
@@ -1237,7 +1237,7 @@ function ensureMobileHamburgerDrawer() {
                     <a href="#" class="drawer-profile-link open-account-modal-trigger">
                         <img src="david-34.png" alt="Profil Utilisateur" class="drawer-avatar" id="drawerUserAvatar">
                         <div class="drawer-user-info">
-                            <span class="drawer-user-name" id="drawerUserName">David Jean-Baptiste</span>
+                            <span class="drawer-user-name" id="drawerUserName">Mon Compte</span>
                             <span class="drawer-user-badge" id="drawerUserBadge"><i class="ph-fill ph-check-circle"></i> Membre Pro Vérifié</span>
                             <span class="drawer-view-profile">Voir mon profil <i class="ph ph-arrow-right"></i></span>
                         </div>
@@ -1416,7 +1416,7 @@ document.addEventListener('click', (e) => {
             if (typeof window.openLyannChatModal === 'function') {
                 window.openLyannChatModal();
             } else if (typeof window.openChatWithUser === 'function') {
-                window.openChatWithUser('David Jean-Baptiste', 'david-34.png', '1');
+                window.openChatWithUser('Prestataire LYANN', 'david-34.png', '1');
             } else {
                 window.location.href = 'index.html?action=openchat';
             }
@@ -1642,7 +1642,7 @@ safeDomReady(() => {
         injectMobileInterface();
     }
 
-    let activeContactName = 'David Jean-Baptiste';
+    let activeContactName = 'Prestataire LYANN';
     let activeContactAvatar = 'david-34.png';
 
     // === SCROLL REVEAL ANIMATION (IntersectionObserver) ===
@@ -3145,7 +3145,7 @@ safeDomReady(() => {
             
             // Récupérer le nom du prestataire ciblé
             const targetNameEl = document.getElementById('bookingTargetMemberName');
-            let providerName = 'David Jean-Baptiste';
+            let providerName = 'Prestataire LYANN';
             if (targetNameEl && targetNameEl.textContent) {
                 providerName = targetNameEl.textContent.replace('Réserver avec ', '');
             }
@@ -3156,7 +3156,7 @@ safeDomReady(() => {
                 window.LYANN_NOTIFICATIONS.sendSMS(
                     '+590690001122', 
                     providerName, 
-                    `Bonjour ${providerName}, vous avez reçu une nouvelle demande de réservation de la part de David. Connectez-vous à LYANN pour y répondre.`
+                    `Bonjour ${providerName}, vous avez reçu une nouvelle demande de réservation. Connectez-vous à LYANN pour y répondre.`
                 );
 
                 // Notifier le prestataire par Email
@@ -3166,7 +3166,7 @@ safeDomReady(() => {
                     '🤝 Nouvelle demande de réservation sur LYANN DOM',
                     `
                     <p>Une nouvelle demande de rendez-vous a été déposée pour votre activité.</p>
-                    <p><strong>Détails du client :</strong> David (Baie-Mahault, Guadeloupe)</p>
+                    <p><strong>Détails du client :</strong> Client LYANN (Guadeloupe)</p>
                     <p>Rendez-vous dans votre Espace Prestataire sur LYANN DOM pour envoyer votre devis par jalon et sécuriser le paiement.</p>
                     `
                 );
@@ -3594,7 +3594,7 @@ safeDomReady(() => {
                 speedDialWrapper.classList.remove('active');
                 const chatModal = document.getElementById('chatModal');
                 if (chatModal) {
-                    let targetName = 'David Jean-Baptiste';
+                    let targetName = 'Prestataire LYANN';
                     let targetAvatar = 'david-34.png';
                     try {
                         const stored = localStorage.getItem('lyann_last_active_contact');
@@ -3627,10 +3627,10 @@ safeDomReady(() => {
     if (accountSettingsForm) {
         accountSettingsForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const fn = document.getElementById('accFirstName')?.value || 'David';
-            const ln = document.getElementById('accLastName')?.value || 'Jean-Baptiste';
+            const fn = document.getElementById('accFirstName')?.value || '';
+            const ln = document.getElementById('accLastName')?.value || '';
             const nameEl = document.getElementById('accountModalName');
-            if (nameEl) nameEl.textContent = `${fn} ${ln}`;
+            if (nameEl && (fn || ln)) nameEl.textContent = `${fn} ${ln}`.trim();
             window.lyannAlert('💾 Vos modifications de profil et préférences ont bien été enregistrées !');
         });
     }
@@ -3644,9 +3644,101 @@ safeDomReady(() => {
     }
 
     
+    async function loadAndApplyUserProfile(userId, forcedSession) {
+        if (!userId) return null;
+        
+        let profileData = null;
+        let profileSource = 'none';
+
+        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+            try {
+                const { data: dbProfile, error } = await window.LYANN_API_CLIENT.getProfile(userId);
+                if (dbProfile && !error) {
+                    profileData = dbProfile;
+                    profileSource = 'supabase';
+                }
+            } catch (e) {
+                console.warn('[LYANN PROFILE DEBUG] Supabase profile fetch failed:', e);
+            }
+        }
+
+        if (profileData) {
+            const storedProfileObj = {
+                id: profileData.id,
+                firstName: profileData.first_name || '',
+                lastName: profileData.last_name || '',
+                email: profileData.email || '',
+                avatar_url: profileData.avatar_url || '',
+                role: profileData.role || 'USER'
+            };
+            if (typeof safeStorage !== 'undefined') {
+                safeStorage.setItem('lyan_user_profile', JSON.stringify(storedProfileObj));
+            }
+            localStorage.setItem('lyan_user_profile', JSON.stringify(storedProfileObj));
+        } else {
+            try {
+                const stored = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_profile') : null) || localStorage.getItem('lyan_user_profile');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (parsed.id === userId) {
+                        profileData = parsed;
+                        profileSource = 'localStorage';
+                    }
+                }
+            } catch (e) {}
+        }
+
+        let displayName = '';
+        if (profileData) {
+            const fn = profileData.first_name || profileData.firstName || '';
+            const ln = profileData.last_name || profileData.lastName || '';
+            displayName = (fn + ' ' + ln).trim();
+            if (!displayName && profileData.email) {
+                displayName = profileData.email.split('@')[0];
+            }
+        }
+
+        if (!displayName && forcedSession && forcedSession.user) {
+            displayName = forcedSession.user.user_metadata?.first_name || forcedSession.user.email?.split('@')[0] || 'Membre LYANN';
+            profileSource = 'session_metadata';
+        }
+
+        if (!displayName) {
+            displayName = 'Membre LYANN';
+        }
+
+        console.log('[LYANN PROFILE DEBUG]', {
+            sessionUserId: userId,
+            loadedProfileId: profileData?.id || userId,
+            loadedProfileName: displayName,
+            profileSource: profileSource
+        });
+
+        const nameEls = document.querySelectorAll('.user-name-display, #accountUserName, #accountModalName, #drawerUserName, #accountModalTitle, #profileUserName, #quickProfileName, #publicMemberName');
+        nameEls.forEach(el => {
+            if (el) el.textContent = displayName;
+        });
+
+        const fn = (profileData?.first_name || profileData?.firstName || (forcedSession?.user?.user_metadata?.first_name) || displayName.split(' ')[0] || 'Membre').trim();
+        const firstNameEls = document.querySelectorAll('#overviewFirstName');
+        firstNameEls.forEach(el => {
+            if (el) el.textContent = fn;
+        });
+
+        const accFnInput = document.getElementById('accFirstName');
+        const accLnInput = document.getElementById('accLastName');
+        const accEmailInput = document.getElementById('accEmail');
+        if (accFnInput && profileData) accFnInput.value = profileData.first_name || profileData.firstName || '';
+        if (accLnInput && profileData) accLnInput.value = profileData.last_name || profileData.lastName || '';
+        if (accEmailInput && profileData) accEmailInput.value = profileData.email || forcedSession?.user?.email || '';
+
+        return profileData;
+    }
+
     async function updateHeaderAuthState() {
         let isLoggedIn = false;
         let userId = null;
+        let currentSession = null;
 
         if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
             try {
@@ -3654,6 +3746,7 @@ safeDomReady(() => {
                 if (data && data.session && data.session.user) {
                     isLoggedIn = true;
                     userId = data.session.user.id;
+                    currentSession = data.session;
                 } else {
                     isLoggedIn = false;
                 }
@@ -3671,28 +3764,33 @@ safeDomReady(() => {
             isLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
         }
 
-        if (isLoggedIn) {
+        if (isLoggedIn && userId) {
             document.body.classList.add('user-is-logged-in');
-            window.CURRENT_USER_ID = userId || "me";
+            window.CURRENT_USER_ID = userId;
             if (typeof safeStorage !== 'undefined') safeStorage.setItem('lyan_user_logged_in', 'true');
             localStorage.setItem('lyan_user_logged_in', 'true');
             
-            // Update profile name displays
-            try {
-                const rawProfile = safeStorage.getItem('lyan_user_profile') || localStorage.getItem('lyan_user_profile');
-                if (rawProfile) {
-                    const prof = JSON.parse(rawProfile);
-                    const nameEls = document.querySelectorAll('.user-name-display, #accountUserName, #drawerUserName');
-                    nameEls.forEach(el => {
-                        if (el) el.textContent = prof.firstName + (prof.lastName ? ' ' + prof.lastName : '');
-                    });
-                }
-            } catch(e) {}
+            await loadAndApplyUserProfile(userId, currentSession);
         } else {
             document.body.classList.remove('user-is-logged-in');
             window.CURRENT_USER_ID = null;
-            if (typeof safeStorage !== 'undefined') safeStorage.removeItem('lyan_user_logged_in');
+            if (typeof safeStorage !== 'undefined') {
+                safeStorage.removeItem('lyan_user_logged_in');
+                safeStorage.removeItem('lyan_user_id');
+                safeStorage.removeItem('lyan_user_profile');
+            }
             localStorage.removeItem('lyan_user_logged_in');
+            localStorage.removeItem('lyan_user_id');
+            localStorage.removeItem('lyan_user_profile');
+
+            const nameEls = document.querySelectorAll('.user-name-display, #accountUserName, #accountModalName, #drawerUserName, #profileUserName, #quickProfileName, #publicMemberName');
+            nameEls.forEach(el => {
+                if (el) el.textContent = 'Connexion / Inscription';
+            });
+            const firstNameEls = document.querySelectorAll('#overviewFirstName');
+            firstNameEls.forEach(el => {
+                if (el) el.textContent = 'Membre';
+            });
         }
     }
 
@@ -3708,15 +3806,25 @@ safeDomReady(() => {
 
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
                 if (session && session.user) {
+                    // Vider l'ancien profil en mémoire pour éviter tout mélange entre comptes A et B
+                    if (window.CURRENT_USER_ID && window.CURRENT_USER_ID !== session.user.id) {
+                        if (typeof safeStorage !== 'undefined') safeStorage.removeItem('lyan_user_profile');
+                        localStorage.removeItem('lyan_user_profile');
+                    }
+
+                    window.CURRENT_USER_ID = session.user.id;
                     if (typeof safeStorage !== 'undefined') {
                         safeStorage.setItem('lyan_user_logged_in', 'true');
                         safeStorage.setItem('lyan_user_id', session.user.id);
                     }
                     localStorage.setItem('lyan_user_logged_in', 'true');
                     localStorage.setItem('lyan_user_id', session.user.id);
+
+                    await loadAndApplyUserProfile(session.user.id, session);
                 }
                 await updateHeaderAuthState();
             } else if (event === 'SIGNED_OUT') {
+                window.CURRENT_USER_ID = null;
                 if (typeof safeStorage !== 'undefined') {
                     safeStorage.removeItem('lyan_user_logged_in');
                     safeStorage.removeItem('lyan_user_id');
@@ -3843,7 +3951,7 @@ safeDomReady(() => {
         });
     }
 
-    function triggerLyannerDeal(memberName = 'David Jean-Baptiste', phone = '+590690001122') {
+    function triggerLyannerDeal(memberName = 'Prestataire LYANN', phone = '+590690001122') {
         if (lyannedMemberName) lyannedMemberName.textContent = memberName;
 
         if (whatsappShortcutBtn) {
@@ -3881,7 +3989,7 @@ safeDomReady(() => {
     document.querySelectorAll('.trigger-lyanner-deal, #chatLyannerBtn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            const activeName = chatHeaderName ? chatHeaderName.textContent : 'David Jean-Baptiste';
+            const activeName = chatHeaderName ? chatHeaderName.textContent : 'Prestataire LYANN';
             triggerLyannerDeal(activeName);
         });
     });
@@ -4052,7 +4160,7 @@ safeDomReady(() => {
     floatingChat.addEventListener('click', () => {
         const chatModal = document.getElementById('chatModal');
         if (chatModal) {
-            let targetName = 'David Jean-Baptiste';
+            let targetName = 'Prestataire LYANN';
             let targetAvatar = 'david-34.png';
             try {
                 const stored = localStorage.getItem('lyann_last_active_contact');
@@ -4079,7 +4187,7 @@ safeDomReady(() => {
             if (nameParam) {
                 openChatWithUser(decodeURIComponent(nameParam), "david-34.png");
             } else {
-                let targetName = 'David Jean-Baptiste';
+                let targetName = 'Prestataire LYANN';
                 let targetAvatar = 'david-34.png';
                 try {
                     const stored = localStorage.getItem('lyann_last_active_contact');
@@ -4252,9 +4360,9 @@ safeDomReady(() => {
             item.addEventListener('click', () => {
                 const chatModal = document.getElementById('chatModal');
                 if (chatModal) {
-                    openChatWithUser(log.recipientName || "David Jean-Baptiste", "david-34.png");
+                    openChatWithUser(log.recipientName || "Prestataire LYANN", "david-34.png");
                 } else {
-                    window.location.href = `feed.html?action=openchat&name=${encodeURIComponent(log.recipientName || "David Jean-Baptiste")}`;
+                    window.location.href = `feed.html?action=openchat&name=${encodeURIComponent(log.recipientName || "Prestataire LYANN")}`;
                 }
                 if (navNotifDropdown) navNotifDropdown.style.display = 'none';
             });

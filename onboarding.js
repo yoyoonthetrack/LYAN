@@ -52,10 +52,7 @@ runOnDomReady(() => {
     function getRegisteredUsers() {
         try {
             const raw = localStorage.getItem('lyan_registered_users');
-            return raw ? JSON.parse(raw) : [
-                { email: 'david.jean-baptiste@lyann.app', password: 'password123', firstName: 'David', lastName: 'Jean-Baptiste' },
-                { email: 'alex.dupont@lyann.app', password: 'password123', firstName: 'Alex', lastName: 'Dupont' }
-            ];
+            return raw ? JSON.parse(raw) : [];
         } catch (e) {
             return [];
         }
@@ -95,17 +92,52 @@ runOnDomReady(() => {
                 return;
             }
 
-            // Check Supabase first if available
+            // Authenticate with Supabase
             if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                 try {
                     const { data, error } = await window.LYANN_API_CLIENT.login(email, password);
-                    if (error && error.message && !error.message.includes('non configuré')) {
-                        console.warn("Supabase login notice:", error.message);
+                    if (error) {
+                        const errorMsg = error.message || 'Erreur lors de la connexion.';
+                        if (window.lyannAlert) window.lyannAlert(errorMsg);
+                        else alert(errorMsg);
+                        return;
                     }
-                } catch(e) {}
+                    if (data && data.session) {
+                        // Purge any stale mock/cached local profile
+                        if (typeof safeStorage !== 'undefined') {
+                            safeStorage.removeItem('lyan_user_profile');
+                            safeStorage.setItem('lyan_user_logged_in', 'true');
+                            safeStorage.setItem('lyan_user_id', data.session.user.id);
+                        }
+                        localStorage.removeItem('lyan_user_profile');
+                        localStorage.setItem('lyan_user_logged_in', 'true');
+                        localStorage.setItem('lyan_user_id', data.session.user.id);
+
+                        if (loginModal) loginModal.classList.remove('active');
+                        document.body.style.overflow = '';
+
+                        if (window.NotificationService) {
+                            window.NotificationService.showToast('success', 'Connexion réussie !');
+                        } else if (window.lyannAlert) {
+                            window.lyannAlert('Connexion réussie !');
+                        }
+
+                        if (typeof window.updateHeaderAuthState === 'function') {
+                            await window.updateHeaderAuthState();
+                        } else {
+                            window.location.reload();
+                        }
+                        return;
+                    }
+                } catch(err) {
+                    console.error("[LYANN AUTH] Supabase login error:", err);
+                    if (window.lyannAlert) window.lyannAlert(err.message || 'Erreur de connexion.');
+                    else alert(err.message || 'Erreur de connexion.');
+                    return;
+                }
             }
 
-            // Local Registered Users audit
+            // Offline Dev Fallback ONLY if Supabase SDK is absent
             const users = getRegisteredUsers();
             const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
@@ -116,18 +148,17 @@ runOnDomReady(() => {
                 return;
             }
 
-            // Store active session
             const activeProfile = foundUser ? {
                 firstName: foundUser.firstName,
                 lastName: foundUser.lastName,
                 email: foundUser.email,
-                avatar: foundUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+                avatar: foundUser.avatar || '',
                 createdAt: new Date().toISOString()
             } : {
                 firstName: email.split('@')[0],
                 lastName: '',
                 email: email,
-                avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+                avatar: '',
                 createdAt: new Date().toISOString()
             };
 
