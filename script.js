@@ -3732,6 +3732,98 @@ safeDomReady(() => {
         if (accLnInput && profileData) accLnInput.value = profileData.last_name || profileData.lastName || '';
         if (accEmailInput && profileData) accEmailInput.value = profileData.email || forcedSession?.user?.email || '';
 
+        // --------------------------------------------------------------------------
+        // DYNAMIC USER ACTIVITY METRICS & CLEAN EMPTY STATE (STRICTLY BY SESSION USER ID)
+        // --------------------------------------------------------------------------
+        const userEmail = profileData?.email || forcedSession?.user?.email || '';
+
+        // Calculate dynamic transactions & wallets for active userId
+        let availableBal = 0;
+        let pendingBal = 0;
+        let revenueMonth = 0;
+        let expensesMonth = 0;
+        let completedMissionsCount = 0;
+        let requestedMissionsCount = 0;
+
+        if (window.LYANN_PAYMENTS && typeof window.LYANN_PAYMENTS.getWallets === 'function') {
+            try {
+                const wallets = window.LYANN_PAYMENTS.getWallets() || {};
+                const userWallet = wallets[userId];
+                if (userWallet) {
+                    availableBal = userWallet.availableBalance ?? 0;
+                    pendingBal = userWallet.pendingBalance ?? 0;
+                }
+                const txs = (window.LYANN_PAYMENTS.getTransactions ? window.LYANN_PAYMENTS.getTransactions() : []) || [];
+                txs.forEach(t => {
+                    if (t.providerId === userId && t.status === 'completed') {
+                        revenueMonth += t.amount ?? 0;
+                        completedMissionsCount++;
+                    }
+                    if (t.customerId === userId) {
+                        expensesMonth += t.amount ?? 0;
+                        requestedMissionsCount++;
+                    }
+                });
+            } catch (e) {}
+        }
+
+        // Update KPI card elements dynamically
+        const kpiRatingVal = document.getElementById('accountKpiRating');
+        const kpiRatingLabel = document.getElementById('accountKpiRatingLabel');
+        const kpiMissionsVal = document.getElementById('accountKpiMissions');
+        const kpiDemandesVal = document.getElementById('accountKpiDemandes');
+        const kpiRespTimeVal = document.getElementById('accountKpiResponseTime');
+        const kpiRevenueVal = document.getElementById('accountKpiRevenue');
+        const kpiExpensesVal = document.getElementById('accountKpiExpenses');
+        const kpiAvailBalVal = document.getElementById('accountKpiAvailableBalance');
+        const kpiPendBalVal = document.getElementById('accountKpiPendingBalance');
+
+        if (kpiRatingVal) kpiRatingVal.textContent = 'Non noté';
+        if (kpiRatingLabel) kpiRatingLabel.textContent = '0 avis';
+        if (kpiMissionsVal) kpiMissionsVal.textContent = String(completedMissionsCount);
+        if (kpiDemandesVal) kpiDemandesVal.textContent = String(requestedMissionsCount);
+        if (kpiRespTimeVal) kpiRespTimeVal.textContent = 'N/A';
+        if (kpiRevenueVal) kpiRevenueVal.textContent = (revenueMonth).toFixed(2).replace('.', ',') + ' €';
+        if (kpiExpensesVal) kpiExpensesVal.textContent = (expensesMonth).toFixed(2).replace('.', ',') + ' €';
+        if (kpiAvailBalVal) kpiAvailBalVal.textContent = (availableBal).toFixed(2).replace('.', ',') + ' €';
+        if (kpiPendBalVal) kpiPendBalVal.textContent = (pendingBal).toFixed(2).replace('.', ',') + ' €';
+
+        // Render Clean Empty State Containers for logged-in user with no activity
+        const servicesContainer = document.getElementById('accountServicesContainer');
+        if (servicesContainer) {
+            servicesContainer.innerHTML = '<p class="account-empty-state" style="font-size: 0.88rem; color: var(--text-muted); text-align: center; padding: 16px;">Vous n\'avez encore créé aucune offre de service.</p>';
+        }
+
+        const requestsContainer = document.getElementById('accountRequestsContainer');
+        if (requestsContainer) {
+            requestsContainer.innerHTML = '<p class="account-empty-state" style="font-size: 0.88rem; color: var(--text-muted); text-align: center; padding: 16px;">Vous n\'avez publié aucune demande d\'intervention.</p>';
+        }
+
+        const missionsContainer = document.getElementById('accountMissionsContainer');
+        if (missionsContainer) {
+            missionsContainer.innerHTML = '<p class="account-empty-state" style="font-size: 0.88rem; color: var(--text-muted); text-align: center; padding: 16px;">Vous n\'avez encore réalisé aucune mission.</p>';
+        }
+
+        const bokantajContainer = document.getElementById('accountBokantajContainer');
+        if (bokantajContainer) {
+            bokantajContainer.innerHTML = '<p class="account-empty-state" style="font-size: 0.85rem; color: var(--text-muted);">Aucune publication active sur Bokantaj.</p>';
+        }
+
+        const reviewsContainer = document.getElementById('accountReviewsContainer');
+        if (reviewsContainer) {
+            reviewsContainer.innerHTML = '<p class="account-empty-state" style="font-size: 0.88rem; color: var(--text-muted); text-align: center; padding: 16px;">Aucun avis pour le moment.</p>';
+        }
+
+        const kycList = document.getElementById('accountKycList');
+        if (kycList) {
+            const isEmailConf = forcedSession?.user?.email_confirmed_at ? '✅ Email vérifié (' + userEmail + ')' : '⏳ Email en attente de confirmation (' + userEmail + ')';
+            kycList.innerHTML = `
+                <li>${isEmailConf}</li>
+                <li>⏳ Numéro mobile non certifié</li>
+                <li>⏳ Pièce d'identité non transmise</li>
+            `;
+        }
+
         return profileData;
     }
 
@@ -3791,6 +3883,23 @@ safeDomReady(() => {
             firstNameEls.forEach(el => {
                 if (el) el.textContent = 'Membre';
             });
+
+            // Reset Account KPI elements on logout
+            const kpiRatingVal = document.getElementById('accountKpiRating');
+            const kpiMissionsVal = document.getElementById('accountKpiMissions');
+            const kpiDemandesVal = document.getElementById('accountKpiDemandes');
+            const kpiRevenueVal = document.getElementById('accountKpiRevenue');
+            const kpiExpensesVal = document.getElementById('accountKpiExpenses');
+            const kpiAvailBalVal = document.getElementById('accountKpiAvailableBalance');
+            const kpiPendBalVal = document.getElementById('accountKpiPendingBalance');
+
+            if (kpiRatingVal) kpiRatingVal.textContent = '0.0 ★';
+            if (kpiMissionsVal) kpiMissionsVal.textContent = '0';
+            if (kpiDemandesVal) kpiDemandesVal.textContent = '0';
+            if (kpiRevenueVal) kpiRevenueVal.textContent = '0,00 €';
+            if (kpiExpensesVal) kpiExpensesVal.textContent = '0,00 €';
+            if (kpiAvailBalVal) kpiAvailBalVal.textContent = '0,00 €';
+            if (kpiPendBalVal) kpiPendBalVal.textContent = '0,00 €';
         }
     }
 
