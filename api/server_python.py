@@ -10,12 +10,12 @@ import json, time, urllib.parse, os
 PORT = int(os.environ.get('PORT', 3000))
 
 MEMBERS_DB = [
-    { "id": 10, "name": "Jocelyn Cabort", "age": 52, "role": "Plomberie & Fuites d'eau PRO", "city": "Baie-Mahault", "locationName": "Guadeloupe (971)", "territoryKey": "guadeloupe", "rating": "5.0", "avatar": "jocelyn-cabort.png", "badge": "PRO VÉRIFIÉ", "kycVerified": True },
-    { "id": 1, "name": "David Jean-Baptiste", "age": 34, "role": "Électricien & Climaticien PRO", "city": "Baie-Mahault", "locationName": "Guadeloupe (971)", "territoryKey": "guadeloupe", "rating": "4.9", "avatar": "david-34.png", "badge": "PRO VÉRIFIÉ", "kycVerified": True },
-    { "id": 2, "name": "Tati Huguette Cazeau", "age": 68, "role": "Membre Senior Actif", "city": "Fort-de-France", "locationName": "Martinique (972)", "territoryKey": "martinique", "rating": "5.0", "avatar": "huguette-68.png", "badge": "VOISIN DE CONFIANCE", "kycVerified": True },
-    { "id": 3, "name": "Sarah Manicon", "age": 29, "role": "Design d'Intérieur & Peinture", "city": "Le Gosier", "locationName": "Guadeloupe (971)", "territoryKey": "guadeloupe", "rating": "4.85", "avatar": "sarah-29.png", "badge": "TALENT RECOMMANDÉ", "kycVerified": True },
-    { "id": 4, "name": "Kevin Bellerose", "age": 41, "role": "Paysagiste & Entretien Créole", "city": "Cayenne", "locationName": "Guyane (973)", "territoryKey": "guyane", "rating": "4.95", "avatar": "kevin-41.png", "badge": "ARTISAN VÉRIFIÉ", "kycVerified": True },
-    { "id": 5, "name": "Man Saint-Louis", "age": 72, "role": "Expert Jardinage & Botanique", "city": "Sainte-Anne", "locationName": "Guadeloupe (971)", "territoryKey": "guadeloupe", "rating": "5.0", "avatar": "saint-louis-72.png", "badge": "SAGESSE COMMUNAUTAIRE", "kycVerified": True }
+    { "id": 200, "name": "Jocelyn Cabort", "age": 52, "role": "Plomberie & Fuites d'eau PRO", "city": "Baie-Mahault", "locationName": "Guadeloupe (971)", "territoryKey": "guadeloupe", "rating": "5.0", "avatar": "jocelyn-cabort.png", "badge": "PRO VÉRIFIÉ", "kycVerified": True },
+    { "id": 201, "name": "Hugues Zami", "age": 45, "role": "Climatisation & Électricité PRO", "city": "Les Abymes", "locationName": "Guadeloupe (971)", "territoryKey": "guadeloupe", "rating": "4.9", "avatar": "hugues-zami.png", "badge": "PRO VÉRIFIÉ", "kycVerified": True },
+    { "id": 202, "name": "Murielle Placide", "age": 38, "role": "Ménage & Repassage", "city": "Le Gosier", "locationName": "Guadeloupe (971)", "territoryKey": "guadeloupe", "rating": "5.0", "avatar": "murielle-placide.png", "badge": "VOISINE DE CONFIANCE", "kycVerified": True },
+    { "id": 203, "name": "Clotilde Belair", "age": 61, "role": "Aide aux repas & Seniors", "city": "Sainte-Anne", "locationName": "Guadeloupe (971)", "territoryKey": "guadeloupe", "rating": "4.95", "avatar": "clotilde-belair.png", "badge": "AUXILIAIRE VÉRIFIÉE", "kycVerified": True },
+    { "id": 204, "name": "Marius Placide", "age": 29, "role": "Bricolage & Montage meuble", "city": "Petit-Bourg", "locationName": "Guadeloupe (971)", "territoryKey": "guadeloupe", "rating": "4.85", "avatar": "marius-placide.png", "badge": "SUPER BRICOLEUR", "kycVerified": True },
+    { "id": 212, "name": "Wilfrid Rapon", "age": 37, "role": "Jardinier paysagiste", "city": "Le Gosier", "locationName": "Guadeloupe (971)", "territoryKey": "guadeloupe", "rating": "5.0", "avatar": "wilfrid-rapon.png", "badge": "PAYSAGISTE PRO", "kycVerified": True }
 ]
 
 class LyannAPIHandler(BaseHTTPRequestHandler):

@@ -1221,7 +1221,7 @@ function injectMobileInterface() {
         };
     });
 
-    LYANN_MEMBERS.push(...additionalMembers);
+    LYANN_MEMBERS.unshift(...additionalMembers);
 
 function ensureMobileHamburgerDrawer() {
     let overlay = document.getElementById('mobileHamburgerDrawerOverlay');
@@ -2382,19 +2382,35 @@ safeDomReady(() => {
     let INITIAL_FLASH_POSTS = [
         {
             id: 'flash-1',
-            authorName: 'David Jean-Baptiste',
-            authorRole: 'Artisan',
-            authorAvatar: 'david-34.png',
+            authorName: 'Jocelyn Cabort',
+            authorRole: 'Plomberie & Fuites d\'eau',
+            authorAvatar: 'jocelyn-cabort.png',
             badge: '⚡ Disponibilité',
             type: 'dispo',
             location: 'Guadeloupe',
             territoryKey: 'guadeloupe',
             timeAgo: 'Il y a 14 min',
-            content: 'Créneau disponible.',
+            content: 'Disponible aujourd\'hui pour dépannages de plomberie d\'urgence et recherche de fuite sur Baie-Mahault et environs ! 💧🔧',
             images: [],
-            likes: 14,
-            repliesCount: 3,
-            memberId: 1
+            likes: 18,
+            repliesCount: 4,
+            memberId: 200
+        },
+        {
+            id: 'flash-2',
+            authorName: 'Hugues Zami',
+            authorRole: 'Climatisation & Électricité',
+            authorAvatar: 'hugues-zami.png',
+            badge: '⭐ Recommandation',
+            type: 'reco',
+            location: 'Guadeloupe',
+            territoryKey: 'guadeloupe',
+            timeAgo: 'Il y a 45 min',
+            content: 'Entretien préventif clim Inverter et contrôle électrique avant les fortes chaleurs. Devis gratuit sur Les Abymes.',
+            images: [],
+            likes: 24,
+            repliesCount: 6,
+            memberId: 201
         }
     ];
 
