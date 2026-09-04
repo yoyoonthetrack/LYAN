@@ -337,6 +337,13 @@ runOnDomReady(() => {
                 // Check duplicate email
                 const users = getRegisteredUsers();
                 const duplicate = users.find(u => u.email.toLowerCase() === em.toLowerCase());
+                if (pw.length < 8) {
+                    if (window.lyannAlert) window.lyannAlert('Le mot de passe doit comporter au moins 8 caractères.');
+                    else alert('Le mot de passe doit comporter au moins 8 caractères.');
+                    if (pwEl) pwEl.focus();
+                    return;
+                }
+
                 if (duplicate) {
                     if (window.lyannAlert) window.lyannAlert(`L'adresse email ${em} est déjà enregistrée. Veuillez vous connecter.`);
                     else alert(`L'adresse email ${em} est déjà enregistrée. Veuillez vous connecter.`);
@@ -359,34 +366,9 @@ runOnDomReady(() => {
                 obNextBtn.disabled = true;
                 obNextBtn.textContent = 'Création en cours...';
 
-                // Save profile locally immediately
-                const userProfile = {
-                    firstName: onboardingData.firstName || 'Membre',
-                    lastName: onboardingData.lastName || '',
-                    email: onboardingData.email || '',
-                    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-                    role: 'unified_member',
-                    createdAt: new Date().toISOString()
-                };
-
-                registerUser({
-                    email: onboardingData.email,
-                    password: onboardingData.password,
-                    firstName: onboardingData.firstName,
-                    lastName: onboardingData.lastName
-                });
-
-                if (typeof safeStorage !== 'undefined') {
-                    safeStorage.setItem('lyan_user_logged_in', 'true');
-                    safeStorage.setItem('lyan_user_profile', JSON.stringify(userProfile));
-                }
-                localStorage.setItem('lyan_user_logged_in', 'true');
-                localStorage.setItem('lyan_user_profile', JSON.stringify(userProfile));
-
-                // Non-blocking Supabase signup attempt
-                if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-                    try {
-                        await window.LYANN_API_CLIENT.signUp(
+                try {
+                    if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+                        const { data, error } = await window.LYANN_API_CLIENT.signUp(
                             onboardingData.email, 
                             onboardingData.password, 
                             { 
@@ -394,23 +376,41 @@ runOnDomReady(() => {
                                 last_name: onboardingData.lastName 
                             }
                         );
-                    } catch (err) {
-                        console.warn("Supabase signup notice:", err);
-                    }
-                }
 
-                // Update UI Auth State
-                if (typeof window.updateHeaderAuthState === 'function') {
-                    window.updateHeaderAuthState();
-                } else {
-                    window.dispatchEvent(new Event('lyann_auth_changed'));
+                        if (error) throw error;
+                    }
+
+                    const userProfile = {
+                        firstName: onboardingData.firstName || 'Membre',
+                        lastName: onboardingData.lastName || '',
+                        email: onboardingData.email || '',
+                        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+                        role: 'unified_member',
+                        createdAt: new Date().toISOString()
+                    };
+
+                    if (typeof safeStorage !== 'undefined') {
+                        safeStorage.setItem('lyan_user_profile', JSON.stringify(userProfile));
+                    }
+                    localStorage.setItem('lyan_user_profile', JSON.stringify(userProfile));
+
+                    // Show Email Verification Notice
+                    if (window.lyannAlert) {
+                        window.lyannAlert(`📩 Inscription enregistrée ! Un email de confirmation a été envoyé à ${onboardingData.email}. Veuillez valider votre adresse email avant de vous connecter.`);
+                    }
+
+                    currentStep = 2;
+                    updateStepsUI();
+                } catch (err) {
+                    const normErr = (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.normalizeAuthError)
+                        ? window.LYANN_API_CLIENT.normalizeAuthError(err)
+                        : err;
+                    if (window.lyannAlert) window.lyannAlert('Erreur lors de l’inscription : ' + (normErr.message || err.message));
+                    else alert('Erreur lors de l’inscription : ' + (normErr.message || err.message));
+                } finally {
+                    obNextBtn.disabled = false;
+                    obNextBtn.textContent = 'Créer mon compte';
                 }
-                
-                // Proceed directly to Step 3 / Welcome Screen (#obStep4)
-                currentStep = 2;
-                updateStepsUI();
-                obNextBtn.disabled = false;
-                obNextBtn.textContent = 'Créer mon compte';
                 return;
             }
         });

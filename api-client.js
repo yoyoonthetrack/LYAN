@@ -44,49 +44,79 @@ function generateId() {
     return 'm_' + Math.random().toString(36).substr(2, 9);
 }
 
+function normalizeAuthError(error) {
+    if (!error) return null;
+    const msg = (error.message || '').toLowerCase();
+    if (msg.includes('invalid login credentials') || msg.includes('invalid credentials') || msg.includes('user not found') || msg.includes('wrong password')) {
+        return { message: 'Adresse email ou mot de passe incorrect.' };
+    }
+    if (msg.includes('email not confirmed')) {
+        return { message: 'Veuillez confirmer votre adresse email pour continuer.' };
+    }
+    if (msg.includes('rate limit') || msg.includes('too many requests')) {
+        return { message: 'Trop de tentatives effectuées. Veuillez patienter quelques minutes.' };
+    }
+    if (msg.includes('user already registered') || msg.includes('email already in use') || msg.includes('already exists')) {
+        return { message: 'Un compte existe déjà avec cette adresse email.' };
+    }
+    if (msg.includes('password should be at least')) {
+        return { message: 'Le mot de passe doit comporter au moins 8 caractères.' };
+    }
+    return { message: error.message || 'Erreur lors de l’authentification.' };
+}
+
 // ----------------------------------------------------------------------
 // LYANN API CLIENT
 // ----------------------------------------------------------------------
 const LYANN_API_CLIENT = {
     supabase: supabaseClient,
 
+    normalizeAuthError,
+
     // --- AUTHENTICATION ---
     async signUp(email, password, metadata) {
-        if (!this.supabase) return { error: { message: 'Supabase non configuré' } };
-        return await this.supabase.auth.signUp({
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        if (!password || password.length < 8) {
+            return { error: { message: 'Le mot de passe doit comporter au moins 8 caractères.' } };
+        }
+        const res = await this.supabase.auth.signUp({
             email,
             password,
-            options: { data: metadata }
+            options: {
+                data: metadata,
+                emailRedirectTo: window.location.origin + '/index.html?action=email_confirmed'
+            }
         });
+        if (res.error) res.error = normalizeAuthError(res.error);
+        return res;
     },
 
     async login(email, password) {
-        if (!this.supabase) return { error: { message: 'Supabase non configuré' } };
-        return await this.supabase.auth.signInWithPassword({ email, password });
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const res = await this.supabase.auth.signInWithPassword({ email, password });
+        if (res.error) res.error = normalizeAuthError(res.error);
+        return res;
     },
 
     async logout() {
-        if (!this.supabase) return;
+        if (!this.supabase) return { error: null };
         return await this.supabase.auth.signOut();
     },
 
-    
-    async updateProfile(userId, profileData) {
-        if (!this.supabase) return { error: { message: 'Supabase non configuré' } };
-        return await this.supabase
-            .from('profiles')
-            .update(profileData)
-            .eq('id', userId);
+    async resetPasswordForEmail(email) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const res = await this.supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + '/index.html?action=reset_password'
+        });
+        if (res.error) res.error = normalizeAuthError(res.error);
+        return res;
     },
 
-    async getSession() {
-        if (!this.supabase) return { data: { session: null } };
-        return await this.supabase.auth.getSession();
-    },
-
-    async getUser() {
-        if (!this.supabase) return { data: { user: null } };
-        return await this.supabase.auth.getUser();
+    async updatePassword(newPassword) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const res = await this.supabase.auth.updateUser({ password: newPassword });
+        if (res.error) res.error = normalizeAuthError(res.error);
+        return res;
     },
 
     async getProfile(userId) {

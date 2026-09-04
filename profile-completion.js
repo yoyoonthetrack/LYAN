@@ -304,10 +304,8 @@
             // Save to LocalStorage / SafeStorage
             if (typeof safeStorage !== 'undefined') {
                 safeStorage.setItem('lyan_user_profile', JSON.stringify(profileData));
-                safeStorage.setItem('lyan_user_logged_in', 'true');
             }
             localStorage.setItem('lyan_user_profile', JSON.stringify(profileData));
-            localStorage.setItem('lyan_user_logged_in', 'true');
 
             // Close modal
             if (modal) {

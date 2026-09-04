@@ -2,17 +2,43 @@
    LYANN DOM — ENTERPRISE BACK-OFFICE ADMIN ENGINE
    ========================================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // --------------------------------------------------------------------------
     // 0. ACTIVE ADMIN USER SESSION & RBAC PERMISSIONS ENGINE
     // --------------------------------------------------------------------------
-    window.currentAdminUser = {
-        username: 'Yoyoothetrack',
-        fullName: 'Yoyoothetrack',
-        role: 'OWNER',
-        isOwner: true,
-        permissions: ['*'] // Owner has absolute unrevokable permissions
-    };
+    let adminProfile = null;
+    const allowedAdminRoles = ['SUPER_ADMIN', 'ADMIN', 'OWNER', 'SUPPORT', 'FINANCE', 'MODERATION', 'EMPLOYEE'];
+
+    if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+        try {
+            const { data: sessionData } = await window.LYANN_API_CLIENT.getSession();
+            if (sessionData && sessionData.session && sessionData.session.user) {
+                const userId = sessionData.session.user.id;
+                const { data: prof } = await window.LYANN_API_CLIENT.getProfile(userId);
+                if (prof && allowedAdminRoles.includes((prof.role || '').toUpperCase())) {
+                    adminProfile = {
+                        username: prof.first_name || sessionData.session.user.email,
+                        fullName: `${prof.first_name || ''} ${prof.last_name || ''}`.trim(),
+                        role: (prof.role || 'ADMIN').toUpperCase(),
+                        isOwner: (prof.role || '').toUpperCase() === 'OWNER' || (prof.role || '').toUpperCase() === 'SUPER_ADMIN',
+                        permissions: ['*']
+                    };
+                }
+            }
+        } catch (err) {
+            console.warn("Admin RBAC auth check warning:", err);
+        }
+    }
+
+    // Strict Admin Access Guard: If not an authorized admin, reject access
+    if (!adminProfile) {
+        console.warn("🚫 Unauthorized access attempt to LYANN Admin Panel.");
+        alert("🚫 Accès refusé : Vous devez être connecté avec un compte Administrateur LYANN pour accéder au Back-Office.");
+        window.location.href = 'index.html?action=login';
+        return;
+    }
+
+    window.currentAdminUser = adminProfile;
 
     window.checkAdminPermission = function(permissionCode) {
         if (!window.currentAdminUser) return false;

@@ -2951,19 +2951,61 @@ safeDomReady(() => {
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = loginForm.querySelector('input[type="email"]')?.value;
-            const password = loginForm.querySelector('input[type="password"]')?.value || 'password123';
+            const submitBtn = loginForm.querySelector('button[type="submit"]');
+            const emailInput = loginForm.querySelector('input[type="email"]');
+            const passwordInput = loginForm.querySelector('input[type="password"]');
+            
+            const email = emailInput?.value?.trim();
+            const password = passwordInput?.value;
+
+            if (!email || !password) {
+                window.lyannAlert('Veuillez saisir votre adresse email et votre mot de passe.');
+                return;
+            }
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="ph ph-spinner spin"></i> Connexion...';
+            }
+
             try {
-                if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-                    const { data, error } = await window.LYANN_API_CLIENT.login(email, password);
-                    if (error) throw error;
+                if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+                    throw new Error('Supabase client non disponible.');
                 }
-                safeStorage.setItem('lyan_user_logged_in', 'true');
+
+                const { data, error } = await window.LYANN_API_CLIENT.login(email, password);
+                if (error) throw error;
+
+                if (!data || !data.session) {
+                    throw new Error('Session invalide. Identifiants incorrects.');
+                }
+
+                // Verify email confirmation if required
+                if (data.user && !data.user.email_confirmed_at && data.user.confirmation_sent_at) {
+                    window.lyannAlert('📩 Veuillez confirmer votre adresse e-mail via le lien envoyé dans votre boîte de réception pour réactiver votre compte.');
+                    if (window.LYANN_API_CLIENT) await window.LYANN_API_CLIENT.logout();
+                    return;
+                }
+
+                if (typeof safeStorage !== 'undefined') {
+                    safeStorage.setItem('lyan_user_logged_in', 'true');
+                    if (data.user) safeStorage.setItem('lyan_user_id', data.user.id);
+                }
+
                 await updateHeaderAuthState();
                 window.lyannAlert('🎉 Connexion réussie ! Bienvenue sur votre espace LYANN.');
                 closeLoginModal();
+                loginForm.reset();
             } catch (err) {
-                window.lyannAlert('Erreur de connexion : ' + err.message);
+                const normErr = (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.normalizeAuthError) 
+                    ? window.LYANN_API_CLIENT.normalizeAuthError(err) 
+                    : err;
+                window.lyannAlert(normErr.message || 'Adresse email ou mot de passe incorrect.');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Se connecter';
+                }
             }
         });
     }
@@ -2997,7 +3039,10 @@ safeDomReady(() => {
             } else if (window.lyannPrompt) {
                 const email = await window.lyannPrompt("Veuillez saisir votre adresse email pour recevoir un lien de réinitialisation :");
                 if (email) {
-                    window.lyannAlert(`📩 Un lien de réinitialisation a été envoyé à ${email}.`);
+                    if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.resetPasswordForEmail) {
+                        await window.LYANN_API_CLIENT.resetPasswordForEmail(email);
+                    }
+                    window.lyannAlert(`📩 Si l'adresse ${email} correspond à un compte LYANN, un lien sécurisé a été envoyé.`);
                 }
             } else {
                 window.lyannAlert('📩 Un lien de réinitialisation a été envoyé à votre adresse email.');
@@ -3012,11 +3057,40 @@ safeDomReady(() => {
     }
 
     if (passwordResetForm) {
-        passwordResetForm.addEventListener('submit', (e) => {
+        passwordResetForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            window.lyannAlert('📩 Un lien sécurisé de réinitialisation a été envoyé à votre adresse email.');
-            if (passwordResetModal) passwordResetModal.classList.remove('active');
-            passwordResetForm.reset();
+            const emailInput = passwordResetForm.querySelector('input[type="email"]');
+            const email = emailInput?.value?.trim();
+            if (!email) {
+                window.lyannAlert('Veuillez saisir votre adresse email.');
+                return;
+            }
+
+            const submitBtn = passwordResetForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="ph ph-spinner spin"></i> Envoi en cours...';
+            }
+
+            try {
+                if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.resetPasswordForEmail) {
+                    const { error } = await window.LYANN_API_CLIENT.resetPasswordForEmail(email);
+                    if (error) throw error;
+                }
+                window.lyannAlert(`📩 Si l'adresse ${email} est inscrite sur LYANN, un lien sécurisé vous a été envoyé.`);
+                if (passwordResetModal) passwordResetModal.classList.remove('active');
+                passwordResetForm.reset();
+            } catch (err) {
+                const normErr = (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.normalizeAuthError)
+                    ? window.LYANN_API_CLIENT.normalizeAuthError(err)
+                    : err;
+                window.lyannAlert(normErr.message || 'Erreur lors de l’envoi de l’email.');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Envoyer le lien de réinitialisation';
+                }
+            }
         });
     }
 
@@ -3548,24 +3622,29 @@ safeDomReady(() => {
 
     
     async function updateHeaderAuthState() {
-        let isLoggedIn = safeStorage.getItem('lyan_user_logged_in') === 'true' || localStorage.getItem('lyan_user_logged_in') === 'true';
-        let userId = "me";
+        let isLoggedIn = false;
+        let userId = null;
 
         if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
             try {
                 const { data } = await window.LYANN_API_CLIENT.getSession();
-                if (data && data.session) {
+                if (data && data.session && data.session.user) {
                     isLoggedIn = true;
                     userId = data.session.user.id;
+                } else {
+                    isLoggedIn = false;
                 }
             } catch (err) {
-                console.warn("Supabase session check info:", err);
+                console.warn("Supabase session verification:", err);
+                isLoggedIn = false;
             }
+        } else {
+            isLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
         }
 
         if (isLoggedIn) {
             document.body.classList.add('user-is-logged-in');
-            window.CURRENT_USER_ID = userId;
+            window.CURRENT_USER_ID = userId || "me";
             
             // Update profile name displays
             try {
@@ -3581,13 +3660,15 @@ safeDomReady(() => {
         } else {
             document.body.classList.remove('user-is-logged-in');
             window.CURRENT_USER_ID = null;
+            if (typeof safeStorage !== 'undefined') safeStorage.removeItem('lyan_user_logged_in');
+            localStorage.removeItem('lyan_user_logged_in');
         }
     }
 
     // Subscribe to Supabase Auth Changes
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         window.LYANN_API_CLIENT.supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
                 updateHeaderAuthState();
             }
         });
