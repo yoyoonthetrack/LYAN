@@ -809,16 +809,41 @@
             </section>
 
             <!-- ==========================================================================
-                 PÔLE 15 : MODÉRATION BOKANTAJ
+                 PÔLE 15 : MODÉRATION & SIGNALEMENTS DE LITIGES
                  ========================================================================== -->
             <section id="sec-content" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">Modération du Fil Bokantaj</h1>
-                        <p class="admin-page-sub">Gestion des publications communautaires, des signalements et du respect de la charte.</p>
+                        <h1 class="admin-page-title">🛡️ Modération & Registre des Signalements</h1>
+                        <p class="admin-page-sub">Gestion des signalements d'utilisateurs, litiges sur messagerie et respect de la charte de sérénité LYANN.</p>
                     </div>
                 </div>
+
+                <div class="admin-card" style="margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 16px; font-weight: 800; color: var(--admin-text); display: flex; align-items: center; gap: 8px;">
+                        <i class="ph-bold ph-shield-warning" style="color: #EF4444;"></i> Signalements Transmis par les Membres (<span id="adminReportsCount">0</span>)
+                    </h3>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Ref #</th>
+                                <th>Émetteur</th>
+                                <th>Membre Signalé</th>
+                                <th>Motif</th>
+                                <th>Précisions & Détails</th>
+                                <th>Date & Heure</th>
+                                <th>Statut</th>
+                                <th>Actions Modérateur</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminReportsTableBody">
+                            <!-- Dynamiquement alimenté par admin-script.js -->
+                        </tbody>
+                    </table>
+                </div>
+
                 <div class="admin-card">
+                    <h3 style="margin-bottom: 16px; font-weight: 800; color: var(--admin-text);">Modération du Fil Bokantaj</h3>
                     <table class="admin-table">
                         <thead>
                             <tr>

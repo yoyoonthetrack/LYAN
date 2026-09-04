@@ -555,6 +555,38 @@
         </div>
     </div>
 
+    <!-- ========== MODAL SIGNALEMENT & MODÉRATION ========== -->
+    <div class="modal-overlay" id="reportModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeReportModalBtn" aria-label="Fermer" onclick="document.getElementById('reportModal').classList.remove('active'); document.getElementById('reportModal').style.display='none';"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.1rem; color: #C95140;">Modération & Sérénité</span>
+                <h3 class="step-title" style="font-size: 1.35rem; margin-bottom: 4px;">Signaler un contenu ou profil</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Aidez-nous à préserver la confiance et la sérénité du réseau LYANN.</p>
+            </div>
+
+            <div class="modal-body">
+                <form id="reportForm">
+                    <div class="form-group">
+                        <label for="reportReason">Motif du signalement</label>
+                        <select id="reportReason" class="modal-input" required>
+                            <option value="inapproprie">Contenu ou langage inapproprié</option>
+                            <option value="fausse_info">Profil inexact ou fausses coordonnées</option>
+                            <option value="spam">Démarchage abusif / Spam</option>
+                            <option value="autre">Autre problème de sérénité</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="reportDetails">Précisions</label>
+                        <textarea id="reportDetails" class="modal-input" style="height: 90px; padding: 10px;" placeholder="Expliquez brièvement le problème rencontré..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px; background: #C95140; border-color: #C95140;">Transmettre le signalement 🛡️</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== MODAL SYSTÈME DE CHAT DIRECT BETWEEN PROFILES ========== -->
     <div class="modal-overlay" id="chatModal">
         <div class="modal-card modal-card-chat">

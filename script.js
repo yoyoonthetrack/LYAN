@@ -3019,9 +3019,47 @@ safeDomReady(() => {
     if (reportForm) {
         reportForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            window.lyannAlert('🛡️ Votre signalement a été transmis à l\'équipe de modération LYANN. Merci de contribuer à la sérénité du réseau !');
-            if (reportModal) reportModal.classList.remove('active');
+            const reasonSelect = document.getElementById('reportReason');
+            const detailsInput = document.getElementById('reportDetails');
+            const reasonVal = reasonSelect ? reasonSelect.value : 'inapproprie';
+            const detailsVal = detailsInput ? detailsInput.value : '';
+            
+            const targetUser = (reportModal && reportModal.getAttribute('data-target-user')) ? reportModal.getAttribute('data-target-user') : 'Membre Signalé';
+            
+            const reasonLabels = {
+                'inapproprie': 'Propos inappropriés / Harcèlement',
+                'fausse_info': 'Profil inexact / Faux profil',
+                'spam': 'Démarchage abusif / Spam',
+                'fraude': 'Arnaque / Suspicion de fraude',
+                'autre': 'Autre problème de sérénité'
+            };
+            
+            const newReport = {
+                id: 'REP-' + Math.floor(100000 + Math.random() * 900000),
+                reporterName: 'Utilisateur Connecté',
+                targetName: targetUser,
+                reason: reasonVal,
+                reasonLabel: reasonLabels[reasonVal] || 'Signalement de litige',
+                details: detailsVal || 'Aucune précision fournie',
+                timestamp: new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: 'En cours'
+            };
+            
+            try {
+                const existing = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]');
+                existing.unshift(newReport);
+                localStorage.setItem('LYANN_REPORTS', JSON.stringify(existing));
+            } catch(err) {}
+
+            if (window.lyannAlert) {
+                window.lyannAlert(`🛡️ Votre signalement concernant ${targetUser} a été transmis à l'équipe de modération LYANN. Merci de contribuer à la sérénité du réseau !`);
+            }
+            if (reportModal) {
+                reportModal.classList.remove('active');
+                reportModal.style.display = 'none';
+            }
             reportForm.reset();
+            window.dispatchEvent(new CustomEvent('lyann_report_added', { detail: newReport }));
         });
     }
 

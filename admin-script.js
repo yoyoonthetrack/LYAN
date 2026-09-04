@@ -1026,11 +1026,117 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
+    // --------------------------------------------------------------------------
+    // REGISTRE DE MODÉRATION & SIGNALEMENTS EN DIRECT
+    // --------------------------------------------------------------------------
+    function renderAdminReports() {
+        const tbody = document.getElementById('adminReportsTableBody');
+        const countBadge = document.getElementById('adminReportsCount');
+        if (!tbody) return;
+
+        let reports = [];
+        try {
+            reports = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]');
+        } catch(e) {}
+
+        // Seed mock reports if empty
+        if (reports.length === 0) {
+            reports = [
+                {
+                    id: 'REP-849201',
+                    reporterName: 'David Jean-Baptiste',
+                    targetName: 'Profil Suspect #41',
+                    reason: 'spam',
+                    reasonLabel: 'Démarchage abusif / Spam',
+                    details: 'Messages automatisés sollicitant un transfert de coordonnées bancaires hors plateforme.',
+                    timestamp: 'Aujourd\'hui à 11:24',
+                    status: 'En cours'
+                },
+                {
+                    id: 'REP-730192',
+                    reporterName: 'Tati Huguette Cazeau',
+                    targetName: 'Marc L.',
+                    reason: 'inapproprie',
+                    reasonLabel: 'Propos inappropriés / Harcèlement',
+                    details: 'Langage irrespectueux tenu lors de la négociation de la prestation.',
+                    timestamp: 'Hier à 16:45',
+                    status: 'En cours'
+                }
+            ];
+            try { localStorage.setItem('LYANN_REPORTS', JSON.stringify(reports)); } catch(e) {}
+        }
+
+        if (countBadge) countBadge.textContent = reports.length;
+
+        tbody.innerHTML = reports.map(rep => {
+            const isSanctioned = rep.status === 'Sanctionné (Bloqué)';
+            const isDismissed = rep.status === 'Classé sans suite';
+
+            let statusBadgeClass = 'status-badge pending';
+            if (isSanctioned) statusBadgeClass = 'status-badge cancelled';
+            if (isDismissed) statusBadgeClass = 'status-badge verified';
+
+            return `
+                <tr id="admin-rep-row-${rep.id}">
+                    <td style="font-family: var(--admin-font-mono); font-size: 0.85rem;">${rep.id}</td>
+                    <td><strong>${rep.reporterName}</strong></td>
+                    <td><span style="color: #EF4444; font-weight: 700;">${rep.targetName}</span></td>
+                    <td><span class="status-badge pending" style="background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">${rep.reasonLabel}</span></td>
+                    <td style="max-width: 260px; font-size: 0.88rem; line-height: 1.3;">${rep.details || 'Aucune précision'}</td>
+                    <td style="font-size: 0.82rem; color: #64748B;">${rep.timestamp}</td>
+                    <td><span class="${statusBadgeClass}" id="admin-rep-badge-${rep.id}">${rep.status || 'En cours'}</span></td>
+                    <td>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button type="button" class="admin-btn admin-btn-sm" onclick="window.adminSanctionUser('${rep.id}', '${rep.targetName}')" style="background: #DC2626; color: white; border: none;" title="Bloquer le membre du réseau"><i class="ph-bold ph-user-minus"></i> Bloquer</button>
+                            <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminDismissReport('${rep.id}')" title="Classer le signalement sans suite"><i class="ph-bold ph-check"></i> Classer</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    window.adminSanctionUser = function(repId, targetName) {
+        if (confirm(`🚨 Confirmer le blocage conservatoire de ${targetName} sur l'ensemble du réseau LYANN ?`)) {
+            let blocked = [];
+            try { blocked = JSON.parse(localStorage.getItem('LYANN_BLOCKED_USERS') || '[]'); } catch(e){}
+            if (!blocked.some(b => (typeof b === 'string' ? b === targetName : b.name === targetName))) {
+                blocked.push({ id: targetName, name: targetName, timestamp: new Date().toISOString() });
+                localStorage.setItem('LYANN_BLOCKED_USERS', JSON.stringify(blocked));
+            }
+
+            let reports = [];
+            try { reports = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]'); } catch(e){}
+            const rep = reports.find(r => r.id === repId);
+            if (rep) rep.status = 'Sanctionné (Bloqué)';
+            localStorage.setItem('LYANN_REPORTS', JSON.stringify(reports));
+
+            renderAdminReports();
+            if (typeof window.recordAdminAuditLog === 'function') {
+                window.recordAdminAuditLog('MEMBER_SANCTION_BLOCK', 'Modération', 'Membre', targetName, `Blocage conservatoire suite au signalement ${repId}`);
+            }
+            alert(`🚨 Membre ${targetName} bloqué et sanction enregistrée dans le registre de modération.`);
+        }
+    };
+
+    window.adminDismissReport = function(repId) {
+        let reports = [];
+        try { reports = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]'); } catch(e){}
+        const rep = reports.find(r => r.id === repId);
+        if (rep) rep.status = 'Classé sans suite';
+        localStorage.setItem('LYANN_REPORTS', JSON.stringify(reports));
+
+        renderAdminReports();
+        alert(`✅ Signalement ${repId} classé sans suite.`);
+    };
+
     window.addEventListener('lyann_notification_sent', renderNotificationsLogTable);
+    window.addEventListener('lyann_report_added', renderAdminReports);
 
     // Chargement initial
     refreshDashboardData();
     renderNotificationsLogTable();
+    renderAdminReports();
 
     console.log('🚀 Console d\'Administration LYANN Enterprise & Outil BI initialisés.');
 });

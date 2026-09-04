@@ -3,6 +3,91 @@
 // ---------------------------------------------------------
 
 const CHAT_MSG_KEY = 'lyann_mock_chat_msgs';
+const BLOCKED_USERS_KEY = 'LYANN_BLOCKED_USERS';
+
+window.getBlockedUsers = function() {
+    try {
+        const stored = localStorage.getItem(BLOCKED_USERS_KEY);
+        return stored ? JSON.parse(stored) : [];
+    } catch(e) {
+        return [];
+    }
+};
+
+window.isUserBlocked = function(idOrName) {
+    if (!idOrName) return false;
+    const list = window.getBlockedUsers();
+    return list.some(item => (typeof item === 'string' ? item === idOrName : (item.id === idOrName || item.name === idOrName)));
+};
+
+window.blockUser = function(contactId, contactName) {
+    if (!contactId && !contactName) return;
+    const name = contactName || (currentChatContact ? currentChatContact.name : 'Ce membre');
+    const id = contactId || (currentChatContact ? currentChatContact.id : name);
+
+    let list = window.getBlockedUsers();
+    if (!list.some(item => (typeof item === 'string' ? item === id : item.id === id))) {
+        list.push({ id, name, timestamp: new Date().toISOString() });
+        localStorage.setItem(BLOCKED_USERS_KEY, JSON.stringify(list));
+    }
+
+    if (window.lyannAlert) {
+        window.lyannAlert(`🔒 ${name} est désormais bloqué.\n\nCet utilisateur ne peut plus vous envoyer de messages ni interagir avec vos offres. Vous pouvez le débloquer à tout moment.`);
+    }
+
+    if (typeof renderMessages === 'function') renderMessages();
+    if (typeof window.renderChatContacts === 'function') window.renderChatContacts();
+};
+
+window.unblockUser = function(contactId) {
+    if (!contactId) return;
+    let list = window.getBlockedUsers();
+    list = list.filter(item => (typeof item === 'string' ? item !== contactId : item.id !== contactId && item.name !== contactId));
+    localStorage.setItem(BLOCKED_USERS_KEY, JSON.stringify(list));
+
+    if (window.lyannAlert) {
+        window.lyannAlert(`🔓 L'utilisateur a été débloqué avec succès.`);
+    }
+
+    if (typeof renderMessages === 'function') renderMessages();
+    if (typeof window.renderChatContacts === 'function') window.renderChatContacts();
+};
+
+window.openReportModal = function(targetName = null) {
+    const reportModal = document.getElementById('reportModal');
+    const nameToReport = targetName || (currentChatContact ? currentChatContact.name : 'ce membre');
+    
+    if (reportModal) {
+        reportModal.setAttribute('data-target-user', nameToReport);
+        const modalTitle = reportModal.querySelector('.step-title');
+        if (modalTitle) modalTitle.textContent = `Signaler ${nameToReport}`;
+        reportModal.classList.add('active');
+        reportModal.style.display = 'flex';
+    } else {
+        if (window.lyannPrompt) {
+            window.lyannPrompt(`Quel est le motif du signalement concernant ${nameToReport} ?`).then(reason => {
+                if (!reason) return;
+                const newReport = {
+                    id: 'REP-' + Math.floor(100000 + Math.random() * 900000),
+                    reporterName: 'Utilisateur Connecté',
+                    targetName: nameToReport,
+                    reason: 'signalement',
+                    reasonLabel: 'Problème de comportement / litige',
+                    details: reason,
+                    timestamp: new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    status: 'En cours'
+                };
+                try {
+                    const existing = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]');
+                    existing.unshift(newReport);
+                    localStorage.setItem('LYANN_REPORTS', JSON.stringify(existing));
+                } catch(e) {}
+                if (window.lyannAlert) window.lyannAlert(`🛡️ Signalement concernant ${nameToReport} transmis à l'équipe de modération.`);
+                window.dispatchEvent(new CustomEvent('lyann_report_added', { detail: newReport }));
+            });
+        }
+    }
+};
 let currentChatContact = null;
 function getMyId() {
     try {
@@ -775,6 +860,29 @@ async function renderMessages() {
         }
     });
 
+    // Dynamic Blocked User UI Check
+    const inputArea = document.querySelector('.chat-input-area');
+    const existingBlockedBanner = document.getElementById('chatBlockedBanner');
+
+    if (window.isUserBlocked && currentChatContact && (window.isUserBlocked(currentChatContact.id) || window.isUserBlocked(currentChatContact.name))) {
+        if (!existingBlockedBanner) {
+            const b = document.createElement('div');
+            b.id = 'chatBlockedBanner';
+            b.className = 'chat-blocked-banner';
+            b.style.cssText = 'margin: 16px auto; padding: 16px 20px; background: #FEF2F2; border: 1.5px solid #FCA5A5; border-radius: 16px; text-align: center; color: #991B1B; font-weight: 600; font-size: 0.95rem; max-width: 90%; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.08); display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 10;';
+            b.innerHTML = `
+                <div>🚫 <strong>${currentChatContact.name}</strong> est désormais bloqué.</div>
+                <div style="font-size: 0.85rem; font-weight: 400; color: #7F1D1D;">Vous avez bloqué cet utilisateur. Vous ne pouvez plus lui envoyer de messages.</div>
+                <button type="button" class="btn btn-sm" onclick="window.unblockUser('${currentChatContact.id}')" style="background: #DC2626; color: #FFFFFF; border: none; border-radius: 20px; padding: 8px 18px; font-weight: 700; cursor: pointer; transition: all 0.2s;">🔓 Débloquer cet utilisateur</button>
+            `;
+            container.appendChild(b);
+        }
+        if (inputArea) inputArea.style.display = 'none';
+    } else {
+        if (existingBlockedBanner) existingBlockedBanner.remove();
+        if (inputArea) inputArea.style.display = 'flex';
+    }
+
     container.scrollTop = container.scrollHeight;
 }
 
@@ -1057,16 +1165,17 @@ const handleChatHeaderClicks = async (e) => {
         } else if (dropShareProfile) {
             if (window.lyannAlert) window.lyannAlert(`Lien du profil de ${currentChatContact ? currentChatContact.name : 'ce membre'} copié !`);
         } else if (dropBlockUser) {
-            if (window.lyannConfirm && window.lyannAlert) {
-                const confirmBlock = await window.lyannConfirm(`Êtes-vous sûr de vouloir bloquer ${currentChatContact ? currentChatContact.name : 'ce membre'} ?`);
+            if (!currentChatContact) return;
+            if (window.lyannConfirm) {
+                const confirmBlock = await window.lyannConfirm(`🚫 Bloquer ${currentChatContact.name} ?\nCet utilisateur ne pourra plus vous contacter ni échanger avec vous.`);
                 if (confirmBlock) {
-                    window.lyannAlert("Membre bloqué avec succès.");
+                    window.blockUser(currentChatContact.id, currentChatContact.name);
                 }
+            } else {
+                window.blockUser(currentChatContact.id, currentChatContact.name);
             }
         } else if (dropReportUser) {
-            if (typeof handleChatAction === 'function') {
-                handleChatAction('REPORT_PROBLEM', null);
-            }
+            window.openReportModal(currentChatContact ? currentChatContact.name : null);
         }
         return;
     }
