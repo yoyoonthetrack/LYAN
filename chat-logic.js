@@ -505,6 +505,68 @@ async function handleChatAction(actionId, mission) {
     window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId, contactId } }));
 }
 
+window.deleteMessage = function(msgId) {
+    if (!currentChatContact || !msgId) return;
+    const contactId = currentChatContact.id;
+    let storedMsgs = {};
+    try {
+        const stored = localStorage.getItem(CHAT_MSG_KEY);
+        if (stored) storedMsgs = JSON.parse(stored);
+    } catch(e) {}
+    
+    if (storedMsgs[contactId]) {
+        storedMsgs[contactId] = storedMsgs[contactId].filter(m => m.id !== msgId);
+        localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(storedMsgs));
+        renderMessages();
+        renderChatContacts();
+    }
+};
+
+let activeReplyTo = null;
+
+window.quoteMessage = function(msgId, author, text) {
+    activeReplyTo = { id: msgId, author: author, text: text };
+    const replyBar = document.getElementById('chatReplyBar');
+    const replyAuthor = document.getElementById('chatReplyAuthor');
+    const replyText = document.getElementById('chatReplyText');
+    if (replyBar && replyAuthor && replyText) {
+        replyAuthor.textContent = `Réponse à ${author}`;
+        replyText.textContent = text;
+        replyBar.style.display = 'flex';
+    }
+    const inputField = document.getElementById('chatInputField');
+    if (inputField) inputField.focus();
+};
+
+window.cancelQuoteMessage = function() {
+    activeReplyTo = null;
+    const replyBar = document.getElementById('chatReplyBar');
+    if (replyBar) replyBar.style.display = 'none';
+};
+
+window.toggleMessageReaction = function(msgId, emoji) {
+    if (!currentChatContact || !msgId) return;
+    const contactId = currentChatContact.id;
+    let storedMsgs = {};
+    try {
+        const stored = localStorage.getItem(CHAT_MSG_KEY);
+        if (stored) storedMsgs = JSON.parse(stored);
+    } catch(e) {}
+    
+    const msgs = storedMsgs[contactId] || [];
+    const msg = msgs.find(m => m.id === msgId);
+    if (msg) {
+        if (!msg.reactions) msg.reactions = {};
+        if (msg.reactions[emoji]) {
+            delete msg.reactions[emoji];
+        } else {
+            msg.reactions[emoji] = 1;
+        }
+        localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(storedMsgs));
+        renderMessages();
+    }
+};
+
 async function renderMessages() {
     const container = document.getElementById('chatMessagesContainer');
     if (!container || !currentChatContact) return;
@@ -530,8 +592,10 @@ async function renderMessages() {
     container.appendChild(dateSep);
 
     msgs.forEach(msg => {
-        const div = document.createElement('div');
+        const wrapper = document.createElement('div');
         const isMe = msg.sender === getMyId();
+        const msgId = msg.id || ('msg_' + Math.random().toString(36).substr(2, 9));
+        msg.id = msgId;
 
         let timeStr = msg.timestamp;
         if (typeof msg.timestamp === 'number') {
@@ -541,33 +605,81 @@ async function renderMessages() {
 
         const checkIcon = isMe ? `<span class="chat-msg-status read" title="Vu"><i class="ph ph-checks"></i> Vu</span>` : '';
 
+        // Quoted block HTML
+        let quotedHTML = '';
+        if (msg.replyToAuthor && msg.replyToText) {
+            quotedHTML = `<div class="chat-quoted-block"><strong>${msg.replyToAuthor}</strong>: ${msg.replyToText}</div>`;
+        }
+
+        // Reactions HTML
+        let reactionsHTML = '';
+        if (msg.reactions && Object.keys(msg.reactions).length > 0) {
+            reactionsHTML = `<div class="chat-msg-reactions">` + 
+                Object.keys(msg.reactions).map(e => `<span class="chat-reaction-badge" onclick="window.toggleMessageReaction('${msgId}', '${e}')">${e} ${msg.reactions[e]}</span>`).join('') +
+                `</div>`;
+        }
+
+        // Action bar (Reactions + Quote + Delete)
+        const escapedText = (msg.text || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const authorName = isMe ? 'Vous' : (currentChatContact ? currentChatContact.name : 'Membre');
+        const actionBarHTML = `
+            <div class="chat-msg-action-bar">
+                <button type="button" class="chat-msg-act-btn" onclick="window.toggleMessageReaction('${msgId}', '👍')" title="Réagir 👍">👍</button>
+                <button type="button" class="chat-msg-act-btn" onclick="window.toggleMessageReaction('${msgId}', '❤️')" title="Réagir ❤️">❤️</button>
+                <button type="button" class="chat-msg-act-btn" onclick="window.toggleMessageReaction('${msgId}', '😂')" title="Réagir 😂">😂</button>
+                <button type="button" class="chat-msg-act-btn" onclick="window.quoteMessage('${msgId}', '${authorName}', '${escapedText}')" title="Répondre"><i class="ph ph-arrow-u-up-left"></i></button>
+                <button type="button" class="chat-msg-act-btn" onclick="window.deleteMessage('${msgId}')" title="Supprimer ce message"><i class="ph ph-trash"></i></button>
+            </div>
+        `;
+
+        wrapper.className = `chat-msg-bubble-wrap ${isMe ? 'sent' : 'received'}`;
+
         if (msg.type === 'text') {
-            div.className = `chat-msg-bubble ${isMe ? 'sent' : 'received'}`;
-            div.innerHTML = `${msg.text} <div class="chat-msg-time">${timeStr} ${checkIcon}</div>`;
+            wrapper.innerHTML = `
+                <div class="chat-msg-bubble ${isMe ? 'sent' : 'received'}">
+                    ${quotedHTML}
+                    ${msg.text}
+                    <div class="chat-msg-time">${timeStr} ${checkIcon}</div>
+                    ${reactionsHTML}
+                </div>
+                ${actionBarHTML}
+            `;
+            container.appendChild(wrapper);
         }
         else if (msg.type === 'photo') {
-            div.className = `chat-msg-bubble ${isMe ? 'sent' : 'received'}`;
-            div.innerHTML = `
-                <div class="chat-msg-photo-wrap" onclick="window.openPhotoLightbox('${msg.photoUrl}')">
-                    <img src="${msg.photoUrl}" alt="Photo" class="chat-msg-photo">
+            wrapper.innerHTML = `
+                <div class="chat-msg-bubble ${isMe ? 'sent' : 'received'}">
+                    ${quotedHTML}
+                    <div class="chat-msg-photo-wrap" onclick="window.openPhotoLightbox('${msg.photoUrl}')">
+                        <img src="${msg.photoUrl}" alt="Photo" class="chat-msg-photo">
+                    </div>
+                    <div class="chat-msg-time">${timeStr} ${checkIcon}</div>
+                    ${reactionsHTML}
                 </div>
-                <div class="chat-msg-time">${timeStr} ${checkIcon}</div>
+                ${actionBarHTML}
             `;
+            container.appendChild(wrapper);
         }
         else if (msg.type === 'document') {
-            div.className = `chat-msg-bubble ${isMe ? 'sent' : 'received'}`;
-            div.innerHTML = `
-                <div class="chat-msg-doc-card">
-                    <i class="ph ph-file-pdf chat-msg-doc-icon"></i>
-                    <div>
-                        <div class="chat-msg-doc-name">${msg.docName || 'Document.pdf'}</div>
-                        <div class="chat-msg-doc-meta">${msg.docSize || 'PDF · 280 Ko'}</div>
+            wrapper.innerHTML = `
+                <div class="chat-msg-bubble ${isMe ? 'sent' : 'received'}">
+                    ${quotedHTML}
+                    <div class="chat-msg-doc-card">
+                        <i class="ph ph-file-pdf chat-msg-doc-icon"></i>
+                        <div>
+                            <div class="chat-msg-doc-name">${msg.docName || 'Document.pdf'}</div>
+                            <div class="chat-msg-doc-meta">${msg.docSize || 'PDF · 280 Ko'}</div>
+                        </div>
                     </div>
+                    <div class="chat-msg-time">${timeStr} ${checkIcon}</div>
+                    ${reactionsHTML}
                 </div>
-                <div class="chat-msg-time">${timeStr} ${checkIcon}</div>
+                ${actionBarHTML}
             `;
+            container.appendChild(wrapper);
         }
         else if (msg.type === 'system_card') {
+            const div = document.createElement('div');
             div.className = `chat-msg-card ${isMe ? 'align-right' : 'align-left'}`;
 
             if (msg.cardType === 'PRICE_PROPOSAL') {
@@ -659,9 +771,8 @@ async function renderMessages() {
                     </div>
                 `;
             }
+            container.appendChild(div);
         }
-
-        container.appendChild(div);
     });
 
     container.scrollTop = container.scrollHeight;
@@ -1288,6 +1399,50 @@ document.addEventListener('touchstart', (e) => {
         localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
     }
 
+    window.deleteConversation = function(contactId) {
+        if (!contactId) return;
+        
+        let deletedConvs = [];
+        try {
+            deletedConvs = JSON.parse(localStorage.getItem('lyann_deleted_conversations') || '[]');
+        } catch(e) {}
+        if (!deletedConvs.includes(contactId)) {
+            deletedConvs.push(contactId);
+            localStorage.setItem('lyann_deleted_conversations', JSON.stringify(deletedConvs));
+        }
+        
+        try {
+            const stored = localStorage.getItem(CHAT_MSG_KEY);
+            if (stored) {
+                let data = JSON.parse(stored);
+                delete data[contactId];
+                localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
+            }
+        } catch(e) {}
+
+        if (currentChatContact && currentChatContact.id === contactId) {
+            currentChatContact = null;
+            const msgContainer = document.getElementById('chatMessagesContainer');
+            if (msgContainer) {
+                msgContainer.innerHTML = `
+                    <div class="chat-empty-state">
+                        <i class="ph ph-chat-circle-dots"></i>
+                        <h3>Discussion supprimée</h3>
+                        <p>Sélectionnez une autre conversation dans la liste.</p>
+                    </div>
+                `;
+            }
+        }
+
+        renderChatContacts();
+
+        if (window.NotificationService && window.NotificationService.showToast) {
+            window.NotificationService.showToast('info', 'Discussion supprimée.');
+        } else if (window.lyannAlert) {
+            window.lyannAlert('Discussion supprimée.');
+        }
+    };
+
     function renderChatContacts() {
         const listContainer = document.getElementById('chatContactsList');
         if (!listContainer) return;
@@ -1304,11 +1459,15 @@ document.addEventListener('touchstart', (e) => {
             if (stored) storedMsgs = JSON.parse(stored);
         } catch(e) {}
 
-        const contactList = [...defaultContacts];
+        let deletedConvs = [];
+        try {
+            deletedConvs = JSON.parse(localStorage.getItem('lyann_deleted_conversations') || '[]');
+        } catch(e) {}
+
+        const allContacts = [...defaultContacts];
         Object.keys(storedMsgs).forEach(contactId => {
-            if (!contactList.some(c => c.id === contactId)) {
-                // Find avatar from member list
-                let avatar = 'david-34.png';
+            if (!allContacts.some(c => c.id === contactId)) {
+                let avatar = 'avatar-male-blue.png';
                 if (window.LYANN_MEMBERS) {
                     const member = window.LYANN_MEMBERS.find(m => m.name === contactId || `${m.name} (${m.age} ans)` === contactId);
                     if (member) avatar = member.avatar;
@@ -1318,7 +1477,7 @@ document.addEventListener('touchstart', (e) => {
                 const lastMsg = msgs[msgs.length - 1];
                 const preview = lastMsg ? (lastMsg.sender === 'me' ? 'Vous : ' + lastMsg.text : lastMsg.text) : 'Nouvelle conversation';
 
-                contactList.push({
+                allContacts.push({
                     id: contactId,
                     name: contactId,
                     avatar: avatar,
@@ -1327,35 +1486,96 @@ document.addEventListener('touchstart', (e) => {
             }
         });
 
-        listContainer.innerHTML = contactList.map(c => {
+        const activeContacts = allContacts.filter(c => !deletedConvs.includes(c.id));
+
+        const searchInput = document.getElementById('chatSearchInput');
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const contactsToRender = query
+            ? activeContacts.filter(c => c.name.toLowerCase().includes(query) || (c.preview && c.preview.toLowerCase().includes(query)))
+            : activeContacts;
+
+        if (contactsToRender.length === 0) {
+            listContainer.innerHTML = `<div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 0.88rem;">Aucune conversation trouvée</div>`;
+            return;
+        }
+
+        listContainer.innerHTML = contactsToRender.map(c => {
             const isActive = currentChatContact && currentChatContact.id === c.id;
             const lastMsgs = storedMsgs[c.id] || [];
             const lastMsg = lastMsgs[lastMsgs.length - 1];
             const previewText = lastMsg ? (lastMsg.sender === 'me' ? 'Vous : ' + lastMsg.text : lastMsg.text) : c.preview;
+            const escapedId = c.id.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             return `
-                <div class="chat-contact-item ${isActive ? 'active' : ''}" data-chat-member-id="${c.id}" style="cursor: pointer;">
-                    <div class="chat-contact-avatar-wrap">
-                        <img src="${c.avatar}" alt="${c.name}" class="chat-contact-avatar" onerror="this.src='david-34.png'">
-                        <span class="online-dot"></span>
+                <div class="chat-contact-swipe-wrapper" data-chat-member-id="${c.id}">
+                    <div class="chat-contact-item ${isActive ? 'active' : ''}" data-chat-member-id="${c.id}">
+                        <div class="chat-contact-avatar-wrap">
+                            <img src="${c.avatar}" alt="${c.name}" class="chat-contact-avatar" onerror="this.src='avatar-male-blue.png'">
+                            <span class="online-dot"></span>
+                        </div>
+                        <div class="chat-contact-info">
+                            <div class="chat-contact-name">${c.name}</div>
+                            <div class="chat-contact-preview">${previewText}</div>
+                        </div>
+                        <button type="button" class="btn-delete-conv-desktop" onclick="event.stopPropagation(); window.deleteConversation('${escapedId}');" title="Supprimer la conversation">
+                            <i class="ph ph-trash"></i>
+                        </button>
                     </div>
-                    <div class="chat-contact-info">
-                        <div class="chat-contact-name">${c.name}</div>
-                        <div class="chat-contact-preview">${previewText}</div>
-                    </div>
+                    <button type="button" class="btn-delete-conv-mobile" onclick="event.stopPropagation(); window.deleteConversation('${escapedId}');">
+                        <i class="ph ph-trash"></i>
+                        <span>Supprimer</span>
+                    </button>
                 </div>
             `;
         }).join('');
 
-        // Re-bind click events
-        listContainer.querySelectorAll('.chat-contact-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const contactId = item.getAttribute('data-chat-member-id');
-                const contact = contactList.find(c => c.id === contactId);
-                if (contact) {
-                    openChatWithUser(contact.name, contact.avatar, contact.id);
+        // Re-bind touch swipe & click events
+        listContainer.querySelectorAll('.chat-contact-swipe-wrapper').forEach(wrapper => {
+            let startX = 0;
+            let currentX = 0;
+            const item = wrapper.querySelector('.chat-contact-item');
+            
+            wrapper.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+            }, { passive: true });
+            
+            wrapper.addEventListener('touchmove', (e) => {
+                currentX = e.touches[0].clientX;
+                const diffX = currentX - startX;
+                if (diffX < 0 && diffX > -120) {
+                    item.style.transform = `translateX(${diffX}px)`;
                 }
+            }, { passive: true });
+            
+            wrapper.addEventListener('touchend', () => {
+                const diffX = currentX - startX;
+                if (diffX < -40) {
+                    item.style.transform = 'translateX(-80px)';
+                } else {
+                    item.style.transform = 'translateX(0)';
+                }
+                startX = 0;
+                currentX = 0;
             });
+
+            if (item) {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.btn-delete-conv-desktop') || e.target.closest('.btn-delete-conv-mobile')) return;
+                    const contactId = item.getAttribute('data-chat-member-id');
+                    const contact = activeContacts.find(c => c.id === contactId);
+                    if (contact) {
+                        openChatWithUser(contact.name, contact.avatar, contact.id);
+                    }
+                });
+            }
         });
+
+        // Search input live filtering listener
+        if (searchInput && !searchInput.dataset.searchBound) {
+            searchInput.dataset.searchBound = 'true';
+            searchInput.addEventListener('input', () => {
+                renderChatContacts();
+            });
+        }
     }
 
     window.renderChatContacts = renderChatContacts;
