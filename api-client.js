@@ -167,7 +167,7 @@ const LYANN_API_CLIENT = {
 
     async getMembers(territory = 'all', query = '') {
         if (!this.supabase) return { data: [] };
-        let req = this.supabase.from('profiles').select('*');
+        let req = this.supabase.from('public_profiles').select('*');
         if (territory && territory !== 'all') {
             req = req.eq('territory', territory);
         }

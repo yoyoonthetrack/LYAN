@@ -1,5 +1,5 @@
 -- ============================================================================
--- LYANN DOM — PRODUCTION SUPABASE AUTH & ROW LEVEL SECURITY (RLS) SETUP
+-- LYANN DOM — PRODUCTION SUPABASE AUTH & ROW LEVEL SECURITY (RLS) SETUP (V2)
 -- ============================================================================
 
 -- 1. ADD ROLE & ACCOUNT TYPE TO PROFILES TABLE
@@ -22,31 +22,66 @@ BEGIN
     END IF;
 END $$;
 
--- 2. ENABLE ROW LEVEL SECURITY (RLS) ON ALL CORE TABLES
+-- 2. ENABLE ROW LEVEL SECURITY (RLS) ON PROFILES
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- 3. PROFILES POLICIES
+-- 3. PRIVILEGE ESCALATION PROTECTION TRIGGER ON PROFILES
+CREATE OR REPLACE FUNCTION public.protect_profile_sensitive_columns()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Block modification of sensitive admin columns unless caller is an active ADMIN/OWNER
+  IF (
+    OLD.role IS DISTINCT FROM NEW.role OR 
+    OLD.account_type IS DISTINCT FROM NEW.account_type OR 
+    OLD.is_verified IS DISTINCT FROM NEW.is_verified
+  ) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE id = auth.uid() 
+      AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER')
+    ) THEN
+      RAISE EXCEPTION 'Escalade de privilèges refusée : modification réservée aux administrateurs'
+      USING ERRCODE = '42501';
+    END IF;
+  END IF;
 
--- Public Read: Anyone can view public profile details (first_name, avatar_url, territory, bio, services, ratings)
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.protect_profile_sensitive_columns() FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS tr_protect_profile_sensitive_columns ON public.profiles;
+CREATE TRIGGER tr_protect_profile_sensitive_columns
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.protect_profile_sensitive_columns();
+
+-- 4. PROFILES RLS POLICIES & PUBLIC VIEW (PRIVACY ISOLATION)
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
-CREATE POLICY "Public profiles are viewable by everyone" 
+DROP POLICY IF EXISTS "Users can view own profile or admins view all" ON public.profiles;
+CREATE POLICY "Users can view own profile or admins view all" 
 ON public.profiles FOR SELECT 
-USING (true);
+USING (
+    auth.uid() = id
+    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
+);
 
--- User Self Update: Users can update their own profile
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" 
 ON public.profiles FOR UPDATE 
 USING (auth.uid() = id)
 WITH CHECK (auth.uid() = id);
 
--- User Insert: Handled by system trigger or authenticated user signup
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" 
 ON public.profiles FOR INSERT 
 WITH CHECK (auth.uid() = id);
 
--- Admin Full Access: Admins can view/update/delete any profile
 DROP POLICY IF EXISTS "Admins have full access to profiles" ON public.profiles;
 CREATE POLICY "Admins have full access to profiles" 
 ON public.profiles FOR ALL 
@@ -58,11 +93,32 @@ USING (
     )
 );
 
--- 4. AUTOMATIC PROFILE CREATION TRIGGER ON SIGNUP
+-- Create Secure Public Profile View (Exposes only safe public fields)
+CREATE OR REPLACE VIEW public.public_profiles AS
+SELECT 
+    id,
+    first_name,
+    last_name,
+    avatar_url,
+    territory,
+    city,
+    bio,
+    is_pro,
+    professional_status,
+    created_at
+FROM public.profiles;
+
+GRANT SELECT ON public.public_profiles TO anon, authenticated, service_role;
+
+-- 5. AUTOMATIC PROFILE CREATION TRIGGER ON SIGNUP (HARDENED)
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
-RETURNS trigger AS $$
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, first_name, last_name, role, account_type, created_at)
+  INSERT INTO public.profiles (id, email, first_name, last_name, role, account_type, is_verified, created_at)
   VALUES (
     new.id,
     new.email,
@@ -70,6 +126,7 @@ BEGIN
     COALESCE(new.raw_user_meta_data->>'last_name', ''),
     'USER',
     'real',
+    false,
     NOW()
   )
   ON CONFLICT (id) DO UPDATE SET
@@ -77,21 +134,19 @@ BEGIN
     updated_at = NOW();
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
--- Re-create trigger on auth.users
+REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC;
+
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- ============================================================================
--- 5. MESSAGING ARCHITECTURE & CONVERSATION PARTICIPANTS RLS
--- ============================================================================
--- 5. MESSAGING ARCHITECTURE & CONVERSATION PARTICIPANTS RLS
+-- 6. MESSAGING ARCHITECTURE & CONVERSATION PARTICIPANTS RLS
 -- ============================================================================
 
--- Ensure Core Tables Exist
 CREATE TABLE IF NOT EXISTS public.conversations (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     mission_id uuid,
@@ -146,10 +201,9 @@ ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- 5.1 HARDENED SECURITY DEFINER HELPER FUNCTION (Prevents RLS Recursion)
-CREATE OR REPLACE FUNCTION public.is_conversation_participant(
-  _conversation_id uuid,
-  _user_id uuid
+-- 6.1 HARDENED HELPER FUNCTION (Checks CURRENT AUTH USER ONLY, no user_id param from client)
+CREATE OR REPLACE FUNCTION public.is_current_user_conversation_participant(
+  _conversation_id uuid
 )
 RETURNS boolean
 LANGUAGE sql
@@ -161,14 +215,14 @@ AS $$
     SELECT 1
     FROM public.conversation_participants
     WHERE conversation_id = _conversation_id
-      AND user_id = _user_id
+      AND user_id = auth.uid()
   );
 $$;
 
-REVOKE ALL ON FUNCTION public.is_conversation_participant(uuid, uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.is_conversation_participant(uuid, uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.is_current_user_conversation_participant(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_current_user_conversation_participant(uuid) TO authenticated, service_role;
 
--- 5.2 ATOMIC & SECURE CONVERSATION CREATION RPC (Bypasses manual client INSERTs)
+-- 6.2 ATOMIC & SECURE CONVERSATION CREATION RPC (Bypasses manual client INSERTs)
 CREATE OR REPLACE FUNCTION public.get_or_create_conversation(
   p_target_user_id uuid
 )
@@ -229,13 +283,13 @@ $$;
 REVOKE ALL ON FUNCTION public.get_or_create_conversation(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_or_create_conversation(uuid) TO authenticated, service_role;
 
--- 5.3 RLS POLICIES FOR conversation_participants
+-- 6.3 RLS POLICIES FOR conversation_participants
 DROP POLICY IF EXISTS "Participants can view own participation" ON public.conversation_participants;
 DROP POLICY IF EXISTS "Participants can view conversation participants" ON public.conversation_participants;
 CREATE POLICY "Participants can view conversation participants" 
 ON public.conversation_participants FOR SELECT 
 USING (
-    public.is_conversation_participant(conversation_id, auth.uid())
+    public.is_current_user_conversation_participant(conversation_id)
     OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
 );
 
@@ -258,26 +312,29 @@ USING (
     OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
 );
 
--- 5.4 RLS POLICIES FOR conversations
+-- 6.4 RLS POLICIES FOR conversations
 DROP POLICY IF EXISTS "Participants can view conversation" ON public.conversations;
 CREATE POLICY "Participants can view conversation" 
 ON public.conversations FOR SELECT 
 USING (
-    public.is_conversation_participant(id, auth.uid())
+    public.is_current_user_conversation_participant(id)
     OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
 );
 
 DROP POLICY IF EXISTS "Authenticated users can create conversation" ON public.conversations;
-CREATE POLICY "Authenticated users can create conversation" 
+DROP POLICY IF EXISTS "No direct insert on conversations for standard users" ON public.conversations;
+CREATE POLICY "No direct insert on conversations for standard users" 
 ON public.conversations FOR INSERT 
-WITH CHECK (auth.role() = 'authenticated');
+WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
+);
 
--- 5.5 RLS POLICIES FOR messages
+-- 6.5 RLS POLICIES FOR messages
 DROP POLICY IF EXISTS "Participants can read messages" ON public.messages;
 CREATE POLICY "Participants can read messages" 
 ON public.messages FOR SELECT 
 USING (
-    public.is_conversation_participant(conversation_id, auth.uid())
+    public.is_current_user_conversation_participant(conversation_id)
     OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
 );
 
@@ -286,5 +343,5 @@ CREATE POLICY "Participants can insert messages"
 ON public.messages FOR INSERT 
 WITH CHECK (
     auth.uid() = sender_id 
-    AND public.is_conversation_participant(conversation_id, auth.uid())
+    AND public.is_current_user_conversation_participant(conversation_id)
 );
