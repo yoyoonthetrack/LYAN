@@ -7262,8 +7262,14 @@ body.user-is-logged-in .logged-out-only {
 }
 
 /* MESSAGERIE (#chatModal) - ADAPTATIVE MOBILE ET DESKTOP 2-COLONNES */
+#chatModal.modal-overlay:not(.active):not([style*="display: flex"]) {
+    display: none !important;
+}
+
 @media (max-width: 991px) {
-    #chatModal.modal-overlay {
+    #chatModal.modal-overlay.active,
+    #chatModal.modal-overlay[style*="display: flex"] {
+        display: flex !important;
         padding: 0 !important;
         margin: 0 !important;
         align-items: stretch !important;
@@ -7279,6 +7285,7 @@ body.user-is-logged-in .logged-out-only {
         overflow: hidden !important;
         overflow-x: hidden !important;
         touch-action: pan-y !important;
+        z-index: 999999 !important;
     }
     #chatModal .modal-card-chat {
         width: 100% !important;
@@ -7314,7 +7321,8 @@ body.user-is-logged-in .logged-out-only {
 
 /* DESIGN DESKTOP WEB PREMIUM - 2 COLONNES CÔTÉ À CÔTÉ */
 @media (min-width: 992px) {
-    #chatModal.modal-overlay {
+    #chatModal.modal-overlay.active,
+    #chatModal.modal-overlay[style*="display: flex"] {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
