@@ -1,9 +1,104 @@
 -- ============================================================================
--- LYANN DOM — PRODUCTION SUPABASE AUTH & ROW LEVEL SECURITY (RLS) SETUP (V3)
+-- LYANN DOM — PRODUCTION SUPABASE AUTH & ROW LEVEL SECURITY (RLS) SETUP (V3.1)
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- SECTION 1 : MIGRATION IDEMPOTENTE DES TABLES ET COLONNES EXISTANTES
+-- SECTION 1 : AUDIT PRÉ-MIGRATION ET DÉTECTION DES ANOMALIES DE DONNÉES
+-- ----------------------------------------------------------------------------
+DO $$
+DECLARE
+  v_dup_count int := 0;
+  v_orphan_part_user int := 0;
+  v_orphan_part_conv int := 0;
+  v_orphan_conv int := 0;
+  v_orphan_msg_sender int := 0;
+  v_orphan_msg_conv int := 0;
+  v_invalid_role int := 0;
+  v_invalid_account_type int := 0;
+BEGIN
+  -- 1. Doublons dans conversation_participants
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversation_participants') THEN
+    SELECT COUNT(*) INTO v_dup_count
+    FROM (
+      SELECT conversation_id, user_id, COUNT(*)
+      FROM public.conversation_participants
+      GROUP BY conversation_id, user_id
+      HAVING COUNT(*) > 1
+    ) c;
+
+    -- 2. Participants orphelins
+    SELECT COUNT(*) INTO v_orphan_part_user
+    FROM public.conversation_participants cp
+    LEFT JOIN public.profiles p ON cp.user_id = p.id
+    WHERE p.id IS NULL;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversations') THEN
+      SELECT COUNT(*) INTO v_orphan_part_conv
+      FROM public.conversation_participants cp
+      LEFT JOIN public.conversations c ON cp.conversation_id = c.id
+      WHERE c.id IS NULL;
+    END IF;
+  END IF;
+
+  -- 3. Conversations orphelines (0 participants)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversations') 
+     AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversation_participants') THEN
+    SELECT COUNT(*) INTO v_orphan_conv
+    FROM public.conversations c
+    LEFT JOIN public.conversation_participants cp ON c.id = cp.conversation_id
+    WHERE cp.conversation_id IS NULL;
+  END IF;
+
+  -- 4. Messages orphelins
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'messages') THEN
+    SELECT COUNT(*) INTO v_orphan_msg_sender
+    FROM public.messages m
+    LEFT JOIN public.profiles p ON m.sender_id = p.id
+    WHERE m.sender_id IS NOT NULL AND p.id IS NULL;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversations') THEN
+      SELECT COUNT(*) INTO v_orphan_msg_conv
+      FROM public.messages m
+      LEFT JOIN public.conversations c ON m.conversation_id = c.id
+      WHERE m.conversation_id IS NOT NULL AND c.id IS NULL;
+    END IF;
+  END IF;
+
+  -- 5. Incompatibilité des contraintes CHECK
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'profiles') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'role') THEN
+      SELECT COUNT(*) INTO v_invalid_role
+      FROM public.profiles
+      WHERE role NOT IN ('SUPER_ADMIN', 'ADMIN', 'OWNER', 'SUPPORT', 'FINANCE', 'MODERATION', 'EMPLOYEE', 'USER');
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'account_type') THEN
+      SELECT COUNT(*) INTO v_invalid_account_type
+      FROM public.profiles
+      WHERE account_type NOT IN ('real', 'seed', 'system');
+    END IF;
+  END IF;
+
+  RAISE NOTICE '=== AUDIT PRÉ-MIGRATION LYANN V3.1 ===';
+  RAISE NOTICE 'Doublons conversation_participants : %', v_dup_count;
+  RAISE NOTICE 'Participants orphelins (User inexistant) : %', v_orphan_part_user;
+  RAISE NOTICE 'Participants orphelins (Conversation inexistante) : %', v_orphan_part_conv;
+  RAISE NOTICE 'Conversations orphelines (0 participants) : %', v_orphan_conv;
+  RAISE NOTICE 'Messages avec sender_id inexistant : %', v_orphan_msg_sender;
+  RAISE NOTICE 'Messages avec conversation_id inexistante : %', v_orphan_msg_conv;
+  RAISE NOTICE 'Rôles non valides dans profiles : %', v_invalid_role;
+  RAISE NOTICE 'Types de compte non valides dans profiles : %', v_invalid_account_type;
+
+  IF v_dup_count > 0 OR v_orphan_part_user > 0 OR v_orphan_part_conv > 0 OR v_orphan_msg_sender > 0 OR v_orphan_msg_conv > 0 OR v_invalid_role > 0 OR v_invalid_account_type > 0 THEN
+    RAISE WARNING 'ATTENTION : Des anomalies de données ont été détectées. Veuillez les traiter avant la pose des contraintes strictes.';
+  ELSE
+    RAISE NOTICE 'SUCCÈS : Aucune anomalie détectée. La structure initiale est compatible.';
+  END IF;
+END $$;
+
+
+-- ----------------------------------------------------------------------------
+-- SECTION 2 : MIGRATION IDEMPOTENTE DES TABLES ET COLONNES EXISTANTES
 -- ----------------------------------------------------------------------------
 
 -- Table public.profiles
@@ -81,7 +176,7 @@ ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 
 
 -- ----------------------------------------------------------------------------
--- SECTION 2 : CONTRAINTES DE CLÉS ÉTRANGÈRES & UNICITÉ (IDEMPOTENT)
+-- SECTION 3 : CONTRAINTES DE CLÉS ÉTRANGÈRES & UNICITÉ (IDEMPOTENT)
 -- ----------------------------------------------------------------------------
 DO $$ 
 BEGIN
@@ -123,7 +218,7 @@ END $$;
 
 
 -- ----------------------------------------------------------------------------
--- SECTION 3 : FONCTIONS HELPER ANTI-RÉCURSION RLS (SECURITY DEFINER)
+-- SECTION 4 : FONCTIONS HELPER ANTI-RÉCURSION RLS (SECURITY DEFINER)
 -- ----------------------------------------------------------------------------
 
 -- Helper 1: Vérifie si l'utilisateur connecté est Administrateur (Empêche la récursion sur profiles)
@@ -168,9 +263,10 @@ GRANT EXECUTE ON FUNCTION public.is_current_user_conversation_participant(uuid) 
 
 
 -- ----------------------------------------------------------------------------
--- SECTION 4 : PROTECTION SÉCURISÉE DES RÔLES & HIÉRARCHIE DE PRIVILÈGES
+-- SECTION 5 : SÉCURISATION ABSOLUE DES COLONNES ADMINISTRATIVES ET TRIGGER
 -- ----------------------------------------------------------------------------
 
+-- Interdiction totale de modifier role, account_type, is_verified, kyc_verified via UPDATE direct
 CREATE OR REPLACE FUNCTION public.protect_profile_sensitive_columns()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -180,36 +276,20 @@ AS $$
 DECLARE
   v_caller_role text;
 BEGIN
-  -- Blocage des modifications de champs administratifs
   IF (
     OLD.role IS DISTINCT FROM NEW.role OR 
     OLD.account_type IS DISTINCT FROM NEW.account_type OR 
-    OLD.is_verified IS DISTINCT FROM NEW.is_verified
+    OLD.is_verified IS DISTINCT FROM NEW.is_verified OR
+    OLD.kyc_verified IS DISTINCT FROM NEW.kyc_verified
   ) THEN
-    -- Obtenir le rôle actuel de l'utilisateur connecté
     SELECT role INTO v_caller_role
     FROM public.profiles
     WHERE id = auth.uid();
 
-    -- 1. Utilisateur standard (USER) : Interdiction absolue
-    IF v_caller_role IS NULL OR v_caller_role = 'USER' THEN
-      RAISE EXCEPTION 'Escalade de privilèges refusée : modification administrative interdite pour un rôle USER'
+    -- Seuls SUPER_ADMIN et OWNER peuvent modifier directement la table via UPDATE
+    IF v_caller_role IS NULL OR v_caller_role NOT IN ('SUPER_ADMIN', 'OWNER') THEN
+      RAISE EXCEPTION 'Escalade de privilèges refusée : modification directe des colonnes administratives interdite. Utilisez la RPC administrative dédiée.'
       USING ERRCODE = '42501';
-    END IF;
-
-    -- 2. Administrateur simple (ADMIN, SUPPORT, FINANCE, MODERATION, EMPLOYEE)
-    IF v_caller_role NOT IN ('SUPER_ADMIN', 'OWNER') THEN
-      -- Impossible d'attribuer OWNER ou SUPER_ADMIN
-      IF NEW.role IN ('SUPER_ADMIN', 'OWNER') THEN
-        RAISE EXCEPTION 'Escalade de privilèges refusée : un administrateur ne peut pas attribuer le rôle OWNER ou SUPER_ADMIN'
-        USING ERRCODE = '42501';
-      END IF;
-
-      -- Impossible d'altérer un compte OWNER ou SUPER_ADMIN
-      IF OLD.role IN ('SUPER_ADMIN', 'OWNER') THEN
-        RAISE EXCEPTION 'Escalade de privilèges refusée : un administrateur ne peut pas modifier un profil OWNER ou SUPER_ADMIN'
-        USING ERRCODE = '42501';
-      END IF;
     END IF;
   END IF;
 
@@ -225,9 +305,63 @@ CREATE TRIGGER tr_protect_profile_sensitive_columns
   FOR EACH ROW
   EXECUTE FUNCTION public.protect_profile_sensitive_columns();
 
+-- RPC Administrative Sécurisée pour les modifications de rôles & statut
+CREATE OR REPLACE FUNCTION public.admin_update_profile_role(
+  p_target_user_id uuid,
+  p_new_role text DEFAULT NULL,
+  p_new_account_type text DEFAULT NULL,
+  p_new_is_verified boolean DEFAULT NULL,
+  p_new_kyc_verified boolean DEFAULT NULL
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_caller_role text;
+  v_target_role text;
+BEGIN
+  SELECT role INTO v_caller_role FROM public.profiles WHERE id = auth.uid();
+  IF v_caller_role IS NULL OR v_caller_role NOT IN ('SUPER_ADMIN', 'ADMIN', 'OWNER') THEN
+    RAISE EXCEPTION 'Accès refusé : privilèges administratifs requis' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT role INTO v_target_role FROM public.profiles WHERE id = p_target_user_id;
+  IF v_target_role IS NULL THEN
+    RAISE EXCEPTION 'Profil utilisateur cible introuvable' USING ERRCODE = '23503';
+  END IF;
+
+  -- Si l'expéditeur est un simple ADMIN :
+  IF v_caller_role = 'ADMIN' THEN
+    IF p_new_role IN ('SUPER_ADMIN', 'OWNER') THEN
+      RAISE EXCEPTION 'Un administrateur ne peut pas attribuer le rôle OWNER ou SUPER_ADMIN' USING ERRCODE = '42501';
+    END IF;
+
+    IF v_target_role IN ('SUPER_ADMIN', 'OWNER') THEN
+      RAISE EXCEPTION 'Un administrateur ne peut pas modifier un profil OWNER ou SUPER_ADMIN' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  UPDATE public.profiles
+  SET 
+    role = COALESCE(p_new_role, role),
+    account_type = COALESCE(p_new_account_type, account_type),
+    is_verified = COALESCE(p_new_is_verified, is_verified),
+    kyc_verified = COALESCE(p_new_kyc_verified, kyc_verified),
+    updated_at = NOW()
+  WHERE id = p_target_user_id;
+
+  RETURN true;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_update_profile_role(uuid, text, text, boolean, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_update_profile_role(uuid, text, text, boolean, boolean) TO authenticated, service_role;
+
 
 -- ----------------------------------------------------------------------------
--- SECTION 5 : SÉCURISATION RLS DE PROFILES ET VUE PUBLIQUE
+-- SECTION 6 : SÉCURISATION RLS DE PROFILES ET VUE PUBLIQUE
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
@@ -256,7 +390,7 @@ CREATE POLICY "Admins have full access to profiles"
 ON public.profiles FOR ALL 
 USING (public.is_current_user_admin());
 
--- Vue Publique Strictement Filtrée (Ne contient aucune donnée privée/administrative)
+-- Vue Publique Strictement Filtrée
 CREATE OR REPLACE VIEW public.public_profiles AS
 SELECT 
     id,
@@ -275,7 +409,7 @@ GRANT SELECT ON public.public_profiles TO anon, authenticated, service_role;
 
 
 -- ----------------------------------------------------------------------------
--- SECTION 6 : TRIGGER CRÉATION PROFIL À L'INSCRIPTION (DURCI)
+-- SECTION 7 : TRIGGER CRÉATION PROFIL À L'INSCRIPTION (DURCI)
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS trigger
@@ -311,7 +445,7 @@ CREATE TRIGGER on_auth_user_created
 
 
 -- ----------------------------------------------------------------------------
--- SECTION 7 : FONCTION RPC ATOMIQUE DE CRÉATION DE CONVERSATION
+-- SECTION 8 : FONCTION RPC ATOMIQUE DE CRÉATION DE CONVERSATION
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_or_create_conversation(
   p_target_user_id uuid
@@ -370,19 +504,26 @@ GRANT EXECUTE ON FUNCTION public.get_or_create_conversation(uuid) TO authenticat
 
 
 -- ----------------------------------------------------------------------------
--- SECTION 8 : SÉCURISATION RLS DE LA MESSAGERIE (CONVERSATIONS / PARTICIPANTS / MESSAGES)
+-- SECTION 9 : SÉCURISATION RLS DE LA MESSAGERIE ET BACKFILL VÉRIFIÉ
 -- ----------------------------------------------------------------------------
 
--- Backfill des participants historiques sans suppression de données
+-- Backfill des participants historiques
 INSERT INTO public.conversation_participants (conversation_id, user_id)
 SELECT DISTINCT conversation_id, sender_id 
 FROM public.messages 
 WHERE conversation_id IS NOT NULL AND sender_id IS NOT NULL
 ON CONFLICT (conversation_id, user_id) DO NOTHING;
 
+-- Backfill vérifiant réellement la présence de requester_id et helper_id dans missions
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'missions') THEN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'missions'
+    ) AND EXISTS (
+        SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'missions' AND column_name = 'requester_id'
+    ) AND EXISTS (
+        SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'missions' AND column_name = 'helper_id'
+    ) THEN
         INSERT INTO public.conversation_participants (conversation_id, user_id)
         SELECT c.id, m.requester_id
         FROM public.conversations c
