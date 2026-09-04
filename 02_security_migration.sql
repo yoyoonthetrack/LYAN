@@ -1,5 +1,5 @@
 -- ============================================================================
--- LYANN DOM — 02_SECURITY_MIGRATION.SQL (V3.2 FINAL PRE-DEPLOYMENT MIGRATION)
+-- LYANN DOM — 02_SECURITY_MIGRATION.SQL (V3.3 FINAL PRE-DEPLOYMENT MIGRATION)
 -- Exécuter ce script SEULEMENT après validation de 01_preflight_audit.sql
 -- ============================================================================
 
@@ -154,10 +154,10 @@ REVOKE ALL ON FUNCTION public.is_current_user_conversation_participant(uuid) FRO
 GRANT EXECUTE ON FUNCTION public.is_current_user_conversation_participant(uuid) TO authenticated, service_role;
 
 -- ----------------------------------------------------------------------------
--- SECTION 4 : VERROUILLAGE SÉCURISÉ DES COLONNES ADMINISTRATIVES ET RPC
+-- SECTION 4 : VERROUILLAGE SÉCURISÉ DES COLONNES ADMINISTRATIVES ET BANCAIRES
 -- ----------------------------------------------------------------------------
 
--- Trigger : Seuls SUPER_ADMIN et OWNER peuvent modifier directement la table via UPDATE
+-- Trigger : Interdit la modification directe de role, account_type, is_verified, kyc_verified, stripe_account_id
 CREATE OR REPLACE FUNCTION public.protect_profile_sensitive_columns()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -171,14 +171,15 @@ BEGIN
     OLD.role IS DISTINCT FROM NEW.role OR 
     OLD.account_type IS DISTINCT FROM NEW.account_type OR 
     OLD.is_verified IS DISTINCT FROM NEW.is_verified OR
-    OLD.kyc_verified IS DISTINCT FROM NEW.kyc_verified
+    OLD.kyc_verified IS DISTINCT FROM NEW.kyc_verified OR
+    OLD.stripe_account_id IS DISTINCT FROM NEW.stripe_account_id
   ) THEN
     SELECT role INTO v_caller_role
     FROM public.profiles
     WHERE id = auth.uid();
 
     IF v_caller_role IS NULL OR v_caller_role NOT IN ('SUPER_ADMIN', 'OWNER') THEN
-      RAISE EXCEPTION 'Escalade de privilèges refusée : seuls SUPER_ADMIN et OWNER peuvent modifier les attributs administratifs'
+      RAISE EXCEPTION 'Escalade de privilèges refusée : seuls SUPER_ADMIN et OWNER peuvent modifier les attributs administratifs et bancaires (stripe_account_id)'
       USING ERRCODE = '42501';
     END IF;
   END IF;
@@ -239,10 +240,14 @@ REVOKE ALL ON FUNCTION public.admin_update_profile_role(uuid, text, text, boolea
 GRANT EXECUTE ON FUNCTION public.admin_update_profile_role(uuid, text, text, boolean, boolean) TO authenticated, service_role;
 
 -- ----------------------------------------------------------------------------
--- SECTION 5 : SÉCURISATION RLS DE PROFILES ET VUE PUBLIQUE
+-- SECTION 5 : SÉCURISATION RLS DE PROFILES ET VUE PUBLIQUE (V3.3 STRICTE)
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+-- Suppression de toute permission globale ALL sur profiles pour les admins
+DROP POLICY IF EXISTS "Admins have full access to profiles" ON public.profiles;
+
+-- Read: Un utilisateur voit son profil, les admins voient les profils pour le back-office
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 DROP POLICY IF EXISTS "Users can view own profile or admins view all" ON public.profiles;
 CREATE POLICY "Users can view own profile or admins view all" 
@@ -252,22 +257,23 @@ USING (
     OR public.is_current_user_admin()
 );
 
+-- Update: Un utilisateur ne peut modifier QUE sa propre ligne (filtré par le trigger pour les champs sensibles)
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" 
 ON public.profiles FOR UPDATE 
 USING (auth.uid() = id)
 WITH CHECK (auth.uid() = id);
 
+-- Insert: Utilisateur insère son propre profil lors du signup
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" 
 ON public.profiles FOR INSERT 
 WITH CHECK (auth.uid() = id);
 
-DROP POLICY IF EXISTS "Admins have full access to profiles" ON public.profiles;
-CREATE POLICY "Admins have full access to profiles" 
-ON public.profiles FOR ALL 
-USING (public.is_current_user_admin());
+-- Delete: AUCUNE policy DELETE pour les utilisateurs ou admins standard (DENY BY DEFAULT)
+DROP POLICY IF EXISTS "Admins can delete profiles" ON public.profiles;
 
+-- Vue Publique Filtrée pour la consultation publique des membres
 CREATE OR REPLACE VIEW public.public_profiles AS
 SELECT 
     id,
@@ -378,7 +384,7 @@ REVOKE ALL ON FUNCTION public.get_or_create_conversation(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_or_create_conversation(uuid) TO authenticated, service_role;
 
 -- ----------------------------------------------------------------------------
--- SECTION 8 : SÉCURISATION RLS DE LA MESSAGERIE ET BACKFILL VÉRIFIÉ
+-- SECTION 8 : SÉCURISATION RLS DE LA MESSAGERIE ET BACKFILL VÉRIFIÉ (V3.2 CONSERVÉE)
 -- ----------------------------------------------------------------------------
 
 INSERT INTO public.conversation_participants (conversation_id, user_id)
@@ -469,3 +475,8 @@ WITH CHECK (
     auth.uid() = sender_id 
     AND public.is_current_user_conversation_participant(conversation_id)
 );
+```
+
+Description: Update 02_security_migration.sql to V3.3 removing full admin access policy and protecting stripe_account_id
+Overwrite: true
+TargetFile: /Users/mac/Documents/Documents - mac MacBook Pro/YOYOTest/TEST PLUS POUSSE/lyan-landing/02_security_migration.sql
