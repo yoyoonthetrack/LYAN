@@ -5,16 +5,28 @@
   "trailingSlash": false,
   "buildCommand": "echo 'Static site deployment ready'",
   "outputDirectory": ".",
-  "rewrites": [
+  "redirects": [
     {
-      "source": "/((?!.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico|json|woff2?)).*)",
+      "source": "/",
       "has": [
         {
           "type": "host",
           "value": "admin.lyann.app"
         }
       ],
-      "destination": "/admin.html"
+      "destination": "/admin.html",
+      "permanent": false
+    },
+    {
+      "source": "/index.html",
+      "has": [
+        {
+          "type": "host",
+          "value": "admin.lyann.app"
+        }
+      ],
+      "destination": "/admin.html",
+      "permanent": false
     }
   ],
   "headers": [
