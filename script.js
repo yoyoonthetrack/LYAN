@@ -3293,13 +3293,19 @@ safeDomReady(() => {
             });
         }
 
-        // Raccourci 1 : Publier un Bokantaj
+        // Raccourci 1 : Publier un Bokantaj → Redirige vers la page Bokantaj (feed.html) ou active l'éditeur
         const sdActionBokantaj = document.getElementById('sdActionBokantaj');
         if (sdActionBokantaj) {
             sdActionBokantaj.addEventListener('click', (e) => {
-                e.preventDefault();
                 speedDialWrapper.classList.remove('active');
-                openAccountTab('tab-acc-activities');
+                if (window.location.pathname.endsWith('feed.html')) {
+                    e.preventDefault();
+                    const flashInput = document.getElementById('flashContentInput');
+                    if (flashInput) {
+                        flashInput.scrollIntoView({ behavior: 'smooth' });
+                        flashInput.focus();
+                    }
+                }
             });
         }
 
