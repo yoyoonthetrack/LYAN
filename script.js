@@ -1109,162 +1109,94 @@ function injectMobileInterface() {
     // ==========================================================================
     const ADDITIONAL_MEMBERS_DATA = [
         { name: "Jocelyn Cabort", age: 52, role: "Plomberie & Fuites d'eau", cat: "plomberie", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "jocelyn-cabort.png", bio: "Plombier chevronné à Baie-Mahault. Dépannage rapide de fuites d'eau, débouchage et installation sanitaire.", skills: ["Détection de fuite", "Pose robinet", "Sanitaires"] },
-        { name: "Hugues Zami", age: 45, role: "Climatisation & Électricité", cat: "climatisation", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "40€/h", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80", bio: "Technicien froid et électricité aux Abymes. Pose, entretien et dépannage clim.", skills: ["Clim Inverter", "Câblage", "Dépannage"] },
-        { name: "Murielle Placide", age: 38, role: "Ménage & Repassage", cat: "menage", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80", bio: "Ménage soigné à domicile sur Le Gosier. Repassage et entretien régulier.", skills: ["Ménage", "Repassage", "Lavage vitres"] },
-        { name: "Clotilde Belair", age: 61, role: "Aide aux repas & Seniors", cat: "aide-personne", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "20€/h", img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80", bio: "Auxiliaire de vie bienveillante. Aide au quotidien pour seniors à Sainte-Anne.", skills: ["Aide repas", "Compagnie", "Courses"] },
-        { name: "Marius Placide", age: 29, role: "Bricolage & Montage", cat: "bricolage", city: "Petit-Bourg", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80", bio: "Bricoleur minutieux. Montage de meubles, pose d'étagères et petits dépannages.", skills: ["Montage meuble", "Fixation", "Peinture"] },
-        { name: "Thierry Vindex", age: 34, role: "Peinture & Rénovation", cat: "peinture", city: "Le Moule", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "28€/h", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80", bio: "Peintre d'intérieur appliqué. Rénovation de pièces, murs et plafonds au Moule.", skills: ["Peinture", "Enduit", "Lissage"] },
-        { name: "Chantal Gendrey", age: 47, role: "Baby-sitting & Sorties", cat: "babysitting", city: "Sainte-Rose", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "15€/h", img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80", bio: "Garde d'enfants bienveillante à Sainte-Rose. Sorties d'école et garde ponctuelle.", skills: ["Baby-sitting", "Jeux", "Goûter"] },
-        { name: "Ludovic Clamy", age: 25, role: "Jardinage & Débroussaillage", cat: "jardin", city: "Lamentin", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80", bio: "Entretien de jardins, tonte de pelouse et désherbage régulier sur Lamentin.", skills: ["Tonte", "Taille de haie", "Débroussaillage"] },
-        { name: "Mireille Sapotille", age: 54, role: "Habitante active (Entraide)", cat: "citoyen", city: "Saint-François", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&q=80", bio: "Citoyenne engagée à Saint-François. Disponible pour donner un coup de main ponctuel aux voisins sans rien attendre en retour.", skills: ["Bokantaj", "Entraide", "Discussion"] },
-        { name: "Rodrigue Marie-Joseph", age: 31, role: "Menuiserie & Pose", cat: "menuiserie", city: "Capesterre-Belle-Eau", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=150&q=80", bio: "Menuisier bois et alu. Réparation de portes, fenêtres et aménagements intérieurs.", skills: ["Menuiserie", "Pose de porte", "Aménagement"] },
-        { name: "Fabrice Létang", age: 40, role: "Électricité générale", cat: "electricite", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80", bio: "Électricien professionnel aux Abymes. Tableau électrique, prises et mise en conformité.", skills: ["Tableau", "Câblage", "Dépannage"] },
-        { name: "Ghislaine Rosalie", age: 50, role: "Aide à domicile & Compagnie", cat: "aide-personne", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80", bio: "Accompagnement quotidien des personnes âgées à Baie-Mahault. Présence et écoute attentive.", skills: ["Compagnie", "Courses", "Loisirs"] },
-        { name: "Wilfrid Rapon", age: 37, role: "Jardinier paysagiste", cat: "jardin", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80", bio: "Paysagiste passionné. Création de massifs, entretien général de jardin au Gosier.", skills: ["Taille", "Plantation", "Décoration"] },
-        { name: "Christiane Fostin", age: 58, role: "Citoyenne engagée", cat: "citoyen", city: "Petit-Bourg", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80", bio: "Résidente à Petit-Bourg. Toujours partante pour discuter d'initiatives solidaires locales.", skills: ["Partage", "Voisinage", "Rencontres"] },
-        { name: "Lucien Cabort", age: 48, role: "Bricolage & Multi-services", cat: "bricolage", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80", bio: "Homme à tout faire à Sainte-Anne. Dépannages divers et montages en tous genres.", skills: ["Réparations", "Montage", "Pose rideaux"] },
-        { name: "Roselyne Dacosta", age: 32, role: "Voisine de confiance", cat: "citoyen", city: "Le Moule", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80", bio: "Citoyenne active au Moule. Passionnée d'environnement et de troc de plantes dans le quartier.", skills: ["Plantes", "Discussion", "Troc"] },
-        { name: "Albert Lise", age: 65, role: "Cuisine & Repas créoles", cat: "divers", city: "Sainte-Rose", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "20€/h", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80", bio: "Retraité de la restauration à Sainte-Rose. Préparation de plats traditionnels et pâtisseries locales.", skills: ["Colombo", "Accras", "Pâtisserie"] },
-        { name: "Yveline Rosalie", age: 23, role: "Baby-sitting & Aide devoirs", cat: "babysitting", city: "Capesterre-Belle-Eau", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "14€/h", img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&q=80", bio: "Étudiante en éducation à Capesterre-Belle-Eau. Aide aux devoirs et garde d'enfants après l'école.", skills: ["Devoirs", "Baby-sitting", "Jeux éducatifs"] },
-        { name: "Gérard Zami", age: 55, role: "Plombier dépannage", cat: "plomberie", city: "Pointe-à-Pitre", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=150&q=80", bio: "Plombier à Pointe-à-Pitre. Installation et réparation de réseaux d'eau, réparation robinets.", skills: ["Plomberie", "Sanitaire", "Chauffe-eau"] },
-        { name: "Francine Moutoussamy", age: 44, role: "Repassage & Couture", cat: "menage", city: "Lamentin", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80", bio: "Couturière et repasseuse au Lamentin. Soin apporté au linge et petites retouches.", skills: ["Repassage", "Couture", "Ourlets"] },
-        { name: "Guy-Albert Gace", age: 39, role: "Électricien dépannage", cat: "electricite", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80", bio: "Dépannage d'urgence aux Abymes. Électricité de maison, branchements et disjoncteurs.", skills: ["Dépannage", "Tableaux", "Mise aux normes"] },
-        { name: "Solange Silvestre", age: 28, role: "Ménage & Nettoyage vitres", cat: "menage", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80", bio: "Nettoyage en profondeur à Baie-Mahault. Sérieuse, rapide, organisée et de confiance.", skills: ["Nettoyage", "Vitres", "Linge"] },
-        { name: "Firmin Monlouis", age: 51, role: "Jardinage & Élagage", cat: "jardin", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80", bio: "Jardinier sur Le Gosier. Taille de haies, tonte et élagage des petits arbres du jardin.", skills: ["Jardin", "Élagage", "Tondeuse"] },
-        { name: "Monique Carpin", age: 59, role: "Voisine solidaire", cat: "citoyen", city: "Saint-Claude", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80", bio: "Voisine solidaire à Saint-Claude. Disposée à aider pour récupérer des colis ou garder un animal.", skills: ["Entraide", "Garde chien", "Services"] },
-        { name: "Martial Tinaut", age: 33, role: "Montage de meubles", cat: "bricolage", city: "Trois-Rivières", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80", bio: "Super bricoleur à Trois-Rivières. Assemblage de meubles en kit et fixations murales diverses.", skills: ["Montage meuble", "Fixation TV", "Petits travaux"] },
-        { name: "Ginette Tacite", age: 64, role: "Aide aux repas & Seniors", cat: "aide-personne", city: "Goyave", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80", bio: "Accompagnatrice sociale retraitée. Aide à la personne et compagnie bienveillante à Goyave.", skills: ["Seniors", "Compagnie", "Aide administrative"] },
-        { name: "Aimé Zéphir", age: 46, role: "Peintre d'intérieur", cat: "peinture", city: "Bouillante", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80", bio: "Peintre d'expérience à Bouillante. Travail propre et soigné pour vos murs et boiseries.", skills: ["Peinture", "Enduit", "Rénovation"] },
-        { name: "Josiane Périac", age: 24, role: "Baby-sitting soirées", cat: "babysitting", city: "Pointe-Noire", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "14€/h", img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&q=80", bio: "Garde d'enfants de confiance à Pointe-Noire. Jeux, dîner et accompagnement au coucher.", skills: ["Baby-sitting", "Éveil", "Sûreté"] },
-        { name: "Pascal Agathe", age: 43, role: "Plomberie sanitaire", cat: "plomberie", city: "Port-Louis", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "28€/h", img: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=150&q=80", bio: "Dépannage plomberie à Port-Louis. Réparations robinetterie, fuites et siphons.", skills: ["Plomberie", "Robinets", "Canalisations"] },
-        { name: "Sylviane Lurel", age: 53, role: "Habitante engagée", cat: "citoyen", city: "Deshaies", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80", bio: "Habitante de Deshaies. Intéressée par les actions d'entraide et d'animation solidaire.", skills: ["Discussions", "Solidarité", "Projets"] },
-        { name: "Max Hoarau", age: 42, role: "Climatisation & Froid", cat: "climatisation", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80", bio: "Expert climatisation aux Abymes. Entretien, désinfection et installation neuve de clim.", skills: ["Entretien", "Pose", "Climatiseur"] },
-        { name: "Eliane Hoarau", age: 49, role: "Aide à domicile & Repas", cat: "aide-personne", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80", bio: "Aide quotidienne à Baie-Mahault. Préparation de caris et repas typiques créoles.", skills: ["Cuisine", "Ménage", "Compagnie"] },
-        { name: "Charles Payet", age: 36, role: "Jardinier & Entretien cour", cat: "jardin", city: "Anse-Bertrand", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80", bio: "Jardinier motivé sur Anse-Bertrand. Débroussaillage, tonte et nettoyage complet de cours.", skills: ["Tonte", "Taille de haie", "Nettoyage"] },
-        { name: "Patricia Grondin", age: 57, role: "Habitante solidaire", cat: "citoyen", city: "Grand-Bourg", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80", bio: "Lyanneuse passionnée à Grand-Bourg. Partage de boutures et conseils pour potager.", skills: ["Jardinage", "Troc", "Voisinage"] },
-        { name: "Georges Payet", age: 48, role: "Petit Bricolage & Fixation", cat: "bricolage", city: "Gourbeyre", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80", bio: "Bricoleur à Gourbeyre. Montage meuble, pose tringles à rideaux, cadres et étagères.", skills: ["Bricolage", "Fixation", "Montage"] },
-        { name: "Nicole Payet", age: 33, role: "Ménage & Repassage", cat: "menage", city: "Vieux-Habitants", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80", bio: "Prestation de ménage impeccable à Vieux-Habitants. Organisation, discrétion et efficacité.", skills: ["Ménage", "Repassage", "Rangement"] },
-        { name: "Henri Payet", age: 60, role: "Dépannage électricité", cat: "electricite", city: "Pointe-à-Pitre", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80", bio: "Électricien d'expérience à Pointe-à-Pitre. Dépannage rapide de pannes de prises ou luminaires.", skills: ["Dépannage", "Mise aux normes", "Câblage"] },
-        { name: "Claudette Payet", age: 25, role: "Baby-sitting & Sorties", cat: "babysitting", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "14€/h", img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&q=80", bio: "Garde d'enfants douce et active au Gosier. Aide aux devoirs scolaires.", skills: ["Garde", "Aide devoirs", "Activités"] },
-        { name: "René Payet", age: 51, role: "Peinture & Enduits", cat: "peinture", city: "Terre-de-Haut", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=150&q=80", bio: "Artisan peintre à Terre-de-Haut. Rénovation de murs, façades et boiseries.", skills: ["Peinture", "Enduit", "Rénovation"] },
-        { name: "Yolande Payet", age: 45, role: "Voisine active", cat: "citoyen", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80", bio: "Voisine chaleureuse à Sainte-Anne. Toujours prête pour un coup de main amical ou prêter un outil.", skills: ["Entraide", "Covoiturage", "Café"] },
-        { name: "Gaston Placide", age: 47, role: "Électricien dépanneur", cat: "electricite", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=150&q=80", bio: "Électricien aux Abymes. Pose, diagnostic et réparation rapide de vos réseaux.", skills: ["Électricité", "Dépannage", "Luminaire"] },
-        { name: "Marcelle Placide", age: 54, role: "Aide à la personne", cat: "aide-personne", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "https://images.unsplash.com/photo-1598550476439-6847785fce6e?auto=format&fit=crop&w=150&q=80", bio: "Aide à domicile attentionnée à Baie-Mahault. Accompagnement courses et ménage quotidien.", skills: ["Aide", "Courses", "Cuisine"] },
-        { name: "Bruno Placide", age: 38, role: "Bricolage & Multi-services", cat: "bricolage", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80", bio: "Petit entretien de maison et jardin au Gosier. Polyvalent, ponctuel et soigné.", skills: ["Bricolage", "Montage", "Ajustement"] },
-        { name: "Thérèse Placide", age: 63, role: "Voisine active", cat: "citoyen", city: "Petit-Bourg", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "https://images.unsplash.com/photo-1601412436009-d964bd02edbc?auto=format&fit=crop&w=150&q=80", bio: "Retraitée active à Petit-Bourg. Organise des ateliers et de l'entraide de quartier.", skills: ["Tissage", "Partage", "Voisinage"] },
-        { name: "Gilbert Placide", age: 52, role: "Jardinier & Entretien cour", cat: "jardin", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=150&q=80", bio: "Entretien de jardins à Sainte-Anne. Tonte, taille et débroussaillage de terrain arboré.", skills: ["Taille", "Nettoyage", "Jardin"] },
-        { name: "Jacqueline Placide", age: 29, role: "Ménage de vacances", cat: "menage", city: "Le Moule", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=150&q=80", bio: "Ménage et préparation de locations saisonnières sur Le Moule. Réactive et rigoureuse.", skills: ["Ménage", "Location", "Préparation"] },
-        { name: "Raymond Placide", age: 35, role: "Plomberie générale", cat: "plomberie", city: "Sainte-Rose", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "https://images.unsplash.com/photo-1579038773863-c05000830627?auto=format&fit=crop&w=150&q=80", bio: "Plombier disponible à Sainte-Rose. Changement de robinets, raccordements et débouchage.", skills: ["Robinetterie", "Débouchage", "Réparations"] },
-        { name: "Marie-Andrée Placide", age: 41, role: "Baby-sitting à domicile", cat: "babysitting", city: "Capesterre-Belle-Eau", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "14€/h", img: "https://images.unsplash.com/photo-1609010697446-11f2155278f0?auto=format&fit=crop&w=150&q=80", bio: "Garde d'enfants expérimentée à Capesterre-Belle-Eau. Disponible en soirée et week-end.", skills: ["Baby-sitting", "Accompagnement", "Loisirs"] },
-        { name: "Serge Placide", age: 55, role: "Peintre bâtiment", cat: "peinture", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "https://images.unsplash.com/photo-1581338834647-b0ae4070ab95?auto=format&fit=crop&w=150&q=80", bio: "Peintre d'expérience aux Abymes. Rénovations intérieures et extérieures, peintures façades.", skills: ["Peinture", "Façades", "Volets"] },
-        { name: "Yveline Placide", age: 30, role: "Voisine solidaire", cat: "citoyen", city: "Pointe-à-Pitre", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "https://images.unsplash.com/photo-1615022702135-77b5a420a5ee?auto=format&fit=crop&w=150&q=80", bio: "Habitante de Pointe-à-Pitre. Disponible pour aider à garder des animaux ou faire les courses de temps en temps.", skills: ["Garde chat", "Entraide", "Voisins"] }
+        { name: "Hugues Zami", age: 45, role: "Climatisation & Électricité", cat: "climatisation", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "40€/h", img: "hugues-zami.png", bio: "Technicien froid et électricité aux Abymes. Pose, entretien et dépannage clim.", skills: ["Clim Inverter", "Câblage", "Dépannage"] },
+        { name: "Murielle Placide", age: 38, role: "Ménage & Repassage", cat: "menage", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "murielle-placide.png", bio: "Ménage soigné à domicile sur Le Gosier. Repassage et entretien régulier.", skills: ["Ménage", "Repassage", "Lavage vitres"] },
+        { name: "Clotilde Belair", age: 61, role: "Aide aux repas & Seniors", cat: "aide-personne", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "20€/h", img: "clotilde-belair.png", bio: "Auxiliaire de vie bienveillante. Aide au quotidien pour seniors à Sainte-Anne.", skills: ["Aide repas", "Compagnie", "Courses"] },
+        { name: "Marius Placide", age: 29, role: "Bricolage & Montage meuble", cat: "bricolage", city: "Petit-Bourg", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "marius-placide.png", bio: "Bricoleur minutieux. Montage de meubles, pose d'étagères et petits dépannages.", skills: ["Montage meuble", "Fixation", "Peinture"] },
+        { name: "Thierry Vindex", age: 34, role: "Peinture & Rénovation", cat: "peinture", city: "Le Moule", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "28€/h", img: "thierry-vindex.png", bio: "Peintre d'intérieur appliqué. Rénovation de pièces, murs et plafonds au Moule.", skills: ["Peinture", "Enduit", "Lissage"] },
+        { name: "Chantal Gendrey", age: 47, role: "Baby-sitting & Sorties d'école", cat: "babysitting", city: "Sainte-Rose", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "15€/h", img: "chantal-gendrey.png", bio: "Garde d'enfants bienveillante à Sainte-Rose. Sorties d'école et garde ponctuelle.", skills: ["Baby-sitting", "Jeux", "Goûter"] },
+        { name: "Ludovic Clamy", age: 25, role: "Jardinage & Débroussaillage", cat: "jardin", city: "Lamentin", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "ludovic-clamy.png", bio: "Entretien de jardins, tonte de pelouse et désherbage régulier sur Lamentin.", skills: ["Tonte", "Taille de haie", "Débroussaillage"] },
+        { name: "Mireille Sapotille", age: 54, role: "Habitante active", cat: "citoyen", city: "Saint-François", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "mireille-sapotille.png", bio: "Citoyenne engagée à Saint-François. Disponible pour donner un coup de main ponctuel aux voisins.", skills: ["Bokantaj", "Entraide", "Discussion"] },
+        { name: "Rodrigue Marie-Joseph", age: 31, role: "Menuiserie & Pose", cat: "menuiserie", city: "Capesterre-Belle-Eau", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "rodrigue-marie-joseph.png", bio: "Menuisier bois et alu. Réparation de portes, fenêtres et aménagements intérieurs.", skills: ["Menuiserie", "Pose de porte", "Aménagement"] },
+
+        { name: "Fabrice Létang", age: 40, role: "Électricité générale", cat: "electricite", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "fabrice-letang.png", bio: "Électricien professionnel aux Abymes. Tableau électrique, prises et mise en conformité.", skills: ["Tableau", "Câblage", "Dépannage"] },
+        { name: "Ghislaine Rosalie", age: 50, role: "Aide à domicile & Compagnie", cat: "aide-personne", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "ghislaine-rosalie.png", bio: "Accompagnement quotidien des personnes âgées à Baie-Mahault. Présence et écoute attentive.", skills: ["Compagnie", "Courses", "Loisirs"] },
+        { name: "Wilfrid Rapon", age: 37, role: "Jardinier paysagiste", cat: "jardin", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "wilfrid-rapon.png", bio: "Paysagiste passionné. Création de massifs, entretien général de jardin au Gosier.", skills: ["Taille", "Plantation", "Décoration"] },
+        { name: "Christiane Fostin", age: 58, role: "Citoyenne engagée", cat: "citoyen", city: "Petit-Bourg", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "christiane-fostin.png", bio: "Résidente à Petit-Bourg. Toujours partante pour discuter d'initiatives solidaires locales.", skills: ["Partage", "Voisinage", "Rencontres"] },
+        { name: "Lucien Cabort", age: 48, role: "Bricolage & Multi-services", cat: "bricolage", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "lucien-cabort.png", bio: "Homme à tout faire à Sainte-Anne. Dépannages divers et montages en tous genres.", skills: ["Réparations", "Montage", "Pose rideaux"] },
+        { name: "Roselyne Dacosta", age: 32, role: "Voisine de confiance", cat: "citoyen", city: "Le Moule", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "roselyne-dacosta.png", bio: "Citoyenne active au Moule. Passionnée d'environnement et de troc de plantes dans le quartier.", skills: ["Plantes", "Discussion", "Troc"] },
+        { name: "Albert Lise", age: 65, role: "Cuisine & Repas créoles", cat: "divers", city: "Sainte-Rose", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "20€/h", img: "albert-lise.png", bio: "Retraité de la restauration à Sainte-Rose. Préparation de plats traditionnels et pâtisseries locales.", skills: ["Colombo", "Accras", "Pâtisserie"] },
+        { name: "Yveline Rosalie", age: 23, role: "Baby-sitting & Devoirs", cat: "babysitting", city: "Capesterre-Belle-Eau", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "14€/h", img: "yveline-rosalie.png", bio: "Étudiante en éducation à Capesterre-Belle-Eau. Aide aux devoirs et garde d'enfants après l'école.", skills: ["Devoirs", "Baby-sitting", "Jeux éducatifs"] },
+        { name: "Gérard Zami", age: 55, role: "Plombier dépannage", cat: "plomberie", city: "Pointe-à-Pitre", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "gerard-zami.png", bio: "Plombier à Pointe-à-Pitre. Installation et réparation de réseaux d'eau, réparation robinets.", skills: ["Plomberie", "Sanitaire", "Chauffe-eau"] },
+        { name: "Francine Moutoussamy", age: 44, role: "Repassage & Couture", cat: "menage", city: "Lamentin", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "francine-moutoussamy.png", bio: "Couturière et repasseuse au Lamentin. Soin apporté au linge et petites retouches.", skills: ["Repassage", "Couture", "Ourlets"] },
+
+        { name: "Guy-Albert Gace", age: 39, role: "Électricien dépannage", cat: "electricite", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "guy-albert-gace.png", bio: "Dépannage d'urgence aux Abymes. Électricité de maison, branchements et disjoncteurs.", skills: ["Dépannage", "Tableaux", "Mise aux normes"] },
+        { name: "Solange Silvestre", age: 28, role: "Ménage & Nettoyage vitres", cat: "menage", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "solange-silvestre.png", bio: "Nettoyage en profondeur à Baie-Mahault. Sérieuse, rapide, organisée et de confiance.", skills: ["Nettoyage", "Vitres", "Linge"] },
+        { name: "Firmin Monlouis", age: 51, role: "Jardinage & Élagage", cat: "jardin", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "firmin-monlouis.png", bio: "Jardinier sur Le Gosier. Taille de haies, tonte et élagage des petits arbres du jardin.", skills: ["Jardin", "Élagage", "Tondeuse"] },
+        { name: "Monique Carpin", age: 59, role: "Voisine solidaire", cat: "citoyen", city: "Saint-Claude", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "monique-carpin.png", bio: "Voisine solidaire à Saint-Claude. Disposée à aider pour récupérer des colis ou garder un animal.", skills: ["Entraide", "Garde chien", "Services"] },
+        { name: "Martial Tinaut", age: 33, role: "Montage de meubles", cat: "bricolage", city: "Trois-Rivières", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "martial-tinaut.png", bio: "Super bricoleur à Trois-Rivières. Assemblage de meubles en kit et fixations murales diverses.", skills: ["Montage meuble", "Fixation TV", "Petits travaux"] },
+        { name: "Ginette Tacite", age: 64, role: "Aide aux repas & Seniors", cat: "aide-personne", city: "Goyave", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "ginette-tacite.png", bio: "Accompagnatrice sociale retraitée. Aide à la personne et compagnie bienveillante à Goyave.", skills: ["Seniors", "Compagnie", "Aide administrative"] },
+        { name: "Aimé Zéphir", age: 46, role: "Peintre d'intérieur", cat: "peinture", city: "Bouillante", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "aime-zephir.png", bio: "Peintre d'expérience à Bouillante. Travail propre et soigné pour vos murs et boiseries.", skills: ["Peinture", "Enduit", "Rénovation"] },
+        { name: "Josiane Périac", age: 24, role: "Baby-sitting soirées", cat: "babysitting", city: "Pointe-Noire", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "14€/h", img: "josiane-periac.png", bio: "Garde d'enfants de confiance à Pointe-Noire. Jeux, dîner et accompagnement au coucher.", skills: ["Baby-sitting", "Éveil", "Sûreté"] },
+        { name: "Pascal Agathe", age: 43, role: "Plomberie sanitaire", cat: "plomberie", city: "Port-Louis", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "28€/h", img: "pascal-agathe.png", bio: "Dépannage plomberie à Port-Louis. Réparations robinetterie, fuites et siphons.", skills: ["Plomberie", "Robinets", "Canalisations"] },
+        { name: "Sylviane Lurel", age: 53, role: "Habitante engagée", cat: "citoyen", city: "Deshaies", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "sylviane-lurel.png", bio: "Habitante de Deshaies. Intéressée par les actions d'entraide et d'animation solidaire.", skills: ["Discussions", "Solidarité", "Projets"] },
+
+        { name: "Max Hoarau", age: 42, role: "Climatisation & Froid", cat: "climatisation", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "max-hoarau.png", bio: "Expert climatisation aux Abymes. Entretien, désinfection et installation neuve de clim.", skills: ["Entretien", "Pose", "Climatiseur"] },
+        { name: "Eliane Hoarau", age: 49, role: "Aide à domicile & Repas", cat: "aide-personne", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "eliane-hoarau.png", bio: "Aide quotidienne à Baie-Mahault. Préparation de caris et repas typiques créoles.", skills: ["Cuisine", "Ménage", "Compagnie"] },
+        { name: "Jean-René Payet", age: 47, role: "Jardinage & Entretien kour", cat: "jardin", city: "Anse-Bertrand", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "jean-rene-payet.png", bio: "Jardinier motivé sur Anse-Bertrand. Débroussaillage, tonte et entretien complet de cour.", skills: ["Tonte", "Taille de haie", "Entretien kour"] },
+        { name: "Bernadette Grondin", age: 57, role: "Voisine chaleureuse", cat: "citoyen", city: "Grand-Bourg", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "bernadette-grondin.png", bio: "Lyanneuse passionnée à Grand-Bourg. Partage de conseils, jardinage et entraide amicale.", skills: ["Jardinage", "Troc", "Voisinage"] },
+        { name: "Cédric Rivière", age: 48, role: "Bricolage & Réparations", cat: "bricolage", city: "Gourbeyre", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "cedric-riviere.png", bio: "Bricoleur à Gourbeyre. Réparations diverses, montage meuble et fixations murales.", skills: ["Bricolage", "Fixation", "Réparations"] },
+        { name: "Marie-Thérèse Fontaine", age: 33, role: "Garde d'enfants", cat: "babysitting", city: "Vieux-Habitants", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "14€/h", img: "marie-therese-fontaine.png", bio: "Garde d'enfants à Vieux-Habitants. Organisation d'activités manuelles et éveil.", skills: ["Garde", "Activités", "Sûreté"] },
+        { name: "Yolande Payet", age: 45, role: "Voisine active", cat: "citoyen", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "yolande-payet.png", bio: "Voisine chaleureuse à Sainte-Anne. Toujours prête pour un coup de main amical.", skills: ["Entraide", "Covoiturage", "Café"] },
+        { name: "Stéphane Bégue", age: 38, role: "Peinture & Finitions", cat: "peinture", city: "Pointe-à-Pitre", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "stephane-begue.png", bio: "Artisan peintre à Pointe-à-Pitre. Rénovation de murs, façades et retouches.", skills: ["Peinture", "Finitions", "Rénovation"] },
+        { name: "Chantal Dijoux", age: 44, role: "Repassage & Entretien linge", cat: "menage", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "chantal-dijoux.png", bio: "Repassage soigné et entretien du linge sur Le Gosier.", skills: ["Repassage", "Linge", "Soin"] },
+        { name: "Guillaume Morel", age: 35, role: "Dépannage informatique", cat: "divers", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "guillaume-morel.png", bio: "Technicien informatique aux Abymes. Configuration PC/Smartphone, Wifi et cours.", skills: ["Informatique", "Dépannage", "Wifi"] }
     ];
 
     const memberOverrides = [
-        // Index 0: Jocelyn Cabort (m, 52) - Plomberie
         { name: "Jocelyn Cabort", age: 52, avatar: "jocelyn-cabort.png" },
-        // Index 1: Hugues Zami (m, 45) - Climatisation (Black)
-        { name: "Hugues Zami", age: 45, avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80" },
-        // Index 2: Murielle Placide (f, 38) - Ménage (Chinese)
-        { name: "Mei-Ling Wong", age: 38, avatar: "https://images.unsplash.com/photo-1541823709867-1b206113e597?auto=format&fit=crop&w=150&q=80" },
-        // Index 3: Clotilde Belair (f, 61) - Aide Seniors (Black)
-        { name: "Clotilde Belair", age: 61, avatar: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&q=80" },
-        // Index 4: Marius Placide (m, 29) - Bricolage (Indian)
-        { name: "Ramesh Rangasamy", age: 29, avatar: "https://images.unsplash.com/photo-1607990283143-e81e7a2c93ab?auto=format&fit=crop&w=150&q=80" },
-        // Index 5: Thierry Vindex (m, 34) - Peinture (White)
-        { name: "Sébastien Gautier", age: 34, avatar: "https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=150&q=80" },
-        // Index 6: Chantal Gendrey (f, 47) - Baby-sitting (Black)
-        { name: "Chantal Gendrey", age: 47, avatar: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=150&q=80" },
-        // Index 7: Ludovic Clamy (m, 25) - Jardinage (Chinese)
-        { name: "Julien Wong", age: 25, avatar: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=150&q=80" },
-        // Index 8: Mireille Sapotille (f, 54) - Citoyenne (Black)
-        { name: "Mireille Sapotille", age: 54, avatar: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&w=150&q=80" },
-        // Index 9: Rodrigue Marie-Joseph (m, 31) - Menuiserie (Black)
-        { name: "Rodrigue Marie-Joseph", age: 31, avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80" },
+        { name: "Hugues Zami", age: 45, avatar: "hugues-zami.png" },
+        { name: "Murielle Placide", age: 38, avatar: "murielle-placide.png" },
+        { name: "Clotilde Belair", age: 61, avatar: "clotilde-belair.png" },
+        { name: "Marius Placide", age: 29, avatar: "marius-placide.png" },
+        { name: "Thierry Vindex", age: 34, avatar: "thierry-vindex.png" },
+        { name: "Chantal Gendrey", age: 47, avatar: "chantal-gendrey.png" },
+        { name: "Ludovic Clamy", age: 25, avatar: "ludovic-clamy.png" },
+        { name: "Mireille Sapotille", age: 54, avatar: "mireille-sapotille.png" },
+        { name: "Rodrigue Marie-Joseph", age: 31, avatar: "rodrigue-marie-joseph.png" },
 
-        // Index 10: Fabrice Létang (m, 40) - Électricité (Black)
-        { name: "Fabrice Létang", age: 40, avatar: "https://images.unsplash.com/photo-1513956589380-bad6acb9b9d4?auto=format&fit=crop&w=150&q=80" },
-        // Index 11: Ghislaine Rosalie (f, 50) - Aide Seniors (Indian)
-        { name: "Devi Rangasamy", age: 50, avatar: "https://images.unsplash.com/photo-1602491453631-e2a5ad90a131?auto=format&fit=crop&w=150&q=80" },
-        // Index 12: Wilfrid Rapon (m, 37) - Jardinier (Black)
-        { name: "Wilfrid Rapon", age: 37, avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=150&q=80" },
-        // Index 13: Christiane Fostin (f, 58) - Citoyenne (White)
-        { name: "Claire Huyghues-Despointes", age: 58, avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80" },
-        // Index 14: Lucien Cabort (m, 48) - Bricolage (White)
-        { name: "Benoît de Jaham", age: 48, avatar: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&w=150&q=80" },
-        // Index 15: Roselyne Dacosta (f, 32) - Citoyenne (Black)
-        { name: "Roselyne Dacosta", age: 32, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" },
-        // Index 16: Albert Lise (m, 65) - Cuisine (Indian)
-        { name: "Sanjay Rangasamy", age: 65, avatar: "https://images.unsplash.com/photo-1598257006458-087169a1f08d?auto=format&fit=crop&w=150&q=80" },
-        // Index 17: Yveline Rosalie (f, 23) - Baby-sitting (White)
-        { name: "Mathilde Aubry", age: 23, avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&q=80" },
-        // Index 18: Gérard Zami (m, 55) - Plomberie (Black)
-        { name: "Gérard Zami", age: 55, avatar: "https://images.unsplash.com/photo-1512485694743-9c9538b4e6e0?auto=format&fit=crop&w=150&q=80" },
-        // Index 19: Francine Moutoussamy (f, 44) - Couture (Black)
-        { name: "Francine Moutoussamy", age: 44, avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=150&q=80" },
+        { name: "Fabrice Létang", age: 40, avatar: "fabrice-letang.png" },
+        { name: "Ghislaine Rosalie", age: 50, avatar: "ghislaine-rosalie.png" },
+        { name: "Wilfrid Rapon", age: 37, avatar: "wilfrid-rapon.png" },
+        { name: "Christiane Fostin", age: 58, avatar: "christiane-fostin.png" },
+        { name: "Lucien Cabort", age: 48, avatar: "lucien-cabort.png" },
+        { name: "Roselyne Dacosta", age: 32, avatar: "roselyne-dacosta.png" },
+        { name: "Albert Lise", age: 65, avatar: "albert-lise.png" },
+        { name: "Yveline Rosalie", age: 23, avatar: "yveline-rosalie.png" },
+        { name: "Gérard Zami", age: 55, avatar: "gerard-zami.png" },
+        { name: "Francine Moutoussamy", age: 44, avatar: "francine-moutoussamy.png" },
 
-        // Index 20: Guy-Albert Gace (m, 39) - Électricien (White)
-        { name: "Pierre-Yves Lemoine", age: 39, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" },
-        // Index 21: Solange Silvestre (f, 28) - Ménage (Black)
-        { name: "Solange Silvestre", age: 28, avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80" },
-        // Index 22: Firmin Monlouis (m, 51) - Jardinage (Black)
-        { name: "Firmin Monlouis", age: 51, avatar: "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?auto=format&fit=crop&w=150&q=80" },
-        // Index 23: Monique Carpin (f, 59) - Citoyenne (Black)
-        { name: "Monique Carpin", age: 59, avatar: "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=150&q=80" },
-        // Index 24: Martial Tinaut (m, 33) - Bricolage (Black)
-        { name: "Martial Tinaut", age: 33, avatar: "https://images.unsplash.com/photo-1489980508314-941910ded1f4?auto=format&fit=crop&w=150&q=80" },
-        // Index 25: Ginette Tacite (f, 64) - Aide Seniors (Black)
-        { name: "Ginette Tacite", age: 64, avatar: "https://images.unsplash.com/photo-1542206395-9feb3edaa68d?auto=format&fit=crop&w=150&q=80" },
-        // Index 26: Aimé Zéphir (m, 46) - Peintre (Black)
-        { name: "Aimé Zéphir", age: 46, avatar: "https://images.unsplash.com/photo-1530268729831-4b0b9e170218?auto=format&fit=crop&w=150&q=80" },
-        // Index 27: Josiane Périac (f, 24) - Baby-sitting (Black)
-        { name: "Josiane Périac", age: 24, avatar: "https://images.unsplash.com/photo-1509305717901-8414512c868f?auto=format&fit=crop&w=150&q=80" },
-        // Index 28: Pascal Agathe (m, 43) - Plomberie (Black)
-        { name: "Pascal Agathe", age: 43, avatar: "https://images.unsplash.com/photo-1514543258389-c5a2817e5752?auto=format&fit=crop&w=150&q=80" },
-        // Index 29: Sylviane Lurel (f, 53) - Citoyenne (Black)
-        { name: "Sylviane Lurel", age: 53, avatar: "https://images.unsplash.com/photo-1523824921871-d6f1a15151f1?auto=format&fit=crop&w=150&q=80" },
+        { name: "Guy-Albert Gace", age: 39, avatar: "guy-albert-gace.png" },
+        { name: "Solange Silvestre", age: 28, avatar: "solange-silvestre.png" },
+        { name: "Firmin Monlouis", age: 51, avatar: "firmin-monlouis.png" },
+        { name: "Monique Carpin", age: 59, avatar: "monique-carpin.png" },
+        { name: "Martial Tinaut", age: 33, avatar: "martial-tinaut.png" },
+        { name: "Ginette Tacite", age: 64, avatar: "ginette-tacite.png" },
+        { name: "Aimé Zéphir", age: 46, avatar: "aime-zephir.png" },
+        { name: "Josiane Périac", age: 24, avatar: "josiane-periac.png" },
+        { name: "Pascal Agathe", age: 43, avatar: "pascal-agathe.png" },
+        { name: "Sylviane Lurel", age: 53, avatar: "sylviane-lurel.png" },
 
-        // Index 30: Max Hoarau (m, 42) - Climatisation (Black)
-        { name: "Max Hoarau", age: 42, avatar: "https://images.unsplash.com/photo-1496345875659-11f7dd282d1d?auto=format&fit=crop&w=150&q=80" },
-        // Index 31: Eliane Hoarau (f, 49) - Aide (Black)
-        { name: "Eliane Hoarau", age: 49, avatar: "https://images.unsplash.com/photo-1534751516642-a131ffd10b7f?auto=format&fit=crop&w=150&q=80" },
-        // Index 32: Charles Payet (m, 36) - Jardinier (Black)
-        { name: "Charles Payet", age: 36, avatar: "https://images.unsplash.com/photo-1520155707335-10b7b1ce2b14?auto=format&fit=crop&w=150&q=80" },
-        // Index 33: Patricia Grondin (f, 57) - Citoyenne (Black)
-        { name: "Patricia Grondin", age: 57, avatar: "https://images.unsplash.com/photo-1525134479668-1bee5c7c684a?auto=format&fit=crop&w=150&q=80" },
-        // Index 34: Georges Payet (m, 48) - Bricolage (Black)
-        { name: "Georges Payet", age: 48, avatar: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=150&q=80" },
-        // Index 35: Nicole Payet (f, 33) - Ménage (Black)
-        { name: "Nicole Payet", age: 33, avatar: "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=150&q=80" },
-        // Index 36: Henri Payet (m, 60) - Électricien (Black)
-        { name: "Henri Payet", age: 60, avatar: "https://images.unsplash.com/photo-1534312527009-56c7016453e6?auto=format&fit=crop&w=150&q=80" },
-        // Index 37: Claudette Payet (f, 25) - Baby-sitting (Black)
-        { name: "Claudette Payet", age: 25, avatar: "https://images.unsplash.com/photo-1515023115689-589c33041d3c?auto=format&fit=crop&w=150&q=80" },
-        // Index 38: René Payet (m, 51) - Peinture (Black)
-        { name: "René Payet", age: 51, avatar: "https://images.unsplash.com/photo-1522384908269-26615b1404ac?auto=format&fit=crop&w=150&q=80" },
-        // Index 39: Yolande Payet (f, 45) - Citoyenne (Black)
-        { name: "Yolande Payet", age: 45, avatar: "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&w=150&q=80" },
-
-        // Index 40: Gaston Placide (m, 47) - Électricien (Black)
-        { name: "Gaston Placide", age: 47, avatar: "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=150&q=80" },
-        // Index 41: Marcelle Placide (f, 54) - Aide (Black)
-        { name: "Marcelle Placide", age: 54, avatar: "https://images.unsplash.com/photo-1598550476439-6847785fce6e?auto=format&fit=crop&w=150&q=80" },
-        // Index 42: Bruno Placide (m, 38) - Bricolage (Black)
-        { name: "Bruno Placide", age: 38, avatar: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80" },
-        // Index 43: Thérèse Placide (f, 63) - Citoyenne (Black)
-        { name: "Thérèse Placide", age: 63, avatar: "https://images.unsplash.com/photo-1601412436009-d964bd02edbc?auto=format&fit=crop&w=150&q=80" },
-        // Index 44: Gilbert Placide (m, 52) - Jardinier (Black)
-        { name: "Gilbert Placide", age: 52, avatar: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=150&q=80" },
-        // Index 45: Jacqueline Placide (f, 29) - Ménage (Black)
-        { name: "Jacqueline Placide", age: 29, avatar: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=150&q=80" },
-        // Index 46: Raymond Placide (m, 35) - Plomberie (Black)
-        { name: "Raymond Placide", age: 35, avatar: "https://images.unsplash.com/photo-1579038773863-c05000830627?auto=format&fit=crop&w=150&q=80" },
-        // Index 47: Marie-Andrée Placide (f, 41) - Baby-sitting (Black)
-        { name: "Marie-Andrée Placide", age: 41, avatar: "https://images.unsplash.com/photo-1609010697446-11f2155278f0?auto=format&fit=crop&w=150&q=80" },
-        // Index 48: Serge Placide (m, 55) - Peinture (Black)
-        { name: "Serge Placide", age: 55, avatar: "https://images.unsplash.com/photo-1581338834647-b0ae4070ab95?auto=format&fit=crop&w=150&q=80" },
-        // Index 49: Yveline Placide (f, 30) - Citoyenne (Black)
-        { name: "Yveline Placide", age: 30, avatar: "https://images.unsplash.com/photo-1615022702135-77b5a420a5ee?auto=format&fit=crop&w=150&q=80" }
+        { name: "Max Hoarau", age: 42, avatar: "max-hoarau.png" },
+        { name: "Eliane Hoarau", age: 49, avatar: "eliane-hoarau.png" },
+        { name: "Jean-René Payet", age: 47, avatar: "jean-rene-payet.png" },
+        { name: "Bernadette Grondin", age: 57, avatar: "bernadette-grondin.png" },
+        { name: "Cédric Rivière", age: 48, avatar: "cedric-riviere.png" },
+        { name: "Marie-Thérèse Fontaine", age: 33, avatar: "marie-therese-fontaine.png" },
+        { name: "Yolande Payet", age: 45, avatar: "yolande-payet.png" },
+        { name: "Stéphane Bégue", age: 38, avatar: "stephane-begue.png" },
+        { name: "Chantal Dijoux", age: 44, avatar: "chantal-dijoux.png" },
+        { name: "Guillaume Morel", age: 35, avatar: "guillaume-morel.png" }
     ];
 
     const additionalMembers = ADDITIONAL_MEMBERS_DATA.map((m, index) => {

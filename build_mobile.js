@@ -8,49 +8,42 @@ const destDir = path.join(__dirname, 'www');
 if (fs.existsSync(destDir)) {
     fs.rmSync(destDir, { recursive: true, force: true });
 }
-fs.mkdirSync(destDir);
+if (fs.mkdirSync) {
+    fs.mkdirSync(destDir, { recursive: true });
+}
 
-const filesToCopy = [
-    'about.html',
-    'how-it-works.html',
-    'pricing.html',
-    'results.html',
-    'feed.html',
-    'index.html',
-    'style.css',
-    'script.js',
-    'api-client.js',
-    'chat-logic.js',
-    'dialog.js',
-    'ai-agents.js',
-    'ai-simulator.js',
-    'payment-script.js',
-    'notifications-service.js',
-    'onboarding.js',
-    'caribbean-mutual-help.png',
-    'clim-talent.png',
-    'david-34.png',
-    'hero-image.png',
-    'how-it-works-illustration.png',
-    'huguette-68.png',
-    'jardinage-talent.png',
-    'kevin-41.png',
-    'jocelyn-cabort.png',
-    'saint-louis-72.png',
-    'sarah-29.png',
-    'senior-menage-talent.png',
-    'logo-app.png'
-];
+// Find all HTML, JS, CSS, JSON, PNG, JPG files in root
+const filesInRoot = fs.readdirSync(srcDir);
+const filesToCopy = filesInRoot.filter(file => {
+    const ext = path.extname(file).toLowerCase();
+    return ['.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.webp'].includes(ext);
+});
 
 filesToCopy.forEach(file => {
     const srcPath = path.join(srcDir, file);
     const destPath = path.join(destDir, file);
-    if (fs.existsSync(srcPath)) {
+    if (fs.statSync(srcPath).isFile()) {
         fs.copyFileSync(srcPath, destPath);
         console.log(`Copied ${file} -> www/`);
-    } else {
-        console.warn(`Warning: File ${file} not found!`);
     }
 });
 
-console.log('Mobile build assets prepared successfully inside www/ directory.');
+// Also copy to Capacitor public folders if they exist
+const iosPublic = path.join(__dirname, 'ios', 'App', 'App', 'public');
+const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'assets', 'public');
+
+[iosPublic, androidPublic].forEach(capDest => {
+    if (fs.existsSync(path.dirname(capDest))) {
+        if (!fs.existsSync(capDest)) fs.mkdirSync(capDest, { recursive: true });
+        filesToCopy.forEach(file => {
+            const srcPath = path.join(srcDir, file);
+            if (fs.existsSync(srcPath) && fs.statSync(srcPath).isFile()) {
+                fs.copyFileSync(srcPath, path.join(capDest, file));
+            }
+        });
+        console.log(`Synced to ${capDest}`);
+    }
+});
+
+console.log('Mobile build assets prepared and synced successfully!');
+
