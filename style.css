@@ -2293,6 +2293,231 @@ h1, h2, h3, h4 {
     border-bottom-color: #D96B58;
 }
 
+/* ==========================================================================
+   PUBLIC MEMBER PROFILE MODAL - WOW DESIGN & FLUID RESPONSIVE LAYOUT
+   ========================================================================== */
+#publicMemberProfileModal .modal-card-dashboard {
+    max-width: 820px !important;
+    width: 94% !important;
+    max-height: 88vh !important;
+    height: auto !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border-radius: 24px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3) !important;
+    background: #FFFFFF !important;
+    border: none !important;
+    position: relative !important;
+}
+
+#publicMemberProfileModal .profile-header-banner {
+    padding: 24px 28px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+    background: linear-gradient(135deg, #FAF7F2 0%, #E6EFE9 100%) !important;
+    border-bottom: 1px solid #E1ECE5 !important;
+    position: relative !important;
+}
+
+@media (max-width: 640px) {
+    #publicMemberProfileModal .profile-header-banner {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding: 20px 20px 16px 20px !important;
+    }
+}
+
+#publicMemberProfileModal .profile-user-summary {
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+}
+
+#publicMemberProfileModal .profile-avatar-large {
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: 3px solid #FFFFFF !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
+    flex-shrink: 0 !important;
+}
+
+#publicMemberProfileModal .profile-user-name {
+    font-size: 1.55rem !important;
+    font-weight: 800 !important;
+    color: #1E3A2B !important;
+    margin: 0 0 4px 0 !important;
+    line-height: 1.2 !important;
+}
+
+#publicMemberProfileModal .profile-role-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 4px 14px !important;
+    border-radius: 50px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    background: #E1EFE6 !important;
+    color: #2D6A4F !important;
+    border: 1px solid rgba(45, 106, 79, 0.25) !important;
+    margin-bottom: 4px !important;
+}
+
+#publicMemberProfileModal .profile-location-text {
+    font-size: 0.88rem !important;
+    color: #5B7A6A !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-weight: 600 !important;
+}
+
+/* Social Action Bar */
+#publicMemberProfileModal .social-action-bar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+}
+
+#publicMemberProfileModal .btn-social {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 10px 18px !important;
+    border-radius: 50px !important;
+    font-family: inherit !important;
+    font-size: 0.88rem !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+}
+
+#publicMemberProfileModal .btn-recommend {
+    background: #FFFFFF !important;
+    color: #2D6A4F !important;
+    border: 1.5px solid #2D6A4F !important;
+}
+
+#publicMemberProfileModal .btn-recommend:hover,
+#publicMemberProfileModal .btn-recommend.liked {
+    background: #2D6A4F !important;
+    color: #FFFFFF !important;
+}
+
+#publicMemberProfileModal .btn-contact-direct {
+    background: #2D6A4F !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(45, 106, 79, 0.25) !important;
+}
+
+#publicMemberProfileModal .btn-contact-direct:hover {
+    background: #1B4332 !important;
+    transform: translateY(-1px) !important;
+}
+
+#publicMemberProfileModal .btn-share-profile {
+    background: #FFFFFF !important;
+    color: #4A6B5D !important;
+    border: 1px solid #D0E1D4 !important;
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+}
+
+/* Public Tabs Bar */
+#publicMemberProfileModal .profile-tabs {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    border-bottom: 2px solid #E6EFE9 !important;
+    background: #FFFFFF !important;
+    padding: 0 28px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+#publicMemberProfileModal .profile-tabs::-webkit-scrollbar {
+    display: none !important;
+}
+
+#publicMemberProfileModal .public-tab-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 14px 18px !important;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    background: transparent !important;
+    font-family: inherit !important;
+    font-size: 0.92rem !important;
+    font-weight: 700 !important;
+    color: #6B8577 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    margin-bottom: -2px !important;
+    transition: all 0.2s ease !important;
+    flex-shrink: 0 !important;
+    outline: none !important;
+}
+
+#publicMemberProfileModal .public-tab-btn:hover {
+    color: #1E3A2B !important;
+}
+
+#publicMemberProfileModal .public-tab-btn.active {
+    color: #2D6A4F !important;
+    border-bottom-color: #2D6A4F !important;
+    font-weight: 800 !important;
+    background: transparent !important;
+}
+
+/* Public Modal Body & Single-Column Tab Toggle */
+#publicMemberProfileModal .profile-modal-body {
+    display: block !important;
+    flex-direction: column !important;
+    padding: 28px !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background: #FAFCFA !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+#publicMemberProfileModal .public-tab-content {
+    display: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    float: none !important;
+}
+
+#publicMemberProfileModal .public-tab-content.active {
+    display: block !important;
+    width: 100% !important;
+    animation: fadeInTab 0.25s ease-in-out !important;
+}
+
 .profile-modal-body {
     padding: 24px 28px !important;
     flex: 1 !important;
@@ -2312,8 +2537,7 @@ h1, h2, h3, h4 {
     border-radius: 4px;
 }
 
-.profile-tab-content,
-.public-tab-content {
+.profile-tab-content {
     display: none !important;
     width: 100% !important;
     box-sizing: border-box !important;
@@ -2323,8 +2547,7 @@ h1, h2, h3, h4 {
     animation: fadeInTab 0.2s ease-in-out;
 }
 
-.profile-tab-content.active,
-.public-tab-content.active {
+.profile-tab-content.active {
     display: block !important;
 }
 
