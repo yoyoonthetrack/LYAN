@@ -7629,22 +7629,27 @@ body.user-is-logged-in .open-signup-trigger {
     pointer-events: auto;
 }
 
+button.speed-dial-item,
 .speed-dial-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    background: white;
-    padding: 10px 16px;
-    border-radius: 30px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--border);
-    color: var(--primary-dark);
-    font-weight: 700;
-    font-size: 0.88rem;
+    background: white !important;
+    padding: 10px 16px !important;
+    border-radius: 30px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--primary-dark) !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
     cursor: pointer;
     white-space: nowrap;
     transition: transform 0.2s ease, background 0.2s ease;
     text-decoration: none;
+    font-family: inherit;
+    width: auto;
+    text-align: left;
+    outline: none;
 }
 
 .speed-dial-item:hover {
