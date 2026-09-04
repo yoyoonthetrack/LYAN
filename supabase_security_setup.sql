@@ -1,107 +1,12 @@
 -- ============================================================================
--- LYANN DOM — PRODUCTION SUPABASE AUTH & ROW LEVEL SECURITY (RLS) SETUP (V3.1)
+-- LYANN DOM — 02_SECURITY_MIGRATION.SQL (V3.3 FINAL PRE-DEPLOYMENT MIGRATION)
+-- Exécuter ce script SEULEMENT après validation de 01_preflight_audit.sql
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- SECTION 1 : AUDIT PRÉ-MIGRATION ET DÉTECTION DES ANOMALIES DE DONNÉES
--- ----------------------------------------------------------------------------
-DO $$
-DECLARE
-  v_dup_count int := 0;
-  v_orphan_part_user int := 0;
-  v_orphan_part_conv int := 0;
-  v_orphan_conv int := 0;
-  v_orphan_msg_sender int := 0;
-  v_orphan_msg_conv int := 0;
-  v_invalid_role int := 0;
-  v_invalid_account_type int := 0;
-BEGIN
-  -- 1. Doublons dans conversation_participants
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversation_participants') THEN
-    SELECT COUNT(*) INTO v_dup_count
-    FROM (
-      SELECT conversation_id, user_id, COUNT(*)
-      FROM public.conversation_participants
-      GROUP BY conversation_id, user_id
-      HAVING COUNT(*) > 1
-    ) c;
-
-    -- 2. Participants orphelins
-    SELECT COUNT(*) INTO v_orphan_part_user
-    FROM public.conversation_participants cp
-    LEFT JOIN public.profiles p ON cp.user_id = p.id
-    WHERE p.id IS NULL;
-
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversations') THEN
-      SELECT COUNT(*) INTO v_orphan_part_conv
-      FROM public.conversation_participants cp
-      LEFT JOIN public.conversations c ON cp.conversation_id = c.id
-      WHERE c.id IS NULL;
-    END IF;
-  END IF;
-
-  -- 3. Conversations orphelines (0 participants)
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversations') 
-     AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversation_participants') THEN
-    SELECT COUNT(*) INTO v_orphan_conv
-    FROM public.conversations c
-    LEFT JOIN public.conversation_participants cp ON c.id = cp.conversation_id
-    WHERE cp.conversation_id IS NULL;
-  END IF;
-
-  -- 4. Messages orphelins
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'messages') THEN
-    SELECT COUNT(*) INTO v_orphan_msg_sender
-    FROM public.messages m
-    LEFT JOIN public.profiles p ON m.sender_id = p.id
-    WHERE m.sender_id IS NOT NULL AND p.id IS NULL;
-
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'conversations') THEN
-      SELECT COUNT(*) INTO v_orphan_msg_conv
-      FROM public.messages m
-      LEFT JOIN public.conversations c ON m.conversation_id = c.id
-      WHERE m.conversation_id IS NOT NULL AND c.id IS NULL;
-    END IF;
-  END IF;
-
-  -- 5. Incompatibilité des contraintes CHECK
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'profiles') THEN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'role') THEN
-      SELECT COUNT(*) INTO v_invalid_role
-      FROM public.profiles
-      WHERE role NOT IN ('SUPER_ADMIN', 'ADMIN', 'OWNER', 'SUPPORT', 'FINANCE', 'MODERATION', 'EMPLOYEE', 'USER');
-    END IF;
-
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'account_type') THEN
-      SELECT COUNT(*) INTO v_invalid_account_type
-      FROM public.profiles
-      WHERE account_type NOT IN ('real', 'seed', 'system');
-    END IF;
-  END IF;
-
-  RAISE NOTICE '=== AUDIT PRÉ-MIGRATION LYANN V3.1 ===';
-  RAISE NOTICE 'Doublons conversation_participants : %', v_dup_count;
-  RAISE NOTICE 'Participants orphelins (User inexistant) : %', v_orphan_part_user;
-  RAISE NOTICE 'Participants orphelins (Conversation inexistante) : %', v_orphan_part_conv;
-  RAISE NOTICE 'Conversations orphelines (0 participants) : %', v_orphan_conv;
-  RAISE NOTICE 'Messages avec sender_id inexistant : %', v_orphan_msg_sender;
-  RAISE NOTICE 'Messages avec conversation_id inexistante : %', v_orphan_msg_conv;
-  RAISE NOTICE 'Rôles non valides dans profiles : %', v_invalid_role;
-  RAISE NOTICE 'Types de compte non valides dans profiles : %', v_invalid_account_type;
-
-  IF v_dup_count > 0 OR v_orphan_part_user > 0 OR v_orphan_part_conv > 0 OR v_orphan_msg_sender > 0 OR v_orphan_msg_conv > 0 OR v_invalid_role > 0 OR v_invalid_account_type > 0 THEN
-    RAISE WARNING 'ATTENTION : Des anomalies de données ont été détectées. Veuillez les traiter avant la pose des contraintes strictes.';
-  ELSE
-    RAISE NOTICE 'SUCCÈS : Aucune anomalie détectée. La structure initiale est compatible.';
-  END IF;
-END $$;
-
-
--- ----------------------------------------------------------------------------
--- SECTION 2 : MIGRATION IDEMPOTENTE DES TABLES ET COLONNES EXISTANTES
+-- SECTION 1 : MIGRATION IDEMPOTENTE DES TABLES ET COLONNES EXISTANTES
 -- ----------------------------------------------------------------------------
 
--- Table public.profiles
 CREATE TABLE IF NOT EXISTS public.profiles (
     id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE
 );
@@ -125,7 +30,6 @@ ADD COLUMN IF NOT EXISTS is_verified boolean DEFAULT false,
 ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now(),
 ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
--- Contraintes check role et account_type
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_profile_role') THEN
@@ -139,7 +43,6 @@ BEGIN
     END IF;
 END $$;
 
--- Table public.conversations
 CREATE TABLE IF NOT EXISTS public.conversations (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at timestamptz DEFAULT now()
@@ -149,7 +52,6 @@ ALTER TABLE public.conversations
 ADD COLUMN IF NOT EXISTS mission_id uuid,
 ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
--- Table public.conversation_participants
 CREATE TABLE IF NOT EXISTS public.conversation_participants (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id uuid NOT NULL,
@@ -160,7 +62,6 @@ CREATE TABLE IF NOT EXISTS public.conversation_participants (
 ALTER TABLE public.conversation_participants 
 ADD COLUMN IF NOT EXISTS joined_at timestamptz DEFAULT now();
 
--- Table public.messages
 CREATE TABLE IF NOT EXISTS public.messages (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id uuid,
@@ -174,41 +75,35 @@ ADD COLUMN IF NOT EXISTS attachment_url text,
 ADD COLUMN IF NOT EXISTS is_read boolean DEFAULT false,
 ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 
-
 -- ----------------------------------------------------------------------------
--- SECTION 3 : CONTRAINTES DE CLÉS ÉTRANGÈRES & UNICITÉ (IDEMPOTENT)
+-- SECTION 2 : CONTRAINTES DE CLÉS ÉTRANGÈRES & UNICITÉ (IDEMPOTENT)
 -- ----------------------------------------------------------------------------
 DO $$ 
 BEGIN
-    -- FK conversation_participants -> conversations
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_cp_conversation') THEN
         ALTER TABLE public.conversation_participants 
         ADD CONSTRAINT fk_cp_conversation 
         FOREIGN KEY (conversation_id) REFERENCES public.conversations(id) ON DELETE CASCADE;
     END IF;
 
-    -- FK conversation_participants -> profiles
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_cp_user') THEN
         ALTER TABLE public.conversation_participants 
         ADD CONSTRAINT fk_cp_user 
         FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
     END IF;
 
-    -- FK messages -> conversations
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_msg_conversation') THEN
         ALTER TABLE public.messages 
         ADD CONSTRAINT fk_msg_conversation 
         FOREIGN KEY (conversation_id) REFERENCES public.conversations(id) ON DELETE CASCADE;
     END IF;
 
-    -- FK messages -> profiles
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_msg_sender') THEN
         ALTER TABLE public.messages 
         ADD CONSTRAINT fk_msg_sender 
         FOREIGN KEY (sender_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
     END IF;
 
-    -- Contrainte d'unicité (conversation_id, user_id)
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_conversation_user') THEN
         ALTER TABLE public.conversation_participants 
         ADD CONSTRAINT unique_conversation_user 
@@ -216,12 +111,10 @@ BEGIN
     END IF;
 END $$;
 
-
 -- ----------------------------------------------------------------------------
--- SECTION 4 : FONCTIONS HELPER ANTI-RÉCURSION RLS (SECURITY DEFINER)
+-- SECTION 3 : FONCTIONS HELPER ANTI-RÉCURSION RLS (SECURITY DEFINER)
 -- ----------------------------------------------------------------------------
 
--- Helper 1: Vérifie si l'utilisateur connecté est Administrateur (Empêche la récursion sur profiles)
 CREATE OR REPLACE FUNCTION public.is_current_user_admin()
 RETURNS boolean
 LANGUAGE sql
@@ -240,7 +133,6 @@ $$;
 REVOKE ALL ON FUNCTION public.is_current_user_admin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_current_user_admin() TO authenticated, service_role;
 
--- Helper 2: Vérifie si l'utilisateur connecté participe à une conversation
 CREATE OR REPLACE FUNCTION public.is_current_user_conversation_participant(
   _conversation_id uuid
 )
@@ -261,12 +153,11 @@ $$;
 REVOKE ALL ON FUNCTION public.is_current_user_conversation_participant(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_current_user_conversation_participant(uuid) TO authenticated, service_role;
 
-
 -- ----------------------------------------------------------------------------
--- SECTION 5 : SÉCURISATION ABSOLUE DES COLONNES ADMINISTRATIVES ET TRIGGER
+-- SECTION 4 : VERROUILLAGE SÉCURISÉ DES COLONNES ADMINISTRATIVES ET BANCAIRES
 -- ----------------------------------------------------------------------------
 
--- Interdiction totale de modifier role, account_type, is_verified, kyc_verified via UPDATE direct
+-- Trigger : Interdit la modification de stripe_account_id sauf par service_role, et réserve role/account_type/is_verified/kyc_verified à SUPER_ADMIN/OWNER
 CREATE OR REPLACE FUNCTION public.protect_profile_sensitive_columns()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -275,21 +166,38 @@ SET search_path = public
 AS $$
 DECLARE
   v_caller_role text;
+  v_is_service_role boolean;
 BEGIN
+  -- Détecter si la requête provient directement du service_role (backend / webhooks)
+  v_is_service_role := (
+    auth.role() = 'service_role' OR 
+    current_setting('request.jwt.claim.role', true) = 'service_role'
+  );
+
+  -- 1. VERROUILLAGE ABSOLU DE stripe_account_id : RESERVÉ EXCLUSIVEMENT AU BACKEND service_role
+  IF (OLD.stripe_account_id IS DISTINCT FROM NEW.stripe_account_id) THEN
+    IF NOT v_is_service_role THEN
+      RAISE EXCEPTION 'Escalade de privilèges refusée : la modification de stripe_account_id est strictement réservée au backend (service_role)'
+      USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  -- 2. VERROUILLAGE DES CHAMPS ADMINISTRATIFS : RESERVÉS À SUPER_ADMIN, OWNER OU service_role
   IF (
     OLD.role IS DISTINCT FROM NEW.role OR 
     OLD.account_type IS DISTINCT FROM NEW.account_type OR 
     OLD.is_verified IS DISTINCT FROM NEW.is_verified OR
     OLD.kyc_verified IS DISTINCT FROM NEW.kyc_verified
   ) THEN
-    SELECT role INTO v_caller_role
-    FROM public.profiles
-    WHERE id = auth.uid();
+    IF NOT v_is_service_role THEN
+      SELECT role INTO v_caller_role
+      FROM public.profiles
+      WHERE id = auth.uid();
 
-    -- Seuls SUPER_ADMIN et OWNER peuvent modifier directement la table via UPDATE
-    IF v_caller_role IS NULL OR v_caller_role NOT IN ('SUPER_ADMIN', 'OWNER') THEN
-      RAISE EXCEPTION 'Escalade de privilèges refusée : modification directe des colonnes administratives interdite. Utilisez la RPC administrative dédiée.'
-      USING ERRCODE = '42501';
+      IF v_caller_role IS NULL OR v_caller_role NOT IN ('SUPER_ADMIN', 'OWNER') THEN
+        RAISE EXCEPTION 'Escalade de privilèges refusée : seuls SUPER_ADMIN et OWNER peuvent modifier les attributs administratifs'
+        USING ERRCODE = '42501';
+      END IF;
     END IF;
   END IF;
 
@@ -305,7 +213,7 @@ CREATE TRIGGER tr_protect_profile_sensitive_columns
   FOR EACH ROW
   EXECUTE FUNCTION public.protect_profile_sensitive_columns();
 
--- RPC Administrative Sécurisée pour les modifications de rôles & statut
+-- RPC Administrative Sécurisée : STRICTEMENT RÉSERVÉE À SUPER_ADMIN ET OWNER
 CREATE OR REPLACE FUNCTION public.admin_update_profile_role(
   p_target_user_id uuid,
   p_new_role text DEFAULT NULL,
@@ -323,24 +231,13 @@ DECLARE
   v_target_role text;
 BEGIN
   SELECT role INTO v_caller_role FROM public.profiles WHERE id = auth.uid();
-  IF v_caller_role IS NULL OR v_caller_role NOT IN ('SUPER_ADMIN', 'ADMIN', 'OWNER') THEN
-    RAISE EXCEPTION 'Accès refusé : privilèges administratifs requis' USING ERRCODE = '42501';
+  IF v_caller_role IS NULL OR v_caller_role NOT IN ('SUPER_ADMIN', 'OWNER') THEN
+    RAISE EXCEPTION 'Accès refusé : seuls les rôles SUPER_ADMIN et OWNER peuvent modifier les attributs administratifs' USING ERRCODE = '42501';
   END IF;
 
   SELECT role INTO v_target_role FROM public.profiles WHERE id = p_target_user_id;
   IF v_target_role IS NULL THEN
     RAISE EXCEPTION 'Profil utilisateur cible introuvable' USING ERRCODE = '23503';
-  END IF;
-
-  -- Si l'expéditeur est un simple ADMIN :
-  IF v_caller_role = 'ADMIN' THEN
-    IF p_new_role IN ('SUPER_ADMIN', 'OWNER') THEN
-      RAISE EXCEPTION 'Un administrateur ne peut pas attribuer le rôle OWNER ou SUPER_ADMIN' USING ERRCODE = '42501';
-    END IF;
-
-    IF v_target_role IN ('SUPER_ADMIN', 'OWNER') THEN
-      RAISE EXCEPTION 'Un administrateur ne peut pas modifier un profil OWNER ou SUPER_ADMIN' USING ERRCODE = '42501';
-    END IF;
   END IF;
 
   UPDATE public.profiles
@@ -359,12 +256,15 @@ $$;
 REVOKE ALL ON FUNCTION public.admin_update_profile_role(uuid, text, text, boolean, boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_update_profile_role(uuid, text, text, boolean, boolean) TO authenticated, service_role;
 
-
 -- ----------------------------------------------------------------------------
--- SECTION 6 : SÉCURISATION RLS DE PROFILES ET VUE PUBLIQUE
+-- SECTION 5 : SÉCURISATION RLS DE PROFILES ET VUE PUBLIQUE (V3.3 STRICTE)
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+-- Suppression de toute permission globale ALL sur profiles pour les admins
+DROP POLICY IF EXISTS "Admins have full access to profiles" ON public.profiles;
+
+-- Read: Un utilisateur voit son profil, les admins voient les profils pour le back-office
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 DROP POLICY IF EXISTS "Users can view own profile or admins view all" ON public.profiles;
 CREATE POLICY "Users can view own profile or admins view all" 
@@ -374,23 +274,23 @@ USING (
     OR public.is_current_user_admin()
 );
 
+-- Update: Un utilisateur ne peut modifier QUE sa propre ligne (filtré par le trigger pour les champs sensibles)
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" 
 ON public.profiles FOR UPDATE 
 USING (auth.uid() = id)
 WITH CHECK (auth.uid() = id);
 
+-- Insert: Utilisateur insère son propre profil lors du signup
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" 
 ON public.profiles FOR INSERT 
 WITH CHECK (auth.uid() = id);
 
-DROP POLICY IF EXISTS "Admins have full access to profiles" ON public.profiles;
-CREATE POLICY "Admins have full access to profiles" 
-ON public.profiles FOR ALL 
-USING (public.is_current_user_admin());
+-- Delete: AUCUNE policy DELETE pour les utilisateurs ou admins standard (DENY BY DEFAULT)
+DROP POLICY IF EXISTS "Admins can delete profiles" ON public.profiles;
 
--- Vue Publique Strictement Filtrée
+-- Vue Publique Filtrée pour la consultation publique des membres
 CREATE OR REPLACE VIEW public.public_profiles AS
 SELECT 
     id,
@@ -407,9 +307,8 @@ FROM public.profiles;
 
 GRANT SELECT ON public.public_profiles TO anon, authenticated, service_role;
 
-
 -- ----------------------------------------------------------------------------
--- SECTION 7 : TRIGGER CRÉATION PROFIL À L'INSCRIPTION (DURCI)
+-- SECTION 6 : TRIGGER CRÉATION PROFIL À L'INSCRIPTION
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS trigger
@@ -443,9 +342,8 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
-
 -- ----------------------------------------------------------------------------
--- SECTION 8 : FONCTION RPC ATOMIQUE DE CRÉATION DE CONVERSATION
+-- SECTION 7 : FONCTION RPC ATOMIQUE DE CRÉATION DE CONVERSATION
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_or_create_conversation(
   p_target_user_id uuid
@@ -502,19 +400,16 @@ $$;
 REVOKE ALL ON FUNCTION public.get_or_create_conversation(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_or_create_conversation(uuid) TO authenticated, service_role;
 
-
 -- ----------------------------------------------------------------------------
--- SECTION 9 : SÉCURISATION RLS DE LA MESSAGERIE ET BACKFILL VÉRIFIÉ
+-- SECTION 8 : SÉCURISATION RLS DE LA MESSAGERIE ET BACKFILL VÉRIFIÉ (V3.2 CONSERVÉE)
 -- ----------------------------------------------------------------------------
 
--- Backfill des participants historiques
 INSERT INTO public.conversation_participants (conversation_id, user_id)
 SELECT DISTINCT conversation_id, sender_id 
 FROM public.messages 
 WHERE conversation_id IS NOT NULL AND sender_id IS NOT NULL
 ON CONFLICT (conversation_id, user_id) DO NOTHING;
 
--- Backfill vérifiant réellement la présence de requester_id et helper_id dans missions
 DO $$
 BEGIN
     IF EXISTS (
@@ -544,7 +439,6 @@ ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- Policies conversation_participants
 DROP POLICY IF EXISTS "Participants can view own participation" ON public.conversation_participants;
 DROP POLICY IF EXISTS "Participants can view conversation participants" ON public.conversation_participants;
 CREATE POLICY "Participants can view conversation participants" 
@@ -569,7 +463,6 @@ USING (
     OR public.is_current_user_admin()
 );
 
--- Policies conversations
 DROP POLICY IF EXISTS "Participants can view conversation" ON public.conversations;
 CREATE POLICY "Participants can view conversation" 
 ON public.conversations FOR SELECT 
@@ -584,7 +477,6 @@ CREATE POLICY "No direct insert on conversations for standard users"
 ON public.conversations FOR INSERT 
 WITH CHECK (public.is_current_user_admin());
 
--- Policies messages
 DROP POLICY IF EXISTS "Participants can read messages" ON public.messages;
 CREATE POLICY "Participants can read messages" 
 ON public.messages FOR SELECT 
@@ -600,3 +492,8 @@ WITH CHECK (
     auth.uid() = sender_id 
     AND public.is_current_user_conversation_participant(conversation_id)
 );
+```
+
+Description: Update 02_security_migration.sql to V3.3 removing full admin access policy and protecting stripe_account_id
+Overwrite: true
+TargetFile: /Users/mac/Documents/Documents - mac MacBook Pro/YOYOTest/TEST PLUS POUSSE/lyan-landing/02_security_migration.sql

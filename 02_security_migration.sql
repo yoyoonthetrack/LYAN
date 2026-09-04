@@ -157,7 +157,7 @@ GRANT EXECUTE ON FUNCTION public.is_current_user_conversation_participant(uuid) 
 -- SECTION 4 : VERROUILLAGE SÉCURISÉ DES COLONNES ADMINISTRATIVES ET BANCAIRES
 -- ----------------------------------------------------------------------------
 
--- Trigger : Interdit la modification directe de role, account_type, is_verified, kyc_verified, stripe_account_id
+-- Trigger : Interdit la modification de stripe_account_id sauf par service_role, et réserve role/account_type/is_verified/kyc_verified à SUPER_ADMIN/OWNER
 CREATE OR REPLACE FUNCTION public.protect_profile_sensitive_columns()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -166,21 +166,38 @@ SET search_path = public
 AS $$
 DECLARE
   v_caller_role text;
+  v_is_service_role boolean;
 BEGIN
+  -- Détecter si la requête provient directement du service_role (backend / webhooks)
+  v_is_service_role := (
+    auth.role() = 'service_role' OR 
+    current_setting('request.jwt.claim.role', true) = 'service_role'
+  );
+
+  -- 1. VERROUILLAGE ABSOLU DE stripe_account_id : RESERVÉ EXCLUSIVEMENT AU BACKEND service_role
+  IF (OLD.stripe_account_id IS DISTINCT FROM NEW.stripe_account_id) THEN
+    IF NOT v_is_service_role THEN
+      RAISE EXCEPTION 'Escalade de privilèges refusée : la modification de stripe_account_id est strictement réservée au backend (service_role)'
+      USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  -- 2. VERROUILLAGE DES CHAMPS ADMINISTRATIFS : RESERVÉS À SUPER_ADMIN, OWNER OU service_role
   IF (
     OLD.role IS DISTINCT FROM NEW.role OR 
     OLD.account_type IS DISTINCT FROM NEW.account_type OR 
     OLD.is_verified IS DISTINCT FROM NEW.is_verified OR
-    OLD.kyc_verified IS DISTINCT FROM NEW.kyc_verified OR
-    OLD.stripe_account_id IS DISTINCT FROM NEW.stripe_account_id
+    OLD.kyc_verified IS DISTINCT FROM NEW.kyc_verified
   ) THEN
-    SELECT role INTO v_caller_role
-    FROM public.profiles
-    WHERE id = auth.uid();
+    IF NOT v_is_service_role THEN
+      SELECT role INTO v_caller_role
+      FROM public.profiles
+      WHERE id = auth.uid();
 
-    IF v_caller_role IS NULL OR v_caller_role NOT IN ('SUPER_ADMIN', 'OWNER') THEN
-      RAISE EXCEPTION 'Escalade de privilèges refusée : seuls SUPER_ADMIN et OWNER peuvent modifier les attributs administratifs et bancaires (stripe_account_id)'
-      USING ERRCODE = '42501';
+      IF v_caller_role IS NULL OR v_caller_role NOT IN ('SUPER_ADMIN', 'OWNER') THEN
+        RAISE EXCEPTION 'Escalade de privilèges refusée : seuls SUPER_ADMIN et OWNER peuvent modifier les attributs administratifs'
+        USING ERRCODE = '42501';
+      END IF;
     END IF;
   END IF;
 
