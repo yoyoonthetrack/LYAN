@@ -278,40 +278,43 @@
             const searchParams = new URLSearchParams(window.location.search);
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
 
-            // Extraire confirmation_url si transmise en paramètre
+            // Détecter token_hash, token, type, error
+            let tokenHash = searchParams.get('token_hash') || searchParams.get('token');
+            let authType = searchParams.get('type') || 'email';
+            let errorParam = searchParams.get('error') || hashParams.get('error');
+            let errorDesc = searchParams.get('error_description') || hashParams.get('error_description');
+
+            // Support rétro-compatible pour confirmation_url
             let rawConfirmationUrl = searchParams.get('confirmation_url');
             if (rawConfirmationUrl) {
                 try {
                     rawConfirmationUrl = decodeURIComponent(rawConfirmationUrl);
-                } catch(e) {}
-            }
-
-            // Détecter token, token_hash, type, error
-            let tokenHash = searchParams.get('token_hash') || searchParams.get('token');
-            let authType = searchParams.get('type') || 'signup';
-            let errorParam = searchParams.get('error') || hashParams.get('error');
-            let errorDesc = searchParams.get('error_description') || hashParams.get('error_description');
-
-            // Si confirmation_url est fournie, tenter d'en extraire le token/type
-            if (rawConfirmationUrl && !tokenHash) {
-                try {
                     const parsed = new URL(rawConfirmationUrl);
-                    tokenHash = parsed.searchParams.get('token') || parsed.searchParams.get('token_hash');
+                    if (!tokenHash) {
+                        tokenHash = parsed.searchParams.get('token_hash') || parsed.searchParams.get('token');
+                    }
                     if (parsed.searchParams.get('type')) {
                         authType = parsed.searchParams.get('type');
                     }
-                } catch(e) {
-                    console.log('[LYANN CONFIRM] Traitement confirmation_url brute:', rawConfirmationUrl);
+                } catch(e) {}
+            }
+
+            // Détecter si la session est déjà confirmée (redirection Supabase hash avec access_token)
+            const hasAccessToken = hashParams.has('access_token') || searchParams.has('confirmed');
+
+            // Fonction de nettoyage des paramètres de l'URL
+            function cleanSensitiveUrlParams() {
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
                 }
             }
 
-            // Détecter si la session est déjà confirmée (par ex redirection Supabase hash avec access_token)
-            const hasAccessToken = hashParams.has('access_token') || searchParams.has('confirmed');
-
-            // 2. Gestion de l'état au chargement de la page (SANS AUCUN PREFETCH AUTOMATIQUE NI CONSUMPTION)
+            // 2. Gestion de l'état au chargement de la page (AUCUN APPEL AUTOMATIQUE / AUCUN CONSUMPTION)
             if (hasAccessToken) {
+                cleanSensitiveUrlParams();
                 renderSuccessState();
             } else if (errorParam || errorDesc) {
+                cleanSensitiveUrlParams();
                 const descLower = (errorDesc || errorParam || '').toLowerCase();
                 if (descLower.includes('expired') || descLower.includes('invalid') || descLower.includes('already')) {
                     renderExpiredState();
@@ -366,10 +369,10 @@
                 confirmDesc.textContent = 'Ce lien de confirmation n\'est plus valide. Il a peut-être déjà été utilisé ou est arrivé à expiration.';
                 actionContainer.innerHTML = `
                     <a href="index.html?action=open_login" class="btn-confirm-action">
-                        <i class="ph ph-sign-in"></i> Essayer de se connecter
+                        <i class="ph ph-sign-in"></i> Se connecter
                     </a>
                     <a href="index.html?action=resend_confirmation" class="btn-secondary-action">
-                        <i class="ph ph-paper-plane-tilt"></i> Demander un nouveau lien
+                        <i class="ph ph-paper-plane-tilt"></i> Renvoyer un email de confirmation
                     </a>
                 `;
             }
@@ -401,7 +404,7 @@
                 `;
             }
 
-            // 4. Traitement au clic humain
+            // 4. Traitement uniquement lors du clic humain
             async function handleHumanConfirmation() {
                 const btn = document.getElementById('btnConfirm');
                 if (btn) {
@@ -409,19 +412,18 @@
                     btn.innerHTML = '<i class="ph ph-spinner spin"></i> Confirmation en cours...';
                 }
 
-                console.log('[LYANN CONFIRM] Clic utilisateur sur confirmation.');
-
                 try {
-                    // Si nous avons un tokenHash, privilégier la vérification via l'API Supabase verifyOtp
                     if (tokenHash && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-                        console.log('[LYANN CONFIRM] Appel verifyOtp avec token_hash/token.');
+                        const targetType = (authType === 'signup' || authType === 'email') ? authType : 'email';
+                        
                         const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.verifyOtp({
                             token_hash: tokenHash,
-                            type: authType === 'signup' ? 'signup' : (authType || 'email')
+                            type: targetType
                         });
 
                         if (error) {
-                            console.error('[LYANN CONFIRM DEBUG] Erreur verifyOtp:', error);
+                            console.error('[LYANN CONFIRM DEBUG] Erreur verifyOtp:', error.message);
+                            cleanSensitiveUrlParams();
                             const msg = (error.message || '').toLowerCase();
                             if (msg.includes('expired') || msg.includes('invalid') || msg.includes('already') || msg.includes('otp')) {
                                 renderExpiredState();
@@ -431,21 +433,22 @@
                             return;
                         }
 
-                        console.log('[LYANN CONFIRM] Succès verifyOtp:', data);
+                        console.log('[LYANN CONFIRM] Confirmation réussie via verifyOtp.');
+                        cleanSensitiveUrlParams();
                         renderSuccessState();
                         return;
                     }
 
-                    // Sinon, si confirmation_url est une URL HTTP(S) valide de Supabase Auth
                     if (rawConfirmationUrl && (rawConfirmationUrl.startsWith('http://') || rawConfirmationUrl.startsWith('https://'))) {
-                        console.log('[LYANN CONFIRM] Redirection vers confirmation_url:', rawConfirmationUrl);
                         window.location.href = rawConfirmationUrl;
                         return;
                     }
 
+                    cleanSensitiveUrlParams();
                     renderErrorState('Lien de confirmation incomplet ou altéré.');
                 } catch(err) {
-                    console.error('[LYANN CONFIRM DEBUG] Exception:', err);
+                    console.error('[LYANN CONFIRM DEBUG] Exception:', err.message || err);
+                    cleanSensitiveUrlParams();
                     renderErrorState(err.message || 'Erreur imprévue lors de la confirmation.');
                 }
             }
