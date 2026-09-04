@@ -7,17 +7,7 @@
   "outputDirectory": ".",
   "rewrites": [
     {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "admin.lyann.app"
-        }
-      ],
-      "destination": "/admin.html"
-    },
-    {
-      "source": "/index.html",
+      "source": "/((?!.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico|json|woff2?)).*)",
       "has": [
         {
           "type": "host",
