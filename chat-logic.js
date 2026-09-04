@@ -226,32 +226,16 @@ async function addMessageToContact(contactId, msgObj) {
     }
 
     try {
-        const supabase = window.LYANN_API_CLIENT.supabase;
-
-        let { data: convs } = await supabase.from('conversation_participants').select('conversation_id').eq('user_id', getMyId());
-        let sharedConvId = null;
-        if (convs && convs.length > 0) {
-            const convIds = convs.map(c => c.conversation_id);
-            const { data: shared } = await supabase.from('conversation_participants').select('conversation_id').eq('user_id', contactId).in('conversation_id', convIds);
-            if (shared && shared.length > 0) sharedConvId = shared[0].conversation_id;
+        const { data: convRes } = await window.LYANN_API_CLIENT.getOrCreateConversation(getMyId(), contactId);
+        if (!convRes || !convRes.id) {
+            throw new Error("Impossible d'initialiser la conversation.");
         }
 
-        if (!sharedConvId) {
-            const { data: newConv } = await supabase.from('conversations').insert({}).select().single();
-            sharedConvId = newConv.id;
-            await supabase.from('conversation_participants').insert([
-                { conversation_id: sharedConvId, user_id: getMyId() },
-                { conversation_id: sharedConvId, user_id: contactId }
-            ]);
-        }
-
+        const sharedConvId = convRes.id;
         const contentToSave = msgObj.type === 'transactional' ? JSON.stringify(msgObj.txData) : msgObj.text;
 
-        await supabase.from('messages').insert({
-            conversation_id: sharedConvId,
-            sender_id: msgObj.sender === 'me' ? getMyId() : contactId,
-            content: contentToSave
-        });
+        const { error: sendErr } = await window.LYANN_API_CLIENT.sendMessage(sharedConvId, getMyId(), contentToSave);
+        if (sendErr) throw sendErr;
     } catch(e) {
         console.warn("Supabase message send failed, saving locally:", e);
         saveLocalChatMessage(contactId, msgObj);

@@ -25,22 +25,6 @@ END $$;
 -- 2. ENABLE ROW LEVEL SECURITY (RLS) ON ALL CORE TABLES
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
-DO $$ 
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'chats') THEN
-        ALTER TABLE public.chats ENABLE ROW LEVEL SECURITY;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'messages') THEN
-        ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'announcements') THEN
-        ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'reviews') THEN
-        ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
-    END IF;
-END $$;
-
 -- 3. PROFILES POLICIES
 
 -- Public Read: Anyone can view public profile details (first_name, avatar_url, territory, bio, services, ratings)
@@ -101,14 +85,104 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- 5. MESSAGES & CHATS POLICIES (If tables exist)
-DO $$ 
+-- ============================================================================
+-- 5. MESSAGING ARCHITECTURE & CONVERSATION PARTICIPANTS RLS
+-- ============================================================================
+
+-- Ensure Tables Exist
+CREATE TABLE IF NOT EXISTS public.conversations (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.conversation_participants (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id uuid NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
+    user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    joined_at timestamptz DEFAULT now(),
+    UNIQUE (conversation_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.messages (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id uuid REFERENCES public.conversations(id) ON DELETE CASCADE,
+    sender_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+    content text NOT NULL,
+    created_at timestamptz DEFAULT now()
+);
+
+-- Backfill existing participants from messages without deleting data
+INSERT INTO public.conversation_participants (conversation_id, user_id)
+SELECT DISTINCT conversation_id, sender_id 
+FROM public.messages 
+WHERE conversation_id IS NOT NULL AND sender_id IS NOT NULL
+ON CONFLICT (conversation_id, user_id) DO NOTHING;
+
+-- Enable RLS
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+-- SECURITY DEFINER Helper Function (Prevents RLS Recursion)
+CREATE OR REPLACE FUNCTION public.is_conversation_participant(_conversation_id uuid, _user_id uuid)
+RETURNS boolean AS $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'messages') THEN
-        EXECUTE 'DROP POLICY IF EXISTS "Users can read own messages" ON public.messages';
-        EXECUTE 'CREATE POLICY "Users can read own messages" ON public.messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = recipient_id)';
-        
-        EXECUTE 'DROP POLICY IF EXISTS "Users can insert own messages" ON public.messages';
-        EXECUTE 'CREATE POLICY "Users can insert own messages" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id)';
-    END IF;
-END $$;
+  RETURN EXISTS (
+    SELECT 1 
+    FROM public.conversation_participants 
+    WHERE conversation_id = _conversation_id 
+      AND user_id = _user_id
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- POLICIES FOR conversation_participants
+DROP POLICY IF EXISTS "Participants can view own participation" ON public.conversation_participants;
+CREATE POLICY "Participants can view own participation" 
+ON public.conversation_participants FOR SELECT 
+USING (
+    user_id = auth.uid() 
+    OR public.is_conversation_participant(conversation_id, auth.uid())
+    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
+);
+
+DROP POLICY IF EXISTS "Authenticated users can insert participants" ON public.conversation_participants;
+CREATE POLICY "Authenticated users can insert participants" 
+ON public.conversation_participants FOR INSERT 
+WITH CHECK (
+    user_id = auth.uid() 
+    OR public.is_conversation_participant(conversation_id, auth.uid())
+    OR auth.role() = 'authenticated'
+);
+
+-- POLICIES FOR conversations
+DROP POLICY IF EXISTS "Participants can view conversation" ON public.conversations;
+CREATE POLICY "Participants can view conversation" 
+ON public.conversations FOR SELECT 
+USING (
+    public.is_conversation_participant(id, auth.uid())
+    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
+);
+
+DROP POLICY IF EXISTS "Authenticated users can create conversation" ON public.conversations;
+CREATE POLICY "Authenticated users can create conversation" 
+ON public.conversations FOR INSERT 
+WITH CHECK (auth.role() = 'authenticated');
+
+-- POLICIES FOR messages
+DROP POLICY IF EXISTS "Participants can read messages" ON public.messages;
+CREATE POLICY "Participants can read messages" 
+ON public.messages FOR SELECT 
+USING (
+    public.is_conversation_participant(conversation_id, auth.uid())
+    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('SUPER_ADMIN', 'ADMIN', 'OWNER'))
+);
+
+DROP POLICY IF EXISTS "Participants can insert messages" ON public.messages;
+CREATE POLICY "Participants can insert messages" 
+ON public.messages FOR INSERT 
+WITH CHECK (
+    auth.uid() = sender_id 
+    AND public.is_conversation_participant(conversation_id, auth.uid())
+);

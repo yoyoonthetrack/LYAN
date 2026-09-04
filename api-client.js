@@ -124,6 +124,72 @@ const LYANN_API_CLIENT = {
         return await this.supabase.from('profiles').select('*').eq('id', userId).single();
     },
 
+    async getOrCreateConversation(myUserId, targetUserId) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        
+        const { data: myConvs } = await this.supabase
+            .from('conversation_participants')
+            .select('conversation_id')
+            .eq('user_id', myUserId);
+            
+        if (myConvs && myConvs.length > 0) {
+            const convIds = myConvs.map(c => c.conversation_id);
+            const { data: shared } = await this.supabase
+                .from('conversation_participants')
+                .select('conversation_id')
+                .eq('user_id', targetUserId)
+                .in('conversation_id', convIds);
+                
+            if (shared && shared.length > 0) {
+                return { data: { id: shared[0].conversation_id } };
+            }
+        }
+
+        const { data: newConv, error: convErr } = await this.supabase
+            .from('conversations')
+            .insert({})
+            .select()
+            .single();
+
+        if (convErr) return { error: convErr };
+
+        const { error: partErr } = await this.supabase
+            .from('conversation_participants')
+            .insert([
+                { conversation_id: newConv.id, user_id: myUserId },
+                { conversation_id: newConv.id, user_id: targetUserId }
+            ]);
+
+        if (partErr) return { error: partErr };
+        return { data: newConv };
+    },
+
+    async getUserConversations(myUserId) {
+        if (!this.supabase) return { data: [] };
+        return await this.supabase
+            .from('conversation_participants')
+            .select('conversation_id, conversations(*)')
+            .eq('user_id', myUserId);
+    },
+
+    async getConversationMessages(conversationId) {
+        if (!this.supabase) return { data: [] };
+        return await this.supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+    },
+
+    async sendMessage(conversationId, senderId, content) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        return await this.supabase
+            .from('messages')
+            .insert({ conversation_id: conversationId, sender_id: senderId, content: content })
+            .select()
+            .single();
+    },
+
     async getMembers(territory = 'all', query = '') {
         if (!this.supabase) return { data: [] };
         let req = this.supabase.from('profiles').select('*');
