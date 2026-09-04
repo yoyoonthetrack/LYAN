@@ -5,6 +5,28 @@
   "trailingSlash": false,
   "buildCommand": "echo 'Static site deployment ready'",
   "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "admin.lyann.app"
+        }
+      ],
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/index.html",
+      "has": [
+        {
+          "type": "host",
+          "value": "admin.lyann.app"
+        }
+      ],
+      "destination": "/admin.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
