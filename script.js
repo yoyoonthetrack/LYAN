@@ -2980,6 +2980,21 @@ safeDomReady(() => {
                     throw new Error('Session invalide. Identifiants incorrects.');
                 }
 
+                // Confirm that a valid session exists via getSession() before proceeding
+                const { data: sessionData } = await window.LYANN_API_CLIENT.getSession();
+                const activeSession = sessionData?.session;
+
+                console.log('[LYANN AUTH DEBUG]', {
+                    event: 'LOGIN_VERIFIED',
+                    sessionPresent: !!activeSession,
+                    userId: activeSession?.user?.id || null,
+                    origin: window.location.origin
+                });
+
+                if (!activeSession) {
+                    throw new Error('Impossible de confirmer la persistance de la session active.');
+                }
+
                 // Verify email confirmation if required
                 if (data.user && !data.user.email_confirmed_at && data.user.confirmation_sent_at) {
                     window.lyannAlert('📩 Veuillez confirmer votre adresse e-mail via le lien envoyé dans votre boîte de réception pour réactiver votre compte.');
@@ -2991,6 +3006,8 @@ safeDomReady(() => {
                     safeStorage.setItem('lyan_user_logged_in', 'true');
                     if (data.user) safeStorage.setItem('lyan_user_id', data.user.id);
                 }
+                localStorage.setItem('lyan_user_logged_in', 'true');
+                if (data.user) localStorage.setItem('lyan_user_id', data.user.id);
 
                 await updateHeaderAuthState();
                 window.lyannAlert('🎉 Connexion réussie ! Bienvenue sur votre espace LYANN.');
@@ -2998,6 +3015,7 @@ safeDomReady(() => {
                 loginForm.reset();
             } catch (err) {
                 console.error('[LYANN AUTH DEBUG]', {
+                    event: 'LOGIN_FAILED',
                     message: err ? err.message : 'Erreur inconnue',
                     status: err ? err.status : undefined,
                     code: err ? err.code : undefined
@@ -3639,9 +3657,15 @@ safeDomReady(() => {
                 } else {
                     isLoggedIn = false;
                 }
+                console.log('[LYANN AUTH DEBUG]', {
+                    event: 'UPDATE_HEADER_AUTH_STATE',
+                    sessionPresent: isLoggedIn,
+                    userId: userId,
+                    origin: window.location.origin
+                });
             } catch (err) {
-                console.warn("Supabase session verification:", err);
-                isLoggedIn = false;
+                console.warn("[LYANN AUTH DEBUG] Supabase session verification:", err);
+                isLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
             }
         } else {
             isLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
@@ -3650,6 +3674,8 @@ safeDomReady(() => {
         if (isLoggedIn) {
             document.body.classList.add('user-is-logged-in');
             window.CURRENT_USER_ID = userId || "me";
+            if (typeof safeStorage !== 'undefined') safeStorage.setItem('lyan_user_logged_in', 'true');
+            localStorage.setItem('lyan_user_logged_in', 'true');
             
             // Update profile name displays
             try {
@@ -3672,9 +3698,34 @@ safeDomReady(() => {
 
     // Subscribe to Supabase Auth Changes
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-        window.LYANN_API_CLIENT.supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-                updateHeaderAuthState();
+        window.LYANN_API_CLIENT.supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('[LYANN AUTH DEBUG]', {
+                event: event,
+                sessionPresent: !!session,
+                userId: session?.user?.id || null,
+                origin: window.location.origin
+            });
+
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+                if (session && session.user) {
+                    if (typeof safeStorage !== 'undefined') {
+                        safeStorage.setItem('lyan_user_logged_in', 'true');
+                        safeStorage.setItem('lyan_user_id', session.user.id);
+                    }
+                    localStorage.setItem('lyan_user_logged_in', 'true');
+                    localStorage.setItem('lyan_user_id', session.user.id);
+                }
+                await updateHeaderAuthState();
+            } else if (event === 'SIGNED_OUT') {
+                if (typeof safeStorage !== 'undefined') {
+                    safeStorage.removeItem('lyan_user_logged_in');
+                    safeStorage.removeItem('lyan_user_id');
+                    safeStorage.removeItem('lyan_user_profile');
+                }
+                localStorage.removeItem('lyan_user_logged_in');
+                localStorage.removeItem('lyan_user_id');
+                localStorage.removeItem('lyan_user_profile');
+                await updateHeaderAuthState();
             }
         });
     }

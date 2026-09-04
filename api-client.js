@@ -14,8 +14,14 @@ function isUUID(str) {
     return uuidRegex.test(str);
 }
 if (window.supabase) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log("⚡ Supabase client initialized.");
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+        }
+    });
+    console.log("⚡ Supabase client initialized with session persistence.");
 } else {
     console.warn("⚠️ Supabase JS SDK missing. Running in Mock Mode only.");
 }
@@ -69,7 +75,18 @@ function normalizeAuthError(error) {
 // LYANN API CLIENT
 // ----------------------------------------------------------------------
 const LYANN_API_CLIENT = {
-    supabase: supabaseClient,
+    get supabase() {
+        if (!supabaseClient && window.supabase) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true
+                }
+            });
+        }
+        return supabaseClient;
+    },
 
     normalizeAuthError,
 
@@ -115,6 +132,15 @@ const LYANN_API_CLIENT = {
     async logout() {
         if (!this.supabase) return { error: null };
         return await this.supabase.auth.signOut();
+    },
+
+    async signOut() {
+        return await this.logout();
+    },
+
+    async getSession() {
+        if (!this.supabase) return { data: { session: null }, error: null };
+        return await this.supabase.auth.getSession();
     },
 
     async resetPasswordForEmail(email) {
