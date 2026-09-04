@@ -84,17 +84,31 @@ const LYANN_API_CLIENT = {
             password,
             options: {
                 data: metadata,
-                emailRedirectTo: window.location.origin + '/index.html?action=email_confirmed'
+                emailRedirectTo: window.location.origin + '/confirm-signup.html'
             }
         });
-        if (res.error) res.error = normalizeAuthError(res.error);
+        if (res.error) {
+            console.error('[LYANN AUTH DEBUG]', {
+                message: res.error.message,
+                code: res.error.code,
+                status: res.error.status
+            });
+            res.error = normalizeAuthError(res.error);
+        }
         return res;
     },
 
     async login(email, password) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const res = await this.supabase.auth.signInWithPassword({ email, password });
-        if (res.error) res.error = normalizeAuthError(res.error);
+        if (res.error) {
+            console.error('[LYANN AUTH DEBUG]', {
+                message: res.error.message,
+                code: res.error.code,
+                status: res.error.status
+            });
+            res.error = normalizeAuthError(res.error);
+        }
         return res;
     },
 

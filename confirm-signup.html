@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LYANN — Confirmation de votre adresse email</title>
+    <meta name="description" content="Validez votre adresse email pour accéder à votre espace membre LYANN et échanger vos talents.">
+    <link rel="icon" type="image/png" href="logo-app.png">
+    
+    <!-- Google Fonts & Phosphor Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Supabase SDK & API Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="api-client.js"></script>
+
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #0F1714 0%, #1A2E26 50%, #0D1612 100%);
+            color: #E2E8F0;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+        }
+
+        .confirm-header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(15, 23, 20, 0.7);
+            backdrop-filter: blur(12px);
+        }
+
+        .confirm-logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: #FFF;
+        }
+
+        .confirm-logo-img {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            object-fit: cover;
+        }
+
+        .confirm-brand-name {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #2ED573 0%, #7BED9F 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .confirm-main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .confirm-card {
+            width: 100%;
+            max-width: 480px;
+            background: rgba(26, 46, 38, 0.65);
+            border: 1px solid rgba(46, 213, 115, 0.2);
+            border-radius: 24px;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(46, 213, 115, 0.1);
+            backdrop-filter: blur(20px);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .confirm-icon-box {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem auto;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            transition: all 0.4s ease;
+        }
+
+        .confirm-icon-box.ready {
+            background: rgba(46, 213, 115, 0.15);
+            color: #2ED573;
+            border: 1px solid rgba(46, 213, 115, 0.4);
+            box-shadow: 0 0 25px rgba(46, 213, 115, 0.2);
+        }
+
+        .confirm-icon-box.success {
+            background: rgba(46, 213, 115, 0.2);
+            color: #2ED573;
+            border: 2px solid #2ED573;
+            box-shadow: 0 0 35px rgba(46, 213, 115, 0.4);
+            animation: pulse-green 2s infinite;
+        }
+
+        .confirm-icon-box.expired {
+            background: rgba(255, 171, 0, 0.15);
+            color: #FFAB00;
+            border: 1px solid rgba(255, 171, 0, 0.4);
+            box-shadow: 0 0 25px rgba(255, 171, 0, 0.2);
+        }
+
+        .confirm-icon-box.error {
+            background: rgba(255, 71, 87, 0.15);
+            color: #FF4757;
+            border: 1px solid rgba(255, 71, 87, 0.4);
+            box-shadow: 0 0 25px rgba(255, 71, 87, 0.2);
+        }
+
+        @keyframes pulse-green {
+            0% { transform: scale(1); box-shadow: 0 0 20px rgba(46, 213, 115, 0.3); }
+            50% { transform: scale(1.06); box-shadow: 0 0 35px rgba(46, 213, 115, 0.6); }
+            100% { transform: scale(1); box-shadow: 0 0 20px rgba(46, 213, 115, 0.3); }
+        }
+
+        .confirm-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #FFFFFF;
+            margin-bottom: 0.8rem;
+            line-height: 1.3;
+        }
+
+        .confirm-desc {
+            font-size: 0.98rem;
+            color: #A0AEC0;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .btn-confirm-action {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #2ED573 0%, #10AC84 100%);
+            color: #FFFFFF;
+            box-shadow: 0 10px 25px rgba(46, 213, 115, 0.35);
+            transition: all 0.25s ease;
+            text-decoration: none;
+        }
+
+        .btn-confirm-action:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(46, 213, 115, 0.45);
+        }
+
+        .btn-confirm-action:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary-action {
+            width: 100%;
+            padding: 0.9rem 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
+            color: #CBD5E0;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            margin-top: 0.75rem;
+            transition: all 0.25s ease;
+        }
+
+        .btn-secondary-action:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #FFF;
+        }
+
+        .confirm-footer {
+            padding: 1.5rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #718096;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        .badge-notice {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            background: rgba(46, 213, 115, 0.1);
+            color: #2ED573;
+            border: 1px solid rgba(46, 213, 115, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <header class="confirm-header">
+        <a href="index.html" class="confirm-logo-group">
+            <img src="logo-app.png" alt="LYANN" class="confirm-logo-img">
+            <span class="confirm-brand-name">LYANN</span>
+        </a>
+    </header>
+
+    <main class="confirm-main">
+        <div class="confirm-card" id="confirmCard">
+            <div class="confirm-icon-box ready" id="iconBox">
+                <i class="ph ph-envelope-simple-check" id="iconEl"></i>
+            </div>
+            
+            <div id="badgeContainer">
+                <span class="badge-notice" id="badgeNotice">Sécurité du compte LYANN</span>
+            </div>
+
+            <h1 class="confirm-title" id="confirmTitle">Validation de votre adresse email</h1>
+            <p class="confirm-desc" id="confirmDesc">
+                Pour valider votre adresse email et activer votre compte LYANN, cliquez sur le bouton ci-dessous.
+            </p>
+
+            <div id="actionContainer">
+                <button id="btnConfirm" class="btn-confirm-action">
+                    <i class="ph ph-check-circle"></i> Confirmer mon adresse
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="confirm-footer">
+        © 2026 LYANN — Plateforme d'échange de talents & d'entraide caraïbéenne. Tous droits réservés.
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const iconBox = document.getElementById('iconBox');
+            const iconEl = document.getElementById('iconEl');
+            const confirmTitle = document.getElementById('confirmTitle');
+            const confirmDesc = document.getElementById('confirmDesc');
+            const actionContainer = document.getElementById('actionContainer');
+            const badgeNotice = document.getElementById('badgeNotice');
+
+            // 1. Extraire les paramètres de l'URL (search ou hash)
+            const searchParams = new URLSearchParams(window.location.search);
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+            // Extraire confirmation_url si transmise en paramètre
+            let rawConfirmationUrl = searchParams.get('confirmation_url');
+            if (rawConfirmationUrl) {
+                try {
+                    rawConfirmationUrl = decodeURIComponent(rawConfirmationUrl);
+                } catch(e) {}
+            }
+
+            // Détecter token, token_hash, type, error
+            let tokenHash = searchParams.get('token_hash') || searchParams.get('token');
+            let authType = searchParams.get('type') || 'signup';
+            let errorParam = searchParams.get('error') || hashParams.get('error');
+            let errorDesc = searchParams.get('error_description') || hashParams.get('error_description');
+
+            // Si confirmation_url est fournie, tenter d'en extraire le token/type
+            if (rawConfirmationUrl && !tokenHash) {
+                try {
+                    const parsed = new URL(rawConfirmationUrl);
+                    tokenHash = parsed.searchParams.get('token') || parsed.searchParams.get('token_hash');
+                    if (parsed.searchParams.get('type')) {
+                        authType = parsed.searchParams.get('type');
+                    }
+                } catch(e) {
+                    console.log('[LYANN CONFIRM] Traitement confirmation_url brute:', rawConfirmationUrl);
+                }
+            }
+
+            // Détecter si la session est déjà confirmée (par ex redirection Supabase hash avec access_token)
+            const hasAccessToken = hashParams.has('access_token') || searchParams.has('confirmed');
+
+            // 2. Gestion de l'état au chargement de la page (SANS AUCUN PREFETCH AUTOMATIQUE NI CONSUMPTION)
+            if (hasAccessToken) {
+                renderSuccessState();
+            } else if (errorParam || errorDesc) {
+                const descLower = (errorDesc || errorParam || '').toLowerCase();
+                if (descLower.includes('expired') || descLower.includes('invalid') || descLower.includes('already')) {
+                    renderExpiredState();
+                } else {
+                    renderErrorState(errorDesc || 'Le lien de confirmation est invalide.');
+                }
+            } else if (!rawConfirmationUrl && !tokenHash) {
+                renderNoLinkState();
+            } else {
+                // État initial prêt : attend le clic humain
+                renderReadyState();
+            }
+
+            // 3. Rendu des différents états UI
+            function renderReadyState() {
+                iconBox.className = 'confirm-icon-box ready';
+                iconEl.className = 'ph ph-envelope-simple-check';
+                badgeNotice.textContent = 'Sécurité du compte LYANN';
+                confirmTitle.textContent = 'Validation de votre adresse email';
+                confirmDesc.textContent = 'Pour valider votre adresse email et activer votre compte LYANN, cliquez sur le bouton ci-dessous.';
+                actionContainer.innerHTML = `
+                    <button id="btnConfirm" class="btn-confirm-action">
+                        <i class="ph ph-check-circle"></i> Confirmer mon adresse
+                    </button>
+                `;
+                document.getElementById('btnConfirm').addEventListener('click', handleHumanConfirmation);
+            }
+
+            function renderSuccessState() {
+                iconBox.className = 'confirm-icon-box success';
+                iconEl.className = 'ph ph-check-circle';
+                badgeNotice.textContent = '✅ Validation Réussie';
+                confirmTitle.textContent = 'Adresse email confirmée !';
+                confirmDesc.textContent = 'Votre adresse email a été confirmée avec succès. Vous pouvez maintenant vous connecter à votre compte LYANN.';
+                actionContainer.innerHTML = `
+                    <a href="index.html?action=email_confirmed" class="btn-confirm-action">
+                        <i class="ph ph-sign-in"></i> Se connecter
+                    </a>
+                `;
+                setTimeout(() => {
+                    window.location.href = 'index.html?action=email_confirmed';
+                }, 2500);
+            }
+
+            function renderExpiredState() {
+                iconBox.className = 'confirm-icon-box expired';
+                iconEl.className = 'ph ph-warning-octagon';
+                badgeNotice.textContent = '⚠️ Lien Non Valide';
+                badgeNotice.style.color = '#FFAB00';
+                badgeNotice.style.borderColor = 'rgba(255, 171, 0, 0.3)';
+                confirmTitle.textContent = 'Lien expiré ou déjà utilisé';
+                confirmDesc.textContent = 'Ce lien de confirmation n\'est plus valide. Il a peut-être déjà été utilisé ou est arrivé à expiration.';
+                actionContainer.innerHTML = `
+                    <a href="index.html?action=open_login" class="btn-confirm-action">
+                        <i class="ph ph-sign-in"></i> Essayer de se connecter
+                    </a>
+                    <a href="index.html?action=resend_confirmation" class="btn-secondary-action">
+                        <i class="ph ph-paper-plane-tilt"></i> Demander un nouveau lien
+                    </a>
+                `;
+            }
+
+            function renderErrorState(message) {
+                iconBox.className = 'confirm-icon-box error';
+                iconEl.className = 'ph ph-x-circle';
+                badgeNotice.textContent = '❌ Erreur de confirmation';
+                badgeNotice.style.color = '#FF4757';
+                badgeNotice.style.borderColor = 'rgba(255, 71, 87, 0.3)';
+                confirmTitle.textContent = 'Une erreur est survenue';
+                confirmDesc.textContent = message || 'Impossible de valider votre adresse email avec ce lien.';
+                actionContainer.innerHTML = `
+                    <a href="index.html" class="btn-secondary-action">
+                        <i class="ph ph-house"></i> Retour à l'accueil
+                    </a>
+                `;
+            }
+
+            function renderNoLinkState() {
+                iconBox.className = 'confirm-icon-box ready';
+                iconEl.className = 'ph ph-info';
+                confirmTitle.textContent = 'Validation de votre adresse email';
+                confirmDesc.textContent = 'Aucun lien de confirmation n\'a été détecté. Si vous venez de vous inscrire sur LYANN, veuillez cliquer sur le lien reçu par email.';
+                actionContainer.innerHTML = `
+                    <a href="index.html?action=open_login" class="btn-confirm-action">
+                        <i class="ph ph-sign-in"></i> Se connecter
+                    </a>
+                `;
+            }
+
+            // 4. Traitement au clic humain
+            async function handleHumanConfirmation() {
+                const btn = document.getElementById('btnConfirm');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="ph ph-spinner spin"></i> Confirmation en cours...';
+                }
+
+                console.log('[LYANN CONFIRM] Clic utilisateur sur confirmation.');
+
+                try {
+                    // Si nous avons un tokenHash, privilégier la vérification via l'API Supabase verifyOtp
+                    if (tokenHash && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+                        console.log('[LYANN CONFIRM] Appel verifyOtp avec token_hash/token.');
+                        const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.verifyOtp({
+                            token_hash: tokenHash,
+                            type: authType === 'signup' ? 'signup' : (authType || 'email')
+                        });
+
+                        if (error) {
+                            console.error('[LYANN CONFIRM DEBUG] Erreur verifyOtp:', error);
+                            const msg = (error.message || '').toLowerCase();
+                            if (msg.includes('expired') || msg.includes('invalid') || msg.includes('already') || msg.includes('otp')) {
+                                renderExpiredState();
+                            } else {
+                                renderErrorState(error.message);
+                            }
+                            return;
+                        }
+
+                        console.log('[LYANN CONFIRM] Succès verifyOtp:', data);
+                        renderSuccessState();
+                        return;
+                    }
+
+                    // Sinon, si confirmation_url est une URL HTTP(S) valide de Supabase Auth
+                    if (rawConfirmationUrl && (rawConfirmationUrl.startsWith('http://') || rawConfirmationUrl.startsWith('https://'))) {
+                        console.log('[LYANN CONFIRM] Redirection vers confirmation_url:', rawConfirmationUrl);
+                        window.location.href = rawConfirmationUrl;
+                        return;
+                    }
+
+                    renderErrorState('Lien de confirmation incomplet ou altéré.');
+                } catch(err) {
+                    console.error('[LYANN CONFIRM DEBUG] Exception:', err);
+                    renderErrorState(err.message || 'Erreur imprévue lors de la confirmation.');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

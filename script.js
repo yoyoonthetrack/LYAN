@@ -2997,6 +2997,11 @@ safeDomReady(() => {
                 closeLoginModal();
                 loginForm.reset();
             } catch (err) {
+                console.error('[LYANN AUTH DEBUG]', {
+                    message: err ? err.message : 'Erreur inconnue',
+                    status: err ? err.status : undefined,
+                    code: err ? err.code : undefined
+                });
                 const normErr = (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.normalizeAuthError) 
                     ? window.LYANN_API_CLIENT.normalizeAuthError(err) 
                     : err;
@@ -4036,6 +4041,39 @@ safeDomReady(() => {
                 openChatWithUser(targetName, targetAvatar, targetName);
             }
         }, 500);
+    } else if (chatActionParam === 'email_confirmed' || urlParams.has('confirmed')) {
+        setTimeout(() => {
+            window.lyannAlert('✅ Adresse email confirmée avec succès ! Vous pouvez maintenant vous connecter à votre compte LYANN.');
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) loginModal.classList.add('active');
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 400);
+    } else if (chatActionParam === 'open_login') {
+        setTimeout(() => {
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) loginModal.classList.add('active');
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 400);
+    } else if (chatActionParam === 'resend_confirmation') {
+        setTimeout(async () => {
+            const email = await window.lyannPrompt('Veuillez saisir votre adresse email pour recevoir un nouveau lien de confirmation :');
+            if (email && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+                const { error } = await window.LYANN_API_CLIENT.supabase.auth.resend({
+                    type: 'signup',
+                    email: email,
+                    options: {
+                        emailRedirectTo: window.location.origin + '/confirm-signup.html'
+                    }
+                });
+                if (error) {
+                    console.error('[LYANN AUTH DEBUG]', error);
+                    window.lyannAlert('❌ ' + (error.message || 'Erreur lors du renvoi de l’email.'));
+                } else {
+                    window.lyannAlert(`📩 Un nouveau lien de confirmation a été envoyé à l'adresse ${email}.`);
+                }
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 400);
     }
 
     // 2. Bouton & Dropdown de Notifications (dans la Navbar)
