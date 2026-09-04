@@ -495,36 +495,243 @@ WITH CHECK (
 
 -- ----------------------------------------------------------------------------
 -- SECTION 9 : SÉCURISATION RLS DE LA TABLE REQUESTS (BESOIN D'UN COUP DE MAIN)
--- ----------------------------------------------------------------------------
 ALTER TABLE public.requests ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Requests are viewable by everyone" ON public.requests;
+DROP POLICY IF EXISTS "Users can create requests" ON public.requests;
+DROP POLICY IF EXISTS "Authenticated users can insert own requests" ON public.requests;
+DROP POLICY IF EXISTS "Users can update own requests" ON public.requests;
+DROP POLICY IF EXISTS "Users can delete own requests" ON public.requests;
+
 CREATE POLICY "Requests are viewable by everyone" 
 ON public.requests FOR SELECT 
 USING (true);
 
-DROP POLICY IF EXISTS "Authenticated users can insert own requests" ON public.requests;
 CREATE POLICY "Authenticated users can insert own requests" 
 ON public.requests FOR INSERT 
+WITH CHECK (
+    auth.role() = 'authenticated' AND (requester_id = auth.uid() OR requester_id IS NULL)
+);
+
+CREATE POLICY "Users can update own requests" 
+ON public.requests FOR UPDATE 
+USING (
+    auth.uid() = requester_id OR public.is_current_user_admin()
+);
+
+CREATE POLICY "Users can delete own requests" 
+ON public.requests FOR DELETE 
+USING (
+    auth.uid() = requester_id OR public.is_current_user_admin()
+);
+
+-- ----------------------------------------------------------------------------
+-- SECTION 10 : WORKFLOW DES INVITATIONS DE DEMANDES (MATCHING -> SELECTION -> INVITATION)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.request_invitations (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    request_id uuid NOT NULL REFERENCES public.requests(id) ON DELETE CASCADE,
+    requester_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    recipient_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    status text NOT NULL DEFAULT 'PENDING',
+    conversation_id uuid REFERENCES public.conversations(id) ON DELETE SET NULL,
+    sent_at timestamptz DEFAULT now(),
+    viewed_at timestamptz,
+    responded_at timestamptz,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now(),
+    CONSTRAINT check_invitation_status CHECK (status IN ('PENDING', 'VIEWED', 'ACCEPTED', 'DECLINED', 'CANCELLED')),
+    CONSTRAINT unique_request_recipient UNIQUE (request_id, recipient_id)
+);
+
+ALTER TABLE public.request_invitations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Involved users can view invitations" ON public.request_invitations;
+CREATE POLICY "Involved users can view invitations" 
+ON public.request_invitations FOR SELECT 
+USING (
+    auth.uid() = requester_id 
+    OR auth.uid() = recipient_id 
+    OR public.is_current_user_admin()
+);
+
+DROP POLICY IF EXISTS "Requesters can insert invitations" ON public.request_invitations;
+CREATE POLICY "Requesters can insert invitations" 
+ON public.request_invitations FOR INSERT 
 WITH CHECK (
     auth.uid() = requester_id
 );
 
-DROP POLICY IF EXISTS "Users can update own requests" ON public.requests;
-CREATE POLICY "Users can update own requests" 
-ON public.requests FOR UPDATE 
+DROP POLICY IF EXISTS "Involved users can update invitations" ON public.request_invitations;
+CREATE POLICY "Involved users can update invitations" 
+ON public.request_invitations FOR UPDATE 
+USING (
+    auth.uid() = requester_id 
+    OR auth.uid() = recipient_id 
+    OR public.is_current_user_admin()
+);
+
+DROP POLICY IF EXISTS "Requesters or admin can delete invitations" ON public.request_invitations;
+CREATE POLICY "Requesters or admin can delete invitations" 
+ON public.request_invitations FOR DELETE 
 USING (
     auth.uid() = requester_id 
     OR public.is_current_user_admin()
 );
 
-DROP POLICY IF EXISTS "Users can delete own requests" ON public.requests;
-CREATE POLICY "Users can delete own requests" 
-ON public.requests FOR DELETE 
-USING (
-    auth.uid() = requester_id 
-    OR public.is_current_user_admin()
-);
+-- RPC 1: send_request_invitations
+CREATE OR REPLACE FUNCTION public.send_request_invitations(
+    p_request_id uuid,
+    p_recipient_ids uuid[]
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_my_id uuid;
+    v_req_record record;
+    v_recipient_id uuid;
+    v_inserted_count int := 0;
+BEGIN
+    v_my_id := auth.uid();
+    IF v_my_id IS NULL THEN
+        RAISE EXCEPTION 'Non authentifié' USING ERRCODE = '42501';
+    END IF;
+
+    SELECT * INTO v_req_record FROM public.requests WHERE id = p_request_id;
+    IF v_req_record.id IS NULL THEN
+        RAISE EXCEPTION 'Demande introuvable' USING ERRCODE = 'P0002';
+    END IF;
+
+    IF v_req_record.requester_id != v_my_id THEN
+        RAISE EXCEPTION 'Seul l''auteur de la demande peut envoyer des invitations' USING ERRCODE = '42501';
+    END IF;
+
+    IF ARRAY_LENGTH(p_recipient_ids, 1) IS NULL OR ARRAY_LENGTH(p_recipient_ids, 1) = 0 THEN
+        RETURN jsonb_build_object('success', true, 'inserted_count', 0);
+    END IF;
+
+    FOREACH v_recipient_id IN ARRAY p_recipient_ids LOOP
+        IF v_recipient_id = v_my_id THEN
+            CONTINUE;
+        END IF;
+
+        IF EXISTS (SELECT 1 FROM public.profiles WHERE id = v_recipient_id) THEN
+            INSERT INTO public.request_invitations (request_id, requester_id, recipient_id, status)
+            VALUES (p_request_id, v_my_id, v_recipient_id, 'PENDING')
+            ON CONFLICT (request_id, recipient_id) DO NOTHING;
+
+            IF FOUND THEN
+                v_inserted_count := v_inserted_count + 1;
+            END IF;
+        END IF;
+    END LOOP;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'request_id', p_request_id,
+        'inserted_count', v_inserted_count
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.send_request_invitations(uuid, uuid[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.send_request_invitations(uuid, uuid[]) TO authenticated, service_role;
+
+-- RPC 2: accept_request_invitation
+CREATE OR REPLACE FUNCTION public.accept_request_invitation(
+    p_invitation_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_my_id uuid;
+    v_inv_record record;
+    v_conv_id uuid;
+BEGIN
+    v_my_id := auth.uid();
+    IF v_my_id IS NULL THEN
+        RAISE EXCEPTION 'Non authentifié' USING ERRCODE = '42501';
+    END IF;
+
+    SELECT * INTO v_inv_record FROM public.request_invitations WHERE id = p_invitation_id;
+    IF v_inv_record.id IS NULL THEN
+        RAISE EXCEPTION 'Invitation introuvable' USING ERRCODE = 'P0002';
+    END IF;
+
+    IF v_inv_record.recipient_id != v_my_id THEN
+        RAISE EXCEPTION 'Action non autorisée sur cette invitation' USING ERRCODE = '42501';
+    END IF;
+
+    v_conv_id := public.get_or_create_conversation(v_inv_record.requester_id);
+
+    UPDATE public.request_invitations
+    SET status = 'ACCEPTED',
+        conversation_id = v_conv_id,
+        responded_at = now(),
+        updated_at = now()
+    WHERE id = p_invitation_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'invitation_id', p_invitation_id,
+        'conversation_id', v_conv_id,
+        'request_id', v_inv_record.request_id
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.accept_request_invitation(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.accept_request_invitation(uuid) TO authenticated, service_role;
+
+-- RPC 3: decline_request_invitation
+CREATE OR REPLACE FUNCTION public.decline_request_invitation(
+    p_invitation_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_my_id uuid;
+    v_inv_record record;
+BEGIN
+    v_my_id := auth.uid();
+    IF v_my_id IS NULL THEN
+        RAISE EXCEPTION 'Non authentifié' USING ERRCODE = '42501';
+    END IF;
+
+    SELECT * INTO v_inv_record FROM public.request_invitations WHERE id = p_invitation_id;
+    IF v_inv_record.id IS NULL THEN
+        RAISE EXCEPTION 'Invitation introuvable' USING ERRCODE = 'P0002';
+    END IF;
+
+    IF v_inv_record.recipient_id != v_my_id THEN
+        RAISE EXCEPTION 'Action non autorisée sur cette invitation' USING ERRCODE = '42501';
+    END IF;
+
+    UPDATE public.request_invitations
+    SET status = 'DECLINED',
+        responded_at = now(),
+        updated_at = now()
+    WHERE id = p_invitation_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'invitation_id', p_invitation_id,
+        'status', 'DECLINED'
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.decline_request_invitation(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.decline_request_invitation(uuid) TO authenticated, service_role;
 ```
 
 Description: Update 02_security_migration.sql to V3.3 removing full admin access policy and protecting stripe_account_id

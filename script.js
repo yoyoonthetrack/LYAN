@@ -5189,15 +5189,12 @@ safeDomReady(() => {
 
                 console.log("✅ Real Request successfully inserted into Supabase DB:", createdRequest);
 
-                // Close modal & reset
-                modalRequestHelp.classList.remove('active');
-                document.body.style.overflow = '';
                 const descInput = document.getElementById('wizardDescInput');
                 if (descInput) descInput.value = '';
 
                 // Show success toast
                 if (window.NotificationService) {
-                    window.NotificationService.showToast('success', "Votre demande a été publiée avec succès dans LYANN !");
+                    window.NotificationService.showToast('success', "Votre demande a été créée avec succès !");
                 }
 
                 // Dispatch global event and update UI
@@ -5206,6 +5203,9 @@ safeDomReady(() => {
                 if (typeof window.loadUserRequestsUI === 'function') {
                     await window.loadUserRequestsUI();
                 }
+
+                // ÉCRAN APRÈS PUBLICATION : MATCHING → SÉLECTION → INVITATION
+                await showWizardMatchingStep(createdRequest);
 
             } catch (err) {
                 console.error("❌ Erreur publication demande Supabase:", err);
@@ -5221,6 +5221,244 @@ safeDomReady(() => {
         });
     }
 });
+
+// --- ÉCRAN APRÈS PUBLICATION : RECOMMANDATION & SÉLECTION DE LYANNEURS ---
+async function showWizardMatchingStep(createdRequest) {
+    const wizardModal = document.getElementById('modal-request-help');
+    if (!wizardModal) return;
+
+    const modalBody = wizardModal.querySelector('.modal-body');
+    const modalFooter = wizardModal.querySelector('.modal-footer');
+    if (!modalBody || !modalFooter) return;
+
+    // Hide all existing wizard steps
+    const steps = modalBody.querySelectorAll('.wizard-step');
+    steps.forEach(s => s.style.display = 'none');
+
+    // Create or locate Step 7
+    let step7 = modalBody.querySelector('.wizard-step[data-step="7"]');
+    if (!step7) {
+        step7 = document.createElement('div');
+        step7.className = 'wizard-step';
+        step7.setAttribute('data-step', '7');
+        step7.style.padding = '24px';
+        modalBody.appendChild(step7);
+    }
+    step7.style.display = 'block';
+
+    // Update progress bar
+    const progressFill = wizardModal.querySelector('.wizard-progress-fill');
+    if (progressFill) progressFill.style.width = '100%';
+
+    // Fetch candidate profiles (Supabase DB profiles + window.LYANN_MEMBERS fallback)
+    let candidatesList = [];
+    try {
+        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+            const currentUser = await window.LYANN_API_CLIENT.getCurrentUser();
+            const currentUserId = currentUser ? currentUser.id : null;
+
+            const { data: dbProfiles } = await window.LYANN_API_CLIENT.supabase
+                .from('profiles')
+                .select('*')
+                .neq('id', currentUserId || '00000000-0000-0000-0000-000000000000');
+
+            if (dbProfiles && dbProfiles.length > 0) {
+                candidatesList = dbProfiles.map(p => ({
+                    id: p.id,
+                    candidate_id: p.id,
+                    name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Lyanneur',
+                    display_name: `${p.first_name || 'Lyanneur'} ${(p.last_name || '').charAt(0)}.${(p.last_name || '').length > 0 ? '' : ''}`.trim(),
+                    avatar: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.id}`,
+                    role: p.headline || p.activity || 'Services & Entraide',
+                    city: p.city || p.location || 'Guadeloupe',
+                    rating: p.rating || null,
+                    reviewsCount: p.reviews_count || 0,
+                    is_verified: p.is_verified || p.account_type === 'pro',
+                    badge: (p.is_verified || p.account_type === 'pro') ? '✔ Pro Vérifié' : null,
+                    skills: p.skills || [],
+                    account_type: p.account_type || 'real'
+                }));
+            }
+        }
+    } catch (e) {
+        console.warn("Erreur chargement profils DB pour matching:", e);
+    }
+
+    if (window.LYANN_MEMBERS && Array.isArray(window.LYANN_MEMBERS)) {
+        const existingIds = new Set(candidatesList.map(c => c.id));
+        window.LYANN_MEMBERS.forEach(m => {
+            const memberId = m.id || m.user_id || m.name;
+            if (!existingIds.has(memberId)) {
+                candidatesList.push({
+                    id: memberId,
+                    candidate_id: memberId,
+                    name: m.name,
+                    display_name: m.name,
+                    avatar: m.avatar || m.photo || 'david-34.png',
+                    role: m.role || m.services || 'Services & Entraide',
+                    city: m.city || m.location || 'Sainte-Anne',
+                    rating: m.rating || 4.9,
+                    reviewsCount: m.reviewsCount || 12,
+                    is_verified: m.isVerified || m.badge === '✔ Artisan Vérifié',
+                    badge: m.badge || 'Voisins Confiance',
+                    skills: m.skills || [],
+                    account_type: 'seed'
+                });
+            }
+        });
+    }
+
+    // Run LyannMatchingEngine to rank candidates
+    let matchedResults = [];
+    if (window.LyannMatchingEngine) {
+        const ranked = window.LyannMatchingEngine.findMatchingLyanneursForNeed(createdRequest, candidatesList, { limit: 10 });
+        matchedResults = ranked.lyanneurs || [];
+    } else {
+        matchedResults = candidatesList.slice(0, 6).map(c => ({
+            user_id: c.id,
+            display_name: c.display_name,
+            avatar: c.avatar,
+            role: c.role,
+            public_location: c.city,
+            rating: c.rating,
+            reviewsCount: c.reviewsCount,
+            badge: c.badge
+        }));
+    }
+
+    step7.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="width: 48px; height: 48px; background: rgba(74, 124, 89, 0.12); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                <i class="ph-fill ph-check-circle" style="font-size: 26px; color: var(--primary);"></i>
+            </div>
+            <h4 style="font-size: 1.2rem; font-weight: 800; color: var(--primary-dark); margin: 0 0 4px 0;">Voici les Lyanneurs qui pourraient vous aider</h4>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">Sélectionnez 1 ou plusieurs profils pour leur envoyer votre demande.</p>
+        </div>
+
+        <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 12px; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+            <span>Profils recommandés par LYANN (${matchedResults.length})</span>
+            <span style="font-size: 0.78rem; font-weight: 500; color: var(--text-muted);">Triés par pertinence</span>
+        </div>
+
+        <div id="wizardMatchedLyanneursList" style="display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto; padding-right: 4px;">
+            ${matchedResults.map((item, idx) => {
+                const ratingDisplay = item.rating ? `★ ${item.rating} ${item.reviewsCount ? '('+item.reviewsCount+' avis)' : ''}` : 'Nouveau';
+                const isChecked = idx < 2 ? 'checked' : '';
+                return `
+                    <div class="lyanneur-recommendation-card" style="display: flex; align-items: center; gap: 14px; padding: 14px; background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 12px; cursor: pointer; transition: all 0.2s ease;">
+                        <input type="checkbox" class="lyanneur-select-checkbox" data-candidate-id="${item.user_id}" ${isChecked} style="width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer;">
+                        <img src="${item.avatar || 'david-34.png'}" alt="${item.display_name}" style="width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <strong style="font-size: 0.96rem; color: var(--text-dark);">${item.display_name}</strong>
+                                ${item.badge ? `<span style="background: rgba(74, 124, 89, 0.12); color: var(--primary); font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">${item.badge}</span>` : ''}
+                            </div>
+                            <div style="font-size: 0.84rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${item.role || 'Prestataire LYANN'}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; font-size: 0.78rem; color: #64748B; margin-top: 4px;">
+                                <span><i class="ph ph-map-pin"></i> ${item.public_location || 'Guadeloupe'}</span>
+                                ${item.distance_km !== undefined ? `<span>· ${item.distance_km} km</span>` : ''}
+                                <span style="color: #E5B345; font-weight: 700;">${ratingDisplay}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+
+    // Configure Footer Buttons
+    modalFooter.innerHTML = `
+        <button class="btn btn-outline" id="wizardBtnSkipInvitations" style="font-size: 0.9rem;">Passer cette étape</button>
+        <button class="btn btn-primary" id="wizardBtnSendInvitations" style="background: var(--primary); color: #FFF; font-weight: 800; font-size: 0.95rem; padding: 10px 20px;">
+            Envoyer ma demande à <span id="selectedLyanneursCount">0</span> Lyanneur(s) <i class="ph ph-paper-plane-tilt"></i>
+        </button>
+    `;
+
+    // Toggle card selection
+    const cards = step7.querySelectorAll('.lyanneur-recommendation-card');
+    const updateSelectedCount = () => {
+        const checked = step7.querySelectorAll('.lyanneur-select-checkbox:checked');
+        const countSpan = document.getElementById('selectedLyanneursCount');
+        if (countSpan) countSpan.textContent = checked.length;
+    };
+
+    cards.forEach(card => {
+        const checkbox = card.querySelector('.lyanneur-select-checkbox');
+        card.addEventListener('click', (e) => {
+            if (e.target !== checkbox) {
+                checkbox.checked = !checkbox.checked;
+            }
+            card.style.borderColor = checkbox.checked ? 'var(--primary)' : '#E2E8F0';
+            card.style.background = checkbox.checked ? 'rgba(74, 124, 89, 0.04)' : '#FFFFFF';
+            updateSelectedCount();
+        });
+        checkbox.addEventListener('change', () => {
+            card.style.borderColor = checkbox.checked ? 'var(--primary)' : '#E2E8F0';
+            card.style.background = checkbox.checked ? 'rgba(74, 124, 89, 0.04)' : '#FFFFFF';
+            updateSelectedCount();
+        });
+        if (checkbox.checked) {
+            card.style.borderColor = 'var(--primary)';
+            card.style.background = 'rgba(74, 124, 89, 0.04)';
+        }
+    });
+
+    updateSelectedCount();
+
+    // Skip Button
+    document.getElementById('wizardBtnSkipInvitations')?.addEventListener('click', () => {
+        wizardModal.classList.remove('active');
+        document.body.style.overflow = '';
+    });
+
+    // Send Invitations Button
+    document.getElementById('wizardBtnSendInvitations')?.addEventListener('click', async () => {
+        const btn = document.getElementById('wizardBtnSendInvitations');
+        const checkedCheckboxes = Array.from(step7.querySelectorAll('.lyanneur-select-checkbox:checked'));
+        const selectedRecipientIds = checkedCheckboxes.map(cb => cb.getAttribute('data-candidate-id')).filter(Boolean);
+
+        if (selectedRecipientIds.length === 0) {
+            if (window.NotificationService) {
+                window.NotificationService.showToast('info', "Veuillez sélectionner au moins un Lyanneur ou cliquer sur 'Passer'.");
+            } else {
+                alert("Veuillez sélectionner au moins un Lyanneur ou cliquer sur 'Passer'.");
+            }
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-spinner spin"></i> Envoi en cours...';
+
+        try {
+            const res = await window.LYANN_API_CLIENT.sendRequestInvitations(createdRequest.id, selectedRecipientIds);
+            console.log("✅ Invitations envoyées avec succès:", res);
+
+            if (window.NotificationService) {
+                window.NotificationService.showToast('success', `Demande envoyée avec succès à ${res.inserted_count || selectedRecipientIds.length} Lyanneur(s) !`);
+            } else {
+                alert(`Demande envoyée avec succès à ${res.inserted_count || selectedRecipientIds.length} Lyanneur(s) !`);
+            }
+
+            wizardModal.classList.remove('active');
+            document.body.style.overflow = '';
+
+            if (typeof window.loadUserRequestsUI === 'function') {
+                await window.loadUserRequestsUI();
+            }
+        } catch (err) {
+            console.error("❌ Erreur d'envoi des invitations:", err);
+            if (window.NotificationService) {
+                window.NotificationService.showToast('error', "Erreur d'envoi : " + (err.message || "Erreur serveur"));
+            } else {
+                alert("Erreur d'envoi : " + (err.message || "Erreur serveur"));
+            }
+        } finally {
+            btn.disabled = false;
+        }
+    });
+}
 
 // --- RENDER USER REAL REQUESTS UNDER 'MES DEMANDES' ---
 window.loadUserRequestsUI = async function() {
@@ -5246,7 +5484,7 @@ window.loadUserRequestsUI = async function() {
         for (const req of requests) {
             const dateStr = req.created_at ? new Date(req.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Récemment';
             const budgetStr = req.budget ? `${req.budget} €` : 'Sur devis';
-            
+
             html += `
                 <div class="request-card-item" data-id="${req.id}" style="background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
@@ -5274,11 +5512,174 @@ window.loadUserRequestsUI = async function() {
     }
 };
 
-// Automatically trigger loadUserRequestsUI when profile tab 'tab-requests' is clicked
+// --- RENDER LYANNEUR RECEIVED INVITATIONS UNDER 'DEMANDES REÇUES' ---
+window.loadUserReceivedInvitationsUI = async function() {
+    const container = document.getElementById('accountReceivedInvitationsContainer');
+    const badgeSpan = document.getElementById('accountReceivedInvitationsBadge');
+
+    if (!window.LYANN_API_CLIENT) return;
+
+    try {
+        const invitations = await window.LYANN_API_CLIENT.getReceivedInvitations();
+
+        if (badgeSpan) {
+            const pendingCount = invitations.filter(i => i.status === 'PENDING').length;
+            badgeSpan.textContent = `${pendingCount} nouvelle(s) / ${invitations.length} au total`;
+        }
+
+        if (!container) return;
+
+        if (!invitations || invitations.length === 0) {
+            container.innerHTML = '<div class="empty-state-message" style="padding: 16px; text-align: center; color: var(--text-muted); font-size: 0.88rem;">Vous n\'avez reçu aucune invitation pour le moment.</div>';
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+        for (const inv of invitations) {
+            const req = inv.requests || {};
+            const requester = inv.requester || {};
+            const requesterName = `${requester.first_name || 'Un utilisateur'} ${(requester.last_name || '').charAt(0)}.`.trim();
+            const dateStr = inv.created_at ? new Date(inv.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+            const budgetStr = req.budget ? `${req.budget} €` : 'Sur devis';
+
+            let statusBadgeHtml = '';
+            let actionsHtml = '';
+
+            if (inv.status === 'PENDING') {
+                statusBadgeHtml = '<span style="background: #FFF8E1; color: #D4A843; font-weight: 700; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px;">● En attente</span>';
+                actionsHtml = `
+                    <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+                        <button class="btn btn-outline btn-sm btn-inv-decline" data-inv-id="${inv.id}" style="color: #C95140; border-color: #CBD5E1; font-size: 0.82rem; padding: 6px 12px;">
+                            <i class="ph ph-x"></i> Décliner
+                        </button>
+                        <button class="btn btn-primary btn-sm btn-inv-accept" data-inv-id="${inv.id}" data-req-title="${req.title || 'Demande'}" data-requester-name="${requesterName}" data-requester-id="${inv.requester_id}" style="background: var(--primary); font-weight: 800; font-size: 0.85rem; padding: 6px 14px;">
+                            <i class="ph ph-hand-waving"></i> Je peux aider
+                        </button>
+                    </div>
+                `;
+            } else if (inv.status === 'ACCEPTED') {
+                statusBadgeHtml = '<span style="background: #E8F5E9; color: #2E7D32; font-weight: 700; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px;">✔ Acceptée</span>';
+                actionsHtml = `
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-outline btn-sm btn-inv-open-chat" data-conv-id="${inv.conversation_id}" data-requester-name="${requesterName}" data-requester-id="${inv.requester_id}" style="font-size: 0.82rem; padding: 6px 12px; border-color: var(--primary); color: var(--primary);">
+                            <i class="ph ph-chats-teardrop"></i> Ouvrir le Chat
+                        </button>
+                    </div>
+                `;
+            } else if (inv.status === 'DECLINED') {
+                statusBadgeHtml = '<span style="background: #FFEBEE; color: #C95140; font-weight: 700; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px;">✖ Déclinée</span>';
+            }
+
+            html += `
+                <div class="received-invitation-card" style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <img src="${requester.avatar_url || 'david-34.png'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            <div>
+                                <strong style="font-size: 0.95rem; color: var(--text-dark);">${requesterName} a besoin d'un coup de main</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);"><i class="ph ph-map-pin"></i> ${req.location || requester.city || 'Guadeloupe'} · ${dateStr}</div>
+                            </div>
+                        </div>
+                        ${statusBadgeHtml}
+                    </div>
+
+                    <div style="background: #F8FAFC; border-radius: 8px; padding: 10px 12px; margin: 8px 0; border: 1px solid #F1F5F9;">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--primary-dark);">${req.title || 'Besoin d\'aide'}</div>
+                        <p style="font-size: 0.85rem; color: #475569; margin: 4px 0 0 0; line-height: 1.4;">${req.description || 'Description non renseignée'}</p>
+                        <div style="display: flex; gap: 16px; font-size: 0.8rem; font-weight: 600; color: #334155; margin-top: 6px;">
+                            <span>Budget: <strong style="color: var(--primary);">${budgetStr}</strong></span>
+                            <span>Urgence: <strong>${req.urgency || 'Flexible'}</strong></span>
+                        </div>
+                    </div>
+
+                    ${actionsHtml}
+                </div>
+            `;
+        }
+        html += '</div>';
+        container.innerHTML = html;
+
+        // Attach Accept handlers
+        container.querySelectorAll('.btn-inv-accept').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const invId = btn.getAttribute('data-inv-id');
+                const reqTitle = btn.getAttribute('data-req-title');
+                const requesterName = btn.getAttribute('data-requester-name');
+                const requesterId = btn.getAttribute('data-requester-id');
+
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph ph-spinner spin"></i> Acceptation...';
+
+                try {
+                    const res = await window.LYANN_API_CLIENT.acceptInvitation(invId);
+                    console.log("✅ Invitation acceptée avec succès:", res);
+
+                    if (window.NotificationService) {
+                        window.NotificationService.showToast('success', `Vous avez accepté la demande de ${requesterName} !`);
+                    }
+
+                    await window.loadUserReceivedInvitationsUI();
+
+                    // Open chat with user
+                    if (typeof window.openChatWithUser === 'function') {
+                        await window.openChatWithUser(requesterName, 'david-34.png', requesterId, { title: reqTitle });
+                    }
+
+                } catch (err) {
+                    console.error("❌ Erreur acceptation invitation:", err);
+                    if (window.NotificationService) {
+                        window.NotificationService.showToast('error', "Erreur d'acceptation : " + (err.message || "Erreur serveur"));
+                    }
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        // Attach Decline handlers
+        container.querySelectorAll('.btn-inv-decline').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const invId = btn.getAttribute('data-inv-id');
+
+                btn.disabled = true;
+
+                try {
+                    await window.LYANN_API_CLIENT.declineInvitation(invId);
+                    if (window.NotificationService) {
+                        window.NotificationService.showToast('info', "Demande déclinée.");
+                    }
+                    await window.loadUserReceivedInvitationsUI();
+                } catch (err) {
+                    console.error("❌ Erreur refus invitation:", err);
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        // Attach Open Chat handlers
+        container.querySelectorAll('.btn-inv-open-chat').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const requesterName = btn.getAttribute('data-requester-name');
+                const requesterId = btn.getAttribute('data-requester-id');
+                if (typeof window.openChatWithUser === 'function') {
+                    await window.openChatWithUser(requesterName, 'david-34.png', requesterId);
+                }
+            });
+        });
+
+    } catch (e) {
+        console.error("Erreur chargement invitations reçues:", e);
+        if (container) container.innerHTML = '<div class="empty-state-message">Erreur de chargement des invitations.</div>';
+    }
+};
+
+// Automatically trigger loadUserRequestsUI & loadUserReceivedInvitationsUI when tabs are clicked
 document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.profile-tab-btn[data-tab="tab-requests"]');
-    if (btn && typeof window.loadUserRequestsUI === 'function') {
-        window.loadUserRequestsUI();
+    const btn = e.target.closest('.profile-tab-btn[data-tab="tab-requests"], .account-tab-btn[data-account-tab="tab-acc-activities"]');
+    if (btn) {
+        if (typeof window.loadUserRequestsUI === 'function') window.loadUserRequestsUI();
+        if (typeof window.loadUserReceivedInvitationsUI === 'function') window.loadUserReceivedInvitationsUI();
     }
 });
 

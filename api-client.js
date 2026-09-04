@@ -898,6 +898,158 @@ const LYANN_API_CLIENT = {
 
         const { data: publicUrlData } = this.supabase.storage.from(bucket).getPublicUrl(filePath);
         return publicUrlData ? publicUrlData.publicUrl : null;
+    },
+
+    // --- REQUEST INVITATIONS API (request_invitations) ---
+    async sendRequestInvitations(requestId, recipientIds) {
+        if (!this.supabase) throw new Error("Supabase non initialisé");
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) throw new Error("Utilisateur non connecté");
+
+        if (!Array.isArray(recipientIds) || recipientIds.length === 0) {
+            return { success: true, inserted_count: 0 };
+        }
+
+        try {
+            const { data, error } = await this.supabase.rpc('send_request_invitations', {
+                p_request_id: requestId,
+                p_recipient_ids: recipientIds
+            });
+            if (!error) return data;
+        } catch (e) {
+            console.warn("RPC send_request_invitations fallback to direct insert:", e);
+        }
+
+        const requesterId = session.user.id;
+        const validIds = recipientIds.filter(id => isUUID(id) && id !== requesterId);
+        
+        if (validIds.length === 0) return { success: true, inserted_count: 0 };
+
+        const rows = validIds.map(recipientId => ({
+            request_id: requestId,
+            requester_id: requesterId,
+            recipient_id: recipientId,
+            status: 'PENDING'
+        }));
+
+        const { data, error } = await this.supabase
+            .from('request_invitations')
+            .upsert(rows, { onConflict: 'request_id,recipient_id', ignoreDuplicates: true })
+            .select();
+
+        if (error) {
+            console.error("Error inserting request_invitations:", error);
+            throw error;
+        }
+        return { success: true, inserted_count: data ? data.length : validIds.length };
+    },
+
+    async getReceivedInvitations() {
+        if (!this.supabase) return [];
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) return [];
+
+        const { data, error } = await this.supabase
+            .from('request_invitations')
+            .select(`
+                *,
+                requests:request_id (id, title, description, category, location, budget, urgency, status, created_at),
+                requester:requester_id (id, first_name, last_name, avatar_url, city, territory)
+            `)
+            .eq('recipient_id', session.user.id)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error("Error fetching received invitations:", error);
+            return [];
+        }
+        return data || [];
+    },
+
+    async getSentInvitations(requestId) {
+        if (!this.supabase || !requestId) return [];
+        const { data, error } = await this.supabase
+            .from('request_invitations')
+            .select(`
+                *,
+                recipient:recipient_id (id, first_name, last_name, avatar_url, city)
+            `)
+            .eq('request_id', requestId);
+
+        if (error) {
+            console.error("Error fetching sent invitations:", error);
+            return [];
+        }
+        return data || [];
+    },
+
+    async acceptInvitation(invitationId) {
+        if (!this.supabase) throw new Error("Supabase non initialisé");
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) throw new Error("Utilisateur non connecté");
+
+        try {
+            const { data, error } = await this.supabase.rpc('accept_request_invitation', {
+                p_invitation_id: invitationId
+            });
+            if (!error) return data;
+        } catch (e) {
+            console.warn("RPC accept_request_invitation fallback to manual flow:", e);
+        }
+
+        const { data: inv, error: fetchErr } = await this.supabase
+            .from('request_invitations')
+            .select('*')
+            .eq('id', invitationId)
+            .single();
+
+        if (fetchErr || !inv) throw fetchErr || new Error("Invitation introuvable");
+        if (inv.recipient_id !== session.user.id) throw new Error("Action non autorisée sur cette invitation");
+
+        const convId = await this.getOrCreateConversation(inv.requester_id);
+
+        const { data: updated, error: updateErr } = await this.supabase
+            .from('request_invitations')
+            .update({
+                status: 'ACCEPTED',
+                conversation_id: convId,
+                responded_at: new Date().toISOString()
+            })
+            .eq('id', invitationId)
+            .select()
+            .single();
+
+        if (updateErr) throw updateErr;
+        return { success: true, invitation_id: invitationId, conversation_id: convId, request_id: inv.request_id };
+    },
+
+    async declineInvitation(invitationId) {
+        if (!this.supabase) throw new Error("Supabase non initialisé");
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) throw new Error("Utilisateur non connecté");
+
+        try {
+            const { data, error } = await this.supabase.rpc('decline_request_invitation', {
+                p_invitation_id: invitationId
+            });
+            if (!error) return data;
+        } catch (e) {
+            console.warn("RPC decline_request_invitation fallback:", e);
+        }
+
+        const { data, error } = await this.supabase
+            .from('request_invitations')
+            .update({
+                status: 'DECLINED',
+                responded_at: new Date().toISOString()
+            })
+            .eq('id', invitationId)
+            .eq('recipient_id', session.user.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { success: true, invitation_id: invitationId, status: 'DECLINED' };
     }
 };
 
