@@ -533,50 +533,35 @@ CREATE TABLE IF NOT EXISTS public.request_invitations (
     request_id uuid NOT NULL REFERENCES public.requests(id) ON DELETE CASCADE,
     requester_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     recipient_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    status text NOT NULL DEFAULT 'PENDING',
+    status text NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'VIEWED', 'ACCEPTED', 'DECLINED', 'CANCELLED')),
     conversation_id uuid REFERENCES public.conversations(id) ON DELETE SET NULL,
-    sent_at timestamptz DEFAULT now(),
+    sent_at timestamptz NOT NULL DEFAULT now(),
     viewed_at timestamptz,
     responded_at timestamptz,
-    created_at timestamptz DEFAULT now(),
-    updated_at timestamptz DEFAULT now(),
-    CONSTRAINT check_invitation_status CHECK (status IN ('PENDING', 'VIEWED', 'ACCEPTED', 'DECLINED', 'CANCELLED')),
-    CONSTRAINT unique_request_recipient UNIQUE (request_id, recipient_id)
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT unique_request_recipient UNIQUE(request_id, recipient_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_request_invitations_request ON public.request_invitations(request_id);
+CREATE INDEX IF NOT EXISTS idx_request_invitations_recipient ON public.request_invitations(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_request_invitations_requester ON public.request_invitations(requester_id);
 
 ALTER TABLE public.request_invitations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Involved users can view invitations" ON public.request_invitations;
-CREATE POLICY "Involved users can view invitations" 
+DROP POLICY IF EXISTS "Participants can view request invitations" ON public.request_invitations;
+DROP POLICY IF EXISTS "Requesters can insert invitations" ON public.request_invitations;
+DROP POLICY IF EXISTS "Requesters can insert request invitations" ON public.request_invitations;
+DROP POLICY IF EXISTS "Involved users can update invitations" ON public.request_invitations;
+DROP POLICY IF EXISTS "Participants can update request invitations" ON public.request_invitations;
+DROP POLICY IF EXISTS "Requesters or admin can delete invitations" ON public.request_invitations;
+DROP POLICY IF EXISTS "Requesters can delete request invitations" ON public.request_invitations;
+
+CREATE POLICY "Participants can view request invitations" 
 ON public.request_invitations FOR SELECT 
 USING (
-    auth.uid() = requester_id 
-    OR auth.uid() = recipient_id 
-    OR public.is_current_user_admin()
-);
-
-DROP POLICY IF EXISTS "Requesters can insert invitations" ON public.request_invitations;
-CREATE POLICY "Requesters can insert invitations" 
-ON public.request_invitations FOR INSERT 
-WITH CHECK (
-    auth.uid() = requester_id
-);
-
-DROP POLICY IF EXISTS "Involved users can update invitations" ON public.request_invitations;
-CREATE POLICY "Involved users can update invitations" 
-ON public.request_invitations FOR UPDATE 
-USING (
-    auth.uid() = requester_id 
-    OR auth.uid() = recipient_id 
-    OR public.is_current_user_admin()
-);
-
-DROP POLICY IF EXISTS "Requesters or admin can delete invitations" ON public.request_invitations;
-CREATE POLICY "Requesters or admin can delete invitations" 
-ON public.request_invitations FOR DELETE 
-USING (
-    auth.uid() = requester_id 
-    OR public.is_current_user_admin()
+    auth.uid() = requester_id OR auth.uid() = recipient_id
 );
 
 -- RPC 1: send_request_invitations
@@ -607,6 +592,10 @@ BEGIN
 
     IF v_req_record.requester_id != v_my_id THEN
         RAISE EXCEPTION 'Seul l''auteur de la demande peut envoyer des invitations' USING ERRCODE = '42501';
+    END IF;
+
+    IF COALESCE(v_req_record.status, 'OPEN') != 'OPEN' THEN
+        RAISE EXCEPTION 'La demande n''est plus ouverte aux invitations (statut actuel: %)', v_req_record.status USING ERRCODE = '22000';
     END IF;
 
     IF ARRAY_LENGTH(p_recipient_ids, 1) IS NULL OR ARRAY_LENGTH(p_recipient_ids, 1) = 0 THEN
@@ -668,6 +657,10 @@ BEGIN
         RAISE EXCEPTION 'Action non autorisée sur cette invitation' USING ERRCODE = '42501';
     END IF;
 
+    IF v_inv_record.status NOT IN ('PENDING', 'VIEWED') THEN
+        RAISE EXCEPTION 'L''invitation ne peut plus être acceptée (statut actuel: %)', v_inv_record.status USING ERRCODE = '22000';
+    END IF;
+
     v_conv_id := public.get_or_create_conversation(v_inv_record.requester_id);
 
     UPDATE public.request_invitations
@@ -675,7 +668,13 @@ BEGIN
         conversation_id = v_conv_id,
         responded_at = now(),
         updated_at = now()
-    WHERE id = p_invitation_id;
+    WHERE id = p_invitation_id
+      AND recipient_id = v_my_id
+      AND status IN ('PENDING', 'VIEWED');
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Impossible d''accepter l''invitation (concurrence ou statut déjà modifié)' USING ERRCODE = '40001';
+    END IF;
 
     RETURN jsonb_build_object(
         'success', true,
@@ -716,11 +715,21 @@ BEGIN
         RAISE EXCEPTION 'Action non autorisée sur cette invitation' USING ERRCODE = '42501';
     END IF;
 
+    IF v_inv_record.status NOT IN ('PENDING', 'VIEWED') THEN
+        RAISE EXCEPTION 'L''invitation ne peut plus être déclinée (statut actuel: %)', v_inv_record.status USING ERRCODE = '22000';
+    END IF;
+
     UPDATE public.request_invitations
     SET status = 'DECLINED',
         responded_at = now(),
         updated_at = now()
-    WHERE id = p_invitation_id;
+    WHERE id = p_invitation_id
+      AND recipient_id = v_my_id
+      AND status IN ('PENDING', 'VIEWED');
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Impossible de décliner l''invitation (concurrence ou statut déjà modifié)' USING ERRCODE = '40001';
+    END IF;
 
     RETURN jsonb_build_object(
         'success', true,
@@ -732,6 +741,10 @@ $$;
 
 REVOKE ALL ON FUNCTION public.decline_request_invitation(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.decline_request_invitation(uuid) TO authenticated, service_role;
+
+REVOKE ALL ON public.request_invitations FROM PUBLIC;
+GRANT SELECT ON public.request_invitations TO authenticated;
+GRANT ALL ON public.request_invitations TO service_role;
 ```
 
 Description: Update 02_security_migration.sql to V3.3 removing full admin access policy and protecting stripe_account_id
