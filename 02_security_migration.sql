@@ -594,8 +594,11 @@ BEGIN
         RAISE EXCEPTION 'Seul l''auteur de la demande peut envoyer des invitations' USING ERRCODE = '42501';
     END IF;
 
-    IF COALESCE(v_req_record.status, 'OPEN') != 'OPEN' THEN
-        RAISE EXCEPTION 'La demande n''est plus ouverte aux invitations (statut actuel: %)', v_req_record.status USING ERRCODE = '22000';
+    IF v_req_record.status IS DISTINCT FROM 'OPEN' THEN
+        RAISE EXCEPTION
+          'La demande n''est plus ouverte aux invitations (statut actuel: %)',
+          COALESCE(v_req_record.status, 'NULL')
+          USING ERRCODE = '22000';
     END IF;
 
     IF ARRAY_LENGTH(p_recipient_ids, 1) IS NULL OR ARRAY_LENGTH(p_recipient_ids, 1) = 0 THEN
