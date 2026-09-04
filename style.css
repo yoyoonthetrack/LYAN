@@ -9456,8 +9456,17 @@ body.hide-bottom-nav {
     overflow: visible !important;
 }
 
+@media (max-width: 991px) {
+    .mobile-bottom-nav {
+        display: flex !important;
+    }
+    body:not(.hide-bottom-nav) {
+        padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}
+
 body.is-native-app .mobile-bottom-nav {
-    display: flex;
+    display: flex !important;
 }
 
 body.is-native-app {
