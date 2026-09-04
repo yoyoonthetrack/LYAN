@@ -1345,34 +1345,114 @@ function ensureMobileHamburgerDrawer() {
 }
 
 window.openLyannHamburgerDrawer = function() {
-    ensureMobileHamburgerDrawer();
-    const overlay = document.getElementById('mobileHamburgerDrawerOverlay');
-    if (overlay) {
-        overlay.classList.add('active');
+    const menu = document.getElementById('mobileMenu') || document.getElementById('mobileHamburgerDrawerOverlay');
+    if (menu) {
+        menu.classList.add('active');
         document.body.style.overflow = 'hidden';
+    } else if (typeof ensureMobileHamburgerDrawer === 'function') {
+        ensureMobileHamburgerDrawer();
+        const overlay = document.getElementById('mobileHamburgerDrawerOverlay');
+        if (overlay) {
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
     }
 };
 
 window.closeLyannHamburgerDrawer = function() {
-    const overlay = document.getElementById('mobileHamburgerDrawerOverlay');
-    if (overlay) {
-        overlay.classList.remove('active');
-        document.body.style.overflow = '';
-    }
+    document.querySelectorAll('.mobile-menu-overlay, #mobileHamburgerDrawerOverlay').forEach(menu => {
+        menu.classList.remove('active');
+    });
+    document.body.style.overflow = '';
 };
+
+// Master Hamburger Drawer Click Delegator
+document.addEventListener('click', (e) => {
+    // 1. Open Drawer Button
+    const openBtn = e.target.closest('.mobile-menu-btn, #openMobileDrawerBtn, .open-drawer-trigger, .hamburger-menu-btn, #btnHeaderHamburger');
+    if (openBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.openLyannHamburgerDrawer();
+        return;
+    }
+
+    // 2. Close Drawer Button or Backdrop
+    const closeBtn = e.target.closest('.mobile-menu-close, #closeMobileDrawerBtn');
+    const overlayBackdrop = (e.target.classList.contains('mobile-menu-overlay') || e.target.id === 'mobileHamburgerDrawerOverlay') ? e.target : null;
+    if (closeBtn || overlayBackdrop) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.closeLyannHamburgerDrawer();
+        return;
+    }
+
+    // 3. Link click inside Mobile Hamburger Drawer
+    const drawerLink = e.target.closest('.mobile-menu-overlay a, #mobileHamburgerDrawerOverlay a, .mobile-nav-list a');
+    if (drawerLink) {
+        const href = drawerLink.getAttribute('href');
+
+        // Always close the drawer overlay immediately on link click
+        window.closeLyannHamburgerDrawer();
+
+        // Handle specific modal triggers
+        if (drawerLink.classList.contains('open-account-modal-trigger')) {
+            e.preventDefault();
+            const userAccountModal = document.getElementById('userAccountModal');
+            if (userAccountModal) {
+                userAccountModal.classList.add('active');
+            } else {
+                window.location.href = 'index.html?action=account';
+            }
+            return;
+        }
+
+        if (drawerLink.classList.contains('open-chat-trigger')) {
+            e.preventDefault();
+            if (typeof window.openLyannChatModal === 'function') {
+                window.openLyannChatModal();
+            } else if (typeof window.openChatWithUser === 'function') {
+                window.openChatWithUser('David Jean-Baptiste', 'david-34.png', '1');
+            } else {
+                window.location.href = 'index.html?action=openchat';
+            }
+            return;
+        }
+
+        if (drawerLink.classList.contains('open-login-trigger')) {
+            e.preventDefault();
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) {
+                loginModal.classList.add('active');
+            } else {
+                window.location.href = 'index.html?action=login';
+            }
+            return;
+        }
+
+        if (drawerLink.classList.contains('open-signup-trigger')) {
+            e.preventDefault();
+            const signupModal = document.getElementById('onboardingModal') || document.getElementById('loginModal');
+            if (signupModal) {
+                signupModal.classList.add('active');
+            } else {
+                window.location.href = 'index.html?action=signup';
+            }
+            return;
+        }
+
+        // Handle real page navigation links
+        if (href && href !== '#' && !href.startsWith('javascript:')) {
+            e.preventDefault();
+            window.location.href = href;
+            return;
+        }
+    }
+}, true);
 
 function initDrawerEvents(overlay) {
     const closeBtn = overlay.querySelector('#closeMobileDrawerBtn');
     const logoutBtn = overlay.querySelector('#drawerLogoutBtn');
-
-    document.addEventListener('click', (e) => {
-        const btn = e.target.closest('#openMobileDrawerBtn, .open-drawer-trigger, .hamburger-menu-btn, .mobile-menu-btn');
-        if (btn) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.openLyannHamburgerDrawer();
-        }
-    }, true);
 
     if (closeBtn) {
         closeBtn.addEventListener('click', (e) => {
