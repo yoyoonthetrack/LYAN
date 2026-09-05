@@ -412,7 +412,55 @@ window.refreshChatUI = async function () {
     await renderMessages();
 }
 
-async function handleChatAction(actionId, mission) {
+window.handleAcceptQuote = async function(quoteId) {
+    if (!quoteId) return;
+    try {
+        if (window.lyannConfirm) {
+            const ok = await window.lyannConfirm("Confirmez-vous l'acceptation de ce devis ? Une mission sera créée.");
+            if (!ok) return;
+        }
+        const res = await window.LYANN_API_CLIENT.acceptRequestQuote(quoteId);
+        console.log("⚡ Devis accepté avec succès via RPC Supabase:", res);
+        if (window.lyannAlert) {
+            window.lyannAlert("✅ Devis accepté ! La mission a été créée.");
+        }
+        if (typeof window.refreshChatUI === 'function') {
+            await window.refreshChatUI();
+        }
+    } catch(err) {
+        console.error("Erreur lors de l'acceptation du devis:", err);
+        const msg = err.message || err.details || "Erreur lors de l'acceptation.";
+        if (window.lyannAlert) window.lyannAlert("⚠️ " + msg);
+        else alert("⚠️ " + msg);
+    }
+};
+
+window.handleRejectQuote = async function(quoteId) {
+    if (!quoteId) return;
+    try {
+        if (window.lyannConfirm) {
+            const ok = await window.lyannConfirm("Êtes-vous sûr de vouloir refuser ce devis ?");
+            if (!ok) return;
+        }
+        const res = await window.LYANN_API_CLIENT.rejectRequestQuote(quoteId);
+        console.log("⚡ Devis refusé via RPC Supabase:", res);
+        if (window.lyannAlert) {
+            window.lyannAlert("Devis refusé.");
+        }
+        if (typeof window.refreshChatUI === 'function') {
+            await window.refreshChatUI();
+        }
+    } catch(err) {
+        console.error("Erreur lors du refus du devis:", err);
+        const msg = err.message || err.details || "Erreur lors du refus.";
+        if (window.lyannAlert) window.lyannAlert("⚠️ " + msg);
+        else alert("⚠️ " + msg);
+    }
+};
+
+async function handleChatAction(actionId, missionOrExtra = null, extraDataInput = null) {
+    const extraData = (missionOrExtra && missionOrExtra.quoteId) ? missionOrExtra : (extraDataInput || {});
+    const mission = (missionOrExtra && !missionOrExtra.quoteId) ? missionOrExtra : null;
     const contactId = currentChatContact ? currentChatContact.id : null;
     if (!contactId) return;
 
@@ -468,17 +516,42 @@ async function handleChatAction(actionId, mission) {
         return;
     }
 
-    else if (actionId === 'ACCEPT_PRICE') {
-        if (mission && window.LYANN_API_CLIENT) {
-            window.LYANN_API_CLIENT.mockAcceptPrice(mission.id, getMyId());
+    else if (actionId === 'ACCEPT_PRICE' || actionId === 'ACCEPT_QUOTE') {
+        let acceptRes = null;
+        if (window.LYANN_API_CLIENT && extraData && extraData.quoteId) {
+            try {
+                acceptRes = await window.LYANN_API_CLIENT.acceptRequestQuote(extraData.quoteId);
+                console.log("⚡ Devis accepté via RPC Supabase Production:", acceptRes);
+            } catch (err) {
+                console.warn("Erreur acceptation Devis Supabase:", err);
+                if (window.lyannAlert) window.lyannAlert("Erreur lors de l'acceptation du devis : " + (err.message || err));
+                return;
+            }
+        } else if (mission && window.LYANN_API_CLIENT) {
+            await window.LYANN_API_CLIENT.mockAcceptPrice(mission.id, getMyId());
         }
+
         addMessageToContact(contactId, {
             type: 'system_card',
             cardType: 'AGREEMENT_REACHED',
-            amount: mission ? mission.agreed_price : 0,
+            amount: acceptRes ? acceptRes.total_amount : (mission ? mission.agreed_price : 0),
             title: mission ? mission.title : 'Prestation convenue',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
+        refreshChatUI();
+    }
+    else if (actionId === 'REJECT_QUOTE') {
+        if (window.LYANN_API_CLIENT && extraData && extraData.quoteId) {
+            try {
+                await window.LYANN_API_CLIENT.rejectRequestQuote(extraData.quoteId);
+                console.log("⚡ Devis refusé via RPC Supabase Production");
+            } catch (err) {
+                console.warn("Erreur refus Devis Supabase:", err);
+                if (window.lyannAlert) window.lyannAlert("Erreur lors du refus du devis : " + (err.message || err));
+                return;
+            }
+        }
+        refreshChatUI();
     }
 
     else if (actionId === 'PAY_MISSION') {
@@ -643,7 +716,24 @@ async function renderMessages() {
 
     const msgs = await getChatMessages(currentChatContact.id);
 
-    if (msgs.length === 0) {
+    // Fetch real quotes from Supabase for this conversation / invitation if authenticated
+    let realQuotes = [];
+    if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && isUUID(currentChatContact.id)) {
+        try {
+            const activeInv = await window.LYANN_API_CLIENT.getActiveInvitationBetween(getMyId(), currentChatContact.id);
+            if (activeInv) {
+                const fetchedQuotes = await window.LYANN_API_CLIENT.getQuotesForInvitation(activeInv.id);
+                for (let q of fetchedQuotes) {
+                    q.milestones = await window.LYANN_API_CLIENT.getMilestonesForQuote(q.id);
+                    realQuotes.push(q);
+                }
+            }
+        } catch(err) {
+            console.warn("Erreur chargement devis réels Supabase:", err);
+        }
+    }
+
+    if (msgs.length === 0 && realQuotes.length === 0) {
         container.innerHTML = `
             <div class="chat-empty-state">
                 <i class="ph ph-chat-circle-dots"></i>
@@ -661,6 +751,9 @@ async function renderMessages() {
     container.appendChild(dateSep);
 
     msgs.forEach(msg => {
+        // Skip legacy local PRICE_PROPOSAL cards if we have real Supabase quotes
+        if (msg.cardType === 'PRICE_PROPOSAL' && realQuotes.length > 0) return;
+
         const wrapper = document.createElement('div');
         const isMe = msg.sender === getMyId();
         const msgId = msg.id || ('msg_' + Math.random().toString(36).substr(2, 9));
@@ -769,7 +862,6 @@ async function renderMessages() {
                     </div>
                 `;
 
-                // Bind inline action buttons
                 setTimeout(() => {
                     const accBtn = div.querySelector('.btn-accept-inline');
                     const ctrBtn = div.querySelector('.btn-counter-inline');
@@ -842,6 +934,85 @@ async function renderMessages() {
             }
             container.appendChild(div);
         }
+    });
+
+    // Render Production Supabase Real Quote Cards
+    realQuotes.forEach(q => {
+        const isMyQuote = q.helper_id === getMyId();
+        const quoteDiv = document.createElement('div');
+        quoteDiv.className = `chat-msg-card ${isMyQuote ? 'align-right' : 'align-left'}`;
+        quoteDiv.style.cssText = 'width: 100%; max-width: 440px; border: 1.5px solid var(--border); border-radius: 16px; background: #ffffff; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin: 12px 0;';
+
+        const quoteNum = q.quote_number || ('DEV-' + q.id.slice(0, 8).toUpperCase());
+        const providerName = isMyQuote ? 'Vous (Prestataire)' : `${currentChatContact.name}`;
+        
+        let statusBadgeClass = 'background: #eff6ff; color: #1d4ed8;';
+        if (q.status === 'ACCEPTED') statusBadgeClass = 'background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;';
+        else if (q.status === 'REJECTED') statusBadgeClass = 'background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;';
+
+        let milestonesHTML = '';
+        if (q.milestones && q.milestones.length > 0) {
+            milestonesHTML = `
+                <div style="background: #f8fafc; border-radius: 12px; padding: 10px 12px; margin-top: 10px; margin-bottom: 12px;">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Jalons du devis (${q.milestones.length})</div>
+                    ${q.milestones.map(m => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 0.82rem;">
+                            <div>
+                                <strong style="color: var(--text);">${m.title}</strong>
+                                ${m.description ? `<div style="font-size: 0.72rem; color: var(--text-muted);">${m.description}</div>` : ''}
+                            </div>
+                            <div style="font-weight: 700; color: var(--primary-dark);">${m.amount} € (${m.percentage}%)</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        let actionsHTML = '';
+        if (q.status === 'SENT') {
+            if (q.requester_id === getMyId()) {
+                actionsHTML = `
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button type="button" class="btn btn-primary" onclick="window.handleAcceptQuote('${q.id}')" style="flex: 1; justify-content: center; font-size: 0.85rem; padding: 8px 12px;"><i class="ph ph-check-circle"></i> Accepter le devis (${q.total_amount} €)</button>
+                        <button type="button" class="btn btn-outline" onclick="window.handleRejectQuote('${q.id}')" style="flex: 1; justify-content: center; font-size: 0.85rem; padding: 8px 12px; border-color: #ef4444; color: #ef4444;"><i class="ph ph-x-circle"></i> Refuser</button>
+                    </div>
+                `;
+            } else {
+                actionsHTML = `
+                    <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-align: center; margin-top: 8px; padding: 8px; background: #f1f5f9; border-radius: 8px;">
+                        <i class="ph ph-clock"></i> En attente de validation par le client
+                    </div>
+                `;
+            }
+        } else if (q.status === 'ACCEPTED') {
+            actionsHTML = `
+                <div style="font-size: 0.85rem; color: #15803d; font-weight: 700; text-align: center; margin-top: 8px; padding: 8px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+                    <i class="ph ph-check-circle"></i> Devis Accepté · Mission Créée
+                </div>
+            `;
+        } else if (q.status === 'REJECTED') {
+            actionsHTML = `
+                <div style="font-size: 0.85rem; color: #b91c1c; font-weight: 700; text-align: center; margin-top: 8px; padding: 8px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+                    <i class="ph ph-x-circle"></i> Devis Refusé
+                </div>
+            `;
+        }
+
+        quoteDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 10px;">
+                <div>
+                    <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted); letter-spacing: 0.5px;">${quoteNum}</div>
+                    <div style="font-size: 0.82rem; font-weight: 700; color: var(--primary-dark);">Prestataire : ${providerName}</div>
+                </div>
+                <span style="font-weight: 800; font-size: 0.72rem; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; ${statusBadgeClass}">${q.status}</span>
+            </div>
+            <div style="font-size: 1.05rem; font-weight: 800; color: var(--text); margin-bottom: 4px;">${q.description || 'Devis détaillé'}</div>
+            <div style="font-size: 1.3rem; font-weight: 900; color: var(--primary); margin-bottom: 8px;">${q.total_amount} €</div>
+            ${q.valid_until ? `<div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;"><i class="ph ph-calendar"></i> Valable jusqu'au ${new Date(q.valid_until).toLocaleDateString('fr-FR')}</div>` : ''}
+            ${milestonesHTML}
+            ${actionsHTML}
+        `;
+        container.appendChild(quoteDiv);
     });
 
     // Dynamic Blocked User UI Check
@@ -1397,24 +1568,49 @@ document.addEventListener('touchstart', (e) => {
                     return;
                 }
 
-                // Propose Devis total
-                await window.LYANN_API_CLIENT.mockProposePrice(getMyId(), currentChatContact.id, total, title);
+                // Calcul atomique des montants de jalons
+                const m1 = Math.round(total * (p1 / 100) * 100) / 100;
+                const m2 = Math.round(total * (p2 / 100) * 100) / 100;
+                const m3 = Math.round((total - m1 - m2) * 100) / 100;
 
-                // Add system card
-                await addMessageToContact(currentChatContact.id, {
-                    type: 'system_card',
-                    cardType: 'PRICE_PROPOSAL',
-                    sender: getMyId(),
-                    amount: total,
-                    title: `${title} (Devis à Jalons)`,
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                });
+                const j1Title = document.getElementById('mdJ1Title')?.value.trim() || "Jalon 1 - Préparation";
+                const j2Title = document.getElementById('mdJ2Title')?.value.trim() || "Jalon 2 - Intervention";
+                const j3Title = document.getElementById('mdJ3Title')?.value.trim() || "Jalon 3 - Finalisation";
+
+                const milestonesPayload = [
+                    { title: j1Title, description: "Phase 1", amount: m1, percentage: p1 },
+                    { title: j2Title, description: "Phase 2", amount: m2, percentage: p2 },
+                    { title: j3Title, description: "Phase 3", amount: m3, percentage: p3 }
+                ];
+
+                let createdQuoteResult = null;
+                // Tentative via backend production RPC Supabase
+                if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getActiveInvitationBetween === 'function') {
+                    const activeInv = await window.LYANN_API_CLIENT.getActiveInvitationBetween(getMyId(), currentChatContact.id);
+                    if (activeInv) {
+                        createdQuoteResult = await window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, title, null, milestonesPayload);
+                        console.log("⚡ Devis réel créé via RPC Supabase:", createdQuoteResult);
+                    }
+                }
+
+                // Fallback local si pas d'invitation active ou mode dev
+                if (!createdQuoteResult) {
+                    await window.LYANN_API_CLIENT.mockProposePrice(getMyId(), currentChatContact.id, total, title);
+                    await addMessageToContact(currentChatContact.id, {
+                        type: 'system_card',
+                        cardType: 'PRICE_PROPOSAL',
+                        sender: getMyId(),
+                        amount: total,
+                        title: `${title} (Devis à Jalons)`,
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    });
+                }
 
                 // Clean & close
                 if (titleInput) titleInput.value = '';
                 if (totalInput) totalInput.value = '';
                 closeAllOverlays();
-                refreshChatUI();
+                await refreshChatUI();
 
                 window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId: 'PROPOSE_PRICE', contactId: currentChatContact.id } }));
             } catch (err) {

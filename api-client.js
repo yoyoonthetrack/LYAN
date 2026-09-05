@@ -297,6 +297,92 @@ const LYANN_API_CLIENT = {
         return mission;
     },
 
+    // --- QUOTES & MILESTONES (PRODUCTION BACKEND RPCs) ---
+    async createRequestQuote(invitationId, description, validUntil, milestonesJson) {
+        if (!this.supabase) throw new Error("Supabase non disponible.");
+        const { data, error } = await this.supabase.rpc('create_request_quote', {
+            p_invitation_id: invitationId,
+            p_description: description || null,
+            p_valid_until: validUntil || null,
+            p_milestones_json: milestonesJson || []
+        });
+        if (error) throw error;
+        return data;
+    },
+
+    async acceptRequestQuote(quoteId) {
+        if (!this.supabase) throw new Error("Supabase non disponible.");
+        const { data, error } = await this.supabase.rpc('accept_request_quote', {
+            p_quote_id: quoteId
+        });
+        if (error) throw error;
+        return data;
+    },
+
+    async rejectRequestQuote(quoteId) {
+        if (!this.supabase) throw new Error("Supabase non disponible.");
+        const { data, error } = await this.supabase.rpc('reject_request_quote', {
+            p_quote_id: quoteId
+        });
+        if (error) throw error;
+        return data;
+    },
+
+    async getQuotesForInvitation(invitationId) {
+        if (!this.supabase || !isUUID(invitationId)) return [];
+        const { data, error } = await this.supabase
+            .from('quotes')
+            .select('*')
+            .eq('request_invitation_id', invitationId)
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.error("Error fetching quotes for invitation:", error);
+            return [];
+        }
+        return data || [];
+    },
+
+    async getMilestonesForQuote(quoteId) {
+        if (!this.supabase || !isUUID(quoteId)) return [];
+        const { data, error } = await this.supabase
+            .from('milestones')
+            .select('*')
+            .eq('quote_id', quoteId)
+            .order('display_order', { ascending: true });
+        if (error) {
+            console.error("Error fetching milestones for quote:", error);
+            return [];
+        }
+        return data || [];
+    },
+
+    async getActiveQuoteForInvitation(invitationId) {
+        if (!this.supabase || !isUUID(invitationId)) return null;
+        const { data, error } = await this.supabase
+            .from('quotes')
+            .select('*')
+            .eq('request_invitation_id', invitationId)
+            .in('status', ['SENT', 'ACCEPTED'])
+            .order('created_at', { ascending: false })
+            .limit(1);
+        if (error || !data || data.length === 0) return null;
+        return data[0];
+    },
+
+    async getActiveInvitationBetween(user1, user2) {
+        if (!this.supabase || !isUUID(user1) || !isUUID(user2)) return null;
+        const { data, error } = await this.supabase
+            .from('request_invitations')
+            .select('*')
+            .or(`and(requester_id.eq.${user1},recipient_id.eq.${user2}),and(requester_id.eq.${user2},recipient_id.eq.${user1})`)
+            .eq('status', 'ACCEPTED')
+            .order('created_at', { ascending: false })
+            .limit(1);
+        if (error || !data || data.length === 0) return null;
+        return data[0];
+    },
+
+    /** @deprecated Code legacy fallback. Préférer createRequestQuote() */
     async mockProposePrice(proposerId, receiverId, amount, description) {
         if (!isUUID(proposerId) || !isUUID(receiverId) || !this.supabase) {
             const missions = getMockMissions();
