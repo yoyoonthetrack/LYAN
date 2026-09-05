@@ -237,8 +237,10 @@ const LYANN_API_CLIENT = {
     async serverRequest(endpoint, body = {}) {
         const session = await this.getSession();
         const token = session?.data?.session?.access_token;
+        const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const baseUrl = isLocalhost ? 'http://localhost:3000' : '';
         
-        return fetch(`http://localhost:3000${endpoint}`, {
+        return fetch(`${baseUrl}${endpoint}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

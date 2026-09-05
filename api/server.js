@@ -25,6 +25,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 // Express raw body parsing for signed Stripe Webhook route ONLY
 app.use('/v1/payments/webhook', express.raw({ type: 'application/json' }));
+app.use('/v1/webhooks/stripe', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // STRICT PRODUCTION MODE FINANCIAL GUARD
@@ -1363,7 +1364,7 @@ app.post('/v1/payments/dispute', (req, res) => {
 });
 
 // 9. STRIPE WEBHOOK LISTENER (Server-side Source of Truth & Signed Idempotent Event Processor)
-app.post('/v1/payments/webhook', async (req, res) => {
+app.post(['/v1/payments/webhook', '/v1/webhooks/stripe'], async (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 

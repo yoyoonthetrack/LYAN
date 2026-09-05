@@ -5,6 +5,16 @@
   "trailingSlash": false,
   "buildCommand": "echo 'Static site deployment ready'",
   "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/v1/(.*)",
+      "destination": "/api/server.js"
+    },
+    {
+      "source": "/v1",
+      "destination": "/api/server.js"
+    }
+  ],
   "redirects": [
     {
       "source": "/",
