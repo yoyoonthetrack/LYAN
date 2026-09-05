@@ -1251,23 +1251,23 @@
                             <!-- Milestones block (exceeds €200 automatically with default values) -->
                             <div style="margin-top: 14px; padding: 12px; background: var(--bg-white); border-radius: var(--radius-md); border: 1px solid var(--border);">
                                 <h5 style="font-weight: 800; font-size: 0.85rem; margin-bottom: 10px; color: var(--sand-yellow-dark);">
-                                    ⚠️ Plan de Travail par Jalons Obligatoire (>200€)
+                                    ⚠️ Plan de Travail par Parties Obligatoire (>200€)
                                 </h5>
-                                <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom: 10px;">La somme des pourcentages des jalons doit être exactement égale à 100%.</p>
+                                <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom: 10px;">La somme des pourcentages des Parties doit être exactement égale à 100%.</p>
                                 
                                 <div style="display: flex; flex-direction: column; gap: 10px;">
                                     <div style="display: flex; gap: 10px; align-items: center;">
-                                        <span style="font-size:0.8rem; font-weight:700; width:50px;">Jalon 1</span>
+                                        <span style="font-size:0.8rem; font-weight:700; width:60px;">Partie 1</span>
                                         <input type="text" class="form-input val-m1-title" value="Préparation & Fixation" style="flex:2; padding:6px;">
                                         <input type="number" class="form-input val-m1-pct" value="30" style="width:70px; padding:6px;" placeholder="%">
                                     </div>
                                     <div style="display: flex; gap: 10px; align-items: center;">
-                                        <span style="font-size:0.8rem; font-weight:700; width:50px;">Jalon 2</span>
+                                        <span style="font-size:0.8rem; font-weight:700; width:60px;">Partie 2</span>
                                         <input type="text" class="form-input val-m2-title" value="Pose & Raccordement" style="flex:2; padding:6px;">
                                         <input type="number" class="form-input val-m2-pct" value="40" style="width:70px; padding:6px;" placeholder="%">
                                     </div>
                                     <div style="display: flex; gap: 10px; align-items: center;">
-                                        <span style="font-size:0.8rem; font-weight:700; width:50px;">Jalon 3</span>
+                                        <span style="font-size:0.8rem; font-weight:700; width:60px;">Partie 3</span>
                                         <input type="text" class="form-input val-m3-title" value="Mise en service & Finitions" style="flex:2; padding:6px;">
                                         <input type="number" class="form-input val-m3-pct" value="30" style="width:70px; padding:6px;" placeholder="%">
                                     </div>
@@ -1275,7 +1275,7 @@
                             </div>
 
                             <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:14px; background:var(--sand-yellow-dark);">
-                                Envoyer le Devis & le Plan de Jalons au Client 🤝
+                                Envoyer le Devis & le Plan de Parties au Client 🤝
                             </button>
                         </form>
                     `;
@@ -1302,7 +1302,7 @@
                         const m3_pct = parseInt(card.querySelector('.val-m3-pct').value);
 
                         if ((m1_pct + m2_pct + m3_pct) !== 100) {
-                            alert("❌ Erreur : La somme des pourcentages des jalons doit être exactement égale à 100%.");
+                            alert("❌ Erreur : La somme des pourcentages des Parties doit être exactement égale à 100%.");
                             return;
                         }
 
@@ -1368,11 +1368,11 @@
                                     if (m.status === 'pending' || m.status === 'rejected') {
                                         actionHtml = `
                                             <div style="margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 10px;">
-                                                <h6 style="font-weight:700; font-size:0.75rem; margin-bottom:6px;">Soumettre la fin de ce jalon :</h6>
+                                                <h6 style="font-weight:700; font-size:0.75rem; margin-bottom:6px;">Soumettre la fin de cette Partie :</h6>
                                                 <div style="display: flex; gap: 8px;">
                                                     <input type="text" id="comments-${tx.id}-${m.id}" class="form-input" placeholder="Justifiez de la réalisation (ex: Finitions posées et vérifiées)" style="padding:6px; font-size:0.75rem; flex:1;">
                                                     <button class="btn btn-primary btn-submit-milestone-pro" data-tx-id="${tx.id}" data-milestone-id="${m.id}" style="padding:6px 12px; font-size:0.75rem; background: var(--sand-yellow-dark);">
-                                                        Soumettre Jalon 🚀
+                                                        Soumettre Partie 🚀
                                                     </button>
                                                 </div>
                                             </div>

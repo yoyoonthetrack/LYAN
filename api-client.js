@@ -356,6 +356,85 @@ const LYANN_API_CLIENT = {
         return data || [];
     },
 
+    async createMilestonePaymentIntent(milestoneId) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) {
+            return { error: { message: "Utilisateur non authentifié." } };
+        }
+        try {
+            const res = await fetch('/v1/payments/create-milestone-intent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ milestone_id: milestoneId })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { error: { message: data.error || "Erreur lors de la création du paiement.", code: data.code } };
+            }
+            return { data };
+        } catch (err) {
+            return { error: { message: err.message || "Erreur de connexion au serveur de paiement." } };
+        }
+    },
+
+    async startMilestoneWork(milestoneId) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) {
+            return { error: { message: "Utilisateur non authentifié." } };
+        }
+        try {
+            const res = await fetch('/v1/milestones/start-work', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ milestone_id: milestoneId })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { error: { message: data.error || "Erreur lors du démarrage des travaux." } };
+            }
+            return { data };
+        } catch (err) {
+            return { error: { message: err.message || "Erreur de connexion serveur." } };
+        }
+    },
+
+    async submitMilestoneCompletion(milestoneId, comments = '', deliverables = []) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) {
+            return { error: { message: "Utilisateur non authentifié." } };
+        }
+        try {
+            const res = await fetch('/v1/milestones/submit-completion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    milestone_id: milestoneId,
+                    completion_comments: comments,
+                    deliverables: deliverables
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { error: { message: data.error || "Erreur lors de la déclaration de réalisation." } };
+            }
+            return { data };
+        } catch (err) {
+            return { error: { message: err.message || "Erreur de connexion serveur." } };
+        }
+    },
+
     async getActiveQuoteForInvitation(invitationId) {
         if (!this.supabase || !isUUID(invitationId)) return null;
         const { data, error } = await this.supabase
@@ -1136,8 +1215,80 @@ const LYANN_API_CLIENT = {
 
         if (error) throw error;
         return { success: true, invitation_id: invitationId, status: 'DECLINED' };
+    },
+
+    async releaseMilestonePayment(milestoneId, validationComment = '') {
+        if (!this.supabase) throw new Error("Supabase non initialisé");
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) throw new Error("Utilisateur non connecté");
+
+        const response = await fetch(`${this.backendUrl}/v1/milestones/release-payment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+                milestone_id: milestoneId,
+                validation_comment: validationComment
+            })
+        });
+
+        const resData = await response.json();
+        if (!response.ok) {
+            throw new Error(resData.error || "Erreur lors de la libération du paiement");
+        }
+        return resData;
+    },
+
+    async claimMilestoneTransfer(milestoneId) {
+        if (!this.supabase) throw new Error("Supabase non initialisé");
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) throw new Error("Utilisateur non connecté");
+
+        const response = await fetch(`${this.backendUrl}/v1/milestones/claim-transfer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+                milestone_id: milestoneId
+            })
+        });
+
+        const resData = await response.json();
+        if (!response.ok) {
+            throw new Error(resData.error || "Erreur lors de la réclamation du versement");
+        }
+        return resData;
+    },
+
+    async raiseMilestoneDispute(milestoneId, reason = '') {
+        if (!this.supabase) throw new Error("Supabase non initialisé");
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session || !session.user) throw new Error("Utilisateur non connecté");
+
+        const response = await fetch(`${this.backendUrl}/v1/milestones/raise-dispute`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+                milestone_id: milestoneId,
+                reason: reason
+            })
+        });
+
+        const resData = await response.json();
+        if (!response.ok) {
+            throw new Error(resData.error || "Erreur lors du signalement de litige");
+        }
+        return resData;
     }
 };
 
 window.LYANN_API_CLIENT = LYANN_API_CLIENT;
+
 

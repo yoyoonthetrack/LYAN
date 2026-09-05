@@ -954,7 +954,7 @@ async function renderMessages() {
         if (q.milestones && q.milestones.length > 0) {
             milestonesHTML = `
                 <div style="background: #f8fafc; border-radius: 12px; padding: 10px 12px; margin-top: 10px; margin-bottom: 12px;">
-                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Jalons du devis (${q.milestones.length})</div>
+                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Parties du devis (${q.milestones.length})</div>
                     ${q.milestones.map(m => `
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 0.82rem;">
                             <div>
@@ -1562,7 +1562,7 @@ document.addEventListener('touchstart', (e) => {
                 }
 
                 if (p1 + p2 + p3 !== 100) {
-                    const msg = "⚠️ Erreur : La somme des pourcentages des jalons doit être exactement égale à 100%. (Actuellement : " + (p1+p2+p3) + "%)";
+                    const msg = "⚠️ Erreur : La somme des pourcentages des Parties doit être exactement égale à 100%. (Actuellement : " + (p1+p2+p3) + "%)";
                     if (window.lyannAlert) window.lyannAlert(msg);
                     else alert(msg);
                     return;

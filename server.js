@@ -113,8 +113,9 @@ app.post('/v1/payments/onboarding-link', async (req, res) => {
     }
 });
 
-// Create Payment Intent (Destination Charge)
+// Create Payment Intent (Legacy Destination Charge - @deprecated, use /v1/payments/create-milestone-intent)
 app.post('/v1/payments/create-intent', async (req, res) => {
+    console.warn("⚠️ [DEPRECATED] /v1/payments/create-intent is deprecated. Use /v1/payments/create-milestone-intent on api/server.js.");
     try {
         const { missionId, amount, destinationAccountId } = req.body;
 
@@ -139,6 +140,7 @@ app.post('/v1/payments/create-intent', async (req, res) => {
 
         res.json({ 
             success: true, 
+            deprecated: true,
             clientSecret: paymentIntent.client_secret,
             grossAmount: amount,
             platformFee: platformFeeCents / 100

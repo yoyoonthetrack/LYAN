@@ -337,16 +337,16 @@
             txs[idx] = tx;
             this.saveTransactions(txs);
 
-            // Notification de jalon soumis
+            // Notification de Partie soumise
             if (window.LYANN_NOTIFICATIONS && milestone) {
                 window.LYANN_NOTIFICATIONS.sendEmail(
                     'client@lyann-dom.com',
                     tx.customerName,
-                    '✅ Validation de jalon requise sur LYANN DOM',
+                    '✅ Validation de Partie requise sur LYANN DOM',
                     `
-                    <p>Le prestataire <strong>${tx.providerName}</strong> a complété le jalon <strong>"${milestone.title}"</strong> (${milestone.amount} €) pour votre projet <strong>"${tx.title}"</strong>.</p>
+                    <p>Le prestataire <strong>${tx.providerName}</strong> a complété la Partie <strong>"${milestone.title}"</strong> (${milestone.amount} €) pour votre projet <strong>"${tx.title}"</strong>.</p>
                     <p><strong>Livrables déclarés :</strong> "${milestone.deliverables || 'Non spécifiés'}"</p>
-                    <p>Veuillez inspecter le travail et valider le jalon pour libérer les fonds du séquestre.</p>
+                    <p>Veuillez inspecter le travail et valider la Partie pour libérer les fonds du séquestre.</p>
                     `
                 );
             }
@@ -374,7 +374,7 @@
                 }
                 this.saveWallets(wallets);
 
-                // Vérifier si tous les jalons sont approuvés pour marquer terminé
+                // Vérifier si toutes les Parties sont approuvées pour marquer terminé
                 const allApproved = tx.milestones.every(m => m.status === "approved");
                 if (allApproved) {
                     tx.status = "termine";
@@ -387,14 +387,14 @@
 
             txs[idx] = tx;
             this.saveTransactions(txs);
-            this.logSecurityAudit("JALON_APPROUVE", `Jalon ${milestoneId} de la transaction ${tx.id} approuvé par le client.`);
+            this.logSecurityAudit("PARTIE_APPROUVEE", `Partie ${milestoneId} de la transaction ${tx.id} approuvée par le client.`);
 
-            // Notification de jalon libéré
+            // Notification de Partie libérée
             if (window.LYANN_NOTIFICATIONS && milestone) {
                 window.LYANN_NOTIFICATIONS.sendSMS(
                     '+590690001122',
                     tx.providerName,
-                    `Super! Le jalon "${milestone.title}" a été validé. ${milestone.amount} € ont été libérés vers votre portefeuille Stripe Connect disponible.`
+                    `Super! La Partie "${milestone.title}" a été validée. ${milestone.amount} € ont été libérés vers votre portefeuille Stripe Connect disponible.`
                 );
             }
 
