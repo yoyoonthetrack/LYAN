@@ -10,11 +10,122 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="api-client.js"></script>
     
     <!-- Admin Stylesheet -->
     <link rel="stylesheet" href="admin-style.css">
 </head>
 <body class="admin-body">
+
+    <!-- ==========================================================================
+         0.A NEUTRAL LOADING SCREEN (NO FLASH OF LOGIN OR DASHBOARD)
+         ========================================================================== -->
+    <div id="adminAuthLoadingView" style="position: fixed; inset: 0; background: #0B100C; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;">
+        <div style="width: 72px; height: 72px; background: rgba(74, 124, 89, 0.15); border: 1px solid rgba(229, 179, 69, 0.35); border-radius: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <svg viewBox="0 0 100 80" style="width: 44px; height: 44px;">
+                <defs>
+                    <linearGradient id="loadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#4A7C59"/>
+                        <stop offset="50%" stop-color="#709C7D"/>
+                        <stop offset="100%" stop-color="#E5B345"/>
+                    </linearGradient>
+                </defs>
+                <path d="M12 42 L50 14 L88 42" stroke="#E5B345" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 72, 77 72" stroke="url(#loadGrad)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            </svg>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; color: #FAF7F2; font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 700;">
+            <i class="ph-bold ph-spinner spinner-icon" style="color: #E5B345; font-size: 1.4rem;"></i>
+            <span>Vérification de votre session…</span>
+        </div>
+        <div style="font-family: var(--admin-font-mono); font-size: 0.78rem; color: #A3B5A8;">LYANN Enterprise • admin.lyann.app</div>
+    </div>
+
+    <!-- ==========================================================================
+         0.B EMBEDDED ENTERPRISE LOGIN VIEW (HIDDEN BY DEFAULT)
+         ========================================================================== -->
+    <div id="adminLoginView" style="position: fixed; inset: 0; background: #0B100C; background-image: radial-gradient(circle at 15% 20%, rgba(74, 124, 89, 0.18) 0%, transparent 45%), radial-gradient(circle at 85% 80%, rgba(229, 179, 69, 0.12) 0%, transparent 45%); z-index: 99999; display: none; align-items: center; justify-content: center; padding: 24px 16px; overflow-y: auto;">
+        <div style="position: relative; z-index: 10; width: 100%; max-width: 460px;">
+            <div style="background: rgba(18, 28, 22, 0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(112, 156, 125, 0.25); border-radius: 24px; padding: 40px 36px; box-shadow: 0 20px 50px rgba(0,0,0,0.6);">
+                
+                <div style="text-align: center; margin-bottom: 32px;">
+                    <div style="width: 72px; height: 72px; margin: 0 auto 16px auto; background: rgba(74, 124, 89, 0.12); border: 1px solid rgba(229, 179, 69, 0.35); border-radius: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
+                        <svg viewBox="0 0 100 80" style="width: 44px; height: 44px;">
+                            <path d="M12 42 L50 14 L88 42" stroke="url(#loadGrad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                            <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                            <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                            <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 72, 77 72" stroke="url(#loadGrad)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                        </svg>
+                    </div>
+                    <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(229, 179, 69, 0.1); border: 1px solid rgba(229, 179, 69, 0.3); color: #E5B345; font-family: var(--admin-font-mono); font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 30px; margin-bottom: 12px;">
+                        <i class="ph-bold ph-shield-check"></i> admin.lyann.app
+                    </div>
+                    <h1 style="font-family: 'Outfit', sans-serif; font-size: 1.75rem; font-weight: 800; color: #FAF7F2; margin-bottom: 6px;">Console Administrateur</h1>
+                    <p style="font-size: 0.88rem; color: #A3B5A8; line-height: 1.4;">Connectez-vous avec vos identifiants habilités pour accéder au Back-Office LYANN Enterprise.</p>
+                </div>
+
+                <div id="loginAlertBanner" class="admin-alert-banner" style="display: none; padding: 12px 16px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 20px; align-items: flex-start; gap: 10px; line-height: 1.4;">
+                    <i id="loginAlertIcon" class="ph-bold ph-warning-circle" style="font-size: 1.2rem; flex-shrink: 0;"></i>
+                    <span id="loginAlertMessage">Message...</span>
+                </div>
+
+                <form id="adminLoginForm" onsubmit="handleInlineAdminLogin(event)" autocomplete="on">
+                    <div class="admin-input-group" style="margin-bottom: 20px;">
+                        <label class="admin-input-label" for="adminEmail" style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; color: #FAF7F2; margin-bottom: 8px;">
+                            <span>Identifiant Administrateur</span>
+                            <span style="font-size: 0.72rem; color: #E5B345; font-family: var(--admin-font-mono);">Email RBAC</span>
+                        </label>
+                        <div class="admin-input-wrapper" style="position: relative; display: flex; align-items: center;">
+                            <input type="email" id="adminEmail" class="admin-input" placeholder="ex: admin@lyann.app" required autocomplete="username" autofocus style="width: 100%; background: rgba(15, 23, 18, 0.9); border: 1px solid rgba(112, 156, 125, 0.25); border-radius: 12px; padding: 13px 14px 13px 44px; color: #FAF7F2; font-size: 0.95rem;">
+                            <i class="ph-bold ph-envelope-simple input-icon" style="position: absolute; left: 14px; font-size: 1.25rem; color: #A3B5A8; pointer-events: none;"></i>
+                        </div>
+                    </div>
+
+                    <div class="admin-input-group" style="margin-bottom: 20px;">
+                        <label class="admin-input-label" for="adminPassword" style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; color: #FAF7F2; margin-bottom: 8px;">
+                            <span>Mot de Passe Securisé</span>
+                        </label>
+                        <div class="admin-input-wrapper" style="position: relative; display: flex; align-items: center;">
+                            <input type="password" id="adminPassword" class="admin-input" placeholder="••••••••••••••••" required autocomplete="current-password" style="width: 100%; background: rgba(15, 23, 18, 0.9); border: 1px solid rgba(112, 156, 125, 0.25); border-radius: 12px; padding: 13px 14px 13px 44px; color: #FAF7F2; font-size: 0.95rem;">
+                            <i class="ph-bold ph-lock-key input-icon" style="position: absolute; left: 14px; font-size: 1.25rem; color: #A3B5A8; pointer-events: none;"></i>
+                            <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility()" title="Afficher/Masquer le mot de passe" style="position: absolute; right: 12px; background: none; border: none; color: #A3B5A8; font-size: 1.2rem; cursor: pointer;">
+                                <i id="togglePassIcon" class="ph-bold ph-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btnAdminSubmit" class="btn-admin-submit" style="width: 100%; padding: 14px 20px; background: linear-gradient(135deg, #4A7C59 0%, #2F523A 100%); border: 1px solid rgba(229, 179, 69, 0.4); border-radius: 12px; color: #FAF7F2; font-size: 1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <span id="btnSubmitText">Se Connecter au Back-Office</span>
+                        <i id="btnSubmitIcon" class="ph-bold ph-arrow-right"></i>
+                    </button>
+                </form>
+
+                <div id="adminRetryContainer" style="display: none; margin-top: 16px; text-align: center;">
+                    <button type="button" class="admin-btn admin-btn-secondary" onclick="runAdminAuthCheck('RETRY_BUTTON')" style="padding: 10px 18px; font-size: 0.85rem; border-radius: 10px;">
+                        <i class="ph-bold ph-arrow-clockwise"></i> Réessayer la vérification
+                    </button>
+                </div>
+
+                <div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid rgba(112, 156, 125, 0.15); text-align: center; font-size: 0.75rem; color: #A3B5A8;">
+                    <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 8px;">
+                        <span style="font-family: var(--admin-font-mono); color: #E5B345;"><i class="ph-bold ph-lock"></i> Supabase Auth</span>
+                        <span style="font-family: var(--admin-font-mono); color: #E5B345;"><i class="ph-bold ph-shield-star"></i> RBAC Enforced</span>
+                    </div>
+                    Accès strictement restreint aux membres habilités.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         0.C DASHBOARD SHELL VIEW (HIDDEN BY DEFAULT UNTIL AUTHORIZED)
+         ========================================================================== -->
+    <div id="adminShellView" style="display: none; width: 100%; min-height: 100vh;">
 
     <!-- ==========================================================================
          SIDEBAR NAVIGATION (25 PÔLES OPÉRATIONNELS)
@@ -2127,6 +2238,8 @@
         </div>
     </div>
 
+    </div><!-- /adminShellView -->
+
     <!-- Hidden Global Modal Container Stubs for DOM Audit Compliance -->
     <div id="modal-request-help" class="modal" style="display:none;"></div>
     <div id="loginModal" class="modal" style="display:none;"></div>
@@ -2140,7 +2253,6 @@
     <script src="notifications-service.js"></script>
     <script src="dialog.js"></script>
     <script src="matching-engine.js"></script>
-    <script src="api-client.js"></script>
     <script src="ai-classifier.js"></script>
     <script src="script.js"></script>
     <script src="admin-script.js"></script>

@@ -1,6 +1,85 @@
 /* ==========================================================================
-   LYANN DOM — ENTERPRISE BACK-OFFICE ADMIN ENGINE
+   LYANN DOM — UNIFIED ADMIN AUTH CONTROLLER & STATE MACHINE
    ========================================================================== */
+
+let authCheckInProgress = false;
+window.AUTH_STATE = "LOADING";
+window.currentAdminUser = null;
+window.adminDataLoaded = false;
+
+window.fetchWithAdminAuth = async function(url, options = {}) {
+    const headers = options.headers || {};
+    if (window.currentAdminUser && window.currentAdminUser.token) {
+        headers['Authorization'] = `Bearer ${window.currentAdminUser.token}`;
+    } else if (window.LYANN_API_CLIENT) {
+        const { data: sData } = await window.LYANN_API_CLIENT.getSession();
+        if (sData?.session?.access_token) {
+            headers['Authorization'] = `Bearer ${sData.session.access_token}`;
+        }
+    }
+    return fetch(url, { ...options, headers });
+};
+
+function updateAdminHeaderProfile(profile) {
+    const headerUserEl = document.getElementById('adminHeaderUsernameText');
+    if (headerUserEl) {
+        const crownIcon = profile.isOwner ? ' <i class="ph-fill ph-crown" style="color: #E5B345;"></i>' : '';
+        headerUserEl.innerHTML = (profile.username || 'Administrateur') + crownIcon;
+    }
+
+    const headerRoleEl = document.getElementById('adminHeaderUserRole');
+    if (headerRoleEl) {
+        const roleLabel = profile.role ? profile.role.toUpperCase() : 'ADMIN';
+        const ownerLabel = profile.isOwner ? 'Owner (Droits Absolus)' : 'Membre Équipe';
+        headerRoleEl.textContent = `${roleLabel} • ${ownerLabel}`;
+    }
+
+    const welcomeUserEl = document.getElementById('adminWelcomeUsername');
+    if (welcomeUserEl) {
+        welcomeUserEl.textContent = profile.username || 'Administrateur';
+    }
+
+    const tableOwnerNameEl = document.getElementById('adminTableOwnerName');
+    if (tableOwnerNameEl && profile.username) {
+        tableOwnerNameEl.textContent = profile.username;
+    }
+
+    const tableOwnerHandleEl = document.getElementById('adminTableOwnerHandle');
+    if (tableOwnerHandleEl && profile.username) {
+        tableOwnerHandleEl.textContent = profile.username;
+    }
+}
+
+function showLoginAlert(type, message) {
+    const banner = document.getElementById('loginAlertBanner');
+    const icon = document.getElementById('loginAlertIcon');
+    const msg = document.getElementById('loginAlertMessage');
+    if (!banner || !icon || !msg) return;
+
+    banner.className = `admin-alert-banner ${type}`;
+    icon.className = type === 'error' ? 'ph-bold ph-warning-circle' : 'ph-bold ph-check-circle';
+    msg.textContent = message;
+    banner.style.display = 'flex';
+}
+
+function hideLoginAlert() {
+    const banner = document.getElementById('loginAlertBanner');
+    if (banner) banner.style.display = 'none';
+}
+
+function togglePasswordVisibility() {
+    const passInput = document.getElementById('adminPassword');
+    const toggleIcon = document.getElementById('togglePassIcon');
+    if (passInput && toggleIcon) {
+        if (passInput.type === 'password') {
+            passInput.type = 'text';
+            toggleIcon.className = 'ph-bold ph-eye-slash';
+        } else {
+            passInput.type = 'password';
+            toggleIcon.className = 'ph-bold ph-eye';
+        }
+    }
+}
 
 window.forceAdminLogout = async function() {
     console.log("🔒 Execution de la deconnexion forcee du Back-Office...");
@@ -22,103 +101,267 @@ window.forceAdminLogout = async function() {
         console.warn("Avertissement nettoyage storage:", e);
     }
 
-    window.location.replace('admin-login.html?logout=success');
+    window.currentAdminUser = null;
+    window.adminDataLoaded = false;
+
+    const loadingView = document.getElementById('adminAuthLoadingView');
+    const loginView = document.getElementById('adminLoginView');
+    const shellView = document.getElementById('adminShellView');
+    if (loadingView) loadingView.style.display = 'none';
+    if (shellView) shellView.style.display = 'none';
+    if (loginView) loginView.style.display = 'flex';
+    window.AUTH_STATE = 'UNAUTHENTICATED';
+    showLoginAlert('success', '🔒 Vous avez été déconnecté en toute sécurité.');
+};
+
+window.runAdminAuthCheck = async function(reason = 'BOOT') {
+    if (authCheckInProgress) {
+        console.log(`[AUTH ENGINE] Verification deja en cours (${reason}), ignoree.`);
+        return;
+    }
+    authCheckInProgress = true;
+    console.log(`[AUTH ENGINE] Startup check (${reason}) - Current State: ${window.AUTH_STATE}`);
+
+    const loadingView = document.getElementById('adminAuthLoadingView');
+    const loginView = document.getElementById('adminLoginView');
+    const shellView = document.getElementById('adminShellView');
+    const retryContainer = document.getElementById('adminRetryContainer');
+
+    function setViewState(state, extraMsg = null) {
+        window.AUTH_STATE = state;
+        console.log(`[AUTH ENGINE] State Transition -> ${state}`);
+
+        if (state === 'LOADING') {
+            if (loadingView) loadingView.style.display = 'flex';
+            if (loginView) loginView.style.display = 'none';
+            if (shellView) shellView.style.display = 'none';
+            if (retryContainer) retryContainer.style.display = 'none';
+        } else if (state === 'AUTHORIZED') {
+            if (loadingView) loadingView.style.display = 'none';
+            if (loginView) loginView.style.display = 'none';
+            if (shellView) shellView.style.display = 'flex';
+            if (retryContainer) retryContainer.style.display = 'none';
+        } else if (state === 'UNAUTHENTICATED' || state === 'FORBIDDEN' || state === 'ERROR') {
+            if (loadingView) loadingView.style.display = 'none';
+            if (shellView) shellView.style.display = 'none';
+            if (loginView) loginView.style.display = 'flex';
+
+            if (state === 'FORBIDDEN') {
+                showLoginAlert('error', extraMsg || "🚫 Accès refusé : Ce compte n'est pas autorisé à accéder au Back-Office LYANN.");
+                if (retryContainer) retryContainer.style.display = 'none';
+            } else if (state === 'ERROR') {
+                showLoginAlert('error', extraMsg || "⚠️ Impossible de vérifier votre accès pour le moment. Réessayez.");
+                if (retryContainer) retryContainer.style.display = 'block';
+            } else {
+                if (retryContainer) retryContainer.style.display = 'none';
+            }
+        }
+    }
+
+    try {
+        if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+            console.warn("[AUTH ENGINE] Supabase client non pret.");
+            setViewState('UNAUTHENTICATED');
+            return;
+        }
+
+        const { data: sData, error: sErr } = await window.LYANN_API_CLIENT.getSession();
+
+        if (sErr) {
+            console.warn("[AUTH ENGINE] Erreur getSession:", sErr);
+            setViewState('UNAUTHENTICATED');
+            return;
+        }
+
+        const session = sData?.session;
+
+        if (!session || !session.access_token) {
+            console.log("[AUTH ENGINE] Aucune session active -> UNAUTHENTICATED");
+            setViewState('UNAUTHENTICATED');
+            return;
+        }
+
+        const token = session.access_token;
+        console.log(`[AUTH ENGINE] Session trouvee. Interrogation /v1/admin/me...`);
+
+        let meRes;
+        try {
+            meRes = await fetch('/v1/admin/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        } catch (netErr) {
+            console.error("[AUTH ENGINE] Network error on /v1/admin/me:", netErr);
+            setViewState('ERROR', "⚠️ Impossible de contacter le serveur d'administration. Problème réseau temporaire.");
+            return;
+        }
+
+        if (meRes.ok) {
+            const meData = await meRes.json();
+            if (meData.success) {
+                const adminProfile = {
+                    userId: meData.user_id,
+                    username: session.user.email,
+                    fullName: session.user.email,
+                    role: meData.role,
+                    isOwner: meData.is_owner,
+                    token: token,
+                    permissions: ['*']
+                };
+                window.currentAdminUser = adminProfile;
+                updateAdminHeaderProfile(adminProfile);
+                setViewState('AUTHORIZED');
+
+                if (typeof loadAdminRealData === 'function' && !window.adminDataLoaded) {
+                    window.adminDataLoaded = true;
+                    loadAdminRealData();
+                }
+                return;
+            }
+        }
+
+        if (meRes.status === 401) {
+            console.warn("[AUTH ENGINE] 401 - Tentative de refresh token...");
+            const { data: refreshData } = await window.LYANN_API_CLIENT.supabase.auth.refreshSession();
+            if (refreshData?.session?.access_token) {
+                const newToken = refreshData.session.access_token;
+                const meResRetry = await fetch('/v1/admin/me', {
+                    headers: { 'Authorization': `Bearer ${newToken}` }
+                });
+                if (meResRetry.ok) {
+                    const meDataRetry = await meResRetry.json();
+                    if (meDataRetry.success) {
+                        const adminProfile = {
+                            userId: meDataRetry.user_id,
+                            username: refreshData.session.user.email,
+                            fullName: refreshData.session.user.email,
+                            role: meDataRetry.role,
+                            isOwner: meDataRetry.is_owner,
+                            token: newToken,
+                            permissions: ['*']
+                        };
+                        window.currentAdminUser = adminProfile;
+                        updateAdminHeaderProfile(adminProfile);
+                        setViewState('AUTHORIZED');
+
+                        if (typeof loadAdminRealData === 'function' && !window.adminDataLoaded) {
+                            window.adminDataLoaded = true;
+                            loadAdminRealData();
+                        }
+                        return;
+                    }
+                }
+            }
+
+            await window.LYANN_API_CLIENT.signOut();
+            setViewState('UNAUTHENTICATED');
+            return;
+        }
+
+        if (meRes.status === 403) {
+            console.warn("[AUTH ENGINE] 403 Forbidden");
+            await window.LYANN_API_CLIENT.signOut();
+            setViewState('FORBIDDEN', "🚫 Accès refusé : Ce compte n'est pas autorisé à accéder au Back-Office LYANN.");
+            return;
+        }
+
+        setViewState('ERROR', `Erreur serveur (${meRes.status}).`);
+
+    } catch (e) {
+        console.error("[AUTH ENGINE] Fatal error in auth check:", e);
+        setViewState('ERROR', "Erreur inattendue lors de la vérification de session.");
+    } finally {
+        authCheckInProgress = false;
+    }
+};
+
+window.handleInlineAdminLogin = async function(event) {
+    if (event) event.preventDefault();
+    hideLoginAlert();
+
+    const emailInput = document.getElementById('adminEmail');
+    const passwordInput = document.getElementById('adminPassword');
+    const submitBtn = document.getElementById('btnAdminSubmit');
+    const submitText = document.getElementById('btnSubmitText');
+    const submitIcon = document.getElementById('btnSubmitIcon');
+
+    if (!emailInput || !passwordInput) return;
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!email || !password) {
+        showLoginAlert('error', 'Veuillez saisir votre email et votre mot de passe administrateur.');
+        return;
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (submitText) submitText.textContent = 'Vérification des accreditations...';
+    if (submitIcon) submitIcon.className = 'ph-bold ph-spinner spinner-icon';
+
+    try {
+        if (!window.LYANN_API_CLIENT) throw new Error("Client API non disponible.");
+
+        const authResult = await window.LYANN_API_CLIENT.login(email, password);
+        if (authResult.error) {
+            let errMsg = authResult.error.message || "Identifiants incorrects.";
+            if (errMsg.includes('Invalid login credentials')) {
+                errMsg = "Email ou mot de passe incorrect. Veuillez vérifier vos identifiants.";
+            }
+            throw new Error(errMsg);
+        }
+
+        await window.runAdminAuthCheck('FORM_SUBMIT');
+
+    } catch (err) {
+        console.error("[LOGIN] Login error:", err);
+        showLoginAlert('error', err.message || "Erreur lors de la connexion.");
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitText) submitText.textContent = 'Se Connecter au Back-Office';
+        if (submitIcon) submitIcon.className = 'ph-bold ph-arrow-right';
+    }
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check if forced logout was requested via URL query parameters
+    // Check URL params for logout
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('action') === 'logout' || urlParams.get('logout') === 'true') {
         await window.forceAdminLogout();
         return;
     }
 
-    // --------------------------------------------------------------------------
-    // 0. ACTIVE ADMIN USER SESSION & RBAC PERMISSIONS ENGINE
-    // --------------------------------------------------------------------------
-    let adminProfile = null;
-
-    window.fetchWithAdminAuth = async function(url, options = {}) {
-        const headers = options.headers || {};
-        if (window.currentAdminUser && window.currentAdminUser.token) {
-            headers['Authorization'] = `Bearer ${window.currentAdminUser.token}`;
-        } else if (window.LYANN_API_CLIENT) {
-            const { data: sData } = await window.LYANN_API_CLIENT.getSession();
-            if (sData?.session?.access_token) {
-                headers['Authorization'] = `Bearer ${sData.session.access_token}`;
-            }
-        }
-        return fetch(url, { ...options, headers });
-    };
-
+    // Attach onAuthStateChange listener ONCE
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-        try {
-            const { data: sessionData } = await window.LYANN_API_CLIENT.getSession();
-            if (sessionData && sessionData.session && sessionData.session.access_token) {
-                const token = sessionData.session.access_token;
-                const userId = sessionData.session.user.id;
-                
-                // Verify admin membership via backend RBAC endpoint /v1/admin/me
-                const meRes = await fetch('/v1/admin/me', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+        window.LYANN_API_CLIENT.supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log(`[AUTH ENGINE] Event onAuthStateChange: ${event}`);
 
-                if (meRes.ok) {
-                    const meData = await meRes.json();
-                    if (meData.success) {
-                        adminProfile = {
-                            userId: meData.user_id,
-                            username: sessionData.session.user.email,
-                            fullName: sessionData.session.user.email,
-                            role: meData.role,
-                            isOwner: meData.is_owner,
-                            token: token,
-                            permissions: ['*']
-                        };
-                    }
+            if (event === 'TOKEN_REFRESHED') {
+                if (session?.access_token && window.currentAdminUser) {
+                    window.currentAdminUser.token = session.access_token;
                 }
+                return;
             }
-        } catch (err) {
-            console.warn("Admin RBAC auth check warning:", err);
-        }
-    }
 
-    // Strict Admin Access Guard: If not an authorized admin, reject access
-    if (!adminProfile) {
-        console.warn("🚫 Access non autorise a la Console d'Administration LYANN.");
-        window.location.replace('admin-login.html');
-        return;
-    }
+            if (event === 'SIGNED_OUT') {
+                window.currentAdminUser = null;
+                window.adminDataLoaded = false;
+                const loadingView = document.getElementById('adminAuthLoadingView');
+                const loginView = document.getElementById('adminLoginView');
+                const shellView = document.getElementById('adminShellView');
+                if (loadingView) loadingView.style.display = 'none';
+                if (shellView) shellView.style.display = 'none';
+                if (loginView) loginView.style.display = 'flex';
+                window.AUTH_STATE = 'UNAUTHENTICATED';
+                return;
+            }
 
-    window.currentAdminUser = adminProfile;
-
-    // Dynamically render active admin user details in header & UI
-    const headerUserEl = document.getElementById('adminHeaderUsernameText');
-    if (headerUserEl) {
-        const crownIcon = adminProfile.isOwner ? ' <i class="ph-fill ph-crown" style="color: #E5B345;"></i>' : '';
-        headerUserEl.innerHTML = (adminProfile.username || 'Administrateur') + crownIcon;
-    }
-
-    const headerRoleEl = document.getElementById('adminHeaderUserRole');
-    if (headerRoleEl) {
-        const roleLabel = adminProfile.role ? adminProfile.role.toUpperCase() : 'ADMIN';
-        const ownerLabel = adminProfile.isOwner ? 'Owner (Droits Absolus)' : 'Membre Équipe';
-        headerRoleEl.textContent = `${roleLabel} • ${ownerLabel}`;
-    }
-
-    const welcomeUserEl = document.getElementById('adminWelcomeUsername');
-    if (welcomeUserEl) {
-        welcomeUserEl.textContent = adminProfile.username || 'Administrateur';
-    }
-
-    const tableOwnerNameEl = document.getElementById('adminTableOwnerName');
-    if (tableOwnerNameEl && adminProfile.username) {
-        tableOwnerNameEl.textContent = adminProfile.username;
-    }
-
-    const tableOwnerHandleEl = document.getElementById('adminTableOwnerHandle');
-    if (tableOwnerHandleEl && adminProfile.username) {
-        tableOwnerHandleEl.textContent = adminProfile.username;
+            if (event === 'SIGNED_IN') {
+                if (window.AUTH_STATE === 'AUTHORIZED' || authCheckInProgress) {
+                    return;
+                }
+                window.runAdminAuthCheck('SIGNED_IN_EVENT');
+            }
+        });
     }
 
     window.checkAdminPermission = function(permissionCode) {
@@ -128,6 +371,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return window.currentAdminUser.permissions.includes(permissionCode);
     };
+
+    // Run initial auth check
+    await window.runAdminAuthCheck('DOMContentLoaded');
 
     function recordAdminAuditLog(action, moduleName, resourceType, resourceId, accessReason = null, oldVals = null, newVals = null) {
         if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.logAuditAction === 'function') {
