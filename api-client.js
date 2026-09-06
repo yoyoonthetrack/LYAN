@@ -283,12 +283,18 @@ const LYANN_API_CLIENT = {
             .order('created_at', { ascending: false });
     },
 
-    async getUserPortfolio(userId) {
+    async getUserPortfolio(userId, isSelf = false) {
         if (!this.supabase) return { data: [] };
-        return await this.supabase
+        let req = this.supabase
             .from('user_portfolio_items')
             .select('*')
-            .eq('user_id', userId)
+            .eq('user_id', userId);
+
+        if (!isSelf) {
+            req = req.eq('is_public', true);
+        }
+
+        return await req
             .order('display_order', { ascending: true })
             .order('created_at', { ascending: false });
     },
@@ -302,7 +308,8 @@ const LYANN_API_CLIENT = {
                 image_url: itemData.image_url,
                 title: itemData.title || '',
                 caption: itemData.caption || '',
-                display_order: itemData.display_order || 0
+                display_order: itemData.display_order || 0,
+                is_public: itemData.is_public !== undefined ? itemData.is_public : true
             })
             .select()
             .single();

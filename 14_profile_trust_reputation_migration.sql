@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS public.user_portfolio_items (
     title text DEFAULT '',
     caption text DEFAULT '',
     display_order integer DEFAULT 0,
+    is_public boolean NOT NULL DEFAULT true,
     created_at timestamptz DEFAULT timezone('utc'::text, now()),
     updated_at timestamptz DEFAULT timezone('utc'::text, now())
 );
@@ -39,7 +40,7 @@ ALTER TABLE public.user_portfolio_items ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Public read user_portfolio_items" ON public.user_portfolio_items;
 CREATE POLICY "Public read user_portfolio_items" ON public.user_portfolio_items
-    FOR SELECT USING (true);
+    FOR SELECT USING (is_public = true OR auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "User manage own user_portfolio_items" ON public.user_portfolio_items;
 CREATE POLICY "User manage own user_portfolio_items" ON public.user_portfolio_items
