@@ -3,16 +3,20 @@
   "name": "lyan-app",
   "cleanUrls": true,
   "trailingSlash": false,
-  "buildCommand": "echo 'Static site deployment ready'",
-  "outputDirectory": ".",
+  "functions": {
+    "api/server.js": {
+      "memory": 1024,
+      "maxDuration": 15
+    }
+  },
   "rewrites": [
     {
       "source": "/v1/(.*)",
-      "destination": "/api/server.js"
+      "destination": "/api/server"
     },
     {
       "source": "/v1",
-      "destination": "/api/server.js"
+      "destination": "/api/server"
     }
   ],
   "redirects": [

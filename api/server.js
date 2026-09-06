@@ -23,10 +23,15 @@ const supabaseUrl = process.env.SUPABASE_URL || 'https://gzispjfoywklpqatjyop.su
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_service_key';
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-// Express raw body parsing for signed Stripe Webhook route ONLY
-app.use('/v1/payments/webhook', express.raw({ type: 'application/json' }));
-app.use('/v1/webhooks/stripe', express.raw({ type: 'application/json' }));
-app.use(express.json());
+// Express raw body parsing for signed Stripe Webhook routes (Vercel Serverless Compatible)
+app.use((req, res, next) => {
+    const url = req.originalUrl || req.url || '';
+    if (url.includes('webhook')) {
+        express.raw({ type: '*/*' })(req, res, next);
+    } else {
+        express.json()(req, res, next);
+    }
+});
 
 // STRICT PRODUCTION MODE FINANCIAL GUARD
 if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_SECRET_KEY) {
@@ -92,7 +97,7 @@ app.use((req, res, next) => {
 });
 
 // API Root Status
-app.get('/v1', (req, res) => {
+app.get(['/v1', '/v1/', '/api/server'], (req, res) => {
     res.json({
         status: "ONLINE",
         service: "LYANN DOM Multi-Client REST API Engine",
@@ -1364,7 +1369,7 @@ app.post('/v1/payments/dispute', (req, res) => {
 });
 
 // 9. STRIPE WEBHOOK LISTENER (Server-side Source of Truth & Signed Idempotent Event Processor)
-app.post(['/v1/payments/webhook', '/v1/webhooks/stripe'], async (req, res) => {
+app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook'], async (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
