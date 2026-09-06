@@ -164,6 +164,116 @@ const LYANN_API_CLIENT = {
         return await this.supabase.from('profiles').select('*').eq('id', userId).single();
     },
 
+    async updateProfile(userId, profileData) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        // Never allow updating financial/admin/reputation fields from client
+        const safeData = { ...profileData };
+        delete safeData.id;
+        delete safeData.stripe_account_id;
+        delete safeData.stripe_customer_id;
+        delete safeData.role;
+        delete safeData.account_type;
+        delete safeData.is_agent;
+        safeData.updated_at = new Date().toISOString();
+
+        return await this.supabase
+            .from('profiles')
+            .update(safeData)
+            .eq('id', userId)
+            .select()
+            .single();
+    },
+
+    async getUserTrustAndReputation(userId) {
+        if (!this.supabase) return { data: null };
+        const { data, error } = await this.supabase.rpc('get_user_trust_and_reputation', {
+            p_target_user_id: userId
+        });
+        if (error) {
+            console.warn('[Trust Engine RPC Fallback]:', error.message);
+            // Fallback gracefully to basic profile if RPC not yet deployed
+            const prof = await this.getProfile(userId);
+            if (!prof || !prof.data) return { data: null };
+            const p = prof.data;
+            return {
+                data: {
+                    user_id: p.id,
+                    first_name: p.first_name,
+                    last_name_initial: p.last_name ? (p.last_name.substring(0, 1).toUpperCase() + '.') : '',
+                    display_name: `${p.first_name || 'Membre'} ${p.last_name ? (p.last_name.substring(0, 1).toUpperCase() + '.') : ''}`.trim(),
+                    city: p.city || 'Guadeloupe',
+                    territory: p.territory || 'Guadeloupe (971)',
+                    bio: p.bio || '',
+                    avatar_url: p.avatar_url,
+                    is_verified: !!p.is_verified,
+                    is_pro_verified: !!(p.is_pro && p.kyc_verified),
+                    member_since: p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '2026',
+                    skills: p.skills || [],
+                    intervention_zone: p.intervention_zone || [],
+                    intervention_radius_km: p.intervention_radius_km || 10,
+                    metrics: {
+                        average_rating: null,
+                        reviews_count: 0,
+                        completed_missions: 0,
+                        response_rate_percent: null,
+                        avg_response_time_label: null,
+                        completion_rate_percent: null,
+                        repeat_users_count: 0,
+                        recommendations_count: 0,
+                        top_categories: [],
+                        rating_distribution: { star_5: 0, star_4: 0, star_3: 0, star_2: 0, star_1: 0 }
+                    }
+                }
+            };
+        }
+        return { data };
+    },
+
+    async uploadAvatar(userId, file) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const fileExt = file.name ? file.name.split('.').pop() : 'png';
+        const filePath = `${userId}/avatar_${Date.now()}.${fileExt}`;
+
+        const { data: uploadData, error: uploadError } = await this.supabase.storage
+            .from('avatars')
+            .upload(filePath, file, { upsert: true });
+
+        if (uploadError) return { error: uploadError };
+
+        const { data: urlData } = this.supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+
+        const publicUrl = urlData.publicUrl;
+
+        await this.updateProfile(userId, { avatar_url: publicUrl });
+        return { data: { avatar_url: publicUrl } };
+    },
+
+    async deleteAvatar(userId) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        await this.updateProfile(userId, { avatar_url: null });
+        return { data: { success: true } };
+    },
+
+    async getUserServices(userId) {
+        if (!this.supabase) return { data: [] };
+        return await this.supabase
+            .from('services')
+            .select('*, categories(name, slug)')
+            .eq('owner_id', userId)
+            .eq('active', true);
+    },
+
+    async getUserPortfolio(userId) {
+        if (!this.supabase) return { data: [] };
+        return await this.supabase
+            .from('projects')
+            .select('*, project_images(*)')
+            .eq('owner_id', userId)
+            .order('created_at', { ascending: false });
+    },
+
     async getOrCreateConversation(myUserId, targetUserId) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const { data, error } = await this.supabase.rpc('get_or_create_conversation', {

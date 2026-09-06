@@ -301,11 +301,31 @@
                 updatedAt: new Date().toISOString()
             };
 
-            // Save to LocalStorage / SafeStorage
+            // Save to LocalStorage / SafeStorage for instant UI reactive feedback
             if (typeof safeStorage !== 'undefined') {
                 safeStorage.setItem('lyan_user_profile', JSON.stringify(profileData));
             }
             localStorage.setItem('lyan_user_profile', JSON.stringify(profileData));
+
+            // Persist to Supabase DB profiles table
+            if (window.apiClient && window.apiClient.supabase) {
+                window.apiClient.getSession().then(sessionRes => {
+                    const userId = sessionRes?.data?.session?.user?.id;
+                    if (userId) {
+                        window.apiClient.updateProfile(userId, {
+                            first_name: fn,
+                            last_name: ln,
+                            territory: territory,
+                            city: city,
+                            phone: phone,
+                            bio: bio,
+                            avatar_url: currentAvatar,
+                            skills: skillsArr,
+                            completion_pct: pct
+                        }).catch(err => console.warn('Supabase DB profile sync error:', err));
+                    }
+                }).catch(err => console.warn('Session check error during profile save:', err));
+            }
 
             // Close modal
             if (modal) {

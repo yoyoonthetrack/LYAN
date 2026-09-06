@@ -1818,7 +1818,7 @@ safeDomReady(() => {
     let currentVisitingMember = null;
     let memberRecommendations = {};
 
-    function openPublicMemberProfile(memberId) {
+    async function openPublicMemberProfile(memberId) {
         const member = LYANN_MEMBERS.find(m => String(m.id) === String(memberId)) || LYANN_MEMBERS[0];
         currentVisitingMember = member;
 
@@ -1834,33 +1834,46 @@ safeDomReady(() => {
 
         if (avatarEl) avatarEl.src = member.avatar;
         if (nameEl) nameEl.textContent = member.name;
-        if (roleEl) roleEl.innerHTML = `🛠️ ${member.role}`;
-        if (locEl) locEl.innerHTML = `<i class="ph ph-map-pin"></i> ${member.city}, ${member.locationName}`;
-        if (bioEl) bioEl.textContent = `"${member.bio}"`;
-        if (rateEl) rateEl.textContent = member.hourlyRate;
-        // Render simplified badges (max 2)
+        if (roleEl) roleEl.innerHTML = `🛠️ ${member.role || 'Membre LYANN'}`;
+        if (locEl) locEl.innerHTML = `<i class="ph ph-map-pin"></i> ${member.city || 'Guadeloupe'}, ${member.locationName || 'Guadeloupe (971)'}`;
+        if (bioEl) bioEl.textContent = member.bio ? `"${member.bio}"` : '"Membre actif de la communauté LYANN."';
+        if (rateEl) rateEl.textContent = member.hourlyRate || 'Sur devis';
+
+        // Render verified badges
         if (badgeEl) {
             let badgeHTML = '';
-            if (member.badge) badgeHTML += '<span class="badge-pill badge-verified"><i class="ph-fill ph-seal-check"></i> Profil vérifié</span>';
-            if (member.isPro) badgeHTML += ' <span class="badge-pill badge-pro">PRO</span>';
+            if (member.badge || member.is_verified) badgeHTML += '<span class="badge-pill badge-verified"><i class="ph-fill ph-seal-check"></i> Profil vérifié</span>';
+            if (member.isPro || member.is_pro_verified) badgeHTML += ' <span class="badge-pill badge-pro">PRO VÉRIFIÉ</span>';
             badgeEl.innerHTML = badgeHTML;
         }
-        if (reviewsCountEl) reviewsCountEl.textContent = member.reviewsCount;
 
-        // Recommendation count — check if already recommended by this user
-        const currentCount = memberRecommendations[member.id] || Math.floor(member.reviewsCount * 3.5);
-        if (recommendCountBadge) recommendCountBadge.textContent = currentCount;
-        const myRecos = JSON.parse(safeStorage.getItem('lyann_my_recommendations') || '[]');
-        if (recommendMemberBtn) {
-            if (myRecos.includes(member.id)) {
-                recommendMemberBtn.classList.add('liked');
-            } else {
-                recommendMemberBtn.classList.remove('liked');
+        // Trust Engine RPC integration
+        if (window.apiClient && window.apiClient.getUserTrustAndReputation && memberId && String(memberId).includes('-')) {
+            try {
+                const trustRes = await window.apiClient.getUserTrustAndReputation(memberId);
+                if (trustRes && trustRes.data && !trustRes.data.error) {
+                    const tData = trustRes.data;
+                    const metrics = tData.metrics || {};
+                    if (nameEl) nameEl.textContent = tData.display_name || member.name;
+                    if (avatarEl && tData.avatar_url) avatarEl.src = tData.avatar_url;
+                    if (locEl) locEl.innerHTML = `<i class="ph ph-map-pin"></i> ${tData.city}, ${tData.territory}`;
+                    if (bioEl && tData.bio) bioEl.textContent = `"${tData.bio}"`;
+                    if (reviewsCountEl) {
+                        reviewsCountEl.textContent = metrics.reviews_count !== undefined ? metrics.reviews_count : 0;
+                    }
+                    if (skillsContainer && tData.skills && tData.skills.length > 0) {
+                        skillsContainer.innerHTML = tData.skills.map(s => `<span class="skill-tag">${s}</span>`).join('');
+                    }
+                }
+            } catch (err) {
+                console.warn('Trust Engine RPC query notice:', err);
             }
+        } else if (reviewsCountEl) {
+            reviewsCountEl.textContent = member.reviewsCount !== undefined ? member.reviewsCount : 0;
         }
 
-        // Skills pills
-        if (skillsContainer) {
+        // Skills pills fallback
+        if (skillsContainer && (!skillsContainer.innerHTML || skillsContainer.children.length === 0) && member.skills) {
             skillsContainer.innerHTML = member.skills.map(s => `<span class="skill-tag">${s}</span>`).join('');
         }
 
@@ -1890,34 +1903,45 @@ safeDomReady(() => {
         }
     }
 
-    function renderPublicReviews(member) {
+    async function renderPublicReviews(member) {
         const reviewsContainer = document.getElementById('publicMemberReviewsList');
         if (!reviewsContainer) return;
 
-        const firstName = member.name ? member.name.split(' ')[0] : 'le membre';
-        const reviews = [
-            {
-                name: "Marie-Claire D.",
-                city: member.city || "Les Abymes",
-                date: "Il y a 3 jours",
-                rating: "5.0",
-                comment: `Super travail réalisé par ${firstName} ! Ponctuel, très efficace et professionnel.`
-            },
-            {
-                name: "Pascal T.",
-                city: "Baie-Mahault",
-                date: "Il y a 1 semaine",
-                rating: "5.0",
-                comment: "Rien à redire, travail propre et soigné. Je recommande vivement dans notre communauté !"
-            },
-            {
-                name: "Nathalie B.",
-                city: "Le Gosier",
-                date: "Il y a 2 semaines",
-                rating: "4.9",
-                comment: "Excellente communication, intervention rapide et tarifs clairs. Merci pour l'entraide !"
+        let reviews = [];
+
+        // Try querying Supabase public.reviews if real user
+        if (window.apiClient && window.apiClient.supabase && member && member.id && String(member.id).includes('-')) {
+            try {
+                const { data: dbReviews } = await window.apiClient.supabase
+                    .from('reviews')
+                    .select('*, author:profiles!author_id(first_name, last_name, avatar_url, city)')
+                    .eq('target_id', member.id)
+                    .order('created_at', { ascending: false });
+
+                if (dbReviews && dbReviews.length > 0) {
+                    reviews = dbReviews.map(r => ({
+                        name: `${r.author?.first_name || 'Membre'} ${r.author?.last_name ? r.author.last_name.substring(0, 1) + '.' : ''}`,
+                        city: r.author?.city || 'Guadeloupe',
+                        date: new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+                        rating: Number(r.rating).toFixed(1),
+                        comment: r.comment || 'Coup de main réalisé avec succès.'
+                    }));
+                }
+            } catch (e) {
+                console.warn('Real reviews query error:', e);
             }
-        ];
+        }
+
+        if (reviews.length === 0) {
+            reviewsContainer.innerHTML = `
+                <div style="text-align:center; padding:32px 16px; background:#F8FAFC; border:1px dashed #CBD5E1; border-radius:16px;">
+                    <i class="ph ph-chat-circle-dots" style="font-size:2rem; color:#94A3B8; margin-bottom:8px; display:block;"></i>
+                    <strong style="color:#475569; display:block; font-size:0.95rem;">Pas encore de retour</strong>
+                    <span style="color:#64748B; font-size:0.85rem;">Ce membre n'a pas encore reçu d'avis post-mission.</span>
+                </div>
+            `;
+            return;
+        }
 
         reviewsContainer.innerHTML = reviews.map(r => `
             <div class="review-card-item" style="background:#FFFFFF; border:1px solid #E6EFE9; border-radius:16px; padding:16px 20px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.03);">
