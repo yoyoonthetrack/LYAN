@@ -48,100 +48,77 @@
         </div>
 
         <nav class="admin-nav">
-            <div class="admin-nav-section-title">PILOTAGE GÉNÉRAL</div>
             <a href="#" class="admin-nav-item active" data-section="sec-overview">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-chart-line-up"></i> <span>1. BI & Tableau de Bord</span></div>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-chart-line-up"></i> <span>Vue d'ensemble</span></div>
             </a>
+
+            <div class="admin-nav-section-title">COMMUNAUTÉ</div>
             <a href="#" class="admin-nav-item" data-section="sec-users">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-users"></i> <span>2. Utilisateurs & Membres</span></div>
-                <span class="admin-nav-badge warning">3 KYC</span>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-users"></i> <span>Utilisateurs</span></div>
             </a>
-            <a href="#" class="admin-nav-item" data-section="sec-user-detail">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-user-focus"></i> <span>3. Fiches Utilisateurs</span></div>
+            <a href="#" class="admin-nav-item" data-section="sec-lyanneurs">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-user-check"></i> <span>Lyanneurs</span></div>
+            </a>
+            <a href="#" class="admin-nav-item" data-section="sec-agents" style="background: rgba(74, 124, 89, 0.15); border: 1px solid rgba(74, 124, 89, 0.3);">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-robot" style="color: #E5B345;"></i> <span style="color: #E5B345; font-weight: 800;">Agents LYANN</span></div>
+                <span class="admin-nav-badge success" id="sidebarAgentBadge">4 Actifs</span>
+            </a>
+
+            <div class="admin-nav-section-title">ACTIVITÉ</div>
+            <a href="#" class="admin-nav-item" data-section="sec-bokantaj">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Bokantaj</span></div>
             </a>
             <a href="#" class="admin-nav-item" data-section="sec-requests">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-tray"></i> <span>4. Demandes & Annonces</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-services">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-briefcase"></i> <span>5. Prestations & Catalogue</span></div>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-tray"></i> <span>Demandes</span></div>
             </a>
             <a href="#" class="admin-nav-item" data-section="sec-missions">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-calendar-check"></i> <span>6. Missions & Timelines</span></div>
-                <span class="admin-nav-badge success">24 En Cours</span>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-calendar-check"></i> <span>Missions</span></div>
             </a>
             <a href="#" class="admin-nav-item" data-section="sec-chat">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-chat-circle-dots"></i> <span>7. Messagerie Encadrée</span></div>
-                <span class="admin-nav-badge warning">Audit Logged</span>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-quotes">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-file-text"></i> <span>8. Devis & Jalons</span></div>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-chat-circle-dots"></i> <span>Messagerie</span></div>
             </a>
 
-            <div class="admin-nav-section-title">FINANCE & ABONNEMENTS</div>
+            <div class="admin-nav-section-title">FINANCE</div>
             <a href="#" class="admin-nav-item" data-section="sec-finances">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-bank"></i> <span>9. Finances & Stripe</span></div>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-bank"></i> <span>Paiements</span></div>
             </a>
-            <a href="#" class="admin-nav-item" data-section="sec-invoices">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-receipt"></i> <span>10. Factures & Accounting</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-subscriptions">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-sparkle"></i> <span>11. Abonnements & Offres</span></div>
-            </a>
-
-            <div class="admin-nav-section-title">PROTECTION & ARBITRAGE</div>
-            <a href="#" class="admin-nav-item" data-section="sec-protection">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-shield-check"></i> <span>12. Protection LYANN</span></div>
-                <span class="admin-nav-badge warning">2 Réclamations</span>
+            <a href="#" class="admin-nav-item" data-section="sec-payouts">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>Versements</span></div>
             </a>
             <a href="#" class="admin-nav-item" data-section="sec-disputes">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-scales"></i> <span>13. Console de Litiges</span></div>
-                <span class="admin-nav-badge danger">1 Actif</span>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-scales"></i> <span>Litiges</span></div>
+                <span class="admin-nav-badge danger" id="sidebarDisputeBadge">1 Actif</span>
             </a>
-            <a href="#" class="admin-nav-item" data-section="sec-reviews">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-star"></i> <span>14. Avis & Confiance</span></div>
+            <a href="#" class="admin-nav-item" data-section="sec-subscriptions">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-sparkle"></i> <span>Abonnements</span></div>
             </a>
+            <a href="#" class="admin-nav-item" data-section="sec-protection">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-shield-check"></i> <span>Assurance</span></div>
+            </a>
+
+            <div class="admin-nav-section-title">OPÉRATIONS</div>
             <a href="#" class="admin-nav-item" data-section="sec-content">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-shield-warning"></i> <span>15. Modération Bokantaj</span></div>
-            </a>
-
-            <div class="admin-nav-section-title">IA & AUTOMATISATION</div>
-            <a href="#" class="admin-nav-item" data-section="sec-aiops" style="background: rgba(74, 124, 89, 0.15); border: 1px solid rgba(74, 124, 89, 0.3);">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-robot" style="color: #A3E635;"></i> <span style="color: #A3E635; font-weight: 800;">16. Bots IA & Animation</span></div>
-                <span class="admin-nav-badge success">8 Bots</span>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-ai-creator">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-plus-circle"></i> <span>17. Studio Bot IA</span></div>
-            </a>
-
-            <div class="admin-nav-section-title">CONFIGURATIONS PLATEFORME</div>
-            <a href="#" class="admin-nav-item" data-section="sec-taxonomy">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-tree-structure"></i> <span>18. Taxonomie & Catégories</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-feature-flags">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-toggle-left"></i> <span>19. Feature Flags</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-territories">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-map-trifold"></i> <span>20. Territoires DOM</span></div>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-shield-warning"></i> <span>Modération</span></div>
             </a>
             <a href="#" class="admin-nav-item" data-section="sec-notifications">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>21. Push & Broadcasts</span></div>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-bell"></i> <span>Notifications</span></div>
             </a>
             <a href="#" class="admin-nav-item" data-section="sec-support">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-headset"></i> <span>22. Support Client SLA</span></div>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-headset"></i> <span>Support</span></div>
             </a>
 
-            <div class="admin-nav-section-title">ÉQUIPE & SÉCURITÉ ADMIN</div>
+            <div class="admin-nav-section-title">ADMINISTRATION</div>
             <a href="#" class="admin-nav-item" data-section="sec-team">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-users-three"></i> <span>23. Équipe LYANN</span></div>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-users-three"></i> <span>Équipe LYANN</span></div>
             </a>
             <a href="#" class="admin-nav-item" data-section="sec-rbac">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-lock-key"></i> <span>24. RBAC & Permissions</span></div>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-lock-key"></i> <span>Rôles & permissions</span></div>
             </a>
             <a href="#" class="admin-nav-item" data-section="sec-audit-logs">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-scroll"></i> <span>25. Journal Audit Logs</span></div>
+                <div class="admin-nav-item-left"><i class="ph-bold ph-scroll"></i> <span>Journaux</span></div>
             </a>
-            <a href="#" class="admin-nav-item" data-section="sec-health">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-activity"></i> <span>26. Santé & Webhooks</span></div>
+            <a href="#" class="admin-nav-item" data-section="sec-taxonomy">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-gear"></i> <span>Configuration</span></div>
             </a>
         </nav>
 
@@ -173,6 +150,10 @@
             </div>
 
             <div class="admin-header-right">
+                <button class="admin-btn admin-btn-danger" id="globalKillSwitchBtn" style="background: linear-gradient(135deg, #DC2626, #991B1B); color: #FFF; font-weight: 800; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; transition: all 0.2s ease;">
+                    <i class="ph-bold ph-power"></i> ⚡ SUSPENDRE LES AGENTS
+                </button>
+
                 <div class="admin-icon-btn" id="btnAdminQuickNotifications" title="Alertes Système">
                     <i class="ph-bold ph-bell"></i>
                     <span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: #E53E3E; border-radius: 50%;"></span>
@@ -870,70 +851,240 @@
             </section>
 
             <!-- ==========================================================================
-                 PÔLE 16 : BOTS IA & PERSONAS D'ANIMATION
+                 COMMUNAUTÉ — LYANNEURS PRESTATAIRES
                  ========================================================================== -->
-            <section id="sec-aiops" class="admin-section">
+            <section id="sec-lyanneurs" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">🤖 Bots IA & Studio d'Animation Automatisée</h1>
-                        <p class="admin-page-sub">Pilotez les profils IA de simulation et gérez les files de validation avant publication sur Bokantaj.</p>
+                        <h1 class="admin-page-title">Lyanneurs & Prestataires de Service</h1>
+                        <p class="admin-page-sub">Console dédiée aux prestataires vérifiés, gestion KYC, comptes Stripe Connect et compétences.</p>
                     </div>
-                    <button class="admin-btn admin-btn-primary" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-ai-creator\']').click();"><i class="ph-bold ph-plus-circle"></i> Créer un Nouveau Bot IA</button>
                 </div>
-
-                <div class="admin-grid-3">
-                    <div class="admin-card">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                            <img src="clim-talent.png" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #A3E635;">
-                            <div>
-                                <h3 style="font-size: 1rem;">Bot ClimPro Guadeloupe</h3>
-                                <span class="status-badge active" style="background: rgba(163,230,53,0.2); color: #A3E635;">ACTIF (VAL. MANUELLE)</span>
-                            </div>
-                        </div>
-                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 12px;">Spécialiste climatisation et froid solaire sur Grande-Terre.</p>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
-                            <span>Publications: <strong>24</strong></span>
-                            <span>Fréquence: <strong>1 / Jour</strong></span>
-                        </div>
-                    </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Prestataire</th>
+                                <th>Territoire & Commune</th>
+                                <th>Spécialités</th>
+                                <th>Stripe Connect ID</th>
+                                <th>Note & Avis</th>
+                                <th>Statut KYC</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <img src="david-34.png" alt="Avatar" class="user-avatar-sm">
+                                        <div>
+                                            <strong style="color: var(--admin-text-main);">David Jean-Baptiste</strong>
+                                            <div style="font-size: 0.75rem; color: var(--admin-text-muted);">Climatisation & Froid</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>Baie-Mahault (971)</td>
+                                <td><span class="status-badge verified">Climatisation</span> <span class="status-badge active">Électricité</span></td>
+                                <td style="font-family: var(--admin-font-mono); font-size: 0.78rem; color: var(--admin-brand-sky);">acct_1N9xZ8LyannDom971</td>
+                                <td>⭐️ 4.9/5 (48 avis)</td>
+                                <td><span class="status-badge verified">VÉRIFIÉ ✔</span></td>
+                                <td>
+                                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-users\']').click();"><i class="ph-bold ph-eye"></i> Consulter</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
             <!-- ==========================================================================
-                 PÔLE 17 : CRÉATION DE BOT IA
+                 ACTIVITÉ — BOKANTAJ & FIL ÉDITORIAL
                  ========================================================================== -->
-            <section id="sec-ai-creator" class="admin-section">
+            <section id="sec-bokantaj" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">Studio de Création d'Agent IA</h1>
-                        <p class="admin-page-sub">Configurez un nouvel agent virtuel pour dynamiser l'activité sur un territoire DOM.</p>
+                        <h1 class="admin-page-title">Fil Bokantaj & Calendrier Éditorial</h1>
+                        <p class="admin-page-sub">Supervision des publications communautaires et de la planification des Agents LYANN.</p>
                     </div>
                 </div>
-                <div class="admin-card" style="max-width: 650px;">
-                    <form id="createAiBotForm" onsubmit="event.preventDefault(); alert('🤖 Agent IA créé et configuré avec succès !');">
-                        <div style="margin-bottom: 14px;">
-                            <label class="admin-label">Nom du Bot IA *</label>
-                            <input type="text" class="admin-input" placeholder="Ex: Bot Jardinier Martinique" required>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Publication ID</th>
+                                <th>Auteur</th>
+                                <th>Territoire</th>
+                                <th>Contenu & Aperçu</th>
+                                <th>Date & Heure</th>
+                                <th>Nature Auteur</th>
+                                <th>Modération</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono);">#BOK-97104</td>
+                                <td>Mélissa (Agent LYANN)</td>
+                                <td>Saint-François (971)</td>
+                                <td>"Besoin d'un coup de main pour préparer votre jardin avant la saison des pluies..."</td>
+                                <td>Aujourd'hui 09:30</td>
+                                <td><span class="status-badge active" style="background: rgba(229,179,69,0.2); color:#E5B345;">AGENT LYANN</span></td>
+                                <td><span class="status-badge verified">APPROUVÉ</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 FINANCE — VERSEMENTS (PAYOUTS)
+                 ========================================================================== -->
+            <section id="sec-payouts" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Versements & Payouts Stripe Connect</h1>
+                        <p class="admin-page-sub">Suivi des transferts de séquestre libérés vers les comptes Connect des prestataires.</p>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Transfer ID</th>
+                                <th>Mission #</th>
+                                <th>Prestataire Destinataire</th>
+                                <th>Montant Payout (97%)</th>
+                                <th>Stripe Connect ID</th>
+                                <th>Date Libération</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--admin-font-mono);">tr_3N8xZ9Transfer971</td>
+                                <td>#MIS-97184</td>
+                                <td>David Jean-Baptiste</td>
+                                <td><strong>150,00 €</strong></td>
+                                <td style="font-family: var(--admin-font-mono); font-size: 0.78rem;">acct_1N9xZ8LyannDom971</td>
+                                <td>02/09/2026 14:30</td>
+                                <td><span class="status-badge verified">PAID_OUT</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 AGENTS LYANN — MODULE MAJEUR & AUTOMATISATION SÉCURISÉE
+                 ========================================================================== -->
+            <section id="sec-agents" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">🤖 Agents LYANN — Console de Contrôle & Task Engine</h1>
+                        <p class="admin-page-sub">Orchestration des agents logiciels non-humains. Strictement isolés du core financier (ni Connect, ni paiements, ni arbitrage litiges).</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="admin-btn admin-btn-primary" id="btnOpenCreateAgentModal" style="background: linear-gradient(135deg, var(--admin-brand-primary), var(--admin-brand-primary-dark));"><i class="ph-bold ph-plus-circle"></i> Créer un Agent LYANN</button>
+                        <button class="admin-btn admin-btn-secondary" id="btnToggleApprovalCenter"><i class="ph-bold ph-check-square"></i> Centre de Validations (<span id="pendingApprovalsCount">2</span>)</button>
+                    </div>
+                </div>
+
+                <!-- KPI Grid Agents -->
+                <div class="admin-grid-4" style="margin-bottom: 24px;">
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-icon green"><i class="ph-bold ph-robot"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Agents LYANN Inscrits</div>
+                            <div class="kpi-value" id="kpiAgentsCount">4</div>
+                            <div class="kpi-sub positive"><i class="ph-bold ph-check-circle"></i> 4 Identités Internes Non-Humaines</div>
                         </div>
-                        <div style="margin-bottom: 14px;">
-                            <label class="admin-label">Territoire DOM *</label>
-                            <select class="admin-select">
-                                <option value="guadeloupe">Guadeloupe (971)</option>
-                                <option value="martinique">Martinique (972)</option>
-                                <option value="guyane">Guyane (973)</option>
-                                <option value="reunion">La Réunion (974)</option>
-                            </select>
+                    </div>
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-icon yellow"><i class="ph-bold ph-clock"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Tâches En Attente</div>
+                            <div class="kpi-value" id="kpiPendingTasks">2</div>
+                            <div class="kpi-sub warning"><i class="ph-bold ph-hourglass"></i> Requièrent approbation admin</div>
                         </div>
-                        <div style="margin-bottom: 14px;">
-                            <label class="admin-label">Mode de Validation *</label>
-                            <select class="admin-select">
-                                <option value="MANUAL">Manuelle (Validation admin requise avant post)</option>
-                                <option value="AUTO">Automatique (Publication directe)</option>
-                                <option value="DRAFT">Brouillon uniquement</option>
-                            </select>
+                    </div>
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-icon blue"><i class="ph-bold ph-shield-check"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Autonomie Réseau</div>
+                            <div class="kpi-value">LEVEL 2</div>
+                            <div class="kpi-sub positive"><i class="ph-bold ph-lock"></i> Interdictions Financières Strictes</div>
                         </div>
-                        <button type="submit" class="admin-btn admin-btn-primary"><i class="ph-bold ph-plus-circle"></i> Déployer le Agent IA</button>
-                    </form>
+                    </div>
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-icon green"><i class="ph-bold ph-power"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Statut Kill Switch</div>
+                            <div class="kpi-value" id="kpiKillSwitchStatus" style="color: #4A7C59;">OPÉRATIONNEL</div>
+                            <div class="kpi-sub positive"><i class="ph-bold ph-shield"></i> Arrêt d'urgence prêt</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agents Cards Container -->
+                <div style="margin-bottom: 32px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--admin-brand-yellow); display: flex; align-items: center; gap: 8px;">
+                            <i class="ph-bold ph-cards"></i> Flotte d'Agents LYANN Actifs
+                        </h2>
+                        <div style="display: flex; gap: 8px;">
+                            <span class="status-badge active" style="font-size: 0.75rem;">Tag Engine Relationnel Actif</span>
+                        </div>
+                    </div>
+
+                    <div class="admin-grid-3" id="agentsContainer">
+                        <!-- Dynamiquement généré par admin-script.js -->
+                    </div>
+                </div>
+
+                <!-- Task Engine & Approval Center -->
+                <div class="admin-card" style="margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--admin-border); padding-bottom: 12px;">
+                        <h3 style="font-size: 1rem; font-weight: 800; color: var(--admin-text-main); display: flex; align-items: center; gap: 8px;">
+                            <i class="ph-bold ph-list-checks"></i> Moteur de Tâches & Centre de Validations
+                        </h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="admin-btn admin-btn-sm admin-btn-secondary active" id="btnTabTasksList"><i class="ph-bold ph-list"></i> Tâches En Cours</button>
+                            <button class="admin-btn admin-btn-sm admin-btn-secondary" id="btnTabApprovalsList"><i class="ph-bold ph-check-circle"></i> Approbations en Attente (<span id="approvalsBadgeCount">2</span>)</button>
+                        </div>
+                    </div>
+
+                    <!-- Tasks Table -->
+                    <div id="tasksTableContainer">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Ref Tâche</th>
+                                    <th>Agent LYANN</th>
+                                    <th>Instruction & Périmètre</th>
+                                    <th>Type</th>
+                                    <th>Niveau d'Autonomie</th>
+                                    <th>Statut</th>
+                                    <th>Programmé le</th>
+                                    <th>Actions Admin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="agentTasksTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Approval Center Container -->
+                    <div id="approvalCenterContainer" style="display: none;">
+                        <div style="background: rgba(229, 179, 69, 0.08); border: 1px solid rgba(229, 179, 69, 0.3); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                            <h4 style="color: var(--admin-brand-yellow); margin-bottom: 6px;"><i class="ph-bold ph-bell-ringing"></i> Centre d'Approbation Pré-Publication</h4>
+                            <p style="font-size: 0.85rem; color: var(--admin-text-muted);">Toutes les actions initiées par des agents sous <strong>LEVEL 1 (Assisté)</strong> ou nécessitant une validation préalable sont retenues ici avant diffusion publique.</p>
+                        </div>
+
+                        <div id="approvalItemsList">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -1424,6 +1575,134 @@
                 <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-users\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-users"></i> Utilisateurs & KYC</div>
                 <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-finances\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-bank"></i> Finances & Stripe Connect</div>
                 <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-aiops\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-robot"></i> Bots IA & Animation</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL CREATION AGENT LYANN
+         ========================================================================== -->
+    <div class="admin-modal" id="createAgentModal">
+        <div class="admin-modal-content" style="max-width: 650px; background: var(--admin-card-bg); border: 1px solid var(--admin-brand-primary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--admin-border);">
+                <h3 style="color: var(--admin-brand-yellow); display: flex; align-items: center; gap: 8px;"><i class="ph-bold ph-robot"></i> Déploiement d'un Nouvel Agent LYANN</h3>
+                <button class="admin-modal-close" style="background: none; border: none; color: #FFF; font-size: 1.2rem; cursor: pointer;">&times;</button>
+            </div>
+            <form id="createAgentForm" style="padding-top: 16px;">
+                <div style="margin-bottom: 14px;">
+                    <label class="admin-label">Nom Interne de l'Agent *</label>
+                    <input type="text" id="newAgentName" class="admin-input" placeholder="Ex: Mélissa — Animation Jardinage Guadeloupe" required>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label class="admin-label">Niveau d'Autonomie *</label>
+                    <select id="newAgentAutonomy" class="admin-select">
+                        <option value="0">LEVEL 0 — Observation (Suggestions admin uniquement)</option>
+                        <option value="1" selected>LEVEL 1 — Assisté (Préparation et validation admin requise)</option>
+                        <option value="2">LEVEL 2 — Autonome Limité (Actions autorisées directes)</option>
+                        <option value="3">LEVEL 3 — Autonome (Périmètre étendu sous contrôle)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label class="admin-label">Territoires / Zone DOM *</label>
+                    <input type="text" id="newAgentZones" class="admin-input" placeholder="Ex: Saint-François, Le Gosier, Guadeloupe (971)" value="Guadeloupe (971)">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label class="admin-label">Moteur de Tags Internes Relationnels (séparés par des virgules)</label>
+                    <input type="text" id="newAgentTags" class="admin-input" placeholder="Ex: jardinage, bricolage, saint_francois, ton_chaleureux" value="jardinage, saint_francois, ton_chaleureux">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label class="admin-label">Consignes Système & Personnalité (Internal System Instructions)</label>
+                    <textarea id="newAgentInstructions" class="admin-input" rows="3" placeholder="Instructions du comportement et des règles d'interaction..."></textarea>
+                </div>
+                <div style="background: rgba(229, 179, 69, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(229, 179, 69, 0.3); font-size: 0.8rem; margin-bottom: 16px;">
+                    <i class="ph-bold ph-shield-warning" style="color: var(--admin-brand-yellow);"></i> <strong>Protection Financière Absolue :</strong> Cet agent ne possède aucun compte Connect Stripe et ne peut recevoir de fonds ou arbitrer de litige.
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="admin-btn admin-btn-secondary admin-modal-close">Annuler</button>
+                    <button type="submit" class="admin-btn admin-btn-primary"><i class="ph-bold ph-check"></i> Créer et Activer l'Agent</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         DRAWER / MODAL FICHE COMPLÈTE AGENT LYANN
+         ========================================================================== -->
+    <div class="admin-modal" id="agentDetailDrawer">
+        <div class="admin-modal-content" style="max-width: 800px; background: var(--admin-card-bg); border: 1px solid var(--admin-brand-yellow); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--admin-border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img id="drawerAgentAvatar" src="avatar-female-pink.png" alt="Avatar" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--admin-brand-yellow);">
+                    <div>
+                        <h2 id="drawerAgentName" style="font-size: 1.2rem; color: var(--admin-brand-yellow);">Agent LYANN</h2>
+                        <div id="drawerAgentBadge" style="font-size: 0.8rem; color: var(--admin-text-muted);">LEVEL 2 — Autonome Limité • ACTIF</div>
+                    </div>
+                </div>
+                <button class="admin-modal-close" style="background: none; border: none; color: #FFF; font-size: 1.4rem; cursor: pointer;">&times;</button>
+            </div>
+
+            <div style="padding-top: 16px;">
+                <!-- Tabs Agent Drawer -->
+                <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--admin-border); padding-bottom: 8px;">
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary active" id="drawerTabOverview">Aperçu & Identité</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabPrompt">Comportement</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabTags">Tag Engine</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabTasks">Tâches</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabTakeover">Messagerie Takeover</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabAudit">Audit & Sécurité</button>
+                </div>
+
+                <!-- Tab Content: Aperçu -->
+                <div id="drawerSectionOverview">
+                    <div class="admin-grid-2" style="margin-bottom: 16px;">
+                        <div style="background: var(--admin-bg); padding: 14px; border-radius: 10px;">
+                            <div style="font-size: 0.78rem; color: var(--admin-text-muted);">ID Agent Interne</div>
+                            <div id="drawerAgentId" style="font-family: var(--admin-font-mono); font-weight: 700; color: var(--admin-brand-sky);">agent-001</div>
+                            <div style="font-size: 0.78rem; color: var(--admin-text-muted); margin-top: 10px;">Profil Public Lié</div>
+                            <div id="drawerLinkedProfileId" style="font-family: var(--admin-font-mono); font-weight: 700;">prof_melissa_971</div>
+                        </div>
+                        <div style="background: var(--admin-bg); padding: 14px; border-radius: 10px;">
+                            <div style="font-size: 0.78rem; color: var(--admin-text-muted);">Territoires & Communes</div>
+                            <div id="drawerAgentZones" style="font-weight: 700;">Saint-François, Grande-Terre (971)</div>
+                            <div style="font-size: 0.78rem; color: var(--admin-text-muted); margin-top: 10px;">Dernière Activité</div>
+                            <div id="drawerLastActivity" style="font-weight: 700; color: var(--admin-brand-yellow);">Aujourd'hui à 09:30</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Messagerie Takeover -->
+                <div id="drawerSectionTakeover" style="display: none;">
+                    <div style="background: rgba(229, 179, 69, 0.08); padding: 14px; border-radius: 10px; border: 1px solid rgba(229, 179, 69, 0.3); margin-bottom: 16px;">
+                        <h4 style="color: var(--admin-brand-yellow); margin-bottom: 6px;"><i class="ph-bold ph-hand-palm"></i> Contrôle de Conversation — TAKE OVER</h4>
+                        <p style="font-size: 0.85rem; color: var(--admin-text-muted);">Lorsqu'un opérateur humain prend la main sur une conversation, l'agent cesse immédiatement de répondre jusqu'à réactivation explicite par l'admin.</p>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--admin-bg); padding: 14px; border-radius: 10px;">
+                        <div>
+                            <strong style="color: var(--admin-text-main);">Intervention Humaine Active</strong>
+                            <div style="font-size: 0.78rem; color: var(--admin-text-muted);">Cliquer pour passer en mode Reprise Humaine Immédiate</div>
+                        </div>
+                        <button class="admin-btn admin-btn-danger" id="btnTakeoverConversation"><i class="ph-bold ph-hand-palm"></i> TAKE OVER (Reprendre la main)</button>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Audit & Security -->
+                <div id="drawerSectionAudit" style="display: none;">
+                    <div style="background: rgba(74, 124, 89, 0.1); padding: 14px; border-radius: 10px; border: 1px solid rgba(74, 124, 89, 0.3); margin-bottom: 16px;">
+                        <h4 style="color: var(--admin-brand-primary-light); margin-bottom: 6px;"><i class="ph-bold ph-shield-check"></i> Statut d'Isolation Financière</h4>
+                        <ul style="font-size: 0.85rem; color: var(--admin-text-main); line-height: 1.8; padding-left: 18px;">
+                            <li>Comptes Connect Stripe : <strong>AUCUN (Bloqué par Trigger DB)</strong></li>
+                            <li>Autorisation de paiement : <strong>INTERDITE (0€ recevable)</strong></li>
+                            <li>Arbitrage de litiges : <strong>INTERDIT (Droits révoqués)</strong></li>
+                            <li>Marqueur d'identité : <strong>is_agent = TRUE (Non-Humain)</strong></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; justify-content: space-between; border-top: 1px solid var(--admin-border); padding-top: 16px;">
+                    <button class="admin-btn admin-btn-danger" id="btnPauseIndividualAgent"><i class="ph-bold ph-pause"></i> Mettre cet Agent en Pause</button>
+                    <button class="admin-btn admin-btn-secondary admin-modal-close">Fermer la Fiche</button>
+                </div>
             </div>
         </div>
     </div>
