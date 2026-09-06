@@ -63,6 +63,10 @@
                 <div class="admin-nav-item-left"><i class="ph-bold ph-robot" style="color: #E5B345;"></i> <span style="color: #E5B345; font-weight: 800;">Agents LYANN</span></div>
                 <span class="admin-nav-badge success" id="sidebarAgentBadge">4 Actifs</span>
             </a>
+            <a href="#" class="admin-nav-item" data-section="sec-mika" style="padding-left: 28px; background: rgba(229, 179, 69, 0.08); border-left: 3px solid #E5B345;">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-lightning" style="color: #E5B345;"></i> <span style="color: #E5B345; font-weight: 700;">Mika Control Room</span></div>
+                <span class="admin-nav-badge success">PILOTE</span>
+            </a>
 
             <div class="admin-nav-section-title">ACTIVITÉ</div>
             <a href="#" class="admin-nav-item" data-section="sec-bokantaj">
@@ -159,13 +163,18 @@
                     <span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: #E53E3E; border-radius: 50%;"></span>
                 </div>
 
-                <!-- Super Admin Owner Profile Badge -->
-                <div class="admin-user-profile" id="adminOwnerProfileBadge" style="border: 1px solid rgba(229, 179, 69, 0.4); background: rgba(229, 179, 69, 0.08); padding: 6px 12px; border-radius: 12px;">
-                    <img src="david-34.png" alt="Yoyoothetrack Avatar" class="admin-avatar" style="border: 2px solid #E5B345;">
-                    <div class="admin-user-info">
-                        <div class="admin-user-name" style="color: #E5B345; font-weight: 900;">Yoyoothetrack <i class="ph-fill ph-crown" style="color: #E5B345;"></i></div>
-                        <div class="admin-user-role" style="color: #FAF7F2; font-size: 0.72rem;">Super Admin • Owner (Droits Absolus)</div>
+                <!-- Super Admin Owner Profile Badge & SignOut -->
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="admin-user-profile" id="adminOwnerProfileBadge" style="border: 1px solid rgba(229, 179, 69, 0.4); background: rgba(229, 179, 69, 0.08); padding: 6px 12px; border-radius: 12px;">
+                        <img src="david-34.png" id="adminHeaderAvatar" alt="Admin Avatar" class="admin-avatar" style="border: 2px solid #E5B345;">
+                        <div class="admin-user-info">
+                            <div class="admin-user-name" id="adminHeaderUsername" style="color: #E5B345; font-weight: 900;"><span id="adminHeaderUsernameText">Connexion...</span></div>
+                            <div class="admin-user-role" id="adminHeaderUserRole" style="color: #FAF7F2; font-size: 0.72rem;">Compte Administrateur</div>
+                        </div>
                     </div>
+                    <button class="admin-btn danger" id="btnAdminLogout" onclick="forceAdminLogout()" title="Se déconnecter de la session actuelle" style="padding: 8px 12px; font-size: 0.8rem;">
+                        <i class="ph-bold ph-sign-out"></i> Déconnexion
+                    </button>
                 </div>
             </div>
         </header>
@@ -180,7 +189,7 @@
                 <div class="admin-page-header">
                     <div>
                         <h1 class="admin-page-title">Tableau de Bord Global & Business Intelligence</h1>
-                        <p class="admin-page-sub">Bienvenue <strong>Yoyoothetrack</strong>. Vue synthétique et métriques en temps réel de la plateforme LYANN.</p>
+                        <p class="admin-page-sub">Bienvenue <strong id="adminWelcomeUsername">Administrateur</strong>. Vue synthétique et métriques en temps réel de la plateforme LYANN.</p>
                     </div>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="admin-btn admin-btn-primary trigger-goto-aiops" style="background: linear-gradient(135deg, #2E7D32, #4A7C59);"><i class="ph-bold ph-robot"></i> 🤖 Gérer les Bots IA</button>
@@ -373,7 +382,7 @@
                         <h3 style="margin-bottom: 16px; color: var(--admin-brand-yellow);"><i class="ph-bold ph-clock-counter-clockwise"></i> Historique des Actions Admin sur ce Compte</h3>
                         <div style="background: var(--admin-bg); padding: 14px; border-radius: 12px; font-family: var(--admin-font-mono); font-size: 0.8rem; line-height: 1.8;">
                             <div>[14/01/2026 10:15] INSCRIPTION COMPTE • Origine: App iOS Guadeloupe</div>
-                            <div>[15/01/2026 14:20] VALIDATION KYC • Statut: Vérifié par Yoyoothetrack</div>
+                            <div>[15/01/2026 14:20] VALIDATION KYC • Statut: Vérifié par Administrateur</div>
                             <div>[20/01/2026 18:45] PASSAGE SOUSCRIPTION • Formule Pro Mensuelle (14,99 €/mois)</div>
                             <div>[02/09/2026 09:30] VIREMENT DE PAIEMENT • 450,00 € versé via Stripe Connect</div>
                         </div>
@@ -524,7 +533,7 @@
                         <i class="ph-bold ph-shield-warning" style="font-size: 2rem; color: var(--admin-brand-yellow);"></i>
                         <div>
                             <h3 style="color: var(--admin-brand-yellow);">Protection de la Vie Privée & Conformité</h3>
-                            <p style="font-size: 0.85rem; color: var(--admin-text-muted);">La consultation arbitraire des conversations est strictly interdite. Chaque accès requiert un motif valable et sera consigné dans le journal des Audit Logs sous l'identifiant <strong>Yoyoothetrack</strong>.</p>
+                            <p style="font-size: 0.85rem; color: var(--admin-text-muted);">La consultation arbitraire des conversations est strictly interdite. Chaque accès requiert un motif valable et sera consigné dans le journal des Audit Logs sous votre identifiant d'administrateur actif.</p>
                         </div>
                     </div>
                     <div style="margin-top: 16px;">
@@ -1089,6 +1098,143 @@
             </section>
 
             <!-- ==========================================================================
+                 PÔLE MIKA — CONTROL ROOM (STEP 7)
+                 ========================================================================== -->
+            <section id="sec-mika" class="admin-section">
+                <!-- HEADER MIKA CONTROL ROOM -->
+                <div class="mika-header-card" style="background: linear-gradient(135deg, rgba(26, 43, 34, 0.95), rgba(18, 30, 24, 0.98)); border: 1px solid rgba(74, 124, 89, 0.4); border-radius: 16px; padding: 24px; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                        <div style="display: flex; align-items: center; gap: 18px;">
+                            <img src="/brain/fd51f70e-ee89-49e4-851d-15aa38e3d416/avatar_01.png" id="mikaHeaderAvatar" style="width: 72px; height: 72px; border-radius: 50%; border: 3px solid #E5B345; object-fit: cover; box-shadow: 0 0 15px rgba(229, 179, 69, 0.3);">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <h1 style="font-size: 1.8rem; font-weight: 800; color: #FFFFFF; margin: 0;">Mika</h1>
+                                    <span class="admin-badge success" id="mikaHeaderStatusBadge" style="background: rgba(46, 204, 113, 0.2); color: #2ECC71; border: 1px solid #2ECC71; padding: 4px 10px; font-weight: 700;">ACTIF</span>
+                                </div>
+                                <div style="color: #E5B345; font-weight: 600; font-size: 0.95rem; margin-top: 4px;">Agent Communauté & Mise en relation</div>
+                                <div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; margin-top: 2px;"><i class="ph-bold ph-map-pin" style="color: #4A7C59;"></i> Guadeloupe • Grande-Terre (Saint-François, Sainte-Anne, Gosier...)</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="admin-btn primary" id="btnMikaGiveTask" onclick="mikaGiveTaskModal()"><i class="ph-bold ph-plus-circle"></i> DONNER UNE TÂCHE</button>
+                            <button class="admin-btn warning" id="btnMikaSuspend" onclick="toggleMikaSuspension()"><i class="ph-bold ph-pause-circle"></i> SUSPENDRE</button>
+                            <button class="admin-btn secondary" id="btnMikaTakeover" onclick="mikaTakeover()"><i class="ph-bold ph-hand-eye"></i> PRENDRE LA MAIN</button>
+                            <button class="admin-btn secondary" onclick="openAgentStudioModal('mika-001')"><i class="ph-bold ph-gear"></i> MODIFIER</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- METRICS AUJOURD'HUI -->
+                <h3 style="color: #E5B345; font-size: 1.1rem; margin-bottom: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;"><i class="ph-bold ph-calendar-today"></i> Aujourd'hui</h3>
+                <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 24px;">
+                    <div class="kpi-card" style="background: rgba(26, 43, 34, 0.7); border: 1px solid rgba(74, 124, 89, 0.3);">
+                        <div class="kpi-icon" style="color: #3498DB;"><i class="ph-bold ph-list-checks"></i></div>
+                        <div class="kpi-val" id="mikaKpiTasksToday">5</div>
+                        <div class="kpi-label">Tâches totales</div>
+                    </div>
+                    <div class="kpi-card" style="background: rgba(26, 43, 34, 0.7); border: 1px solid rgba(74, 124, 89, 0.3);">
+                        <div class="kpi-icon" style="color: #2ECC71;"><i class="ph-bold ph-article"></i></div>
+                        <div class="kpi-val" id="mikaKpiPostsPrepared">3</div>
+                        <div class="kpi-label">Publications préparées</div>
+                    </div>
+                    <div class="kpi-card" style="background: rgba(26, 43, 34, 0.7); border: 1px solid rgba(74, 124, 89, 0.3);">
+                        <div class="kpi-icon" style="color: #9B59B6;"><i class="ph-bold ph-chat-teardrop-text"></i></div>
+                        <div class="kpi-val" id="mikaKpiRepliesPrepared">1</div>
+                        <div class="kpi-label">Réponses préparées</div>
+                    </div>
+                    <div class="kpi-card" style="background: rgba(26, 43, 34, 0.7); border: 1px solid rgba(229, 179, 69, 0.4);">
+                        <div class="kpi-icon" style="color: #E5B345;"><i class="ph-bold ph-clock-afternoon"></i></div>
+                        <div class="kpi-val" id="mikaKpiPendingValidation" style="color: #E5B345;">5</div>
+                        <div class="kpi-label">En attente de validation</div>
+                    </div>
+                    <div class="kpi-card" style="background: rgba(26, 43, 34, 0.7); border: 1px solid rgba(231, 76, 60, 0.4);">
+                        <div class="kpi-icon" style="color: #E74C3C;"><i class="ph-bold ph-shield-warning"></i></div>
+                        <div class="kpi-val" id="mikaKpiAlerts" style="color: #E74C3C;">0</div>
+                        <div class="kpi-label">Alertes sécurité</div>
+                    </div>
+                </div>
+
+                <!-- COMMAND CENTER BAR & CONVERSATION PARLER À MIKA -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+                    <!-- CONVERSATION PARLER À MIKA -->
+                    <div class="admin-card" style="background: rgba(26, 43, 34, 0.8); border: 1px solid rgba(74, 124, 89, 0.3); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; height: 480px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 12px;">
+                            <h4 style="color: #E5B345; font-size: 1.05rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                                <i class="ph-bold ph-chats-teardrop"></i> PARLER À MIKA (Interface Admin Privée)
+                            </h4>
+                            <span class="admin-badge info" style="font-size: 0.75rem;">COMMANDE DIRECTE</span>
+                        </div>
+                        <div id="mikaChatMessages" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 6px;">
+                            <div style="align-self: flex-start; max-width: 85%; background: rgba(74, 124, 89, 0.2); border: 1px solid rgba(74, 124, 89, 0.4); border-radius: 12px 12px 12px 2px; padding: 12px; font-size: 0.9rem; color: #E0E7E1;">
+                                💬 <strong>Mika :</strong> Bonjour Boss ! Je suis votre Agent Communauté LYANN (Guadeloupe 971). Comment puis-je vous aider aujourd'hui ?
+                            </div>
+                        </div>
+                        <!-- Chips suggestions -->
+                        <div style="display: flex; gap: 6px; overflow-x: auto; padding: 8px 0;">
+                            <button class="chip-btn" onclick="sendQuickMikaMsg('Qu\'est-ce qu\'il se passe aujourd\'hui sur LYANN ?')">📊 Statut du jour</button>
+                            <button class="chip-btn" onclick="sendQuickMikaMsg('Prépare-moi deux publications jardinage.')">🌿 2 posts jardinage</button>
+                            <button class="chip-btn" onclick="sendQuickMikaMsg('Ne réponds plus aux demandes de bricolage aujourd\'hui.')">🛑 Suspendre bricolage</button>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            <input type="text" id="mikaChatInput" class="admin-input" placeholder="Tapez votre message ou directive à Mika..." onkeypress="if(event.key==='Enter') sendMikaChatMessage()">
+                            <button class="admin-btn primary" onclick="sendMikaChatMessage()"><i class="ph-bold ph-paper-plane-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- COMMAND CENTER NLP PARSER -->
+                    <div class="admin-card" style="background: rgba(26, 43, 34, 0.8); border: 1px solid rgba(74, 124, 89, 0.3); border-radius: 12px; padding: 20px; display: flex; flex-direction: column;">
+                        <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 12px;">
+                            <h4 style="color: #E5B345; font-size: 1.05rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                                <i class="ph-bold ph-terminal-window"></i> COMMAND CENTER — PARSER NLP
+                            </h4>
+                            <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 4px;">Saisissez une commande naturelle. Le moteur interprétera l'action et demandera votre validation avant exécution.</p>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <input type="text" id="commandCenterInput" class="admin-input" placeholder="ex: Mika, prépare 3 Bokantaj jardinage." style="font-size: 0.95rem; padding: 12px;">
+                            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                <button class="chip-btn" onclick="setCommandCenterText('Mika, prépare 3 Bokantaj jardinage.')">"Prépare 3 Bokantaj jardinage"</button>
+                                <button class="chip-btn" onclick="setCommandCenterText('Mika, concentre-toi sur Saint-François aujourd\'hui.')">"Concentre-toi sur Saint-François"</button>
+                                <button class="chip-btn" onclick="setCommandCenterText('Mika, suspends tes réponses chat.')">"Suspends tes réponses chat"</button>
+                            </div>
+                            <button class="admin-btn primary" style="width: 100%; margin-top: 12px;" onclick="parseCommandCenterInput()"><i class="ph-bold ph-cpu"></i> INTERPRÉTER LA COMMANDE</button>
+                        </div>
+
+                        <!-- DISPLAY INTERPRETATION RESULT -->
+                        <div id="commandInterpretationResult" style="display: none; background: rgba(0,0,0,0.3); border: 1px solid rgba(229, 179, 69, 0.5); border-radius: 10px; padding: 14px;">
+                            <div style="color: #E5B345; font-weight: 800; font-size: 0.9rem; margin-bottom: 8px; text-transform: uppercase;">
+                                🔍 COMMANDE INTERPRÉTÉE
+                            </div>
+                            <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px;">
+                                <div><strong>Agent :</strong> <span id="cmdInterpAgent">Mika</span></div>
+                                <div><strong>Action :</strong> <span id="cmdInterpAction">-</span></div>
+                                <div><strong>Périmètre :</strong> <span id="cmdInterpPerimeter">-</span></div>
+                                <div><strong>Durée :</strong> <span id="cmdInterpDuration">-</span></div>
+                                <div><strong>Approval :</strong> <span id="cmdInterpApproval" style="color: #E5B345;">-</span></div>
+                                <div><strong>Impact :</strong> <span id="cmdInterpImpact">-</span></div>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 14px;">
+                                <button class="admin-btn success" onclick="confirmCommandExecution()"><i class="ph-bold ph-check"></i> CONFIRMER</button>
+                                <button class="admin-btn danger" onclick="cancelCommandExecution()"><i class="ph-bold ph-x"></i> ANNULER</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TÂCHES ET FEEDBACK OWNER -->
+                <div class="admin-card" style="background: rgba(26, 43, 34, 0.8); border: 1px solid rgba(74, 124, 89, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h4 style="color: #E5B345; font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph-bold ph-tray"></i> TÂCHES PRÉPARÉES & FEEDBACK OWNER
+                        </h4>
+                        <button class="admin-btn secondary" onclick="initMikaTestTasks()"><i class="ph-bold ph-arrows-clockwise"></i> Régénérer 5 Tâches Test</button>
+                    </div>
+                    <div id="mikaTasksList">
+                        <!-- Populated by admin-script.js -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
                  PÔLE 18 : TAXONOMIE & CATÉGORIES
                  ========================================================================== -->
             <section id="sec-taxonomy" class="admin-section">
@@ -1430,8 +1576,8 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td><strong>Yoyoothetrack</strong></td>
-                                <td style="font-family: var(--admin-font-mono); color: var(--admin-brand-yellow);">Yoyoothetrack</td>
+                                <td><strong id="adminTableOwnerName">Propriétaire Principal</strong></td>
+                                <td style="font-family: var(--admin-font-mono); color: var(--admin-brand-yellow);" id="adminTableOwnerHandle">Owner</td>
                                 <td><span class="status-badge active" style="background: rgba(229,179,69,0.2); color:#E5B345;">OWNER (DROITS ABSOLUS)</span></td>
                                 <td><span class="status-badge verified">ACTIF</span></td>
                             </tr>
@@ -1447,7 +1593,7 @@
                 <div class="admin-page-header">
                     <div>
                         <h1 class="admin-page-title">Matrice RBAC — Rôles et Permissions Ultra-Fines</h1>
-                        <p class="admin-page-sub">Définissez précisément les droits de chaque pôle administratif. Le rôle <strong>OWNER (Yoyoothetrack)</strong> conserve un accès absolu inaltérable.</p>
+                        <p class="admin-page-sub">Définissez précisément les droits de chaque pôle administratif. Le rôle <strong>OWNER (Propriétaire)</strong> conserve un accès absolu inaltérable.</p>
                     </div>
                 </div>
 
@@ -1456,7 +1602,7 @@
                         <thead>
                             <tr>
                                 <th>Module / Permission</th>
-                                <th>OWNER (Yoyoothetrack)</th>
+                                <th>OWNER (Propriétaire)</th>
                                 <th>ADMINISTRATEUR</th>
                                 <th>SUPPORT</th>
                                 <th>FINANCE</th>
@@ -1519,7 +1665,7 @@
                         <tbody>
                             <tr>
                                 <td style="font-family: var(--admin-font-mono);">03/09/2026 15:10</td>
-                                <td><strong style="color: var(--admin-brand-yellow);">Yoyoothetrack (Owner)</strong></td>
+                                <td><strong style="color: var(--admin-brand-yellow);">Owner Principal</strong></td>
                                 <td><span class="status-badge verified">AUDIT_LOG_INIT</span></td>
                                 <td>Système RBAC</td>
                                 <td>System Global</td>
@@ -1642,66 +1788,340 @@
             </div>
 
             <div style="padding-top: 16px;">
-                <!-- Tabs Agent Drawer -->
-                <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--admin-border); padding-bottom: 8px;">
-                    <button class="admin-btn admin-btn-sm admin-btn-secondary active" id="drawerTabOverview">Aperçu & Identité</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabPrompt">Comportement</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabTags">Tag Engine</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabTasks">Tâches</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabTakeover">Messagerie Takeover</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabAudit">Audit & Sécurité</button>
+                <!-- Tabs Agent Studio -->
+                <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--admin-border); padding-bottom: 8px; overflow-x: auto;">
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary active" id="drawerTabOverview">Identité</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabPersonality">Personnalité</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabTerritory">Territoire & Tags</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabMatrix">Autonomy Matrix</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabCommander">Task Commander</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabScheduler">Scheduler</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabMemory">Mémoire</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabPerformance">Performance & Timeline</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" id="drawerTabTakeover">Takeover</button>
                 </div>
 
-                <!-- Tab Content: Aperçu -->
+                <!-- 1. IDENTITÉ -->
                 <div id="drawerSectionOverview">
-                    <div class="admin-grid-2" style="margin-bottom: 16px;">
-                        <div style="background: var(--admin-bg); padding: 14px; border-radius: 10px;">
-                            <div style="font-size: 0.78rem; color: var(--admin-text-muted);">ID Agent Interne</div>
-                            <div id="drawerAgentId" style="font-family: var(--admin-font-mono); font-weight: 700; color: var(--admin-brand-sky);">agent-001</div>
-                            <div style="font-size: 0.78rem; color: var(--admin-text-muted); margin-top: 10px;">Profil Public Lié</div>
-                            <div id="drawerLinkedProfileId" style="font-family: var(--admin-font-mono); font-weight: 700;">prof_melissa_971</div>
+                    <form id="formAgentStudioIdentity" style="display: flex; flex-direction: column; gap: 14px;">
+                        <div class="admin-grid-2">
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Prénom</label>
+                                <input type="text" id="studioFirstName" class="admin-input" placeholder="Mika">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Nom Public</label>
+                                <input type="text" id="studioPublicName" class="admin-input" placeholder="Mika de Saint-François">
+                            </div>
                         </div>
-                        <div style="background: var(--admin-bg); padding: 14px; border-radius: 10px;">
-                            <div style="font-size: 0.78rem; color: var(--admin-text-muted);">Territoires & Communes</div>
-                            <div id="drawerAgentZones" style="font-weight: 700;">Saint-François, Grande-Terre (971)</div>
-                            <div style="font-size: 0.78rem; color: var(--admin-text-muted); margin-top: 10px;">Dernière Activité</div>
-                            <div id="drawerLastActivity" style="font-weight: 700; color: var(--admin-brand-yellow);">Aujourd'hui à 09:30</div>
+                        <div class="admin-grid-2">
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Nom Interne</label>
+                                <input type="text" id="studioInternalName" class="admin-input" placeholder="mika_971_jardinage">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Avatar / Photo URL</label>
+                                <input type="text" id="studioAvatarUrl" class="admin-input" placeholder="avatar_01.png">
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Bio Courte (Public)</label>
+                            <input type="text" id="studioBioShort" class="admin-input" placeholder="Spécialiste Jardinage & Entretien en Guadeloupe.">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Bio Complète</label>
+                            <textarea id="studioBioFull" class="admin-input" rows="3" placeholder="Présent sur Grande-Terre depuis 5 ans, disponible pour petits travaux de jardinage et débroussaillage."></textarea>
+                        </div>
+                        <div class="admin-grid-3">
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Territoire DOM</label>
+                                <select id="studioTerritoryDom" class="admin-input">
+                                    <option value="971">971 Guadeloupe</option>
+                                    <option value="972">972 Martinique</option>
+                                    <option value="973">973 Guyane</option>
+                                    <option value="974">974 Réunion</option>
+                                    <option value="976">976 Mayotte</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Commune</label>
+                                <input type="text" id="studioPrimaryCommune" class="admin-input" placeholder="Saint-François">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Langue(s)</label>
+                                <input type="text" id="studioLanguages" class="admin-input" placeholder="Français, Créole">
+                            </div>
+                        </div>
+                        <div style="text-align: right; margin-top: 10px;">
+                            <button type="button" class="admin-btn admin-btn-primary" id="btnSaveAgentIdentity"><i class="ph-bold ph-floppy-disk"></i> Enregistrer l'Identité</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 2. PERSONNALITÉ (PERSONALITY BUILDER) -->
+                <div id="drawerSectionPersonality" style="display: none;">
+                    <form id="formAgentStudioPersonality" style="display: flex; flex-direction: column; gap: 14px;">
+                        <div class="admin-grid-3">
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Ton</label>
+                                <select id="studioTone" class="admin-input">
+                                    <option value="chaleureux">Chaleureux</option>
+                                    <option value="professionnel">Professionnel</option>
+                                    <option value="amical">Amical</option>
+                                    <option value="direct">Direct</option>
+                                    <option value="pedagogique">Pédagogique</option>
+                                    <option value="dynamique">Dynamique</option>
+                                    <option value="discret">Discret</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Niveau de Langage</label>
+                                <select id="studioFormality" class="admin-input">
+                                    <option value="très simple">Très Simple</option>
+                                    <option value="naturel" selected>Naturel</option>
+                                    <option value="soutenu">Soutenu</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Addressing</label>
+                                <select id="studioAddressing" class="admin-input">
+                                    <option value="tutoiement">Tutoiement</option>
+                                    <option value="vouvoiement">Vouvoiement</option>
+                                    <option value="adaptatif" selected>Adaptatif</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="admin-grid-3">
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Style de Phrases</label>
+                                <select id="studioSentenceStyle" class="admin-input">
+                                    <option value="phrases courtes">Phrases Courtes</option>
+                                    <option value="normales" selected>Normales</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Utilisation Emojis</label>
+                                <select id="studioEmojiUsage" class="admin-input">
+                                    <option value="aucun">Aucun</option>
+                                    <option value="léger" selected>Léger</option>
+                                    <option value="normal">Normal</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Usage Créole</label>
+                                <select id="studioCreoleUsage" class="admin-input">
+                                    <option value="jamais">Jamais</option>
+                                    <option value="occasionnel" selected>Occasionnel</option>
+                                    <option value="naturel">Naturel si adapté</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; color: var(--admin-brand-yellow); font-weight: 700;">Instructions Permanentes (Owner Prompt)</label>
+                            <textarea id="studioPermanentInstructions" class="admin-input" rows="5" placeholder="Tu représentes LYANN en Guadeloupe. Tu dois être chaleureux, utile et naturel. Tu ne dois jamais prétendre avoir réalisé personnellement un travail que tu n'as pas réalisé."></textarea>
+                        </div>
+                        <div style="text-align: right;">
+                            <button type="button" class="admin-btn admin-btn-primary" id="btnSaveAgentPersonality"><i class="ph-bold ph-floppy-disk"></i> Enregistrer la Personnalité</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 3. TERRITOIRE & TAGS -->
+                <div id="drawerSectionTerritory" style="display: none;">
+                    <form id="formAgentStudioTerritory" style="display: flex; flex-direction: column; gap: 14px;">
+                        <div>
+                            <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Communes Autorisées (séparées par virgules)</label>
+                            <input type="text" id="studioCommunes" class="admin-input" placeholder="Saint-François, Le Moule, Sainte-Anne">
+                        </div>
+                        <div class="admin-grid-2">
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Rayon / Périmètre (km)</label>
+                                <input type="number" id="studioRadius" class="admin-input" placeholder="25">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Zones Prioritaires</label>
+                                <input type="text" id="studioPriorityZones" class="admin-input" placeholder="Grande-Terre Sud">
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Catégories & Sous-Catégories</label>
+                            <input type="text" id="studioCategories" class="admin-input" placeholder="Jardinage, Bricolage, Peinture, Débroussaillage">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; color: var(--admin-brand-yellow); font-weight: 700;">Tags Internes Invisibles Publiquement</label>
+                            <div id="studioInternalTagsList" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 8px;">
+                                <span class="status-badge" style="background: rgba(74,124,89,0.2); color: #8FD6A5;">#971</span>
+                                <span class="status-badge" style="background: rgba(74,124,89,0.2); color: #8FD6A5;">#SAINT_FRANCOIS</span>
+                                <span class="status-badge" style="background: rgba(74,124,89,0.2); color: #8FD6A5;">#JARDINAGE</span>
+                            </div>
+                            <input type="text" id="studioNewTagInput" class="admin-input" placeholder="Ajouter des tags ex: #DEBROUSSAILLAGE, #PETITS_TRAVAUX (séparés par virgules)">
+                        </div>
+                        <div style="text-align: right;">
+                            <button type="button" class="admin-btn admin-btn-primary" id="btnSaveAgentTerritory"><i class="ph-bold ph-floppy-disk"></i> Enregistrer Périmètre & Tags</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 4. AUTONOMY MATRIX -->
+                <div id="drawerSectionMatrix" style="display: none;">
+                    <div style="background: rgba(229, 179, 69, 0.08); border: 1px solid rgba(229, 179, 69, 0.3); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                        <span style="color: var(--admin-brand-yellow); font-weight: 700;"><i class="ph-bold ph-sliders"></i> Autonomy Matrix — Granular Permissions</span>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 4px;">Le backend contrôle autoritairement chaque action. Les règles LEVEL 0/1/2/3 restent disponibles comme presets.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                        <button class="admin-btn admin-btn-xs admin-btn-secondary" onclick="applyMatrixPreset('level_0')">Preset LEVEL 0 (Supervisé)</button>
+                        <button class="admin-btn admin-btn-xs admin-btn-secondary" onclick="applyMatrixPreset('level_1')">Preset LEVEL 1 (Assisté)</button>
+                        <button class="admin-btn admin-btn-xs admin-btn-secondary" onclick="applyMatrixPreset('level_2')">Preset LEVEL 2 (Autonome)</button>
+                    </div>
+                    <table class="admin-table" style="font-size: 0.85rem;">
+                        <thead>
+                            <tr>
+                                <th>Action Operationnelle</th>
+                                <th style="text-align: center;">INTERDIT</th>
+                                <th style="text-align: center;">APPROBATION</th>
+                                <th style="text-align: center;">AUTORISÉ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studioMatrixTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                    <div style="text-align: right; margin-top: 14px;">
+                        <button type="button" class="admin-btn admin-btn-primary" id="btnSaveAutonomyMatrix"><i class="ph-bold ph-floppy-disk"></i> Enregistrer la Matrice</button>
+                    </div>
+                </div>
+
+                <!-- 5. TASK COMMANDER -->
+                <div id="drawerSectionCommander" style="display: none;">
+                    <div style="background: rgba(74, 124, 89, 0.1); border: 1px solid rgba(74, 124, 89, 0.3); padding: 12px; border-radius: 8px; margin-bottom: 14px;">
+                        <strong style="color: var(--admin-brand-primary-light);"><i class="ph-bold ph-chat-centered-text"></i> Task Commander — Prompt Naturel Owner</strong>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">Saisissez une consigne en langage naturel. Le système la traduit en tâche structurée et vérifie les approvals nécessaires avant création.</p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <textarea id="commanderPromptInput" class="admin-input" rows="3" placeholder="Exemple : Publie demain matin une publication Bokantaj sur l'entretien des jardins à Saint-François."></textarea>
+                        <div>
+                            <button type="button" class="admin-btn admin-btn-secondary" id="btnParseCommanderPrompt"><i class="ph-bold ph-lightning"></i> Analyser & Structurer la Tâche</button>
+                        </div>
+
+                        <!-- Parsed Task Preview -->
+                        <div id="commanderPreviewBox" style="display: none; background: var(--admin-bg); padding: 14px; border-radius: 10px; border: 1px dashed var(--admin-brand-yellow);">
+                            <h4 style="color: var(--admin-brand-yellow); margin-bottom: 8px;"><i class="ph-bold ph-magnifying-glass"></i> Aperçu Avant Validation</h4>
+                            <div class="admin-grid-2" style="font-size: 0.82rem; gap: 8px;">
+                                <div><strong>Agent :</strong> <span id="prevAgentName">Mika</span></div>
+                                <div><strong>Action :</strong> <span id="prevAction">PUBLISH_BOKANTAJ</span></div>
+                                <div><strong>Territoire :</strong> <span id="prevTerritory">971 Guadeloupe</span></div>
+                                <div><strong>Catégorie :</strong> <span id="prevCategory">Jardinage</span></div>
+                                <div><strong>Récurrence :</strong> <span id="prevRecurrence">Ponctuelle</span></div>
+                                <div><strong>Approval requis :</strong> <span id="prevApproval" class="status-badge warning">OUI</span></div>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 0.82rem; color: var(--admin-text-muted);">
+                                <strong>Instructions extraites :</strong> <span id="prevInstructions">Publier sur l'entretien des jardins à Saint-François</span>
+                            </div>
+                            <div style="margin-top: 14px; text-align: right;">
+                                <button type="button" class="admin-btn admin-btn-primary" id="btnConfirmCommanderTask"><i class="ph-bold ph-check-circle"></i> Confirmer & Créer la Tâche</button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab Content: Messagerie Takeover -->
+                <!-- 6. SCHEDULER (TÂCHES RÉCURRENTES) -->
+                <div id="drawerSectionScheduler" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="color: var(--admin-brand-yellow);"><i class="ph-bold ph-calendar"></i> Tâches Récurrentes Stockées</h4>
+                        <button class="admin-btn admin-btn-sm admin-btn-primary" id="btnOpenAddScheduleForm"><i class="ph-bold ph-plus"></i> Nouvelle Récurrence</button>
+                    </div>
+                    <table class="admin-table" style="font-size: 0.82rem;">
+                        <thead>
+                            <tr>
+                                <th>Expression / Fréquence</th>
+                                <th>Action</th>
+                                <th>Timezone</th>
+                                <th>Prochaine Exécution</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studioSchedulerTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 7. MÉMOIRE OPÉRATIONNELLE -->
+                <div id="drawerSectionMemory" style="display: none;">
+                    <div style="background: rgba(229,179,69,0.08); border: 1px solid rgba(229,179,69,0.3); padding: 12px; border-radius: 8px; margin-bottom: 14px;">
+                        <strong style="color: var(--admin-brand-yellow);"><i class="ph-bold ph-brain"></i> Mémoire Opérationnelle Contrôlée</strong>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">Données contextuelles et préférences validées par Owner. Interdiction stricte de stocker secrets, cartes bancaires ou données financières (protégé par Trigger SQL).</p>
+                    </div>
+                    <div id="studioMemoryList">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- 8. PERFORMANCE & TIMELINE -->
+                <div id="drawerSectionPerformance" style="display: none;">
+                    <!-- Performance KPIs -->
+                    <div class="admin-grid-4" style="margin-bottom: 16px;">
+                        <div class="admin-card kpi-card">
+                            <div class="kpi-data">
+                                <div class="kpi-label">Tâches Réalisées</div>
+                                <div class="kpi-value" id="studioKpiTasksCompleted">0</div>
+                            </div>
+                        </div>
+                        <div class="admin-card kpi-card">
+                            <div class="kpi-data">
+                                <div class="kpi-label">Taux d'Approbation</div>
+                                <div class="kpi-value" id="studioKpiApprovalRate">100%</div>
+                            </div>
+                        </div>
+                        <div class="admin-card kpi-card">
+                            <div class="kpi-data">
+                                <div class="kpi-label">Publications</div>
+                                <div class="kpi-value" id="studioKpiPostsCount">0</div>
+                            </div>
+                        </div>
+                        <div class="admin-card kpi-card">
+                            <div class="kpi-data">
+                                <div class="kpi-label">Messages Envoyés</div>
+                                <div class="kpi-value" id="studioKpiMessagesSent">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline -->
+                    <h4 style="color: var(--admin-brand-yellow); margin-bottom: 10px;"><i class="ph-bold ph-clock-counter-clockwise"></i> Activity Timeline (Journal d'Activité DB)</h4>
+                    <div id="studioActivityTimeline" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; background: var(--admin-bg); padding: 12px; border-radius: 10px;">
+                        <!-- Chronological event items -->
+                    </div>
+                </div>
+
+                <!-- 9. TAKEOVER & SAFETY -->
                 <div id="drawerSectionTakeover" style="display: none;">
                     <div style="background: rgba(229, 179, 69, 0.08); padding: 14px; border-radius: 10px; border: 1px solid rgba(229, 179, 69, 0.3); margin-bottom: 16px;">
-                        <h4 style="color: var(--admin-brand-yellow); margin-bottom: 6px;"><i class="ph-bold ph-hand-palm"></i> Contrôle de Conversation — TAKE OVER</h4>
-                        <p style="font-size: 0.85rem; color: var(--admin-text-muted);">Lorsqu'un opérateur humain prend la main sur une conversation, l'agent cesse immédiatement de répondre jusqu'à réactivation explicite par l'admin.</p>
+                        <h4 style="color: var(--admin-brand-yellow); margin-bottom: 6px;"><i class="ph-bold ph-hand-palm"></i> Contrôle de Conversation — TAKEOVER & RELEASE</h4>
+                        <p style="font-size: 0.85rem; color: var(--admin-text-muted);">Lorsqu'un opérateur humain prend la main sur une conversation, l'agent cesse immédiatement d'émettre des messages jusqu'à réactivation par l'Owner.</p>
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--admin-bg); padding: 14px; border-radius: 10px;">
-                        <div>
-                            <strong style="color: var(--admin-text-main);">Intervention Humaine Active</strong>
-                            <div style="font-size: 0.78rem; color: var(--admin-text-muted);">Cliquer pour passer en mode Reprise Humaine Immédiate</div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--admin-bg); padding: 14px; border-radius: 10px;">
+                            <div>
+                                <strong style="color: var(--admin-text-main);">Prendre la Main (Takeover)</strong>
+                                <div style="font-size: 0.78rem; color: var(--admin-text-muted);">Interrompt immédiatement la prise de parole de l'agent</div>
+                            </div>
+                            <button class="admin-btn admin-btn-danger" id="btnTakeoverConversation"><i class="ph-bold ph-hand-palm"></i> PRENDRE LA MAIN</button>
                         </div>
-                        <button class="admin-btn admin-btn-danger" id="btnTakeoverConversation"><i class="ph-bold ph-hand-palm"></i> TAKE OVER (Reprendre la main)</button>
-                    </div>
-                </div>
-
-                <!-- Tab Content: Audit & Security -->
-                <div id="drawerSectionAudit" style="display: none;">
-                    <div style="background: rgba(74, 124, 89, 0.1); padding: 14px; border-radius: 10px; border: 1px solid rgba(74, 124, 89, 0.3); margin-bottom: 16px;">
-                        <h4 style="color: var(--admin-brand-primary-light); margin-bottom: 6px;"><i class="ph-bold ph-shield-check"></i> Statut d'Isolation Financière</h4>
-                        <ul style="font-size: 0.85rem; color: var(--admin-text-main); line-height: 1.8; padding-left: 18px;">
-                            <li>Comptes Connect Stripe : <strong>AUCUN (Bloqué par Trigger DB)</strong></li>
-                            <li>Autorisation de paiement : <strong>INTERDITE (0€ recevable)</strong></li>
-                            <li>Arbitrage de litiges : <strong>INTERDIT (Droits révoqués)</strong></li>
-                            <li>Marqueur d'identité : <strong>is_agent = TRUE (Non-Humain)</strong></li>
-                        </ul>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--admin-bg); padding: 14px; border-radius: 10px;">
+                            <div>
+                                <strong style="color: var(--admin-brand-primary-light);">Rendre la Main à l'Agent</strong>
+                                <div style="font-size: 0.78rem; color: var(--admin-text-muted);">Rétablit l'orchestration conversationnelle pour cet agent</div>
+                            </div>
+                            <button class="admin-btn admin-btn-primary" id="btnReleaseTakeoverConversation"><i class="ph-bold ph-arrow-counter-clockwise"></i> RENDRE LA MAIN À L'AGENT</button>
+                        </div>
                     </div>
                 </div>
 
                 <div style="margin-top: 20px; display: flex; justify-content: space-between; border-top: 1px solid var(--admin-border); padding-top: 16px;">
-                    <button class="admin-btn admin-btn-danger" id="btnPauseIndividualAgent"><i class="ph-bold ph-pause"></i> Mettre cet Agent en Pause</button>
-                    <button class="admin-btn admin-btn-secondary admin-modal-close">Fermer la Fiche</button>
+                    <button class="admin-btn admin-btn-danger" id="btnPauseIndividualAgent"><i class="ph-bold ph-pause"></i> Suspendre l'Agent</button>
+                    <button class="admin-btn admin-btn-secondary admin-modal-close">Fermer Agent Studio</button>
                 </div>
             </div>
         </div>

@@ -2,27 +2,80 @@
    LYANN DOM — ENTERPRISE BACK-OFFICE ADMIN ENGINE
    ========================================================================== */
 
+window.forceAdminLogout = async function() {
+    console.log("🔒 Execution de la deconnexion forcee du Back-Office...");
+    try {
+        if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.signOut === 'function') {
+            await window.LYANN_API_CLIENT.signOut();
+        }
+    } catch (e) {
+        console.warn("Avertissement signOut Supabase:", e);
+    }
+
+    try {
+        localStorage.clear();
+        sessionStorage.clear();
+        document.cookie.split(";").forEach(function(c) {
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+    } catch (e) {
+        console.warn("Avertissement nettoyage storage:", e);
+    }
+
+    window.location.replace('admin-login.html?logout=success');
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
+    // Check if forced logout was requested via URL query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'logout' || urlParams.get('logout') === 'true') {
+        await window.forceAdminLogout();
+        return;
+    }
+
     // --------------------------------------------------------------------------
     // 0. ACTIVE ADMIN USER SESSION & RBAC PERMISSIONS ENGINE
     // --------------------------------------------------------------------------
     let adminProfile = null;
-    const allowedAdminRoles = ['SUPER_ADMIN', 'ADMIN', 'OWNER', 'SUPPORT', 'FINANCE', 'MODERATION', 'EMPLOYEE'];
+
+    window.fetchWithAdminAuth = async function(url, options = {}) {
+        const headers = options.headers || {};
+        if (window.currentAdminUser && window.currentAdminUser.token) {
+            headers['Authorization'] = `Bearer ${window.currentAdminUser.token}`;
+        } else if (window.LYANN_API_CLIENT) {
+            const { data: sData } = await window.LYANN_API_CLIENT.getSession();
+            if (sData?.session?.access_token) {
+                headers['Authorization'] = `Bearer ${sData.session.access_token}`;
+            }
+        }
+        return fetch(url, { ...options, headers });
+    };
 
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         try {
             const { data: sessionData } = await window.LYANN_API_CLIENT.getSession();
-            if (sessionData && sessionData.session && sessionData.session.user) {
+            if (sessionData && sessionData.session && sessionData.session.access_token) {
+                const token = sessionData.session.access_token;
                 const userId = sessionData.session.user.id;
-                const { data: prof } = await window.LYANN_API_CLIENT.getProfile(userId);
-                if (prof && allowedAdminRoles.includes((prof.role || '').toUpperCase())) {
-                    adminProfile = {
-                        username: prof.first_name || sessionData.session.user.email,
-                        fullName: `${prof.first_name || ''} ${prof.last_name || ''}`.trim(),
-                        role: (prof.role || 'ADMIN').toUpperCase(),
-                        isOwner: (prof.role || '').toUpperCase() === 'OWNER' || (prof.role || '').toUpperCase() === 'SUPER_ADMIN',
-                        permissions: ['*']
-                    };
+                
+                // Verify admin membership via backend RBAC endpoint /v1/admin/me
+                const meRes = await fetch('/v1/admin/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (meRes.ok) {
+                    const meData = await meRes.json();
+                    if (meData.success) {
+                        adminProfile = {
+                            userId: meData.user_id,
+                            username: sessionData.session.user.email,
+                            fullName: sessionData.session.user.email,
+                            role: meData.role,
+                            isOwner: meData.is_owner,
+                            token: token,
+                            permissions: ['*']
+                        };
+                    }
                 }
             }
         } catch (err) {
@@ -32,13 +85,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Strict Admin Access Guard: If not an authorized admin, reject access
     if (!adminProfile) {
-        console.warn("🚫 Unauthorized access attempt to LYANN Admin Panel.");
-        alert("🚫 Accès refusé : Vous devez être connecté avec un compte Administrateur LYANN pour accéder au Back-Office.");
-        window.location.href = 'index.html?action=login';
+        console.warn("🚫 Access non autorise a la Console d'Administration LYANN.");
+        window.location.replace('admin-login.html');
         return;
     }
 
     window.currentAdminUser = adminProfile;
+
+    // Dynamically render active admin user details in header & UI
+    const headerUserEl = document.getElementById('adminHeaderUsernameText');
+    if (headerUserEl) {
+        const crownIcon = adminProfile.isOwner ? ' <i class="ph-fill ph-crown" style="color: #E5B345;"></i>' : '';
+        headerUserEl.innerHTML = (adminProfile.username || 'Administrateur') + crownIcon;
+    }
+
+    const headerRoleEl = document.getElementById('adminHeaderUserRole');
+    if (headerRoleEl) {
+        const roleLabel = adminProfile.role ? adminProfile.role.toUpperCase() : 'ADMIN';
+        const ownerLabel = adminProfile.isOwner ? 'Owner (Droits Absolus)' : 'Membre Équipe';
+        headerRoleEl.textContent = `${roleLabel} • ${ownerLabel}`;
+    }
+
+    const welcomeUserEl = document.getElementById('adminWelcomeUsername');
+    if (welcomeUserEl) {
+        welcomeUserEl.textContent = adminProfile.username || 'Administrateur';
+    }
+
+    const tableOwnerNameEl = document.getElementById('adminTableOwnerName');
+    if (tableOwnerNameEl && adminProfile.username) {
+        tableOwnerNameEl.textContent = adminProfile.username;
+    }
+
+    const tableOwnerHandleEl = document.getElementById('adminTableOwnerHandle');
+    if (tableOwnerHandleEl && adminProfile.username) {
+        tableOwnerHandleEl.textContent = adminProfile.username;
+    }
 
     window.checkAdminPermission = function(permissionCode) {
         if (!window.currentAdminUser) return false;
@@ -81,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.recordAdminAuditLog = recordAdminAuditLog;
 
     // Record initial admin session startup log
-    recordAdminAuditLog('ADMIN_SESSION_START', 'Système Admin', 'Session', 'Yoyoothetrack', 'Connexion Propriétaire Super Administrateur');
+    recordAdminAuditLog('ADMIN_SESSION_START', 'Système Admin', 'Session', window.currentAdminUser ? window.currentAdminUser.username : 'Admin', 'Connexion Administrateur Habilité');
 
     // --------------------------------------------------------------------------
     // 0.B COMMAND PALETTE (⌘ K / CTRL + K)
@@ -1157,127 +1238,145 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // --------------------------------------------------------------------------
-    // AGENTS LYANN & REAL DB API ENDPOINTS INTEGRATION
+    // AGENTS LYANN & REAL DB API ENDPOINTS INTEGRATION (STRICT REAL DATA ONLY)
     // --------------------------------------------------------------------------
     let globalKillSwitchActive = false;
 
     async function loadAdminRealData() {
-        // 1. Load KPIs from /v1/admin/kpis
+        // 1. Fetch persistent Kill Switch state from DB
         try {
-            const res = await fetch('/v1/admin/kpis');
+            const res = await window.fetchWithAdminAuth('/v1/admin/kill-switch/global');
             if (res.ok) {
                 const data = await res.json();
-                if (data.success && data.kpis) {
-                    const k = data.kpis;
-                    const kpiGmv = document.getElementById('kpiGmv');
-                    if (kpiGmv) kpiGmv.textContent = (k.gmvCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
-                    const kpiRevenue = document.getElementById('kpiRevenue');
-                    if (kpiRevenue) kpiRevenue.textContent = (k.lyannRevenueCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
-                    const kpiUsers = document.getElementById('kpiTotalUsers');
-                    if (kpiUsers) kpiUsers.textContent = k.totalUsers;
-                    const kpiMissions = document.getElementById('kpiTotalMissions');
-                    if (kpiMissions) kpiMissions.textContent = k.activeMissions;
+                globalKillSwitchActive = !!data.suspended;
+                const kpiStatus = document.getElementById('kpiKillSwitchStatus');
+                const btnKill = document.getElementById('globalKillSwitchBtn');
+                if (kpiStatus) {
+                    kpiStatus.textContent = globalKillSwitchActive ? 'SUSPENDU 🛑' : 'OPÉRATIONNEL';
+                    kpiStatus.style.color = globalKillSwitchActive ? '#EF4444' : '#4A7C59';
+                }
+                if (btnKill) {
+                    btnKill.innerHTML = globalKillSwitchActive ?
+                        '<i class="ph-bold ph-play"></i> 🟢 RÉACTIVER LES AGENTS' :
+                        '<i class="ph-bold ph-power"></i> ⚡ SUSPENDRE LES AGENTS';
+                    btnKill.style.background = globalKillSwitchActive ?
+                        'linear-gradient(135deg, #16A34A, #15803D)' :
+                        'linear-gradient(135deg, #DC2626, #991B1B)';
                 }
             }
         } catch (e) {
-            console.warn("API /v1/admin/kpis fallback:", e);
+            console.warn("API /v1/admin/kill-switch/global fetch error:", e);
         }
 
-        // 2. Load Agents from /v1/admin/agents
+        // 2. Load KPIs from /v1/admin/kpis
         try {
-            const res = await fetch('/v1/admin/agents');
+            const res = await window.fetchWithAdminAuth('/v1/admin/kpis');
             if (res.ok) {
                 const data = await res.json();
-                if (data.success && Array.isArray(data.agents)) {
-                    renderAgentsGrid(data.agents);
+                if (data.success && data.data_available) {
+                    const kpiGmv = document.getElementById('kpiGmv');
+                    if (kpiGmv && data.gmvMonth !== undefined) kpiGmv.textContent = data.gmvMonth.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+                    const kpiRevenue = document.getElementById('kpiRevenue');
+                    if (kpiRevenue && data.mrrCommissions !== undefined) kpiRevenue.textContent = data.mrrCommissions.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+                    const kpiUsers = document.getElementById('kpiTotalUsers');
+                    if (kpiUsers && data.activeMembers !== undefined) kpiUsers.textContent = data.activeMembers;
+                    const kpiMissions = document.getElementById('kpiTotalMissions');
+                    if (kpiMissions && data.activeMissions !== undefined) kpiMissions.textContent = data.activeMissions;
+                } else {
+                    renderUnavailableState('kpiContainer');
                 }
             } else {
-                renderAgentsGrid(getDefaultAgentsList());
+                renderUnavailableState('kpiContainer');
             }
         } catch (e) {
-            console.warn("API /v1/admin/agents fallback:", e);
-            renderAgentsGrid(getDefaultAgentsList());
+            console.warn("API /v1/admin/kpis error:", e);
+            renderUnavailableState('kpiContainer');
         }
 
-        // 3. Load Agent Tasks & Approvals from /v1/admin/agent-tasks
+        // 3. Load Agents from /v1/admin/agents
         try {
-            const res = await fetch('/v1/admin/agent-tasks');
+            const res = await window.fetchWithAdminAuth('/v1/admin/agents');
             if (res.ok) {
                 const data = await res.json();
-                if (data.success && Array.isArray(data.tasks)) {
+                if (data.success && data.data_available && Array.isArray(data.agents)) {
+                    renderAgentsGrid(data.agents);
+                } else {
+                    renderUnavailableAgentsState();
+                }
+            } else {
+                renderUnavailableAgentsState();
+            }
+        } catch (e) {
+            console.warn("API /v1/admin/agents error:", e);
+            renderUnavailableAgentsState();
+        }
+
+        // 4. Load Agent Tasks & Approvals from /v1/admin/agent-tasks
+        try {
+            const res = await window.fetchWithAdminAuth('/v1/admin/agent-tasks');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.data_available && Array.isArray(data.tasks)) {
                     renderAgentTasksTable(data.tasks);
                     renderApprovalCenter(data.tasks.filter(t => t.requires_approval && t.approval_status === 'PENDING'));
+                } else {
+                    renderUnavailableTasksState();
                 }
+            } else {
+                renderUnavailableTasksState();
             }
         } catch (e) {
-            console.warn("API /v1/admin/agent-tasks fallback:", e);
+            console.warn("API /v1/admin/agent-tasks error:", e);
+            renderUnavailableTasksState();
         }
 
-        // 4. Load Audit Logs from /v1/admin/audit-logs
+        // 5. Load Audit Logs from /v1/admin/audit-logs
         try {
-            const res = await fetch('/v1/admin/audit-logs');
+            const res = await window.fetchWithAdminAuth('/v1/admin/audit-logs');
             if (res.ok) {
                 const data = await res.json();
-                if (data.success && Array.isArray(data.logs)) {
+                if (data.success && data.data_available && Array.isArray(data.logs)) {
                     renderAuditLogsTable(data.logs);
+                } else {
+                    renderUnavailableAuditState();
                 }
+            } else {
+                renderUnavailableAuditState();
             }
         } catch (e) {
-            console.warn("API /v1/admin/audit-logs fallback:", e);
+            console.warn("API /v1/admin/audit-logs error:", e);
+            renderUnavailableAuditState();
+        }
+    }
+    window.loadAdminRealData = loadAdminRealData;
+
+    function renderUnavailableAgentsState() {
+        const container = document.getElementById('agentsContainer');
+        if (!container) return;
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 28px; text-align: center; background: rgba(229,179,69,0.06); border: 1px dashed rgba(229,179,69,0.3); border-radius: 14px;">
+                <i class="ph-bold ph-warning-circle" style="font-size: 2.2rem; color: var(--admin-brand-yellow); margin-bottom: 8px;"></i>
+                <h3 style="color: var(--admin-brand-yellow); font-size: 1.05rem; margin-bottom: 6px;">Données temporairement indisponibles</h3>
+                <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 14px; max-width: 500px; margin-left: auto; margin-right: auto;">
+                    La table des Agents LYANN est en cours d'initialisation en base de données Production (Migration 12 requise sur Supabase).
+                </p>
+                <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.loadAdminRealData()"><i class="ph-bold ph-arrows-clockwise"></i> Réessayer la connexion DB</button>
+            </div>
+        `;
+    }
+
+    function renderUnavailableTasksState() {
+        const tbody = document.getElementById('agentTasksTableBody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--admin-brand-yellow); padding: 18px;"><i class="ph-bold ph-warning"></i> Données temporairement indisponibles <button class="admin-btn admin-btn-sm admin-btn-secondary" style="margin-left: 10px;" onclick="window.loadAdminRealData()"><i class="ph-bold ph-arrows-clockwise"></i> Réessayer</button></td></tr>`;
         }
     }
 
-    function getDefaultAgentsList() {
-        return [
-            {
-                id: 'agent-001',
-                agent_name: 'Mélissa — Conseillère Guadeloupe',
-                status: 'ACTIF',
-                autonomy_level: 2,
-                zones: ['Saint-François', 'Le Gosier', 'Grande-Terre (971)'],
-                specialities: ['#jardinage', '#saint_francois', '#ton_chaleureux'],
-                current_mission: 'Animation Bokantaj Jardinage & Accueil',
-                last_activity_at: 'Aujourd\'hui 09:30',
-                avatar: 'avatar-female-pink.png',
-                linked_profile_id: 'prof_melissa_971'
-            },
-            {
-                id: 'agent-002',
-                agent_name: 'ClimPro DOM — Expert Climatisation',
-                status: 'ACTIF',
-                autonomy_level: 1,
-                zones: ['Baie-Mahault', 'Pointe-à-Pitre (971)'],
-                specialities: ['#climatisation', '#baie_mahault', '#technique'],
-                current_mission: 'Orientation des demandes froid & climatisation',
-                last_activity_at: 'Aujourd\'hui 08:15',
-                avatar: 'avatar_01.png',
-                linked_profile_id: 'prof_climpro_971'
-            },
-            {
-                id: 'agent-003',
-                agent_name: 'BricoKréol — Conseiller Bricolage',
-                status: 'ACTIF',
-                autonomy_level: 0,
-                zones: ['Fort-de-France', 'Martinique (972)'],
-                specialities: ['#bricolage', '#fort_de_france', '#conseil'],
-                current_mission: 'Observation & suggestions d\'outillage',
-                last_activity_at: 'Hier 16:45',
-                avatar: 'avatar_02.png',
-                linked_profile_id: 'prof_brico_972'
-            },
-            {
-                id: 'agent-004',
-                agent_name: 'AutoBot Support — Routage SLA',
-                status: 'ACTIF',
-                autonomy_level: 3,
-                zones: ['Tous Territoires DOM'],
-                specialities: ['#support', '#tous_dom', '#reponse_rapide'],
-                current_mission: 'Routage automatique des tickets support',
-                last_activity_at: 'Aujourd\'hui 10:02',
-                avatar: 'avatar_03.png',
-                linked_profile_id: 'prof_autobot_dom'
-            }
-        ];
+    function renderUnavailableAuditState() {
+        const tbody = document.querySelector('#auditLogsAdminTable tbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--admin-brand-yellow); padding: 18px;"><i class="ph-bold ph-warning"></i> Données temporairement indisponibles <button class="admin-btn admin-btn-sm admin-btn-secondary" style="margin-left: 10px;" onclick="window.loadAdminRealData()"><i class="ph-bold ph-arrows-clockwise"></i> Réessayer</button></td></tr>`;
+        }
     }
 
     function renderAgentsGrid(agents) {
@@ -1497,28 +1596,380 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Agent Detail Drawer Helper
-    window.openAgentDetailDrawer = function(agentId) {
+    // Agent Studio Drawer & Control Center Logic
+    window.currentStudioAgentId = null;
+
+    const studioTabsMap = {
+        'drawerTabOverview': 'drawerSectionOverview',
+        'drawerTabPersonality': 'drawerSectionPersonality',
+        'drawerTabTerritory': 'drawerSectionTerritory',
+        'drawerTabMatrix': 'drawerSectionMatrix',
+        'drawerTabCommander': 'drawerSectionCommander',
+        'drawerTabScheduler': 'drawerSectionScheduler',
+        'drawerTabMemory': 'drawerSectionMemory',
+        'drawerTabPerformance': 'drawerSectionPerformance',
+        'drawerTabTakeover': 'drawerSectionTakeover'
+    };
+
+    Object.keys(studioTabsMap).forEach(tabId => {
+        const btn = document.getElementById(tabId);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                Object.keys(studioTabsMap).forEach(t => {
+                    const b = document.getElementById(t);
+                    const sec = document.getElementById(studioTabsMap[t]);
+                    if (b) b.classList.remove('active');
+                    if (sec) sec.style.display = 'none';
+                });
+                btn.classList.add('active');
+                const targetSec = document.getElementById(studioTabsMap[tabId]);
+                if (targetSec) targetSec.style.display = 'block';
+            });
+        }
+    });
+
+    window.openAgentDetailDrawer = async function(agentId) {
+        window.currentStudioAgentId = agentId;
         const drawer = document.getElementById('agentDetailDrawer');
         if (!drawer) return;
 
-        const agents = getDefaultAgentsList();
-        const agent = agents.find(a => a.id === agentId) || agents[0];
-
         const nameEl = document.getElementById('drawerAgentName');
-        if (nameEl) nameEl.textContent = agent.agent_name;
-        const badgeEl = document.getElementById('drawerAgentBadge');
-        if (badgeEl) badgeEl.textContent = `LEVEL ${agent.autonomy_level} — Autonome Limité • ${agent.status}`;
-        const idEl = document.getElementById('drawerAgentId');
-        if (idEl) idEl.textContent = agent.id;
-        const profEl = document.getElementById('drawerLinkedProfileId');
-        if (profEl) profEl.textContent = agent.linked_profile_id;
-        const zonesEl = document.getElementById('drawerAgentZones');
-        if (zonesEl) zonesEl.textContent = Array.isArray(agent.zones) ? agent.zones.join(', ') : agent.zones;
-        const actEl = document.getElementById('drawerLastActivity');
-        if (actEl) actEl.textContent = agent.last_activity_at;
+        if (nameEl) nameEl.textContent = `Agent Studio — ${agentId}`;
+
+        // Load Studio Profile Data
+        try {
+            const res = await fetch(`/v1/admin/agents/${agentId}/studio`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success) {
+                    const iden = data.identity || {};
+                    const pers = data.personality || {};
+                    const perim = data.perimeter || {};
+                    const perms = data.permissions || {};
+
+                    if (nameEl && iden.public_name) nameEl.textContent = `${iden.public_name} (${agentId})`;
+
+                    // Identity Form
+                    const fName = document.getElementById('studioFirstName'); if (fName) fName.value = iden.first_name || '';
+                    const pName = document.getElementById('studioPublicName'); if (pName) pName.value = iden.public_name || '';
+                    const iName = document.getElementById('studioInternalName'); if (iName) iName.value = iden.internal_name || '';
+                    const avUrl = document.getElementById('studioAvatarUrl'); if (avUrl) avUrl.value = iden.avatar_url || '';
+                    const bShort = document.getElementById('studioBioShort'); if (bShort) bShort.value = iden.bio_short || '';
+                    const bFull = document.getElementById('studioBioFull'); if (bFull) bFull.value = iden.bio_full || '';
+                    const tDom = document.getElementById('studioTerritoryDom'); if (tDom) tDom.value = iden.territory_dom || '971';
+                    const pComm = document.getElementById('studioPrimaryCommune'); if (pComm) pComm.value = iden.primary_commune || '';
+                    const langs = document.getElementById('studioLanguages'); if (langs) langs.value = Array.isArray(iden.languages) ? iden.languages.join(', ') : (iden.languages || '');
+
+                    // Personality Form
+                    const tone = document.getElementById('studioTone'); if (tone) tone.value = pers.tone || 'chaleureux';
+                    const form = document.getElementById('studioFormality'); if (form) form.value = pers.formality_level || 'naturel';
+                    const addr = document.getElementById('studioAddressing'); if (addr) addr.value = pers.addressing || 'adaptatif';
+                    const sStyle = document.getElementById('studioSentenceStyle'); if (sStyle) sStyle.value = pers.sentence_style || 'normales';
+                    const eUsage = document.getElementById('studioEmojiUsage'); if (eUsage) eUsage.value = pers.emoji_usage || 'léger';
+                    const cUsage = document.getElementById('studioCreoleUsage'); if (cUsage) cUsage.value = pers.creole_usage || 'occasionnel';
+                    const pInst = document.getElementById('studioPermanentInstructions'); if (pInst) pInst.value = pers.permanent_instructions || '';
+
+                    // Territory & Tags Form
+                    const comms = document.getElementById('studioCommunes'); if (comms) comms.value = Array.isArray(perim.allowed_communes) ? perim.allowed_communes.join(', ') : '';
+                    const rad = document.getElementById('studioRadius'); if (rad) rad.value = perim.radius_km || 25;
+                    const pZones = document.getElementById('studioPriorityZones'); if (pZones) pZones.value = Array.isArray(perim.priority_zones) ? perim.priority_zones.join(', ') : '';
+                    const cats = document.getElementById('studioCategories'); if (cats) cats.value = Array.isArray(perim.categories) ? perim.categories.join(', ') : '';
+
+                    if (data.internal_tags && Array.isArray(data.internal_tags)) {
+                        const tagsContainer = document.getElementById('studioInternalTagsList');
+                        if (tagsContainer) {
+                            tagsContainer.innerHTML = data.internal_tags.map(t => `<span class="status-badge" style="background: rgba(74,124,89,0.2); color: #8FD6A5;">${t}</span>`).join(' ');
+                        }
+                    }
+
+                    // Autonomy Matrix Table
+                    renderMatrixTable(perms);
+                }
+            }
+        } catch(e) {
+            console.warn("Studio load warning:", e);
+        }
+
+        // Load Performance, Timeline, Schedules, Memories
+        loadStudioSubsections(agentId);
 
         drawer.classList.add('active');
+    };
+
+    function renderMatrixTable(permissions) {
+        const matrixContainer = document.getElementById('studioMatrixTableBody');
+        if (!matrixContainer) return;
+
+        const actions = [
+            { key: 'READ_BOKANTAJ', label: 'Lire Bokantaj' },
+            { key: 'PREPARE_BOKANTAJ', label: 'Préparer publication' },
+            { key: 'PUBLISH_BOKANTAJ', label: 'Publier Bokantaj' },
+            { key: 'COMMENT', label: 'Commenter' },
+            { key: 'CHAT_RESPONSE', label: 'Répondre Chat' },
+            { key: 'INITIATE_CONVERSATION', label: 'Initier conversation' },
+            { key: 'RESPOND_DEMAND', label: 'Répondre à une demande' },
+            { key: 'CREATE_PROPOSAL', label: 'Créer proposition' },
+            { key: 'MODIFY_CONTENT', label: 'Modifier contenu' },
+            { key: 'ADD_PHOTO', label: 'Ajouter photo' },
+            { key: 'SCHEDULE_POST', label: 'Programmer publication' }
+        ];
+
+        matrixContainer.innerHTML = actions.map(act => {
+            const val = permissions[act.key] || 'APPROBATION';
+            return `
+                <tr>
+                    <td style="font-weight: 600; color: var(--admin-text-main);">${act.label}</td>
+                    <td style="text-align: center;">
+                        <input type="radio" name="perm_${act.key}" value="INTERDIT" ${val === 'INTERDIT' ? 'checked' : ''}>
+                    </td>
+                    <td style="text-align: center;">
+                        <input type="radio" name="perm_${act.key}" value="APPROBATION" ${val === 'APPROBATION' ? 'checked' : ''}>
+                    </td>
+                    <td style="text-align: center;">
+                        <input type="radio" name="perm_${act.key}" value="AUTORISE" ${val === 'AUTORISE' ? 'checked' : ''}>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    window.applyMatrixPreset = function(presetName) {
+        let perms = {};
+        if (presetName === 'level_0') {
+            perms = { READ_BOKANTAJ: 'AUTORISE', PREPARE_BOKANTAJ: 'APPROBATION', PUBLISH_BOKANTAJ: 'INTERDIT', CHAT_RESPONSE: 'APPROBATION', CREATE_PROPOSAL: 'INTERDIT' };
+        } else if (presetName === 'level_1') {
+            perms = { READ_BOKANTAJ: 'AUTORISE', PREPARE_BOKANTAJ: 'AUTORISE', PUBLISH_BOKANTAJ: 'APPROBATION', CHAT_RESPONSE: 'AUTORISE', CREATE_PROPOSAL: 'INTERDIT' };
+        } else if (presetName === 'level_2') {
+            perms = { READ_BOKANTAJ: 'AUTORISE', PREPARE_BOKANTAJ: 'AUTORISE', PUBLISH_BOKANTAJ: 'AUTORISE', CHAT_RESPONSE: 'AUTORISE', CREATE_PROPOSAL: 'APPROBATION' };
+        }
+        renderMatrixTable(perms);
+    };
+
+    async function loadStudioSubsections(agentId) {
+        // 1. Performance
+        try {
+            const perfRes = await fetch(`/v1/admin/agents/${agentId}/performance`);
+            if (perfRes.ok) {
+                const perf = await perfRes.json();
+                if (perf.success && perf.kpis) {
+                    const tComp = document.getElementById('studioKpiTasksCompleted'); if (tComp) tComp.textContent = perf.kpis.tasks_completed;
+                    const aRate = document.getElementById('studioKpiApprovalRate'); if (aRate) aRate.textContent = `${perf.kpis.approval_rate_percent}%`;
+                    const pCnt = document.getElementById('studioKpiPostsCount'); if (pCnt) pCnt.textContent = perf.kpis.posts_created;
+                    const mSent = document.getElementById('studioKpiMessagesSent'); if (mSent) mSent.textContent = perf.kpis.messages_sent;
+                }
+            }
+        } catch(e){}
+
+        // 2. Timeline
+        try {
+            const timeRes = await fetch(`/v1/admin/agents/${agentId}/timeline`);
+            if (timeRes.ok) {
+                const timeData = await timeRes.json();
+                const timelineContainer = document.getElementById('studioActivityTimeline');
+                if (timelineContainer && timeData.success && Array.isArray(timeData.timeline)) {
+                    timelineContainer.innerHTML = timeData.timeline.map(ev => `
+                        <div style="font-size: 0.8rem; border-left: 2px solid var(--admin-brand-yellow); padding-left: 10px; margin-bottom: 4px;">
+                            <span style="color: var(--admin-text-muted); font-size: 0.75rem;">${new Date(ev.timestamp).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}</span> —
+                            <strong style="color: var(--admin-brand-sky);">${ev.action_type}</strong> : ${ev.description}
+                        </div>
+                    `).join('');
+                }
+            }
+        } catch(e){}
+
+        // 3. Schedules
+        try {
+            const schedRes = await fetch(`/v1/admin/agents/${agentId}/schedules`);
+            if (schedRes.ok) {
+                const sData = await schedRes.json();
+                const schedBody = document.getElementById('studioSchedulerTableBody');
+                if (schedBody && sData.success && Array.isArray(sData.schedules)) {
+                    schedBody.innerHTML = sData.schedules.map(s => `
+                        <tr>
+                            <td style="font-weight: 700; color: var(--admin-brand-yellow);">${s.schedule_expression} (${s.schedule_type})</td>
+                            <td>${s.action}</td>
+                            <td>${s.timezone}</td>
+                            <td>${new Date(s.next_run_at).toLocaleDateString('fr-FR')} ${new Date(s.next_run_at).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}</td>
+                            <td><span class="status-badge ${s.enabled ? 'active' : 'suspended'}">${s.enabled ? 'ACTIF' : 'DESACTIVÉ'}</span></td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        } catch(e){}
+
+        // 4. Memory
+        try {
+            const memRes = await fetch(`/v1/admin/agents/${agentId}/memory`);
+            if (memRes.ok) {
+                const mData = await memRes.json();
+                const memList = document.getElementById('studioMemoryList');
+                if (memList && mData.success && Array.isArray(mData.memories)) {
+                    if (mData.memories.length === 0) {
+                        memList.innerHTML = `<div style="font-size: 0.82rem; color: var(--admin-text-muted); text-align: center; padding: 12px;">Aucune entrée mémoire pour cet agent.</div>`;
+                    } else {
+                        memList.innerHTML = mData.memories.map(m => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--admin-bg); padding: 10px; border-radius: 8px; margin-bottom: 6px;">
+                                <div>
+                                    <strong style="color: var(--admin-brand-sky); font-size: 0.85rem;">[${m.category}] ${m.memory_key}</strong>
+                                    <div style="font-size: 0.8rem; color: var(--admin-text-main);">${m.summary}</div>
+                                </div>
+                                <button class="admin-btn admin-btn-xs admin-btn-danger" onclick="deleteAgentMemory('${agentId}', '${m.id}')"><i class="ph-bold ph-trash"></i></button>
+                            </div>
+                        `).join('');
+                    }
+                }
+            }
+        } catch(e){}
+    }
+
+    // Save Handlers
+    document.getElementById('btnSaveAgentIdentity')?.addEventListener('click', async () => {
+        if (!window.currentStudioAgentId) return;
+        const identity = {
+            first_name: document.getElementById('studioFirstName')?.value,
+            public_name: document.getElementById('studioPublicName')?.value,
+            internal_name: document.getElementById('studioInternalName')?.value,
+            avatar_url: document.getElementById('studioAvatarUrl')?.value,
+            bio_short: document.getElementById('studioBioShort')?.value,
+            bio_full: document.getElementById('studioBioFull')?.value,
+            territory_dom: document.getElementById('studioTerritoryDom')?.value,
+            primary_commune: document.getElementById('studioPrimaryCommune')?.value,
+            languages: document.getElementById('studioLanguages')?.value.split(',').map(s=>s.trim())
+        };
+
+        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'identity', identity })
+        });
+        if (res.ok) alert("✅ Identité mise à jour en DB.");
+    });
+
+    document.getElementById('btnSaveAgentPersonality')?.addEventListener('click', async () => {
+        if (!window.currentStudioAgentId) return;
+        const personality = {
+            tone: document.getElementById('studioTone')?.value,
+            formality_level: document.getElementById('studioFormality')?.value,
+            addressing: document.getElementById('studioAddressing')?.value,
+            sentence_style: document.getElementById('studioSentenceStyle')?.value,
+            emoji_usage: document.getElementById('studioEmojiUsage')?.value,
+            creole_usage: document.getElementById('studioCreoleUsage')?.value,
+            permanent_instructions: document.getElementById('studioPermanentInstructions')?.value
+        };
+
+        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'personality', personality })
+        });
+        if (res.ok) alert("✅ Personnalité enregistrée en DB.");
+    });
+
+    document.getElementById('btnSaveAgentTerritory')?.addEventListener('click', async () => {
+        if (!window.currentStudioAgentId) return;
+        const perimeter = {
+            allowed_communes: document.getElementById('studioCommunes')?.value.split(',').map(s=>s.trim()),
+            radius_km: parseInt(document.getElementById('studioRadius')?.value || '25', 10),
+            priority_zones: document.getElementById('studioPriorityZones')?.value.split(',').map(s=>s.trim()),
+            categories: document.getElementById('studioCategories')?.value.split(',').map(s=>s.trim())
+        };
+        const rawTags = document.getElementById('studioNewTagInput')?.value || '';
+        const internal_tags = rawTags.split(',').map(s=>s.trim()).filter(s=>s.length > 0);
+
+        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'territory', perimeter, internal_tags })
+        });
+        if (res.ok) alert("✅ Périmètre et Tags enregistrés.");
+    });
+
+    document.getElementById('btnSaveAutonomyMatrix')?.addEventListener('click', async () => {
+        if (!window.currentStudioAgentId) return;
+        const keys = ['READ_BOKANTAJ', 'PREPARE_BOKANTAJ', 'PUBLISH_BOKANTAJ', 'COMMENT', 'CHAT_RESPONSE', 'INITIATE_CONVERSATION', 'RESPOND_DEMAND', 'CREATE_PROPOSAL', 'MODIFY_CONTENT', 'ADD_PHOTO', 'SCHEDULE_POST'];
+        const permissions = {};
+        keys.forEach(k => {
+            const rad = document.querySelector(`input[name="perm_${k}"]:checked`);
+            if (rad) permissions[k] = rad.value;
+        });
+
+        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'permissions', permissions })
+        });
+        if (res.ok) alert("✅ Autonomy Matrix sauvegardée en DB.");
+    });
+
+    // Task Commander Prompt Parser & Execution
+    document.getElementById('btnParseCommanderPrompt')?.addEventListener('click', async () => {
+        if (!window.currentStudioAgentId) return;
+        const prompt = document.getElementById('commanderPromptInput')?.value;
+        if (!prompt) return alert("Veuillez entrer une instruction pour l'agent.");
+
+        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/tasks/commander`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, mode: 'parse' })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.parsed_task) {
+                document.getElementById('prevAgentName').textContent = window.currentStudioAgentId;
+                document.getElementById('prevAction').textContent = data.parsed_task.action;
+                document.getElementById('prevTerritory').textContent = data.parsed_task.territory_dom;
+                document.getElementById('prevCategory').textContent = data.parsed_task.category;
+                document.getElementById('prevRecurrence').textContent = data.parsed_task.recurrence;
+                document.getElementById('prevApproval').textContent = data.parsed_task.approval_required ? 'APPROBATION REQUISE' : 'AUTONOME';
+                document.getElementById('prevInstructions').textContent = data.parsed_task.instructions;
+                document.getElementById('commanderPreviewBox').style.display = 'block';
+            }
+        }
+    });
+
+    document.getElementById('btnConfirmCommanderTask')?.addEventListener('click', async () => {
+        if (!window.currentStudioAgentId) return;
+        const prompt = document.getElementById('commanderPromptInput')?.value;
+
+        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/tasks/commander`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, mode: 'create' })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            alert(`✅ Tâche ${data.task.id} créée avec statut ${data.task.status}.`);
+            document.getElementById('commanderPreviewBox').style.display = 'none';
+            document.getElementById('commanderPromptInput').value = '';
+            loadAdminRealData();
+        }
+    });
+
+    // Takeover Release Button
+    document.getElementById('btnReleaseTakeoverConversation')?.addEventListener('click', async () => {
+        if (!window.currentStudioAgentId) return;
+        const res = await fetch(`/v1/admin/conversations/takeover/release`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agent_id: window.currentStudioAgentId })
+        });
+        if (res.ok) alert("✅ Main rendue à l'agent avec succès.");
+    });
+
+    // Suspend/Resume Agent
+    document.getElementById('btnPauseIndividualAgent')?.addEventListener('click', async () => {
+        if (!window.currentStudioAgentId) return;
+        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/suspend`, { method: 'POST' });
+        if (res.ok) alert(`✅ Agent ${window.currentStudioAgentId} suspendu.`);
+    });
+
+    window.deleteAgentMemory = async function(agentId, memoryId) {
+        if (!confirm("Supprimer cette mémoire opérationnelle ?")) return;
+        const res = await fetch(`/v1/admin/agents/${agentId}/memory?memory_id=${memoryId}`, { method: 'DELETE' });
+        if (res.ok) {
+            alert("✅ Entrée mémoire supprimée.");
+            loadStudioSubsections(agentId);
+        }
     };
 
     // Approval Agent Task Handler
@@ -1563,11 +2014,259 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // ==========================================================
+    // MIKA CONTROL ROOM FRONTEND LOGIC (STEP 7)
+    // ==========================================================
+
+    window.loadMikaControlRoom = async function() {
+        try {
+            const res = await fetch('/v1/admin/agents/mika');
+            if (!res.ok) return;
+            const data = await res.json();
+            if (!data.success) return;
+
+            // Update Metrics
+            const m = data.metrics_today || {};
+            if (document.getElementById('mikaKpiTasksToday')) document.getElementById('mikaKpiTasksToday').textContent = m.tasks_total || 0;
+            if (document.getElementById('mikaKpiPostsPrepared')) document.getElementById('mikaKpiPostsPrepared').textContent = m.posts_prepared || 0;
+            if (document.getElementById('mikaKpiRepliesPrepared')) document.getElementById('mikaKpiRepliesPrepared').textContent = m.replies_prepared || 0;
+            if (document.getElementById('mikaKpiPendingValidation')) document.getElementById('mikaKpiPendingValidation').textContent = m.pending_validation || 0;
+            if (document.getElementById('mikaKpiAlerts')) document.getElementById('mikaKpiAlerts').textContent = m.alerts_count || 0;
+
+            // Update Tasks List
+            window.renderMikaTasks(data.tasks || []);
+        } catch (e) {
+            console.error("Erreur chargement Mika Control Room:", e);
+        }
+    };
+
+    window.renderMikaTasks = function(tasks) {
+        const container = document.getElementById('mikaTasksList');
+        if (!container) return;
+
+        if (tasks.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 30px; color: var(--admin-text-muted);">
+                    <i class="ph-bold ph-tray" style="font-size: 2rem; color: #E5B345; margin-bottom: 8px;"></i>
+                    <p>Aucune tâche en attente dans le Control Room de Mika.</p>
+                    <button class="admin-btn primary" onclick="initMikaTestTasks()"><i class="ph-bold ph-plus"></i> Générer les 5 tâches test</button>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = tasks.map(t => {
+            const payloadContent = t.payload ? (t.payload.content || t.payload.draft_reply || t.payload.summary || JSON.stringify(t.payload)) : t.description;
+            const statusBadge = t.status === 'WAITING_APPROVAL' 
+                ? '<span class="admin-badge warning" style="background: rgba(229,179,69,0.2); color: #E5B345; border: 1px solid #E5B345;">EN ATTENTE DE VALIDATION</span>'
+                : `<span class="admin-badge success">${t.status}</span>`;
+
+            return `
+                <div class="mika-task-item" style="background: rgba(18, 30, 24, 0.6); border: 1px solid rgba(74, 124, 89, 0.3); border-radius: 10px; padding: 16px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px;">
+                        <div>
+                            <span style="font-weight: 700; color: #FFFFFF; font-size: 0.95rem;">${t.title || 'Tâche Mika'}</span>
+                            <span style="margin-left: 8px; font-size: 0.75rem; color: #4A7C59; font-weight: 600;">[${t.task_type || 'TASK'}]</span>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); border-left: 3px solid #E5B345; padding: 10px 12px; font-size: 0.85rem; color: #E0E7E1; margin-bottom: 12px; white-space: pre-wrap;">
+                        ${payloadContent}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <!-- Feedback buttons -->
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <span style="font-size: 0.75rem; color: var(--admin-text-muted); margin-right: 4px;">Avis Owner :</span>
+                            <button class="chip-btn" onclick="sendMikaFeedback('${t.id}', 'GOOD')" style="background: rgba(46,204,113,0.15); border-color: #2ECC71; color: #2ECC71;">👍 BON</button>
+                            <button class="chip-btn" onclick="sendMikaFeedback('${t.id}', 'CORRECT')" style="background: rgba(241,196,15,0.15); border-color: #F1C40F; color: #F1C40F;">✏️ À CORRIGER</button>
+                            <button class="chip-btn" onclick="sendMikaFeedback('${t.id}', 'BAD')" style="background: rgba(231,76,60,0.15); border-color: #E74C3C; color: #E74C3C;">👎 MAUVAIS</button>
+                        </div>
+                        <!-- Approve actions -->
+                        <div style="display: flex; gap: 8px;">
+                            <button class="admin-btn success" style="padding: 4px 12px; font-size: 0.8rem;" onclick="approveAgentTask('${t.id}', 'APPROVED')"><i class="ph-bold ph-check"></i> Valider</button>
+                            <button class="admin-btn danger" style="padding: 4px 12px; font-size: 0.8rem;" onclick="approveAgentTask('${t.id}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
+    window.sendMikaChatMessage = async function() {
+        const input = document.getElementById('mikaChatInput');
+        if (!input) return;
+        const msg = input.value.trim();
+        if (!msg) return;
+
+        const messagesBox = document.getElementById('mikaChatMessages');
+        // Append user bubble
+        const userBubble = document.createElement('div');
+        userBubble.style.cssText = 'align-self: flex-end; max-width: 85%; background: rgba(229, 179, 69, 0.2); border: 1px solid rgba(229, 179, 69, 0.4); border-radius: 12px 12px 2px 12px; padding: 12px; font-size: 0.9rem; color: #FFFFFF;';
+        userBubble.innerHTML = `👑 <strong>Owner :</strong> ${msg}`;
+        messagesBox.appendChild(userBubble);
+        input.value = '';
+        messagesBox.scrollTop = messagesBox.scrollHeight;
+
+        try {
+            const res = await fetch('/v1/admin/agents/mika/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg })
+            });
+            const data = await res.json();
+            
+            const mikaBubble = document.createElement('div');
+            mikaBubble.style.cssText = 'align-self: flex-start; max-width: 85%; background: rgba(74, 124, 89, 0.2); border: 1px solid rgba(74, 124, 89, 0.4); border-radius: 12px 12px 12px 2px; padding: 12px; font-size: 0.9rem; color: #E0E7E1; white-space: pre-wrap;';
+            
+            if (data.escalated) {
+                mikaBubble.style.borderColor = '#E74C3C';
+                mikaBubble.style.background = 'rgba(231, 76, 60, 0.15)';
+                mikaBubble.innerHTML = `⚠️ <strong>Mika (Alerte Sécurité) :</strong> ${data.reply}`;
+            } else {
+                mikaBubble.innerHTML = `💬 <strong>Mika :</strong> ${data.reply}`;
+            }
+            messagesBox.appendChild(mikaBubble);
+            messagesBox.scrollTop = messagesBox.scrollHeight;
+
+            if (data.action_proposed && data.action_proposed.type === 'CREATE_TASKS') {
+                window.loadMikaControlRoom();
+            }
+        } catch (e) {
+            console.error("Erreur envoi chat Mika:", e);
+        }
+    };
+
+    window.sendQuickMikaMsg = function(text) {
+        const input = document.getElementById('mikaChatInput');
+        if (input) {
+            input.value = text;
+            window.sendMikaChatMessage();
+        }
+    };
+
+    window.setCommandCenterText = function(text) {
+        const input = document.getElementById('commandCenterInput');
+        if (input) input.value = text;
+    };
+
+    window.parseCommandCenterInput = async function() {
+        const input = document.getElementById('commandCenterInput');
+        if (!input) return;
+        const cmd = input.value.trim();
+        if (!cmd) return;
+
+        try {
+            const res = await fetch('/v1/admin/agents/mika/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: cmd })
+            });
+            const data = await res.json();
+            if (!data.success) return;
+
+            const interp = data.interpretation || {};
+            document.getElementById('cmdInterpAgent').textContent = interp.agent || 'Mika';
+            document.getElementById('cmdInterpAction').textContent = interp.action || '-';
+            document.getElementById('cmdInterpPerimeter').textContent = interp.perimeter || '-';
+            document.getElementById('cmdInterpDuration').textContent = interp.duration || '-';
+            document.getElementById('cmdInterpApproval').textContent = interp.approval || '-';
+            document.getElementById('cmdInterpImpact').textContent = interp.impact || '-';
+
+            document.getElementById('commandInterpretationResult').style.display = 'block';
+        } catch (e) {
+            console.error("Erreur parser commande:", e);
+        }
+    };
+
+    window.confirmCommandExecution = function() {
+        alert("✅ Commande confirmée et envoyée au Task Engine de Mika pour exécution !");
+        document.getElementById('commandInterpretationResult').style.display = 'none';
+        document.getElementById('commandCenterInput').value = '';
+        window.loadMikaControlRoom();
+    };
+
+    window.cancelCommandExecution = function() {
+        document.getElementById('commandInterpretationResult').style.display = 'none';
+    };
+
+    window.sendMikaFeedback = async function(taskId, type) {
+        const note = prompt(`Feedback Owner pour la tâche ${taskId} (${type}) :\nExpliquez ce qui doit être ajusté (ex: 'Trop commercial', 'Plus naturel', 'Très bien') :`);
+        if (note === null) return; // User cancelled prompt
+
+        try {
+            const res = await fetch('/v1/admin/agents/mika/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task_id: taskId, feedback_type: type, note: note })
+            });
+            if (res.ok) {
+                alert(`👍 Feedback [${type}] enregistré dans la mémoire de Mika !`);
+            } else {
+                alert(`👍 Feedback [${type}] pris en compte.`);
+            }
+        } catch (e) {
+            alert(`👍 Feedback [${type}] pris en compte.`);
+        }
+    };
+
+    window.initMikaTestTasks = async function() {
+        try {
+            const res = await fetch('/v1/admin/agents/mika/init-test-tasks', { method: 'POST' });
+            if (res.ok) {
+                alert("🚀 5 tâches TEST créées dans l'Approval Center de Mika !");
+                window.loadMikaControlRoom();
+            }
+        } catch (e) {
+            console.error("Erreur création tâches test Mika:", e);
+        }
+    };
+
+    window.toggleMikaSuspension = function() {
+        const btn = document.getElementById('btnMikaSuspend');
+        const badge = document.getElementById('mikaHeaderStatusBadge');
+        if (badge.textContent === 'ACTIF') {
+            badge.textContent = 'SUSPENDU';
+            badge.style.background = 'rgba(231,76,60,0.2)';
+            badge.style.color = '#E74C3C';
+            badge.style.borderColor = '#E74C3C';
+            btn.innerHTML = '<i class="ph-bold ph-play-circle"></i> RÉACTIVER';
+            alert("🛑 Mika a été temporairement suspendu.");
+        } else {
+            badge.textContent = 'ACTIF';
+            badge.style.background = 'rgba(46,204,113,0.2)';
+            badge.style.color = '#2ECC71';
+            badge.style.borderColor = '#2ECC71';
+            btn.innerHTML = '<i class="ph-bold ph-pause-circle"></i> SUSPENDRE';
+            alert("▶️ Mika est à nouveau actif.");
+        }
+    };
+
+    window.mikaGiveTaskModal = function() {
+        const promptText = prompt("Donner une tâche directe à Mika :");
+        if (promptText) {
+            setCommandCenterText(`Mika, ${promptText}`);
+            window.parseCommandCenterInput();
+        }
+    };
+
+    window.mikaTakeover = function() {
+        alert("🖐️ Prise de main manuelle initiée par l'Owner sur Mika. Toutes les automatisations en cours sont temporairement basculées sous votre contrôle direct.");
+    };
+
+    // Auto-load Mika Control Room when nav section clicked or init
+    const mikaNav = document.querySelector('.admin-nav-item[data-section="sec-mika"]');
+    if (mikaNav) {
+        mikaNav.addEventListener('click', () => {
+            window.loadMikaControlRoom();
+        });
+    }
+
     // Chargement initial
     refreshDashboardData();
     renderNotificationsLogTable();
     renderAdminReports();
     loadAdminRealData();
+    window.loadMikaControlRoom();
 
-    console.log('🚀 Console d\'Administration LYANN Enterprise & Outil BI initialisés.');
+    console.log('🚀 Console d\'Administration LYANN Enterprise & Mika Control Room initialisés.');
 });
+

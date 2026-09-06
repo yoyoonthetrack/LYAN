@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Connexion Administrateur — admin.lyann.app | LYANN Enterprise</title>
+    
+    <!-- Google Fonts & Phosphor Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Supabase Client & API Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="api-client.js"></script>
+
+    <!-- Admin Stylesheet -->
+    <link rel="stylesheet" href="admin-style.css">
+
+    <style>
+        body.admin-login-body {
+            background-color: #0B100C;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(74, 124, 89, 0.18) 0%, transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(229, 179, 69, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 50% 50%, rgba(123, 197, 227, 0.05) 0%, transparent 60%);
+            color: var(--admin-text-main);
+            font-family: var(--admin-font);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            margin: 0;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated Ambient Background Grid */
+        .login-grid-bg {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(112, 156, 125, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(112, 156, 125, 0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Ambient Floating Glow Spheres */
+        .glow-sphere-1 {
+            position: absolute;
+            top: -100px;
+            left: -100px;
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(74, 124, 89, 0.3) 0%, transparent 70%);
+            filter: blur(60px);
+            pointer-events: none;
+            animation: pulseGlow 10s ease-in-out infinite alternate;
+        }
+
+        .glow-sphere-2 {
+            position: absolute;
+            bottom: -100px;
+            right: -100px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(229, 179, 69, 0.2) 0%, transparent 70%);
+            filter: blur(80px);
+            pointer-events: none;
+            animation: pulseGlow 12s ease-in-out infinite alternate-reverse;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(1) translate(0, 0); opacity: 0.7; }
+            100% { transform: scale(1.15) translate(30px, -20px); opacity: 1; }
+        }
+
+        /* Login Card Wrapper */
+        .admin-login-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 460px;
+        }
+
+        .admin-login-card {
+            background: rgba(18, 28, 22, 0.82);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(112, 156, 125, 0.25);
+            border-radius: 24px;
+            padding: 40px 36px;
+            box-shadow: 
+                0 20px 50px rgba(0, 0, 0, 0.6),
+                0 0 0 1px rgba(229, 179, 69, 0.1);
+            transition: var(--admin-transition);
+        }
+
+        .admin-login-card:hover {
+            border-color: rgba(229, 179, 69, 0.4);
+            box-shadow: 
+                0 25px 60px rgba(0, 0, 0, 0.7),
+                0 0 25px rgba(229, 179, 69, 0.15);
+        }
+
+        /* Header Branding */
+        .admin-login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .admin-login-logo-ring {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 16px auto;
+            background: rgba(74, 124, 89, 0.12);
+            border: 1px solid rgba(229, 179, 69, 0.35);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .admin-login-logo-ring::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 24px;
+            border: 1px dashed rgba(229, 179, 69, 0.25);
+            pointer-events: none;
+        }
+
+        .admin-login-domain {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(229, 179, 69, 0.1);
+            border: 1px solid rgba(229, 179, 69, 0.3);
+            color: var(--admin-brand-yellow);
+            font-family: var(--admin-font-mono);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 30px;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .admin-login-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #FAF7F2;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+        }
+
+        .admin-login-subtitle {
+            font-size: 0.88rem;
+            color: var(--admin-text-muted);
+            line-height: 1.4;
+        }
+
+        /* Form Inputs */
+        .admin-input-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .admin-input-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #FAF7F2;
+            margin-bottom: 8px;
+            letter-spacing: 0.2px;
+        }
+
+        .admin-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .admin-input-wrapper i.input-icon {
+            position: absolute;
+            left: 14px;
+            font-size: 1.25rem;
+            color: var(--admin-text-muted);
+            transition: var(--admin-transition);
+            pointer-events: none;
+        }
+
+        .admin-input {
+            width: 100%;
+            background: rgba(15, 23, 18, 0.9);
+            border: 1px solid rgba(112, 156, 125, 0.25);
+            border-radius: 12px;
+            padding: 13px 14px 13px 44px;
+            color: #FAF7F2;
+            font-family: var(--admin-font);
+            font-size: 0.95rem;
+            outline: none;
+            transition: var(--admin-transition);
+        }
+
+        .admin-input:focus {
+            border-color: var(--admin-brand-yellow);
+            box-shadow: 0 0 0 3px rgba(229, 179, 69, 0.15);
+            background: rgba(15, 23, 18, 0.98);
+        }
+
+        .admin-input:focus + i.input-icon,
+        .admin-input-wrapper:focus-within i.input-icon {
+            color: var(--admin-brand-yellow);
+        }
+
+        .btn-toggle-password {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: var(--admin-text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--admin-transition);
+            border-radius: 6px;
+        }
+
+        .btn-toggle-password:hover {
+            color: var(--admin-brand-yellow);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Checkbox & Options */
+        .admin-login-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            font-size: 0.82rem;
+        }
+
+        .remember-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--admin-text-muted);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .remember-checkbox-label input[type="checkbox"] {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: rgba(15, 23, 18, 0.9);
+            border: 1px solid rgba(112, 156, 125, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            transition: var(--admin-transition);
+        }
+
+        .remember-checkbox-label input[type="checkbox"]:checked {
+            background: var(--admin-brand-primary);
+            border-color: var(--admin-brand-primary);
+        }
+
+        .remember-checkbox-label input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #FFF;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        /* Action Submit Button */
+        .btn-admin-submit {
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #4A7C59 0%, #2F523A 100%);
+            border: 1px solid rgba(229, 179, 69, 0.4);
+            border-radius: 12px;
+            color: #FAF7F2;
+            font-family: var(--admin-font);
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 8px 20px rgba(47, 82, 58, 0.4);
+            transition: var(--admin-transition);
+        }
+
+        .btn-admin-submit:hover:not(:disabled) {
+            background: linear-gradient(135deg, #59946B 0%, #396346 100%);
+            border-color: var(--admin-brand-yellow);
+            box-shadow: 
+                0 10px 25px rgba(47, 82, 58, 0.6),
+                0 0 15px rgba(229, 179, 69, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .btn-admin-submit:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-admin-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Alert Banners */
+        .admin-alert-banner {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+            display: none;
+            align-items: flex-start;
+            gap: 10px;
+            line-height: 1.4;
+            animation: fadeInShake 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .admin-alert-banner.error {
+            background: rgba(231, 111, 81, 0.12);
+            border: 1px solid rgba(231, 111, 81, 0.4);
+            color: #F4A261;
+        }
+
+        .admin-alert-banner.success {
+            background: rgba(74, 124, 89, 0.18);
+            border: 1px solid rgba(74, 124, 89, 0.4);
+            color: #A3B5A8;
+        }
+
+        @keyframes fadeInShake {
+            0% { opacity: 0; transform: translateY(-5px); }
+            20% { transform: translateX(-4px); }
+            40% { transform: translateX(4px); }
+            60% { transform: translateX(-2px); }
+            80% { transform: translateX(2px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Security Badges & Footer */
+        .admin-login-footer {
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(112, 156, 125, 0.15);
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--admin-text-muted);
+        }
+
+        .security-badge-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 10px;
+        }
+
+        .security-badge-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-family: var(--admin-font-mono);
+            font-size: 0.72rem;
+            color: var(--admin-brand-yellow);
+            background: rgba(229, 179, 69, 0.08);
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(229, 179, 69, 0.2);
+        }
+
+        .spinner-icon {
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="admin-login-body">
+
+    <!-- Ambient Glow Background -->
+    <div class="login-grid-bg"></div>
+    <div class="glow-sphere-1"></div>
+    <div class="glow-sphere-2"></div>
+
+    <!-- Login Container -->
+    <div class="admin-login-wrapper">
+        <div class="admin-login-card">
+            
+            <!-- Branding Header -->
+            <div class="admin-login-header">
+                <div class="admin-login-logo-ring">
+                    <svg viewBox="0 0 100 80" style="width: 44px; height: 44px;">
+                        <defs>
+                            <linearGradient id="loginGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#4A7C59"/>
+                                <stop offset="50%" stop-color="#709C7D"/>
+                                <stop offset="100%" stop-color="#E5B345"/>
+                            </linearGradient>
+                            <linearGradient id="loginRoof" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#4A7C59"/>
+                                <stop offset="50%" stop-color="#7BC5E3"/>
+                                <stop offset="100%" stop-color="#E5B345"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M12 42 L50 14 L88 42" stroke="url(#loginRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 72, 77 72" 
+                              stroke="url(#loginGrad)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                    </svg>
+                </div>
+                <div class="admin-login-domain">
+                    <i class="ph-bold ph-shield-check"></i> admin.lyann.app
+                </div>
+                <h1 class="admin-login-title">Console Administrateur</h1>
+                <p class="admin-login-subtitle">Connectez-vous avec vos identifiants habilités pour accéder au Back-Office LYANN Enterprise.</p>
+            </div>
+
+            <!-- Dynamic Alert Banner -->
+            <div id="loginAlertBanner" class="admin-alert-banner">
+                <i id="loginAlertIcon" class="ph-bold ph-warning-circle" style="font-size: 1.2rem; flex-shrink: 0; margin-top: 1px;"></i>
+                <span id="loginAlertMessage">Message d'erreur...</span>
+            </div>
+
+            <!-- Login Form -->
+            <form id="adminLoginForm" onsubmit="handleAdminLogin(event)" autocomplete="on">
+                
+                <!-- Identifiant / Email -->
+                <div class="admin-input-group">
+                    <label class="admin-input-label" for="adminEmail">
+                        <span>Identifiant Administrateur</span>
+                        <span style="font-size: 0.72rem; color: var(--admin-brand-yellow); font-family: var(--admin-font-mono);">Email RBAC</span>
+                    </label>
+                    <div class="admin-input-wrapper">
+                        <input type="email" id="adminEmail" class="admin-input" placeholder="ex: admin@lyann.app" required autocomplete="username" autofocus>
+                        <i class="ph-bold ph-envelope-simple input-icon"></i>
+                    </div>
+                </div>
+
+                <!-- Mot de passe -->
+                <div class="admin-input-group">
+                    <label class="admin-input-label" for="adminPassword">
+                        <span>Mot de Passe Securisé</span>
+                        <a href="javascript:void(0)" onclick="handleForgotPassword()" style="font-size: 0.72rem; color: var(--admin-text-muted); text-decoration: none;">Oublié ?</a>
+                    </label>
+                    <div class="admin-input-wrapper">
+                        <input type="password" id="adminPassword" class="admin-input" placeholder="••••••••••••••••" required autocomplete="current-password">
+                        <i class="ph-bold ph-lock-key input-icon"></i>
+                        <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility()" title="Afficher/Masquer le mot de passe">
+                            <i id="togglePassIcon" class="ph-bold ph-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Remember & Security Option -->
+                <div class="admin-login-options">
+                    <label class="remember-checkbox-label">
+                        <input type="checkbox" id="rememberSession" checked>
+                        <span>Rester connecté sur cet appareil</span>
+                    </label>
+                    <span style="color: var(--admin-brand-yellow); font-family: var(--admin-font-mono); font-size: 0.75rem;">TLS 1.3 Active</span>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="btnAdminSubmit" class="btn-admin-submit">
+                    <span id="btnSubmitText">Se Connecter au Back-Office</span>
+                    <i id="btnSubmitIcon" class="ph-bold ph-arrow-right"></i>
+                </button>
+            </form>
+
+            <!-- Security Footer -->
+            <div class="admin-login-footer">
+                <div class="security-badge-row">
+                    <span class="security-badge-item"><i class="ph-bold ph-lock"></i> Supabase Auth</span>
+                    <span class="security-badge-item"><i class="ph-bold ph-shield-star"></i> RBAC Enforced</span>
+                    <span class="security-badge-item"><i class="ph-bold ph-map-pin"></i> 971 Guadeloupe</span>
+                </div>
+                <div style="font-size: 0.72rem; line-height: 1.5; color: var(--admin-text-muted);">
+                    Accès strictement restreint au personnel habilité. Toute tentative non autorisée est automatiquement enregistrée et transmise au journal des Audit Logs.
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Login Logic JavaScript Engine -->
+    <script>
+        // Automatic session check on page load: If already authenticated as an authorized Admin, redirect immediately
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check if arriving from logout
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('logout') === 'success') {
+                showAlert('success', '🔒 Vous avez été déconnecté en toute sécurité du Back-Office.');
+            }
+
+            // Check existing session
+            if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getSession === 'function') {
+                try {
+                    const { data: sData } = await window.LYANN_API_CLIENT.getSession();
+                    if (sData?.session?.access_token) {
+                        const token = sData.session.access_token;
+                        const meRes = await fetch('/v1/admin/me', {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (meRes.ok) {
+                            const meData = await meRes.json();
+                            if (meData.success) {
+                                console.log("Session Administrateur active détectée. Redirection vers admin.html...");
+                                window.location.replace('admin.html');
+                            }
+                        }
+                    }
+                } catch(err) {
+                    console.warn("Vérification session initiale:", err);
+                }
+            }
+        });
+
+        // Toggle Password Input Visibility
+        function togglePasswordVisibility() {
+            const passInput = document.getElementById('adminPassword');
+            const toggleIcon = document.getElementById('togglePassIcon');
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                toggleIcon.className = 'ph-bold ph-eye-slash';
+            } else {
+                passInput.type = 'password';
+                toggleIcon.className = 'ph-bold ph-eye';
+            }
+        }
+
+        // Show Alert Banner Helper
+        function showAlert(type, message) {
+            const banner = document.getElementById('loginAlertBanner');
+            const icon = document.getElementById('loginAlertIcon');
+            const msg = document.getElementById('loginAlertMessage');
+
+            banner.className = `admin-alert-banner ${type}`;
+            if (type === 'error') {
+                icon.className = 'ph-bold ph-warning-circle';
+            } else {
+                icon.className = 'ph-bold ph-check-circle';
+            }
+            msg.textContent = message;
+            banner.style.display = 'flex';
+        }
+
+        function hideAlert() {
+            const banner = document.getElementById('loginAlertBanner');
+            banner.style.display = 'none';
+        }
+
+        // Forgot password notice
+        function handleForgotPassword() {
+            alert("🔒 Réinitialisation de mot de passe Administrateur :\n\nVeuillez contacter le Super Admin (Owner) ou exécuter la procédure de récupération via la console d'administration centrale.");
+        }
+
+        // Main Login Handler
+        async function handleAdminLogin(event) {
+            event.preventDefault();
+            hideAlert();
+
+            const emailInput = document.getElementById('adminEmail');
+            const passwordInput = document.getElementById('adminPassword');
+            const submitBtn = document.getElementById('btnAdminSubmit');
+            const submitText = document.getElementById('btnSubmitText');
+            const submitIcon = document.getElementById('btnSubmitIcon');
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email || !password) {
+                showAlert('error', 'Veuillez saisir votre email et votre mot de passe administrateur.');
+                return;
+            }
+
+            // Set loading state
+            submitBtn.disabled = true;
+            submitText.textContent = 'Vérification des accreditations...';
+            submitIcon.className = 'ph-bold ph-spinner spinner-icon';
+
+            try {
+                if (!window.LYANN_API_CLIENT) {
+                    throw new Error("Client API LYANN non disponible.");
+                }
+
+                // 1. Supabase Authentication
+                const authResult = await window.LYANN_API_CLIENT.login(email, password);
+                if (authResult.error) {
+                    let errMsg = authResult.error.message || "Identifiants incorrects.";
+                    if (errMsg.includes('Invalid login credentials')) {
+                        errMsg = "Email ou mot de passe incorrect. Veuillez vérifier vos identifiants.";
+                    }
+                    throw new Error(errMsg);
+                }
+
+                const token = authResult.data?.session?.access_token;
+                if (!token) {
+                    throw new Error("Jeton d'authentification invalide.");
+                }
+
+                // 2. Strict Backend RBAC Verification via /v1/admin/me
+                submitText.textContent = 'Vérification du rôle RBAC...';
+                const meRes = await fetch('/v1/admin/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!meRes.ok) {
+                    // Sign out immediately if not an admin
+                    await window.LYANN_API_CLIENT.signOut();
+                    throw new Error("🚫 Accès refusé : Ce compte n'est pas autorisé à accéder au Back-Office LYANN.");
+                }
+
+                const meData = await meRes.json();
+                if (!meData.success) {
+                    await window.LYANN_API_CLIENT.signOut();
+                    throw new Error("🚫 Accès refusé : Rôle d'administrateur non attribué.");
+                }
+
+                // 3. Success -> Toast & Redirect to Back-Office
+                showAlert('success', `✅ Authentification réussie. Bienvenue ${meData.role || 'Admin'} ! Redirection...`);
+                submitText.textContent = 'Accès Autorisé ! Redirection...';
+                submitIcon.className = 'ph-bold ph-check';
+                submitBtn.style.background = 'linear-gradient(135deg, #2E7D32, #4A7C59)';
+
+                setTimeout(() => {
+                    window.location.replace('admin.html');
+                }, 800);
+
+            } catch (err) {
+                console.error("Erreur de connexion Admin:", err);
+                showAlert('error', err.message || "Une erreur est survenue lors de la connexion.");
+                
+                // Reset button state
+                submitBtn.disabled = false;
+                submitText.textContent = 'Se Connecter au Back-Office';
+                submitIcon.className = 'ph-bold ph-arrow-right';
+            }
+        }
+    </script>
+</body>
+</html>

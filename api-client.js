@@ -908,7 +908,7 @@ const LYANN_API_CLIENT = {
 
     async logAuditAction(actorUsername, action, moduleName, resourceType, resourceId, accessReason = null, oldVals = null, newVals = null) {
         const logEntry = {
-            actor_username: actorUsername || 'Yoyoothetrack',
+            actor_username: actorUsername || 'Administrateur',
             action,
             module: moduleName,
             resource_type: resourceType,

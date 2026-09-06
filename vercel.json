@@ -22,7 +22,7 @@
           "value": "admin.lyann.app"
         }
       ],
-      "destination": "/admin.html",
+      "destination": "/admin-login.html",
       "permanent": false
     },
     {
@@ -33,7 +33,7 @@
           "value": "admin.lyann.app"
         }
       ],
-      "destination": "/admin.html",
+      "destination": "/admin-login.html",
       "permanent": false
     }
   ],
