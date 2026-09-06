@@ -184,6 +184,17 @@ const LYANN_API_CLIENT = {
             .single();
     },
 
+    formatResponseTimeLabel(seconds) {
+        if (seconds === null || seconds === undefined || isNaN(seconds)) return '—';
+        const sec = Number(seconds);
+        if (sec < 1800) return 'Répond généralement en moins de 30 min';
+        if (sec < 3600) return "Répond généralement en moins d'1 h";
+        if (sec < 7200) return 'Répond généralement en moins de 2 h';
+        if (sec < 21600) return 'Répond généralement en quelques heures';
+        if (sec < 86400) return 'Répond généralement dans la journée';
+        return 'Répond généralement sous 24 à 48 h';
+    },
+
     async getUserTrustAndReputation(userId) {
         if (!this.supabase) return { data: null };
         const { data, error } = await this.supabase.rpc('get_user_trust_and_reputation', {
@@ -208,15 +219,17 @@ const LYANN_API_CLIENT = {
                     is_verified: !!p.is_verified,
                     is_pro_verified: !!(p.is_pro && p.kyc_verified),
                     member_since: p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '2026',
-                    skills: p.skills || [],
+                    skills: [],
                     intervention_zone: p.intervention_zone || [],
                     intervention_radius_km: p.intervention_radius_km || 10,
+                    completion_pct: 20,
                     metrics: {
                         average_rating: null,
                         reviews_count: 0,
                         completed_missions: 0,
                         response_rate_percent: null,
-                        avg_response_time_label: null,
+                        median_response_time_seconds: null,
+                        avg_response_time_label: '—',
                         completion_rate_percent: null,
                         repeat_users_count: 0,
                         recommendations_count: 0,
@@ -225,6 +238,11 @@ const LYANN_API_CLIENT = {
                     }
                 }
             };
+        }
+
+        // Decorate backend data with UI helper labels
+        if (data && data.metrics) {
+            data.metrics.avg_response_time_label = this.formatResponseTimeLabel(data.metrics.median_response_time_seconds);
         }
         return { data };
     },
