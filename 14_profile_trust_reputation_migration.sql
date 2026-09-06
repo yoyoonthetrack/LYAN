@@ -1,5 +1,5 @@
 -- ============================================================================
--- LYANN DOM — 14_PROFILE_TRUST_REPUTATION_MIGRATION.SQL (V2 HARDENED)
+-- LYANN DOM — 14_PROFILE_TRUST_REPUTATION_MIGRATION.SQL (V3 HOTFIX)
 -- STEP 8: USER PROFILE & TRUST & REPUTATION ENGINE MIGRATION
 -- ============================================================================
 -- IMPORTANT: CE SCRIPT NE DOIT PAS ÊTRE EXÉCUTÉ AUTOMATIQUEMENT PAR L'AGENT.
@@ -9,7 +9,7 @@
 BEGIN;
 
 -- ----------------------------------------------------------------------------
--- SECTION 1 : EXTENSION DE LA TABLE PUBLIC.PROFILES (SANS DOUBLON TAXONOMIE)
+-- SECTION 1 : EXTENSION DE LA TABLE PUBLIC.PROFILES (SCHÉMA RÉEL SUPABASE)
 -- ----------------------------------------------------------------------------
 
 ALTER TABLE public.profiles 
@@ -21,7 +21,34 @@ CREATE INDEX IF NOT EXISTS idx_profiles_territory_city ON public.profiles(territ
 CREATE INDEX IF NOT EXISTS idx_profiles_intervention_zone ON public.profiles USING GIN (intervention_zone);
 
 -- ----------------------------------------------------------------------------
--- SECTION 2 : VÉRIFICATION ET SÉCURISATION DES BUCKETS DE STOCKAGE SUPABASE
+-- SECTION 2 : MODÈLE DÉDIÉ PORTFOLIO (PUBLIC.USER_PORTFOLIO_ITEMS)
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.user_portfolio_items (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    image_url text NOT NULL,
+    title text DEFAULT '',
+    caption text DEFAULT '',
+    display_order integer DEFAULT 0,
+    created_at timestamptz DEFAULT timezone('utc'::text, now()),
+    updated_at timestamptz DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.user_portfolio_items ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public read user_portfolio_items" ON public.user_portfolio_items;
+CREATE POLICY "Public read user_portfolio_items" ON public.user_portfolio_items
+    FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "User manage own user_portfolio_items" ON public.user_portfolio_items;
+CREATE POLICY "User manage own user_portfolio_items" ON public.user_portfolio_items
+    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_portfolio_items_user_id ON public.user_portfolio_items(user_id);
+
+-- ----------------------------------------------------------------------------
+-- SECTION 3 : BUCKETS ET POLITIQUES STORAGE (AVATARS ET PORTFOLIO)
 -- ----------------------------------------------------------------------------
 
 INSERT INTO storage.buckets (id, name, public)
@@ -32,7 +59,7 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('portfolio_images', 'portfolio_images', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- Suppression des anciennes politiques storage pour avatars
+-- Politiques RLS granulaires pour avatars
 DROP POLICY IF EXISTS "Public avatars read" ON storage.objects;
 DROP POLICY IF EXISTS "User avatars management" ON storage.objects;
 DROP POLICY IF EXISTS "Public read avatars" ON storage.objects;
@@ -40,7 +67,6 @@ DROP POLICY IF EXISTS "User insert own avatar" ON storage.objects;
 DROP POLICY IF EXISTS "User update own avatar" ON storage.objects;
 DROP POLICY IF EXISTS "User delete own avatar" ON storage.objects;
 
--- Politiques RLS granulaires pour avatars
 CREATE POLICY "Public read avatars" ON storage.objects
     FOR SELECT USING (bucket_id = 'avatars');
 
@@ -69,7 +95,7 @@ CREATE POLICY "User delete own avatar" ON storage.objects
         (storage.foldername(name))[1] = auth.uid()::text
     );
 
--- Suppression des anciennes politiques storage pour portfolio_images
+-- Politiques RLS granulaires pour portfolio_images
 DROP POLICY IF EXISTS "Public portfolio_images read" ON storage.objects;
 DROP POLICY IF EXISTS "User portfolio_images management" ON storage.objects;
 DROP POLICY IF EXISTS "Public read portfolio_images" ON storage.objects;
@@ -77,7 +103,6 @@ DROP POLICY IF EXISTS "User insert own portfolio_image" ON storage.objects;
 DROP POLICY IF EXISTS "User update own portfolio_image" ON storage.objects;
 DROP POLICY IF EXISTS "User delete own portfolio_image" ON storage.objects;
 
--- Politiques RLS granulaires pour portfolio_images
 CREATE POLICY "Public read portfolio_images" ON storage.objects
     FOR SELECT USING (bucket_id = 'portfolio_images');
 
@@ -107,29 +132,11 @@ CREATE POLICY "User delete own portfolio_image" ON storage.objects
     );
 
 -- ----------------------------------------------------------------------------
--- SECTION 3 : RLS POUR PROJETS (PORTFOLIO), REVIEWS ET RECOMMANDATIONS
+-- SECTION 4 : POLITIQUES RLS REVIEWS ET RECOMMANDATIONS
 -- ----------------------------------------------------------------------------
 
-ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.recommendations ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Public read projects" ON public.projects;
-CREATE POLICY "Public read projects" ON public.projects FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Owner manage projects" ON public.projects;
-CREATE POLICY "Owner manage projects" ON public.projects FOR ALL 
-    USING (auth.uid() = owner_id) 
-    WITH CHECK (auth.uid() = owner_id);
-
-DROP POLICY IF EXISTS "Public read project images" ON public.project_images;
-CREATE POLICY "Public read project images" ON public.project_images FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Owner manage project images" ON public.project_images;
-CREATE POLICY "Owner manage project images" ON public.project_images FOR ALL 
-    USING (EXISTS (SELECT 1 FROM public.projects WHERE id = project_images.project_id AND owner_id = auth.uid()))
-    WITH CHECK (EXISTS (SELECT 1 FROM public.projects WHERE id = project_images.project_id AND owner_id = auth.uid()));
 
 DROP POLICY IF EXISTS "Public read reviews" ON public.reviews;
 CREATE POLICY "Public read reviews" ON public.reviews FOR SELECT USING (true);
@@ -147,7 +154,7 @@ CREATE POLICY "Recommender manage recommendations" ON public.recommendations FOR
     WITH CHECK (auth.uid() = recommender_id);
 
 -- ----------------------------------------------------------------------------
--- SECTION 4 : LYANN TRUST & REPUTATION ENGINE (RPC AUTORITAIRE HARDENED)
+-- SECTION 5 : LYANN TRUST & REPUTATION ENGINE (RPC AUTORITAIRE V3 SCHÉMA RÉEL)
 -- ----------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.get_user_trust_and_reputation(p_target_user_id uuid)
@@ -183,10 +190,9 @@ DECLARE
     
     v_top_categories text[] := '{}';
     v_services_count integer := 0;
-    v_skills_count integer := 0;
     v_result jsonb;
 BEGIN
-    -- 1. Récupération sécurisée du profil cible
+    -- 1. Récupération du profil cible
     SELECT id, first_name, last_name, city, territory, bio, avatar_url, is_pro, is_verified, kyc_verified, created_at, intervention_zone, intervention_radius_km
     INTO v_profile
     FROM public.profiles
@@ -196,20 +202,21 @@ BEGIN
         RETURN jsonb_build_object('error', 'PROFIL_INTROUVABLE');
     END IF;
 
-    -- 2. Single Source of Truth pour les compétences (depuis public.user_matching_skills)
-    SELECT COALESCE(ARRAY_AGG(DISTINCT skill_slug), '{}') INTO v_skills
-    FROM public.user_matching_skills
-    WHERE user_id = p_target_user_id AND active = true;
+    -- 2. Récupération des services/compétences depuis public.services (schéma réel)
+    SELECT COALESCE(ARRAY_AGG(DISTINCT title), '{}') INTO v_skills
+    FROM public.services
+    WHERE owner_id = p_target_user_id;
 
-    SELECT COUNT(*) INTO v_skills_count FROM public.user_matching_skills WHERE user_id = p_target_user_id AND active = true;
-    SELECT COUNT(*) INTO v_services_count FROM public.services WHERE owner_id = p_target_user_id AND active = true;
+    SELECT COUNT(*) INTO v_services_count 
+    FROM public.services 
+    WHERE owner_id = p_target_user_id;
 
     -- 3. Calcul Autoritaire Backend du Profil Completion Pct
     v_completion_pct := 20; -- Inscription
     IF v_profile.avatar_url IS NOT NULL AND length(v_profile.avatar_url) > 0 THEN v_completion_pct := v_completion_pct + 20; END IF;
     IF v_profile.city IS NOT NULL AND length(v_profile.city) > 0 THEN v_completion_pct := v_completion_pct + 20; END IF;
     IF v_profile.bio IS NOT NULL AND length(v_profile.bio) >= 15 THEN v_completion_pct := v_completion_pct + 20; END IF;
-    IF (v_skills_count > 0 OR v_services_count > 0) THEN v_completion_pct := v_completion_pct + 20; END IF;
+    IF (v_services_count > 0 OR ARRAY_LENGTH(v_skills, 1) > 0) THEN v_completion_pct := v_completion_pct + 20; END IF;
 
     -- 4. Métriques de Retours & Notes (public.reviews)
     SELECT 
@@ -258,16 +265,32 @@ BEGIN
     FROM public.recommendations
     WHERE target_id = p_target_user_id;
 
-    -- 7. Domaines les plus réalisés comme Lyanneur (HELPER ONLY)
-    SELECT COALESCE(ARRAY_AGG(c.name), '{}') INTO v_top_categories
+    -- 7. Domaines les plus réalisés comme Lyanneur (Jointure requests/services sur le schéma réel)
+    SELECT COALESCE(ARRAY_AGG(c.category), '{}') INTO v_top_categories
     FROM (
-        SELECT cat.name, COUNT(*) as cnt
+        SELECT req.category, COUNT(*) as cnt
         FROM public.missions m
-        JOIN public.services s ON m.related_service_id = s.id
-        JOIN public.categories cat ON s.category_id = cat.id
-        WHERE m.helper_id = p_target_user_id AND m.status = 'COMPLETED'
-        GROUP BY cat.name ORDER BY cnt DESC LIMIT 3
+        JOIN public.requests req ON m.related_request_id = req.id
+        WHERE m.helper_id = p_target_user_id
+          AND m.status = 'COMPLETED'
+          AND req.category IS NOT NULL
+        GROUP BY req.category
+        ORDER BY cnt DESC
+        LIMIT 3
     ) c;
+
+    IF ARRAY_LENGTH(v_top_categories, 1) IS NULL THEN
+        SELECT COALESCE(ARRAY_AGG(s.category), '{}') INTO v_top_categories
+        FROM (
+            SELECT category, COUNT(*) as cnt
+            FROM public.services
+            WHERE owner_id = p_target_user_id
+              AND category IS NOT NULL
+            GROUP BY category
+            ORDER BY cnt DESC
+            LIMIT 3
+        ) s;
+    END IF;
 
     -- 8. Taux de Réponse Autoritaire & Médiane de Temps de Réponse
     WITH incoming_convs AS (
@@ -291,14 +314,12 @@ BEGIN
         (SELECT COUNT(*) FROM responded_convs)
     INTO v_eligible_convs, v_responded_convs;
 
-    -- Calcul du taux de réponse (Seuil minimal >= 3 conversations éligibles)
     IF v_eligible_convs >= 3 THEN
         v_response_rate := ROUND((v_responded_convs::numeric / v_eligible_convs::numeric) * 100);
     ELSE
         v_response_rate := NULL; -- Zero Data
     END IF;
 
-    -- Calcul robuste de la Médiane de Temps de Réponse en Secondes
     IF v_responded_convs >= 3 THEN
         WITH incoming_convs AS (
             SELECT DISTINCT m.conversation_id, MIN(m.created_at) as first_incoming_at
@@ -336,7 +357,7 @@ BEGIN
         'is_verified', COALESCE(v_profile.is_verified, false),
         'is_pro_verified', (COALESCE(v_profile.is_pro, false) AND COALESCE(v_profile.kyc_verified, false)),
         'member_since', TO_CHAR(v_profile.created_at, 'FMMonth YYYY'),
-        'skills', v_skills,
+        'skills', COALESCE(v_skills, '{}'),
         'intervention_zone', COALESCE(v_profile.intervention_zone, '{}'),
         'intervention_radius_km', COALESCE(v_profile.intervention_radius_km, 10),
         'completion_pct', v_completion_pct,

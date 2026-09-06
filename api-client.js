@@ -278,18 +278,34 @@ const LYANN_API_CLIENT = {
         if (!this.supabase) return { data: [] };
         return await this.supabase
             .from('services')
-            .select('*, categories(name, slug)')
+            .select('id, owner_id, title, description, category, created_at')
             .eq('owner_id', userId)
-            .eq('active', true);
+            .order('created_at', { ascending: false });
     },
 
     async getUserPortfolio(userId) {
         if (!this.supabase) return { data: [] };
         return await this.supabase
-            .from('projects')
-            .select('*, project_images(*)')
-            .eq('owner_id', userId)
+            .from('user_portfolio_items')
+            .select('*')
+            .eq('user_id', userId)
+            .order('display_order', { ascending: true })
             .order('created_at', { ascending: false });
+    },
+
+    async addPortfolioItem(userId, itemData) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        return await this.supabase
+            .from('user_portfolio_items')
+            .insert({
+                user_id: userId,
+                image_url: itemData.image_url,
+                title: itemData.title || '',
+                caption: itemData.caption || '',
+                display_order: itemData.display_order || 0
+            })
+            .select()
+            .single();
     },
 
     async getOrCreateConversation(myUserId, targetUserId) {
