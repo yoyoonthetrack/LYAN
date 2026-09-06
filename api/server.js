@@ -97,7 +97,7 @@ app.use((req, res, next) => {
 });
 
 // API Root Status
-app.get(['/v1', '/v1/', '/api/server'], (req, res) => {
+app.get(['/', '/v1', '/v1/', '/api', '/api/server'], (req, res) => {
     res.json({
         status: "ONLINE",
         service: "LYANN DOM Multi-Client REST API Engine",
@@ -1369,7 +1369,7 @@ app.post('/v1/payments/dispute', (req, res) => {
 });
 
 // 9. STRIPE WEBHOOK LISTENER (Server-side Source of Truth & Signed Idempotent Event Processor)
-app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook'], async (req, res) => {
+app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/webhooks/stripe', '/api/payments/webhook', '/api/webhooks/stripe'], async (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
