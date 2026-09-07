@@ -842,91 +842,123 @@ function injectMobileInterface() {
             }
         });
     }
-
-    // 3. Affichage garanti du menu hamburger web & mobile sur native
-    const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
-    if (mobileMenuBtn) {
-        mobileMenuBtn.style.display = 'flex';
-    }
-
-    // 4. En-tête natif mobile avec bouton Hamburger conservé
-    const navbar = document.querySelector('.navbar');
-    if (navbar) {
-        const container = navbar.querySelector('.nav-container') || navbar;
-        if (isBokantaj) {
-            container.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 12px; box-sizing: border-box;">
-                    <span style="font-weight: 900; font-size: 1.2rem; color: var(--primary-dark); display: flex; align-items: center; gap: 8px;">
-                        <img src="logo-app.png" style="width: 28px; height: 28px; border-radius: 6px; object-fit: cover;">
-                        LYANN
-                    </span>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <button type="button" class="nav-msg-btn" id="btnHeaderChat" aria-label="Messagerie" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
-                            <i class="ph ph-chat-circle-dots"></i>
-                        </button>
-                        <button type="button" class="nav-msg-btn" id="btnHeaderNotif" aria-label="Notifications" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; position: relative;">
-                            <i class="ph ph-bell"></i>
-                            <span class="notif-badge-count">3</span>
-                        </button>
-                        <button type="button" class="hamburger-menu-btn" id="btnHeaderHamburger" aria-label="Menu Principal" style="background: rgba(74, 124, 89, 0.12); border: 1.5px solid rgba(74, 124, 89, 0.25); border-radius: 12px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--primary-dark); cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                            <i class="ph ph-list"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-            container.querySelector('#btnHeaderChat')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.openLyannMessagesModal();
-            });
-
-            container.querySelector('#btnHeaderNotif')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                triggerHaptic('light');
-                openNotificationsModal();
-            });
-
-            container.querySelector('#btnHeaderHamburger')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                triggerHaptic('light');
-                if (typeof window.openLyannHamburgerDrawer === 'function') {
-                    window.openLyannHamburgerDrawer();
-                }
-            });
-        } else {
-            let pageTitle = "LYANN";
-            if (path.includes('results.html')) pageTitle = "Explorer";
-            else if (path.includes('about.html')) pageTitle = "Notre Histoire";
-            else if (path.includes('pricing.html')) pageTitle = "Abonnements";
-            else if (path.includes('how-it-works.html')) pageTitle = "Comment ça marche";
-
-            container.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 12px; height: 44px; box-sizing: border-box;">
-                    <button type="button" id="btnNativeBack" style="background: none; border: none; font-size: 1.35rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
-                        <i class="ph ph-caret-left" style="font-weight: bold;"></i>
-                    </button>
-                    <div style="font-weight: 800; font-size: 1rem; color: var(--text); flex: 1; text-align: center;">${pageTitle}</div>
-                    <button type="button" class="hamburger-menu-btn" id="btnHeaderHamburger" aria-label="Menu Principal" style="background: rgba(74, 124, 89, 0.12); border: 1.5px solid rgba(74, 124, 89, 0.25); border-radius: 12px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--primary-dark); cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                        <i class="ph ph-list"></i>
-                    </button>
-                </div>
-            `;
-
-            document.getElementById('btnNativeBack')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                triggerHaptic('light');
-                window.history.back();
-            });
-
-            container.querySelector('#btnHeaderHamburger')?.addEventListener('click', (e) => {
-                e.preventDefault();
-                triggerHaptic('light');
-                if (typeof window.openLyannHamburgerDrawer === 'function') {
-                    window.openLyannHamburgerDrawer();
-                }
-            });
-        }
-    }
 }
+
+// === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===
+window.renderAppHomeConnectedView = function() {
+    const mainHero = document.querySelector('.hero');
+    if (!mainHero) return;
+
+    let appHomeView = document.getElementById('appHomeView');
+    if (!appHomeView) {
+        appHomeView = document.createElement('div');
+        appHomeView.id = 'appHomeView';
+        appHomeView.className = 'app-home-view';
+        
+        mainHero.parentNode.insertBefore(appHomeView, mainHero);
+        mainHero.style.display = 'none'; // Hide Web hero when App Home is active
+    }
+
+    let firstName = '';
+    try {
+        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+            window.LYANN_API_CLIENT.getCurrentUser().then(user => {
+                if (user) {
+                    firstName = user.user_metadata?.first_name || '';
+                    if (!firstName) {
+                        window.LYANN_API_CLIENT.supabase.from('profiles').select('first_name').eq('id', user.id).single()
+                            .then(({ data }) => {
+                                if (data && data.first_name) {
+                                    firstName = data.first_name;
+                                    const el = document.getElementById('appHomeUserFirstName');
+                                    if (el) el.textContent = firstName ? ` ${firstName}` : '';
+                                }
+                            }).catch(() => {});
+                    } else {
+                        const el = document.getElementById('appHomeUserFirstName');
+                        if (el) el.textContent = ` ${firstName}`;
+                    }
+                }
+            }).catch(() => {});
+        }
+    } catch(e) {}
+
+    appHomeView.innerHTML = `
+        <div class="app-home-greeting-card">
+            <h2 class="app-home-greeting-title">Bonjour<span id="appHomeUserFirstName">${firstName ? ' ' + firstName : ''}</span>,</h2>
+            <p class="app-home-greeting-sub">Que souhaitez-vous faire aujourd'hui ?</p>
+        </div>
+
+        <div class="app-home-actions-grid">
+            <div class="app-home-action-card action-card-need" id="appHomeBtnNeed">
+                <div class="action-card-badge"><i class="ph-bold ph-paper-plane-tilt"></i></div>
+                <div class="action-card-content">
+                    <h3>J'ai un besoin</h3>
+                    <p>Décrivez simplement ce que vous recherchez.</p>
+                </div>
+                <i class="ph ph-caret-right action-card-arrow"></i>
+            </div>
+
+            <div class="app-home-action-card action-card-search" id="appHomeBtnSearch">
+                <div class="action-card-badge"><i class="ph-bold ph-users-three"></i></div>
+                <div class="action-card-content">
+                    <h3>Je cherche un Lyanneur</h3>
+                    <p>Trouvez la bonne personne près de chez vous.</p>
+                </div>
+                <i class="ph ph-caret-right action-card-arrow"></i>
+            </div>
+        </div>
+
+        <div class="app-home-section" id="appHomeSectionNext" style="display: none;">
+            <div class="app-home-section-header">
+                <h3>À suivre</h3>
+            </div>
+            <div class="app-home-next-cards-container" id="appHomeNextCards"></div>
+        </div>
+
+        <div class="app-home-section" id="appHomeSectionNearby" style="display: none;">
+            <div class="app-home-section-header">
+                <h3>Autour de vous</h3>
+                <a href="results.html" class="section-link-more">Voir tout</a>
+            </div>
+            <div class="app-home-nearby-scroll-grid" id="appHomeNearbyGrid"></div>
+        </div>
+
+        <div class="app-home-section" id="appHomeSectionBokantaj">
+            <div class="app-home-section-header">
+                <h3>Dans le Bokantaj</h3>
+                <a href="feed.html" class="section-link-more">Voir tout <i class="ph ph-arrow-right"></i></a>
+            </div>
+            <div class="app-home-bokantaj-preview-list" id="appHomeBokantajPreview">
+                <div style="background: #FFFFFF; border-radius: 16px; padding: 18px 16px; border: 1.5px solid #E5DFD5; text-align: center;">
+                    <p style="font-size: 0.9rem; color: #5C6E62; margin-bottom: 12px;">Découvrez les dernières publications de la communauté.</p>
+                    <a href="feed.html" class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px 16px;">Ouvrir le Bokantaj</a>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const btnNeed = document.getElementById('appHomeBtnNeed');
+    if (btnNeed) {
+        btnNeed.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (typeof window.openLyannWizard === 'function') {
+                window.openLyannWizard();
+            } else {
+                window.location.href = 'results.html?intent=need';
+            }
+        });
+    }
+
+    const btnSearch = document.getElementById('appHomeBtnSearch');
+    if (btnSearch) {
+        btnSearch.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = 'results.html';
+        });
+    }
+};
+
     window.isExplicitDemoMode = function() {
         if (typeof window === 'undefined' || !window.location) return false;
         const host = window.location.hostname;
