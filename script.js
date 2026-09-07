@@ -634,53 +634,77 @@ function injectMobileInterface() {
     const path = window.location.pathname;
     const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
     const isExplorer = path.includes('results.html');
-    const isBokantaj = path.includes('feed.html') || isHome;
+    const isBokantaj = path.includes('feed.html');
     const isLoggedIn = document.body.classList.contains('user-is-logged-in');
 
-    // BOKANTAJ EST L'ACCUEIL PAR DÉFAUT DE LYANN MOBILE
-    if (isHome && isLoggedIn) {
-        window.location.href = 'feed.html';
-        return;
-    } else if (isHome && !isLoggedIn) {
-        showAppWelcomeScreen();
+    // DEEP LINK CHECK: Deep links bypass Accueil App and route directly
+    const hasDeepLink = window.location.search && (
+        window.location.search.includes('view=') ||
+        window.location.search.includes('action=') ||
+        window.location.search.includes('post_id=') ||
+        window.location.search.includes('chat=')
+    );
+
+    // NATIVE APP CONNECTED HOMEPAGE: Render App Home View on index.html when logged in
+    if (isHome && isLoggedIn && !hasDeepLink) {
+        if (typeof window.renderAppHomeConnectedView === 'function') {
+            window.renderAppHomeConnectedView();
+        }
+    } else if (isHome && !isLoggedIn && !hasDeepLink) {
+        if (typeof showAppWelcomeScreen === 'function') {
+            showAppWelcomeScreen();
+        }
     }
 
-    // 1. Bottom Navigation à 5 Onglets (Bokantaj | Explorer | + | Messages | Moi)
+    // 1. Mobile Bottom Navigation à 5 Onglets (Accueil | Explorer | + | Bokantaj | Messages)
     if (!document.querySelector('.mobile-bottom-nav')) {
         const bottomNav = document.createElement('div');
         bottomNav.className = 'mobile-bottom-nav';
 
         bottomNav.innerHTML = `
-            <a href="feed.html" class="nav-tab ${isBokantaj ? 'active' : ''}" id="tab-bokantaj">
-                <i class="ph ph-broadcast"></i>
-                <span>Bokantaj</span>
+            <a href="index.html" class="nav-tab ${isHome ? 'active' : ''}" id="tab-home">
+                <i class="ph ph-house"></i>
+                <span>Accueil</span>
             </a>
             <a href="results.html" class="nav-tab ${isExplorer ? 'active' : ''}" id="tab-explorer">
                 <i class="ph ph-magnifying-glass"></i>
                 <span>Explorer</span>
             </a>
             <div class="nav-tab nav-tab-central-item" id="tab-create-item">
-                <button type="button" class="btn-central-action" id="tab-create" aria-label="Créer">
+                <button type="button" class="btn-central-action" id="tab-create" aria-label="Publier">
                     <i class="ph ph-plus"></i>
                 </button>
-                <span class="central-tab-label">Créer</span>
+                <span class="central-tab-label">Publier</span>
             </div>
+            <a href="feed.html" class="nav-tab ${isBokantaj ? 'active' : ''}" id="tab-bokantaj">
+                <i class="ph ph-broadcast"></i>
+                <span>Bokantaj</span>
+            </a>
             <button type="button" class="nav-tab" id="tab-messages" aria-label="Messages">
                 <i class="ph ph-chat-circle-dots"></i>
                 <span>Messages</span>
-            </button>
-            <button type="button" class="nav-tab" id="tab-moi" aria-label="Moi">
-                <i class="ph ph-user"></i>
-                <span>Moi</span>
             </button>
         `;
         document.body.appendChild(bottomNav);
 
         bottomNav.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', () => {
-                triggerHaptic('light');
+                try { if (typeof triggerHaptic === 'function') triggerHaptic('light'); } catch(e) {}
             });
         });
+
+        // Tab "+" (Publier) click
+        const tabCreate = document.getElementById('tab-create');
+        if (tabCreate) {
+            tabCreate.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (typeof window.openLyannWizard === 'function') {
+                    window.openLyannWizard();
+                } else if (typeof window.openCentralActionSheet === 'function') {
+                    window.openCentralActionSheet();
+                }
+            });
+        }
 
         // Messages tab click -> Open Chat Modal
         const tabMessages = document.getElementById('tab-messages');

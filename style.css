@@ -12488,3 +12488,163 @@ textarea:focus,
     }
 }
 
+/* ==========================================================================
+   LYANN — APP HOME V1 STYLES (ACCUEIL CONNECTÉ NATIVE MOBILE)
+   ========================================================================== */
+.app-home-view {
+    padding: 16px var(--lyann-page-padding-x, 20px) 32px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.app-home-greeting-card {
+    margin-bottom: 20px;
+}
+
+.app-home-greeting-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--text, #243329);
+    line-height: 1.2;
+    margin-bottom: 4px;
+}
+
+.app-home-greeting-sub {
+    font-size: 0.96rem;
+    color: var(--text-muted, #5C6E62);
+}
+
+.app-home-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 28px;
+}
+
+.app-home-action-card {
+    background: #FFFFFF;
+    border-radius: var(--radius-lg, 20px);
+    padding: 18px 16px;
+    border: 1.5px solid #E5DFD5;
+    box-shadow: 0 4px 16px rgba(36, 51, 41, 0.04);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 140px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.action-card-need {
+    background: linear-gradient(145deg, #FFFFFF 0%, #F5F9F6 100%);
+    border-color: rgba(74, 124, 89, 0.3);
+}
+
+.action-card-search {
+    background: linear-gradient(145deg, #FFFFFF 0%, #FEFAF0 100%);
+    border-color: rgba(229, 179, 69, 0.35);
+}
+
+.app-home-action-card:active {
+    transform: scale(0.97);
+}
+
+.action-card-badge {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    margin-bottom: 12px;
+}
+
+.action-card-need .action-card-badge {
+    background: rgba(74, 124, 89, 0.12);
+    color: #4A7C59;
+}
+
+.action-card-search .action-card-badge {
+    background: rgba(229, 179, 69, 0.16);
+    color: #C69222;
+}
+
+.action-card-content h3 {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #17231C;
+    margin-bottom: 4px;
+}
+
+.action-card-content p {
+    font-size: 0.82rem;
+    color: #5C6E62;
+    line-height: 1.35;
+}
+
+.action-card-arrow {
+    position: absolute;
+    top: 18px;
+    right: 14px;
+    font-size: 1.1rem;
+    color: var(--text-muted);
+}
+
+.app-home-section {
+    margin-bottom: 28px;
+}
+
+.app-home-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.app-home-section-header h3 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #17231C;
+}
+
+.section-link-more {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--primary, #4A7C59);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Bottom Nav Centered Action Item */
+.mobile-bottom-nav .nav-tab-central-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-central-action {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4A7C59 0%, #35583F 100%);
+    color: #FFFFFF;
+    border: 3px solid #FFFFFF;
+    box-shadow: 0 4px 14px rgba(74, 124, 89, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    margin-top: -14px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.btn-central-action:active {
+    transform: scale(0.92);
+}
+
