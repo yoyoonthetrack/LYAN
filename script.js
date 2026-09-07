@@ -4851,6 +4851,8 @@ safeDomReady(() => {
         return profileData;
     }
 
+    let authInitializationComplete = false;
+
     async function updateHeaderAuthState() {
         let isLoggedIn = false;
         let userId = null;
@@ -4864,23 +4866,28 @@ safeDomReady(() => {
                     userId = data.session.user.id;
                     currentSession = data.session;
                 } else {
+                    // Fallback UX state while loading or if offline
                     const storedLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
                     const storedUserId = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_id') : localStorage.getItem('lyan_user_id'));
-                    if (storedLoggedIn && storedUserId) {
+                    
+                    if (!authInitializationComplete && storedLoggedIn && storedUserId) {
                         isLoggedIn = true;
                         userId = storedUserId;
-                    } else {
+                    } else if (authInitializationComplete && !data?.session) {
                         isLoggedIn = false;
+                    } else {
+                        isLoggedIn = storedLoggedIn && !!storedUserId;
+                        userId = storedUserId;
                     }
                 }
-                console.log('[LYANN AUTH DEBUG]', {
+                console.log('[AUTH] state check:', {
                     event: 'UPDATE_HEADER_AUTH_STATE',
-                    sessionPresent: isLoggedIn,
-                    userId: userId,
-                    origin: window.location.origin
+                    hasSession: !!currentSession,
+                    userId: userId || null,
+                    initializationComplete: authInitializationComplete
                 });
             } catch (err) {
-                console.warn("[LYANN AUTH DEBUG] Supabase session verification:", err);
+                console.warn("[AUTH] Supabase session verification error:", err);
                 const storedLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
                 const storedUserId = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_id') : localStorage.getItem('lyan_user_id'));
                 isLoggedIn = storedLoggedIn && !!storedUserId;
@@ -4900,7 +4907,7 @@ safeDomReady(() => {
             localStorage.setItem('lyan_user_logged_in', 'true');
             
             await loadAndApplyUserProfile(userId, currentSession);
-        } else {
+        } else if (authInitializationComplete) {
             document.body.classList.remove('user-is-logged-in');
             window.CURRENT_USER_ID = null;
             if (typeof safeStorage !== 'undefined') {
@@ -4943,16 +4950,17 @@ safeDomReady(() => {
     // Subscribe to Supabase Auth Changes
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         window.LYANN_API_CLIENT.supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('[LYANN AUTH DEBUG]', {
-                event: event,
-                sessionPresent: !!session,
-                userId: session?.user?.id || null,
-                origin: window.location.origin
-            });
+            console.log('[AUTH] event:', event, '| hasSession:', !!session, '| userId:', session?.user?.id || null);
 
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+            // MANDATORY GUARD: Do not purge or force logged-out state on transient INITIAL_SESSION with null session
+            if (event === 'INITIAL_SESSION' && !session) {
+                console.log('[AUTH] INITIAL_SESSION null transient state -> Skipping premature purge');
+                return;
+            }
+
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || (event === 'INITIAL_SESSION' && session)) {
+                authInitializationComplete = true;
                 if (session && session.user) {
-                    // Vider l'ancien profil en mémoire pour éviter tout mélange entre comptes A et B
                     if (window.CURRENT_USER_ID && window.CURRENT_USER_ID !== session.user.id) {
                         if (typeof safeStorage !== 'undefined') safeStorage.removeItem('lyan_user_profile');
                         localStorage.removeItem('lyan_user_profile');
@@ -4970,6 +4978,7 @@ safeDomReady(() => {
                 }
                 await updateHeaderAuthState();
             } else if (event === 'SIGNED_OUT') {
+                authInitializationComplete = true;
                 window.CURRENT_USER_ID = null;
                 if (typeof safeStorage !== 'undefined') {
                     safeStorage.removeItem('lyan_user_logged_in');
@@ -4983,6 +4992,35 @@ safeDomReady(() => {
             }
         });
     }
+
+    // Canonical Auth Bootstrap on startup
+    (async function bootstrapAuth() {
+        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+            try {
+                const { data } = await window.LYANN_API_CLIENT.getSession();
+                const session = data?.session;
+                console.log('[AUTH] bootstrap getSession:', { hasSession: !!session, userId: session?.user?.id || null });
+                if (session && session.user) {
+                    window.CURRENT_USER_ID = session.user.id;
+                    if (typeof safeStorage !== 'undefined') {
+                        safeStorage.setItem('lyan_user_logged_in', 'true');
+                        safeStorage.setItem('lyan_user_id', session.user.id);
+                    }
+                    localStorage.setItem('lyan_user_logged_in', 'true');
+                    localStorage.setItem('lyan_user_id', session.user.id);
+                    await loadAndApplyUserProfile(session.user.id, session);
+                }
+            } catch (e) {
+                console.warn('[AUTH] bootstrap getSession error:', e);
+            } finally {
+                authInitializationComplete = true;
+                await updateHeaderAuthState();
+            }
+        } else {
+            authInitializationComplete = true;
+            await updateHeaderAuthState();
+        }
+    })();
 
     const accountLogoutBtn = document.getElementById('accountLogoutBtn');
     if (accountLogoutBtn) {
