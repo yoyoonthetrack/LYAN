@@ -3991,11 +3991,9 @@ safeDomReady(() => {
                     throw new Error('Impossible de confirmer la persistance de la session active.');
                 }
 
-                // Verify email confirmation if required
+                // Log unconfirmed email warning if applicable, but keep valid session
                 if (data.user && !data.user.email_confirmed_at && data.user.confirmation_sent_at) {
-                    window.lyannAlert('📩 Veuillez confirmer votre adresse e-mail via le lien envoyé dans votre boîte de réception pour réactiver votre compte.');
-                    if (window.LYANN_API_CLIENT) await window.LYANN_API_CLIENT.logout();
-                    return;
+                    console.warn('[LYANN AUTH] User logged in with unconfirmed email:', data.user.email);
                 }
 
                 if (typeof safeStorage !== 'undefined') {
@@ -4849,7 +4847,14 @@ safeDomReady(() => {
                     userId = data.session.user.id;
                     currentSession = data.session;
                 } else {
-                    isLoggedIn = false;
+                    const storedLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
+                    const storedUserId = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_id') : localStorage.getItem('lyan_user_id'));
+                    if (storedLoggedIn && storedUserId) {
+                        isLoggedIn = true;
+                        userId = storedUserId;
+                    } else {
+                        isLoggedIn = false;
+                    }
                 }
                 console.log('[LYANN AUTH DEBUG]', {
                     event: 'UPDATE_HEADER_AUTH_STATE',
@@ -4859,10 +4864,16 @@ safeDomReady(() => {
                 });
             } catch (err) {
                 console.warn("[LYANN AUTH DEBUG] Supabase session verification:", err);
-                isLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
+                const storedLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
+                const storedUserId = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_id') : localStorage.getItem('lyan_user_id'));
+                isLoggedIn = storedLoggedIn && !!storedUserId;
+                userId = storedUserId;
             }
         } else {
-            isLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
+            const storedLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
+            const storedUserId = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_id') : localStorage.getItem('lyan_user_id'));
+            isLoggedIn = storedLoggedIn && !!storedUserId;
+            userId = storedUserId;
         }
 
         if (isLoggedIn && userId) {
