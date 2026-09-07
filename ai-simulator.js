@@ -4,16 +4,28 @@
  * Supports all members (static + AI profiles) dynamically.
  */
 
-window.DEMO_AI_ENABLED = false;
+// Hard Production Lock check helper for AI Simulator
+function isSimulatorAllowed() {
+    if (typeof window === 'undefined' || !window.location) return false;
+    const host = window.location.hostname;
+    // HARD PRODUCTION LOCK: Never run AI simulator on production domains
+    if (host === 'lyann.app' || host === 'www.lyann.app' || host === 'admin.lyann.app' || host.endsWith('.lyann.app')) {
+        return false;
+    }
+    // Only allow when isExplicitDemoMode() is true on local dev
+    return typeof window.isExplicitDemoMode === 'function' ? window.isExplicitDemoMode() : false;
+}
+
+window.DEMO_AI_ENABLED = isSimulatorAllowed();
 
 // Helper to get member details dynamically
 function getMemberByName(name) {
-    if (!window.LYANN_MEMBERS) return null;
+    if (!isSimulatorAllowed() || !window.LYANN_MEMBERS) return null;
     return window.LYANN_MEMBERS.find(m => m.name === name || m.name.includes(name) || name.includes(m.name.split(' (')[0]));
 }
 
 window.addEventListener('lyann_chat_opened', (e) => {
-    if (!window.DEMO_AI_ENABLED || (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase)) return;
+    if (!isSimulatorAllowed()) return;
     const contactId = e.detail.contactId;
     console.log(`🤖 [AI Simulator] Chat opened with ${contactId}`);
     
@@ -49,7 +61,7 @@ window.addEventListener('lyann_chat_opened', (e) => {
 });
 
 window.addEventListener('lyann_chat_message_sent', (e) => {
-    if (!window.DEMO_AI_ENABLED) return;
+    if (!isSimulatorAllowed()) return;
     const { text, contactId } = e.detail;
     
     const member = getMemberByName(contactId);
@@ -117,7 +129,7 @@ window.addEventListener('lyann_chat_message_sent', (e) => {
 });
 
 window.addEventListener('lyann_chat_action_taken', (e) => {
-    if (!window.DEMO_AI_ENABLED) return;
+    if (!isSimulatorAllowed()) return;
     const { actionId, contactId } = e.detail;
     const mission = window.LYANN_API_CLIENT.getActiveMissionBetween("me", contactId);
     

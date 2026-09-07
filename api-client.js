@@ -1700,14 +1700,16 @@ const LYANN_API_CLIENT = {
 
     findMatchingLyanneurs(needQuery, options) {
         if (typeof window !== 'undefined' && window.LyannMatchingEngine) {
-            return window.LyannMatchingEngine.findMatchingLyanneursForNeed(needQuery, window.LYANN_MEMBERS || [], options);
+            const membersList = (typeof window.isExplicitDemoMode === 'function' && window.isExplicitDemoMode()) ? (window.LYANN_MEMBERS || []) : [];
+            return window.LyannMatchingEngine.findMatchingLyanneursForNeed(needQuery, membersList, options);
         }
         return { matches_found: 0, lyanneurs: [] };
     },
 
     dispatchTargetedNeed(needData, batchSize = 5) {
         if (typeof window !== 'undefined' && window.LyannMatchingEngine) {
-            return window.LyannMatchingEngine.dispatchTargetedNeedNotifications(needData, window.LYANN_MEMBERS || [], batchSize);
+            const membersList = (typeof window.isExplicitDemoMode === 'function' && window.isExplicitDemoMode()) ? (window.LYANN_MEMBERS || []) : [];
+            return window.LyannMatchingEngine.dispatchTargetedNeedNotifications(needData, membersList, batchSize);
         }
         return { dispatched_count: 0, fallback_message: "Votre besoin est bien publié dans Bokantaj." };
     },

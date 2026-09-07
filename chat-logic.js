@@ -1767,20 +1767,23 @@ document.addEventListener('touchstart', (e) => {
         } catch(e) {}
         
         // Ensure default contacts exist
-        if (!data["Prestataire LYANN"]) {
-            data["Prestataire LYANN"] = [
-                { id: "m1", text: "Bonjour ! Je suis dispo cet après-midi pour votre problème électrique.", sender: "them", timestamp: "14:32", type: "text" }
-            ];
-        }
-        if (!data["Tati Huguette Cazeau"]) {
-            data["Tati Huguette Cazeau"] = [
-                { id: "m2", text: "Merci beaucoup pour votre aide ! Le portail fonctionne parfaitement.", sender: "them", timestamp: "Hier", type: "text" }
-            ];
-        }
-        if (!data["Sarah Manicon"]) {
-            data["Sarah Manicon"] = [
-                { id: "m3", text: "À très bientôt pour la rénovation de la cuisine !", sender: "them", timestamp: "Lundi", type: "text" }
-            ];
+        const isDemoMode = typeof window.isExplicitDemoMode === 'function' ? window.isExplicitDemoMode() : false;
+        if (isDemoMode) {
+            if (!data["Prestataire LYANN"]) {
+                data["Prestataire LYANN"] = [
+                    { id: "m1", text: "Bonjour ! Je suis dispo cet après-midi pour votre problème électrique.", sender: "them", timestamp: "14:32", type: "text" }
+                ];
+            }
+            if (!data["Tati Huguette Cazeau"]) {
+                data["Tati Huguette Cazeau"] = [
+                    { id: "m2", text: "Merci beaucoup pour votre aide ! Le portail fonctionne parfaitement.", sender: "them", timestamp: "Hier", type: "text" }
+                ];
+            }
+            if (!data["Sarah Manicon"]) {
+                data["Sarah Manicon"] = [
+                    { id: "m3", text: "À très bientôt pour la rénovation de la cuisine !", sender: "them", timestamp: "Lundi", type: "text" }
+                ];
+            }
         }
         localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
     }
@@ -1833,12 +1836,12 @@ document.addEventListener('touchstart', (e) => {
         const listContainer = document.getElementById('chatContactsList');
         if (!listContainer) return;
         
-        const isSupaActive = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
-        const defaultContacts = isSupaActive ? [] : [
+        const isDemoMode = typeof window.isExplicitDemoMode === 'function' ? window.isExplicitDemoMode() : false;
+        const defaultContacts = isDemoMode ? [
             { id: "Prestataire LYANN", name: "Prestataire LYANN", avatar: "david-34.png", preview: "Bonjour ! Je suis dispo cet ap..." },
             { id: "Tati Huguette Cazeau", name: "Tati Huguette Cazeau", avatar: "huguette-68.png", preview: "Merci beaucoup pour votre aide !" },
             { id: "Sarah Manicon", name: "Sarah Manicon", avatar: "sarah-29.png", preview: "À très bientôt pour la rénovation !" }
-        ];
+        ] : [];
 
         let storedMsgs = {};
         try {

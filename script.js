@@ -884,7 +884,24 @@ function injectMobileInterface() {
             });
         }
     }
-}
+    window.isExplicitDemoMode = function() {
+        if (typeof window === 'undefined' || !window.location) return false;
+        const host = window.location.hostname;
+        
+        // HARD PRODUCTION LOCK: Never allow demo mode on production domains
+        if (host === 'lyann.app' || host === 'www.lyann.app' || host === 'admin.lyann.app' || host.endsWith('.lyann.app')) {
+            return false;
+        }
+        
+        // Allow demo mode ONLY on local development environments
+        const isLocalDev = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local') || host.endsWith('.test');
+        if (isLocalDev) {
+            if (window.location.search.includes('demo=true')) return true;
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('lyann_dev_demo_mode') === 'true') return true;
+            if (window.LYANN_FORCE_DEMO_DATA === true) return true;
+        }
+        return false;
+    };
 
     const LYANN_MEMBERS = [
         // GUADELOUPE (971) - MEMBRE RÉFÉRENT
@@ -1315,6 +1332,7 @@ function injectMobileInterface() {
     });
 
     LYANN_MEMBERS.unshift(...additionalMembers);
+    window.LYANN_MEMBERS = window.isExplicitDemoMode() ? LYANN_MEMBERS : [];
 
 function ensureMobileHamburgerDrawer() {
     let overlay = document.getElementById('mobileHamburgerDrawerOverlay');
@@ -4135,7 +4153,7 @@ safeDomReady(() => {
             e.preventDefault();
             const memberName = btn.dataset.memberName || 'ce Lyanneur';
             const targetNameEl = document.getElementById('bookingTargetMemberName');
-            if (targetNameEl) targetNameEl.textContent = `Réserver avec ${memberName}`;
+            if (targetNameEl) targetNameEl.textContent = `Proposer une mission à ${memberName}`;
             if (bookingModal) bookingModal.classList.add('active');
         });
     });
@@ -4150,16 +4168,15 @@ safeDomReady(() => {
         bookingForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
-            // Récupérer le nom du prestataire ciblé
             const targetNameEl = document.getElementById('bookingTargetMemberName');
             let providerName = 'Prestataire LYANN';
             if (targetNameEl && targetNameEl.textContent) {
-                providerName = targetNameEl.textContent.replace('Réserver avec ', '');
+                providerName = targetNameEl.textContent.replace('Proposer une mission à ', '').replace('Réserver avec ', '');
             }
 
             // Déclencher les notifications de réservation via Twilio & SendGrid
             if (window.LYANN_NOTIFICATIONS) {
-                // Notifier le prestataire (ex: David Jean-Baptiste) par SMS
+                // Notifier le prestataire par SMS
                 window.LYANN_NOTIFICATIONS.sendSMS(
                     '+590690001122', 
                     providerName, 
