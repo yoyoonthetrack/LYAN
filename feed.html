@@ -110,186 +110,101 @@
     </div>
 
     <!-- ========== HERO PAGE BOKANTAJ ========== -->
-    <section class="feed-hero-section">
+    <section class="feed-hero-section" style="padding: 10px 0 6px 0;">
         <div class="container">
-            <div class="feed-hero-content text-center">
-                <span class="pill-badge pill-emerald"><i class="ph-fill ph-broadcast"></i> La Place du Quartier</span>
-                <h1 class="feed-page-title">Bienvenue sur Bokantaj</h1>
-                <p class="feed-page-subtitle">Disponibilités d'artisans en temps réel, demandes d'habitants et entraide partagées sur Bokantaj par les voisins d'Outre-Mer.</p>
+            <div class="feed-hero-content text-center" style="max-width: 680px; margin: 0 auto;">
+                <span class="pill-badge pill-emerald" style="padding: 3px 10px; font-size: 0.78rem;"><i class="ph-fill ph-broadcast"></i> BOKANTAJ · La place du quartier</span>
+                <h1 class="feed-page-title" style="font-size: 1.45rem; margin-top: 4px; margin-bottom: 2px; font-weight: 800; color: #17231C;">Bienvenue dans le Bokantaj</h1>
+                <p class="feed-page-subtitle" style="font-size: 0.88rem; margin-bottom: 0; color: var(--text-muted);">La place où les Lyanneurs partagent, échangent et découvrent ce qui se passe près de chez eux.</p>
             </div>
         </div>
     </section>
 
     <!-- ========== CONTENU PRINCIPAL DE BOKANTAJ ========== -->
-    <section class="feed-main-section section">
+    <section class="feed-main-section section" style="padding-top: 6px;">
         <div class="container">
             <div class="feed-layout-grid">
                 
                 <!-- COLONNE PRINCIPALE / FLUX DE LYANNS -->
                 <main class="feed-main-column">
                     
-                    
-                    <!-- BOUTON PRINCIPAL : BESOIN D'UN COUP DE MAIN -->
-                    <div class="feed-main-cta-wrapper" style="margin-bottom: 24px; text-align: center;">
-                        <button class="btn btn-primary open-request-help-trigger" style="width: 100%; padding: 18px 24px; font-size: 1.15rem; font-weight: 800; border-radius: 20px; box-shadow: 0 8px 24px rgba(74, 124, 89, 0.25); animation: pulse-shadow 2s infinite;">
-                            <i class="ph-fill ph-hand-heart" style="font-size: 1.5rem;"></i> BESOIN D'UN COUP DE MAIN ?
-                        </button>
-                    </div>
-
-                    <!-- BLOC COMPOSITEUR DE LYANN (PUB) -->
-                    <div class="flash-composer-card" id="flashComposerCard">
-                        <div class="composer-header">
-                            <div class="user-avatar-circle">
-                                <span>Vous</span>
-                            </div>
+                    <!-- BLOC COMPOSITEUR SOCIAL (BOKANTAJ V2) -->
+                    <div class="flash-composer-card" id="flashComposerCard" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+                        <div class="composer-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+                            <img id="composerUserAvatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" alt="Avatar" class="user-avatar-circle" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);">
                             <div class="composer-title-block">
-                                <h4>Postez un Lyann dans Bokantaj</h4>
-                                <p>Partagez une disponibilité, un besoin ou un mot pour les voisins de Bokantaj.</p>
+                                <h4 style="font-size: 1rem; font-weight: 800; color: #17231C; margin: 0;">Quoi de neuf près de chez vous ?</h4>
+                                <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Partagez avec les Lyanneurs du quartier</p>
                             </div>
                         </div>
 
                         <form id="createFlashForm">
-                            <div class="composer-textarea-wrapper">
-                                <textarea id="flashContentInput" placeholder="Exprimez-vous ou partagez un besoin dans Bokantaj... (ex: Disponible cet après-midi pour pose clim...)" maxlength="280" required></textarea>
-                                <div class="composer-char-counter"><span id="flashCharCount">0</span>/280</div>
-                            </div>
-
-                            <!-- Barre d'ajout de médias (Photos / Vidéo 30s) -->
-                            <div class="flash-media-upload-bar">
-                                <label class="media-upload-btn" title="Ajouter jusqu'à 3 photos">
-                                    <i class="ph-fill ph-image" style="color: #4A7C59; font-size: 1.1rem;"></i>
-                                    <span>Photos (3 max)</span>
-                                    <input type="file" id="flashPhotoInput" accept="image/*" multiple style="display: none;">
-                                </label>
-
-                                <label class="media-upload-btn" title="Ajouter une courte vidéo (30s max)">
-                                    <i class="ph-fill ph-video-camera" style="color: #E8B83F; font-size: 1.1rem;"></i>
-                                    <span>Vidéo (30s max)</span>
-                                    <input type="file" id="flashVideoInput" accept="video/*" style="display: none;">
-                                </label>
-
-                                <span id="mediaUploadBadge" style="font-size: 0.8rem; color: #4A7C59; font-weight: 700; display: none;"></span>
+                            <div class="composer-textarea-wrapper" style="margin-bottom: 10px;">
+                                <textarea id="flashContentInput" placeholder="Partagez une idée, une réalisation, une question ou une disponibilité…" maxlength="280" required style="width: 100%; border-radius: 14px; padding: 10px 12px; border: 1px solid #E2E8F0; font-size: 0.92rem; resize: none; box-sizing: border-box; font-family: inherit;"></textarea>
+                                <div class="composer-char-counter" style="text-align: right; font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;"><span id="flashCharCount">0</span>/280</div>
                             </div>
 
                             <div class="flash-media-preview-container" id="flashMediaPreviewContainer"></div>
 
-                            <div class="composer-options-row" style="margin-top: 14px;">
-                                <div class="composer-type-selector">
-                                    <label for="flashTypeSelect"><i class="ph ph-tag"></i> Type :</label>
-                                    <select id="flashTypeSelect" class="composer-select">
-                                        <option value="dispo" selected>⚡ Disponibilité de dernière minute</option>
-                                        <option value="besoin">🔍 Besoin urgent d'habitant</option>
-                                        <option value="reco">⭐ Recommandation & Avis</option>
-                                        <option value="info">📢 Info & Conseil du Quartier</option>
-                                    </select>
+                            <!-- Barre d'actions sociales du Composer -->
+                            <div class="composer-actions-bar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-top: 8px; border-top: 1px solid #F1F5F9;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <label class="media-upload-btn" id="btnComposerPhoto" title="Joindre une photo" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 0.85rem; font-weight: 700; color: #334155; cursor: pointer; min-height: 40px;">
+                                        <i class="ph ph-image" style="color: #4A7C59; font-size: 1.1rem;"></i>
+                                        <span>Photo</span>
+                                        <input type="file" id="flashPhotoInput" accept="image/*" multiple style="display: none;">
+                                    </label>
+
+                                    <button type="button" class="media-upload-btn" id="btnComposerGif" title="Intégration GIF bientôt disponible" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 0.85rem; font-weight: 700; color: #94A3B8; cursor: not-allowed; min-height: 40px;" disabled>
+                                        <i class="ph ph-gif" style="font-size: 1.1rem;"></i>
+                                        <span>GIF</span>
+                                    </button>
+
+                                    <button type="button" class="media-upload-btn btn-trigger-wizard-shortcut" id="btnComposerNeedShortcut" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(74, 124, 89, 0.1); border: 1px solid rgba(74, 124, 89, 0.25); border-radius: 20px; font-size: 0.85rem; font-weight: 800; color: #2D5A39; cursor: pointer; min-height: 40px;">
+                                        <i class="ph ph-hand-heart" style="color: #4A7C59; font-size: 1.1rem;"></i>
+                                        <span>J'ai un besoin</span>
+                                    </button>
                                 </div>
 
-                                <div class="composer-location-selector">
-                                    <label for="flashTerritorySelect"><i class="ph ph-map-pin"></i> Lieu :</label>
-                                    <select id="flashTerritorySelect" class="composer-select">
-                                        <option value="Guadeloupe (971)" selected>971 - Guadeloupe</option>
-                                        <option value="Martinique (972)">972 - Martinique</option>
-                                        <option value="Guyane (973)">973 - Guyane</option>
-                                        <option value="La Réunion (974)">974 - La Réunion</option>
-                                        <option value="St-Martin / St-Barth">978 - St-Martin</option>
-                                    </select>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary btn-publish-flash">Publier mon Lyann 🤝</button>
+                                <button type="submit" class="btn btn-primary btn-publish-flash" style="padding: 8px 20px; font-weight: 800; border-radius: 20px; font-size: 0.92rem; min-height: 40px;">Publier</button>
                             </div>
                         </form>
                     </div>
 
-                    <!-- BARRE UNIQUE DE LOCALISATION ET DOSSIER FILTRES BOKANTAJ -->
-                    <div class="feed-filters-bar-single-row">
-                        <div class="feed-location-picker">
-                            <i class="ph-fill ph-map-pin" style="color: var(--primary); font-size: 1.1rem;"></i>
-                            <select id="feedTerritoryFilterSelect" class="feed-location-select">
-                                <option value="guadeloupe" selected>971 - Guadeloupe</option>
-                                <option value="martinique">972 - Martinique</option>
-                                <option value="guyane">973 - Guyane</option>
-                                <option value="reunion">974 - La Réunion</option>
-                                <option value="saint-martin">978 - St-Martin</option>
-                                <option value="all">Tous les territoires</option>
-                            </select>
-                        </div>
-
-                        <div class="feed-filter-folder-wrapper" id="feedFilterFolderWrapper">
-                            <button type="button" class="feed-filter-folder-btn" id="feedFilterFolderBtn" title="Filtrer par type de publication">
-                                <i class="ph ph-sliders-horizontal" style="font-size: 1.05rem; color: var(--primary);"></i>
-                                <span>Filtres :</span>
-                                <span class="filter-active-text" id="feedActiveFilterBadge">Tout Bokantaj</span>
-                                <i class="ph ph-caret-down" style="font-size: 0.85rem; opacity: 0.7;"></i>
-                            </button>
-
-                            <!-- Dropdown Popover Folder -->
-                            <div class="feed-filter-dropdown-menu" id="feedFilterDropdownMenu">
-                                <div class="filter-dropdown-header">
-                                    <i class="ph ph-funnel"></i> Choisir ce qu'on veut voir :
-                                </div>
-                                <button type="button" class="filter-dropdown-item active" data-filter-type="all">
-                                    <span class="filter-item-icon">🌐</span>
-                                    <div class="filter-item-info">
-                                        <strong>Tout Bokantaj</strong>
-                                        <small>Toutes les publications</small>
-                                    </div>
-                                    <i class="ph ph-check check-icon"></i>
-                                </button>
-                                <button type="button" class="filter-dropdown-item" data-filter-type="dispo">
-                                     <span class="filter-item-icon"><i class="ph-fill ph-lightning"></i></span>
-                                     <div class="filter-item-info">
-                                         <strong>Disponibilités</strong>
-                                         <small>Talents libres immédiatement</small>
-                                     </div>
-                                     <i class="ph ph-check check-icon"></i>
-                                 </button>
-                                 <button type="button" class="filter-dropdown-item" data-filter-type="besoin">
-                                     <span class="filter-item-icon"><i class="ph-fill ph-magnifying-glass"></i></span>
-                                     <div class="filter-item-info">
-                                         <strong>Besoins</strong>
-                                         <small>Demandes d'aide des voisins</small>
-                                     </div>
-                                     <i class="ph ph-check check-icon"></i>
-                                 </button>
-                                 <button type="button" class="filter-dropdown-item" data-filter-type="reco">
-                                     <span class="filter-item-icon"><i class="ph-fill ph-star"></i></span>
-                                     <div class="filter-item-info">
-                                         <strong>Recommandations</strong>
-                                         <small>Avis & recommandations</small>
-                                     </div>
-                                     <i class="ph ph-check check-icon"></i>
-                                 </button>
-                                 <button type="button" class="filter-dropdown-item" data-filter-type="info">
-                                     <span class="filter-item-icon"><i class="ph-fill ph-megaphone"></i></span>
-                                     <div class="filter-item-info">
-                                         <strong>Infos & Conseils</strong>
-                                         <small>Infos pratiques du quartier</small>
-                                     </div>
-                                     <i class="ph ph-check check-icon"></i>
-                                 </button>
-                            </div>
-                        </div>
+                    <!-- BARRE DE FILTRES BOKANTAJ V2 -->
+                    <div class="feed-main-filters-bar" style="display: flex; gap: 8px; margin: 10px 0 8px 0; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch;">
+                        <button type="button" class="feed-pill filter-btn-v2 active" data-filter-v2="all" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; min-height: 40px;">
+                            <i class="ph ph-squares-four"></i> Tout
+                        </button>
+                        <button type="button" class="feed-pill filter-btn-v2" data-filter-v2="post" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; min-height: 40px;">
+                            <i class="ph ph-article"></i> Publications
+                        </button>
+                        <button type="button" class="feed-pill filter-btn-v2" data-filter-v2="lyann" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; min-height: 40px;">
+                            <i class="ph ph-hand-heart"></i> Lyanns
+                        </button>
+                        <button type="button" class="feed-pill filter-btn-v2" data-filter-v2="nearby" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; min-height: 40px;">
+                            <i class="ph ph-navigation-arrow"></i> Près de moi
+                        </button>
                     </div>
 
-                    <!-- BANDEAU DE HASHTAGS BOKANTAJ -->
-                    <div class="suggestion-tags hashtag-filters-group" style="margin-bottom: 20px; overflow-x: auto; padding-bottom: 6px; white-space: nowrap; -webkit-overflow-scrolling: touch;">
-                        <button type="button" class="tag hashtag-tag" data-query="Plomberie"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Plomberie</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Climatisation"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Climatisation</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Jardinage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Jardinage</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Bricolage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Bricolage</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Transport"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Transport</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Électricité"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Électricité</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Peinture"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Peinture</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Ménage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Ménage</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Aide à la personne"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #AideAuxSeniors</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Garde d'enfants"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #GardeEnfants</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Informatique"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Informatique</button>
-                        <button type="button" class="tag hashtag-tag help-wizard-trigger" data-query="Je ne sais pas qui contacter"><i class="ph-bold ph-sparkle" style="color: #E5B345;"></i> #JeNeSaisPas (Assistant IA 🤖)</button>
+                    <!-- BANDEAU DE HASHTAGS BOKANTAJ (SANS DOUBLE #) -->
+                    <div class="suggestion-tags hashtag-filters-group" style="margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; white-space: nowrap; -webkit-overflow-scrolling: touch;">
+                        <button type="button" class="tag hashtag-tag" data-query="Plomberie"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Plomberie</button>
+                        <button type="button" class="tag hashtag-tag" data-query="Climatisation"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Climatisation</button>
+                        <button type="button" class="tag hashtag-tag" data-query="Jardinage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Jardinage</button>
+                        <button type="button" class="tag hashtag-tag" data-query="Bricolage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Bricolage</button>
+                        <button type="button" class="tag hashtag-tag" data-query="Transport"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Transport</button>
+                        <button type="button" class="tag hashtag-tag" data-query="Électricité"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Électricité</button>
+                        <button type="button" class="tag hashtag-tag" data-query="Peinture"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Peinture</button>
+                        <button type="button" class="tag hashtag-tag" data-query="Ménage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Ménage</button>
+                        <button type="button" class="tag hashtag-tag" data-query="Aide à la personne"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> AideAuxSeniors</button>
+                        <button type="button" class="tag hashtag-tag" data-query="Garde d'enfants"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> GardeEnfants</button>
+                        <button type="button" class="tag hashtag-tag" data-query="Informatique"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Informatique</button>
                     </div>
 
-                    <!-- FLUX DE LYANNS (INJECTÉ PAR SCRIPT.JS) -->
+                    <!-- FLUX BOKANTAJ UNIFIÉ (INJECTÉ DYNAMIQUEMENT) -->
                     <div class="flash-feed-list" id="flashFeedContainer">
-                        <!-- Injected dynamic Lyann cards -->
+                        <!-- Injected dynamic cards -->
                     </div>
 
                 </main>
@@ -297,45 +212,14 @@
                 <!-- COLONNE SECONDAIRE / WIDGETS LATÉRAUX -->
                 <aside class="feed-sidebar">
                     
-                    <!-- WIDGET 1 : TALENTS LES PLUS RECOMMANDÉS -->
+                    <!-- WIDGET : LYANNEURS À DÉCOUVRIR -->
                     <div class="sidebar-widget">
                         <div class="widget-header">
                             <i class="ph-fill ph-trophy" style="color: #E8B83F;"></i>
-                            <h4>Talents du Mois</h4>
+                            <h4>Lyanneurs à découvrir</h4>
                         </div>
-                        <div class="top-talents-list">
-                            <div class="top-talent-item view-member-profile-btn" data-member-id="200">
-                                <div class="talent-avatar-sm">
-                                    <img src="jocelyn-cabort.png" alt="Jocelyn Cabort">
-                                </div>
-                                <div class="talent-mini-info">
-                                    <strong>Jocelyn Cabort <i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></strong>
-                                    <span>Plomberie & Fuites • Baie-Mahault</span>
-                                </div>
-                                <span class="mini-score">⭐ 5.0</span>
-                            </div>
-
-                            <div class="top-talent-item view-member-profile-btn" data-member-id="201">
-                                <div class="talent-avatar-sm">
-                                    <img src="hugues-zami.png" alt="Hugues Zami">
-                                </div>
-                                <div class="talent-mini-info">
-                                    <strong>Hugues Zami <i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></strong>
-                                    <span>Climatisation & Électricité • Les Abymes</span>
-                                </div>
-                                <span class="mini-score">⭐ 4.9</span>
-                            </div>
-
-                            <div class="top-talent-item view-member-profile-btn" data-member-id="202">
-                                <div class="talent-avatar-sm">
-                                    <img src="murielle-placide.png" alt="Murielle Placide">
-                                </div>
-                                <div class="talent-mini-info">
-                                    <strong>Murielle Placide <span class="badge-pro-mini">PRO</span></strong>
-                                    <span>Ménage & Repassage • Le Gosier</span>
-                                </div>
-                                <span class="mini-score">⭐ 5.0</span>
-                            </div>
+                        <div class="top-talents-list" id="topTalentsSidebarContainer">
+                            <!-- Dynamically populated from real Supabase profiles or explicit demo mode -->
                         </div>
                     </div>
 
@@ -348,17 +232,6 @@
                                 <p>Rejoignez les Lyanneurs déjà visibles dans vos communes.</p>
                             </div>
                             <button class="btn btn-accent btn-promo-action open-signup-trigger">Rejoindre LYANN <i class="ph ph-arrow-right"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="sidebar-widget widget-promo-cta logged-in-only" style="display: none;">
-                        <div class="widget-promo-inner">
-                            <div class="widget-promo-icon-badge">🤝</div>
-                            <div class="widget-promo-text">
-                                <h4>Publier une annonce</h4>
-                                <p>Partagez une disponibilité ou un besoin d'entraide avec vos voisins.</p>
-                            </div>
-                            <button class="btn btn-primary btn-promo-action" onclick="document.getElementById('flashContentInput')?.focus();">Poster un Lyann 🤝</button>
                         </div>
                     </div>
 
@@ -778,41 +651,16 @@
             <div class="chat-modal-layout">
                 <div class="chat-contacts-sidebar">
                     <div class="chat-sidebar-header">
-                        <span>💬 Messagerie LYANN</span>
+                        <span><i class="ph ph-chat-circle"></i> Messagerie LYANN</span>
                         <button type="button" class="chat-close-modal-btn close-chat-modal-trigger" aria-label="Fermer la messagerie" onclick="window.closeLyannChatModal(event)"><i class="ph ph-x"></i></button>
                     </div>
+                    <div class="chat-sidebar-search-wrap" style="padding: 10px 14px; border-bottom: 1px solid #E2E8F0; background: #FFFFFF;">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; left: 10px; color: #94A3B8; font-size: 0.95rem;"></i>
+                            <input type="text" id="chatSearchInput" class="modal-input chat-search-input" placeholder="Rechercher une conversation" style="width: 100%; padding-left: 32px; height: 36px; font-size: 0.82rem; border-radius: 18px; border: 1px solid #E2E8F0; background: #F8FAFC; outline: none;">
+                        </div>
+                    </div>
                     <div class="chat-contacts-list" id="chatContactsList">
-                        <div class="chat-contact-item active" data-chat-member-id="1">
-                            <div class="chat-contact-avatar-wrap">
-                                <img src="david-34.png" alt="David Jean-Baptiste" class="chat-contact-avatar">
-                                <span class="online-dot"></span>
-                            </div>
-                            <div class="chat-contact-info">
-                                <div class="chat-contact-name">Prestataire LYANN</div>
-                                <div class="chat-contact-preview">Bonjour ! Je suis dispo cet ap...</div>
-                            </div>
-                        </div>
-
-                        <div class="chat-contact-item" data-chat-member-id="9">
-                            <div class="chat-contact-avatar-wrap">
-                                <img src="huguette-68.png" alt="Tati Huguette Cazeau" class="chat-contact-avatar">
-                                <span class="online-dot"></span>
-                            </div>
-                            <div class="chat-contact-info">
-                                <div class="chat-contact-name">Tati Huguette Cazeau</div>
-                                <div class="chat-contact-preview">Merci beaucoup pour votre aide !</div>
-                            </div>
-                        </div>
-
-                        <div class="chat-contact-item" data-chat-member-id="6">
-                            <div class="chat-contact-avatar-wrap">
-                                <img src="sarah-29.png" alt="Sarah Manicon" class="chat-contact-avatar">
-                            </div>
-                            <div class="chat-contact-info">
-                                <div class="chat-contact-name">Sarah Manicon</div>
-                                <div class="chat-contact-preview">À très bientôt pour la rénovation !</div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -822,16 +670,12 @@
                     <div class="chat-header-bar">
                         <div class="chat-header-user">
                             <button type="button" class="chat-back-to-contacts-btn" aria-label="Retour" onclick="window.backToChatContacts(event)"><i class="ph ph-arrow-left"></i></button>
-                            <div class="chat-header-avatar-wrap" style="position: relative;">
+                            <div class="chat-header-avatar-wrap">
                                 <img src="david-34.png" alt="Avatar" id="chatHeaderAvatar" class="chat-header-avatar">
-                                <span class="online-dot" style="bottom: 0; right: 0;"></span>
                             </div>
                             <div class="chat-header-info">
                                 <div class="chat-header-name-row">
                                     <strong id="chatHeaderName">Prestataire LYANN</strong>
-                                </div>
-                                <div id="chatHeaderSubTitle" class="chat-header-subtitle">
-                                    ● En ligne
                                 </div>
                             </div>
                         </div>
@@ -864,7 +708,7 @@
                     <!-- Role determined automatically by mission context -->
 
                     <!-- MISSION CONTEXT HEADER -->
-                    <div id="chatMissionContext" style="display: none; padding: 8px 16px; background: var(--bg-alt); border-bottom: 1px solid var(--border-light); font-size: 0.82rem; font-weight: 600; color: var(--text);"></div>
+                    <div id="chatMissionContextBar" class="chat-mission-banner" style="display: none;"></div>
                     <button type="button" class="btn btn-outline" id="chatViewMissionBtn" style="display: none; margin: 6px 16px; padding: 4px 10px; font-size: 0.75rem;">Voir la mission</button>
 
                     <!-- CONTEXTUAL ACTIONS BAR (Proposer un prix, Accepter, etc.) -->
@@ -1053,9 +897,20 @@
                     </div>
 
                     <!-- INPUT AREA (COMPOSER MOBILE) -->
-                    <div class="chat-input-area">
+                    <div class="chat-input-area" style="position: relative;">
+                        <div id="chatAttachMenu" class="chat-attach-menu" style="display: none;">
+                            <button type="button" class="chat-attach-menu-item" onclick="window.handleGuardedAttachment('photo')">
+                                <i class="ph ph-image"></i> Photo <span class="attach-badge-soon">Bientôt</span>
+                            </button>
+                            <button type="button" class="chat-attach-menu-item" onclick="window.handleGuardedAttachment('file')">
+                                <i class="ph ph-file-text"></i> Fichier <span class="attach-badge-soon">Bientôt</span>
+                            </button>
+                            <button type="button" class="chat-attach-menu-item" onclick="window.handleGuardedAttachment('camera')">
+                                <i class="ph ph-camera"></i> Prendre une photo <span class="attach-badge-soon">Bientôt</span>
+                            </button>
+                        </div>
                         <form id="chatInputForm" style="display: flex; gap: 8px; align-items: flex-end; width: 100%; margin: 0;">
-                            <button type="button" class="btn-chat-attach" id="chatAttachBtn" title="Ajouter une pièce jointe"><i class="ph ph-plus"></i></button>
+                            <button type="button" class="btn-chat-attach" id="chatAttachBtn" title="Ajouter une pièce jointe" onclick="window.toggleChatAttachMenu(event)"><i class="ph ph-plus"></i></button>
                             <textarea id="chatInputField" class="modal-input chat-input-field-mobile" placeholder="Écrivez un message..." rows="1"></textarea>
                             <button type="submit" class="btn btn-primary chat-send-btn-mobile" title="Envoyer"><i class="ph-fill ph-paper-plane-right"></i></button>
                         </form>
@@ -1393,7 +1248,7 @@
             </a>
                         <button type="button" class="speed-dial-item open-request-help-trigger" id="sdActionMakeRequest">
                 <span class="speed-dial-icon"><i class="ph ph-file-plus"></i></span>
-                Besoin d'un coup de main
+                J'ai un besoin
             </button>
             <a href="#" class="speed-dial-item" id="sdActionScanQR">
                 <span class="speed-dial-icon"><i class="ph ph-qr-code"></i></span>
@@ -1401,8 +1256,7 @@
             </a>
         </div>
     </div>
-    <script src="onboarding.js"></script>
-    <!-- MODALE BESOIN D'UN COUP DE MAIN (WIZARD) -->
+    <!-- MODALE J'AI UN BESOIN (WIZARD) -->
     <div class="modal-overlay" id="modal-request-help">
         <div class="modal-card" style="max-width: 600px; height: 90vh; max-height: 800px; display: flex; flex-direction: column; overflow: hidden;">
             <div class="modal-header" style="border-bottom: 1px solid var(--border); padding: 20px 24px; flex-shrink: 0;">
@@ -1496,7 +1350,7 @@
                         <option value="Basse-Terre">Basse-Terre</option>
                     </select>
                     
-                    <label>Quand avez-vous besoin d'aide ?</label>
+                    <label>Délai souhaité pour votre besoin</label>
                     <select class="modal-input" id="wizardDateType" style="margin-bottom: 16px;">
                         <option value="urgent">Le plus tôt possible (Urgent)</option>
                         <option value="flexible" selected>Dans les prochains jours (Flexible)</option>
@@ -1564,13 +1418,18 @@
     <script src="payment-script.js"></script>
     <script src="notifications-service.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="safety-disputes-engine.js"></script>
+    <script src="subscriptions-engine.js"></script>
+    <script src="pro-verification-engine.js"></script>
+    <script src="search-engine.js"></script>
     <script src="matching-engine.js"></script>
-    <script src="api-client.js"></script>
+    <script src="api-client.js?v=20260907-DOM-OBSERVER-FIX"></script>
     <script src="dialog.js"></script>
-    <script src="chat-logic.js"></script>
-    <script src="ai-simulator.js"></script>
+    <script src="chat-logic.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="ai-simulator.js?v=20260907-DOM-OBSERVER-FIX"></script>
     <script src="ai-classifier.js"></script>
-    <script src="script.js?v=20260903-2"></script>
+    <script src="script.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="onboarding.js"></script>
     <script src="profile-completion.js"></script>
 
     <!-- ========== MODAL PARCOURS COMPLÉTION DE PROFIL (#modalCompleteProfile) ========== -->
@@ -1735,5 +1594,30 @@
         </div>
     </div>
 
+    <!-- ========== MODAL FICHE DÉTAILLÉE LYANN ========== -->
+    <div class="modal-overlay" id="lyannDetailModal" style="display: none;">
+        <div class="modal-card modal-card-xl" style="max-width: 620px; border-radius: var(--radius-xl);">
+            <button class="modal-close-btn" id="closeLyannDetailModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            <div class="modal-header" style="padding-bottom: 14px; border-bottom: 1px solid #E2E8F0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <span class="flash-badge-default" id="lyannDetailBadge" style="background: rgba(74, 124, 89, 0.12); color: #4A7C59; font-weight: 800; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem;">
+                        <i class="ph ph-hand-heart"></i> LYANN
+                    </span>
+                    <span id="lyannDetailStatus" style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">● OPEN</span>
+                </div>
+                <h3 class="step-title" id="lyannDetailTitle" style="font-size: 1.35rem; margin-top: 10px; font-weight: 800; color: #1E2822;">
+                    Titre du Lyann
+                </h3>
+            </div>
+            <div class="modal-body" id="lyannDetailBody" style="padding: 18px 0; font-size: 0.95rem; line-height: 1.6;">
+                <!-- Dynamically populated by script.js -->
+            </div>
+            <div class="modal-footer" id="lyannDetailFooter" style="padding-top: 14px; border-top: 1px solid #E2E8F0; display: flex; gap: 12px; justify-content: flex-end;">
+                <!-- Dynamically populated by script.js -->
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
+

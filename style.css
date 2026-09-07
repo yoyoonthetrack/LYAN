@@ -10769,6 +10769,187 @@ body.is-native-app .navbar.scrolled,
 }
 
 /* ==========================================================================
+   LYANN CHAT V2 FINAL POLISH STYLES
+   ========================================================================== */
+.online-dot {
+    display: none !important;
+}
+
+.chat-header-subtitle {
+    display: none !important;
+}
+
+/* Contact List Active Item in Sage Theme */
+.chat-contact-item.active {
+    background: #E8F5E9 !important;
+    border-left: 3px solid #4A7C59 !important;
+}
+
+.chat-contact-item:hover:not(.active) {
+    background: #F4F7F4 !important;
+}
+
+/* Unified Lyann Context Card */
+.chat-mission-context-card {
+    background: #FAFDFB !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    padding: 12px 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02) !important;
+    z-index: 25;
+}
+
+.chat-context-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-context-card-tag {
+    font-size: 0.68rem;
+    color: #4A7C59;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 3px;
+}
+
+.chat-context-card-title {
+    font-size: 0.94rem;
+    font-weight: 800;
+    color: #1E2822;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Hover-only Message Action Bar for Desktop */
+@media (min-width: 769px) {
+    .chat-msg-action-bar {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transition: opacity 0.15s ease, visibility 0.15s ease !important;
+    }
+
+    .chat-msg-bubble-wrap:hover .chat-msg-action-bar,
+    .chat-msg-bubble-wrap:focus-within .chat-msg-action-bar {
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+}
+
+.chat-context-card-meta {
+    font-size: 0.78rem;
+    color: #64748B;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.chat-context-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.btn-chat-ctx {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border-radius: 20px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-chat-ctx.primary {
+    background: #4A7C59;
+    color: #FFFFFF;
+    box-shadow: 0 2px 6px rgba(74, 124, 89, 0.25);
+}
+
+.btn-chat-ctx.primary:hover {
+    background: #3B6447;
+    transform: translateY(-1px);
+}
+
+.btn-chat-ctx.secondary {
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    color: #334155;
+}
+
+.btn-chat-ctx.secondary:hover {
+    background: #F8FAFC;
+    border-color: #94A3B8;
+    color: #0F172A;
+}
+
+/* Attachment Menu Dropdown Popup */
+.chat-attach-menu {
+    position: absolute;
+    bottom: 64px;
+    left: 16px;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 100;
+    min-width: 200px;
+    animation: fadeInAttach 0.15s ease-out;
+}
+
+@keyframes fadeInAttach {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-attach-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border: none;
+    background: transparent;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.chat-attach-menu-item:hover {
+    background: #F1F5F9;
+    color: #0F172A;
+}
+
+.attach-badge-soon {
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: #F1F5F9;
+    color: #64748B;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* ==========================================================================
    WIZARD DE COMPLÉTION DE PROFIL (#modalCompleteProfile)
    ========================================================================== */
 .cp-skill-tag {
@@ -11254,3 +11435,828 @@ body.is-native-app .navbar.scrolled,
     background: #F3F4F6;
     color: var(--primary);
 }
+
+/* ==========================================================================
+   LYANN STEP 9 — FINAL USER PROFILE EXPERIENCE (PRODUCT, UX, UI & REAL DATA)
+   ========================================================================== */
+
+/* Toast Notification */
+.lyann-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #1D2A44;
+    color: #FFFFFF;
+    padding: 12px 20px;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(15px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+}
+
+.lyann-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* Hero & Identity Section */
+.lyann-profile-hero {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: hidden;
+}
+
+.lyann-profile-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #2D6A4F 0%, #40916C 50%, #F4A261 100%);
+}
+
+.lyann-profile-hero-content {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+@media (max-width: 640px) {
+    .lyann-profile-hero-content {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}
+
+.lyann-profile-avatar-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.lyann-profile-avatar-img {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #FFFFFF;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+    background: #F1F5F9;
+}
+
+.lyann-avatar-edit-btn {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #2D6A4F;
+    color: #FFFFFF;
+    border: 2px solid #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.lyann-avatar-edit-btn:hover {
+    transform: scale(1.1);
+    background: #1B4332;
+}
+
+.lyann-profile-hero-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.lyann-profile-name-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+@media (max-width: 640px) {
+    .lyann-profile-name-row {
+        justify-content: center;
+    }
+}
+
+.lyann-profile-display-name {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #1D2A44;
+    margin: 0;
+    line-height: 1.25;
+}
+
+.lyann-profile-location {
+    font-size: 0.9rem;
+    color: #64748B;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+/* Badges */
+.lyann-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.lyann-badge-verified {
+    background: #E8F5E9;
+    color: #2D6A4F;
+    border: 1px solid #C8E6C9;
+}
+
+.lyann-badge-pro {
+    background: #FEF3C7;
+    color: #92400E;
+    border: 1px solid #FDE68A;
+}
+
+/* Compact Trust Line */
+.lyann-trust-line-compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+    .lyann-trust-line-compact {
+        justify-content: center;
+    }
+}
+
+.lyann-trust-line-star {
+    color: #F59E0B;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.lyann-trust-dot {
+    color: #CBD5E1;
+    font-size: 0.6rem;
+}
+
+.lyann-profile-bio {
+    font-size: 0.95rem;
+    color: #475569;
+    line-height: 1.55;
+    margin-top: 6px;
+}
+
+.lyann-profile-cta-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+    .lyann-profile-cta-group {
+        justify-content: center;
+        width: 100%;
+    }
+    .lyann-profile-cta-group .btn {
+        flex: 1;
+        justify-content: center;
+        min-width: 140px;
+    }
+}
+
+/* Profile Completion Card (Self View Only) */
+.lyann-completion-card {
+    background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%);
+    border: 1px solid #BBF7D0;
+    border-radius: 18px;
+    padding: 18px 22px;
+    margin-bottom: 20px;
+}
+
+.lyann-completion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.lyann-completion-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #166534;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lyann-completion-pct-badge {
+    background: #2D6A4F;
+    color: #FFFFFF;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.lyann-completion-bar-bg {
+    width: 100%;
+    height: 8px;
+    background: #DCFCE7;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.lyann-completion-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2D6A4F, #52B788);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+.lyann-completion-items {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.lyann-completion-chip {
+    background: #FFFFFF;
+    border: 1px solid #DCFCE7;
+    color: #166534;
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.lyann-completion-chip:hover {
+    background: #F0FDF4;
+    border-color: #86EFAC;
+}
+
+/* Sections Styling */
+.lyann-profile-section {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 20px;
+    padding: 22px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
+}
+
+.lyann-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.lyann-section-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1D2A44;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.lyann-block-edit-btn {
+    background: #F1F5F9;
+    border: none;
+    color: #475569;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.lyann-block-edit-btn:hover {
+    background: #E2E8F0;
+    color: #1E293B;
+}
+
+/* Services Grid ("Ce que je peux faire") */
+.lyann-services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.lyann-service-chip {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.lyann-service-chip:hover {
+    border-color: #CBD5E1;
+    transform: translateY(-2px);
+}
+
+.lyann-service-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #E6EFE9;
+    color: #2D6A4F;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.lyann-service-info h5 {
+    margin: 0 0 2px 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1E293B;
+}
+
+.lyann-service-info p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #64748B;
+    line-height: 1.4;
+}
+
+/* Intervention Area ("Je me déplace") */
+.lyann-relocation-card {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.lyann-relocation-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #E8F5E9;
+    color: #2D6A4F;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.lyann-relocation-text strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #1E293B;
+}
+
+.lyann-relocation-text span {
+    font-size: 0.85rem;
+    color: #64748B;
+}
+
+/* Portfolio Gallery ("Mes réalisations") */
+.lyann-portfolio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+@media (max-width: 640px) {
+    .lyann-portfolio-grid {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 8px;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+    }
+    .lyann-portfolio-card {
+        min-width: 240px;
+        scroll-snap-align: start;
+        flex-shrink: 0;
+    }
+}
+
+.lyann-portfolio-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.lyann-portfolio-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.lyann-portfolio-img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    background: #F1F5F9;
+    display: block;
+}
+
+.lyann-portfolio-info {
+    padding: 12px;
+}
+
+.lyann-portfolio-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lyann-portfolio-caption {
+    font-size: 0.8rem;
+    color: #64748B;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.lyann-portfolio-privacy-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    backdrop-filter: blur(4px);
+}
+
+.lyann-portfolio-privacy-badge.public {
+    background: rgba(45, 106, 79, 0.85);
+    color: #FFFFFF;
+}
+
+.lyann-portfolio-privacy-badge.private {
+    background: rgba(100, 116, 139, 0.85);
+    color: #FFFFFF;
+}
+
+/* Lightbox Modal */
+.lyann-lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.lyann-lightbox-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.lyann-lightbox-card {
+    background: #FFFFFF;
+    border-radius: 20px;
+    max-width: 650px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+}
+
+.lyann-lightbox-img {
+    width: 100%;
+    max-height: 420px;
+    object-fit: cover;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
+
+.lyann-lightbox-details {
+    padding: 20px 24px;
+}
+
+/* Activity Metrics Grid */
+.lyann-activity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 12px;
+}
+
+.lyann-activity-card {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.lyann-activity-val {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #1D2A44;
+}
+
+.lyann-activity-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748B;
+}
+
+/* Subscription Card (Self-only) */
+.lyann-subscription-card {
+    background: linear-gradient(135deg, #1D2A44 0%, #2D3A54 100%);
+    color: #FFFFFF;
+    border-radius: 18px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.lyann-subscription-info h4 {
+    margin: 0 0 4px 0;
+    font-size: 1.05rem;
+    color: #FFFFFF;
+}
+
+.lyann-subscription-info p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.75);
+}
+
+/* Zero Data Component */
+.lyann-zero-data {
+    text-align: center;
+    padding: 32px 16px;
+    background: #F8FAFC;
+    border: 1px dashed #CBD5E1;
+    border-radius: 16px;
+}
+
+.lyann-zero-data-icon {
+    font-size: 2.2rem;
+    color: #94A3B8;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.lyann-zero-data-title {
+    font-weight: 700;
+    color: #475569;
+    font-size: 0.95rem;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.lyann-zero-data-sub {
+    font-size: 0.85rem;
+    color: #64748B;
+}
+
+/* ==========================================================================
+   STEP 17 — SEARCH EXPERIENCE V2 (« JE CHERCHE » / « J’AI UN BESOIN »)
+   ========================================================================== */
+.search-v2-intent-container {
+    margin-bottom: 24px;
+}
+
+.search-v2-header h3 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text, #1E2822);
+    margin-bottom: 14px;
+    text-align: left;
+}
+
+.search-v2-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 640px) {
+    .search-v2-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+.search-v2-card {
+    background: #FFFFFF;
+    border: 2px solid var(--border, #E5DFD5);
+    border-radius: 18px;
+    padding: 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.search-v2-card:hover {
+    border-color: var(--primary, #4A7C59);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(74, 124, 89, 0.12);
+}
+
+.search-v2-card.active {
+    border-color: var(--primary, #4A7C59);
+    background: linear-gradient(135deg, #FFFFFF 0%, #F4F8F5 100%);
+    box-shadow: 0 6px 20px rgba(74, 124, 89, 0.15);
+}
+
+.search-v2-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: rgba(74, 124, 89, 0.12);
+    color: var(--primary, #4A7C59);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.search-v2-card-body h4 {
+    margin: 0 0 4px 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text, #1E2822);
+}
+
+.search-v2-card-body p {
+    margin: 0;
+    font-size: 0.84rem;
+    color: var(--text-muted, #5C6E62);
+    line-height: 1.45;
+}
+
+.search-v2-card-check {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--primary, #4A7C59);
+    color: #FFFFFF;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.search-v2-card.active .search-v2-card-check {
+    display: flex;
+}
+
+.search-v2-examples {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.example-chip {
+    background: rgba(74, 124, 89, 0.08);
+    border: 1px solid rgba(74, 124, 89, 0.15);
+    color: var(--primary-dark, #35583F);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.example-chip:hover {
+    background: var(--primary, #4A7C59);
+    color: #FFFFFF;
+}
+
+.need-intent-hero-box {
+    background: #FFFFFF;
+    border: 2px solid #E5DFD5;
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+}
+
+.need-quick-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.need-example-chip {
+    background: #FAF7F2;
+    border: 1.5px solid #E5DFD5;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #243329;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+
+.need-example-chip:hover {
+    border-color: var(--primary, #4A7C59);
+    background: rgba(74, 124, 89, 0.06);
+    color: var(--primary-dark, #35583F);
+}
+
+.need-example-chip i {
+    font-size: 1.1rem;
+    color: var(--primary, #4A7C59);
+}
+

@@ -116,6 +116,9 @@ function closeAllOverlays() {
 }
 
 function getLocalChatMessages(contactId) {
+    if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+        return []; // Zero mock messages allowed when Supabase is active
+    }
     let data = {};
     try {
         const stored = localStorage.getItem(CHAT_MSG_KEY);
@@ -125,22 +128,7 @@ function getLocalChatMessages(contactId) {
     }
     
     if (!data[contactId]) {
-        if (contactId === "Prestataire LYANN") {
-            data[contactId] = [
-                { id: "m1", text: "Bonjour ! Je suis dispo cet après-midi pour votre problème électrique.", sender: "them", timestamp: "14:32", type: "text", status: "read" }
-            ];
-        } else if (contactId === "Tati Huguette Cazeau") {
-            data[contactId] = [
-                { id: "m2", text: "Merci beaucoup pour votre aide ! Le portail fonctionne parfaitement.", sender: "them", timestamp: "Hier", type: "text", status: "read" }
-            ];
-        } else if (contactId === "Sarah Manicon") {
-            data[contactId] = [
-                { id: "m3", text: "À très bientôt pour la rénovation de la cuisine !", sender: "them", timestamp: "Lundi", type: "text", status: "read" }
-            ];
-        } else {
-            data[contactId] = [];
-        }
-        localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
+        data[contactId] = [];
     }
     return data[contactId];
 }
@@ -210,7 +198,8 @@ async function getChatMessages(contactId) {
             status: 'read'
         }));
     } catch(e) {
-        console.warn("Supabase chat query failed, falling back to local:", e);
+        console.warn("Supabase chat query failed:", e);
+        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) return [];
         return getLocalChatMessages(contactId);
     }
 }
@@ -257,6 +246,12 @@ window.openPhotoLightbox = function (url) {
 };
 
 window.openChatWithUser = async function (name, avatar, contactId = name, initialNeed = null) {
+    const myId = getMyId();
+    if (contactId && myId && contactId === myId && contactId !== "me") {
+        if (window.lyannAlert) window.lyannAlert("⚠️ Vous ne pouvez pas démarrer une mise en relation avec vous-même.");
+        return;
+    }
+
     document.body.classList.add('hide-bottom-nav');
     document.body.classList.add('in-chat-active');
     const modal = document.getElementById('chatModal');
@@ -275,26 +270,55 @@ window.openChatWithUser = async function (name, avatar, contactId = name, initia
         localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(storedMsgs));
     }
 
-    if ((!avatar || avatar === "david-34.png") && name !== "Prestataire LYANN" && window.LYANN_MEMBERS) {
-        const member = window.LYANN_MEMBERS.find(m => m.name === name || `${m.name} (${m.age} ans)` === name);
-        if (member) avatar = member.avatar;
+    let displayName = name;
+    let displayAvatar = avatar;
+
+    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function' && contactId && isUUID(contactId)) {
+        try {
+            const prof = await window.LYANN_API_CLIENT.getUserProfile(contactId);
+            if (prof && prof.first_name) {
+                const fn = prof.first_name.trim();
+                const ln = (prof.last_name || '').trim();
+                const init = ln ? ` ${ln.charAt(0)}.` : '';
+                displayName = `${fn}${init}`;
+                if (prof.avatar_url) displayAvatar = prof.avatar_url;
+                else displayAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${contactId}`;
+            }
+        } catch(e) {}
     }
 
-    currentChatContact = { id: contactId, name, avatar };
+    if ((!displayName || displayName === "Lyanneur" || isUUID(displayName)) && isUUID(contactId)) {
+        displayName = "Membre LYANN";
+    }
+
+    currentChatContact = { id: contactId, name: displayName, avatar: displayAvatar };
     
     try {
-        localStorage.setItem('lyann_last_active_contact', JSON.stringify({ id: contactId, name, avatar }));
+        localStorage.setItem('lyann_last_active_contact', JSON.stringify({ id: contactId, name: displayName, avatar: displayAvatar }));
     } catch(e) {}
 
-    // If an explicit initial need/context is passed (e.g. from Bokantaj or Explorer)
-    if (initialNeed && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.mockCreateNeed === 'function') {
-        await window.LYANN_API_CLIENT.mockCreateNeed(initialNeed.requesterId, initialNeed.helperId, initialNeed.title);
+    // Link conversation to request in DB safely via initiateLyannHelp (Step 17.4 Security Gate)
+    if (initialNeed && initialNeed.requestId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.initiateLyannHelp === 'function') {
+        try {
+            const helpRes = await window.LYANN_API_CLIENT.initiateLyannHelp(initialNeed.requestId);
+            if (helpRes && helpRes.error) {
+                console.warn('[INITIATE HELP REJECTED]', helpRes.error.message || helpRes.error);
+                if (typeof window.showToast === 'function') {
+                    window.showToast(helpRes.error.message || 'Action non autorisée sur ce Lyann', 'error');
+                }
+            } else if (helpRes && helpRes.data && helpRes.data.conversation_id) {
+                currentChatContact.conversationId = helpRes.data.conversation_id;
+                currentChatContact.requestId = initialNeed.requestId;
+            }
+        } catch (e) {
+            console.warn('[OPEN CHAT INITIATE HELP ERR]', e);
+        }
     }
 
     const headerName = document.getElementById('chatHeaderName');
     const headerAvatar = document.getElementById('chatHeaderAvatar');
-    if (headerName) headerName.textContent = name;
-    if (headerAvatar) headerAvatar.src = avatar;
+    if (headerName) headerName.textContent = displayName;
+    if (headerAvatar) headerAvatar.src = displayAvatar;
 
     document.querySelectorAll('.chat-contact-item').forEach(item => {
         const cid = item.getAttribute('data-chat-member-id');
@@ -329,7 +353,7 @@ window.openChatWithUser = async function (name, avatar, contactId = name, initia
         initChatCloseBtn();
     }
 
-    refreshChatUI();
+    await refreshChatUI();
 };
 
 window.refreshChatUI = async function () {
@@ -339,24 +363,100 @@ window.refreshChatUI = async function () {
         window.updateChatFavHeaderUI();
     }
 
-    let mission = null;
-    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getActiveMissionBetween === 'function') {
-        mission = await window.LYANN_API_CLIENT.getActiveMissionBetween(getMyId(), currentChatContact.id);
+    const myUserId = getMyId();
+    let sharedConvId = currentChatContact.conversationId;
+    if (!sharedConvId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getOrCreateConversation === 'function' && currentChatContact.id && currentChatContact.id !== 'me') {
+        try {
+            const convRes = await window.LYANN_API_CLIENT.getOrCreateConversation(myUserId, currentChatContact.id);
+            if (convRes && convRes.data && convRes.data.id) {
+                sharedConvId = convRes.data.id;
+                currentChatContact.conversationId = sharedConvId;
+            }
+        } catch(e) {}
     }
 
-    // Compact Mission Banner Under Header
-    const banner = document.getElementById('chatMissionContextBar');
+    // 1. Fetch persistent request context for this conversation from request_invitations / requests
+    let requestContext = null;
+    const reqHint = (currentChatContact && currentChatContact.requestId) ? currentChatContact.requestId : null;
+    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getConversationRequestContext === 'function') {
+        requestContext = await window.LYANN_API_CLIENT.getConversationRequestContext(sharedConvId, reqHint);
+    }
+
+    // 2. Fetch active mission (if any)
+    let mission = null;
+    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getActiveMissionBetween === 'function') {
+        mission = await window.LYANN_API_CLIENT.getActiveMissionBetween(myUserId, currentChatContact.id);
+    }
+
+    const banner = document.getElementById('chatMissionContextBar') || document.getElementById('chatMissionContext');
     const bannerTitle = document.getElementById('chatBannerTitle');
     const bannerMeta = document.getElementById('chatBannerMeta');
     const dropViewMission = document.getElementById('chatDropViewMission');
 
-    if (mission) {
-        if (banner) banner.style.display = 'flex';
-        if (bannerTitle) bannerTitle.textContent = mission.title;
-        if (bannerMeta) bannerMeta.textContent = `${mission.agreed_price} € · ${mission.status}`;
-        if (dropViewMission) dropViewMission.style.display = 'flex';
+    if (requestContext && requestContext.request) {
+        currentChatContact.requestId = requestContext.requestId;
+        currentChatContact.requestData = requestContext.request;
 
         if (banner) {
+            banner.style.display = 'flex';
+            banner.setAttribute('data-request-context', requestContext.requestId);
+            banner.className = 'chat-mission-context-card';
+
+            const title = escapeSearchHtml(requestContext.request.title);
+            const location = escapeSearchHtml(requestContext.request.location || 'Guadeloupe');
+
+            banner.innerHTML = `
+                <div class="chat-context-card-info">
+                    <div class="chat-context-card-tag">À propos de ce Lyann</div>
+                    <div class="chat-context-card-title">${title}</div>
+                    <div class="chat-context-card-meta"><i class="ph ph-map-pin"></i> ${location}</div>
+                </div>
+                <div class="chat-context-card-actions">
+                    <button type="button" class="btn-chat-ctx primary" id="btnCtxPropose"><i class="ph ph-tag"></i> Faire une proposition</button>
+                    <button type="button" class="btn-chat-ctx secondary" id="btnCtxDate"><i class="ph ph-calendar"></i> Proposer une date</button>
+                    <button type="button" class="btn-chat-ctx secondary" id="btnViewLyannFromChat" data-request-id="${requestContext.requestId}"><i class="ph ph-arrow-square-out"></i> Voir le Lyann</button>
+                </div>
+            `;
+
+            const btnView = document.getElementById('btnViewLyannFromChat');
+            if (btnView) {
+                btnView.onclick = (e) => {
+                    e.stopPropagation();
+                    if (typeof window.openLyannDetailModal === 'function') {
+                        window.openLyannDetailModal(requestContext.requestId);
+                    }
+                };
+            }
+            const btnPropose = document.getElementById('btnCtxPropose');
+            if (btnPropose) {
+                btnPropose.onclick = (e) => {
+                    e.stopPropagation();
+                    handleChatAction('MAKE_PROPOSAL', mission);
+                };
+            }
+            const btnDate = document.getElementById('btnCtxDate');
+            if (btnDate) {
+                btnDate.onclick = (e) => {
+                    e.stopPropagation();
+                    handleChatAction('PROPOSE_DATE', mission);
+                };
+            }
+        }
+        if (dropViewMission) dropViewMission.style.display = 'flex';
+    } else if (mission) {
+        if (banner) {
+            banner.style.display = 'flex';
+            banner.className = 'chat-mission-context-card';
+            banner.innerHTML = `
+                <div class="chat-context-card-info">
+                    <div class="chat-context-card-tag">Mission active</div>
+                    <div class="chat-context-card-title">${escapeSearchHtml(mission.title)}</div>
+                    <div class="chat-context-card-meta">${mission.agreed_price} € · ${mission.status}</div>
+                </div>
+                <div class="chat-context-card-actions">
+                    <button type="button" class="btn-chat-ctx primary" id="btnCtxViewMissionDetails">🛠️ Suivi du chantier</button>
+                </div>
+            `;
             banner.onclick = () => {
                 const chatTrackingOverlay = document.getElementById('chatTrackingOverlay');
                 if (chatTrackingOverlay && (mission.status === 'IN_PROGRESS' || mission.status === 'WORK_MARKED_COMPLETE' || mission.status === 'COMPLETED')) {
@@ -367,46 +467,16 @@ window.refreshChatUI = async function () {
                 }
             };
         }
+        if (dropViewMission) dropViewMission.style.display = 'flex';
     } else {
         if (banner) banner.style.display = 'none';
         if (dropViewMission) dropViewMission.style.display = 'none';
     }
 
-    // Update Header Action Button
-    const headerProposeBtn = document.getElementById('chatHeaderProposeBtn');
-    if (headerProposeBtn) {
-        if (mission && mission.requester_id === getMyId()) {
-            headerProposeBtn.innerHTML = `<i class="ph ph-hand-heart"></i> Demander une estimation`;
-            headerProposeBtn.onclick = () => handleChatAction('REQUEST_HELP', mission);
-        } else {
-            headerProposeBtn.innerHTML = `<i class="ph ph-tag"></i> Faire une proposition`;
-            headerProposeBtn.onclick = () => handleChatAction('MAKE_PROPOSAL', mission);
-        }
-    }
-
-    // Contextual actions
+    // Hide floating separate actions toolbar completely (actions are integrated into the Context Card)
     const actionContainer = document.getElementById('chatContextualActionsBar');
     if (actionContainer) {
-        actionContainer.innerHTML = '';
-        let actions = [];
-        if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getAvailableMissionActions === 'function') {
-            actions = window.LYANN_API_CLIENT.getAvailableMissionActions(getMyId(), mission);
-        } else {
-            actions = [{ id: 'MAKE_PROPOSAL', label: 'Faire une proposition', type: 'primary' }];
-        }
-
-        actions.forEach(action => {
-            const btn = document.createElement('button');
-            btn.className = action.type === 'primary' ? 'btn btn-primary' : (action.type === 'outline' ? 'btn btn-outline' : 'btn btn-secondary');
-            if (action.type === 'disabled') btn.disabled = true;
-            btn.style.padding = '6px 14px';
-            btn.style.fontSize = '0.82rem';
-            btn.style.borderRadius = 'var(--radius-full)';
-            btn.textContent = action.label;
-
-            btn.onclick = () => handleChatAction(action.id, mission);
-            actionContainer.appendChild(btn);
-        });
+        actionContainer.style.display = 'none';
     }
 
     await renderMessages();
@@ -516,15 +586,23 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         return;
     }
 
-    else if (actionId === 'ACCEPT_PRICE' || actionId === 'ACCEPT_QUOTE') {
+    else if (actionId === 'ACCEPT_PROPOSAL' || actionId === 'ACCEPT_PRICE' || actionId === 'ACCEPT_QUOTE') {
         let acceptRes = null;
-        if (window.LYANN_API_CLIENT && extraData && extraData.quoteId) {
+        const propId = extraData.proposalId || (missionOrExtra && missionOrExtra.proposalId) || (extraData && extraData.quoteId);
+        if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.acceptProposalSecure === 'function' && propId) {
             try {
-                acceptRes = await window.LYANN_API_CLIENT.acceptRequestQuote(extraData.quoteId);
-                console.log("⚡ Devis accepté via RPC Supabase Production:", acceptRes);
+                const res = await window.LYANN_API_CLIENT.acceptProposalSecure(propId);
+                if (res && res.error) {
+                    if (window.lyannAlert) window.lyannAlert(res.error.message || res.error);
+                    return;
+                }
+                console.log("⚡ Proposition acceptée via RPC Supabase Production:", res);
+                if (typeof window.showToast === 'function') window.showToast("Proposition acceptée ! La mission est activée.", "success");
+                refreshChatUI();
+                return;
             } catch (err) {
-                console.warn("Erreur acceptation Devis Supabase:", err);
-                if (window.lyannAlert) window.lyannAlert("Erreur lors de l'acceptation du devis : " + (err.message || err));
+                console.warn("Erreur acceptation Proposition Supabase:", err);
+                if (window.lyannAlert) window.lyannAlert("Erreur lors de l'acceptation : " + (err.message || err));
                 return;
             }
         } else if (mission && window.LYANN_API_CLIENT) {
@@ -709,12 +787,36 @@ window.toggleMessageReaction = function(msgId, emoji) {
     }
 };
 
-async function renderMessages() {
+function renderEmptyConversationState(container) {
+    if (!container) return;
+    container.innerHTML = `
+        <div class="chat-empty-state">
+            <i class="ph ph-chat-circle-dots"></i>
+            <h4 style="font-weight: 700; color: #1E2822; margin: 8px 0 4px 0;">Commencez l’échange</h4>
+            <p style="color: #64748B; font-size: 0.88rem; margin: 0;">Présentez-vous ou posez une question à propos de ce Lyann.</p>
+        </div>
+    `;
+}
+
+async function renderMessages(passedMessages = null) {
     const container = document.getElementById('chatMessagesContainer');
-    if (!container || !currentChatContact) return;
+    if (!container) return;
+
+    // MANDATORY CONTRACT: ALWAYS CLEAR CONTAINER FIRST BEFORE ANY CHECK OR ASYNC FETCH
     container.innerHTML = '';
 
-    const msgs = await getChatMessages(currentChatContact.id);
+    if (!currentChatContact) {
+        renderEmptyConversationState(container);
+        return;
+    }
+
+    let msgs = passedMessages;
+    if (!Array.isArray(msgs)) {
+        msgs = await getChatMessages(currentChatContact.id);
+    }
+
+    console.log('[CHAT FINAL ARRAY]', msgs);
+    console.trace('[CHAT RENDER CALL]');
 
     // Fetch real quotes from Supabase for this conversation / invitation if authenticated
     let realQuotes = [];
@@ -733,14 +835,8 @@ async function renderMessages() {
         }
     }
 
-    if (msgs.length === 0 && realQuotes.length === 0) {
-        container.innerHTML = `
-            <div class="chat-empty-state">
-                <i class="ph ph-chat-circle-dots"></i>
-                <h3>Démarrez la discussion avec ${currentChatContact.name}</h3>
-                <p>Échangez des messages, des devis ou proposez un tarif en toute sérénité.</p>
-            </div>
-        `;
+    if (!Array.isArray(msgs) || (msgs.length === 0 && realQuotes.length === 0)) {
+        renderEmptyConversationState(container);
         return;
     }
 
@@ -781,16 +877,14 @@ async function renderMessages() {
                 `</div>`;
         }
 
-        // Action bar (Reactions + Quote + Delete)
+        // Action bar (Reply + Delete)
         const escapedText = (msg.text || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const authorName = isMe ? 'Vous' : (currentChatContact ? currentChatContact.name : 'Membre');
+        const deleteBtnHTML = isMe ? `<button type="button" class="chat-msg-act-btn danger" onclick="window.deleteMessage('${msgId}')" title="Supprimer ce message"><i class="ph ph-trash"></i></button>` : '';
         const actionBarHTML = `
             <div class="chat-msg-action-bar">
-                <button type="button" class="chat-msg-act-btn" onclick="window.toggleMessageReaction('${msgId}', '👍')" title="Réagir 👍">👍</button>
-                <button type="button" class="chat-msg-act-btn" onclick="window.toggleMessageReaction('${msgId}', '❤️')" title="Réagir ❤️">❤️</button>
-                <button type="button" class="chat-msg-act-btn" onclick="window.toggleMessageReaction('${msgId}', '😂')" title="Réagir 😂">😂</button>
                 <button type="button" class="chat-msg-act-btn" onclick="window.quoteMessage('${msgId}', '${authorName}', '${escapedText}')" title="Répondre"><i class="ph ph-arrow-u-up-left"></i></button>
-                <button type="button" class="chat-msg-act-btn" onclick="window.deleteMessage('${msgId}')" title="Supprimer ce message"><i class="ph ph-trash"></i></button>
+                ${deleteBtnHTML}
             </div>
         `;
 
@@ -1663,6 +1757,9 @@ document.addEventListener('touchstart', (e) => {
 
     // Initialize & render chat contacts sidebar dynamically
     function initializeChatContacts() {
+        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+            return; // Zero mock contacts when Supabase is active
+        }
         let data = {};
         try {
             const stored = localStorage.getItem(CHAT_MSG_KEY);
@@ -1736,7 +1833,8 @@ document.addEventListener('touchstart', (e) => {
         const listContainer = document.getElementById('chatContactsList');
         if (!listContainer) return;
         
-        const defaultContacts = [
+        const isSupaActive = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+        const defaultContacts = isSupaActive ? [] : [
             { id: "Prestataire LYANN", name: "Prestataire LYANN", avatar: "david-34.png", preview: "Bonjour ! Je suis dispo cet ap..." },
             { id: "Tati Huguette Cazeau", name: "Tati Huguette Cazeau", avatar: "huguette-68.png", preview: "Merci beaucoup pour votre aide !" },
             { id: "Sarah Manicon", name: "Sarah Manicon", avatar: "sarah-29.png", preview: "À très bientôt pour la rénovation !" }
@@ -1782,9 +1880,10 @@ document.addEventListener('touchstart', (e) => {
         const contactsToRender = query
             ? activeContacts.filter(c => c.name.toLowerCase().includes(query) || (c.preview && c.preview.toLowerCase().includes(query)))
             : activeContacts;
+        window.LYANN_PROFILES_CACHE = window.LYANN_PROFILES_CACHE || {};
 
         if (contactsToRender.length === 0) {
-            listContainer.innerHTML = `<div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 0.88rem;">Aucune conversation trouvée</div>`;
+            listContainer.innerHTML = `<div style="padding: 40px 16px; text-align: center; color: var(--text-muted); font-size: 0.88rem;"><i class="ph ph-chat-circle-dots" style="font-size: 2.2rem; color: #CBD5E1; margin-bottom: 8px; display: block;"></i><p style="margin: 0; font-weight: 600; color: #64748B;">Vos échanges apparaîtront ici.</p></div>`;
             return;
         }
 
@@ -1794,15 +1893,32 @@ document.addEventListener('touchstart', (e) => {
             const lastMsg = lastMsgs[lastMsgs.length - 1];
             const previewText = lastMsg ? (lastMsg.sender === 'me' ? 'Vous : ' + lastMsg.text : lastMsg.text) : c.preview;
             const escapedId = c.id.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+            let displayName = c.name;
+            let displayAvatar = c.avatar;
+            if (typeof isUUID === 'function' && isUUID(c.id)) {
+                if (window.LYANN_PROFILES_CACHE[c.id]) {
+                    displayName = window.LYANN_PROFILES_CACHE[c.id].displayName;
+                    displayAvatar = window.LYANN_PROFILES_CACHE[c.id].avatar;
+                } else if (displayName === c.id || displayName === 'Lyanneur') {
+                    displayName = "Membre LYANN";
+                }
+            }
+
+            let subContextHTML = '';
+            if (displayName === "Membre LYANN" && c.requestTitle) {
+                subContextHTML = `<div class="chat-contact-subcontext" style="font-size: 0.72rem; color: #4A7C59; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-hand-heart"></i> ${escapeSearchHtml(c.requestTitle)}</div>`;
+            }
+
             return `
                 <div class="chat-contact-swipe-wrapper" data-chat-member-id="${c.id}">
                     <div class="chat-contact-item ${isActive ? 'active' : ''}" data-chat-member-id="${c.id}">
                         <div class="chat-contact-avatar-wrap">
-                            <img src="${c.avatar}" alt="${c.name}" class="chat-contact-avatar" onerror="this.src='avatar-male-blue.png'">
-                            <span class="online-dot"></span>
+                            <img src="${displayAvatar}" alt="${displayName}" class="chat-contact-avatar" onerror="this.src='avatar-male-blue.png'">
                         </div>
                         <div class="chat-contact-info">
-                            <div class="chat-contact-name">${c.name}</div>
+                            <div class="chat-contact-name">${displayName}</div>
+                            ${subContextHTML}
                             <div class="chat-contact-preview">${previewText}</div>
                         </div>
                         <button type="button" class="btn-delete-conv-desktop" onclick="event.stopPropagation(); window.deleteConversation('${escapedId}');" title="Supprimer la conversation">
@@ -1871,17 +1987,31 @@ document.addEventListener('touchstart', (e) => {
 
     initializeChatContacts();
     renderChatContacts();
-
-    // Bind triggers to open chat directly
-    document.querySelectorAll('.btn-open-chat, .btn-open-chat-direct, .open-chat-trigger').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const name = btn.dataset.memberName || 'Membre LYANN';
-            const avatar = btn.dataset.memberAvatar || 'david-34.png';
-            openChatWithUser(name, avatar, name);
-        });
-    });
 }
+
+window.toggleChatAttachMenu = function(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('chatAttachMenu');
+    if (!menu) return;
+    menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
+};
+
+window.handleGuardedAttachment = function(type) {
+    const menu = document.getElementById('chatAttachMenu');
+    if (menu) menu.style.display = 'none';
+    if (window.NotificationService && window.NotificationService.showToast) {
+        window.NotificationService.showToast('info', '🔒 Le stockage sécurisé des fichiers sera disponible très prochainement.');
+    } else if (window.lyannAlert) {
+        window.lyannAlert('🔒 Le stockage sécurisé des fichiers sera disponible très prochainement.');
+    }
+};
+
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('chatAttachMenu');
+    if (menu && !e.target.closest('#chatAttachMenu') && !e.target.closest('#chatAttachBtn')) {
+        menu.style.display = 'none';
+    }
+});
 
 window.closeLyannChatModal = function (e) {
     if (e) {
@@ -1961,15 +2091,31 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener('scroll', handleVisualViewportResize);
 }
 
+function attachChatContainerMutationObserver() {
+    const container = document.getElementById('chatMessagesContainer');
+    if (!container || container.dataset.observerBound === 'true') return;
+    container.dataset.observerBound = 'true';
+    new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                console.error('[CHAT DOM NODE ADDED]', node);
+                console.trace('[CHAT DOM MUTATION TRACE]');
+            }
+        }
+    }).observe(container, { childList: true, subtree: true });
+}
+
 // Safe startup execution
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         initChatSubmitAndContacts();
         initChatCloseBtn();
+        attachChatContainerMutationObserver();
     });
 } else {
     initChatSubmitAndContacts();
     initChatCloseBtn();
+    attachChatContainerMutationObserver();
 }
 
 // === FAVORITES MANAGEMENT FOR CHAT CONTACTS & MEMBERS ===
@@ -2086,3 +2232,139 @@ function setupRealtime() {
 
 // Call setup when script loads
 setTimeout(setupRealtime, 1000); // Wait for API client to be ready
+
+// =============================================================================
+// LYANN STEP 19 — ESPACE MISSION UI & JALONS CONTROLLER
+// =============================================================================
+window.openMissionDetailsModal = async function(missionId) {
+    if (!missionId) return;
+    const modal = document.getElementById('missionDetailsModal');
+    if (!modal) return;
+
+    modal.style.display = 'flex';
+
+    const titleEl = document.getElementById('missionModalTitle');
+    const badgeEl = document.getElementById('missionModalStatusBadge');
+    const amountEl = document.getElementById('missionModalTotalAmount');
+    const textEl = document.getElementById('missionModalProgressionText');
+    const barEl = document.getElementById('missionModalProgressBar');
+    const startPane = document.getElementById('missionStartActionPane');
+    const listEl = document.getElementById('missionModalMilestonesList');
+
+    if (listEl) listEl.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:16px;">Chargement des jalons...</p>';
+
+    if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.getMissionDetailsSecure !== 'function') {
+        if (listEl) listEl.innerHTML = '<p style="font-size:0.85rem; color:red;">Client API indisponible</p>';
+        return;
+    }
+
+    const res = await window.LYANN_API_CLIENT.getMissionDetailsSecure(missionId);
+    if (res.error || !res.data) {
+        if (listEl) listEl.innerHTML = `<p style="font-size:0.85rem; color:red;">${res.error?.message || 'Erreur de chargement'}</p>`;
+        return;
+    }
+
+    const { user_role, mission, milestones, stats } = res.data;
+
+    if (titleEl) titleEl.textContent = mission.title || 'Mission LYANN';
+    if (badgeEl) {
+        badgeEl.textContent = mission.status === 'AGREED' ? 'ACCORD CONCLU' :
+                              mission.status === 'IN_PROGRESS' ? 'EN COURS' :
+                              mission.status === 'COMPLETED' ? 'TERMINÉE' : mission.status;
+    }
+    if (amountEl) amountEl.textContent = `${mission.total_amount || 0} €`;
+
+    const total = stats.total || 0;
+    const validated = stats.validated || 0;
+    const percent = total > 0 ? Math.round((validated / total) * 100) : 0;
+
+    if (textEl) textEl.textContent = `${validated} / ${total} validés`;
+    if (barEl) barEl.style.width = `${percent}%`;
+
+    // Start Mission Button (Helper + AGREED)
+    if (startPane) {
+        if (user_role === 'HELPER' && mission.status === 'AGREED') {
+            startPane.style.display = 'block';
+            const btnStart = document.getElementById('btnStartMissionAction');
+            if (btnStart) {
+                btnStart.onclick = async () => {
+                    const startRes = await window.LYANN_API_CLIENT.startMissionSecure(missionId);
+                    if (startRes.error) {
+                        alert('⚠️ ' + startRes.error.message);
+                    } else {
+                        if (window.lyannAlert) window.lyannAlert('🚀 Mission démarrée ! Les travaux sont désormais en cours.');
+                        window.openMissionDetailsModal(missionId);
+                    }
+                };
+            }
+        } else {
+            startPane.style.display = 'none';
+        }
+    }
+
+    // Milestones Render
+    if (listEl) {
+        if (!milestones || milestones.length === 0) {
+            listEl.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center;">Aucun jalon configuré sur ce devis.</p>';
+            return;
+        }
+
+        listEl.innerHTML = milestones.map((m, idx) => {
+            const isDone = m.status === 'COMPLETED' || m.status === 'VALIDATED' || m.status === 'RELEASED';
+            const isValidated = m.status === 'VALIDATED' || m.status === 'RELEASED';
+
+            let actionBtnHtml = '';
+            if (user_role === 'HELPER' && (m.status === 'PENDING' || m.status === 'IN_PROGRESS')) {
+                actionBtnHtml = `<button type="button" class="btn btn-outline" onclick="window.handleMarkMilestoneDone('${m.id}', '${missionId}')" style="font-size:0.8rem; padding:4px 10px; font-weight:700;"><i class="ph ph-check"></i> Marquer comme effectué</button>`;
+            } else if (user_role === 'REQUESTER' && m.status === 'COMPLETED') {
+                actionBtnHtml = `<button type="button" class="btn btn-primary" onclick="window.handleValidateMilestone('${m.id}', '${missionId}')" style="font-size:0.8rem; padding:4px 10px; font-weight:700; background:#10B981; border:none;"><i class="ph ph-check-circle"></i> Valider le travail</button>`;
+            } else if (isValidated) {
+                actionBtnHtml = `<span style="font-size:0.8rem; font-weight:800; color:#10B981;"><i class="ph ph-check-fat"></i> Validé ✔</span>`;
+            } else if (isDone) {
+                actionBtnHtml = `<span style="font-size:0.8rem; font-weight:700; color:#F59E0B;"><i class="ph ph-clock"></i> À valider par le client</span>`;
+            } else {
+                actionBtnHtml = `<span style="font-size:0.8rem; color:var(--text-muted);">À venir</span>`;
+            }
+
+            return `
+                <div style="background:white; border:1px solid var(--border); border-radius:14px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                    <div>
+                        <div style="font-size:0.9rem; font-weight:800; color:#1F3827;">${idx + 1}. ${m.title}</div>
+                        ${m.description ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">${m.description}</div>` : ''}
+                        <div style="font-size:0.85rem; font-weight:700; color:#059669; margin-top:4px;">${m.amount} €</div>
+                    </div>
+                    <div>
+                        ${actionBtnHtml}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+};
+
+window.handleMarkMilestoneDone = async function(milestoneId, missionId) {
+    if (!milestoneId) return;
+    const res = await window.LYANN_API_CLIENT.markMilestoneDoneSecure(milestoneId);
+    if (res.error) {
+        alert('⚠️ ' + res.error.message);
+    } else {
+        if (window.lyannAlert) window.lyannAlert('✅ Jalon marqué comme effectué ! Le demandeur a été notifié pour validation.');
+        window.openMissionDetailsModal(missionId);
+    }
+};
+
+window.handleValidateMilestone = async function(milestoneId, missionId) {
+    if (!milestoneId) return;
+    const res = await window.LYANN_API_CLIENT.validateMilestoneSecure(milestoneId);
+    if (res.error) {
+        alert('⚠️ ' + res.error.message);
+    } else {
+        if (res.data?.mission_completed) {
+            if (window.lyannAlert) window.lyannAlert('🎉 Félicitations ! Tous les jalons ont été validés. La mission est désormais TERMINÉE !');
+        } else {
+            if (window.lyannAlert) window.lyannAlert('👍 Jalon validé avec succès !');
+        }
+        window.openMissionDetailsModal(missionId);
+    }
+};
+

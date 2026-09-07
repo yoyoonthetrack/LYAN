@@ -1,17 +1,14 @@
 /**
- * LYANN — MOTEUR DE MISE EN RELATION INTELLIGENTE (MATCHING ENGINE V1)
- * Architecture Hybride: Taxonomie + Filtres Déterministes + Géolocalisation + Scoring Pondéré + Progressive Dispatch
- * 100% Neutre & Humain (Aucun mot "IA", "Algorithme" ou "Score 94%" exposé au public)
+ * LYANN — SMART MATCHING & DISPATCH ENGINE (V2 PRODUCTION)
+ * Architecture: Multi-Signal Relevance + Haversine Geography + Trust Engine + Newcomer Fairness + Progressive Dispatch
+ * 100% Backend-Authoritative, Explainable & Privacy-Preserving (No IA or raw algorithm scores exposed to public).
  */
 
 (function (global) {
     'use strict';
 
-    // --------------------------------------------------------------------------
-    // 1. COORDONNÉES GÉOGRAPHIQUES DES TERRITOIRES ET COMMUNES (CARAÏBES & DOM-TOM)
-    // --------------------------------------------------------------------------
+    // 1. CARIBBEAN & DOM-TOM CITY COORDINATES
     const LYANN_CITY_COORDINATES = {
-        // GUADELOUPE (971)
         "sainte-anne": { lat: 16.2253, lon: -61.3854, name: "Sainte-Anne" },
         "le-gosier": { lat: 16.2086, lon: -61.4939, name: "Le Gosier" },
         "gosier": { lat: 16.2086, lon: -61.4939, name: "Le Gosier" },
@@ -25,377 +22,353 @@
         "basse-terre": { lat: 15.9984, lon: -61.7258, name: "Basse-Terre" },
         "saint-francois": { lat: 16.2526, lon: -61.2741, name: "Saint-François" },
         "capesterre-belle-eau": { lat: 16.0433, lon: -61.5658, name: "Capesterre-Belle-Eau" },
-
-        // MARTINIQUE (972)
         "fort-de-france": { lat: 14.6161, lon: -61.0588, name: "Fort-de-France" },
         "le-lamentin": { lat: 14.6104, lon: -61.0022, name: "Le Lamentin" },
         "schoelcher": { lat: 14.6167, lon: -61.1000, name: "Schœlcher" },
-
-        // GUYANE (973)
         "cayenne": { lat: 4.9372, lon: -52.3260, name: "Cayenne" },
-        "kourou": { lat: 5.1597, lon: -52.6503, name: "Kourou" },
-
-        // LA RÉUNION (974)
-        "saint-denis": { lat: -20.8823, lon: 55.4504, name: "Saint-Denis" },
-        "saint-pierre": { lat: -21.3393, lon: 55.4781, name: "Saint-Pierre" }
+        "saint-denis": { lat: -20.8823, lon: 55.4504, name: "Saint-Denis" }
     };
 
-    // --------------------------------------------------------------------------
-    // 2. CONFIGURATION DES POIDS DU SCORING (SUM = 1.00 / 100%)
-    // --------------------------------------------------------------------------
-    const MATCHING_WEIGHTS = {
-        serviceCompatibility: 0.35,    // 35% - Pertinence métier & compétence réelle
-        distanceCompatibility: 0.25,   // 25% - Proximité kilométrique & rayon d'intervention
-        availabilityCompatibility: 0.15,// 15% - Disponibilité temporelle
-        reputationScore: 0.10,          // 10% - Note & volume d'avis (Bayésien)
-        responseRate: 0.05,             // 5%  - Taux de réponse
-        verifiedProStatus: 0.05,        // 5%  - Statut Vérifié / Pro
-        explorationFairness: 0.05       // 5%  - Équité nouveaux Lyanneurs sans historique
-    };
-
-    // --------------------------------------------------------------------------
-    // 3. TAXONOMIE SÉMANTIQUE OFFICIELLE & NORMALISATION DES TAGS INTERNES
-    // --------------------------------------------------------------------------
-    const TAXONOMY_MAP = {
-        "plomberie": { domain: "maison-travaux", category: "plomberie", subcategory: "fuite", tags: ["plomberie", "fuite", "sanitaire", "robinetterie", "wc", "evier", "tuyauterie"] },
-        "fuite": { domain: "maison-travaux", category: "plomberie", subcategory: "fuite", tags: ["fuite", "plomberie", "sanitaire", "robinet", "evier"] },
-        "jardinage": { domain: "maison-travaux", category: "jardin", subcategory: "entretien-jardin", tags: ["jardinage", "jardin", "elagage", "tonte", "debroussaillage", "espaces-verts"] },
-        "peinture": { domain: "maison-travaux", category: "peinture", subcategory: "renovation-peinture", tags: ["peinture", "renovation", "murs", "enduit", "rafraichissement"] },
-        "bricolage": { domain: "maison-travaux", category: "bricolage", subcategory: "petit-bricolage", tags: ["bricolage", "montage", "fixation", "reparation", "outillage"] },
-        "meuble": { domain: "maison-travaux", category: "bricolage", subcategory: "montage-meuble", tags: ["montage-meuble", "meuble", "ikea", "assemblage", "bricolage"] },
-        "covoiturage": { domain: "transport-manutention", category: "transport", subcategory: "covoiturage", tags: ["covoiturage", "transport", "trajet", "vehicule"] },
-        "transport": { domain: "transport-manutention", category: "demenagement-transport", subcategory: "transport-objet", tags: ["transport-objet", "demenagement", "utilitaire", "manutention", "vehicule"] },
-        "canape": { domain: "transport-manutention", category: "demenagement-transport", subcategory: "transport-objet", tags: ["transport-objet", "utilitaire", "manutention", "meuble-lourd"], vehicle_required: true },
-        "courses": { domain: "services-personne", category: "aide-accompagnement", subcategory: "courses", tags: ["courses", "aide-personne", "accompagnement", "livraison"] },
-        "aide-personne": { domain: "services-personne", category: "aide-accompagnement", subcategory: "assistance", tags: ["aide-personne", "accompagnement", "soutien", "presence"] },
-        "cours": { domain: "cours-formation", category: "musique-soutien", subcategory: "musique", tags: ["cours-musique", "musique", "enseignement", "atelier"] }
-    };
-
-    // --------------------------------------------------------------------------
-    // 4. MOTEUR MATHÉMATIQUE DE DISTANCE GÉOGRAPHIQUE (HAVERSINE FORMULA)
-    // --------------------------------------------------------------------------
+    // 2. HAVERSINE DISTANCE CALCULATOR
     function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-        if (!lat1 || !lon1 || !lat2 || !lon2) return 10.0; // Distance par défaut raisonnable si non géolocalisé
-        const R = 6371; // Rayon de la Terre en km
+        if (!lat1 || !lon1 || !lat2 || !lon2) return 10.0;
+        const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
             Math.sin(dLon / 2) * Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return parseFloat((R * c).toFixed(1));
     }
 
+    function normalizeText(str) {
+        if (!str) return "";
+        return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, " ").replace(/\s+/g, " ").trim();
+    }
+
     function getCityCoords(cityName) {
-        if (!cityName) return { lat: 16.2253, lon: -61.3854 }; // Default Sainte-Anne
-        const slug = cityName.toLowerCase().trim()
-            .replace(/é|è|ê/g, 'e')
-            .replace(/à|â/g, 'a')
-            .replace(/î|ï/g, 'i')
-            .replace(/ô|ö/g, 'o')
-            .replace(/\s+/g, '-');
+        if (!cityName) return { lat: 16.2253, lon: -61.3854 };
+        const slug = normalizeText(cityName).replace(/\s+/g, '-');
         return LYANN_CITY_COORDINATES[slug] || { lat: 16.2253, lon: -61.3854 };
     }
 
-    // --------------------------------------------------------------------------
-    // 5. NLU & CLASSIFICATION DU BESOIN EN TEXTE NATUREL
-    // --------------------------------------------------------------------------
-    function classifyNeedQuery(queryText, providedLocation = null) {
-        const text = (queryText || "").toLowerCase();
-        let matchedTaxonomy = {
-            domain: "maison-travaux",
-            category: "bricolage",
-            subcategory: "petit-bricolage",
-            required_skills: ["bricolage"],
-            vehicle_required: false,
-            urgency: "normal"
-        };
+    // 3. HARD FILTERS (SECURITY, SELF MATCH, PRO_REQUIRED, OPT-OUT)
+    function applyHardFilters(need, candidates) {
+        const requesterId = need.requester_id || need.author_id;
+        const isProRequired = need.safety_status === 'PRO_REQUIRED';
+        const isProhibited = need.safety_status === 'PROHIBITED';
 
-        if (text.includes("fuite") || text.includes("eau") || text.includes("evier") || text.includes("plombier") || text.includes("robinet")) {
-            matchedTaxonomy = TAXONOMY_MAP["plomberie"];
-        } else if (text.includes("jardin") || text.includes("tonte") || text.includes("arbre") || text.includes("elagage")) {
-            matchedTaxonomy = TAXONOMY_MAP["jardinage"];
-        } else if (text.includes("peinture") || text.includes("peindre") || text.includes("mur")) {
-            matchedTaxonomy = TAXONOMY_MAP["peinture"];
-        } else if (text.includes("canape") || text.includes("demenag") || text.includes("recuperer") || text.includes("camion") || text.includes("meuble lourd")) {
-            matchedTaxonomy = { ...TAXONOMY_MAP["canape"], vehicle_required: true };
-        } else if (text.includes("course") || text.includes("mere") || text.includes("accompagner") || text.includes("senior")) {
-            matchedTaxonomy = TAXONOMY_MAP["courses"];
-        } else if (text.includes("cours") || text.includes("musique") || text.includes("guitare")) {
-            matchedTaxonomy = TAXONOMY_MAP["cours"];
-        }
+        if (isProhibited) return [];
 
-        // Extraire la localisation
-        let locName = providedLocation || "Sainte-Anne";
-        for (const key in LYANN_CITY_COORDINATES) {
-            if (text.includes(LYANN_CITY_COORDINATES[key].name.toLowerCase())) {
-                locName = LYANN_CITY_COORDINATES[key].name;
-                break;
-            }
-        }
-
-        const coords = getCityCoords(locName);
-
-        return {
-            raw_text: queryText,
-            domain: matchedTaxonomy.domain,
-            category: matchedTaxonomy.category,
-            subcategory: matchedTaxonomy.subcategory,
-            required_skills: matchedTaxonomy.tags || [matchedTaxonomy.category],
-            vehicle_required: !!matchedTaxonomy.vehicle_required,
-            location_name: locName,
-            latitude: coords.lat,
-            longitude: coords.lon,
-            classified_at: new Date().toISOString()
-        };
-    }
-
-    // --------------------------------------------------------------------------
-    // 6. FILTRES DÉTERMINISTES DU SCORING (PRE-FILTERING SQL/MEMORY)
-    // --------------------------------------------------------------------------
-    function deterministicPreFilter(need, candidates) {
         return candidates.filter(candidate => {
-            // 1. Opt-out preference check
-            if (candidate.matching_enabled === false) {
+            // Filter 1: Account status active & matching enabled
+            if (candidate.status === 'INACTIVE' || candidate.matching_enabled === false) {
                 return false;
             }
 
-            // 2. Vérification métier / compétence
-            const candidateSkills = (candidate.skills || []).map(s => s.toLowerCase());
-            const candidateCategory = (candidate.category || "").toLowerCase();
-            const candidateRole = (candidate.role || "").toLowerCase();
-
-            const isSkillMatch = need.required_skills.some(req =>
-                candidateSkills.some(s => s.includes(req) || req.includes(s)) ||
-                candidateCategory.includes(req) ||
-                candidateRole.includes(req)
-            );
-
-            if (!isSkillMatch) return false;
-
-            // 3. Calcul de la distance géographique & Rayon d'intervention
-            const candCoords = getCityCoords(candidate.city || candidate.locationName || candidate.location);
-            const distKm = calculateDistanceKm(need.latitude, need.longitude, candCoords.lat, candCoords.lon);
-            candidate._calculatedDistanceKm = distKm;
-
-            const radiusKm = candidate.service_radius_km || 25;
-            if (distKm > radiusKm && radiusKm < 100) {
-                return false; // Hors du rayon d'intervention accepté
+            // Filter 2: Self-match exclusion (TEST H)
+            const candidateId = candidate.id || candidate.user_id;
+            if (requesterId && candidateId === requesterId) {
+                return false;
             }
 
-            // 4. Véhicule obligatoire si exigé
-            if (need.vehicle_required) {
-                const hasVehicle = candidate.mobility && (candidate.mobility.includes("vehicule") || candidate.mobility.includes("utilitaire") || candidate.mobility.includes("vehicule_personnel"));
-                const roleMentionVehicle = candidateRole.includes("transport") || candidateRole.includes("livraison") || candidateRole.includes("clim");
-                if (!hasVehicle && !roleMentionVehicle) return false;
+            // Filter 3: User Block Exclusion (Step 14 TEST A)
+            if (global.LyannSafetyEngine && typeof global.LyannSafetyEngine.isUserBlocked === 'function') {
+                if (global.LyannSafetyEngine.isUserBlocked(requesterId, candidateId)) {
+                    return false;
+                }
+            }
+
+            // Filter 4: Sanction Exclusion (Step 14 TEST H)
+            if (global.LyannSafetyEngine && typeof global.LyannSafetyEngine.isUserSanctioned === 'function') {
+                if (global.LyannSafetyEngine.isUserSanctioned(candidateId, 'MATCHING_ONLY')) {
+                    return false;
+                }
+            }
+
+            // Filter 5: PRO_REQUIRED enforcement (Step 16 Authority)
+            if (isProRequired) {
+                if (global.LyannProVerificationEngine && typeof global.LyannProVerificationEngine.checkMatchingEligibility === 'function') {
+                    const isEligible = global.LyannProVerificationEngine.checkMatchingEligibility(candidate, need.category || 'general', 'PRO_REQUIRED');
+                    if (!isEligible) return false;
+                } else {
+                    const isPro = (candidate.is_pro || candidate.kyc_verified || candidate.badge?.includes("Vérifié")) && candidate.subscription_plan !== 'PRO_UNVERIFIED';
+                    if (!isPro) return false;
+                }
             }
 
             return true;
         });
     }
 
-    // --------------------------------------------------------------------------
-    // 7. CALCUL DU SCORE DE MATCHING PONDÉRÉ (0.00 à 1.00) & RAISONS HUMAINES
-    // --------------------------------------------------------------------------
+    const LOCATION_STOPWORDS = new Set(["saint", "sainte", "francois", "anne", "gosier", "abymes", "baie", "mahault", "moule", "lamentin", "cayenne", "denis", "guadeloupe", "martinique", "reunion", "guyane", "fort", "france", "basse", "terre"]);
+
+    // 4. EXPLAINABLE SCORE CALCULATOR (0 to 100 PTS)
     function scoreCandidate(need, candidate) {
-        const breakdown = {};
+        const breakdown = {
+            relevance: 0,
+            geography: 0,
+            trust: 0,
+            newcomer_fairness: 0,
+            fair_distribution: 0,
+            responsiveness: 0
+        };
         const reasons = [];
 
-        // A. Service Compatibility (35%)
-        const candidateSkills = (candidate.skills || []).map(s => s.toLowerCase());
-        const matches = need.required_skills.filter(req => candidateSkills.some(s => s.includes(req)));
-        let serviceScore = matches.length > 0 ? Math.min(1.0, 0.7 + (matches.length * 0.15)) : 0.6;
-        if (candidate.category === need.category) serviceScore = Math.min(1.0, serviceScore + 0.2);
-        breakdown.serviceCompatibility = +(serviceScore * MATCHING_WEIGHTS.serviceCompatibility).toFixed(3);
-        
-        reasons.push(`Spécialisé(e) en ${candidate.role || candidate.category}`);
+        const rawNeedText = normalizeText(need.description || need.title || need.raw_text || "");
+        const needTokens = Array.from(new Set(rawNeedText.split(/\s+/).filter(w => w.length > 2 && !LOCATION_STOPWORDS.has(w))));
 
-        // B. Distance Compatibility (25%)
-        const distKm = candidate._calculatedDistanceKm || 10.0;
-        let distScore = 1.0;
-        if (distKm <= 5) distScore = 1.0;
-        else if (distKm <= 15) distScore = 0.85;
-        else if (distKm <= 30) distScore = 0.65;
-        else distScore = 0.4;
-        breakdown.distanceCompatibility = +(distScore * MATCHING_WEIGHTS.distanceCompatibility).toFixed(3);
+        // A. RELEVANCE SCORE (0 - 40 PTS) WITH ANTI KEYWORD SPAM
+        // Deduplicate candidate skills to prevent spamming duplicate terms (TEST I)
+        const rawSkills = Array.isArray(candidate.skills) ? candidate.skills : (typeof candidate.skills === 'string' ? candidate.skills.split(',') : []);
+        const candidateSkills = Array.from(new Set(rawSkills.map(s => normalizeText(s)))).filter(Boolean);
+        const candidateBio = normalizeText(candidate.bio || "");
+        const candidateRole = normalizeText(candidate.role || "");
+        const candidateCategory = normalizeText(candidate.category || "");
+        const needCategoryNorm = normalizeText(need.category || "");
+
+        const matchedFields = [];
+        let relevancePts = 0;
+
+        // Check keyword matches
+        for (const token of needTokens) {
+            if (candidateSkills.some(s => s === token || s.includes(token) || token.includes(s))) {
+                relevancePts += 15;
+                if (!matchedFields.includes('skills')) matchedFields.push('skills');
+            }
+            if (candidateRole.includes(token)) {
+                relevancePts += 15;
+                if (!matchedFields.includes('role')) matchedFields.push('role');
+            }
+            if (candidateCategory.includes(token)) {
+                relevancePts += 15;
+                if (!matchedFields.includes('category')) matchedFields.push('category');
+            }
+            if (candidateBio.includes(token)) {
+                relevancePts += 10;
+                if (!matchedFields.includes('bio')) matchedFields.push('bio');
+            }
+        }
+
+        // Category & Synonym match bonus
+        if (needCategoryNorm && needCategoryNorm !== 'general') {
+            if (candidateCategory.includes(needCategoryNorm) || needCategoryNorm.includes(candidateCategory) || candidateRole.includes(needCategoryNorm)) {
+                relevancePts += 20;
+                if (!matchedFields.includes('category')) matchedFields.push('category');
+            } else {
+                // Check synonym cross-matches (e.g. voiture -> auto/mécanique, plombier -> plomberie)
+                const plumbSynonyms = ["plombier", "plomberie", "fuite", "sanitaire", "robinet", "tuyau", "dépannage"];
+                const isNeedPlumb = plumbSynonyms.some(s => needCategoryNorm.includes(s) || rawNeedText.includes(s));
+                const isCandPlumb = plumbSynonyms.some(s => candidateCategory.includes(s) || candidateRole.includes(s) || candidateSkills.some(sk => sk.includes(s)));
+                if (isNeedPlumb && isCandPlumb) {
+                    relevancePts += 20;
+                    if (!matchedFields.includes('synonyms')) matchedFields.push('synonyms');
+                }
+
+                const autoSynonyms = ["voiture", "auto", "bagnole", "mécano", "mecano", "mécanique", "mecanique"];
+                const isNeedAuto = autoSynonyms.some(s => needCategoryNorm.includes(s) || rawNeedText.includes(s));
+                const isCandAuto = autoSynonyms.some(s => candidateCategory.includes(s) || candidateRole.includes(s) || candidateSkills.some(sk => sk.includes(s)));
+                if (isNeedAuto && isCandAuto) {
+                    relevancePts += 20;
+                    if (!matchedFields.includes('synonyms')) matchedFields.push('synonyms');
+                }
+
+                const motoSynonyms = ["scooter", "moto", "deux-roues", "deux roues", "mobilité", "mécano", "mecano", "mécanique"];
+                const isNeedMoto = motoSynonyms.some(s => needCategoryNorm.includes(s) || rawNeedText.includes(s));
+                const isCandMoto = motoSynonyms.some(s => candidateCategory.includes(s) || candidateRole.includes(s) || candidateSkills.some(sk => sk.includes(s)));
+                if (isNeedMoto && isCandMoto) {
+                    relevancePts += 20;
+                    if (!matchedFields.includes('synonyms')) matchedFields.push('synonyms');
+                }
+
+            }
+        }
+
+        // Cap relevance score at 40 max (Prevents keyword repetition from inflating score)
+        breakdown.relevance = Math.min(40, relevancePts);
+
+        if (breakdown.relevance >= 25) {
+            reasons.push(`Spécialisé(e) en ${candidate.role || candidate.category || "votre besoin"}`);
+        } else if (breakdown.relevance > 0) {
+            reasons.push(`Compétences adaptées à votre demande`);
+        }
+
+        // B. GEOGRAPHY SCORE (0 - 20 PTS)
+        const candCoords = getCityCoords(candidate.city || candidate.locationName || candidate.location);
+        const needCoords = getCityCoords(need.location || need.city || "Sainte-Anne");
+        const distKm = calculateDistanceKm(needCoords.lat, needCoords.lon, candCoords.lat, candCoords.lon);
+        candidate._calculatedDistanceKm = distKm;
+
+        if (distKm <= 5) breakdown.geography = 20;
+        else if (distKm <= 15) breakdown.geography = 16;
+        else if (distKm <= 30) breakdown.geography = 12;
+        else breakdown.geography = 6;
 
         const candCity = candidate.city || candidate.locationName || "Sainte-Anne";
         reasons.push(`Intervient près de ${candCity} (${distKm} km)`);
 
-        // C. Availability (15%)
-        const availScore = candidate.available !== false ? 1.0 : 0.4;
-        breakdown.availabilityCompatibility = +(availScore * MATCHING_WEIGHTS.availabilityCompatibility).toFixed(3);
-        if (candidate.available !== false) {
-            reasons.push("Disponible cette semaine");
+        // C. TRUST SCORE (0 - 15 PTS)
+        const rating = candidate.rating || candidate.average_rating || 4.8;
+        const reviewsCount = candidate.reviewsCount || candidate.reviews_count || 0;
+
+        if (reviewsCount > 0) {
+            const bayesianRating = (rating * reviewsCount + 4.5 * 5) / (reviewsCount + 5);
+            breakdown.trust = Math.round((bayesianRating / 5.0) * 15);
+            if (reviewsCount >= 3) {
+                reasons.push(`Très recommandé(e) (${rating} ★ · ${reviewsCount} avis)`);
+            }
+        } else {
+            breakdown.trust = 5; // Neutral baseline for 0 reviews
         }
 
-        // D. Reputation (10%) - Bayesian Rating (reviewsCount weight)
-        const rating = candidate.rating || 4.8;
-        const reviews = candidate.reviewsCount || candidate.reviews_count || 10;
-        const bayesianRating = (rating * reviews + 4.5 * 5) / (reviews + 5);
-        const repScore = (bayesianRating / 5.0);
-        breakdown.reputationScore = +(repScore * MATCHING_WEIGHTS.reputationScore).toFixed(3);
+        // D. NEWCOMER FAIRNESS (0 - 10 PTS) (TEST B)
+        const isNewcomer = reviewsCount === 0;
+        const hasCompleteProfile = candidateSkills.length > 0 && candCity;
 
-        if (reviews >= 5) {
-            reasons.push(`Très recommandé(e) (${rating} ★ · ${reviews} avis)`);
+        if (isNewcomer && hasCompleteProfile) {
+            breakdown.newcomer_fairness = 10;
+            reasons.push("Nouveau membre actif sur LYANN");
+        } else if (isNewcomer) {
+            breakdown.newcomer_fairness = 5;
         }
 
-        // E. Response Rate (5%)
+        // E. FAIR DISTRIBUTION (0 - 10 PTS) (TEST F)
+        const recentDispatches = candidate.recent_dispatches_count || 0;
+        if (recentDispatches === 0) breakdown.fair_distribution = 10;
+        else if (recentDispatches <= 2) breakdown.fair_distribution = 7;
+        else if (recentDispatches <= 5) breakdown.fair_distribution = 4;
+        else breakdown.fair_distribution = 2;
+
+        // F. RESPONSIVENESS & AVAILABILITY (0 - 5 PTS)
         const respRate = candidate.response_rate || 0.95;
-        breakdown.responseRate = +(respRate * MATCHING_WEIGHTS.responseRate).toFixed(3);
+        const isAvailable = candidate.available !== false;
+        breakdown.responsiveness = Math.round(respRate * (isAvailable ? 5 : 2));
+        if (isAvailable) reasons.push("Disponible cette semaine");
 
-        // F. Verified / Pro Status (5%)
-        const isVerified = candidate.badge?.includes("Vérifié") || candidate.kyc_verified || candidate.is_pro;
-        const verifScore = isVerified ? 1.0 : 0.5;
-        breakdown.verifiedProStatus = +(verifScore * MATCHING_WEIGHTS.verifiedProStatus).toFixed(3);
-        if (isVerified) {
-            reasons.push("Profil Vérifié sur LYANN");
+        // G. SUBSCRIPTION VISIBILITY TIER BOOST
+        let visibilityBoost = 0;
+        if (global.LyannSubscriptionsEngine && typeof global.LyannSubscriptionsEngine.getEntitlements === 'function') {
+            const candidateId = candidate.id || candidate.user_id;
+            const entitlements = global.LyannSubscriptionsEngine.getEntitlements(candidateId);
+            const tier = entitlements.VISIBILITY_TIER || 'STANDARD';
+            if (tier === 'PLUS') visibilityBoost = 2;
+            else if (tier === 'ENHANCED') visibilityBoost = 4;
+            else if (tier === 'PRO') visibilityBoost = 6;
         }
+        breakdown.visibility_boost = visibilityBoost;
 
-        // G. Exploration Fairness (5%) - Donnée aux nouveaux Lyanneurs pour leur donner une chance
-        const isNewUser = reviews <= 2;
-        const exploreScore = isNewUser ? 1.0 : 0.5;
-        breakdown.explorationFairness = +(exploreScore * MATCHING_WEIGHTS.explorationFairness).toFixed(3);
-
-        // TOTAL SCORE
-        const totalScore = parseFloat(Object.values(breakdown).reduce((a, b) => a + b, 0).toFixed(3));
+        // TOTAL SCORE (0 - 100)
+        const totalScore = Math.min(100, Math.round(
+            breakdown.relevance +
+            breakdown.geography +
+            breakdown.trust +
+            breakdown.newcomer_fairness +
+            breakdown.fair_distribution +
+            breakdown.responsiveness +
+            breakdown.visibility_boost
+        ));
 
         return {
-            candidate_id: candidate.id,
-            display_name: candidate.name,
-            avatar: candidate.avatar,
-            role: candidate.role,
+            candidate_id: candidate.id || candidate.user_id,
+            user_id: candidate.id || candidate.user_id,
+            display_name: candidate.first_name || candidate.name || candidate.display_name || "Lyanneur",
+            avatar: candidate.avatar_url || candidate.avatar,
+            role: candidate.role || candidate.category || "Membre LYANN",
             city: candCity,
-            rating: candidate.rating || 4.8,
-            reviewsCount: reviews,
-            badge: candidate.badge || "Lyanneur Vérifié",
+            public_location: candCity,
+            rating: rating,
+            reviewsCount: reviewsCount,
+            badge: candidate.badge || (candidate.is_verified_pro ? "Artisan Vérifié" : "Membre Vérifié"),
             distance_km: distKm,
             total_score: totalScore,
+            relevance_score: breakdown.relevance,
+            matched_fields: matchedFields,
             score_breakdown: breakdown,
-            human_reasons: reasons
+            breakdown: breakdown,
+            human_reasons: reasons,
+            is_newcomer: isNewcomer
         };
     }
 
-    // --------------------------------------------------------------------------
-    // 8. SERVICE CENTRAL DE MATCHING ET DIFFUSION CIBLÉE (LYANN MATCHING ENGINE)
-    // --------------------------------------------------------------------------
-    const LyannMatchingEngine = {
-        weights: MATCHING_WEIGHTS,
+    // 5. PROGRESSIVE DISPATCH ENGINE (STRICT RELEVANCE PRIORITIZED)
+    function runSmartMatchingDispatch(need, candidates, options = {}) {
+        const maxWaveCandidates = options.maxWaveCandidates || 6;
+        const eligibleCandidates = applyHardFilters(need, candidates);
+        const scoredCandidates = eligibleCandidates.map(c => scoreCandidate(need, c));
 
-        classifyNeed(queryText, location = null) {
-            return classifyNeedQuery(queryText, location);
-        },
+        // STEP 17 RULE: Strict professional relevance is priority #1.
+        // 6 relevant -> 6, 2 relevant -> 2, 0 -> 0. Never pad with irrelevant candidates (relevance_score === 0).
+        let relevantCandidates = scoredCandidates.filter(c => c.relevance_score > 0);
+        relevantCandidates.sort((a, b) => b.total_score - a.total_score);
 
-        calculateDistance(lat1, lon1, lat2, lon2) {
-            return calculateDistanceKm(lat1, lon1, lat2, lon2);
-        },
+        const dispatchedWave = relevantCandidates.slice(0, maxWaveCandidates);
 
-        findMatchingLyanneursForNeed(needQuery, candidatesList = [], options = {}) {
-            const need = typeof needQuery === 'string' ? classifyNeedQuery(needQuery, options.location) : needQuery;
-            const candidates = candidatesList.length > 0 ? candidatesList : (window.LYANN_MEMBERS || []);
-
-            // 1. Filtres déterministes
-            const preFiltered = deterministicPreFilter(need, candidates);
-
-            // 2. Calcul des scores
-            const scored = preFiltered.map(c => scoreCandidate(need, c));
-
-            // 3. Tri par score décroissant
-            scored.sort((a, b) => b.total_score - a.total_score);
-
-            // 4. Diversification & Nettoyage Sécurité / Confidentialité
-            const limit = options.limit || 5;
-            const finalSelection = scored.slice(0, limit);
-
-            return {
-                need: {
-                    raw_text: need.raw_text,
-                    category: need.category,
-                    location: need.location_name
-                },
-                matches_found: finalSelection.length,
-                lyanneurs: finalSelection.map(item => ({
-                    user_id: item.candidate_id,
-                    display_name: item.display_name,
-                    avatar: item.avatar,
-                    role: item.role,
-                    public_location: item.city,
-                    rating: item.rating,
-                    reviewsCount: item.reviewsCount,
-                    badge: item.badge,
-                    distance_km: item.distance_km,
-                    human_reasons: item.human_reasons
-                    // IMPORTANT: Aucune adresse privée, latitude exacte ou score brut n'est exposé au public !
-                }))
-            };
-        },
-
-        findMatchingNeedsForLyanneur(lyanneurProfile, needsList = [], options = {}) {
-            const lyanneurSkills = (lyanneurProfile.skills || [lyanneurProfile.role || "bricolage"]).map(s => s.toLowerCase());
-            const candCity = lyanneurProfile.city || lyanneurProfile.location || "Sainte-Anne";
-            const candCoords = getCityCoords(candCity);
-            const radiusKm = lyanneurProfile.service_radius_km || 25;
-
-            const matches = needsList.filter(need => {
-                const needText = (need.title || need.description || "").toLowerCase();
-                const isSkillMatch = lyanneurSkills.some(skill => needText.includes(skill));
-                const needCoords = getCityCoords(need.city || need.location);
-                const dist = calculateDistanceKm(candCoords.lat, candCoords.lon, needCoords.lat, needCoords.lon);
-                return isSkillMatch && dist <= radiusKm;
-            });
-
-            return matches.map(n => ({
-                need_id: n.id,
-                title: n.title || n.description,
-                city: n.city || "Sainte-Anne",
-                urgency: n.urgency || "normal",
-                human_reason: `Besoin en ${n.category || 'entraide'} près de chez vous`
-            }));
-        },
-
-        dispatchTargetedNeedNotifications(needData, candidatesList = [], batchSize = 5) {
-            const matchResult = this.findMatchingLyanneursForNeed(needData, candidatesList, { limit: batchSize });
-            const notifications = [];
-
-            if (matchResult.matches_found === 0) {
-                return {
-                    dispatched_count: 0,
-                    fallback_message: "Votre besoin est bien publié. Les Lyanneurs pourront le découvrir dans Bokantaj.",
-                    notifications: []
-                };
-            }
-
-            matchResult.lyanneurs.forEach(lyanneur => {
-                const notifPayload = {
-                    recipient_id: lyanneur.user_id,
-                    recipient_name: lyanneur.display_name,
-                    title: "Un besoin pourrait vous correspondre près de chez vous",
-                    message: `${needData.title || needData.raw_text} · ${needData.location_name || 'Sainte-Anne'}`,
-                    action_cta: "Voir le besoin",
-                    created_at: new Date().toISOString()
-                };
-                notifications.push(notifPayload);
-
-                if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                    // Simulation discrète pour le destinataire
-                }
-            });
-
-            return {
-                dispatched_count: notifications.length,
-                batch_size: batchSize,
-                notifications,
-                human_summary: `Votre besoin a été partagé avec ${notifications.length} Lyanneur(s) susceptible(s) de vous aider.`
-            };
-        }
-    };
-
-    // Exportation globale universelle Web + Mobile + Node.js
-    if (typeof module !== 'undefined' && module.exports) {
-        module.exports = LyannMatchingEngine;
-    } else {
-        global.LyannMatchingEngine = LyannMatchingEngine;
+        return {
+            need_id: need.id || null,
+            need_title: need.title || need.description,
+            classification_status: need.classification_status || 'CLASSIFIED',
+            safety_status: need.safety_status || 'SAFE',
+            evaluated_count: candidates.length,
+            eligible_count: eligibleCandidates.length,
+            dispatched_count: dispatchedWave.length,
+            wave_number: 1,
+            dispatched_candidates: dispatchedWave
+        };
     }
 
-})(typeof window !== 'undefined' ? window : this);
+    // Direct helper for Step 17 search & need matching
+    function findMatchingLyanneursForNeed(need, candidates = [], options = {}) {
+        const dispatchRes = runSmartMatchingDispatch(need, candidates, { maxWaveCandidates: options.limit || 6 });
+        return {
+            matches_found: dispatchRes.dispatched_count,
+            lyanneurs: dispatchRes.dispatched_candidates,
+            evaluated_count: dispatchRes.evaluated_count
+        };
+    }
+
+    function dispatchTargetedNeedNotifications(needData, candidates = [], batchSize = 5) {
+        const dispatchRes = runSmartMatchingDispatch(needData, candidates, { maxWaveCandidates: batchSize });
+        return {
+            dispatched_count: dispatchRes.dispatched_count,
+            dispatched_candidates: dispatchRes.dispatched_candidates,
+            fallback_message: dispatchRes.dispatched_count > 0 ? `${dispatchRes.dispatched_count} Lyanneur(s) prévenu(s)` : "Votre besoin est publié sur LYANN."
+        };
+    }
+
+    // 6. PUBLIC PRIVACY-SAFE RESPONSE
+    function getPublicMatchResponse(dispatchResult) {
+        return {
+            need_title: dispatchResult.need_title,
+            dispatched_count: dispatchResult.dispatched_count,
+            candidates: dispatchResult.dispatched_candidates.map(c => ({
+                display_name: c.display_name,
+                avatar: c.avatar,
+                role: c.role,
+                city: c.city,
+                badge: c.badge,
+                human_reasons: c.human_reasons
+            }))
+        };
+    }
+
+    // Export module
+    const LyannSmartMatching = {
+        applyHardFilters,
+        scoreCandidate,
+        runSmartMatchingDispatch,
+        findMatchingLyanneursForNeed,
+        dispatchTargetedNeedNotifications,
+        getPublicMatchResponse,
+        getCityCoords,
+        calculateDistanceKm
+    };
+
+    if (typeof window !== 'undefined') {
+        window.LyannSmartMatching = LyannSmartMatching;
+        window.LyannMatchingEngine = LyannSmartMatching;
+    }
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = LyannSmartMatching;
+    }
+})(typeof globalThis !== 'undefined' ? globalThis : this);

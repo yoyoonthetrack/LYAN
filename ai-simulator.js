@@ -4,7 +4,7 @@
  * Supports all members (static + AI profiles) dynamically.
  */
 
-window.DEMO_AI_ENABLED = true;
+window.DEMO_AI_ENABLED = false;
 
 // Helper to get member details dynamically
 function getMemberByName(name) {
@@ -13,7 +13,7 @@ function getMemberByName(name) {
 }
 
 window.addEventListener('lyann_chat_opened', (e) => {
-    if (!window.DEMO_AI_ENABLED) return;
+    if (!window.DEMO_AI_ENABLED || (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase)) return;
     const contactId = e.detail.contactId;
     console.log(`🤖 [AI Simulator] Chat opened with ${contactId}`);
     

@@ -76,6 +76,9 @@ $$;
 -- SECTION 3 : INSTALLATION IDEMPOTENTE DES TRIGGERS
 -- ----------------------------------------------------------------------------
 
+-- Nettoyage de l'ancien trigger obsolète de la Migration 12
+DROP TRIGGER IF EXISTS trg_protect_sensitive_profile_columns ON public.profiles;
+
 DROP TRIGGER IF EXISTS trg_protect_sensitive_profile_columns_update ON public.profiles;
 CREATE TRIGGER trg_protect_sensitive_profile_columns_update
     BEFORE UPDATE ON public.profiles

@@ -1474,52 +1474,63 @@
                     </div>
                 </div>
 
-                <!-- SECTION 3: ARBORESCENCE DE LA TAXONOMIE OFFICIELLE -->
+                <!-- SECTION 3: ARBORESCENCE & TAXONOMIE DYNAMIQUE LYANN -->
+                <div class="admin-card mb-6">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 class="card-title"><i class="ph-bold ph-tree-structure"></i> Source de Vérité Taxonomique (public.lyann_taxonomy)</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="adminTaxonomySearchInput" class="admin-input-field" placeholder="Rechercher catégorie, synonyme, tag..." style="width: 250px;">
+                            <button class="admin-btn admin-btn-primary" id="btnAdminAddTaxonomyModal"><i class="ph-bold ph-plus-circle"></i> Ajouter une Entrée</button>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="admin-table" id="adminTaxonomyTable">
+                            <thead>
+                                <tr>
+                                    <th>Univers</th>
+                                    <th>Catégorie</th>
+                                    <th>Sous-catégorie</th>
+                                    <th>Synonymes & Mots-clés</th>
+                                    <th>Tags Internes</th>
+                                    <th>Sécurité</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminTaxonomyTbody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; color: var(--text-muted);"><i class="ph ph-spinner ph-spin"></i> Chargement de la taxonomie...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: DISCOVERY ENGINE - BESOINS À CATÉGORISER -->
                 <div class="admin-card">
                     <div class="card-header">
-                        <h3 class="card-title"><i class="ph-bold ph-tree-structure"></i> Arborescence des Domaines & Slugs Normalisés</h3>
+                        <h3 class="card-title"><i class="ph-bold ph-magnifying-glass-plus"></i> Discovery Engine — Besoins à Catégoriser (UNCLASSIFIED / NEEDS_REVIEW)</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">Demandes formulées en texte libre nécessitant un rapprochement ou l'enrichissement de la taxonomie.</p>
                     </div>
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Domaine</th>
-                                <th>Catégorie</th>
-                                <th>Sous-catégorie</th>
-                                <th>Tags Internes Normalisés (Slugs)</th>
-                                <th>Statut Taxonomie</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>maison-travaux</code></td>
-                                <td><strong>Plomberie</strong></td>
-                                <td>Fuite & Sanitaires</td>
-                                <td><code>plomberie</code>, <code>fuite</code>, <code>sanitaire</code>, <code>robinetterie</code>, <code>evier</code></td>
-                                <td><span class="status-badge verified">SYNCHRONISÉ</span></td>
-                            </tr>
-                            <tr>
-                                <td><code>maison-travaux</code></td>
-                                <td><strong>Jardinage</strong></td>
-                                <td>Entretien Espaces Verts</td>
-                                <td><code>jardinage</code>, <code>jardin</code>, <code>elagage</code>, <code>tonte</code>, <code>debroussaillage</code></td>
-                                <td><span class="status-badge verified">SYNCHRONISÉ</span></td>
-                            </tr>
-                            <tr>
-                                <td><code>transport-manutention</code></td>
-                                <td><strong>Déménagement & Transport</strong></td>
-                                <td>Transport Objet / Meuble</td>
-                                <td><code>transport-objet</code>, <code>demenagement</code>, <code>utilitaire</code>, <code>manutention</code></td>
-                                <td><span class="status-badge verified">SYNCHRONISÉ</span></td>
-                            </tr>
-                            <tr>
-                                <td><code>services-personne</code></td>
-                                <td><strong>Aide & Accompagnement</strong></td>
-                                <td>Courses & Assistance</td>
-                                <td><code>courses</code>, <code>aide-personne</code>, <code>accompagnement</code>, <code>senior</code></td>
-                                <td><span class="status-badge verified">SYNCHRONISÉ</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div style="overflow-x: auto;">
+                        <table class="admin-table" id="adminDiscoveryQueueTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Texte Libre du Besoin</th>
+                                    <th>Commune</th>
+                                    <th>Confiance</th>
+                                    <th>Statut</th>
+                                    <th>Actions Owner</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminDiscoveryQueueTbody">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted);"><i class="ph ph-spinner ph-spin"></i> Chargement des besoins non classés...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -2250,6 +2261,12 @@
     <div id="chatModal" class="modal" style="display:none;"></div>
 
     <!-- Scripts Integration -->
+    <script src="deal-flow-engine.js"></script>
+    <script src="safety-disputes-engine.js"></script>
+    <script src="subscriptions-engine.js"></script>
+    <script src="pro-verification-engine.js"></script>
+    <script src="search-engine.js"></script>
+    <script src="notification-engine.js"></script>
     <script src="notifications-service.js"></script>
     <script src="dialog.js"></script>
     <script src="matching-engine.js"></script>

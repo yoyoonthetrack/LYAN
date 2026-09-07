@@ -143,6 +143,12 @@ const LYANN_API_CLIENT = {
         return await this.supabase.auth.getSession();
     },
 
+    async getCurrentUser() {
+        if (!this.supabase) return null;
+        const { data: { session } } = await this.supabase.auth.getSession();
+        return session ? session.user : null;
+    },
+
     async resetPasswordForEmail(email) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const res = await this.supabase.auth.resetPasswordForEmail(email, {
@@ -315,6 +321,69 @@ const LYANN_API_CLIENT = {
             .single();
     },
 
+    async uploadPortfolioImage(userId, file) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const fileExt = file.name ? file.name.split('.').pop() : 'png';
+        const filePath = `${userId}/portfolio_${Date.now()}.${fileExt}`;
+
+        const { data: uploadData, error: uploadError } = await this.supabase.storage
+            .from('portfolio_images')
+            .upload(filePath, file, { upsert: true });
+
+        if (uploadError) return { error: uploadError };
+
+        const { data: urlData } = this.supabase.storage
+            .from('portfolio_images')
+            .getPublicUrl(filePath);
+
+        return { data: { image_url: urlData.publicUrl } };
+    },
+
+    async updatePortfolioItem(itemId, itemData) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        return await this.supabase
+            .from('user_portfolio_items')
+            .update({
+                title: itemData.title,
+                caption: itemData.caption,
+                is_public: itemData.is_public,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', itemId)
+            .select()
+            .single();
+    },
+
+    async deletePortfolioItem(itemId) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        return await this.supabase
+            .from('user_portfolio_items')
+            .delete()
+            .eq('id', itemId);
+    },
+
+    async addService(userId, serviceData) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        return await this.supabase
+            .from('services')
+            .insert({
+                owner_id: userId,
+                title: serviceData.title,
+                category: serviceData.category || 'general',
+                description: serviceData.description || ''
+            })
+            .select()
+            .single();
+    },
+
+    async deleteService(serviceId) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        return await this.supabase
+            .from('services')
+            .delete()
+            .eq('id', serviceId);
+    },
+
     async getOrCreateConversation(myUserId, targetUserId) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const { data, error } = await this.supabase.rpc('get_or_create_conversation', {
@@ -323,6 +392,79 @@ const LYANN_API_CLIENT = {
 
         if (error) return { error };
         return { data: { id: data } };
+    },
+
+    async initiateLyannHelp(requestId) {
+        if (!this.supabase || !requestId) return { error: { message: 'Requête invalide' } };
+        try {
+            const { data, error } = await this.supabase.rpc('initiate_lyann_help_conversation', {
+                p_request_id: requestId
+            });
+            if (error) return { error };
+            return { data };
+        } catch (e) {
+            return { error: { message: e.message || 'Erreur lors de l’initialisation du besoin' } };
+        }
+    },
+
+    async linkConversationToRequest(conversationId, requestId, requesterId, helperId) {
+        if (!this.supabase || !requestId) return null;
+        try {
+            const res = await this.initiateLyannHelp(requestId);
+            if (res && res.data) return res.data;
+            return null;
+        } catch (e) {
+            console.error('[LINK CONV TO REQ ERR]', e);
+            return null;
+        }
+    },
+
+    async getConversationRequestContext(conversationId, requestIdHint) {
+        if (!this.supabase || !conversationId) return null;
+        try {
+            // STEP 17.4 SECURITY GATE:
+            // Client-side fallback (requestIdHint) is IGNORED to prevent authorization bypass.
+            // Canonical relation MUST be validated server-side via RLS / RPC.
+            const { data, error } = await this.supabase.rpc('get_conversation_request_context_secure', {
+                p_conversation_id: conversationId
+            });
+
+            if (error) {
+                console.warn('[GET CONV REQ CTX SECURE WARN]', error.message || error);
+                return null;
+            }
+
+            if (data && data.request) {
+                return {
+                    invitationId: data.invitation_id,
+                    invitationStatus: data.invitation_status,
+                    requestId: data.request_id,
+                    requesterId: data.requester_id,
+                    helperId: data.helper_id,
+                    request: data.request,
+                    requesterProfile: data.requester_profile
+                };
+            }
+
+            return null;
+        } catch (e) {
+            console.error('[GET CONV REQ CTX ERR]', e);
+            return null;
+        }
+    },
+
+    async getUserProfile(userId) {
+        if (!this.supabase || !userId || !isUUID(userId)) return null;
+        try {
+            const { data } = await this.supabase
+                .from('profiles')
+                .select('id, first_name, last_name, avatar_url, city, territory')
+                .eq('id', userId)
+                .maybeSingle();
+            return data;
+        } catch (e) {
+            return null;
+        }
     },
 
     async getUserConversations(myUserId) {
@@ -369,11 +511,330 @@ const LYANN_API_CLIENT = {
     },
 
     async getFeed() {
-        if (!this.supabase) return { data: [] };
-        return await this.supabase.from('bokantaj_posts').select(`
-            *,
-            profiles(first_name, last_name, avatar_url)
-        `).order('created_at', { ascending: false });
+        function extractTerritoryKey(locationStr, profileTerritory) {
+            const combined = ((locationStr || '') + ' ' + (profileTerritory || '')).toLowerCase();
+            if (combined.includes('martinique') || combined.includes('972')) return 'martinique';
+            if (combined.includes('guyane') || combined.includes('973')) return 'guyane';
+            if (combined.includes('reunion') || combined.includes('réunion') || combined.includes('974')) return 'reunion';
+            if (combined.includes('saint-martin') || combined.includes('st-martin') || combined.includes('978')) return 'saint-martin';
+            return 'guadeloupe';
+        }
+
+        if (!this.supabase) return { data: [], error: "Supabase non disponible" };
+
+        try {
+            // 1. Fetch Bokantaj Posts
+            const { data: postsData, error: postsError } = await this.supabase
+                .from('bokantaj_posts')
+                .select(`*, profiles(first_name, last_name, avatar_url, city, territory)`)
+                .order('created_at', { ascending: false });
+
+            if (postsError) {
+                console.warn("[LYANN API] Error fetching bokantaj_posts:", postsError);
+            }
+
+            // 2. Fetch OPEN Requests (Lyanns) with author profiles
+            const { data: requestsData, error: requestsError } = await this.supabase
+                .from('requests')
+                .select(`*, profiles:requester_id(first_name, last_name, avatar_url, city, territory)`)
+                .eq('status', 'OPEN')
+                .order('created_at', { ascending: false });
+
+            if (requestsError) {
+                console.warn("[LYANN API] Error fetching OPEN requests for Bokantaj feed:", requestsError);
+            }
+
+            const posts = postsData || [];
+            const openRequests = requestsData || [];
+
+            // 3. Fetch Likes & Comments for Counts & Current User Like State
+            const postLikesCountMap = {};
+            const requestLikesCountMap = {};
+            const postCommentsCountMap = {};
+            const requestCommentsCountMap = {};
+            const userLikedPostsSet = new Set();
+            const userLikedRequestsSet = new Set();
+
+            try {
+                const { data: allLikes } = await this.supabase
+                    .from('bokantaj_likes')
+                    .select('post_id, request_id, user_id');
+
+                const sessionUser = await this.getCurrentUser();
+                const currentUserId = sessionUser ? sessionUser.id : null;
+
+                if (allLikes && Array.isArray(allLikes)) {
+                    allLikes.forEach(l => {
+                        if (l.post_id) {
+                            postLikesCountMap[l.post_id] = (postLikesCountMap[l.post_id] || 0) + 1;
+                            if (currentUserId && l.user_id === currentUserId) {
+                                userLikedPostsSet.add(l.post_id);
+                            }
+                        }
+                        if (l.request_id) {
+                            requestLikesCountMap[l.request_id] = (requestLikesCountMap[l.request_id] || 0) + 1;
+                            if (currentUserId && l.user_id === currentUserId) {
+                                userLikedRequestsSet.add(l.request_id);
+                            }
+                        }
+                    });
+                }
+
+                const { data: allComments } = await this.supabase
+                    .from('bokantaj_comments')
+                    .select('post_id, request_id');
+
+                if (allComments && Array.isArray(allComments)) {
+                    allComments.forEach(c => {
+                        if (c.post_id) postCommentsCountMap[c.post_id] = (postCommentsCountMap[c.post_id] || 0) + 1;
+                        if (c.request_id) requestCommentsCountMap[c.request_id] = (requestCommentsCountMap[c.request_id] || 0) + 1;
+                    });
+                }
+            } catch (likesErr) {
+                console.warn("[LYANN API] Could not fetch likes counts/states:", likesErr);
+            }
+
+            // 4. Format posts into unified presentation structures
+            const formattedPosts = posts.map(p => {
+                const authorProf = p.profiles;
+                const firstName = authorProf ? (authorProf.first_name || 'Lyanneur') : 'Lyanneur';
+                const lastNameInit = authorProf && authorProf.last_name ? ` ${authorProf.last_name.charAt(0)}.` : '';
+                
+                return {
+                    id: p.id,
+                    item_type: 'POST',
+                    author_id: p.author_id,
+                    author_name: `${firstName}${lastNameInit}`,
+                    author_avatar: authorProf?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.author_id}`,
+                    author_city: authorProf?.city || authorProf?.territory || p.territory || 'Guadeloupe',
+                    badge: p.post_type === 'dispo' ? '<i class="ph ph-lightning"></i> Disponibilité' : (p.post_type === 'besoin' ? '<i class="ph ph-magnifying-glass"></i> Besoin' : '<i class="ph ph-newspaper"></i> Info Bokantaj'),
+                    type: p.post_type,
+                    location: p.territory || authorProf?.city || 'Guadeloupe',
+                    territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
+                    created_at: p.created_at,
+                    content: p.content,
+                    images: p.media_urls || [],
+                    likes: (postLikesCountMap[p.id] !== undefined) ? postLikesCountMap[p.id] : (p.likes_count || 0),
+                    user_has_liked: userLikedPostsSet.has(p.id),
+                    comments_count: postCommentsCountMap[p.id] || p.replies_count || 0,
+                    repliesCount: postCommentsCountMap[p.id] || p.replies_count || 0
+                };
+            });
+
+            const formattedLyanns = openRequests.map(r => {
+                const authorProf = r.profiles;
+                const firstName = authorProf ? (authorProf.first_name || 'Lyanneur') : 'Lyanneur';
+                const lastNameInit = authorProf && authorProf.last_name ? ` ${authorProf.last_name.charAt(0)}.` : '';
+                const cityStr = authorProf ? (authorProf.city || authorProf.territory || 'Guadeloupe') : (r.location || 'Guadeloupe');
+
+                return {
+                    id: r.id,
+                    request_id: r.id,
+                    item_type: 'LYANN',
+                    author_id: r.requester_id,
+                    author_name: `${firstName}${lastNameInit}`,
+                    author_avatar: authorProf?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.requester_id}`,
+                    author_city: cityStr,
+                    badge: `LYANN · ${r.category || 'Besoin'}`,
+                    type: 'lyann',
+                    location: r.location || cityStr,
+                    territoryKey: extractTerritoryKey(r.location || cityStr, authorProf?.territory),
+                    created_at: r.created_at,
+                    title: r.title || 'Demande d\'aide',
+                    content: r.description || r.title || '',
+                    category: r.category || 'Général',
+                    budget: r.budget,
+                    budget_display: r.budget ? `${r.budget} €` : 'Sur devis',
+                    urgency: r.urgency,
+                    status: r.status,
+                    images: r.media_urls || [],
+                    likes: requestLikesCountMap[r.id] || 0,
+                    user_has_liked: userLikedRequestsSet.has(r.id),
+                    comments_count: requestCommentsCountMap[r.id] || 0
+                };
+            });
+
+            // 4. Merge and sort unified feed by created_at DESC
+            const unifiedFeed = [...formattedPosts, ...formattedLyanns].sort((a, b) => {
+                const dateA = new Date(a.created_at || 0).getTime();
+                const dateB = new Date(b.created_at || 0).getTime();
+                return dateB - dateA;
+            });
+
+            return { data: unifiedFeed, error: null };
+        } catch (err) {
+            console.error("❌ Error loading unified Bokantaj feed:", err);
+            return { data: [], error: err.message || "Erreur serveur" };
+        }
+    },
+
+    // --- BOKANTAJ SOCIAL API METHODS ---
+
+    async createPost(payload) {
+        if (!this.supabase) throw new Error("Supabase non initialisé");
+        const session = await this.getCurrentUser();
+        if (!session) throw new Error("Utilisateur non connecté");
+
+        const postRecord = {
+            author_id: session.id,
+            type: payload.type || 'dispo',
+            content: payload.content,
+            city: payload.city || null,
+            territory: payload.territory || null,
+            media_urls: payload.media_urls || []
+        };
+
+        const { data, error } = await this.supabase
+            .from('bokantaj_posts')
+            .insert(postRecord)
+            .select('*, profiles(first_name, last_name, avatar_url, city, territory)')
+            .single();
+
+        if (error) {
+            console.error("❌ Error creating bokantaj_post:", error);
+            throw error;
+        }
+        return data;
+    },
+
+    async toggleLike(targetId, targetType = 'POST') {
+        if (!this.supabase) return { liked: false, likesCount: 0 };
+        const session = await this.getCurrentUser();
+        if (!session) return { liked: false, likesCount: 0 };
+
+        const userId = session.id;
+        const isLyann = targetType === 'LYANN';
+        const matchCol = isLyann ? 'request_id' : 'post_id';
+
+        try {
+            // Check existing like
+            const { data: existing } = await this.supabase
+                .from('bokantaj_likes')
+                .select('*')
+                .eq('user_id', userId)
+                .eq(matchCol, targetId)
+                .maybeSingle();
+
+            let isLiked = false;
+            if (existing) {
+                await this.supabase
+                    .from('bokantaj_likes')
+                    .delete()
+                    .eq('user_id', userId)
+                    .eq(matchCol, targetId);
+                isLiked = false;
+            } else {
+                const likePayload = { user_id: userId };
+                likePayload[matchCol] = targetId;
+                await this.supabase.from('bokantaj_likes').insert(likePayload);
+                isLiked = true;
+            }
+
+            // Get updated count
+            const { count } = await this.supabase
+                .from('bokantaj_likes')
+                .select('*', { count: 'exact', head: true })
+                .eq(matchCol, targetId);
+
+            return { liked: isLiked, likesCount: count || 0 };
+        } catch (e) {
+            console.warn("Error toggling like:", e);
+            return { liked: false, likesCount: 0 };
+        }
+    },
+
+    async getComments(targetId, targetType = 'POST') {
+        if (!this.supabase) return [];
+        const isLyann = targetType === 'LYANN';
+        const matchCol = isLyann ? 'request_id' : 'post_id';
+
+        try {
+            const { data, error } = await this.supabase
+                .from('bokantaj_comments')
+                .select('*, profiles:author_id(first_name, last_name, avatar_url, city)')
+                .eq(matchCol, targetId)
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.warn("Error fetching comments:", error);
+                return [];
+            }
+            return data || [];
+        } catch (e) {
+            return [];
+        }
+    },
+
+    async addComment({ targetId, targetType = 'POST', content, parentCommentId = null, mediaUrl = null }) {
+        if (!this.supabase) throw new Error("Supabase non disponible");
+        const session = await this.getCurrentUser();
+        if (!session) throw new Error("Veuillez vous connecter pour commenter");
+
+        const isLyann = targetType === 'LYANN';
+        const commentRecord = {
+            author_id: session.id,
+            content: content,
+            parent_comment_id: parentCommentId,
+            media_url: mediaUrl
+        };
+        if (isLyann) {
+            commentRecord.request_id = targetId;
+        } else {
+            commentRecord.post_id = targetId;
+        }
+
+        const { data, error } = await this.supabase
+            .from('bokantaj_comments')
+            .insert(commentRecord)
+            .select('*, profiles:author_id(first_name, last_name, avatar_url, city)')
+            .single();
+
+        if (error) {
+            console.error("❌ Error adding comment:", error);
+            throw error;
+        }
+        return data;
+    },
+
+    async deleteComment(commentId) {
+        if (!this.supabase) return false;
+        const session = await this.getCurrentUser();
+        if (!session) return false;
+
+        const { error } = await this.supabase
+            .from('bokantaj_comments')
+            .delete()
+            .eq('id', commentId)
+            .eq('author_id', session.id);
+
+        return !error;
+    },
+
+    async reportContent({ targetId, targetType = 'POST', commentId = null, reason = 'Contenu inapproprié' }) {
+        if (!this.supabase) return false;
+        const session = await this.getCurrentUser();
+        if (!session) return false;
+
+        const isLyann = targetType === 'LYANN';
+        const reportRecord = {
+            reporter_id: session.id,
+            reason: reason,
+            status: 'PENDING'
+        };
+
+        if (commentId) {
+            reportRecord.comment_id = commentId;
+        } else if (isLyann) {
+            reportRecord.request_id = targetId;
+        } else {
+            reportRecord.post_id = targetId;
+        }
+
+        const { error } = await this.supabase
+            .from('bokantaj_reports')
+            .insert(reportRecord);
+
+        return !error;
     },
 
     async getQuotes(userId) {
@@ -495,18 +956,171 @@ const LYANN_API_CLIENT = {
         return data || [];
     },
 
-    async getMilestonesForQuote(quoteId) {
-        if (!this.supabase || !isUUID(quoteId)) return [];
-        const { data, error } = await this.supabase
-            .from('milestones')
-            .select('*')
-            .eq('quote_id', quoteId)
-            .order('display_order', { ascending: true });
-        if (error) {
-            console.error("Error fetching milestones for quote:", error);
+        return data || [];
+    },
+
+    // =========================================================================
+    // STEP 18: PROPOSAL ENGINE (DEVIS & PROPOSITIONS SÉCURISÉS)
+    // =========================================================================
+    async createProposalSecure({ conversationId, description, validUntilDays = 14, items = [] }) {
+        if (!this.supabase || !conversationId) {
+            return { error: { message: "Identifiant de conversation invalide." } };
+        }
+        try {
+            const { data, error } = await this.supabase.rpc('create_proposal_secure', {
+                p_conversation_id: conversationId,
+                p_description: description || null,
+                p_valid_until_days: validUntilDays,
+                p_items_json: items
+            });
+            if (error) return { error };
+            return { data };
+        } catch (e) {
+            return { error: { message: e.message || "Erreur lors de la création de la proposition." } };
+        }
+    },
+
+    async acceptProposalSecure(proposalId) {
+        if (!this.supabase || !proposalId) {
+            return { error: { message: "Identifiant de proposition invalide." } };
+        }
+        try {
+            const { data, error } = await this.supabase.rpc('accept_proposal_secure', {
+                p_proposal_id: proposalId
+            });
+            if (error) return { error };
+            return { data };
+        } catch (e) {
+            return { error: { message: e.message || "Erreur lors de l'acceptation de la proposition." } };
+        }
+    },
+
+    async rejectProposalSecure(proposalId) {
+        if (!this.supabase || !proposalId) {
+            return { error: { message: "Identifiant de proposition invalide." } };
+        }
+        try {
+            const { data, error } = await this.supabase.rpc('reject_proposal_secure', {
+                p_proposal_id: proposalId
+            });
+            if (error) return { error };
+            return { data };
+        } catch (e) {
+            return { error: { message: e.message || "Erreur lors du refus de la proposition." } };
+        }
+    },
+
+    async withdrawProposalSecure(proposalId) {
+        if (!this.supabase || !proposalId) {
+            return { error: { message: "Identifiant de proposition invalide." } };
+        }
+        try {
+            const { data, error } = await this.supabase.rpc('withdraw_proposal_secure', {
+                p_proposal_id: proposalId
+            });
+            if (error) return { error };
+            return { data };
+        } catch (e) {
+            return { error: { message: e.message || "Erreur lors du retrait de la proposition." } };
+        }
+    },
+
+    async getConversationProposals(conversationId) {
+        if (!this.supabase || !conversationId) return [];
+        try {
+            const { data, error } = await this.supabase.rpc('get_conversation_proposals', {
+                p_conversation_id: conversationId
+            });
+            if (error) {
+                console.warn('[GET CONV PROPOSALS WARN]', error);
+                return [];
+            }
+            return data || [];
+        } catch (e) {
+            console.error('[GET CONV PROPOSALS ERR]', e);
             return [];
         }
-        return data || [];
+    },
+
+    // =========================================================================
+    // LYANN STEP 19 — MISSION EXECUTION & MILESTONES SECURE RPCs
+    // =========================================================================
+    async getMissionDetailsSecure(missionId) {
+        if (!this.supabase || !missionId) {
+            return { error: { message: "Identifiant de mission invalide." } };
+        }
+        try {
+            const { data, error } = await this.supabase.rpc('get_mission_details_secure', {
+                p_mission_id: missionId
+            });
+            if (error) return { error };
+            return { data };
+        } catch (e) {
+            return { error: { message: e.message || "Erreur lors de la récupération des détails de la mission." } };
+        }
+    },
+
+    async startMissionSecure(missionId) {
+        if (!this.supabase || !missionId) {
+            return { error: { message: "Identifiant de mission invalide." } };
+        }
+        try {
+            const { data, error } = await this.supabase.rpc('start_mission_secure', {
+                p_mission_id: missionId
+            });
+            if (error) return { error };
+            return { data };
+        } catch (e) {
+            return { error: { message: e.message || "Erreur lors du démarrage de la mission." } };
+        }
+    },
+
+    async markMilestoneDoneSecure(milestoneId, comments = null, deliverables = []) {
+        if (!this.supabase || !milestoneId) {
+            return { error: { message: "Identifiant de jalon invalide." } };
+        }
+        try {
+            const { data, error } = await this.supabase.rpc('mark_milestone_done_secure', {
+                p_milestone_id: milestoneId,
+                p_comments: comments,
+                p_deliverables: deliverables
+            });
+            if (error) return { error };
+            return { data };
+        } catch (e) {
+            return { error: { message: e.message || "Erreur lors de la mise à jour du jalon." } };
+        }
+    },
+
+    async validateMilestoneSecure(milestoneId) {
+        if (!this.supabase || !milestoneId) {
+            return { error: { message: "Identifiant de jalon invalide." } };
+        }
+        try {
+            const { data, error } = await this.supabase.rpc('validate_milestone_secure', {
+                p_milestone_id: milestoneId
+            });
+            if (error) return { error };
+            return { data };
+        } catch (e) {
+            return { error: { message: e.message || "Erreur lors de la validation du jalon." } };
+        }
+    },
+
+    async cancelMissionSecure(missionId, reason = 'Annulation utilisateur') {
+        if (!this.supabase || !missionId) {
+            return { error: { message: "Identifiant de mission invalide." } };
+        }
+        try {
+            const { data, error } = await this.supabase.rpc('cancel_mission_secure', {
+                p_mission_id: missionId,
+                p_reason: reason
+            });
+            if (error) return { error };
+            return { data };
+        } catch (e) {
+            return { error: { message: e.message || "Erreur lors de l'annulation de la mission." } };
+        }
     },
 
     async createMilestonePaymentIntent(milestoneId) {
@@ -833,7 +1447,6 @@ const LYANN_API_CLIENT = {
         if (!mission) {
             return [
                 { id: 'MAKE_PROPOSAL', label: 'Faire une proposition', type: 'primary' },
-                { id: 'REQUEST_HELP', label: 'Demander un coup de main', type: 'outline' },
                 { id: 'PROPOSE_DATE', label: 'Proposer une date', type: 'outline' }
             ];
         }
@@ -848,7 +1461,6 @@ const LYANN_API_CLIENT = {
             if (isHelper || !isRequester) {
                 actions.push({ id: 'MAKE_PROPOSAL', label: 'Faire une proposition', type: 'primary' });
             }
-            actions.push({ id: 'REQUEST_HELP', label: 'Demander un coup de main', type: 'outline' });
             actions.push({ id: 'PROPOSE_DATE', label: 'Proposer une date', type: 'outline' });
         }
 
@@ -1128,8 +1740,35 @@ const LYANN_API_CLIENT = {
             budget: payload.budget !== undefined && payload.budget !== null && payload.budget !== '' ? Number(payload.budget) : null,
             urgency: payload.urgency || "Normale",
             status: payload.status || "OPEN",
+            taxonomy_id: payload.taxonomy_id || null,
+            classification_confidence: payload.classification_confidence !== undefined ? payload.classification_confidence : 1.0,
+            classification_status: payload.classification_status || 'UNCLASSIFIED',
+            internal_tags: payload.internal_tags || ['#UNCLASSIFIED'],
+            safety_status: payload.safety_status || 'SAFE',
             created_at: new Date().toISOString()
         };
+
+        // Automatic background classification if taxonomy fields not pre-set
+        if (typeof window !== 'undefined' && window.LyanAI && payload.description && !payload.taxonomy_id) {
+            try {
+                const cls = await window.LyanAI.classifyNeed(payload.description);
+                if (cls) {
+                    if (cls.taxonomy_id) requestData.taxonomy_id = cls.taxonomy_id;
+                    if (cls.confidence) requestData.classification_confidence = cls.confidence;
+                    if (cls.classification_status) requestData.classification_status = cls.classification_status;
+                    if (cls.internal_tags) requestData.internal_tags = cls.internal_tags;
+                    if (cls.safety_status) requestData.safety_status = cls.safety_status;
+                    if (cls.category && (!payload.category || payload.category === 'Général')) {
+                        requestData.category = cls.category;
+                    }
+                    if (cls.title && (!payload.title || payload.title === "Demande d'aide")) {
+                        requestData.title = cls.title;
+                    }
+                }
+            } catch (clsErr) {
+                console.warn("[APIClient] Auto-classification skipped:", clsErr);
+            }
+        }
 
         const { data, error } = await this.supabase
             .from('requests')
@@ -1156,6 +1795,9 @@ const LYANN_API_CLIENT = {
         }
         if (filters.category) {
             query = query.eq('category', filters.category);
+        }
+        if (filters.classification_status) {
+            query = query.eq('classification_status', filters.classification_status);
         }
 
         const { data, error } = await query;
@@ -1224,24 +1866,30 @@ const LYANN_API_CLIENT = {
         const { data: { session } } = await this.supabase.auth.getSession();
         if (!session || !session.user) throw new Error("Utilisateur non connecté");
 
-        if (!Array.isArray(recipientIds) || recipientIds.length === 0) {
+        const requesterId = session.user.id;
+        const validIds = recipientIds.filter(id => isUUID(id) && id !== requesterId);
+
+        if (validIds.length === 0) {
+            console.log("ℹ️ Aucun destinataire avec un UUID valide (profils démo/mock).");
             return { success: true, inserted_count: 0 };
         }
 
+        const payload = {
+            p_request_id: requestId,
+            p_recipient_ids: validIds
+        };
+        console.log('[SEND INVITATIONS PAYLOAD]', {
+            p_request_id: { value: payload.p_request_id, type: typeof payload.p_request_id, isUUID: isUUID(payload.p_request_id) },
+            p_recipient_ids: { value: payload.p_recipient_ids, type: typeof payload.p_recipient_ids, elements: payload.p_recipient_ids.map(id => ({ id, type: typeof id, isUUID: isUUID(id) })) }
+        });
+
         try {
-            const { data, error } = await this.supabase.rpc('send_request_invitations', {
-                p_request_id: requestId,
-                p_recipient_ids: recipientIds
-            });
+            const { data, error } = await this.supabase.rpc('send_request_invitations', payload);
             if (!error) return data;
+            console.warn("RPC send_request_invitations returned error:", error);
         } catch (e) {
             console.warn("RPC send_request_invitations fallback to direct insert:", e);
         }
-
-        const requesterId = session.user.id;
-        const validIds = recipientIds.filter(id => isUUID(id) && id !== requesterId);
-        
-        if (validIds.length === 0) return { success: true, inserted_count: 0 };
 
         const rows = validIds.map(recipientId => ({
             request_id: requestId,

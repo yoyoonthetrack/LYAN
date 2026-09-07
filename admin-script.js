@@ -767,37 +767,87 @@ document.addEventListener('DOMContentLoaded', async () => {
     function executeAdminMatchingSimulation() {
         if (!adminSimulationQuery || !adminSimulationResultsContainer) return;
         const queryText = adminSimulationQuery.value || "J'ai une fuite sous mon évier à Sainte-Anne";
-        
-        if (window.LyannMatchingEngine) {
-            const classified = window.LyannMatchingEngine.classifyNeed(queryText);
-            const matchResult = window.LyannMatchingEngine.findMatchingLyanneursForNeed(classified, window.LYANN_MEMBERS || []);
-            const dispatchResult = window.LyannMatchingEngine.dispatchTargetedNeedNotifications(classified, window.LYANN_MEMBERS || [], 5);
 
-            let html = `<div style="color: #38BDF8; font-weight: bold; margin-bottom: 8px;">[CLASSIFICATION COMPRISE PAR LYANN]</div>`;
-            html += `<div>• Texte brut: <span style="color: #FACC15;">"${classified.raw_text}"</span></div>`;
-            html += `<div>• Domaine: <span style="color: #4ADE80;">${classified.domain}</span> | Catégorie: <span style="color: #4ADE80;">${classified.category}</span></div>`;
-            html += `<div>• Localisation: <span style="color: #38BDF8;">${classified.location_name}</span> (${classified.latitude}, ${classified.longitude})</div>`;
-            html += `<div>• Tags requis: <code>${classified.required_skills.join(', ')}</code></div>`;
-            
-            html += `<div style="color: #38BDF8; font-weight: bold; margin-top: 14px; margin-bottom: 8px;">[CANDIDATS LYANNEURS RECONNUS & SCORE (DÉTERMINISTE + SCORING)]</div>`;
-            if (matchResult.lyanneurs.length === 0) {
-                html += `<div style="color: #F87171;">Aucun candidat direct dans le rayon exact. Fallback Bokantaj actif.</div>`;
+        let classified = null;
+        if (window.LyanAI) {
+            try {
+                const normText = queryText.toLowerCase();
+                const matched = window.LyanAI.baselineTaxonomy.find(t =>
+                    t.synonyms.some(s => normText.includes(s)) ||
+                    normText.includes(t.category.toLowerCase()) ||
+                    normText.includes(t.universe.toLowerCase())
+                );
+                if (matched) {
+                    classified = {
+                        raw_text: queryText,
+                        title: queryText,
+                        description: queryText,
+                        domain: matched.universe,
+                        category: matched.category,
+                        subcategory: matched.subcategory,
+                        classification_status: "CLASSIFIED",
+                        safety_status: matched.safety_level === "PRO_REQUIRED" ? "PRO_REQUIRED" : "SAFE",
+                        location: "Sainte-Anne"
+                    };
+                }
+            } catch (err) {
+                console.warn(err);
+            }
+        }
+
+        if (!classified) {
+            classified = {
+                raw_text: queryText,
+                title: queryText,
+                description: queryText,
+                domain: "Autres Besoins",
+                category: "Général",
+                classification_status: "UNCLASSIFIED",
+                safety_status: "SAFE",
+                location: "Sainte-Anne"
+            };
+        }
+
+        const sampleCandidates = window.LYANN_MEMBERS || [
+            { id: "cand_1", name: "Pascal A.", first_name: "Pascal", role: "Plombier Certifié", category: "Plomberie", skills: ["plomberie", "fuite", "sanitaire"], city: "Sainte-Anne", rating: 4.9, reviewsCount: 42, is_pro: true, kyc_verified: true, available: true, response_rate: 0.98 },
+            { id: "cand_2", name: "Kevin M.", first_name: "Kevin", role: "Mécanicien Auto", category: "Mécanique Automobile", skills: ["auto", "mécanique", "batterie", "moteur", "démarrage"], city: "Saint-François", rating: 4.8, reviewsCount: 18, is_pro: true, kyc_verified: true, available: true, response_rate: 0.95 },
+            { id: "cand_3", name: "Elodie T.", first_name: "Elodie", role: "Nouvelle Lyanneuse", category: "Mécanique Automobile", skills: ["auto", "mécanique", "batterie", "dépannage"], city: "Saint-François", rating: 5.0, reviewsCount: 0, bio: "Mécanicienne passionnée avec matériel de diagnostic", is_pro: false, kyc_verified: true, available: true, response_rate: 1.0 },
+            { id: "cand_4", name: "Sarah B.", first_name: "Sarah", role: "Garde & Soutien", category: "Aide à la personne", skills: ["enfant", "cours", "cuisine"], city: "Le Gosier", rating: 4.7, reviewsCount: 12, is_pro: false, kyc_verified: true, available: true, response_rate: 0.90 }
+        ];
+
+        if (window.LyannSmartMatching) {
+            const dispatchResult = window.LyannSmartMatching.runSmartMatchingDispatch(classified, sampleCandidates, { maxWaveCandidates: 5 });
+
+            let html = `<div style="color: #38BDF8; font-weight: bold; margin-bottom: 8px;">[ANALYSE SMART MATCHING INSPECTOR]</div>`;
+            html += `<div>• Besoin testé : <span style="color: #FACC15;">"${classified.raw_text}"</span></div>`;
+            html += `<div>• Classification : <span style="color: #4ADE80;">${classified.domain} / ${classified.category}</span> (${classified.classification_status})</div>`;
+            html += `<div>• Sécurité : <span style="color: ${classified.safety_status === 'PRO_REQUIRED' ? '#E5B345' : '#4ADE80'};">${classified.safety_status}</span></div>`;
+            html += `<div>• Candidats évalués : <strong>${dispatchResult.evaluated_count}</strong> | Éligibles après Hard Filters : <strong>${dispatchResult.eligible_count}</strong></div>`;
+            html += `<div>• Vague de dispatch : <span style="color: #38BDF8;">Vague #${dispatchResult.wave_number}</span> (${dispatchResult.dispatched_count} candidats notifiés)</div>`;
+
+            html += `<div style="color: #38BDF8; font-weight: bold; margin-top: 14px; margin-bottom: 8px;">[CANDIDATS RETENUS & SCORE EXPLICABLE (0 à 100 PTS)]</div>`;
+
+            if (dispatchResult.dispatched_candidates.length === 0) {
+                html += `<div style="color: #F87171;">Aucun candidat éligible selon les filtres stricts.</div>`;
             } else {
-                matchResult.lyanneurs.forEach((cand, idx) => {
-                    html += `<div style="background: rgba(255,255,255,0.05); padding: 8px 12px; margin-bottom: 6px; border-radius: 6px; border-left: 3px solid #4ADE80;">`;
-                    html += `<strong>#${idx + 1} ${cand.display_name}</strong> · ${cand.role} (${cand.public_location})<br>`;
-                    html += `<small style="color: #94A3B8;">Distance: ${cand.distance_km} km | Note: ${cand.rating} ★ (${cand.reviewsCount} avis) | ${cand.badge}</small><br>`;
-                    html += `<small style="color: #FACC15;">Raisons humaines: ${cand.human_reasons.join(' · ')}</small>`;
+                dispatchResult.dispatched_candidates.forEach((cand, idx) => {
+                    const sb = cand.score_breakdown || {};
+                    html += `<div style="background: rgba(255,255,255,0.05); padding: 10px 14px; margin-bottom: 8px; border-radius: 8px; border-left: 4px solid ${cand.is_newcomer ? '#38BDF8' : '#4ADE80'};">`;
+                    html += `<div style="display: flex; justify-content: space-between;">`;
+                    html += `<strong>#${idx + 1} ${cand.display_name}</strong> <span style="background: rgba(74, 222, 128, 0.2); color: #4ADE80; padding: 2px 8px; border-radius: 12px; font-weight: bold;">SCORE: ${cand.total_score}/100</span>`;
+                    html += `</div>`;
+                    html += `<small style="color: #94A3B8;">${cand.role} (${cand.city} · ${cand.distance_km} km) | Note: ${cand.rating} ★ (${cand.reviewsCount} avis) | ${cand.badge}</small><br>`;
+                    html += `<div style="font-size: 0.78rem; color: #CBD5E1; margin-top: 4px; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px;">`;
+                    html += `Pertinence: ${sb.relevance || 0}/40 | Géo: ${sb.geography || 0}/20 | Trust: ${sb.trust || 0}/15 | Nouveauté: ${sb.newcomer_fairness || 0}/10 | Équité: ${sb.fair_distribution || 0}/10 | Réponse: ${sb.responsiveness || 0}/5`;
+                    html += `</div>`;
+                    html += `<small style="color: #FACC15; margin-top: 4px; display: block;">Raisons humaines : ${cand.human_reasons.join(' · ')}</small>`;
                     html += `</div>`;
                 });
             }
 
-            html += `<div style="color: #38BDF8; font-weight: bold; margin-top: 14px; margin-bottom: 8px;">[DIFFUSION CIBLÉE & NOTIFICATIONS]</div>`;
-            html += `<div style="color: #4ADE80;">${dispatchResult.human_summary}</div>`;
-            
             adminSimulationResultsContainer.innerHTML = html;
         } else {
-            adminSimulationResultsContainer.innerHTML = `<div style="color: #F87171;">Moteur LyannMatchingEngine non initialisé.</div>`;
+            adminSimulationResultsContainer.innerHTML = `<div style="color: #F87171;">Moteur Smart Matching non initialisé.</div>`;
         }
     }
 
@@ -816,6 +866,102 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => executeAdminMatchingSimulation(), 100);
         });
     }
+
+    // --------------------------------------------------------------------------
+    // DYNAMIC LYANN TAXONOMY & DISCOVERY ENGINE ADMIN MANAGEMENT
+    // --------------------------------------------------------------------------
+    async function loadAdminTaxonomyManagement() {
+        const tbody = document.getElementById('adminTaxonomyTbody');
+        const discoveryTbody = document.getElementById('adminDiscoveryQueueTbody');
+        if (!tbody) return;
+
+        let taxonomyData = [];
+        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+            try {
+                const { data, error } = await window.LYANN_API_CLIENT.supabase
+                    .from('lyann_taxonomy')
+                    .select('*')
+                    .order('universe', { ascending: true });
+                if (!error && data && data.length > 0) taxonomyData = data;
+            } catch (err) {
+                console.warn("[AdminTaxonomy] Error fetching lyann_taxonomy:", err);
+            }
+        }
+
+        if (!taxonomyData.length && window.LyanAI && window.LyanAI.baselineTaxonomy) {
+            taxonomyData = window.LyanAI.baselineTaxonomy;
+        }
+
+        if (tbody && taxonomyData.length > 0) {
+            tbody.innerHTML = taxonomyData.map(item => `
+                <tr>
+                    <td><code>${item.universe}</code></td>
+                    <td><strong>${item.category}</strong></td>
+                    <td>${item.subcategory || '-'}</td>
+                    <td><small style="color: #64748B;">${(item.synonyms || []).slice(0, 5).join(', ')}${(item.synonyms || []).length > 5 ? '...' : ''}</small></td>
+                    <td>${(item.tags || []).map(t => `<code style="font-size:0.75rem; background:#E2E8F0; padding:2px 4px; border-radius:4px;">${t}</code>`).join(' ')}</td>
+                    <td><span class="status-badge ${item.safety_level === 'PROHIBITED' ? 'danger' : (item.safety_level === 'PRO_REQUIRED' ? 'warning' : 'active')}">${item.safety_level || 'NORMAL'}</span></td>
+                    <td><span class="status-badge ${item.active !== false ? 'verified' : 'inactive'}">${item.active !== false ? 'ACTIF' : 'INACTIF'}</span></td>
+                    <td>
+                        <button class="admin-btn admin-btn-secondary btnToggleTaxonomyActive" data-id="${item.id || ''}" style="padding: 2px 8px; font-size: 0.75rem;">
+                            ${item.active !== false ? 'Désactiver' : 'Activer'}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        if (discoveryTbody && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+            try {
+                const { data: unclassifiedReqs, error: unclassErr } = await window.LYANN_API_CLIENT.supabase
+                    .from('requests')
+                    .select('*')
+                    .in('classification_status', ['UNCLASSIFIED', 'NEEDS_REVIEW'])
+                    .order('created_at', { ascending: false });
+
+                if (!unclassErr && unclassifiedReqs && unclassifiedReqs.length > 0) {
+                    discoveryTbody.innerHTML = unclassifiedReqs.map(req => `
+                        <tr>
+                            <td>${new Date(req.created_at).toLocaleDateString('fr-FR')}</td>
+                            <td><strong>${req.description || req.title}</strong></td>
+                            <td>${req.location || req.city || 'Guadeloupe'}</td>
+                            <td><span class="status-badge warning">${((req.classification_confidence || 0.3) * 100).toFixed(0)}%</span></td>
+                            <td><span class="status-badge warning">${req.classification_status}</span></td>
+                            <td>
+                                <button class="admin-btn admin-btn-primary btnClassifyRequestModal" data-id="${req.id}" data-desc="${(req.description || req.title).replace(/"/g, '&quot;')}" style="padding: 2px 8px; font-size: 0.75rem;">
+                                    <i class="ph ph-check"></i> Classer
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    discoveryTbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #4A7C59; padding: 16px;">
+                                <i class="ph-bold ph-check-circle" style="font-size: 1.2rem;"></i> Aucun besoin en attente de catégorisation. Toutes les demandes sont traitées !
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (queueErr) {
+                console.warn("[AdminTaxonomy] Error fetching Discovery Queue:", queueErr);
+            }
+        }
+    }
+
+    const taxonomySectionNav = document.querySelector('.admin-nav-item[data-section="sec-taxonomy"]');
+    if (taxonomySectionNav) {
+        taxonomySectionNav.addEventListener('click', () => {
+            loadAdminTaxonomyManagement();
+        });
+    }
+
+    // Call on initial load if taxonomy section is active
+    setTimeout(() => {
+        if (document.getElementById('sec-taxonomy')?.classList.contains('active')) {
+            loadAdminTaxonomyManagement();
+        }
+    }, 500);
 
     // --------------------------------------------------------------------------
     // 4. MOTEUR ANALYTIQUE BI ET SÉLECTEUR DE PÉRIODE DYNAMIQUE

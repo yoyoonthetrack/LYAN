@@ -114,54 +114,114 @@
         <div class="container">
             <div class="results-hero-content text-center">
                 <span class="pill-badge pill-emerald"><i class="ph ph-magnifying-glass"></i> Recherche & réseau LYANN</span>
-                <h1 class="results-page-title">Trouvez les meilleurs talents autour de chez vous</h1>
-                <p class="results-page-subtitle">Recherchez par activité, département, commune et rayon kilométrique parmi tous les membres recommandés.</p>
+                <h1 class="results-page-title">Qui peut vous aider <span class="text-gradient">aujourd'hui ?</span></h1>
+                <p class="results-page-subtitle">Trouve quelqu'un près de chez toi pour t'aider dans les DOM.</p>
                 
-                <!-- Barre de Recherche Complète -->
-                <form class="hero-search results-search-bar" id="heroSearchForm">
-                    <div class="hero-search-fields">
-                        <div class="search-input-wrapper flex-2">
-                            <i class="ph ph-magnifying-glass"></i>
-                            <input type="text" id="searchInput" placeholder="Métier, activité, compétence (ex: Plomberie, Climatisation...)" autocomplete="off">
-                        </div>
-                        <div class="search-input-wrapper">
-                            <i class="ph ph-map-pin"></i>
-                            <select id="locationSelect">
-                                <option value="guadeloupe" selected>971 - Guadeloupe</option>
-                                <option value="martinique">972 - Martinique</option>
-                                <option value="guyane">973 - Guyane</option>
-                                <option value="reunion">974 - La Réunion</option>
-                                <option value="saint-martin">978 - St-Martin</option>
-                            </select>
-                        </div>
-                        <div class="search-input-wrapper">
-                            <i class="ph ph-buildings"></i>
-                            <select id="citySelect">
-                                <option value="" selected>Toutes les communes</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary search-btn">Trouver</button>
+                <!-- STEP 17 SEARCH EXPERIENCE V2: DUAL INTENT ENTRY -->
+                <div class="search-v2-intent-container" id="searchV2IntentContainer" style="margin: 20px auto 24px; max-width: 720px;">
+                    <div class="search-v2-header">
+                        <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--primary-dark); margin-bottom: 12px;">Comment peut-on t’aider ?</h3>
                     </div>
-                </form>
+                    <div class="search-v2-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; text-align: left;">
+                        <!-- Option A: Je cherche un Lyanneur -->
+                        <div class="search-v2-card active" id="btnIntentSearch" data-intent="search" style="cursor: pointer;">
+                            <div class="search-v2-card-icon">
+                                <i class="ph-bold ph-users-three"></i>
+                            </div>
+                            <div class="search-v2-card-body">
+                                <h4>Je cherche un Lyanneur</h4>
+                                <p>Je sais ce que je cherche et je veux parcourir les profils.</p>
+                            </div>
+                            <div class="search-v2-card-check">
+                                <i class="ph-bold ph-check"></i>
+                            </div>
+                        </div>
 
-                <!-- Suggestion Hashtags -->
-                <div class="suggestion-tags hashtag-filters-group" style="margin-top: 14px; overflow-x: auto; padding-bottom: 4px; white-space: nowrap; -webkit-overflow-scrolling: touch;">
-                    <button type="button" class="tag hashtag-tag" data-query="Réparer une fuite"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Plomberie</button>
-                    <button type="button" class="tag hashtag-tag" data-query="Climatisation"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Climatisation</button>
-                    <button type="button" class="tag hashtag-tag" data-query="Jardinage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Jardinage</button>
-                    <button type="button" class="tag hashtag-tag" data-query="Bricolage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Bricolage</button>
-                    <button type="button" class="tag hashtag-tag" data-query="Transport"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Transport</button>
-                    <button type="button" class="tag hashtag-tag" data-query="Électricité"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Électricité</button>
-                    <button type="button" class="tag hashtag-tag" data-query="Peinture"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Peinture</button>
-                    <button type="button" class="tag hashtag-tag" data-query="Ménage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Ménage</button>
-                    <button type="button" class="tag hashtag-tag" data-query="Aide à la personne"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #AideAuxSeniors</button>
-                    <button type="button" class="tag hashtag-tag" data-query="Garde d'enfants"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #GardeEnfants</button>
-                    <button type="button" class="tag hashtag-tag" data-query="Informatique"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Informatique</button>
-                    <button type="button" class="tag hashtag-tag help-wizard-trigger" data-query="Je ne sais pas qui contacter"><i class="ph-bold ph-sparkle" style="color: #E5B345;"></i> #JeNeSaisPas (Assistant IA 🤖)</button>
+                        <!-- Option B: J'ai un besoin -->
+                        <div class="search-v2-card" id="btnIntentNeed" data-intent="need" style="cursor: pointer;">
+                            <div class="search-v2-card-icon" style="background: rgba(229, 179, 69, 0.15); color: #C69222;">
+                                <i class="ph-bold ph-chat-circle-dots"></i>
+                            </div>
+                            <div class="search-v2-card-body">
+                                <h4>J’ai un besoin</h4>
+                                <p>Explique ce qu’il te faut une seule fois. LYANN le partage aux Lyanneurs qui correspondent, et ceux qui peuvent t’aider te répondent.</p>
+                            </div>
+                            <div class="search-v2-card-check">
+                                <i class="ph-bold ph-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PARCOURS A: JE CHERCHE UN LYANNEUR -->
+                <div id="parcoursSearchPanel" class="parcours-panel active">
+                    <!-- Barre de Recherche Complète -->
+                    <form class="hero-search results-search-bar" id="heroSearchForm">
+                        <div class="hero-search-fields">
+                            <div class="search-input-wrapper flex-2">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <input type="text" id="searchInput" placeholder="Que recherches-tu ? (ex: Plombier, Jardinier...)" autocomplete="off">
+                            </div>
+                            <div class="search-input-wrapper">
+                                <i class="ph ph-map-pin"></i>
+                                <select id="locationSelect">
+                                    <option value="guadeloupe" selected>971 - Guadeloupe</option>
+                                    <option value="martinique">972 - Martinique</option>
+                                    <option value="guyane">973 - Guyane</option>
+                                    <option value="reunion">974 - La Réunion</option>
+                                    <option value="saint-martin">978 - St-Martin</option>
+                                </select>
+                            </div>
+                            <div class="search-input-wrapper">
+                                <i class="ph ph-buildings"></i>
+                                <select id="citySelect">
+                                    <option value="" selected>Toutes les communes</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary search-btn">Trouver</button>
+                        </div>
+                    </form>
+
+                    <!-- Exemples humains et discrets de recherche -->
+                    <div class="suggestion-tags example-suggestions-group" style="margin-top: 14px; overflow-x: auto; padding-bottom: 4px; white-space: nowrap; -webkit-overflow-scrolling: touch; display: flex; align-items: center; gap: 8px; justify-content: center;">
+                        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-right: 4px;">Exemples :</span>
+                        <button type="button" class="tag example-chip" data-search="plombier" style="border-radius: 20px; background: rgba(74, 124, 89, 0.08); color: var(--primary-dark); font-weight: 600; font-size: 0.85rem; padding: 6px 14px; border: 1px solid rgba(74, 124, 89, 0.18); cursor: pointer;">plombier</button>
+                        <button type="button" class="tag example-chip" data-search="jardinier" style="border-radius: 20px; background: rgba(74, 124, 89, 0.08); color: var(--primary-dark); font-weight: 600; font-size: 0.85rem; padding: 6px 14px; border: 1px solid rgba(74, 124, 89, 0.18); cursor: pointer;">jardinier</button>
+                        <button type="button" class="tag example-chip" data-search="réparation" style="border-radius: 20px; background: rgba(74, 124, 89, 0.08); color: var(--primary-dark); font-weight: 600; font-size: 0.85rem; padding: 6px 14px; border: 1px solid rgba(74, 124, 89, 0.18); cursor: pointer;">réparation</button>
+                        <button type="button" class="tag example-chip" data-search="cours de musique" style="border-radius: 20px; background: rgba(74, 124, 89, 0.08); color: var(--primary-dark); font-weight: 600; font-size: 0.85rem; padding: 6px 14px; border: 1px solid rgba(74, 124, 89, 0.18); cursor: pointer;">cours de musique</button>
+                    </div>
+                </div>
+
+                <!-- PARCOURS B: J'AI UN BESOIN -->
+                <div id="parcoursNeedPanel" class="parcours-panel" style="display: none; max-width: 720px; margin: 0 auto; text-align: left;">
+                    <div class="need-intent-hero-box" style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: var(--radius-xl); padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+                        <h4 style="font-size: 1.15rem; font-weight: 800; color: var(--primary-dark); margin-bottom: 4px;">De quoi as-tu besoin ?</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Décris simplement ce qu’il te faut. Pas besoin de connaître le métier exact.</p>
+                        
+                        <div class="need-quick-chips" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            <button type="button" class="need-example-chip" data-need="Mon scooter ne démarre plus">
+                                <i class="ph-bold ph-moped"></i> Mon scooter ne démarre plus
+                            </button>
+                            <button type="button" class="need-example-chip" data-need="J’ai une fuite sous mon évier">
+                                <i class="ph-bold ph-drop"></i> J’ai une fuite sous mon évier
+                            </button>
+                            <button type="button" class="need-example-chip" data-need="Je dois monter une armoire">
+                                <i class="ph-bold ph-wrench"></i> Je dois monter une armoire
+                            </button>
+                            <button type="button" class="need-example-chip" data-need="Je cherche quelqu’un pour photographier mon anniversaire">
+                                <i class="ph-bold ph-camera"></i> Photographier mon anniversaire
+                            </button>
+                        </div>
+
+                        <button type="button" class="btn btn-primary btn-lg" id="btnLaunchNeedWizard" style="margin-top: 18px; width: 100%; justify-content: center; font-weight: 800; font-size: 1rem; padding: 14px;">
+                            Expliquer mon besoin <i class="ph ph-arrow-right"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
+
 
     <!-- ========== CONTENU PRINCIPAL DES RÉSULTATS ========== -->
     <section class="results-main-section section">
@@ -689,7 +749,7 @@
                     <!-- Role determined automatically by mission context -->
 
                     <!-- MISSION CONTEXT HEADER -->
-                    <div id="chatMissionContext" style="display: none; padding: 8px 16px; background: var(--bg-alt); border-bottom: 1px solid var(--border-light); font-size: 0.82rem; font-weight: 600; color: var(--text);"></div>
+                    <div id="chatMissionContextBar" class="chat-mission-banner" style="display: none;"></div>
                     <button type="button" class="btn btn-outline" id="chatViewMissionBtn" style="display: none; margin: 6px 16px; padding: 4px 10px; font-size: 0.75rem;">Voir la mission</button>
 
                     <!-- CONTEXTUAL ACTIONS BAR (Proposer un prix, Accepter, etc.) -->
@@ -1206,12 +1266,17 @@
     <script src="payment-script.js"></script>
     <script src="notifications-service.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="safety-disputes-engine.js"></script>
+    <script src="subscriptions-engine.js"></script>
+    <script src="pro-verification-engine.js"></script>
+    <script src="search-engine.js"></script>
     <script src="matching-engine.js"></script>
     <script src="api-client.js"></script>
     <script src="dialog.js"></script>
     <script src="chat-logic.js"></script>
     <script src="ai-simulator.js"></script>
-    <script src="script.js"></script>
+    <script src="ai-classifier.js"></script>
+    <script src="script.js?v=20260907-TRACE"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->
     <div class="speed-dial-wrapper" id="speedDialWrapper">
@@ -1265,28 +1330,40 @@
 
                 <!-- ETAPE 2 : Domaine / Catégorie -->
                 <div class="wizard-step" data-step="2" style="padding: 24px; display: none;">
-                    <h4 style="font-size: 1.1rem; margin-bottom: 16px;">2. Catégorie</h4>
-                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Nous avons pré-sélectionné cette catégorie d'après votre description.</p>
+                    <h4 style="font-size: 1.1rem; margin-bottom: 16px;">2. Catégorie & Domaine</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Vérifiez ou adaptez le domaine pour orienter votre demande vers les bons membres.</p>
                     
-                    <label>Domaine principal</label>
-                    <select class="modal-input" id="wizardDomain" style="margin-bottom: 16px;">
-                        <option value="maison" selected>Maison & Travaux</option>
-                        <option value="jardin">Jardin & Extérieur</option>
-                        <option value="cours">Cours & Soutien</option>
-                        <option value="bien-etre">Beauté & Bien-être</option>
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px;">Domaine principal (Univers)</label>
+                    <select class="modal-input" id="wizardDomain" style="margin-bottom: 16px; width: 100%;">
+                        <option value="Auto & Mobilité">Auto & Mobilité</option>
+                        <option value="Maison & Travaux">Maison & Travaux</option>
+                        <option value="Jardin & Extérieur">Jardin & Extérieur</option>
+                        <option value="Transport & Livraison">Transport & Livraison</option>
+                        <option value="Musique">Musique</option>
+                        <option value="Art & Création">Art & Création</option>
+                        <option value="Animaux">Animaux</option>
+                        <option value="Beauté & Bien-être">Beauté & Bien-être</option>
+                        <option value="Informatique & Numérique">Informatique & Numérique</option>
+                        <option value="Cours & Apprentissage">Cours & Apprentissage</option>
+                        <option value="Sport & Activités">Sport & Activités</option>
+                        <option value="Événementiel">Événementiel</option>
+                        <option value="Administratif">Administratif</option>
+                        <option value="Aide du Quotidien">Aide du Quotidien</option>
+                        <option value="Mode & Couture">Mode & Couture</option>
+                        <option value="Cuisine & Alimentation">Cuisine & Alimentation</option>
+                        <option value="Nettoyage & Entretien">Nettoyage & Entretien</option>
+                        <option value="Autres Besoins" selected>Autres Besoins</option>
                     </select>
 
-                    <label>Catégorie</label>
-                    <select class="modal-input" id="wizardCategory" style="margin-bottom: 16px;">
-                        <option value="plomberie" selected>Plomberie</option>
-                        <option value="electricite">Électricité</option>
-                        <option value="menage">Ménage</option>
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px;">Catégorie</label>
+                    <select class="modal-input" id="wizardCategory" style="margin-bottom: 16px; width: 100%;">
+                        <option value="Général" selected>Général</option>
+                        <option value="Autre / Je ne trouve pas">Autre / Je ne trouve pas</option>
                     </select>
 
-                    <label>Sous-catégorie</label>
-                    <select class="modal-input" id="wizardSubCat">
-                        <option value="reparation-fuite" selected>Réparation de fuite</option>
-                        <option value="installation">Installation d'équipement</option>
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px;">Sous-catégorie</label>
+                    <select class="modal-input" id="wizardSubCat" style="width: 100%;">
+                        <option value="Demande libre" selected>Demande libre</option>
                     </select>
                 </div>
 
@@ -1295,10 +1372,14 @@
                     <h4 style="font-size: 1.1rem; margin-bottom: 16px;">3. Photos (Optionnel mais recommandé)</h4>
                     <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Montrez l'ampleur de la tâche pour recevoir de meilleures propositions.</p>
                     
-                    <div class="upload-zone" style="border: 2px dashed var(--primary-light); border-radius: var(--radius-md); padding: 32px; text-align: center; background: rgba(74, 124, 89, 0.04); cursor: pointer;">
-                        <i class="ph-fill ph-camera" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 12px;"></i>
-                        <p style="font-weight: 700; color: var(--primary-dark);">Ajouter des photos</p>
-                        <p style="font-size: 0.8rem; color: var(--text-muted);">Format JPG, PNG (Max 5Mo)</p>
+                    <div class="upload-zone" id="wizardPhotoUploadZone" style="border: 2px dashed var(--primary-light); border-radius: var(--radius-md); padding: 32px; text-align: center; background: rgba(74, 124, 89, 0.04); cursor: pointer; position: relative; overflow: hidden;">
+                        <input type="file" id="wizardPhotoInput" accept="image/*" multiple style="display: none;">
+                        <div id="wizardPhotoPlaceholder">
+                            <i class="ph-fill ph-camera" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 12px;"></i>
+                            <p style="font-weight: 700; color: var(--primary-dark);">Ajouter des photos</p>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Format JPG, PNG (Max 5Mo)</p>
+                        </div>
+                        <div id="wizardPhotoPreviewContainer" style="display: none; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px;"></div>
                     </div>
                 </div>
 
@@ -1358,8 +1439,8 @@
                             <input type="radio" name="wizardBudget" value="fixe" style="width: 20px; height: 20px;">
                             <span style="font-weight: 600;">J'ai un budget fixe</span>
                         </label>
-                        <div style="display: flex; align-items: center; gap: 10px; padding-left: 30px; opacity: 0.5;">
-                            <input type="number" class="modal-input" placeholder="Ex: 50" style="width: 100px; margin: 0;" disabled> <span style="font-weight: 700;">€</span>
+                        <div id="wizardBudgetInputContainer" style="display: flex; align-items: center; gap: 10px; padding-left: 30px; opacity: 0.5;">
+                            <input type="number" id="wizardBudgetInput" class="modal-input" placeholder="Ex: 50" style="width: 100px; margin: 0;" disabled> <span style="font-weight: 700;">€</span>
                         </div>
                     </div>
                 </div>
@@ -1396,7 +1477,6 @@
         </div>
     </div>
 
-<script src="ai-classifier.js"></script>
 <script src="profile-completion.js"></script>
 
     <!-- ========== MODAL PARCOURS COMPLÉTION DE PROFIL (#modalCompleteProfile) ========== -->

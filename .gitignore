@@ -27,3 +27,4 @@ npm-debug.log*
 
 # Test artifacts
 test_load.js
+scratch/
