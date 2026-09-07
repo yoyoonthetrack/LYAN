@@ -3948,8 +3948,8 @@ safeDomReady(() => {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = loginForm.querySelector('button[type="submit"]');
-            const emailInput = loginForm.querySelector('input[type="email"]');
-            const passwordInput = loginForm.querySelector('input[type="password"]');
+            const emailInput = loginForm.querySelector('#loginEmail, input[type="email"], input[type="text"]');
+            const passwordInput = loginForm.querySelector('#loginPassword, input[type="password"]');
             
             const email = emailInput?.value?.trim();
             const password = passwordInput?.value;
