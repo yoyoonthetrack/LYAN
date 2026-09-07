@@ -1,9 +1,6 @@
-console.log('[HEADER] script loaded');
-document.addEventListener('DOMContentLoaded', () => {
-    const hamburgerElement = document.querySelector('.mobile-menu-btn, #openMobileDrawerBtn, .hamburger-menu-btn');
-    console.log('[HEADER] hamburger element', hamburgerElement);
-    console.log('[HEADER] init started');
-});
+/**
+ * LYANN - Script (Community, Trust, Member Search & Interactive Signup Workflow)
+ */
 
 // === CAPACITOR MOBILE DETECTOR & DYNAMIC BRIDGE INJECTION ===
 (function() {
@@ -1486,7 +1483,6 @@ document.addEventListener('click', (e) => {
     // 1. Open Drawer Button
     const openBtn = e.target.closest('.mobile-menu-btn, #openMobileDrawerBtn, .open-drawer-trigger, .hamburger-menu-btn, #btnHeaderHamburger');
     if (openBtn) {
-        console.log('[HEADER] hamburger clicked');
         e.preventDefault();
         e.stopPropagation();
         window.openLyannHamburgerDrawer();
@@ -4886,7 +4882,6 @@ safeDomReady(() => {
     let authInitializationComplete = false;
 
     async function updateHeaderAuthState() {
-        console.log('[HEADER] auth update started');
         let isLoggedIn = false;
         let userId = null;
         let currentSession = null;
