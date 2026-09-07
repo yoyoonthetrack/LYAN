@@ -4021,10 +4021,15 @@ safeDomReady(() => {
                 localStorage.setItem('lyan_user_logged_in', 'true');
                 if (data.user) localStorage.setItem('lyan_user_id', data.user.id);
 
-                await updateHeaderAuthState();
-                window.lyannAlert('🎉 Connexion réussie ! Bienvenue sur votre espace LYANN.');
                 closeLoginModal();
                 loginForm.reset();
+
+                const currentPath = window.location.pathname;
+                if (!currentPath.includes('feed.html') && !currentPath.includes('results.html') && !currentPath.includes('payment-portal.html')) {
+                    window.location.href = 'feed.html';
+                } else {
+                    await updateHeaderAuthState();
+                }
 
                 try {
                     const pendingHelpStr = sessionStorage.getItem('pending_lyann_help');
@@ -4738,6 +4743,28 @@ safeDomReady(() => {
             profileSource: profileSource
         });
 
+        function getInitialsAvatarSvg(name) {
+            const parts = (name || 'Membre').trim().split(' ');
+            const first = parts[0] ? parts[0][0].toUpperCase() : 'M';
+            const last = parts[1] ? parts[1][0].toUpperCase() : '';
+            const initials = (first + last).substring(0, 2);
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" rx="50" fill="#4A7C59"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#FFFFFF" font-size="42" font-family="sans-serif" font-weight="bold">${initials}</text></svg>`;
+            return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+        }
+
+        const avatarUrl = (profileData && profileData.avatar_url && !profileData.avatar_url.includes('david-34.png'))
+            ? profileData.avatar_url
+            : getInitialsAvatarSvg(displayName);
+
+        const avatarEls = document.querySelectorAll('.nav-profile-avatar, .drawer-profile-avatar, #accountModalAvatar, #drawerProfileAvatar');
+        avatarEls.forEach(img => {
+            if (img) {
+                img.src = avatarUrl;
+                img.alt = displayName;
+                img.title = displayName;
+            }
+        });
+
         const nameEls = document.querySelectorAll('.user-name-display, #accountUserName, #accountModalName, #drawerUserName, #accountModalTitle, #profileUserName, #quickProfileName, #publicMemberName');
         nameEls.forEach(el => {
             if (el) el.textContent = displayName;
@@ -4989,6 +5016,9 @@ safeDomReady(() => {
                 localStorage.removeItem('lyan_user_id');
                 localStorage.removeItem('lyan_user_profile');
                 await updateHeaderAuthState();
+                if (!window.location.pathname.endsWith('index.html') && window.location.pathname !== '/') {
+                    window.location.href = 'index.html';
+                }
             }
         });
     }
