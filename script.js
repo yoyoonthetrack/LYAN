@@ -6078,10 +6078,10 @@ safeDomReady(() => {
                     <i class="ph-bold ph-sparkle" style="font-size: 26px; color: #C69222;"></i>
                 </div>
                 <h3 style="font-size: 1.35rem; font-weight: 800; color: #1F3827; margin-bottom: 8px; line-height: 1.3;">
-                    Pas encore trouvé la bonne personne ?
+                    Aucun Lyanneur trouvé pour le moment.
                 </h3>
                 <p style="font-size: 0.95rem; color: #556B5D; margin-bottom: 24px; line-height: 1.5; max-width: 500px; margin-left: auto; margin-right: auto;">
-                    Décris ton besoin une seule fois et laisse LYANN le partager aux Lyanneurs qui correspondent.
+                    Publiez votre besoin : les personnes correspondant à votre recherche pourront le découvrir.
                 </p>
                 
                 <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center;">
