@@ -19,14 +19,19 @@
     }
 })();
 
+let lyannActiveOverlayCount = 0;
+
 window.lockBodyScroll = function() {
+    lyannActiveOverlayCount++;
     document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
 };
 
 window.unlockBodyScroll = function() {
+    lyannActiveOverlayCount = Math.max(0, lyannActiveOverlayCount - 1);
     const activeModals = document.querySelectorAll('.modal-overlay.active, .mobile-menu-overlay.active, #mobileHamburgerDrawerOverlay.active, .mobile-bottom-sheet.active');
-    if (activeModals.length === 0) {
+    if (activeModals.length === 0 || lyannActiveOverlayCount === 0) {
+        lyannActiveOverlayCount = 0;
         document.body.classList.remove('modal-open');
         document.body.style.overflow = '';
     }
