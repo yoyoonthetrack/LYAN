@@ -12260,3 +12260,231 @@ body.is-native-app .navbar.scrolled,
     color: var(--primary, #4A7C59);
 }
 
+/* ==========================================================================
+   LYANN — MASTER DESIGN SYSTEM V2 (UNIFIED COMPONENT FRAMEWORK)
+   ========================================================================== */
+
+/* 1. SCROLL-LOCK & LAYOUT STABILITY */
+html {
+    scrollbar-gutter: stable;
+}
+
+body.modal-open,
+body.drawer-open,
+body.sheet-open {
+    overflow: hidden !important;
+    touch-action: none;
+}
+
+/* 2. UNIFIED BUTTON FAMILY */
+.btn-primary,
+.btn-submit,
+.btn-cta {
+    background: linear-gradient(135deg, #4A7C59 0%, #3F6D4E 100%) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: var(--radius-md, 16px) !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 0.98rem !important;
+    padding: 13px 26px !important;
+    min-height: 46px !important;
+    box-shadow: 0 4px 14px rgba(74, 124, 89, 0.22) !important;
+    transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    cursor: pointer !important;
+}
+
+.btn-primary:hover,
+.btn-submit:hover,
+.btn-cta:hover {
+    background: linear-gradient(135deg, #538A63 0%, #35583F 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 22px rgba(74, 124, 89, 0.32) !important;
+}
+
+.btn-primary:active,
+.btn-submit:active,
+.btn-cta:active {
+    transform: translateY(0) scale(0.98) !important;
+}
+
+.btn-secondary,
+.btn-outline {
+    background: #FFFFFF !important;
+    color: #243329 !important;
+    border: 1.5px solid #E5DFD5 !important;
+    border-radius: var(--radius-md, 16px) !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    padding: 12px 24px !important;
+    min-height: 46px !important;
+    transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    cursor: pointer !important;
+}
+
+.btn-secondary:hover,
+.btn-outline:hover {
+    border-color: #4A7C59 !important;
+    color: #4A7C59 !important;
+    background: rgba(74, 124, 89, 0.04) !important;
+    transform: translateY(-1px) !important;
+}
+
+.btn-accent {
+    background: linear-gradient(135deg, #F4D375 0%, #E5B345 100%) !important;
+    color: #17231C !important;
+    border: none !important;
+    border-radius: var(--radius-md, 16px) !important;
+    font-weight: 800 !important;
+    font-size: 0.98rem !important;
+    padding: 13px 26px !important;
+    min-height: 46px !important;
+    box-shadow: 0 4px 14px rgba(229, 179, 69, 0.28) !important;
+    transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
+.btn-accent:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 22px rgba(229, 179, 69, 0.40) !important;
+}
+
+/* 3. UNIFIED FORM CONTROLS */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="search"],
+select,
+textarea,
+.form-control {
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 12px 16px !important;
+    border-radius: 14px !important;
+    border: 1.5px solid #E5DFD5 !important;
+    background-color: #FFFFFF !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-size: 0.96rem !important;
+    color: #243329 !important;
+    box-sizing: border-box !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.form-control:focus {
+    outline: none !important;
+    border-color: #4A7C59 !important;
+    box-shadow: 0 0 0 3px rgba(74, 124, 89, 0.18) !important;
+}
+
+/* 4. UNIFIED MODAL OVERLAYS & CARDS */
+.modal-overlay {
+    background: rgba(15, 23, 18, 0.68) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.modal-card,
+.modal-card-large,
+.modal-card-xl {
+    border-radius: 28px !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    box-shadow: 0 24px 60px rgba(15, 23, 18, 0.22) !important;
+    overflow: hidden !important;
+}
+
+.modal-close-btn {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50% !important;
+    background: rgba(244, 239, 230, 0.8) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    color: #243329 !important;
+    transition: all 0.2s ease !important;
+}
+
+.modal-close-btn:hover {
+    background: #4A7C59 !important;
+    color: #FFFFFF !important;
+    transform: rotate(90deg) !important;
+}
+
+/* 5. UNIFIED BADGES & PILLS */
+.pill-badge,
+.badge-status,
+.status-pill {
+    padding: 6px 14px !important;
+    border-radius: 9999px !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.03em !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.pill-green,
+.badge-validated,
+.badge-completed {
+    background: rgba(74, 124, 89, 0.12) !important;
+    color: #35583F !important;
+    border: 1px solid rgba(74, 124, 89, 0.25) !important;
+}
+
+.pill-yellow,
+.badge-pending {
+    background: rgba(229, 179, 69, 0.15) !important;
+    color: #B28014 !important;
+    border: 1px solid rgba(229, 179, 69, 0.3) !important;
+}
+
+.pill-blue,
+.badge-info {
+    background: rgba(123, 197, 227, 0.18) !important;
+    color: #2D7B8C !important;
+    border: 1px solid rgba(123, 197, 227, 0.35) !important;
+}
+
+/* 6. CARD CONTAINERS CLEANUP */
+.feed-card,
+.profile-card,
+.lyan-card,
+.quote-card,
+.mission-card {
+    background: #FFFFFF !important;
+    border-radius: 20px !important;
+    border: 1.5px solid #E5DFD5 !important;
+    box-shadow: 0 4px 16px rgba(36, 51, 41, 0.04) !important;
+    transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
+.feed-card:hover,
+.profile-card:hover,
+.lyan-card:hover {
+    box-shadow: 0 10px 28px rgba(36, 51, 41, 0.08) !important;
+    border-color: rgba(74, 124, 89, 0.3) !important;
+}
+
+/* 7. SAFE AREA TOUCH TARGETS */
+@media (max-width: 768px) {
+    .btn,
+    .nav-tab,
+    .hamburger-menu-btn,
+    .nav-profile-btn {
+        min-height: 44px !important;
+        touch-action: manipulation !important;
+    }
+}
+

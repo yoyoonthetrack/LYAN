@@ -19,6 +19,19 @@
     }
 })();
 
+window.lockBodyScroll = function() {
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
+};
+
+window.unlockBodyScroll = function() {
+    const activeModals = document.querySelectorAll('.modal-overlay.active, .mobile-menu-overlay.active, #mobileHamburgerDrawerOverlay.active, .mobile-bottom-sheet.active');
+    if (activeModals.length === 0) {
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+    }
+};
+
 function isNativePlatform() {
     return window.Capacitor !== undefined && window.Capacitor.isNativePlatform();
 }
@@ -1460,13 +1473,13 @@ window.openLyannHamburgerDrawer = function() {
     const menu = document.getElementById('mobileMenu') || document.getElementById('mobileHamburgerDrawerOverlay');
     if (menu) {
         menu.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();
     } else if (typeof ensureMobileHamburgerDrawer === 'function') {
         ensureMobileHamburgerDrawer();
         const overlay = document.getElementById('mobileHamburgerDrawerOverlay');
         if (overlay) {
             overlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
+            if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();
         }
     }
 };
@@ -1475,7 +1488,7 @@ window.closeLyannHamburgerDrawer = function() {
     document.querySelectorAll('.mobile-menu-overlay, #mobileHamburgerDrawerOverlay').forEach(menu => {
         menu.classList.remove('active');
     });
-    document.body.style.overflow = '';
+    if (typeof window.unlockBodyScroll === 'function') window.unlockBodyScroll();
 };
 
 // Master Hamburger Drawer & Global Header Click Delegator
