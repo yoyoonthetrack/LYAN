@@ -2530,6 +2530,9 @@ safeDomReady(() => {
 
         // Populate DOM elements in publicMemberProfileModal
         renderStep9ProfileModalDOM(profileData, isSelf, portfolioItems, userServices, reviewsList);
+        if (typeof window.syncFavoriteButtonStates === 'function') {
+            window.syncFavoriteButtonStates();
+        }
 
         // Reset scroll position immediately post-render
         resetProfileModalScroll(memberId, entryPoint || 'openPublicMemberProfile');
@@ -2707,8 +2710,11 @@ safeDomReady(() => {
             const chatContactName = safeDisplayName.replace(/'/g, "\\'");
             const chatAvatarSrc = avatarSrc.replace(/'/g, "\\'");
             ctaHTML = `
-                <div class="lyann-profile-cta-group">
+                <div class="lyann-profile-cta-group" style="display: flex; align-items: center; gap: 8px;">
                     <button type="button" class="btn btn-primary btn-sm" onclick="window.openChatWithUser('${chatContactName}', '${chatAvatarSrc}', '${chatContactId}')"><i class="ph ph-chat-circle"></i> Contacter</button>
+                    <button type="button" class="btn-fav-toggle" data-fav-type="PROFILE" data-fav-id="${pData.id}" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: 1px solid #CBD5E1; border-radius: 50%; padding: 8px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #64748B; cursor: pointer; flex-shrink: 0;">
+                        <i class="ph ph-bookmark-simple"></i>
+                    </button>
                 </div>
             `;
         }
@@ -3969,6 +3975,9 @@ safeDomReady(() => {
                                             <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
                                         </div>
                                     </div>
+                                    <button type="button" class="btn-fav-toggle" data-fav-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-fav-id="${targetId}" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; flex-shrink: 0;">
+                                        <i class="ph ph-bookmark-simple"></i>
+                                    </button>
                                 </div>
                                 <div class="flash-meta-badges" style="display: flex; align-items: center; width: 100%; box-sizing: border-box; margin-top: 2px;">
                                     <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; text-transform: uppercase; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; letter-spacing: 0.02em;' : 'background: #F1F5F9; color: #475569; font-weight: 600; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box;'}">${badgeText}</span>
@@ -4022,6 +4031,9 @@ safeDomReady(() => {
             }).join('');
 
             attachFlashFeedListeners();
+            if (typeof window.syncFavoriteButtonStates === 'function') {
+                window.syncFavoriteButtonStates();
+            }
             console.log(`[BOKANTAJ] render complete (${filtered.length} items rendered)`);
         } catch (renderErr) {
             console.error('[BOKANTAJ RENDER FATAL]', renderErr);
@@ -6318,16 +6330,17 @@ safeDomReady(() => {
             items = await window.LyannFavoritesService.getHydratedFavorites();
         }
 
-        const filtered = filterType === 'ALL' ? items : items.filter(i => i.entity_type === filterType);
-
+        const totalCount = items.length;
         if (badge) {
-            badge.textContent = `(${filtered.length})`;
+            badge.textContent = `(${totalCount})`;
         }
+
+        const filtered = filterType === 'ALL' ? items : items.filter(i => i.entity_type === filterType);
 
         if (filtered.length === 0) {
             container.innerHTML = `
                 <div class="account-v3-empty" style="grid-column: 1 / -1; background:#F8FAFC; border:1.5px dashed #CBD5E1; border-radius:16px; padding:28px 16px; text-align:center;">
-                    <i class="ph ph-heart" style="font-size:2.2rem; color:#94A3B8; margin-bottom:8px; display:block;"></i>
+                    <i class="ph ph-bookmark-simple" style="font-size:2.2rem; color:#94A3B8; margin-bottom:8px; display:block;"></i>
                     <p style="font-size:0.92rem; color:#475569; margin:0 0 4px 0; font-weight:700;">Aucun favori enregistré dans cette catégorie.</p>
                     <p style="font-size:0.8rem; color:#94A3B8; margin:0;">Enregistrez des Lyanneurs, des besoins ou des publications pour les retrouver ici.</p>
                 </div>
@@ -6337,39 +6350,69 @@ safeDomReady(() => {
 
         container.innerHTML = filtered.map(item => {
             let actionOnClick = '';
-            let iconType = 'ph-heart';
+            let iconType = 'ph-bookmark-simple';
             let badgeLabel = 'Favori';
 
             if (item.entity_type === 'PROFILE') {
-                actionOnClick = `window.closeUserAccountModal(); window.openPublicMemberProfile('${item.entity_id}');`;
+                actionOnClick = `if (typeof window.closeUserAccountModal === 'function') window.closeUserAccountModal(); if (typeof window.openPublicMemberProfile === 'function') window.openPublicMemberProfile('${item.entity_id}');`;
                 badgeLabel = 'Lyanneur';
                 iconType = 'ph-user';
             } else if (item.entity_type === 'REQUEST') {
-                actionOnClick = `window.closeUserAccountModal(); if (typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal('${item.entity_id}');`;
-                badgeLabel = 'Lyann / Besoin';
+                actionOnClick = `if (typeof window.closeUserAccountModal === 'function') window.closeUserAccountModal(); if (typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal('${item.entity_id}');`;
+                badgeLabel = 'Lyann';
                 iconType = 'ph-hand-heart';
             } else if (item.entity_type === 'BOKANTAJ_POST') {
-                actionOnClick = `window.closeUserAccountModal(); if (typeof window.scrollToPost === 'function') window.scrollToPost('${item.entity_id}');`;
+                actionOnClick = `if (typeof window.closeUserAccountModal === 'function') window.closeUserAccountModal(); if (typeof window.scrollToPost === 'function') window.scrollToPost('${item.entity_id}');`;
                 badgeLabel = 'Publication';
                 iconType = 'ph-newspaper';
             }
 
-            const avatarHTML = item.avatar ? `<img src="${window.escapeHtmlAttr(item.avatar)}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">` : `<div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(74, 124, 89, 0.12); color: #4A7C59; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;"><i class="ph ${iconType}"></i></div>`;
+            const avatarHTML = item.avatar ? `<img src="${window.escapeHtmlAttr(item.avatar)}" onerror="this.src='/default-avatar.svg'" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">` : `<div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(74, 124, 89, 0.12); color: #4A7C59; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;"><i class="ph ${iconType}"></i></div>`;
+
+            let extraHTML = '';
+            if (item.entity_type === 'REQUEST' && item.statusBadge) {
+                extraHTML = `<span class="pill-badge ${item.statusBadge.class || 'badge-open'}" style="font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:10px; display:inline-block; margin-top:4px;">${item.statusBadge.label || 'Ouvert'}</span>`;
+            } else if (item.entity_type === 'BOKANTAJ_POST' && item.mediaUrl) {
+                extraHTML = `<img src="${window.escapeHtmlAttr(item.mediaUrl)}" style="width:44px; height:44px; border-radius:8px; object-fit:cover; flex-shrink:0; margin-left:auto;">`;
+            }
 
             return `
-                <div class="account-v3-card fav-item-card" style="background:#FFF; border:1px solid #E2E8F0; border-radius:16px; padding:14px 16px; display:flex; align-items:center; gap:12px; position:relative; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                <div class="account-v3-card fav-item-card" data-fav-entity-type="${item.entity_type}" data-fav-entity-id="${item.entity_id}" style="background:#FFF; border:1px solid #E2E8F0; border-radius:16px; padding:14px 16px; display:flex; align-items:center; gap:12px; position:relative; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
                     ${avatarHTML}
                     <div style="flex:1; min-width:0; cursor:pointer;" onclick="${actionOnClick}">
                         <span style="font-size: 0.72rem; font-weight: 700; color: #4A7C59; text-transform: uppercase; display: block; margin-bottom: 2px;">${badgeLabel}</span>
                         <strong style="font-size:0.94rem; color:#1E293B; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${window.escapeHtmlAttr(item.title)}</strong>
                         <span style="font-size:0.8rem; color:#64748B; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${window.escapeHtmlAttr(item.subtitle)}</span>
+                        ${extraHTML && item.entity_type === 'REQUEST' ? extraHTML : ''}
                     </div>
-                    <button type="button" class="btn-fav-toggle is-favorite" data-fav-type="${item.entity_type}" data-fav-id="${item.entity_id}" title="Retirer des favoris" style="background:none; border:none; color:#E11D48; font-size:1.25rem; cursor:pointer; padding:6px; flex-shrink:0;">
-                        <i class="ph-fill ph-heart"></i>
+                    ${extraHTML && item.entity_type === 'BOKANTAJ_POST' ? extraHTML : ''}
+                    <button type="button" class="btn-fav-toggle is-favorite" data-fav-type="${item.entity_type}" data-fav-id="${item.entity_id}" aria-label="Retirer des favoris" title="Retirer des favoris" style="background:none; border:none; color:#4A7C59; font-size:1.3rem; cursor:pointer; padding:10px; min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i class="ph-fill ph-bookmark-simple"></i>
                     </button>
                 </div>
             `;
         }).join('');
+    };
+
+    window.scrollToPost = function(postId) {
+        if (!postId) return;
+        const isFeedPage = window.location.pathname.includes('feed.html');
+        if (!isFeedPage) {
+            window.location.href = `feed.html?post=${postId}`;
+            return;
+        }
+        const targetEl = document.getElementById(postId) || document.querySelector(`[data-target-id="${postId}"]`);
+        if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetEl.style.transition = 'box-shadow 0.4s ease, border-color 0.4s ease';
+            const origBorder = targetEl.style.borderColor;
+            targetEl.style.borderColor = '#4A7C59';
+            targetEl.style.boxShadow = '0 0 0 3px rgba(74, 124, 89, 0.3)';
+            setTimeout(() => {
+                targetEl.style.borderColor = origBorder;
+                targetEl.style.boxShadow = '';
+            }, 2500);
+        }
     };
 
     window.syncFavoriteButtonStates = async function() {
@@ -6386,15 +6429,23 @@ safeDomReady(() => {
             const isFav = favMap[`${type}:${id}`];
             if (isFav) {
                 btn.classList.add('is-favorite');
-                btn.style.color = '#E11D48';
-                btn.innerHTML = '<i class="ph-fill ph-heart"></i>';
+                btn.style.color = '#4A7C59';
+                btn.innerHTML = '<i class="ph-fill ph-bookmark-simple"></i>';
+                btn.setAttribute('aria-label', 'Retirer des favoris');
+                btn.setAttribute('title', 'Retirer des favoris');
             } else {
                 btn.classList.remove('is-favorite');
                 btn.style.color = '#94A3B8';
-                btn.innerHTML = '<i class="ph ph-heart"></i>';
+                btn.innerHTML = '<i class="ph ph-bookmark-simple"></i>';
+                btn.setAttribute('aria-label', 'Ajouter aux favoris');
+                btn.setAttribute('title', 'Ajouter aux favoris');
             }
         });
     };
+
+    window.addEventListener('lyann_favorites_updated', () => {
+        window.syncFavoriteButtonStates();
+    });
 
     if (!window.__favToggleDelegatorBound__) {
         window.__favToggleDelegatorBound__ = true;
@@ -6423,6 +6474,31 @@ safeDomReady(() => {
                 const id = favBtn.dataset.favId;
                 if (!type || !id) return;
 
+                // Check auth state
+                let isAuthenticated = false;
+                if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getCurrentUserId === 'function') {
+                    const uid = window.LYANN_API_CLIENT.getCurrentUserId();
+                    if (uid) isAuthenticated = true;
+                }
+                if (!isAuthenticated && window.supabaseClient) {
+                    try {
+                        const { data } = await window.supabaseClient.auth.getSession();
+                        if (data?.session?.user) isAuthenticated = true;
+                    } catch (e) {}
+                }
+
+                if (!isAuthenticated) {
+                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                        window.NotificationService.showToast('info', 'Connectez-vous pour enregistrer vos favoris.');
+                    } else if (typeof window.lyannAlert === 'function') {
+                        window.lyannAlert('Connectez-vous pour enregistrer vos favoris.');
+                    }
+                    if (typeof window.openAuthModal === 'function') {
+                        window.openAuthModal('login');
+                    }
+                    return;
+                }
+
                 favBtn.style.opacity = '0.5';
                 favBtn.disabled = true;
 
@@ -6430,16 +6506,20 @@ safeDomReady(() => {
                     const res = await window.LyannFavoritesService.toggleFavorite(type, id);
                     if (res.isFavorite) {
                         favBtn.classList.add('is-favorite');
-                        favBtn.style.color = '#E11D48';
-                        favBtn.innerHTML = '<i class="ph-fill ph-heart"></i>';
-                        if (window.NotificationService) {
+                        favBtn.style.color = '#4A7C59';
+                        favBtn.innerHTML = '<i class="ph-fill ph-bookmark-simple"></i>';
+                        favBtn.setAttribute('aria-label', 'Retirer des favoris');
+                        favBtn.setAttribute('title', 'Retirer des favoris');
+                        if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
                             window.NotificationService.showToast('success', 'Ajouté à vos favoris.');
                         }
                     } else {
                         favBtn.classList.remove('is-favorite');
                         favBtn.style.color = '#94A3B8';
-                        favBtn.innerHTML = '<i class="ph ph-heart"></i>';
-                        if (window.NotificationService) {
+                        favBtn.innerHTML = '<i class="ph ph-bookmark-simple"></i>';
+                        favBtn.setAttribute('aria-label', 'Ajouter aux favoris');
+                        favBtn.setAttribute('title', 'Ajouter aux favoris');
+                        if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
                             window.NotificationService.showToast('info', 'Retiré de vos favoris.');
                         }
                     }
@@ -7830,14 +7910,19 @@ safeDomReady(() => {
         return `
             <div class="talent-card" data-member-id="${candId}" style="background: #FFF; border: 1px solid var(--border); border-radius: 16px; padding: 20px; transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
-                    <div class="talent-card-header" style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
-                        <div class="talent-photo trigger-quick-profile" data-member-id="${candId}" style="cursor: pointer; width: 54px; height: 54px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 2px solid var(--primary-light);">
-                            <img src="${avatar}" alt="${name}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <div class="talent-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
+                            <div class="talent-photo trigger-quick-profile" data-member-id="${candId}" style="cursor: pointer; width: 54px; height: 54px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 2px solid var(--primary-light);">
+                                <img src="${avatar}" alt="${name}" style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                            <div style="min-width: 0; flex: 1;">
+                                <h3 class="trigger-quick-profile" data-member-id="${candId}" style="cursor: pointer; font-size: 1.1rem; font-weight: 800; color: var(--primary-dark); margin: 0 0 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${name}</h3>
+                                <span class="talent-role" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${role} · ${city}</span>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="trigger-quick-profile" data-member-id="${candId}" style="cursor: pointer; font-size: 1.1rem; font-weight: 800; color: var(--primary-dark); margin: 0 0 2px 0;">${name}</h3>
-                            <span class="talent-role" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; display: block;">${role} · ${city}</span>
-                        </div>
+                        <button type="button" class="btn-fav-toggle" data-fav-type="PROFILE" data-fav-id="${candId}" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; flex-shrink: 0;">
+                            <i class="ph ph-bookmark-simple"></i>
+                        </button>
                     </div>
 
                     ${badgeHtml}
@@ -8105,6 +8190,9 @@ safeDomReady(() => {
         } else {
             container.innerHTML = publicCards.map(c => renderTalentCard(c)).join('');
             bindDynamicTalentCards();
+            if (typeof window.syncFavoriteButtonStates === 'function') {
+                window.syncFavoriteButtonStates();
+            }
         }
 
         // Scroll to results section on manual search click
@@ -9058,7 +9146,10 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                         <span class="badge" id="lyannDetailBadge" style="background: rgba(74,124,89,0.12); color: var(--primary); font-weight: 700; font-size: 0.78rem; padding: 4px 10px; border-radius: 20px;">LYANN</span>
                         <h4 id="lyannDetailTitle" style="margin: 6px 0 0 0; font-size: 1.15rem; font-weight: 800; color: #1E2822;">Besoin d'entraide</h4>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" class="btn-fav-toggle" id="lyannDetailFavBtn" data-fav-type="REQUEST" data-fav-id="${requestId}" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 6px; font-size: 1.3rem; cursor: pointer; color: #94A3B8; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; flex-shrink: 0;">
+                            <i class="ph ph-bookmark-simple"></i>
+                        </button>
                         <span id="lyannDetailStatus" style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">● OPEN</span>
                         <button type="button" class="modal-close" id="closeLyannDetailModalBtn" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #64748B;">&times;</button>
                     </div>
@@ -9164,6 +9255,14 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
     if (titleEl) titleEl.textContent = requestData.title || 'Demande d\'entraide';
     if (badgeEl) badgeEl.innerHTML = `<i class="ph ph-hand-heart"></i> LYANN · ${requestData.category || 'Général'}`;
     if (statusEl) statusEl.textContent = `● ${requestData.status || 'OPEN'}`;
+
+    const favDetailBtn = document.getElementById('lyannDetailFavBtn');
+    if (favDetailBtn && requestData.id) {
+        favDetailBtn.dataset.favId = requestData.id;
+    }
+    if (typeof window.syncFavoriteButtonStates === 'function') {
+        window.syncFavoriteButtonStates();
+    }
 
     const currentUserId = window.LYANN_API_CLIENT?.getCurrentUserId?.() || null;
     const isOwnLyann = currentUserId && requestData.requester_id === currentUserId;

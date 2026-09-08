@@ -2239,7 +2239,7 @@ window.LyannFavoritesService = {
                 const { data } = await supabaseClient.from('requests').select('id').eq('id', entityId).maybeSingle();
                 entityExists = !!data;
             } else if (entityType === 'BOKANTAJ_POST') {
-                const { data } = await supabaseClient.from('posts').select('id').eq('id', entityId).maybeSingle();
+                const { data } = await supabaseClient.from('bokantaj_posts').select('id').eq('id', entityId).maybeSingle();
                 entityExists = !!data;
             } else {
                 return { success: false, error: 'Type d\'entité non supporté' };
@@ -2318,17 +2318,20 @@ window.LyannFavoritesService = {
                 if (fav.entity_type === 'PROFILE') {
                     const { data: p } = await supabaseClient
                         .from('profiles')
-                        .select('id, first_name, last_name, avatar_url, city, territory, role, primary_activity')
+                        .select('id, first_name, last_name, avatar_url, city, territory, role, primary_activity, skills')
                         .eq('id', fav.entity_id)
                         .maybeSingle();
 
                     if (p) {
+                        const formattedName = window.formatPublicName ? window.formatPublicName(p, null, 'Lyanneur') : `${p.first_name || 'Lyanneur'}${p.last_name ? '.' + p.last_name.charAt(0).toUpperCase() : ''}`.trim();
+                        const loc = p.city || p.territory || 'Guadeloupe';
+                        const skillsStr = Array.isArray(p.skills) && p.skills.length > 0 ? p.skills.slice(0, 2).join(', ') : (p.primary_activity || p.role || 'Membre LYANN');
                         hydrated.push({
                             favId: fav.id,
                             entity_type: 'PROFILE',
                             entity_id: p.id,
-                            title: window.formatPublicName ? window.formatPublicName(p, null, 'Lyanneur') : `${p.first_name || 'Lyanneur'}${p.last_name ? '.' + p.last_name.charAt(0).toUpperCase() : ''}`.trim(),
-                            subtitle: p.primary_activity || p.role || p.city || p.territory || 'Membre LYANN',
+                            title: formattedName,
+                            subtitle: `${loc} • ${skillsStr}`,
                             avatar: window.getLyannAvatarUrl ? window.getLyannAvatarUrl(p.avatar_url) : (p.avatar_url || '/default-avatar.svg'),
                             created_at: fav.created_at,
                             raw: p
@@ -2337,17 +2340,24 @@ window.LyannFavoritesService = {
                 } else if (fav.entity_type === 'REQUEST') {
                     const { data: req } = await supabaseClient
                         .from('requests')
-                        .select('id, title, category, location, budget, created_at, status')
+                        .select('id, title, description, category, location, budget, created_at, status')
                         .eq('id', fav.entity_id)
                         .maybeSingle();
 
                     if (req) {
+                        const mainTitle = req.description || req.title || 'Besoin LYANN';
+                        const statusBadge = (typeof window.getRequestStatusBadge === 'function') ? window.getRequestStatusBadge(req.status) : { label: req.status || 'Ouvert', class: 'badge-open' };
+                        const budgetStr = req.budget ? `${req.budget} €` : 'Sur devis';
                         hydrated.push({
                             favId: fav.id,
                             entity_type: 'REQUEST',
                             entity_id: req.id,
-                            title: req.title || 'Besoin LYANN',
-                            subtitle: `${req.category || 'Service'} • ${req.location || 'Guadeloupe'} • ${req.budget ? req.budget + '€' : 'Sur devis'}`,
+                            title: mainTitle,
+                            category: req.category || 'Entraide',
+                            location: req.location || 'Guadeloupe',
+                            budget: budgetStr,
+                            statusBadge: statusBadge,
+                            subtitle: `${req.category || 'Service'} • ${req.location || 'Guadeloupe'} • ${budgetStr}`,
                             avatar: null,
                             created_at: fav.created_at,
                             raw: req
@@ -2355,19 +2365,25 @@ window.LyannFavoritesService = {
                     }
                 } else if (fav.entity_type === 'BOKANTAJ_POST') {
                     const { data: post } = await supabaseClient
-                        .from('posts')
-                        .select('id, headline, content, category, author_id, profiles:author_id(first_name, last_name, avatar_url)')
+                        .from('bokantaj_posts')
+                        .select('id, headline, content, category, media_urls, created_at, author_id, profiles:author_id(first_name, last_name, avatar_url)')
                         .eq('id', fav.entity_id)
                         .maybeSingle();
 
                     if (post) {
                         const authorName = post.profiles ? (window.formatPublicName ? window.formatPublicName(post.profiles, null, 'Membre') : `${post.profiles.first_name}${post.profiles.last_name ? '.' + post.profiles.last_name.charAt(0).toUpperCase() : ''}`) : 'Membre';
+                        const dateStr = post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+                        const excerpt = post.headline || post.content?.substring(0, 80) || 'Publication Bokantaj';
+                        const mediaUrl = (Array.isArray(post.media_urls) && post.media_urls[0]) ? post.media_urls[0] : null;
                         hydrated.push({
                             favId: fav.id,
                             entity_type: 'BOKANTAJ_POST',
                             entity_id: post.id,
-                            title: post.headline || post.content?.substring(0, 50) || 'Publication Bokantaj',
-                            subtitle: `Par ${authorName} • ${post.category || 'Bokantaj'}`,
+                            title: excerpt,
+                            authorName: authorName,
+                            dateStr: dateStr,
+                            mediaUrl: mediaUrl,
+                            subtitle: `Par ${authorName}${dateStr ? ' • ' + dateStr : ''} • ${post.category || 'Bokantaj'}`,
                             avatar: post.profiles?.avatar_url ? (window.getLyannAvatarUrl ? window.getLyannAvatarUrl(post.profiles.avatar_url) : post.profiles.avatar_url) : null,
                             created_at: fav.created_at,
                             raw: post
