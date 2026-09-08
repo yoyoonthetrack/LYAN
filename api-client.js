@@ -2178,14 +2178,19 @@ window.apiClient = LYANN_API_CLIENT;
 
 // === REAL SUPABASE FAVORITES SERVICE (V1) ===
 window.LyannFavoritesService = {
+    getSupabaseClient() {
+        return window.supabaseClient || window.LYANN_API_CLIENT?.supabase || supabaseClient;
+    },
+
     async getMyFavorites() {
-        if (!supabaseClient) return [];
+        const client = this.getSupabaseClient();
+        if (!client) return [];
         try {
-            const { data: sessionData } = await supabaseClient.auth.getSession();
+            const { data: sessionData } = await client.auth.getSession();
             const user = sessionData?.session?.user;
             if (!user) return [];
 
-            const { data, error } = await supabaseClient
+            const { data, error } = await client
                 .from('user_favorites')
                 .select('*')
                 .eq('user_id', user.id)
@@ -2203,13 +2208,14 @@ window.LyannFavoritesService = {
     },
 
     async isFavorite(entityType, entityId) {
-        if (!supabaseClient || !entityType || !entityId) return false;
+        const client = this.getSupabaseClient();
+        if (!client || !entityType || !entityId) return false;
         try {
-            const { data: sessionData } = await supabaseClient.auth.getSession();
+            const { data: sessionData } = await client.auth.getSession();
             const user = sessionData?.session?.user;
             if (!user) return false;
 
-            const { data, error } = await supabaseClient
+            const { data, error } = await client
                 .from('user_favorites')
                 .select('id')
                 .eq('user_id', user.id)
@@ -2225,31 +2231,25 @@ window.LyannFavoritesService = {
     },
 
     async addFavorite(entityType, entityId) {
-        if (!supabaseClient || !entityType || !entityId) return { success: false, error: 'Paramètres invalides' };
+        const client = this.getSupabaseClient();
+        if (!client) return { success: false, error: 'Supabase non initialisé' };
+        if (!entityType || !entityId) return { success: false, error: 'Paramètres invalides' };
+
+        const validTypes = ['PROFILE', 'REQUEST', 'BOKANTAJ_POST'];
+        if (!validTypes.includes(entityType)) {
+            return { success: false, error: 'Type d\'entité non supporté' };
+        }
+
+        if (!isUUID(entityId)) {
+            return { success: false, error: 'UUID invalide' };
+        }
+
         try {
-            const { data: sessionData } = await supabaseClient.auth.getSession();
+            const { data: sessionData } = await client.auth.getSession();
             const user = sessionData?.session?.user;
             if (!user) return { success: false, error: 'Utilisateur non authentifié' };
 
-            let entityExists = false;
-            if (entityType === 'PROFILE') {
-                const { data } = await supabaseClient.from('profiles').select('id').eq('id', entityId).maybeSingle();
-                entityExists = !!data;
-            } else if (entityType === 'REQUEST') {
-                const { data } = await supabaseClient.from('requests').select('id').eq('id', entityId).maybeSingle();
-                entityExists = !!data;
-            } else if (entityType === 'BOKANTAJ_POST') {
-                const { data } = await supabaseClient.from('bokantaj_posts').select('id').eq('id', entityId).maybeSingle();
-                entityExists = !!data;
-            } else {
-                return { success: false, error: 'Type d\'entité non supporté' };
-            }
-
-            if (!entityExists) {
-                return { success: false, error: 'Entité introuvable ou inaccessible' };
-            }
-
-            const { data, error } = await supabaseClient
+            const { data, error } = await client
                 .from('user_favorites')
                 .upsert({
                     user_id: user.id,
@@ -2260,8 +2260,8 @@ window.LyannFavoritesService = {
                 .single();
 
             if (error) {
-                console.warn('[FAVORITES_SERVICE] addFavorite error:', error.message);
-                return { success: false, error: error.message };
+                console.warn('[FAVORITES_SERVICE] addFavorite error:', error.code, error.message);
+                return { success: false, error: error.message, errorCode: error.code };
             }
 
             window.dispatchEvent(new CustomEvent('lyann_favorites_updated', { detail: { action: 'add', entityType, entityId } }));
@@ -2272,13 +2272,15 @@ window.LyannFavoritesService = {
     },
 
     async removeFavorite(entityType, entityId) {
-        if (!supabaseClient || !entityType || !entityId) return { success: false };
+        const client = this.getSupabaseClient();
+        if (!client) return { success: false, error: 'Supabase non initialisé' };
+        if (!entityType || !entityId) return { success: false, error: 'Paramètres invalides' };
         try {
-            const { data: sessionData } = await supabaseClient.auth.getSession();
+            const { data: sessionData } = await client.auth.getSession();
             const user = sessionData?.session?.user;
             if (!user) return { success: false, error: 'Utilisateur non authentifié' };
 
-            const { error } = await supabaseClient
+            const { error } = await client
                 .from('user_favorites')
                 .delete()
                 .eq('user_id', user.id)
@@ -2286,8 +2288,8 @@ window.LyannFavoritesService = {
                 .eq('entity_id', entityId);
 
             if (error) {
-                console.warn('[FAVORITES_SERVICE] removeFavorite error:', error.message);
-                return { success: false, error: error.message };
+                console.warn('[FAVORITES_SERVICE] removeFavorite error:', error.code, error.message);
+                return { success: false, error: error.message, errorCode: error.code };
             }
 
             window.dispatchEvent(new CustomEvent('lyann_favorites_updated', { detail: { action: 'remove', entityType, entityId } }));
@@ -2301,10 +2303,10 @@ window.LyannFavoritesService = {
         const isFav = await this.isFavorite(entityType, entityId);
         if (isFav) {
             const res = await this.removeFavorite(entityType, entityId);
-            return { isFavorite: false, success: res.success };
+            return { operation: 'REMOVE', isFavorite: !res.success, success: res.success, error: res.error, errorCode: res.errorCode };
         } else {
             const res = await this.addFavorite(entityType, entityId);
-            return { isFavorite: res.success, success: res.success, error: res.error };
+            return { operation: 'ADD', isFavorite: res.success, success: res.success, error: res.error, errorCode: res.errorCode, data: res.data };
         }
     },
 

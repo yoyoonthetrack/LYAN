@@ -6479,18 +6479,22 @@ safeDomReady(() => {
             const id = favBtn.dataset.favoriteId || favBtn.dataset.favId;
 
             let isAuthenticated = false;
+            let currentUserId = null;
             if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getCurrentUserId === 'function') {
-                const uid = window.LYANN_API_CLIENT.getCurrentUserId();
-                if (uid) isAuthenticated = true;
+                currentUserId = window.LYANN_API_CLIENT.getCurrentUserId();
+                if (currentUserId) isAuthenticated = true;
             }
             if (!isAuthenticated && window.supabaseClient) {
                 try {
                     const { data } = await window.supabaseClient.auth.getSession();
-                    if (data?.session?.user) isAuthenticated = true;
+                    if (data?.session?.user) {
+                        isAuthenticated = true;
+                        currentUserId = data.session.user.id;
+                    }
                 } catch (err) {}
             }
 
-            console.log(`[FavoriteTap] surface=${surface} entityType=${type} entityId=${id} authenticated=${isAuthenticated} handlerReached=true`);
+            console.log(`[FavoriteTap] surface=${surface} entityType=${type} entityId=${id} authenticated=${isAuthenticated} userId=${currentUserId || 'NONE'} handlerReached=true`);
 
             if (!type || !id) {
                 console.warn('[FavoriteTap] Missing parameters type or id:', { type, id });
@@ -6514,7 +6518,19 @@ safeDomReady(() => {
 
             try {
                 const res = await window.LyannFavoritesService.toggleFavorite(type, id);
-                if (res.isFavorite) {
+
+                console.log(`[FavoriteMutation] operation=${res.operation || 'UNKNOWN'} table=user_favorites userId=${currentUserId || 'UNKNOWN'} entityType=${type} entityId=${id} result=${res.success ? 'SUCCESS' : 'ERROR'} errorCode=${res.errorCode || 'NONE'} errorMessage=${res.error || 'NONE'} insertedRowId=${res.data?.id || 'NONE'}`);
+
+                if (!res.success) {
+                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                        window.NotificationService.showToast('warning', res.error || "Impossible de modifier vos favoris.");
+                    } else if (typeof window.lyannAlert === 'function') {
+                        window.lyannAlert(res.error || "Impossible de modifier vos favoris.");
+                    }
+                    return;
+                }
+
+                if (res.operation === 'ADD') {
                     favBtn.classList.add('is-favorite');
                     favBtn.style.color = '#4A7C59';
                     favBtn.innerHTML = '<i class="ph-fill ph-bookmark-simple"></i>';
@@ -6533,6 +6549,7 @@ safeDomReady(() => {
                         window.NotificationService.showToast('info', 'Retiré de vos favoris.');
                     }
                 }
+
                 if (document.getElementById('favSubViewContainer')) {
                     const activeFilter = document.querySelector('.fav-tab-btn.active')?.dataset.favFilter || 'ALL';
                     window.loadAccountFavoritesSubView(activeFilter);
