@@ -2279,7 +2279,43 @@ safeDomReady(() => {
     let currentVisitingMember = null;
     let memberRecommendations = {};
 
-    async function openPublicMemberProfile(memberId) {
+    function resetProfileModalScroll(targetMemberId, ep) {
+        const modal = document.getElementById('publicMemberProfileModal');
+        const card = document.querySelector('#publicMemberProfileModal .modal-card') || 
+                     document.querySelector('#publicMemberProfileModal .modal-card-dashboard');
+        const modalBody = document.querySelector('#publicMemberProfileModal .profile-modal-body');
+
+        const containers = [card, modal, modalBody, document.documentElement, document.body].filter(Boolean);
+
+        let scrollOwner = '#publicMemberProfileModal .modal-card';
+        let scrollTopBeforeReset = 0;
+
+        containers.forEach(el => {
+            if (el && el.scrollTop > 0) {
+                scrollTopBeforeReset = Math.max(scrollTopBeforeReset, el.scrollTop);
+                if (el === card) scrollOwner = '#publicMemberProfileModal .modal-card';
+                else if (el === modal) scrollOwner = '#publicMemberProfileModal';
+                else if (el === modalBody) scrollOwner = '#publicMemberProfileModal .profile-modal-body';
+                else if (el === document.documentElement || el === document.body) scrollOwner = 'window';
+            }
+            if (el) {
+                el.scrollTop = 0;
+            }
+        });
+
+        const scrollTopAfterReset = containers.reduce((max, el) => Math.max(max, (el ? el.scrollTop : 0)), 0);
+
+        console.log('[PROFILE_MODAL_SCROLL]', {
+            entryPoint: ep || 'openPublicMemberProfile',
+            memberId: targetMemberId || 'unknown',
+            scrollOwner: scrollOwner,
+            scrollTopBeforeReset: scrollTopBeforeReset,
+            scrollTopAfterReset: scrollTopAfterReset
+        });
+    }
+    window.resetProfileModalScroll = resetProfileModalScroll;
+
+    async function openPublicMemberProfile(memberId, entryPoint) {
         const client = window.LYANN_API_CLIENT || window.apiClient;
         console.log('[PROFILE_ID_TRACE] openPublicMemberProfile memberId =', memberId);
 
@@ -2492,18 +2528,30 @@ safeDomReady(() => {
         // Populate DOM elements in publicMemberProfileModal
         renderStep9ProfileModalDOM(profileData, isSelf, portfolioItems, userServices, reviewsList);
 
+        // Reset scroll position immediately post-render
+        resetProfileModalScroll(memberId, entryPoint || 'openPublicMemberProfile');
+
         // Open modal
         if (searchResultsModal) searchResultsModal.classList.remove('active');
         if (publicMemberProfileModal) {
             publicMemberProfileModal.classList.add('active');
             document.body.style.overflow = 'hidden';
+            resetProfileModalScroll(memberId, entryPoint || 'openPublicMemberProfile');
+
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        resetProfileModalScroll(memberId, entryPoint || 'openPublicMemberProfile');
+                    });
+                });
+            }
         } else {
             openQuickProfileModal(memberId);
         }
     }
 
     window.openPublicMemberProfile = openPublicMemberProfile;
-    window.openPublicProfileModal = async function(targetId) {
+    window.openPublicProfileModal = async function(targetId, entryPoint) {
         const client = window.LYANN_API_CLIENT || window.apiClient;
         let finalId = targetId;
         let sessionUserId = null;
@@ -2534,7 +2582,7 @@ safeDomReady(() => {
             return;
         }
 
-        return await openPublicMemberProfile(finalId);
+        return await openPublicMemberProfile(finalId, entryPoint || 'openPublicProfileModal');
     };
     window.openProfileV2Modal = window.openPublicProfileModal;
 
@@ -2736,7 +2784,7 @@ safeDomReady(() => {
 
         // Inject Full Layout into Modal
         modalCard.innerHTML = `
-            <button class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer" onclick="if(document.getElementById('publicMemberProfileModal')) document.getElementById('publicMemberProfileModal').classList.remove('active'); document.body.style.overflow='auto';" style="top:16px; right:16px; z-index:10;"><i class="ph ph-x"></i></button>
+            <button class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer" onclick="if(document.getElementById('publicMemberProfileModal')) document.getElementById('publicMemberProfileModal').classList.remove('active'); document.body.style.overflow='auto'; if(typeof window.resetProfileModalScroll==='function') window.resetProfileModalScroll();" style="top:16px; right:16px; z-index:10;"><i class="ph ph-x"></i></button>
 
             <div class="lyann-profile-hero" style="margin-bottom: 16px;">
                 <div class="lyann-profile-hero-content">
