@@ -5106,37 +5106,29 @@ safeDomReady(() => {
             `;
         } else if (subViewName === 'favorites') {
             titleText = 'Favoris';
-            let favs = [];
-            if (typeof window.getLyannFavorites === 'function') {
-                try { favs = window.getLyannFavorites() || []; } catch(e) {}
-            }
-            let favsHTML = '';
-            if (favs.length > 0) {
-                favsHTML = favs.map(f => `
-                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openChatWithUser==='function') window.openChatWithUser('${window.escapeHtmlAttr(f.name || '')}', '${window.escapeHtmlAttr(f.avatar || '')}', '${window.escapeHtmlAttr(f.id || '')}');" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(229,179,69,0.15); color:#E5B345; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph-fill ph-heart"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">${window.escapeHtmlAttr(f.name || 'Membre')}</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;">Lyanneur enregistré</span>
-                        </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
-                    </div>
-                `).join('');
-            } else {
-                favsHTML = `
-                    <div class="account-v3-empty" style="background:#F8FAFC; border:1.5px dashed #CBD5E1; border-radius:16px; padding:28px 16px; text-align:center;">
-                        <i class="ph ph-heart" style="font-size:2.2rem; color:#94A3B8; margin-bottom:8px; display:block;"></i>
-                        <p style="font-size:0.92rem; color:#475569; margin:0 0 4px 0; font-weight:700;">Vous n'avez pas encore de favoris.</p>
-                        <p style="font-size:0.8rem; color:#94A3B8; margin:0;">Enregistrez des Lyanneurs ou des besoins pour les retrouver ici.</p>
-                    </div>
-                `;
-            }
             subViewContent = `
                 <div class="account-v3-section">
-                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 12px 0;">Mes Favoris (${favs.length})</h4>
-                    ${favsHTML}
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                        <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0;">
+                            ⭐ Mes Favoris <span id="favCountBadge" style="font-size:0.85rem; font-weight:600; color:#64748B;">(0)</span>
+                        </h4>
+                        <div class="fav-filter-tabs" style="display: flex; gap: 6px; font-size: 0.8rem; overflow-x: auto; padding-bottom: 4px;">
+                            <button type="button" class="fav-tab-btn active" data-fav-filter="ALL" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #1E293B; color: #FFF; font-weight: 600; cursor: pointer;">Tout</button>
+                            <button type="button" class="fav-tab-btn" data-fav-filter="PROFILE" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #FFF; color: #475569; font-weight: 600; cursor: pointer;">Lyanneurs</button>
+                            <button type="button" class="fav-tab-btn" data-fav-filter="REQUEST" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #FFF; color: #475569; font-weight: 600; cursor: pointer;">Lyanns</button>
+                            <button type="button" class="fav-tab-btn" data-fav-filter="BOKANTAJ_POST" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #FFF; color: #475569; font-weight: 600; cursor: pointer;">Publications</button>
+                        </div>
+                    </div>
+                    <div id="favSubViewContainer" class="account-v3-desktop-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: #64748B;">Chargement de vos favoris...</div>
+                    </div>
                 </div>
             `;
+            setTimeout(() => {
+                if (typeof window.loadAccountFavoritesSubView === 'function') {
+                    window.loadAccountFavoritesSubView('ALL');
+                }
+            }, 50);
         } else if (subViewName === 'finances') {
             titleText = 'Finances';
             let availableBal = '0,00 €';
@@ -5942,6 +5934,158 @@ safeDomReady(() => {
                     }
                 } else {
                     window.handlePhoneVerificationSubmit(phoneVal);
+                }
+            }
+        });
+    }
+
+    // === FAVORITES UI CONTROLLER & DELEGATOR ===
+    window.loadAccountFavoritesSubView = async function(filterType = 'ALL') {
+        const container = document.getElementById('favSubViewContainer');
+        const badge = document.getElementById('favCountBadge');
+        if (!container) return;
+
+        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: #64748B;"><i class="ph ph-circle-notch spinner" style="font-size: 1.5rem;"></i> Chargement de vos favoris...</div>';
+
+        let items = [];
+        if (window.LyannFavoritesService && typeof window.LyannFavoritesService.getHydratedFavorites === 'function') {
+            items = await window.LyannFavoritesService.getHydratedFavorites();
+        }
+
+        const filtered = filterType === 'ALL' ? items : items.filter(i => i.entity_type === filterType);
+
+        if (badge) {
+            badge.textContent = `(${filtered.length})`;
+        }
+
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div class="account-v3-empty" style="grid-column: 1 / -1; background:#F8FAFC; border:1.5px dashed #CBD5E1; border-radius:16px; padding:28px 16px; text-align:center;">
+                    <i class="ph ph-heart" style="font-size:2.2rem; color:#94A3B8; margin-bottom:8px; display:block;"></i>
+                    <p style="font-size:0.92rem; color:#475569; margin:0 0 4px 0; font-weight:700;">Aucun favori enregistré dans cette catégorie.</p>
+                    <p style="font-size:0.8rem; color:#94A3B8; margin:0;">Enregistrez des Lyanneurs, des besoins ou des publications pour les retrouver ici.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = filtered.map(item => {
+            let actionOnClick = '';
+            let iconType = 'ph-heart';
+            let badgeLabel = 'Favori';
+
+            if (item.entity_type === 'PROFILE') {
+                actionOnClick = `window.closeUserAccountModal(); window.openPublicMemberProfile('${item.entity_id}');`;
+                badgeLabel = 'Lyanneur';
+                iconType = 'ph-user';
+            } else if (item.entity_type === 'REQUEST') {
+                actionOnClick = `window.closeUserAccountModal(); if (typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal('${item.entity_id}');`;
+                badgeLabel = 'Lyann / Besoin';
+                iconType = 'ph-hand-heart';
+            } else if (item.entity_type === 'BOKANTAJ_POST') {
+                actionOnClick = `window.closeUserAccountModal(); if (typeof window.scrollToPost === 'function') window.scrollToPost('${item.entity_id}');`;
+                badgeLabel = 'Publication';
+                iconType = 'ph-newspaper';
+            }
+
+            const avatarHTML = item.avatar ? `<img src="${window.escapeHtmlAttr(item.avatar)}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">` : `<div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(74, 124, 89, 0.12); color: #4A7C59; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;"><i class="ph ${iconType}"></i></div>`;
+
+            return `
+                <div class="account-v3-card fav-item-card" style="background:#FFF; border:1px solid #E2E8F0; border-radius:16px; padding:14px 16px; display:flex; align-items:center; gap:12px; position:relative; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    ${avatarHTML}
+                    <div style="flex:1; min-width:0; cursor:pointer;" onclick="${actionOnClick}">
+                        <span style="font-size: 0.72rem; font-weight: 700; color: #4A7C59; text-transform: uppercase; display: block; margin-bottom: 2px;">${badgeLabel}</span>
+                        <strong style="font-size:0.94rem; color:#1E293B; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${window.escapeHtmlAttr(item.title)}</strong>
+                        <span style="font-size:0.8rem; color:#64748B; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${window.escapeHtmlAttr(item.subtitle)}</span>
+                    </div>
+                    <button type="button" class="btn-fav-toggle is-favorite" data-fav-type="${item.entity_type}" data-fav-id="${item.entity_id}" title="Retirer des favoris" style="background:none; border:none; color:#E11D48; font-size:1.25rem; cursor:pointer; padding:6px; flex-shrink:0;">
+                        <i class="ph-fill ph-heart"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
+    };
+
+    window.syncFavoriteButtonStates = async function() {
+        if (!window.LyannFavoritesService || typeof window.LyannFavoritesService.getMyFavorites !== 'function') return;
+        const favs = await window.LyannFavoritesService.getMyFavorites();
+        const favMap = {};
+        favs.forEach(f => {
+            favMap[`${f.entity_type}:${f.entity_id}`] = true;
+        });
+
+        document.querySelectorAll('.btn-fav-toggle').forEach(btn => {
+            const type = btn.dataset.favType;
+            const id = btn.dataset.favId;
+            const isFav = favMap[`${type}:${id}`];
+            if (isFav) {
+                btn.classList.add('is-favorite');
+                btn.style.color = '#E11D48';
+                btn.innerHTML = '<i class="ph-fill ph-heart"></i>';
+            } else {
+                btn.classList.remove('is-favorite');
+                btn.style.color = '#94A3B8';
+                btn.innerHTML = '<i class="ph ph-heart"></i>';
+            }
+        });
+    };
+
+    if (!window.__favToggleDelegatorBound__) {
+        window.__favToggleDelegatorBound__ = true;
+        document.addEventListener('click', async function(e) {
+            const filterBtn = e.target.closest('.fav-tab-btn');
+            if (filterBtn) {
+                e.preventDefault();
+                document.querySelectorAll('.fav-tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.style.background = '#FFF';
+                    b.style.color = '#475569';
+                });
+                filterBtn.classList.add('active');
+                filterBtn.style.background = '#1E293B';
+                filterBtn.style.color = '#FFF';
+                const filter = filterBtn.dataset.favFilter || 'ALL';
+                window.loadAccountFavoritesSubView(filter);
+                return;
+            }
+
+            const favBtn = e.target.closest('.btn-fav-toggle');
+            if (favBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const type = favBtn.dataset.favType;
+                const id = favBtn.dataset.favId;
+                if (!type || !id) return;
+
+                favBtn.style.opacity = '0.5';
+                favBtn.disabled = true;
+
+                try {
+                    const res = await window.LyannFavoritesService.toggleFavorite(type, id);
+                    if (res.isFavorite) {
+                        favBtn.classList.add('is-favorite');
+                        favBtn.style.color = '#E11D48';
+                        favBtn.innerHTML = '<i class="ph-fill ph-heart"></i>';
+                        if (window.NotificationService) {
+                            window.NotificationService.showToast('success', 'Ajouté à vos favoris.');
+                        }
+                    } else {
+                        favBtn.classList.remove('is-favorite');
+                        favBtn.style.color = '#94A3B8';
+                        favBtn.innerHTML = '<i class="ph ph-heart"></i>';
+                        if (window.NotificationService) {
+                            window.NotificationService.showToast('info', 'Retiré de vos favoris.');
+                        }
+                    }
+                    if (document.getElementById('favSubViewContainer')) {
+                        const activeFilter = document.querySelector('.fav-tab-btn.active')?.dataset.favFilter || 'ALL';
+                        window.loadAccountFavoritesSubView(activeFilter);
+                    }
+                } catch (err) {
+                    console.error('Favorite toggle error:', err);
+                } finally {
+                    favBtn.style.opacity = '1';
+                    favBtn.disabled = false;
                 }
             }
         });

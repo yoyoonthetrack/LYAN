@@ -2183,50 +2183,36 @@ if (document.readyState === 'loading') {
 
 // === FAVORITES MANAGEMENT FOR CHAT CONTACTS & MEMBERS ===
 window.getLyannFavorites = function() {
-    try {
-        const stored = localStorage.getItem('lyann_user_favorites');
-        return stored ? JSON.parse(stored) : [];
-    } catch(e) {
-        return [];
+    if (window.LyannFavoritesService && typeof window.LyannFavoritesService.getMyFavorites === 'function') {
+        // Return active promise or cached state if needed
+        return window.LyannFavoritesService.getMyFavorites();
     }
+    return [];
 };
 
-window.isContactFavorite = function(contactName) {
-    const favs = window.getLyannFavorites();
-    return favs.some(f => f.name === contactName || f.id === contactName);
+window.isContactFavorite = function(contactId) {
+    if (window.LyannFavoritesService && typeof window.LyannFavoritesService.isFavorite === 'function') {
+        return window.LyannFavoritesService.isFavorite('PROFILE', contactId);
+    }
+    return false;
 };
 
-window.toggleContactFavorite = function(contactName, contactAvatar) {
-    let favs = window.getLyannFavorites();
-    const index = favs.findIndex(f => f.name === contactName || f.id === contactName);
-    
-    if (index >= 0) {
-        favs.splice(index, 1);
-        if (window.NotificationService) {
-            window.NotificationService.showToast('info', `${contactName} retiré(e) de vos favoris.`);
-        } else if (window.lyannAlert) {
-            window.lyannAlert(`${contactName} retiré(e) de vos favoris.`);
+window.toggleContactFavorite = async function(contactId, contactName) {
+    if (!contactId) return;
+    if (window.LyannFavoritesService && typeof window.LyannFavoritesService.toggleFavorite === 'function') {
+        const res = await window.LyannFavoritesService.toggleFavorite('PROFILE', contactId);
+        const name = contactName || 'Membre';
+        if (res.isFavorite) {
+            if (window.NotificationService) {
+                window.NotificationService.showToast('success', `${name} ajouté(e) à vos favoris.`);
+            }
+        } else {
+            if (window.NotificationService) {
+                window.NotificationService.showToast('info', `${name} retiré(e) de vos favoris.`);
+            }
         }
-    } else {
-        favs.push({
-            id: contactName,
-            name: contactName,
-            avatar: contactAvatar || 'david-34.png',
-            addedAt: new Date().toISOString()
-        });
-        if (window.NotificationService) {
-            window.NotificationService.showToast('success', `⭐ ${contactName} ajouté(e) à vos favoris !`);
-        } else if (window.lyannAlert) {
-            window.lyannAlert(`⭐ ${contactName} ajouté(e) à vos favoris !`);
-        }
+        window.updateChatFavHeaderUI();
     }
-    
-    try {
-        localStorage.setItem('lyann_user_favorites', JSON.stringify(favs));
-    } catch(e) {}
-    
-    window.dispatchEvent(new CustomEvent('lyann_favorites_updated', { detail: { favs } }));
-    window.updateChatFavHeaderUI();
 };
 
 window.updateChatFavHeaderUI = function() {

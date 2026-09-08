@@ -2141,5 +2141,218 @@ const LYANN_API_CLIENT = {
 window.LYANN_API_CLIENT = LYANN_API_CLIENT;
 window.apiClient = LYANN_API_CLIENT;
 
+// === REAL SUPABASE FAVORITES SERVICE (V1) ===
+window.LyannFavoritesService = {
+    async getMyFavorites() {
+        if (!supabaseClient) return [];
+        try {
+            const { data: sessionData } = await supabaseClient.auth.getSession();
+            const user = sessionData?.session?.user;
+            if (!user) return [];
+
+            const { data, error } = await supabaseClient
+                .from('user_favorites')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.warn('[FAVORITES_SERVICE] getMyFavorites error:', error.message);
+                return [];
+            }
+            return data || [];
+        } catch (e) {
+            console.error('[FAVORITES_SERVICE] getMyFavorites exception:', e);
+            return [];
+        }
+    },
+
+    async isFavorite(entityType, entityId) {
+        if (!supabaseClient || !entityType || !entityId) return false;
+        try {
+            const { data: sessionData } = await supabaseClient.auth.getSession();
+            const user = sessionData?.session?.user;
+            if (!user) return false;
+
+            const { data, error } = await supabaseClient
+                .from('user_favorites')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('entity_type', entityType)
+                .eq('entity_id', entityId)
+                .maybeSingle();
+
+            if (error) return false;
+            return !!data;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    async addFavorite(entityType, entityId) {
+        if (!supabaseClient || !entityType || !entityId) return { success: false, error: 'Paramètres invalides' };
+        try {
+            const { data: sessionData } = await supabaseClient.auth.getSession();
+            const user = sessionData?.session?.user;
+            if (!user) return { success: false, error: 'Utilisateur non authentifié' };
+
+            let entityExists = false;
+            if (entityType === 'PROFILE') {
+                const { data } = await supabaseClient.from('profiles').select('id').eq('id', entityId).maybeSingle();
+                entityExists = !!data;
+            } else if (entityType === 'REQUEST') {
+                const { data } = await supabaseClient.from('requests').select('id').eq('id', entityId).maybeSingle();
+                entityExists = !!data;
+            } else if (entityType === 'BOKANTAJ_POST') {
+                const { data } = await supabaseClient.from('posts').select('id').eq('id', entityId).maybeSingle();
+                entityExists = !!data;
+            } else {
+                return { success: false, error: 'Type d\'entité non supporté' };
+            }
+
+            if (!entityExists) {
+                return { success: false, error: 'Entité introuvable ou inaccessible' };
+            }
+
+            const { data, error } = await supabaseClient
+                .from('user_favorites')
+                .upsert({
+                    user_id: user.id,
+                    entity_type: entityType,
+                    entity_id: entityId
+                }, { onConflict: 'user_id,entity_type,entity_id' })
+                .select()
+                .single();
+
+            if (error) {
+                console.warn('[FAVORITES_SERVICE] addFavorite error:', error.message);
+                return { success: false, error: error.message };
+            }
+
+            window.dispatchEvent(new CustomEvent('lyann_favorites_updated', { detail: { action: 'add', entityType, entityId } }));
+            return { success: true, data };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    async removeFavorite(entityType, entityId) {
+        if (!supabaseClient || !entityType || !entityId) return { success: false };
+        try {
+            const { data: sessionData } = await supabaseClient.auth.getSession();
+            const user = sessionData?.session?.user;
+            if (!user) return { success: false, error: 'Utilisateur non authentifié' };
+
+            const { error } = await supabaseClient
+                .from('user_favorites')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('entity_type', entityType)
+                .eq('entity_id', entityId);
+
+            if (error) {
+                console.warn('[FAVORITES_SERVICE] removeFavorite error:', error.message);
+                return { success: false, error: error.message };
+            }
+
+            window.dispatchEvent(new CustomEvent('lyann_favorites_updated', { detail: { action: 'remove', entityType, entityId } }));
+            return { success: true };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    async toggleFavorite(entityType, entityId) {
+        const isFav = await this.isFavorite(entityType, entityId);
+        if (isFav) {
+            const res = await this.removeFavorite(entityType, entityId);
+            return { isFavorite: false, success: res.success };
+        } else {
+            const res = await this.addFavorite(entityType, entityId);
+            return { isFavorite: res.success, success: res.success, error: res.error };
+        }
+    },
+
+    async getHydratedFavorites() {
+        const rawFavs = await this.getMyFavorites();
+        if (!rawFavs || rawFavs.length === 0) return [];
+
+        const hydrated = [];
+        for (const fav of rawFavs) {
+            try {
+                if (fav.entity_type === 'PROFILE') {
+                    const { data: p } = await supabaseClient
+                        .from('profiles')
+                        .select('id, first_name, last_name, avatar_url, city, territory, role, primary_activity')
+                        .eq('id', fav.entity_id)
+                        .maybeSingle();
+
+                    if (p) {
+                        hydrated.push({
+                            favId: fav.id,
+                            entity_type: 'PROFILE',
+                            entity_id: p.id,
+                            title: window.formatPublicName ? window.formatPublicName(p, null, 'Lyanneur') : `${p.first_name || 'Lyanneur'} ${p.last_name ? p.last_name.charAt(0) + '.' : ''}`.trim(),
+                            subtitle: p.primary_activity || p.role || p.city || p.territory || 'Membre LYANN',
+                            avatar: window.getLyannAvatarUrl ? window.getLyannAvatarUrl(p.avatar_url) : (p.avatar_url || '/default-avatar.svg'),
+                            created_at: fav.created_at,
+                            raw: p
+                        });
+                    }
+                } else if (fav.entity_type === 'REQUEST') {
+                    const { data: req } = await supabaseClient
+                        .from('requests')
+                        .select('id, title, category, location, budget, created_at, status')
+                        .eq('id', fav.entity_id)
+                        .maybeSingle();
+
+                    if (req) {
+                        hydrated.push({
+                            favId: fav.id,
+                            entity_type: 'REQUEST',
+                            entity_id: req.id,
+                            title: req.title || 'Besoin LYANN',
+                            subtitle: `${req.category || 'Service'} • ${req.location || 'Guadeloupe'} • ${req.budget ? req.budget + '€' : 'Sur devis'}`,
+                            avatar: null,
+                            created_at: fav.created_at,
+                            raw: req
+                        });
+                    }
+                } else if (fav.entity_type === 'BOKANTAJ_POST') {
+                    const { data: post } = await supabaseClient
+                        .from('posts')
+                        .select('id, headline, content, category, author_id, profiles:author_id(first_name, last_name, avatar_url)')
+                        .eq('id', fav.entity_id)
+                        .maybeSingle();
+
+                    if (post) {
+                        const authorName = post.profiles ? (window.formatPublicName ? window.formatPublicName(post.profiles, null, 'Membre') : `${post.profiles.first_name} ${post.profiles.last_name ? post.profiles.last_name.charAt(0) + '.' : ''}`) : 'Membre';
+                        hydrated.push({
+                            favId: fav.id,
+                            entity_type: 'BOKANTAJ_POST',
+                            entity_id: post.id,
+                            title: post.headline || post.content?.substring(0, 50) || 'Publication Bokantaj',
+                            subtitle: `Par ${authorName} • ${post.category || 'Bokantaj'}`,
+                            avatar: post.profiles?.avatar_url ? (window.getLyannAvatarUrl ? window.getLyannAvatarUrl(post.profiles.avatar_url) : post.profiles.avatar_url) : null,
+                            created_at: fav.created_at,
+                            raw: post
+                        });
+                    }
+                }
+            } catch (err) {
+                console.warn('[FAVORITES_SERVICE] Inaccessible favorite omitted:', fav.entity_id);
+            }
+        }
+        return hydrated;
+    }
+};
+
+LYANN_API_CLIENT.getMyFavorites = window.LyannFavoritesService.getMyFavorites.bind(window.LyannFavoritesService);
+LYANN_API_CLIENT.isFavorite = window.LyannFavoritesService.isFavorite.bind(window.LyannFavoritesService);
+LYANN_API_CLIENT.addFavorite = window.LyannFavoritesService.addFavorite.bind(window.LyannFavoritesService);
+LYANN_API_CLIENT.removeFavorite = window.LyannFavoritesService.removeFavorite.bind(window.LyannFavoritesService);
+LYANN_API_CLIENT.toggleFavorite = window.LyannFavoritesService.toggleFavorite.bind(window.LyannFavoritesService);
+LYANN_API_CLIENT.getHydratedFavorites = window.LyannFavoritesService.getHydratedFavorites.bind(window.LyannFavoritesService);
+
 
 
