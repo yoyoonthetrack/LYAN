@@ -1,4 +1,43 @@
+console.log("[LYANN_NATIVE_BUILD] 9c9ec8f-PROBE-1502");
+window.__LYANN_NATIVE_BUILD__ = "9c9ec8f-PROBE-1502";
 console.log("⚡ [BOOT 01] script.js loaded");
+
+// === LYANN TEMPORARY RUNTIME DIAGNOSTICS & TRACE ENGINE ===
+window.__LYANN_RUNTIME_DIAG__ = window.__LYANN_RUNTIME_DIAG__ || {
+    href: typeof window !== 'undefined' && window.location ? window.location.href : null,
+    protocol: typeof window !== 'undefined' && window.location ? window.location.protocol : null,
+    capacitorPresent: typeof window !== 'undefined' && !!window.Capacitor,
+    capacitorPlatform: typeof window !== 'undefined' && window.Capacitor && typeof window.Capacitor.getPlatform === 'function' ? window.Capacitor.getPlatform() : null,
+    capacitorIsNative: typeof window !== 'undefined' && window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' ? window.Capacitor.isNativePlatform() : null,
+    webkitPresent: typeof window !== 'undefined' && !!window.webkit,
+    isNativePlatformResult: null,
+    domContentLoadedReached: false,
+    injectMobileInterfaceEntered: false,
+    injectMobileInterfaceEarlyReturn: false,
+    bodyIsNativeAppApplied: false,
+    ensureDeterministicAppHeaderEntered: false,
+    nativeHeaderRowCreated: false,
+    publicHeaderFound: false,
+    bottomNavCreated: false,
+    traces: []
+};
+
+function logLyannTrace(tag, info) {
+    const msg = "[LYANN_TRACE] [" + tag + "] " + (info !== undefined ? (typeof info === 'object' ? JSON.stringify(info) : info) : "");
+    console.log(msg);
+    if (window.__LYANN_RUNTIME_DIAG__ && Array.isArray(window.__LYANN_RUNTIME_DIAG__.traces)) {
+        window.__LYANN_RUNTIME_DIAG__.traces.push(msg);
+    }
+}
+
+logLyannTrace("BOOT_ENV", {
+    href: window.__LYANN_RUNTIME_DIAG__.href,
+    protocol: window.__LYANN_RUNTIME_DIAG__.protocol,
+    capacitorPresent: window.__LYANN_RUNTIME_DIAG__.capacitorPresent,
+    capacitorPlatform: window.__LYANN_RUNTIME_DIAG__.capacitorPlatform,
+    capacitorIsNative: window.__LYANN_RUNTIME_DIAG__.capacitorIsNative,
+    webkitPresent: window.__LYANN_RUNTIME_DIAG__.webkitPresent
+});
 
 // === CAPACITOR MOBILE DETECTOR & DYNAMIC BRIDGE INJECTION ===
 (function() {
@@ -43,33 +82,37 @@ window.unlockBodyScroll = function() {
 
 function isNativePlatform() {
     if (typeof window === 'undefined') return false;
+    let result = false;
     if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
-        return true;
-    }
-    if (window.Capacitor && typeof window.Capacitor.getPlatform === 'function') {
+        result = true;
+    } else if (window.Capacitor && typeof window.Capacitor.getPlatform === 'function') {
         const p = window.Capacitor.getPlatform();
-        if (p === 'ios' || p === 'android') return true;
-    }
-    if (window.location && window.location.origin && (
+        if (p === 'ios' || p === 'android') result = true;
+    } else if (window.location && window.location.origin && (
         window.location.origin.includes('capacitor://') || 
         window.location.href.startsWith('capacitor://') ||
         (window.location.origin.includes('http://localhost') && window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes('Capacitor'))
     )) {
-        return true;
+        result = true;
+    } else if (window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.bridge || window.webkit.messageHandlers.capacitor)) {
+        result = true;
     }
-    if (window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.bridge || window.webkit.messageHandlers.capacitor)) {
-        return true;
+
+    if (window.__LYANN_RUNTIME_DIAG__) {
+        window.__LYANN_RUNTIME_DIAG__.isNativePlatformResult = result;
     }
-    return false;
+    logLyannTrace("isNativePlatform", { result: result, href: window.location.href, capacitorPresent: !!window.Capacitor });
+    return result;
 }
 window.isNativePlatform = isNativePlatform;
 
 // === LYANN SINGLE SOURCE OF TRUTH DEFAULT USER AVATAR ===
-const RAW_LYANN_DEFAULT_AVATAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="50" fill="#FAF7F2"/><circle cx="50" cy="50" r="48" fill="#EBF2ED" stroke="rgba(74,124,89,0.25)" stroke-width="2"/><circle cx="50" cy="38" r="16" fill="#4A7C59"/><path d="M 22 84 C 22 66, 34 58, 50 58 C 66 58, 78 66, 78 84 Z" fill="#4A7C59"/></svg>`;
-
 if (!window.getLyannDefaultAvatar) {
-    window.LYANN_DEFAULT_AVATAR_SVG = 'data:image/svg+xml,' + encodeURIComponent(RAW_LYANN_DEFAULT_AVATAR_SVG);
-    window.LYANN_DEFAULT_AVATAR_PATH = window.LYANN_DEFAULT_AVATAR_SVG;
+    (function() {
+        const rawSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="50" fill="#FAF7F2"/><circle cx="50" cy="50" r="48" fill="#EBF2ED" stroke="rgba(74,124,89,0.25)" stroke-width="2"/><circle cx="50" cy="38" r="16" fill="#4A7C59"/><path d="M 22 84 C 22 66, 34 58, 50 58 C 66 58, 78 66, 78 84 Z" fill="#4A7C59"/></svg>`;
+        window.LYANN_DEFAULT_AVATAR_SVG = 'data:image/svg+xml,' + encodeURIComponent(rawSvg);
+        window.LYANN_DEFAULT_AVATAR_PATH = window.LYANN_DEFAULT_AVATAR_SVG;
+    })();
 
     window.getLyannDefaultAvatar = function() {
         return window.LYANN_DEFAULT_AVATAR_SVG;
@@ -680,10 +723,20 @@ window.openLyannMessagesModal = function() {
 
 function injectMobileInterface() {
     console.log("⚡ [BOOT 05] injectMobileInterface entered");
-    if (!isNativePlatform()) return;
+    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.injectMobileInterfaceEntered = true;
+    logLyannTrace("injectMobileInterface_entered");
+
+    const nativeActive = isNativePlatform();
+    if (!nativeActive) {
+        if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.injectMobileInterfaceEarlyReturn = true;
+        logLyannTrace("injectMobileInterface_early_return", { reason: "isNativePlatform false" });
+        return;
+    }
     console.log("⚡ [BOOT 06] native detected: true");
+    logLyannTrace("injectMobileInterface_native_detected");
 
     document.body.classList.add('is-native-app');
+    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.bodyIsNativeAppApplied = document.body.classList.contains('is-native-app');
 
     const path = window.location.pathname;
     const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
@@ -746,6 +799,8 @@ function injectMobileInterface() {
             </button>
         `;
         document.body.appendChild(bottomNav);
+        if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.bottomNavCreated = true;
+        logLyannTrace("bottomNav_created");
         console.log("⚡ [BOOT 10] bottom nav listeners attached");
 
         bottomNav.querySelectorAll('.nav-tab').forEach(tab => {
@@ -967,7 +1022,13 @@ window.renderAppHomeConnectedView = function() {
 
 // === HEADER NATIVE DÉTERMINISTE (APP MOBILE) ===
 window.ensureDeterministicAppHeader = function(overrideViewType) {
-    if (!isNativePlatform()) return;
+    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.ensureDeterministicAppHeaderEntered = true;
+    logLyannTrace("ensureDeterministicAppHeader_entered");
+
+    if (!isNativePlatform()) {
+        logLyannTrace("ensureDeterministicAppHeader_early_return", { reason: "isNativePlatform false" });
+        return;
+    }
 
     const path = window.location.pathname;
     let viewType = overrideViewType;
@@ -983,6 +1044,9 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
     }
 
     const navbar = document.querySelector('.navbar');
+    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.publicHeaderFound = !!navbar;
+    logLyannTrace("public_header_check", { found: !!navbar });
+
     if (!navbar) return;
     
     // STABILIZATION V1: Sentinel — skip re-render ONLY if header is set AND native header row is present
@@ -1068,6 +1132,8 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
     navbar.setAttribute('data-native-header-active', viewType);
     navbar.style.display = '';
     navbar.style.visibility = 'visible';
+    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.nativeHeaderRowCreated = !!document.querySelector('.native-header-row');
+    logLyannTrace("nativeHeaderRow_created", { created: !!document.querySelector('.native-header-row') });
     console.log("⚡ [BOOT 07] native header mounted for viewType:", viewType);
 };
 
@@ -1886,6 +1952,8 @@ function safeDomReady(fn) {
 }
 
 safeDomReady(() => {
+    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.domContentLoadedReached = true;
+    logLyannTrace("DOMContentLoaded_reached");
     console.log("⚡ [BOOT 02] DOM ready");
     // Initialize official DOM communes autocomplete engine
     initLyannCommunesAutocomplete();
