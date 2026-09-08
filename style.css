@@ -13441,11 +13441,52 @@ html, body {
     color: #334155 !important;
     line-height: 1.5 !important;
 }
-
-.flash-card .btn-help-lyann {
-    width: auto !important;
-    max-width: 100% !important;
-    align-self: flex-end !important;
-    padding: 0 22px !important;
+/* ==========================================================================
+   LYANN — CTA IDENTITY TOKENS (REUSABLE CONCEPTUALLY)
+   ========================================================================== */
+.lyann-cta-primary {
+    background: linear-gradient(110deg, #4A7C59 0%, #6F9562 52%, #E5B345 100%) !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    border-radius: 22px !important;
     min-height: 44px !important;
+    padding: 0 16px !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 4px 14px rgba(74, 124, 89, 0.22) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.lyann-cta-secondary {
+    background: #E5B345 !important;
+    color: #17231C !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    border-radius: 22px !important;
+    min-height: 44px !important;
+    padding: 0 16px !important;
+    border: 1px solid rgba(23, 35, 28, 0.12) !important;
+    box-shadow: 0 2px 8px rgba(229, 179, 69, 0.2) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.lyann-cta-primary:active,
+.lyann-cta-secondary:active {
+    transform: scale(0.98) !important;
 }

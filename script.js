@@ -3539,15 +3539,29 @@ safeDomReady(() => {
                     let hasBodyContent = cardHeadline || cardBody || mediaHTML;
                     let bodyBlockHTML = hasBodyContent ? `<div class="flash-card-body" style="margin-top: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">${cardTitleHTML}${cardBodyHTML}${mediaHTML}</div>` : '';
 
-                    let ctaButtonHTML = '';
-                    let viewLinkHTML = '';
+                    let ctaRowHTML = '';
 
                     if (isLyann) {
-                        if (isOwnLyann) {
-                            viewLinkHTML = `<button class="btn-open-lyann-detail" data-request-id="${targetId}" style="background: none; border: none; color: var(--primary, #4A7C59); font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 4px 6px;">Gérer <i class="ph ph-arrow-right"></i></button>`;
+                        const viewLabel = isOwnLyann ? 'Gérer' : 'Voir';
+                        const viewIcon = isOwnLyann ? 'ph-sliders' : 'ph-eye';
+                        
+                        const secondaryCtaHTML = `<button class="flash-action-btn btn-open-lyann-detail lyann-cta-secondary" data-request-id="${targetId}"><i class="ph ${viewIcon}"></i> <span>${viewLabel}</span></button>`;
+                        
+                        if (!isOwnLyann) {
+                            const primaryCtaHTML = `<button class="flash-action-btn btn-help-lyann lyann-cta-primary" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${post.author_avatar || post.authorAvatar || ''}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
+                            
+                            ctaRowHTML = `
+                                <div class="lyann-cta-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; box-sizing: border-box; margin-top: 8px;">
+                                    ${secondaryCtaHTML}
+                                    ${primaryCtaHTML}
+                                </div>
+                            `;
                         } else {
-                            viewLinkHTML = `<button class="btn-open-lyann-detail" data-request-id="${targetId}" style="background: none; border: none; color: var(--primary, #4A7C59); font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 4px 6px;">Voir <i class="ph ph-arrow-right"></i></button>`;
-                            ctaButtonHTML = `<button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${post.author_avatar || post.authorAvatar || ''}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="width: auto; max-width: 100%; align-self: flex-end; background: var(--primary, #4A7C59); color: #FFF; font-weight: 700; border-radius: 22px; min-height: 44px; padding: 0 22px; border: none; font-size: 0.88rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
+                            ctaRowHTML = `
+                                <div class="lyann-cta-row" style="display: grid; grid-template-columns: 1fr; width: 100%; box-sizing: border-box; margin-top: 8px;">
+                                    ${secondaryCtaHTML}
+                                </div>
+                            `;
                         }
                     }
 
@@ -3572,24 +3586,27 @@ safeDomReady(() => {
                             <!-- BODY BLOCK: HERO TITLE & CONTENT (CONDITIONNEL, SANS GAP SI VIDE) -->
                             ${bodyBlockHTML}
 
-                            <!-- FOOTER / ACTIONS ROW: COMPACT 2-ROW FOR ZERO MOBILE OVERFLOW -->
-                            <div class="flash-card-footer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.06); width: 100%; box-sizing: border-box;">
+                            <!-- FOOTER / ACTIONS ROW: SOCIAL ROW (L1) + METIER CTA ROW (L2) -->
+                            <div class="flash-card-footer" style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.06); width: 100%; box-sizing: border-box;">
+                                <!-- L1: SOCIAL ROW (DISCRÈTE, LÉGÈRE, SANS BOUTON VOIR) -->
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; box-sizing: border-box;">
-                                    <div class="flash-actions-bar" style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                                    <div class="flash-actions-bar" style="display: flex; align-items: center; gap: 16px; min-width: 0; width: 100%;">
                                         <button class="flash-action-btn btn-like-flash ${userHasLiked ? 'liked' : ''}" data-target-id="${targetId}" data-target-type="${targetType}" style="background: none; border: none; color: ${userHasLiked ? '#E76F51' : '#64748B'}; font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 2px 0; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
-                                            <i class="ph-fill ph-heart" style="color: ${userHasLiked ? '#E76F51' : '#94A3B8'}; font-size: 1.05rem;"></i> <span class="like-count">${displayLikes}</span>
+                                            <i class="ph-fill ph-heart" style="color: ${userHasLiked ? '#E76F51' : '#94A3B8'}; font-size: 1.05rem;"></i> <span class="like-count">${displayLikes} J'aime</span>
                                         </button>
                                         <button class="flash-action-btn btn-comments-toggle" data-target-id="${targetId}" data-target-type="${targetType}" style="background: none; border: none; color: #64748B; font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 2px 0; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
-                                            <i class="ph ph-chat-circle" style="font-size: 1.05rem;"></i> <span class="comments-count-label">${(post.comments_count || 0) > 0 ? post.comments_count : ''} Commenter</span>
+                                            <i class="ph ph-chat-circle" style="font-size: 1.05rem;"></i> <span class="comments-count-label">Commenter ${(post.comments_count || 0) > 0 ? `(${post.comments_count})` : ''}</span>
                                         </button>
-                                        <button class="flash-action-btn btn-share-post" data-target-id="${targetId}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: none; border: none; color: #64748B; font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 2px 0; display: inline-flex; align-items: center; flex-shrink: 0;">
-                                            <i class="ph ph-share-network" style="font-size: 1.05rem;"></i>
+                                        <button class="flash-action-btn btn-share-post" data-target-id="${targetId}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: none; border: none; color: #64748B; font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 2px 0; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                                            <i class="ph ph-share-network" style="font-size: 1.05rem;"></i> <span>Partager</span>
                                         </button>
                                     </div>
-                                    ${viewLinkHTML}
                                 </div>
-                                ${ctaButtonHTML ? `<div style="display: flex; justify-content: flex-end; width: 100%; max-width: 100%; box-sizing: border-box; margin-top: 2px;">${ctaButtonHTML}</div>` : ''}
+
+                                <!-- L2: METIER CTA ROW (2 EQUAL WIDTH BUTTONS: VOIR + JE PEUX AIDER) -->
+                                ${ctaRowHTML}
                             </div>
+
 
                             <div class="comments-drawer" id="comments-drawer-${targetId}" style="display: none; padding: 10px 12px; border-top: 1px solid #E2E8F0; background: #F8FAFC; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; margin-top: 8px; width: 100%; box-sizing: border-box;">
                                 <div class="comments-list" id="comments-list-${targetId}" style="margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px;">
