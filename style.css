@@ -6071,7 +6071,7 @@ input:checked + .slider:before {
 }
 
 .chat-sidebar-header {
-    padding: calc(16px + env(safe-area-inset-top, 0px)) 20px 12px;
+    padding: 14px 18px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -6184,12 +6184,11 @@ input:checked + .slider:before {
     overflow: hidden;
 }
 
-/* HEADER CHAT (64px + safe area top) */
+/* HEADER CHAT (54px compact) */
 .chat-header-bar {
     flex: 0 0 auto;
-    min-height: 64px;
-    padding: 0 16px;
-    padding-top: max(10px, env(safe-area-inset-top, 10px));
+    min-height: 54px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -8267,12 +8266,15 @@ button.speed-dial-item,
     }
 
     .chat-sidebar-header {
-        padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
+        padding: 12px 16px !important;
+        min-height: 52px !important;
+        box-sizing: border-box !important;
     }
 
     .chat-header-bar {
-        padding-top: max(10px, env(safe-area-inset-top, 10px)) !important;
-        min-height: calc(64px + env(safe-area-inset-top, 0px)) !important;
+        padding: 8px 14px !important;
+        min-height: 52px !important;
+        box-sizing: border-box !important;
     }
     
     .chat-modal-layout {
@@ -13345,5 +13347,36 @@ html, body {
 .chat-sidebar-header .chat-close-modal-btn:hover {
     background: rgba(74, 124, 89, 0.18) !important;
     transform: scale(1.05) !important;
+}
+
+/* COMPACT LYANN CONTEXT CARD */
+.chat-mission-context-card {
+    background: #FAF7F2 !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    padding: 10px 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+}
+
+.chat-mission-context-card .btn-chat-ctx {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    cursor: pointer !important;
+    border: 1px solid rgba(74, 124, 89, 0.25) !important;
+    transition: all 0.2s ease !important;
+}
+
+.chat-mission-context-card .btn-chat-ctx.primary {
+    background: var(--primary, #4A7C59) !important;
+    color: #FFFFFF !important;
+    border-color: var(--primary, #4A7C59) !important;
+}
+
+.chat-mission-context-card .btn-chat-ctx.secondary {
+    background: #FFFFFF !important;
+    color: var(--primary-dark, #1F3827) !important;
 }
 

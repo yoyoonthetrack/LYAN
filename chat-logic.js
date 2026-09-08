@@ -407,14 +407,15 @@ window.refreshChatUI = async function () {
 
             banner.innerHTML = `
                 <div class="chat-context-card-info">
-                    <div class="chat-context-card-tag">À propos de ce Lyann</div>
-                    <div class="chat-context-card-title">${title}</div>
-                    <div class="chat-context-card-meta"><i class="ph ph-map-pin"></i> ${location}</div>
+                    <div class="chat-context-card-header-row" style="display: flex; align-items: center; justify-content: space-between;">
+                        <span class="chat-context-card-tag" style="font-weight: 800; font-size: 0.72rem; color: var(--primary, #4A7C59); text-transform: uppercase;">À PROPOS DE CE LYANN</span>
+                        <button type="button" class="chat-context-view-link" id="btnViewLyannFromChat" data-request-id="${requestContext.requestId}" style="background: none; border: none; font-size: 0.78rem; font-weight: 700; color: var(--primary, #4A7C59); cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 0;">Voir <i class="ph ph-arrow-right"></i></button>
+                    </div>
+                    <div class="chat-context-card-title" style="font-size: 0.88rem; font-weight: 800; color: var(--text, #1E2822); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${title} · <span style="font-weight: 600; color: var(--text-muted, #5C6E62);">${location}</span></div>
                 </div>
-                <div class="chat-context-card-actions">
-                    <button type="button" class="btn-chat-ctx primary" id="btnCtxPropose"><i class="ph ph-tag"></i> Faire une proposition</button>
-                    <button type="button" class="btn-chat-ctx secondary" id="btnCtxDate"><i class="ph ph-calendar"></i> Proposer une date</button>
-                    <button type="button" class="btn-chat-ctx secondary" id="btnViewLyannFromChat" data-request-id="${requestContext.requestId}"><i class="ph ph-arrow-square-out"></i> Voir le Lyann</button>
+                <div class="chat-context-card-actions" style="display: flex; gap: 6px; margin-top: 6px;">
+                    <button type="button" class="btn-chat-ctx primary" id="btnCtxPropose" style="flex: 1; justify-content: center; min-height: 36px; padding: 4px 10px; font-size: 0.78rem; border-radius: 18px;"><i class="ph ph-tag"></i> Faire une proposition</button>
+                    <button type="button" class="btn-chat-ctx secondary" id="btnCtxDate" style="flex: 1; justify-content: center; min-height: 36px; padding: 4px 10px; font-size: 0.78rem; border-radius: 18px;"><i class="ph ph-calendar"></i> Proposer une date</button>
                 </div>
             `;
 
@@ -449,23 +450,29 @@ window.refreshChatUI = async function () {
             banner.className = 'chat-mission-context-card';
             banner.innerHTML = `
                 <div class="chat-context-card-info">
-                    <div class="chat-context-card-tag">Mission active</div>
-                    <div class="chat-context-card-title">${escapeSearchHtml(mission.title)}</div>
-                    <div class="chat-context-card-meta">${mission.agreed_price} € · ${mission.status}</div>
+                    <div class="chat-context-card-header-row" style="display: flex; align-items: center; justify-content: space-between;">
+                        <span class="chat-context-card-tag" style="font-weight: 800; font-size: 0.72rem; color: #E5B345; text-transform: uppercase;">MISSION ACTIVE</span>
+                        <span style="font-size: 0.78rem; font-weight: 700; color: var(--primary-dark, #1F3827);">${mission.agreed_price} €</span>
+                    </div>
+                    <div class="chat-context-card-title" style="font-size: 0.88rem; font-weight: 800; color: var(--text, #1E2822); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeSearchHtml(mission.title)}</div>
                 </div>
-                <div class="chat-context-card-actions">
-                    <button type="button" class="btn-chat-ctx primary" id="btnCtxViewMissionDetails">🛠️ Suivi du chantier</button>
+                <div class="chat-context-card-actions" style="display: flex; gap: 6px; margin-top: 6px;">
+                    <button type="button" class="btn-chat-ctx primary" id="btnCtxViewMissionDetails" style="flex: 1; justify-content: center; min-height: 36px; padding: 4px 10px; font-size: 0.8rem; font-weight: 800; border-radius: 18px;"><i class="ph ph-wrench"></i> Suivi du chantier <i class="ph ph-arrow-right"></i></button>
                 </div>
             `;
-            banner.onclick = () => {
-                const chatTrackingOverlay = document.getElementById('chatTrackingOverlay');
-                if (chatTrackingOverlay && (mission.status === 'IN_PROGRESS' || mission.status === 'WORK_MARKED_COMPLETE' || mission.status === 'COMPLETED')) {
-                    closeAllOverlays();
-                    chatTrackingOverlay.style.display = 'flex';
-                } else if (window.lyannAlert) {
-                    window.lyannAlert(`Mission "${mission.title}" (${mission.agreed_price}€) — Statut : ${mission.status}`);
-                }
-            };
+            const btnTracking = document.getElementById('btnCtxViewMissionDetails');
+            if (btnTracking) {
+                btnTracking.onclick = (e) => {
+                    e.stopPropagation();
+                    const chatTrackingOverlay = document.getElementById('chatTrackingOverlay');
+                    if (chatTrackingOverlay && (mission.status === 'IN_PROGRESS' || mission.status === 'WORK_MARKED_COMPLETE' || mission.status === 'COMPLETED')) {
+                        closeAllOverlays();
+                        chatTrackingOverlay.style.display = 'flex';
+                    } else if (window.lyannAlert) {
+                        window.lyannAlert(`Mission "${mission.title}" (${mission.agreed_price}€) — Statut : ${mission.status}`);
+                    }
+                };
+            }
         }
         if (dropViewMission) dropViewMission.style.display = 'flex';
     } else {
