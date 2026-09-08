@@ -2607,27 +2607,42 @@
                                 <option value="Martinique (972)">🇲🇶 Martinique (972)</option>
                                 <option value="Guyane (973)">🇬🇫 Guyane (973)</option>
                                 <option value="La Réunion (974)">🇷🇪 La Réunion (974)</option>
+                                <option value="Mayotte (976)">🇾🇹 Mayotte (976)</option>
                                 <option value="France Métropolitaine">🇫🇷 France Métropolitaine</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 14px;" id="cpIslandContainer">
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Île / Zone *</label>
+                            <select id="cpIslandSelect" class="modal-input" style="width: 100%;">
+                                <option value="Grande-Terre">Grande-Terre</option>
+                                <option value="Basse-Terre">Basse-Terre</option>
+                                <option value="Marie-Galante">Marie-Galante</option>
+                                <option value="Les Saintes">Les Saintes</option>
+                                <option value="La Désirade">La Désirade</option>
                             </select>
                         </div>
 
                         <div style="margin-bottom: 14px;">
                             <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Commune / Ville *</label>
                             <div style="display: flex; gap: 8px;">
-                                <input type="text" id="cpCityInput" class="modal-input" placeholder="Ex: Baie-Mahault (97122)" required style="flex: 1; box-sizing: border-box;">
+                                <select id="cpCitySelect" class="modal-input" style="flex: 1; box-sizing: border-box;">
+                                    <option value="Saint-François">Saint-François</option>
+                                </select>
                                 <button type="button" id="cpGpsBtn" class="btn btn-outline" title="Localisation automatique par GPS" style="padding: 0 12px; font-size: 0.85rem; white-space: nowrap;">
                                     <i class="ph ph-crosshair"></i> GPS
                                 </button>
                             </div>
+                            <input type="hidden" id="cpCityInput" value="Saint-François">
                         </div>
 
                         <div>
                             <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Rayon d'intervention / Proximité</label>
                             <select id="cpRadiusSelect" class="modal-input" style="width: 100%;">
                                 <option value="Mon quartier uniquement">Mon quartier uniquement</option>
-                                <option value="5 km autour de chez moi" selected>5 km autour de chez moi</option>
-                                <option value="15 km autour de chez moi">15 km autour de chez moi</option>
-                                <option value="Tout le territoire">Tout le territoire</option>
+                                <option value="5 km" selected>5 km autour de chez moi</option>
+                                <option value="15 km">15 km autour de chez moi</option>
+                                <option value="50 km">Tout le territoire</option>
                             </select>
                         </div>
                     </div>

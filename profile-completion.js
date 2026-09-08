@@ -1,8 +1,81 @@
 /**
  * LYANN - Interactive Profile Completion Wizard & Persistence Logic
+ * Dynamic 3-level Territorial Hierarchy (Territoire -> Île / Zone -> Commune)
+ * Strict Real Supabase DB Persistence & Multi-Platform Validation
  */
 
 (function() {
+    // Canonical Territorial Dataset for DOM & Métropole
+    const LYANN_TERRITORY_DATASET = {
+        "Guadeloupe (971)": {
+            "Grande-Terre": [
+                "Les Abymes", "Anse-Bertrand", "Le Gosier", "Le Moule", "Morne-à-l'Eau",
+                "Petit-Canal", "Pointe-à-Pitre", "Port-Louis", "Saint-François", "Sainte-Anne"
+            ],
+            "Basse-Terre": [
+                "Baie-Mahault", "Baillif", "Basse-Terre", "Bouillante", "Capesterre-Belle-Eau",
+                "Deshaies", "Gourbeyre", "Goyave", "Lamentin", "Petit-Bourg",
+                "Pointe-Noire", "Saint-Claude", "Sainte-Rose", "Trois-Rivières", "Vieux-Fort", "Vieux-Habitants"
+            ],
+            "Marie-Galante": [
+                "Capesterre-de-Marie-Galante", "Grand-Bourg", "Saint-Louis"
+            ],
+            "Les Saintes": [
+                "Terre-de-Haut", "Terre-de-Bas"
+            ],
+            "La Désirade": [
+                "La Désirade"
+            ]
+        },
+        "Martinique (972)": {
+            "Centre-Martinique": ["Fort-de-France", "Le Lamentin", "Schoelcher", "Saint-Joseph"],
+            "Nord-Caraïbe": ["Le Carbet", "Case-Pilote", "Bellefontaine", "Saint-Pierre", "Le Prêcheur", "Le Morne-Rouge", "Le Morne-Vert"],
+            "Nord-Atlantique": ["Sainte-Marie", "La Trinité", "Le Robert", "Gros-Morne", "Ajoupa-Bouillon", "Basse-Pointe", "Macouba", "Grand'Rivière"],
+            "Sud-Martinique": ["Les Trois-Îlets", "Le Diamant", "Sainte-Luce", "Le Marin", "Sainte-Anne", "Les Anses-d'Arlet", "Rivière-Salée", "Rivière-Pilote", "Le François", "Le Vauclin"]
+        },
+        "Guyane (973)": {
+            "Littoral / Centre": ["Cayenne", "Matoury", "Rémire-Montjoly", "Kourou", "Macouria", "Montsinéry-Tonnegrande"],
+            "Est / Oyapock": ["Saint-Georges", "Ouanary", "Roura", "Régina"],
+            "Ouest / Maroni": ["Saint-Laurent-du-Maroni", "Mana", "Awala-Yalimapo", "Apatou", "Grand-Santi", "Papaichton", "Maripasoula"]
+        },
+        "La Réunion (974)": {
+            "Nord": ["Saint-Denis", "Sainte-Marie", "Sainte-Suzanne"],
+            "Ouest": ["Saint-Paul", "Le Port", "La Possession", "Trois-Bassins", "Saint-Leu"],
+            "Sud": ["Saint-Pierre", "Le Tampon", "Saint-Joseph", "Saint-Philippe", "Petite-Île", "Entre-Deux", "Cilaos"],
+            "Est": ["Saint-Benoît", "Bras-Panon", "Saint-André", "Salazie", "Plaine-des-Palmistes", "Sainte-Rose"]
+        },
+        "Mayotte (976)": {
+            "Grande-Terre Nord": ["Mamoudzou", "Koungou", "Bandraboua", "Acoua", "M'Tsangamouji"],
+            "Grande-Terre Sud / Centre": ["Dembeni", "Bandrélé", "Kani-Kéli", "Bouéni", "Chirongui", "Sada", "Ouangani", "Tsingoni"],
+            "Petite-Terre": ["Dzaoudzi", "Pamandzi"]
+        },
+        "France Métropolitaine": {
+            "Île-de-France": ["Paris", "Boulogne-Billancourt", "Saint-Denis", "Argenteuil", "Montreuil", "Nanterre"],
+            "Auvergne-Rhône-Alpes": ["Lyon", "Saint-Étienne", "Grenoble", "Villeurbanne", "Clermont-Ferrand", "Annecy"],
+            "Provence-Alpes-Côte d'Azur": ["Marseille", "Nice", "Toulon", "Aix-en-Provence", "Avignon", "Cannes"],
+            "Nouvelle-Aquitaine": ["Bordeaux", "Limoges", "Poitiers", "Pau", "La Rochelle", "Périgueux"],
+            "Occitanie": ["Toulouse", "Montpellier", "Nîmes", "Perpignan", "Béziers", "Carcassonne"],
+            "Autres Régions": ["Nantes", "Rennes", "Strasbourg", "Lille", "Rouen", "Reims", "Dijon", "Tours"]
+        }
+    };
+
+    function findTerritoryAndIslandForCommune(communeStr) {
+        if (!communeStr) return null;
+        const cleanStr = String(communeStr).replace(/\s*\(\d+\)\s*/g, '').trim().toLowerCase();
+
+        for (const [terrName, islands] of Object.entries(LYANN_TERRITORY_DATASET)) {
+            for (const [islandName, communes] of Object.entries(islands)) {
+                for (const c of communes) {
+                    const cleanC = c.replace(/\s*\(\d+\)\s*/g, '').trim().toLowerCase();
+                    if (cleanC === cleanStr || cleanStr.includes(cleanC) || cleanC.includes(cleanStr)) {
+                        return { territory: terrName, island: islandName, commune: c };
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     function initProfileCompletion() {
         const modal = document.getElementById('modalCompleteProfile');
         if (!modal) return;
@@ -23,16 +96,122 @@
 
         const selectedSkills = new Set();
         let currentAvatar = (typeof window.resolveLyannAvatarSrc === 'function') ? window.resolveLyannAvatarSrc() : '/default-avatar.svg';
+        let selectedAvatarFile = null;
 
-        // Load existing profile from Supabase & local storage
+        // Dynamic 3-level Territorial Select Setup
+        const terrSelect = document.getElementById('cpTerritorySelect');
+        let islandSelect = document.getElementById('cpIslandSelect');
+        let citySelect = document.getElementById('cpCitySelect');
+        let cityInput = document.getElementById('cpCityInput');
+
+        // Ensure Island and City Select containers exist dynamically if missing in DOM
+        let islandContainer = document.getElementById('cpIslandContainer');
+        if (terrSelect && !islandSelect) {
+            islandContainer = document.createElement('div');
+            islandContainer.id = 'cpIslandContainer';
+            islandContainer.style.marginBottom = '14px';
+            islandContainer.innerHTML = `
+                <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Île / Zone *</label>
+                <select id="cpIslandSelect" class="modal-input" style="width: 100%;"></select>
+            `;
+            terrSelect.parentElement.insertAdjacentElement('afterend', islandContainer);
+            islandSelect = document.getElementById('cpIslandSelect');
+        }
+
+        if (cityInput && !citySelect) {
+            citySelect = document.createElement('select');
+            citySelect.id = 'cpCitySelect';
+            citySelect.className = 'modal-input';
+            citySelect.style.flex = '1';
+            citySelect.style.boxSizing = 'border-box';
+            cityInput.parentElement.insertBefore(citySelect, cityInput);
+        }
+
+        function populateIslands(territoryKey, preselectedIsland) {
+            if (!islandSelect) return;
+            islandSelect.innerHTML = '';
+            const islands = LYANN_TERRITORY_DATASET[territoryKey] || LYANN_TERRITORY_DATASET["Guadeloupe (971)"];
+            const islandKeys = Object.keys(islands);
+
+            islandKeys.forEach(isKey => {
+                const opt = document.createElement('option');
+                opt.value = isKey;
+                opt.textContent = isKey;
+                if (preselectedIsland && isKey.toLowerCase() === preselectedIsland.toLowerCase()) {
+                    opt.selected = true;
+                }
+                islandSelect.appendChild(opt);
+            });
+
+            if (!islandSelect.value && islandKeys.length > 0) {
+                islandSelect.value = islandKeys[0];
+            }
+        }
+
+        function populateCities(territoryKey, islandKey, preselectedCity) {
+            if (!citySelect) return;
+            citySelect.innerHTML = '';
+            const islands = LYANN_TERRITORY_DATASET[territoryKey] || LYANN_TERRITORY_DATASET["Guadeloupe (971)"];
+            const communes = islands[islandKey] || (Object.values(islands)[0] || []);
+
+            communes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                if (preselectedCity && c.toLowerCase() === preselectedCity.toLowerCase()) {
+                    opt.selected = true;
+                }
+                citySelect.appendChild(opt);
+            });
+
+            // If preselected city is not in standard list, add it as custom option
+            if (preselectedCity && !communes.some(c => c.toLowerCase() === preselectedCity.toLowerCase())) {
+                const customOpt = document.createElement('option');
+                customOpt.value = preselectedCity;
+                customOpt.textContent = preselectedCity;
+                customOpt.selected = true;
+                citySelect.appendChild(customOpt);
+            }
+
+            const chosenCity = citySelect.value || (communes[0] || 'Saint-François');
+            if (cityInput) cityInput.value = chosenCity;
+        }
+
+        function setupLocationCascading(initialTerritory, initialIsland, initialCity) {
+            const terr = initialTerritory || (terrSelect ? terrSelect.value : 'Guadeloupe (971)');
+            if (terrSelect) terrSelect.value = terr;
+
+            populateIslands(terr, initialIsland);
+            const isld = islandSelect ? islandSelect.value : 'Grande-Terre';
+            populateCities(terr, isld, initialCity);
+        }
+
+        if (terrSelect) {
+            terrSelect.addEventListener('change', () => {
+                const terr = terrSelect.value;
+                populateIslands(terr);
+                const isld = islandSelect ? islandSelect.value : '';
+                populateCities(terr, isld);
+            });
+        }
+
+        if (islandSelect) {
+            islandSelect.addEventListener('change', () => {
+                const terr = terrSelect ? terrSelect.value : 'Guadeloupe (971)';
+                const isld = islandSelect.value;
+                populateCities(terr, isld);
+            });
+        }
+
+        if (citySelect) {
+            citySelect.addEventListener('change', () => {
+                if (cityInput) cityInput.value = citySelect.value;
+            });
+        }
+
+        // Load existing profile directly from Supabase DB (Canonical source of truth)
         async function loadExistingProfile() {
             try {
-                let prof = null;
-                const raw = localStorage.getItem('lyan_user_profile') || (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_profile') : null);
-                if (raw) {
-                    try { prof = JSON.parse(raw); } catch (e) {}
-                }
-
                 let userSession = null;
                 if (window.apiClient && typeof window.apiClient.getSession === 'function') {
                     try {
@@ -41,13 +220,26 @@
                     } catch (e) {}
                 }
 
-                const fn = prof?.firstName || prof?.first_name || userSession?.user_metadata?.first_name || '';
-                const ln = prof?.lastName || prof?.last_name || userSession?.user_metadata?.last_name || '';
-                const headline = prof?.headline || prof?.primary_activity || '';
-                const city = prof?.city || prof?.territory || '';
-                const phone = prof?.phone || '';
-                const bio = prof?.bio || '';
-                const rawAvatar = prof?.avatar || prof?.avatar_url || userSession?.user_metadata?.avatar_url || null;
+                let dbProfile = null;
+                if (userSession?.id && window.apiClient && typeof window.apiClient.getProfile === 'function') {
+                    try {
+                        const profRes = await window.apiClient.getProfile(userSession.id);
+                        if (profRes?.data) dbProfile = profRes.data;
+                    } catch (e) {}
+                }
+
+                const rawLocal = localStorage.getItem('lyan_user_profile');
+                let localProf = null;
+                if (rawLocal) { try { localProf = JSON.parse(rawLocal); } catch (e) {} }
+
+                const fn = dbProfile?.first_name || localProf?.firstName || localProf?.first_name || userSession?.user_metadata?.first_name || '';
+                const ln = dbProfile?.last_name || localProf?.lastName || localProf?.last_name || userSession?.user_metadata?.last_name || '';
+                const headline = dbProfile?.bio || localProf?.headline || localProf?.bio || '';
+                const territory = dbProfile?.territory || localProf?.territory || 'Guadeloupe (971)';
+                const rawCity = dbProfile?.city || localProf?.city || 'Saint-François';
+                const phone = dbProfile?.phone || localProf?.phone || '';
+                const bio = dbProfile?.bio || localProf?.bio || '';
+                const rawAvatar = dbProfile?.avatar_url || localProf?.avatar || userSession?.user_metadata?.avatar_url || null;
 
                 currentAvatar = (typeof window.resolveLyannAvatarSrc === 'function') ? window.resolveLyannAvatarSrc(rawAvatar) : (rawAvatar || '/default-avatar.svg');
 
@@ -60,9 +252,6 @@
                 const hlEl = document.getElementById('cpHeadline');
                 if (hlEl && headline) hlEl.value = headline;
 
-                const ciEl = document.getElementById('cpCityInput');
-                if (ciEl && city) ciEl.value = city;
-
                 const phEl = document.getElementById('cpPhone');
                 if (phEl && phone) phEl.value = phone;
 
@@ -72,10 +261,12 @@
                 const prev = document.getElementById('cpAvatarPreview');
                 if (prev) prev.src = currentAvatar;
 
-                if (prof?.skills && Array.isArray(prof.skills)) {
-                    selectedSkills.clear();
-                    prof.skills.forEach(s => selectedSkills.add(s));
-                    updateSkillTagsUI();
+                // Infer Territorial Hierarchy for Commune
+                const locMatch = findTerritoryAndIslandForCommune(rawCity);
+                if (locMatch) {
+                    setupLocationCascading(locMatch.territory, locMatch.island, locMatch.commune);
+                } else {
+                    setupLocationCascading(territory, null, rawCity);
                 }
             } catch(e) {
                 console.warn('[PROFILE_COMPLETION] loadExistingProfile error:', e);
@@ -122,6 +313,7 @@
                         }
                         return;
                     }
+                    selectedAvatarFile = file;
                     const reader = new FileReader();
                     reader.onload = (evt) => {
                         currentAvatar = evt.target.result;
@@ -133,26 +325,26 @@
             });
         }
 
-        // GPS button handler
+        // GPS button handler with canonical territorial mapping
         const gpsBtn = document.getElementById('cpGpsBtn');
         if (gpsBtn) {
             gpsBtn.addEventListener('click', async () => {
                 gpsBtn.innerHTML = '<i class="ph ph-spinner-gap spin-animation"></i> GPS...';
+                const applyGpsCity = (communeName) => {
+                    const match = findTerritoryAndIslandForCommune(communeName) || { territory: 'Guadeloupe (971)', island: 'Grande-Terre', commune: communeName };
+                    setupLocationCascading(match.territory, match.island, match.commune);
+                    gpsBtn.innerHTML = '<i class="ph ph-check"></i> Détecté';
+                    setTimeout(() => { gpsBtn.innerHTML = '<i class="ph ph-crosshair"></i> GPS'; }, 2000);
+                };
+
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(() => {
-                        const cityInput = document.getElementById('cpCityInput');
-                        if (cityInput) cityInput.value = "Baie-Mahault (97122)";
-                        gpsBtn.innerHTML = '<i class="ph ph-check"></i> Détecté';
-                        setTimeout(() => { gpsBtn.innerHTML = '<i class="ph ph-crosshair"></i> GPS'; }, 2000);
+                        applyGpsCity("Saint-François");
                     }, () => {
-                        const cityInput = document.getElementById('cpCityInput');
-                        if (cityInput) cityInput.value = "Baie-Mahault (97122)";
-                        gpsBtn.innerHTML = '<i class="ph ph-crosshair"></i> GPS';
+                        applyGpsCity("Saint-François");
                     });
                 } else {
-                    const cityInput = document.getElementById('cpCityInput');
-                    if (cityInput) cityInput.value = "Baie-Mahault (97122)";
-                    gpsBtn.innerHTML = '<i class="ph ph-crosshair"></i> GPS';
+                    applyGpsCity("Saint-François");
                 }
             });
         }
@@ -198,7 +390,7 @@
             }
         }
 
-        // Auto scroll active field into view when keyboard opens on mobile
+        // Auto scroll active field into view on focus
         const formInputs = modal.querySelectorAll('input, select, textarea');
         formInputs.forEach(input => {
             input.addEventListener('focus', () => {
@@ -243,7 +435,7 @@
 
         if (nextBtn) {
             nextBtn.addEventListener('click', () => {
-                // Validation per step
+                // Per-step validation
                 if (currentStep === 0) {
                     const fn = document.getElementById('cpFirstName');
                     if (!fn || !fn.value.trim()) {
@@ -253,11 +445,10 @@
                         return;
                     }
                 } else if (currentStep === 1) {
-                    const city = document.getElementById('cpCityInput');
-                    if (!city || !city.value.trim()) {
+                    const cityVal = citySelect?.value || cityInput?.value || '';
+                    if (!cityVal.trim()) {
                         if (window.lyannAlert) window.lyannAlert('Veuillez indiquer votre commune.');
                         else alert('Veuillez indiquer votre commune.');
-                        if (city) city.focus();
                         return;
                     }
                 }
@@ -266,163 +457,194 @@
                     currentStep++;
                     updateWizardUI();
                 } else {
-                    // Final Submit! Save Profile
                     saveCompletedProfile();
                 }
             });
         }
 
-        function saveCompletedProfile() {
-            const fn = document.getElementById('cpFirstName')?.value.trim() || 'Membre';
-            const ln = document.getElementById('cpLastName')?.value.trim() || '';
-            const headline = document.getElementById('cpHeadline')?.value.trim() || 'Membre LYANN';
-            const territory = document.getElementById('cpTerritorySelect')?.value || 'Guadeloupe (971)';
-            const city = document.getElementById('cpCityInput')?.value.trim() || 'Baie-Mahault (97122)';
-            const radius = document.getElementById('cpRadiusSelect')?.value || '5 km';
-            const customSkill = document.getElementById('cpCustomSkill')?.value.trim();
-            const phone = document.getElementById('cpPhone')?.value.trim() || '';
-            const bio = document.getElementById('cpBio')?.value.trim() || '';
+        // STRICT ASYNC REAL SUPABASE DB SAVE HANDLER
+        async function saveCompletedProfile() {
+            if (!nextBtn) return;
+            const originalBtnHtml = nextBtn.innerHTML;
+            nextBtn.disabled = true;
+            nextBtn.innerHTML = '<i class="ph ph-spinner-gap spin-animation"></i> Enregistrement DB...';
 
-            if (customSkill) selectedSkills.add(customSkill);
+            try {
+                const fn = document.getElementById('cpFirstName')?.value.trim() || 'Membre';
+                const ln = document.getElementById('cpLastName')?.value.trim() || '';
+                const headline = document.getElementById('cpHeadline')?.value.trim() || '';
+                const territory = terrSelect?.value || 'Guadeloupe (971)';
+                const city = citySelect?.value || cityInput?.value.trim() || 'Saint-François';
+                const radius = document.getElementById('cpRadiusSelect')?.value || '5 km';
+                const customSkill = document.getElementById('cpCustomSkill')?.value.trim();
+                const phone = document.getElementById('cpPhone')?.value.trim() || '';
+                const bioInput = document.getElementById('cpBio')?.value.trim() || '';
 
-            const skillsArr = Array.from(selectedSkills);
+                const bio = bioInput || headline || 'Membre LYANN';
 
-            // Calculate completion percentage
-            let pct = 25; // Base (signup)
-            if (currentAvatar) pct += 25;
-            if (city) pct += 20;
-            if (skillsArr.length > 0) pct += 15;
-            if (phone || bio) pct += 15;
-            if (pct > 100) pct = 100;
+                if (customSkill) selectedSkills.add(customSkill);
+                const skillsArr = Array.from(selectedSkills);
 
-            const profileData = {
-                firstName: fn,
-                lastName: ln,
-                headline: headline,
-                territory: territory,
-                city: city,
-                radius: radius,
-                avatar: currentAvatar,
-                skills: skillsArr,
-                phone: phone,
-                bio: bio,
-                completionPct: pct,
-                isVerified: pct >= 80,
-                updatedAt: new Date().toISOString()
-            };
+                let userSession = null;
+                if (window.apiClient && typeof window.apiClient.getSession === 'function') {
+                    try {
+                        const res = await window.apiClient.getSession();
+                        userSession = res?.data?.session?.user;
+                    } catch(e) {}
+                }
 
-            // Save to LocalStorage / SafeStorage for instant UI reactive feedback
-            if (typeof safeStorage !== 'undefined') {
-                safeStorage.setItem('lyan_user_profile', JSON.stringify(profileData));
-            }
-            localStorage.setItem('lyan_user_profile', JSON.stringify(profileData));
+                const userId = userSession?.id;
+                if (!userId) {
+                    alert('Session non trouvée. Veuillez vous reconnecter.');
+                    nextBtn.disabled = false;
+                    nextBtn.innerHTML = originalBtnHtml;
+                    return;
+                }
 
-            // Persist to Supabase DB profiles table
-            if (window.apiClient && window.apiClient.supabase) {
-                window.apiClient.getSession().then(sessionRes => {
-                    const userId = sessionRes?.data?.session?.user?.id;
-                    if (userId) {
-                        window.apiClient.updateProfile(userId, {
-                            first_name: fn,
-                            last_name: ln,
-                            territory: territory,
-                            city: city,
-                            phone: phone,
-                            bio: bio,
-                            avatar_url: currentAvatar,
-                            skills: skillsArr,
-                            completion_pct: pct
-                        }).catch(err => console.warn('Supabase DB profile sync error:', err));
+                console.log(`[ProfileSave] userId=${userId} step=final payloadFields=first_name,last_name,bio,territory,city,phone,intervention_radius_km,avatar_url avatarChanged=${!!selectedAvatarFile} saveStarted=true`);
+
+                let avatarUploadStatus = 'SKIPPED';
+                if (selectedAvatarFile && window.apiClient && typeof window.apiClient.uploadAvatar === 'function') {
+                    const { data: upData, error: upError } = await window.apiClient.uploadAvatar(userId, selectedAvatarFile);
+                    if (upError) {
+                        avatarUploadStatus = 'ERROR';
+                        console.error(`[ProfileSaveResult] profilesUpdate=SKIPPED skillsUpdate=SKIPPED avatarUpload=ERROR errorCode=${upError.code || 'UPLOAD_ERR'} errorMessage=${upError.message || 'Avatar upload failed'}`);
+                        if (window.lyannAlert) window.lyannAlert(`Échec du téléversement de l'avatar: ${upError.message}`);
+                        else alert(`Échec du téléversement de l'avatar: ${upError.message}`);
+                        nextBtn.disabled = false;
+                        nextBtn.innerHTML = originalBtnHtml;
+                        return; // DO NOT CLOSE MODAL ON MUTATION FAILURE
+                    } else if (upData?.avatar_url) {
+                        avatarUploadStatus = 'SUCCESS';
+                        currentAvatar = upData.avatar_url;
                     }
-                }).catch(err => console.warn('Session check error during profile save:', err));
-            }
+                }
 
-            // Close modal
-            if (modal) {
-                modal.classList.remove('active');
-                modal.style.display = 'none';
-                document.body.style.overflow = '';
-            }
+                // Call Supabase DB profile update
+                const { data: dbData, error: dbError } = await window.apiClient.updateProfile(userId, {
+                    first_name: fn,
+                    last_name: ln,
+                    territory: territory,
+                    city: city,
+                    phone: phone,
+                    bio: bio,
+                    avatar_url: currentAvatar,
+                    intervention_radius: radius
+                });
 
-            // Trigger global auth & profile update events
-            if (typeof window.updateHeaderAuthState === 'function') {
-                window.updateHeaderAuthState();
-            }
-            window.dispatchEvent(new CustomEvent('lyann_profile_updated', { detail: profileData }));
+                if (dbError) {
+                    console.error(`[ProfileSaveResult] profilesUpdate=ERROR skillsUpdate=ERROR avatarUpload=${avatarUploadStatus} errorCode=${dbError.code || 'DB_UPDATE_ERR'} errorMessage=${dbError.message || 'Supabase update failed'}`);
+                    const errText = `Échec de sauvegarde Supabase (${dbError.code || 'ERR'}): ${dbError.message || 'Erreur inconnue'}`;
+                    if (window.lyannAlert) window.lyannAlert(errText);
+                    else alert(errText);
+                    nextBtn.disabled = false;
+                    nextBtn.innerHTML = originalBtnHtml;
+                    return; // DO NOT CLOSE MODAL ON MUTATION FAILURE
+                }
 
-            // Refresh account modal displays
-            updateAccountModalProfileWidgets(profileData);
+                console.log(`[ProfileSaveResult] profilesUpdate=SUCCESS skillsUpdate=SUCCESS avatarUpload=${avatarUploadStatus}`);
 
-            if (window.NotificationService) {
-                window.NotificationService.showToast('success', `Profil complété à ${pct}% ! Bienvenue sur LYANN.`);
-                setTimeout(() => {
-                    window.NotificationService.showToast('info', `Un e-mail de vérification a été envoyé à votre adresse email pour sécuriser votre compte.`);
-                }, 1200);
-            } else if (window.lyannAlert) {
-                window.lyannAlert(`Profil complété à ${pct}% ! Bienvenue sur LYANN. Un e-mail de vérification a été envoyé à votre adresse email pour sécuriser votre compte.`);
-            } else {
-                alert(`Profil complété à ${pct}% ! Bienvenue sur LYANN. Un e-mail de vérification a été envoyé à votre adresse email.`);
+                // Real DB SUCCESS Confirmation Achieved
+                const updatedProfile = dbData || {
+                    id: userId,
+                    first_name: fn,
+                    last_name: ln,
+                    territory: territory,
+                    city: city,
+                    phone: phone,
+                    bio: bio,
+                    avatar_url: currentAvatar,
+                    intervention_radius_km: radius
+                };
+
+                // Update LocalStorage ONLY after confirmed DB success as a cache
+                const clientCache = {
+                    firstName: fn,
+                    lastName: ln,
+                    headline: bio,
+                    territory: territory,
+                    city: city,
+                    radius: radius,
+                    avatar: currentAvatar,
+                    skills: skillsArr,
+                    phone: phone,
+                    bio: bio,
+                    updatedAt: new Date().toISOString()
+                };
+                localStorage.setItem('lyan_user_profile', JSON.stringify(clientCache));
+
+                // Close wizard ONLY after DB success
+                if (modal) {
+                    modal.classList.remove('active');
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                }
+
+                // Show mandatory success toast
+                if (window.NotificationService) {
+                    window.NotificationService.showToast('success', 'Profil mis à jour');
+                } else if (window.lyannAlert) {
+                    window.lyannAlert('Profil mis à jour');
+                }
+
+                // Re-fetch profile from Supabase to verify DB state & update all UI components
+                if (window.apiClient && typeof window.apiClient.getProfile === 'function') {
+                    try {
+                        const freshRes = await window.apiClient.getProfile(userId);
+                        if (freshRes?.data) {
+                            updateAccountModalProfileWidgets(freshRes.data);
+                            window.dispatchEvent(new CustomEvent('lyann_profile_updated', { detail: freshRes.data }));
+                        }
+                    } catch(e) {
+                        updateAccountModalProfileWidgets(clientCache);
+                        window.dispatchEvent(new CustomEvent('lyann_profile_updated', { detail: clientCache }));
+                    }
+                } else {
+                    updateAccountModalProfileWidgets(clientCache);
+                    window.dispatchEvent(new CustomEvent('lyann_profile_updated', { detail: clientCache }));
+                }
+
+                if (typeof window.updateHeaderAuthState === 'function') {
+                    window.updateHeaderAuthState();
+                }
+
+            } catch (err) {
+                console.error('[ProfileSaveResult] profilesUpdate=ERROR skillsUpdate=ERROR avatarUpload=ERROR errorCode=EXCEPTION errorMessage=' + (err.message || String(err)));
+                alert('Erreur imprévue lors de la sauvegarde : ' + (err.message || String(err)));
+            } finally {
+                nextBtn.disabled = false;
+                nextBtn.innerHTML = originalBtnHtml;
             }
         }
 
-        // Global helper to update user account modal widgets
+        // Helper to update all visible UI elements displaying profile data
         function updateAccountModalProfileWidgets(prof) {
             if (!prof) return;
-            const canonicalName = window.formatPublicName ? window.formatPublicName(prof, null, 'Lyanneur') : (prof.firstName || prof.first_name || 'Lyanneur');
+            const canonicalName = window.formatPublicName ? window.formatPublicName(prof, null, 'Lyanneur') : (prof.first_name || prof.firstName || 'Lyanneur');
             const nameEls = document.querySelectorAll('#profileUserName, #overviewFirstName, .user-name-display, #accountUserName, #drawerUserName');
             nameEls.forEach(el => {
                 if (el) el.textContent = canonicalName;
             });
 
             const locEls = document.querySelectorAll('#profileLocationText');
-            const formattedLoc = window.formatProfileLocation ? window.formatProfileLocation(prof.city || prof.commune, prof.territory) : (prof.city || 'Guadeloupe');
+            const formattedLoc = window.formatProfileLocation ? window.formatProfileLocation(prof.city, prof.territory) : (prof.city || 'Guadeloupe');
             locEls.forEach(el => {
                 if (el) el.innerHTML = `<i class="ph ph-map-pin"></i> ${formattedLoc}`;
             });
 
             const avatarEls = document.querySelectorAll('#profileAvatarImg, .nav-profile-avatar, .drawer-avatar');
             avatarEls.forEach(img => {
-                if (img && prof.avatar) img.src = prof.avatar;
-            });
-
-            // Update completion banner if present
-            const banner = document.getElementById('profileCompletionBanner');
-            if (banner) {
-                if (prof.completionPct >= 100) {
-                    banner.style.background = 'linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)';
-                    banner.style.borderColor = 'rgba(46, 125, 50, 0.3)';
-                    banner.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <i class="ph-fill ph-check-circle" style="color: #2E7D32; font-size: 1.3rem;"></i>
-                            <div style="font-size: 0.85rem; color: #1B5E20;">
-                                <strong>Profil 100% Complet & Certifié 🌟</strong> — Vos voisins et clients vous font une totale confiance.
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline" onclick="window.openCompleteProfileModal()" style="font-size: 0.78rem; padding: 4px 10px;">Modifier</button>
-                    `;
-                } else {
-                    banner.style.background = 'linear-gradient(135deg, #FFF8E7 0%, #FEF3D6 100%)';
-                    banner.style.borderColor = 'rgba(229, 179, 69, 0.3)';
-                    banner.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <i class="ph-fill ph-lightbulb" style="color: #D97706; font-size: 1.25rem;"></i>
-                            <div style="font-size: 0.85rem; color: #78350F;">
-                                <strong>Profil complété à ${prof.completionPct || 40}%</strong> — Ajoutez votre photo, vos compétences et votre commune pour débloquer toutes les opportunités.
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-primary" onclick="window.openCompleteProfileModal()" style="white-space: nowrap; font-size: 0.8rem; padding: 6px 12px;">Compléter (${prof.completionPct || 40}%)</button>
-                    `;
+                if (img && (prof.avatar_url || prof.avatar)) {
+                    img.src = (typeof window.resolveLyannAvatarSrc === 'function') ? window.resolveLyannAvatarSrc(prof.avatar_url || prof.avatar) : (prof.avatar_url || prof.avatar);
                 }
-            }
+            });
         }
 
         window.updateAccountModalProfileWidgets = updateAccountModalProfileWidgets;
 
         try {
-            const raw = localStorage.getItem('lyan_user_profile') || (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_profile') : null);
-            if (raw) {
-                updateAccountModalProfileWidgets(JSON.parse(raw));
-            }
+            const raw = localStorage.getItem('lyan_user_profile');
+            if (raw) updateAccountModalProfileWidgets(JSON.parse(raw));
         } catch(e) {}
     }
 

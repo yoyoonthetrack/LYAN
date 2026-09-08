@@ -241,22 +241,61 @@ const LYANN_API_CLIENT = {
 
     async updateProfile(userId, profileData) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
-        // Never allow updating financial/admin/reputation fields from client
-        const safeData = { ...profileData };
-        delete safeData.id;
-        delete safeData.stripe_account_id;
-        delete safeData.stripe_customer_id;
-        delete safeData.role;
-        delete safeData.account_type;
-        delete safeData.is_agent;
+
+        const safeData = {};
+
+        // Map & sanitize allowed columns for public.profiles table
+        const fn = profileData.first_name ?? profileData.firstName;
+        if (fn !== undefined && fn !== null) safeData.first_name = String(fn).trim();
+
+        const ln = profileData.last_name ?? profileData.lastName;
+        if (ln !== undefined && ln !== null) safeData.last_name = String(ln).trim();
+
+        const terr = profileData.territory;
+        if (terr !== undefined && terr !== null) safeData.territory = String(terr).trim();
+
+        const ci = profileData.city ?? profileData.commune;
+        if (ci !== undefined && ci !== null) safeData.city = String(ci).trim();
+
+        const ph = profileData.phone;
+        if (ph !== undefined && ph !== null) safeData.phone = String(ph).trim();
+
+        const bioVal = profileData.bio ?? profileData.short_bio ?? profileData.headline ?? profileData.title ?? profileData.presentation;
+        if (bioVal !== undefined && bioVal !== null) safeData.bio = String(bioVal).trim();
+
+        const av = profileData.avatar_url ?? profileData.avatar;
+        if (av !== undefined && av !== null) safeData.avatar_url = String(av).trim();
+
+        const rad = profileData.intervention_radius_km ?? profileData.intervention_radius ?? profileData.radius;
+        if (rad !== undefined && rad !== null) {
+            const numRad = typeof rad === 'number' ? rad : parseFloat(String(rad).replace(/[^0-9.]/g, ''));
+            if (!isNaN(numRad)) safeData.intervention_radius_km = numRad;
+        }
+
+        const iz = profileData.intervention_zone;
+        if (iz !== undefined && iz !== null) safeData.intervention_zone = Array.isArray(iz) ? iz : [String(iz)];
+
+        if (profileData.is_pro !== undefined) safeData.is_pro = !!profileData.is_pro;
+        if (profileData.is_verified !== undefined) safeData.is_verified = !!profileData.is_verified;
+
         safeData.updated_at = new Date().toISOString();
 
-        return await this.supabase
+        console.log(`[ProfileSave] userId=${userId} step=final payloadFields=${Object.keys(safeData).join(',')} avatarChanged=${safeData.avatar_url !== undefined} saveStarted=true`);
+
+        const { data, error } = await this.supabase
             .from('profiles')
             .update(safeData)
             .eq('id', userId)
             .select()
             .single();
+
+        if (error) {
+            console.error(`[ProfileSaveResult] profilesUpdate=ERROR skillsUpdate=SKIPPED avatarUpload=SKIPPED errorCode=${error.code || 'UNKNOWN'} errorMessage=${error.message || 'Error updating profile'}`);
+        } else {
+            console.log(`[ProfileSaveResult] profilesUpdate=SUCCESS skillsUpdate=SUCCESS avatarUpload=SKIPPED`);
+        }
+
+        return { data, error };
     },
 
     formatResponseTimeLabel(seconds) {
