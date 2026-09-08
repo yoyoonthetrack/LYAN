@@ -141,37 +141,41 @@ runOnDomReady(() => {
     // Canonical Native OAuth Callback URL
     const CANONICAL_NATIVE_CALLBACK = 'app.lyann.dom://google-auth';
 
-    // Google OAuth Handler
-    const googleAuthBtns = document.querySelectorAll('.btn-google-auth, #btnGoogleLogin, #btnGoogleSignup, #googleAuthBtn, .btn-google');
-    googleAuthBtns.forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-                try {
-                    const isNative = (typeof window.isNativePlatform === 'function' && window.isNativePlatform()) || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-                    const redirectUrl = isNative ? CANONICAL_NATIVE_CALLBACK : window.location.origin;
-                    console.log('[Google Auth] Initiating OAuth with redirectTo:', redirectUrl);
-                    const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithOAuth({
-                        provider: 'google',
-                        options: { redirectTo: redirectUrl }
-                    });
-                    if (error) {
-                        console.warn("[Google Auth] Supabase Google OAuth error:", error);
-                        if (window.NotificationService) {
-                            window.NotificationService.showToast('warning', 'Connexion Google : configuration du fournisseur requise dans Supabase.');
-                        } else if (window.lyannAlert) {
-                            window.lyannAlert('Connexion Google : configuration du fournisseur requise dans Supabase.');
+    // Google OAuth Handler (Delegated Event Listener for static & dynamic buttons)
+    if (!window.__googleAuthDelegatorBound__) {
+        window.__googleAuthDelegatorBound__ = true;
+        document.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.btn-google-auth, #btnGoogleLogin, #btnGoogleSignup, #googleAuthBtn, .btn-google, #btnWelcomeGoogle');
+            if (btn) {
+                e.preventDefault();
+                console.log('[Google Auth] Initiating OAuth trigger from button:', btn.id || btn.className);
+                if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+                    try {
+                        const isNative = (typeof window.isNativePlatform === 'function' && window.isNativePlatform()) || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+                        const redirectUrl = isNative ? CANONICAL_NATIVE_CALLBACK : window.location.origin;
+                        console.log('[Google Auth] Initiating OAuth with redirectTo:', redirectUrl);
+                        const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithOAuth({
+                            provider: 'google',
+                            options: { redirectTo: redirectUrl }
+                        });
+                        if (error) {
+                            console.warn("[Google Auth] Supabase Google OAuth error:", error);
+                            if (window.NotificationService) {
+                                window.NotificationService.showToast('warning', 'Connexion Google : configuration du fournisseur requise dans Supabase.');
+                            } else if (window.lyannAlert) {
+                                window.lyannAlert('Connexion Google : configuration du fournisseur requise dans Supabase.');
+                            }
                         }
+                    } catch(err) {
+                        console.warn("[Google Auth] Error:", err);
+                        if (window.lyannAlert) window.lyannAlert('Erreur lors de la connexion Google: ' + err.message);
                     }
-                } catch(err) {
-                    console.warn("[Google Auth] Error:", err);
-                    if (window.lyannAlert) window.lyannAlert('Erreur lors de la connexion Google: ' + err.message);
+                } else {
+                    if (window.lyannAlert) window.lyannAlert('Client Supabase indisponible pour la connexion Google.');
                 }
-            } else {
-                if (window.lyannAlert) window.lyannAlert('Client Supabase indisponible pour la connexion Google.');
             }
         });
-    });
+    }
 
     // Native Capacitor App Deep Link Listener for Google OAuth Return
     if (!window.__nativeOAuthListenerBound__ && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
