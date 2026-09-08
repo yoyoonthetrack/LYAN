@@ -42,8 +42,10 @@ function isNativePlatform() {
 }
 
 // === LYANN SINGLE SOURCE OF TRUTH DEFAULT USER AVATAR ===
+const RAW_LYANN_DEFAULT_AVATAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="50" fill="#FAF7F2"/><circle cx="50" cy="50" r="48" fill="#EBF2ED" stroke="rgba(74,124,89,0.25)" stroke-width="2"/><circle cx="50" cy="38" r="16" fill="#4A7C59"/><path d="M 22 84 C 22 66, 34 58, 50 58 C 66 58, 78 66, 78 84 Z" fill="#4A7C59"/></svg>`;
+
 if (!window.getLyannDefaultAvatar) {
-    window.LYANN_DEFAULT_AVATAR_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="50" fill="%23FAF7F2"/><circle cx="50" cy="50" r="48" fill="%23EBF2ED" stroke="rgba(74,124,89,0.25)" stroke-width="2"/><circle cx="50" cy="38" r="16" fill="%234A7C59"/><path d="M 22 84 C 22 66, 34 58, 50 58 C 66 58, 78 66, 78 84 Z" fill="%234A7C59"/></svg>`;
+    window.LYANN_DEFAULT_AVATAR_SVG = 'data:image/svg+xml,' + encodeURIComponent(RAW_LYANN_DEFAULT_AVATAR_SVG);
     window.LYANN_DEFAULT_AVATAR_PATH = window.LYANN_DEFAULT_AVATAR_SVG;
 
     window.getLyannDefaultAvatar = function() {
@@ -3512,7 +3514,7 @@ safeDomReady(() => {
                         } else {
                             actionBtnHTML = `
                                 <button class="flash-action-btn btn-open-lyann-detail" data-request-id="${targetId}" style="background: #F1F5F9; color: #334155; font-weight: 700; border-radius: 20px; min-height: 40px;"><i class="ph ph-eye"></i> <span>Voir le Lyann</span></button>
-                                <button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${(post.author_name || post.authorName || '').replace(/"/g, '&quot;')}" data-requester-avatar="${post.author_avatar || post.authorAvatar || ''}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: var(--primary); color: #FFF; font-weight: 800; border-radius: 20px; min-height: 40px;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>
+                                <button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${(post.author_name || post.authorName || '').replace(/"/g, '&quot;')}" data-requester-avatar="${(post.author_avatar || post.authorAvatar || '').replace(/"/g, '&quot;')}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: var(--primary); color: #FFF; font-weight: 800; border-radius: 20px; min-height: 40px;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>
                             `;
                         }
                     } else {
@@ -3575,7 +3577,7 @@ safeDomReady(() => {
                         const secondaryCtaHTML = `<button class="flash-action-btn btn-open-lyann-detail lyann-cta-secondary" data-request-id="${targetId}"><i class="ph ${viewIcon}"></i> <span>${viewLabel}</span></button>`;
                         
                         if (!isOwnLyann) {
-                            const primaryCtaHTML = `<button class="flash-action-btn btn-help-lyann lyann-cta-primary" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${post.author_avatar || post.authorAvatar || ''}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
+                            const primaryCtaHTML = `<button class="flash-action-btn btn-help-lyann lyann-cta-primary" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${(post.author_avatar || post.authorAvatar || '').replace(/"/g, '&quot;')}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
                             
                             ctaRowHTML = `
                                 <div class="lyann-cta-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; box-sizing: border-box; margin-top: 8px;">
