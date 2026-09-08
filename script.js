@@ -1649,7 +1649,7 @@ function ensureMobileHamburgerDrawer() {
                 
                 <!-- EN-TÊTE PROFIL -->
                 <div class="drawer-profile-header">
-                    <a href="#" class="drawer-profile-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); if(window.CURRENT_USER_ID) { window.openPublicProfileModal(window.CURRENT_USER_ID); } else { window.openAccountModalSubView('account'); }">
+                    <a href="#" class="drawer-profile-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openPublicProfileModal();">
                         <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" alt="Profil Utilisateur" class="drawer-avatar" id="drawerUserAvatar" onerror="window.handleAvatarError(this)">
                         <div class="drawer-user-info">
                             <span class="drawer-user-name" id="drawerUserName">Mon Compte</span>
@@ -2395,6 +2395,28 @@ safeDomReady(() => {
             openQuickProfileModal(memberId);
         }
     }
+
+    window.openPublicMemberProfile = openPublicMemberProfile;
+    window.openPublicProfileModal = async function(targetId) {
+        let finalId = targetId;
+        if (!finalId) {
+            const session = (typeof window.getActiveSupabaseSession === 'function') 
+                ? await window.getActiveSupabaseSession() 
+                : null;
+            if (session && session.user) {
+                finalId = session.user.id;
+            }
+        }
+        if (!finalId) {
+            console.warn('[PROFILE V2] openPublicProfileModal: No targetId or active Supabase session.');
+            if (typeof window.openLoginModal === 'function') {
+                window.openLoginModal();
+            }
+            return;
+        }
+        return await openPublicMemberProfile(finalId);
+    };
+    window.openProfileV2Modal = window.openPublicProfileModal;
 
     function renderStep9ProfileModalDOM(pData, isSelf, portfolioItems, userServices, reviewsList) {
         const modalCard = document.querySelector('#publicMemberProfileModal .modal-card') || document.querySelector('#publicMemberProfileModal');
@@ -4996,7 +5018,7 @@ safeDomReady(() => {
                 <!-- PROFIL PUBLIC -->
                 <div class="account-v3-section" style="margin-bottom:20px;">
                     <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 10px 0;">Profil public</h4>
-                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(window.CURRENT_USER_ID) window.openPublicProfileModal(window.CURRENT_USER_ID);" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); window.openPublicProfileModal();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
                         <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-user-focus"></i></div>
                         <div class="row-content" style="flex:1;">
                             <strong style="font-size:0.94rem; color:#1E293B; display:block;">Aperçu du profil public</strong>

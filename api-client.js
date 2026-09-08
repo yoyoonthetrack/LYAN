@@ -1586,32 +1586,17 @@ const LYANN_API_CLIENT = {
 
     // --- SERVICES MANAGEMENT ---
     async getUserServices(userId) {
-        // Seed default mock items if empty
-        try {
-            if (!localStorage.getItem('lyann_mock_services')) {
-                const defaultList = [
-                    { title: "Entretien & Révision Climatisation Inverter", price: "60.00", billing: "/ unité", details: "Déplacement inclus", status: "Actif" },
-                    { title: "Taille de Palmiers & Entretien Espaces Verts", price: "Sur devis", billing: "/ heure", details: "Matériel inclus", status: "Actif" }
-                ];
-                localStorage.setItem('lyann_mock_services', JSON.stringify(defaultList));
-            }
-        } catch (e) {}
-
-        if (!isUUID(userId) || !this.supabase) {
-            try {
-                const mock = localStorage.getItem('lyann_mock_services');
-                return mock ? JSON.parse(mock) : [];
-            } catch (e) {
-                return [];
-            }
+        if (!userId || !isUUID(userId) || !this.supabase) {
+            return [];
         }
         try {
             const { data, error } = await this.supabase
                 .from('services')
                 .select('*')
                 .eq('owner_id', userId)
-                .eq('active', true);
+                .eq('is_active', true);
             if (error) throw error;
+            if (!data || !Array.isArray(data)) return [];
             return data.map(s => {
                 const billingText = s.pricing_model === 'HOURLY' ? '/ heure' :
                                      s.pricing_model === 'DAILY' ? '/ jour' :
@@ -1622,17 +1607,12 @@ const LYANN_API_CLIENT = {
                     price: s.indicative_price ? s.indicative_price.toString() : 'Sur devis',
                     billing: billingText,
                     details: s.description || '',
-                    status: s.active ? 'Actif' : 'Inactif'
+                    status: (s.is_active !== false && s.active !== false) ? 'Actif' : 'Inactif'
                 };
             });
         } catch (e) {
-            console.warn("Supabase getUserServices failed, falling back to local:", e);
-            try {
-                const mock = localStorage.getItem('lyann_mock_services');
-                return mock ? JSON.parse(mock) : [];
-            } catch (err) {
-                return [];
-            }
+            console.warn("Supabase getUserServices query failed:", e);
+            return [];
         }
     },
 
