@@ -77,66 +77,7 @@ runOnDomReady(() => {
         });
     }
 
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const emInput = document.getElementById('loginEmail') || loginForm.querySelector('input[type="email"]');
-            const pwInput = document.getElementById('loginPassword') || loginForm.querySelector('input[type="password"]');
-
-            const email = emInput ? emInput.value.trim() : '';
-            const password = pwInput ? pwInput.value.trim() : '';
-
-            if (!email || !password) {
-                if (window.lyannAlert) window.lyannAlert('Veuillez saisir votre e-mail et votre mot de passe.');
-                else alert('Veuillez saisir votre e-mail et votre mot de passe.');
-                return;
-            }
-
-            // Authenticate with Supabase
-            if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-                try {
-                    const { data, error } = await window.LYANN_API_CLIENT.login(email, password);
-                    if (error) {
-                        const errorMsg = error.message || 'Erreur lors de la connexion.';
-                        if (window.lyannAlert) window.lyannAlert(errorMsg);
-                        else alert(errorMsg);
-                        return;
-                    }
-                    if (data && data.session) {
-                        // Purge any stale mock/cached local profile
-                        if (typeof safeStorage !== 'undefined') {
-                            safeStorage.removeItem('lyan_user_profile');
-                        }
-                        localStorage.removeItem('lyan_user_profile');
-
-                        if (loginModal) loginModal.classList.remove('active');
-                        document.body.style.overflow = '';
-
-                        if (window.NotificationService) {
-                            window.NotificationService.showToast('success', 'Connexion réussie !');
-                        } else if (window.lyannAlert) {
-                            window.lyannAlert('Connexion réussie !');
-                        }
-
-                        if (typeof window.updateHeaderAuthState === 'function') {
-                            await window.updateHeaderAuthState();
-                        } else {
-                            window.location.reload();
-                        }
-                        return;
-                    }
-                } catch(err) {
-                    console.error("[LYANN AUTH] Supabase login error:", err);
-                    if (window.lyannAlert) window.lyannAlert(err.message || 'Erreur de connexion.');
-                    else alert(err.message || 'Erreur de connexion.');
-                    return;
-                }
-                return;
-            }
-
-            if (window.lyannAlert) window.lyannAlert('Authentification Supabase indisponible.');
-        });
-    }
+    // Note: #loginForm submit handling is authoritatively managed in script.js to avoid duplicate auth calls or page reloads.
 
     // Canonical Native OAuth Callback URL
     const CANONICAL_NATIVE_CALLBACK = 'app.lyann.dom://google-auth';
@@ -210,10 +151,10 @@ runOnDomReady(() => {
                             }
                         }
 
-                        if (typeof window.checkAuthState === 'function') {
+                        if (typeof window.updateHeaderAuthState === 'function') {
+                            await window.updateHeaderAuthState();
+                        } else if (typeof window.checkAuthState === 'function') {
                             await window.checkAuthState();
-                        } else {
-                            window.location.reload();
                         }
                     } catch (err) {
                         console.error('[NATIVE_OAUTH] Error processing callback URL:', err);

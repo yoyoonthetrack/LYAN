@@ -50,63 +50,75 @@ def main():
 
     print(f"1. Authentification réussie : User A ({idA}), User B ({idB})")
 
-    # Query existing requests for A
-    url_get_reqs = f"{SUPABASE_URL}/rest/v1/requests?requester_id=eq.{idA}&order=created_at.desc&limit=1"
-    reqs_a, status_get = http_req(url_get_reqs, method="GET", token=tokenA)
-
-    if reqs_a and len(reqs_a) > 0:
-        req1 = reqs_a[0]
-        req_id = req1["id"]
-        print(f"2. Demande existante récupérée en base pour User A : ID = {req_id}, Titre = '{req1.get('title')}'")
-    else:
-        # Create request using POST
-        url_req = f"{SUPABASE_URL}/rest/v1/requests"
-        body_req = {
-            "requester_id": idA,
-            "title": "Audit Final - Entretien Jardin & Elagage",
-            "description": "Besoin urgent d'un coup de main pour taille de haie à Baie-Mahault",
-            "category": "Jardinage",
-            "location": "Baie-Mahault",
-            "budget": 60,
-            "urgency": "Urgent",
-            "status": "OPEN"
-        }
-        res_req, status_req = http_req(url_req, method="POST", body=body_req, token=tokenA, prefer="return=representation")
-        print(f"Post request status: {status_req}, body: {res_req}")
-        req_id = res_req[0]["id"]
-
-    # Send invitation to B
-    url_rpc_send = f"{SUPABASE_URL}/rest/v1/rpc/send_request_invitations"
-    res_send, status_send = http_req(url_rpc_send, method="POST", body={"p_request_id": req_id, "p_recipient_ids": [idB]}, token=tokenA)
-    print(f"3. RPC send_request_invitations exécutée : status HTTP {status_send}, retour = {json.dumps(res_send)}")
-
-    # Check invitation status PENDING in database
-    url_inv_pending = f"{SUPABASE_URL}/rest/v1/request_invitations?request_id=eq.{req_id}&recipient_id=eq.{idB}"
-    invs_pending, _ = http_req(url_inv_pending, method="GET", token=tokenB)
-    print(f"4. Ligne request_invitations (PENDING) en base : {json.dumps(invs_pending, indent=2)}")
-
-    if invs_pending and len(invs_pending) > 0:
-        inv_id = invs_pending[0]["id"]
-        # User B accepts invitation via accept_request_invitation RPC
-        url_rpc_accept = f"{SUPABASE_URL}/rest/v1/rpc/accept_request_invitation"
-        res_accept, status_accept = http_req(url_rpc_accept, method="POST", body={"p_invitation_id": inv_id}, token=tokenB)
-        print(f"5. RPC accept_request_invitation exécutée : status HTTP {status_accept}, retour = {json.dumps(res_accept)}")
-
-        # Check invitation status ACCEPTED in database
-        invs_accepted, _ = http_req(url_inv_pending, method="GET", token=tokenB)
-        print(f"6. Ligne request_invitations après acceptation (ACCEPTED) : {json.dumps(invs_accepted, indent=2)}")
-
-    print("\n--- DEPLOIEMENT & SCRIPT PRODUCTION LYANN.APP ---")
-    url_site_script = "https://lyann.app/script.js"
-    req_script = urllib.request.Request(url_site_script, method="GET")
+    created_request_ids = []
     try:
-        with urllib.request.urlopen(req_script, context=ssl_context) as resp:
-            script_text = resp.read().decode('utf-8')
-            has_step7 = "showWizardMatchingStep" in script_text or "Voici les Lyanneurs" in script_text
-            has_inv_ui = "loadUserReceivedInvitationsUI" in script_text
-            print(f"7. Production https://lyann.app/script.js vérifié : showWizardMatchingStep = {has_step7}, loadUserReceivedInvitationsUI = {has_inv_ui}")
-    except Exception as e:
-        print(f"7. Error reading lyann.app script.js: {e}")
+        # Query existing requests for A
+        url_get_reqs = f"{SUPABASE_URL}/rest/v1/requests?requester_id=eq.{idA}&order=created_at.desc&limit=1"
+        reqs_a, status_get = http_req(url_get_reqs, method="GET", token=tokenA)
+
+        if reqs_a and len(reqs_a) > 0:
+            req1 = reqs_a[0]
+            req_id = req1["id"]
+            print(f"2. Demande existante récupérée en base pour User A : ID = {req_id}, Titre = '{req1.get('title')}'")
+        else:
+            # Create request using POST
+            url_req = f"{SUPABASE_URL}/rest/v1/requests"
+            body_req = {
+                "requester_id": idA,
+                "title": "Audit Final - Entretien Jardin & Elagage",
+                "description": "Besoin urgent d'un coup de main pour taille de haie à Baie-Mahault",
+                "category": "Jardinage",
+                "location": "Baie-Mahault",
+                "budget": 60,
+                "urgency": "Urgent",
+                "status": "OPEN"
+            }
+            res_req, status_req = http_req(url_req, method="POST", body=body_req, token=tokenA, prefer="return=representation")
+            print(f"Post request status: {status_req}, body: {res_req}")
+            req_id = res_req[0]["id"]
+            created_request_ids.append(req_id)
+
+        # Send invitation to B
+        url_rpc_send = f"{SUPABASE_URL}/rest/v1/rpc/send_request_invitations"
+        res_send, status_send = http_req(url_rpc_send, method="POST", body={"p_request_id": req_id, "p_recipient_ids": [idB]}, token=tokenA)
+        print(f"3. RPC send_request_invitations exécutée : status HTTP {status_send}, retour = {json.dumps(res_send)}")
+
+        # Check invitation status PENDING in database
+        url_inv_pending = f"{SUPABASE_URL}/rest/v1/request_invitations?request_id=eq.{req_id}&recipient_id=eq.{idB}"
+        invs_pending, _ = http_req(url_inv_pending, method="GET", token=tokenB)
+        print(f"4. Ligne request_invitations (PENDING) en base : {json.dumps(invs_pending, indent=2)}")
+
+        if invs_pending and len(invs_pending) > 0:
+            inv_id = invs_pending[0]["id"]
+            # User B accepts invitation via accept_request_invitation RPC
+            url_rpc_accept = f"{SUPABASE_URL}/rest/v1/rpc/accept_request_invitation"
+            res_accept, status_accept = http_req(url_rpc_accept, method="POST", body={"p_invitation_id": inv_id}, token=tokenB)
+            print(f"5. RPC accept_request_invitation exécutée : status HTTP {status_accept}, retour = {json.dumps(res_accept)}")
+
+            # Check invitation status ACCEPTED in database
+            invs_accepted, _ = http_req(url_inv_pending, method="GET", token=tokenB)
+            print(f"6. Ligne request_invitations après acceptation (ACCEPTED) : {json.dumps(invs_accepted, indent=2)}")
+
+        print("\n--- DEPLOIEMENT & SCRIPT PRODUCTION LYANN.APP ---")
+        url_site_script = "https://lyann.app/script.js"
+        req_script = urllib.request.Request(url_site_script, method="GET")
+        try:
+            with urllib.request.urlopen(req_script, context=ssl_context) as resp:
+                script_text = resp.read().decode('utf-8')
+                has_step7 = "showWizardMatchingStep" in script_text or "Voici les Lyanneurs" in script_text
+                has_inv_ui = "loadUserReceivedInvitationsUI" in script_text
+                print(f"7. Production https://lyann.app/script.js vérifié : showWizardMatchingStep = {has_step7}, loadUserReceivedInvitationsUI = {has_inv_ui}")
+        except Exception as e:
+            print(f"7. Error reading lyann.app script.js: {e}")
+    finally:
+        if created_request_ids:
+            print("🧹 [Teardown] Cleaning up created test requests:", created_request_ids)
+            for r_id in created_request_ids:
+                try:
+                    http_req(f"{SUPABASE_URL}/rest/v1/request_invitations?request_id=eq.{r_id}", method="DELETE", token=tokenA)
+                    http_req(f"{SUPABASE_URL}/rest/v1/requests?id=eq.{r_id}", method="DELETE", token=tokenA)
+                except Exception as e:
+                    print(f"Teardown error for request {r_id}: {e}")
 
 if __name__ == "__main__":
     main()

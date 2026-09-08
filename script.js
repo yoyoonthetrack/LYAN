@@ -2505,6 +2505,7 @@ safeDomReady(() => {
                     .eq('target_id', memberId)
                     .order('created_at', { ascending: false });
 
+                if (dbReviews) {
                     reviewsList = dbReviews.map(r => ({
                         name: window.formatPublicName(r.author, null, 'Membre'),
                         city: r.author?.city || 'Guadeloupe',
@@ -4762,6 +4763,7 @@ safeDomReady(() => {
                     throw new Error('Supabase client non disponible.');
                 }
 
+                console.log('[AUTH_TRACE] Form login submitted for email:', email.replace(/(?<=.{2}).(?=.*@)/g, '*'));
                 const { data, error } = await window.LYANN_API_CLIENT.login(email, password);
                 if (error) throw error;
 
@@ -4769,53 +4771,36 @@ safeDomReady(() => {
                     throw new Error('Session invalide. Identifiants incorrects.');
                 }
 
-                // Confirm that a valid session exists via getSession() before proceeding
-                const { data: sessionData } = await window.LYANN_API_CLIENT.getSession();
-                const activeSession = sessionData?.session;
+                // Explicit Session Verification Test (Required Contract)
+                const { data: sessionCheckData } = await window.LYANN_API_CLIENT.supabase.auth.getSession();
+                const activeSession = sessionCheckData?.session;
+                const userIdPresent = !!(activeSession && activeSession.user && activeSession.user.id);
 
-                console.log('[LYANN AUTH DEBUG]', {
-                    event: 'LOGIN_VERIFIED',
+                console.log('[AUTH_TRACE] Post-login session verification:', {
                     sessionPresent: !!activeSession,
-                    userId: activeSession?.user?.id || null,
-                    origin: window.location.origin
+                    userIdExists: userIdPresent,
+                    userId: activeSession?.user?.id || null
                 });
 
-                if (!activeSession) {
-                    throw new Error('Impossible de confirmer la persistance de la session active.');
+                if (!activeSession || !userIdPresent) {
+                    throw new Error('Impossible de confirmer la persistance de la session active après authentification.');
                 }
 
-                // Log unconfirmed email warning if applicable, but keep valid session
-                if (data.user && !data.user.email_confirmed_at && data.user.confirmation_sent_at) {
-                    console.warn('[LYANN AUTH] User logged in with unconfirmed email:', data.user.email);
-                }
+                window.CURRENT_USER_ID = activeSession.user.id;
+                document.body.classList.add('user-is-logged-in');
+                document.querySelectorAll('.app-welcome-screen').forEach(el => el.remove());
 
                 if (typeof safeStorage !== 'undefined') {
                     safeStorage.setItem('lyan_user_logged_in', 'true');
-                    if (data.user) safeStorage.setItem('lyan_user_id', data.user.id);
+                    safeStorage.setItem('lyan_user_id', activeSession.user.id);
                 }
                 localStorage.setItem('lyan_user_logged_in', 'true');
-                if (data.user) localStorage.setItem('lyan_user_id', data.user.id);
+                localStorage.setItem('lyan_user_id', activeSession.user.id);
 
                 closeLoginModal();
                 loginForm.reset();
 
-                document.querySelector('.app-welcome-screen')?.remove();
-
-                if (isNativePlatform()) {
-                    await updateHeaderAuthState();
-                    const path = window.location.pathname;
-                    const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
-                    if (isHome && typeof window.renderAppHomeConnectedView === 'function') {
-                        window.renderAppHomeConnectedView();
-                    }
-                } else {
-                    const currentPath = window.location.pathname;
-                    if (!currentPath.includes('feed.html') && !currentPath.includes('results.html') && !currentPath.includes('payment-portal.html')) {
-                        window.location.href = 'feed.html';
-                    } else {
-                        await updateHeaderAuthState();
-                    }
-                }
+                await updateHeaderAuthState();
 
                 try {
                     const pendingHelpStr = sessionStorage.getItem('pending_lyann_help');
@@ -4829,17 +4814,30 @@ safeDomReady(() => {
                         }
                     }
                 } catch(e) {}
+
+                if (isNativePlatform()) {
+                    const path = window.location.pathname;
+                    const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
+                    if (isHome && typeof window.renderAppHomeConnectedView === 'function') {
+                        console.log('[AUTH_TRACE] Native post-login: mounting Connected App Home');
+                        window.renderAppHomeConnectedView();
+                    }
+                } else {
+                    const currentPath = window.location.pathname;
+                    if (!currentPath.includes('feed.html') && !currentPath.includes('results.html') && !currentPath.includes('payment-portal.html')) {
+                        window.location.href = 'feed.html';
+                    }
+                }
             } catch (err) {
-                console.error('[LYANN AUTH DEBUG]', {
-                    event: 'LOGIN_FAILED',
-                    message: err ? err.message : 'Erreur inconnue',
-                    status: err ? err.status : undefined,
-                    code: err ? err.code : undefined
-                });
+                console.error('[AUTH_TRACE] Login error:', err.message || err);
                 const normErr = (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.normalizeAuthError) 
                     ? window.LYANN_API_CLIENT.normalizeAuthError(err) 
                     : err;
-                window.lyannAlert(normErr.message || 'Adresse email ou mot de passe incorrect.');
+                if (window.lyannAlert) {
+                    window.lyannAlert(normErr.message || 'Adresse email ou mot de passe incorrect.');
+                } else {
+                    alert(normErr.message || 'Adresse email ou mot de passe incorrect.');
+                }
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
@@ -5724,16 +5722,14 @@ safeDomReady(() => {
 
         let displayName = '';
         if (profileData) {
-            const fn = profileData.first_name || profileData.firstName || '';
-            const ln = profileData.last_name || profileData.lastName || '';
-            displayName = (fn + ' ' + ln).trim();
-            if (!displayName && profileData.email) {
+            displayName = window.formatPublicName ? window.formatPublicName(profileData, null, 'Membre LYANN') : (profileData.first_name || 'Membre LYANN');
+            if ((!displayName || displayName === 'Lyanneur') && profileData.email) {
                 displayName = profileData.email.split('@')[0];
             }
         }
 
-        if (!displayName && forcedSession && forcedSession.user) {
-            displayName = forcedSession.user.user_metadata?.first_name || forcedSession.user.email?.split('@')[0] || 'Membre LYANN';
+        if ((!displayName || displayName === 'Membre LYANN') && forcedSession && forcedSession.user) {
+            displayName = window.formatPublicName ? window.formatPublicName(forcedSession.user.user_metadata, null, forcedSession.user.email?.split('@')[0] || 'Membre LYANN') : (forcedSession.user.user_metadata?.first_name || 'Membre LYANN');
             profileSource = 'session_metadata';
         }
 
@@ -6308,16 +6304,34 @@ safeDomReady(() => {
         const isLoggedIn = !!session;
         const userId = session?.user?.id || null;
 
+        const welcomeScreenEl = document.querySelector('.app-welcome-screen');
+        const loginModalEl = document.getElementById('loginModal');
+        const loginModalVisible = loginModalEl ? (loginModalEl.classList.contains('active') || loginModalEl.style.display === 'block') : false;
+
         console.log('[AUTH_TRACE] updateHeaderAuthState:', {
             isLoggedIn,
             userId,
-            initializationComplete: authInitializationComplete
+            initializationComplete: authInitializationComplete,
+            nativeWelcomeVisible: !!welcomeScreenEl,
+            loginModalVisible: loginModalVisible,
+            pathname: window.location.pathname
         });
 
         if (isLoggedIn && userId) {
             document.body.classList.add('user-is-logged-in');
-            document.querySelector('.app-welcome-screen')?.remove();
+            document.querySelectorAll('.app-welcome-screen').forEach(el => el.remove());
             window.CURRENT_USER_ID = userId;
+
+            if (loginModalEl) {
+                loginModalEl.classList.remove('active');
+                loginModalEl.style.display = 'none';
+            }
+            const onboardingModalEl = document.getElementById('onboardingModal');
+            if (onboardingModalEl) {
+                onboardingModalEl.classList.remove('active');
+                onboardingModalEl.style.display = 'none';
+            }
+            document.body.style.overflow = '';
 
             if (typeof safeStorage !== 'undefined') {
                 safeStorage.setItem('lyan_user_logged_in', 'true');
@@ -6336,6 +6350,7 @@ safeDomReady(() => {
                     window.ensureDeterministicAppHeader();
                 }
                 if (isHome && typeof window.renderAppHomeConnectedView === 'function') {
+                    console.log('[AUTH_TRACE] Mounting connected App Home for userId:', userId);
                     window.renderAppHomeConnectedView();
                 }
             }
@@ -6357,7 +6372,7 @@ safeDomReady(() => {
 
             syncDrawerAuthState(false, null);
 
-            if (isNativePlatform()) {
+            if (isNativePlatform() && authInitializationComplete && !loginModalVisible) {
                 const path = window.location.pathname;
                 const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
                 if (isHome && typeof showAppWelcomeScreen === 'function') {
@@ -6374,13 +6389,11 @@ safeDomReady(() => {
                 if (el) el.textContent = 'Membre';
             });
 
-            // Clear self badges when logged out
             const selfBadges = document.querySelectorAll('#accountModalBadge, #drawerUserBadge');
             selfBadges.forEach(b => {
                 if (b) { b.textContent = ''; b.style.display = 'none'; }
             });
 
-            // Reset Account KPI elements on logout
             const kpiRatingVal = document.getElementById('accountKpiRating');
             const kpiMissionsVal = document.getElementById('accountKpiMissions');
             const kpiDemandesVal = document.getElementById('accountKpiDemandes');
@@ -6402,32 +6415,35 @@ safeDomReady(() => {
     // Subscribe to Supabase Auth Changes
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         window.LYANN_API_CLIENT.supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('[AUTH_TRACE] onAuthStateChange event:', event, '| hasSession:', !!session, '| userId:', session?.user?.id || null);
+            const userId = session?.user?.id || null;
+            console.log('[AUTH_TRACE] onAuthStateChange event:', event, '| hasSession:', !!session, '| userId:', userId);
+            console.log('[AUTH_REAL] event = ' + event + ' | session = ' + !!session + ' | userId = ' + (userId || 'null'));
 
             if (window.__LYANN_AUTH_REAL__) {
                 window.__LYANN_AUTH_REAL__.lastAuthEvent = event;
                 window.__LYANN_AUTH_REAL__.hasSession = !!session;
-                window.__LYANN_AUTH_REAL__.userId = session?.user?.id || null;
+                window.__LYANN_AUTH_REAL__.userId = userId;
             }
 
             if (event === 'INITIAL_SESSION') {
-                console.log('[AUTH_REAL] INITIAL_SESSION session exists = ' + !!session);
-            } else if (event === 'SIGNED_IN') {
-                console.log('[AUTH_REAL] SIGNED_IN');
-            } else if (event === 'SIGNED_OUT') {
-                console.log('[AUTH_REAL] SIGNED_OUT');
-            }
-
-            authInitializationComplete = true;
-
-            if ((event === 'INITIAL_SESSION' && session) || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-                console.log('[AUTH_TRACE] SIGNED_IN verified:', session?.user?.id || null);
+                console.log('[AUTH_REAL] INITIAL_SESSION processed. sessionPresent = ' + !!session);
+                authInitializationComplete = true;
+                if (session && session.user) {
+                    window.CURRENT_USER_ID = session.user.id;
+                    await updateHeaderAuthState();
+                } else {
+                    await updateHeaderAuthState();
+                }
+            } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+                console.log('[AUTH_REAL] SIGNED_IN / SESSION_ACTIVE processed. userId = ' + (userId || 'null'));
+                authInitializationComplete = true;
                 if (session && session.user) {
                     window.CURRENT_USER_ID = session.user.id;
                 }
                 await updateHeaderAuthState();
-            } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
-                console.log('[AUTH_TRACE] SIGNED_OUT or null INITIAL_SESSION confirmed.');
+            } else if (event === 'SIGNED_OUT') {
+                console.log('[AUTH_REAL] SIGNED_OUT explicitly processed.');
+                authInitializationComplete = true;
                 window.CURRENT_USER_ID = null;
                 window.LYANN_CURRENT_USER = null;
                 await updateHeaderAuthState();
@@ -6444,6 +6460,7 @@ safeDomReady(() => {
     // Canonical Auth Bootstrap on startup
     (async function bootstrapAuth() {
         authInitializationComplete = false;
+        console.log('[AUTH_TRACE] bootstrapAuth: initiating getActiveSupabaseSession...');
         const session = await getActiveSupabaseSession();
         console.log('[AUTH_TRACE] INITIAL_SESSION bootstrap getSession:', { hasSession: !!session, userId: session?.user?.id || null });
         authInitializationComplete = true;
