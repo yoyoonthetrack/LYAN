@@ -1687,12 +1687,12 @@ function ensureMobileHamburgerDrawer() {
 
                     <!-- 3. FAVORIS -->
                     <div class="drawer-menu-group">
-                        <a href="feed.html#fav" class="drawer-direct-link">
+                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('favorites');">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-heart" style="color: var(--primary);"></i>
                                 <span>Favoris</span>
                             </span>
-                            <i class="ph ph-arrow-up-right drawer-chevron"></i>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
                         </a>
                     </div>
 
@@ -2586,6 +2586,39 @@ safeDomReady(() => {
     };
     window.openProfileV2Modal = window.openPublicProfileModal;
 
+    window.formatPublicName = function(profileOrFirstName, lastName, fallback) {
+        let fn = '';
+        let ln = '';
+        let dn = '';
+
+        if (profileOrFirstName && typeof profileOrFirstName === 'object') {
+            fn = (profileOrFirstName.first_name || '').trim();
+            ln = (profileOrFirstName.last_name || '').trim();
+            dn = (profileOrFirstName.display_name || '').trim();
+        } else {
+            fn = (profileOrFirstName || '').trim();
+            ln = (lastName || '').trim();
+            dn = (fallback || '').trim();
+        }
+
+        if (fn && ln) {
+            return `${fn} ${ln.charAt(0).toUpperCase()}.`;
+        }
+        if (fn) {
+            return fn;
+        }
+        if (dn && dn !== 'Lyanneur' && dn !== 'Membre LYANN') {
+            if (dn.includes(' ') && !dn.includes('-')) {
+                const parts = dn.trim().split(/\s+/);
+                if (parts.length > 1) {
+                    return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+                }
+            }
+            return dn;
+        }
+        return fallback || 'Lyanneur';
+    };
+
     function renderStep9ProfileModalDOM(pData, isSelf, portfolioItems, userServices, reviewsList) {
         const modalCard = document.querySelector('#publicMemberProfileModal .modal-card') || document.querySelector('#publicMemberProfileModal');
         if (!modalCard) return;
@@ -2596,17 +2629,8 @@ safeDomReady(() => {
         const avgRating = (reviewsCount > 0 && metrics.average_rating) ? Number(metrics.average_rating).toFixed(1) : null;
         const completedMissions = metrics.completed_missions || 0;
 
-        // Build Name Prénom N.
-        let rawFn = (pData.first_name || '').trim();
-        let rawLn = (pData.last_name || '').trim();
-        let formattedName = 'Lyanneur';
-        if (rawFn && rawLn) {
-            formattedName = `${rawFn} ${rawLn.charAt(0).toUpperCase()}.`;
-        } else if (rawFn) {
-            formattedName = rawFn;
-        } else if (pData.display_name && !pData.display_name.includes('-') && pData.display_name !== 'Lyanneur') {
-            formattedName = pData.display_name;
-        }
+        // Build Name Prénom N. using canonical formatter
+        const formattedName = window.formatPublicName(pData, null, 'Lyanneur');
         const safeDisplayName = window.escapeHtmlAttr(formattedName);
         const avatarSrc = window.escapeHtmlAttr(window.resolveLyannAvatarSrc(pData.avatar_url || pData.avatar));
 
@@ -5080,6 +5104,39 @@ safeDomReady(() => {
                     </div>
                 </div>
             `;
+        } else if (subViewName === 'favorites') {
+            titleText = 'Favoris';
+            let favs = [];
+            if (typeof window.getLyannFavorites === 'function') {
+                try { favs = window.getLyannFavorites() || []; } catch(e) {}
+            }
+            let favsHTML = '';
+            if (favs.length > 0) {
+                favsHTML = favs.map(f => `
+                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openChatWithUser==='function') window.openChatWithUser('${window.escapeHtmlAttr(f.name || '')}', '${window.escapeHtmlAttr(f.avatar || '')}', '${window.escapeHtmlAttr(f.id || '')}');" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(229,179,69,0.15); color:#E5B345; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph-fill ph-heart"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">${window.escapeHtmlAttr(f.name || 'Membre')}</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;">Lyanneur enregistré</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                `).join('');
+            } else {
+                favsHTML = `
+                    <div class="account-v3-empty" style="background:#F8FAFC; border:1.5px dashed #CBD5E1; border-radius:16px; padding:28px 16px; text-align:center;">
+                        <i class="ph ph-heart" style="font-size:2.2rem; color:#94A3B8; margin-bottom:8px; display:block;"></i>
+                        <p style="font-size:0.92rem; color:#475569; margin:0 0 4px 0; font-weight:700;">Vous n'avez pas encore de favoris.</p>
+                        <p style="font-size:0.8rem; color:#94A3B8; margin:0;">Enregistrez des Lyanneurs ou des besoins pour les retrouver ici.</p>
+                    </div>
+                `;
+            }
+            subViewContent = `
+                <div class="account-v3-section">
+                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 12px 0;">Mes Favoris (${favs.length})</h4>
+                    ${favsHTML}
+                </div>
+            `;
         } else if (subViewName === 'finances') {
             titleText = 'Finances';
             let availableBal = '0,00 €';
@@ -5802,12 +5859,92 @@ safeDomReady(() => {
             const isEmailConf = forcedSession?.user?.email_confirmed_at ? '✅ Email vérifié (' + userEmail + ')' : '⏳ Email en attente de confirmation (' + userEmail + ')';
             kycList.innerHTML = `
                 <li>${isEmailConf}</li>
-                <li>⏳ Numéro mobile non certifié</li>
+                <li style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                    <span>⏳ Numéro mobile non certifié</span>
+                    <button type="button" id="btnVerifyPhoneAcc" class="btn btn-outline btn-xs btn-p2 btn-verify-phone" style="font-size: 0.75rem; padding: 3px 10px; border-radius: 6px;">Vérifier</button>
+                </li>
                 <li>⏳ Pièce d'identité non transmise</li>
             `;
         }
 
         return profileData;
+    }
+
+    // Phone Verification Flow Handler
+    window.handlePhoneVerificationSubmit = async function(rawPhoneInput) {
+        const raw = (rawPhoneInput || '').trim();
+        if (!raw) {
+            if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                window.NotificationService.showToast('warning', 'Veuillez saisir un numéro de téléphone valide.');
+            } else {
+                alert('Veuillez saisir un numéro de téléphone valide.');
+            }
+            return;
+        }
+
+        let cleaned = raw.replace(/\s+/g, '').replace(/[-().]/g, '');
+        if (cleaned.startsWith('0')) {
+            cleaned = '+590' + cleaned.substring(1);
+        }
+        if (!cleaned.startsWith('+')) {
+            cleaned = '+' + cleaned;
+        }
+
+        console.log('[PHONE_VERIFICATION] Attempting SMS OTP for phone:', cleaned);
+
+        if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+            console.error('[PHONE_VERIFICATION] Supabase client not initialized');
+            return;
+        }
+
+        try {
+            const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithOtp({
+                phone: cleaned
+            });
+
+            if (error) {
+                console.warn('[PHONE_VERIFICATION] Supabase OTP error:', error.message);
+                const msg = `⚠️ Vérification SMS bloquée (EXTERNAL CONFIGURATION REQUIRED) : Fournisseur SMS (Twilio/MessageBird) non configuré dans Supabase Auth.`;
+                if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                    window.NotificationService.showToast('warning', msg);
+                } else {
+                    alert(msg);
+                }
+                return;
+            }
+
+            if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                window.NotificationService.showToast('success', 'Code SMS envoyé ! Entrez le code à 6 chiffres reçu.');
+            }
+        } catch (err) {
+            console.error('[PHONE_VERIFICATION] Unexpected error:', err);
+            const msg = `⚠️ Vérification SMS bloquée (EXTERNAL CONFIGURATION REQUIRED) : Fournisseur SMS non configuré dans Supabase.`;
+            if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                window.NotificationService.showToast('warning', msg);
+            } else {
+                alert(msg);
+            }
+        }
+    };
+
+    if (!window.__phoneVerifyDelegatorBound__) {
+        window.__phoneVerifyDelegatorBound__ = true;
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-verify-phone, #btnVerifyPhoneAcc');
+            if (btn) {
+                e.preventDefault();
+                const phoneInput = document.getElementById('cpPhone') || document.getElementById('accountPhoneInput');
+                const phoneVal = phoneInput ? phoneInput.value : '';
+                if (!phoneVal && !phoneInput) {
+                    const prompted = prompt('Entrez votre numéro de téléphone (ex: 06 90 12 34 56) :');
+                    if (prompted) {
+                        window.handlePhoneVerificationSubmit(prompted);
+                    }
+                } else {
+                    window.handlePhoneVerificationSubmit(phoneVal);
+                }
+            }
+        });
     }
 
     let authInitializationComplete = false;

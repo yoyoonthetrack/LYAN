@@ -139,18 +139,28 @@ runOnDomReady(() => {
     }
 
     // Google OAuth Handler
-    const googleAuthBtns = document.querySelectorAll('.btn-google-auth, #btnGoogleLogin, #btnGoogleSignup');
+    const googleAuthBtns = document.querySelectorAll('.btn-google-auth, #btnGoogleLogin, #btnGoogleSignup, #googleAuthBtn, .btn-google');
     googleAuthBtns.forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
             if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                 try {
-                    await window.LYANN_API_CLIENT.supabase.auth.signInWithOAuth({
+                    const isNative = (typeof window.isNativePlatform === 'function' && window.isNativePlatform());
+                    const redirectUrl = isNative ? 'app.lyann.dom://' : window.location.origin;
+                    const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithOAuth({
                         provider: 'google',
-                        options: { redirectTo: window.location.origin }
+                        options: { redirectTo: redirectUrl }
                     });
+                    if (error) {
+                        console.warn("[Google Auth] Supabase Google OAuth error:", error);
+                        if (window.NotificationService) {
+                            window.NotificationService.showToast('warning', 'Connexion Google : configuration du fournisseur requise dans Supabase.');
+                        } else if (window.lyannAlert) {
+                            window.lyannAlert('Connexion Google : configuration du fournisseur requise dans Supabase.');
+                        }
+                    }
                 } catch(err) {
-                    console.warn("Supabase Google OAuth error:", err);
+                    console.warn("[Google Auth] Error:", err);
                     if (window.lyannAlert) window.lyannAlert('Erreur lors de la connexion Google: ' + err.message);
                 }
             } else {

@@ -171,35 +171,17 @@
                         </form>
                     </div>
 
-                    <!-- BARRE DE FILTRES BOKANTAJ V2 (POLISH V2: COMPACT & SCROLLER) -->
-                    <div class="bokantaj-top-filter-row" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 8px 0;">
-                        <div class="bokantaj-segment-group">
-                            <button type="button" class="feed-pill filter-btn-v2 active" data-filter-v2="all">Tout</button>
-                            <button type="button" class="feed-pill filter-btn-v2" data-filter-v2="post">Publications</button>
-                            <button type="button" class="feed-pill filter-btn-v2" data-filter-v2="lyann">Lyanns</button>
+                    <!-- BARRE DE FILTRES BOKANTAJ ELEGANT (ONE CLEAR CONTROL: FILTRES) -->
+                    <div class="bokantaj-top-filter-row" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0 16px 0; padding: 12px 16px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 700; font-size: 0.92rem; color: #1E293B;"><i class="ph-bold ph-newspaper-clipping" style="color: #4A7C59; font-size: 1.1rem;"></i> Flux Bokantaj</span>
+                            <span id="activeFilterSummary" style="font-size: 0.78rem; color: #64748B; background: #F1F5F9; padding: 3px 10px; border-radius: 12px; font-weight: 600;">Tout • Partout</span>
                         </div>
-                        <button type="button" class="btn-bokantaj-filter-sheet" id="btnOpenBokantajFilterSheet" aria-label="Filtres avancés">
-                            <i class="ph ph-sliders-horizontal"></i>
+                        <button type="button" class="btn-bokantaj-filter-sheet" id="btnOpenBokantajFilterSheet" aria-label="Filtres avancés" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(74, 124, 89, 0.1); border: 1px solid rgba(74, 124, 89, 0.25); border-radius: 20px; color: #2D5A39; font-weight: 700; font-size: 0.88rem; cursor: pointer;">
+                            <i class="ph ph-sliders-horizontal" style="font-size: 1.05rem;"></i>
                             <span>Filtres</span>
+                            <span id="activeFilterBadge" class="filter-count-badge" style="display: none; background: #4A7C59; color: white; width: 18px; height: 18px; border-radius: 50%; font-size: 0.72rem; align-items: center; justify-content: center;">0</span>
                         </button>
-                    </div>
-
-                    <!-- ROW 2: HASHTAGS & LOCALISATION SCROLLER HORIZONTAL INTENTIONNEL -->
-                    <div class="bokantaj-topic-scroller suggestion-tags hashtag-filters-group">
-                        <button type="button" class="feed-pill filter-btn-v2 chip-pill" data-filter-v2="nearby">
-                            <i class="ph ph-navigation-arrow" style="color: #4A7C59;"></i> Près de moi
-                        </button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Plomberie"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Plomberie</button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Climatisation"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Climatisation</button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Jardinage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Jardinage</button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Bricolage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Bricolage</button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Transport"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Transport</button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Électricité"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Électricité</button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Peinture"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Peinture</button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Ménage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Ménage</button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Aide à la personne"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> AideAuxSeniors</button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Garde d'enfants"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> GardeEnfants</button>
-                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Informatique"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Informatique</button>
                     </div>
 
                     <!-- FLUX BOKANTAJ UNIFIÉ (INJECTÉ DYNAMIQUEMENT) -->
