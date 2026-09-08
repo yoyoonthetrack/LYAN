@@ -1631,52 +1631,40 @@ function ensureMobileHamburgerDrawer() {
                 
                 <!-- EN-TÊTE PROFIL -->
                 <div class="drawer-profile-header">
-                    <a href="#" class="drawer-profile-link open-account-modal-trigger">
-                        <img src="david-34.png" alt="Profil Utilisateur" class="drawer-avatar" id="drawerUserAvatar">
+                    <a href="#" class="drawer-profile-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); if(window.CURRENT_USER_ID) { window.openPublicProfileModal(window.CURRENT_USER_ID); } else { window.openAccountModalSubView('account'); }">
+                        <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" alt="Profil Utilisateur" class="drawer-avatar" id="drawerUserAvatar" onerror="window.handleAvatarError(this)">
                         <div class="drawer-user-info">
                             <span class="drawer-user-name" id="drawerUserName">Mon Compte</span>
-                            <span class="drawer-user-badge" id="drawerUserBadge"><i class="ph-fill ph-check-circle"></i> Membre Pro Vérifié</span>
+                            <span class="drawer-user-badge" id="drawerUserBadge"></span>
                             <span class="drawer-view-profile">Voir mon profil <i class="ph ph-arrow-right"></i></span>
                         </div>
                     </a>
                     <button class="drawer-close-btn" id="closeMobileDrawerBtn" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
                 </div>
 
-                <!-- CORPS DU MENU ACCORDÉON -->
+                <!-- CORPS DU MENU -->
                 <div class="drawer-body">
                     
                     <!-- 1. MON COMPTE -->
                     <div class="drawer-menu-group">
-                        <button class="drawer-accordion-btn" data-target="submenuAccount">
+                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('account');">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-user-circle"></i>
                                 <span>Mon compte</span>
                             </span>
                             <i class="ph ph-caret-right drawer-chevron"></i>
-                        </button>
-                        <div class="drawer-submenu" id="submenuAccount">
-                            <a href="#" class="drawer-sub-link open-account-modal-trigger"><i class="ph ph-user"></i> Mon profil</a>
-                            <a href="pricing.html" class="drawer-sub-link"><i class="ph ph-sparkle"></i> Mon abonnement</a>
-                            <a href="payment-portal.html" class="drawer-sub-link"><i class="ph ph-credit-card"></i> Mes paiements</a>
-                            <a href="#" class="drawer-sub-link open-account-modal-trigger"><i class="ph ph-gear"></i> Réglages</a>
-                        </div>
+                        </a>
                     </div>
 
                     <!-- 2. MON ACTIVITÉ -->
                     <div class="drawer-menu-group">
-                        <button class="drawer-accordion-btn" data-target="submenuActivity">
+                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('activity');">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-clock-counter-clockwise"></i>
                                 <span>Mon activité</span>
                             </span>
                             <i class="ph ph-caret-right drawer-chevron"></i>
-                        </button>
-                        <div class="drawer-submenu" id="submenuActivity">
-                            <a href="#" class="drawer-sub-link open-account-modal-trigger" data-tab="demandes"><i class="ph ph-tray"></i> Mes demandes</a>
-                            <a href="#" class="drawer-sub-link open-account-modal-trigger" data-tab="prestations"><i class="ph ph-briefcase"></i> Mes prestations</a>
-                            <a href="#" class="drawer-sub-link open-account-modal-trigger" data-tab="missions"><i class="ph ph-check-square"></i> Mes missions</a>
-                            <a href="#" class="drawer-sub-link open-account-modal-trigger" data-tab="devis"><i class="ph ph-file-text"></i> Mes devis</a>
-                        </div>
+                        </a>
                     </div>
 
                     <!-- 3. FAVORIS -->
@@ -1690,7 +1678,18 @@ function ensureMobileHamburgerDrawer() {
                         </a>
                     </div>
 
-                    <!-- 4. AIDE & LYANN -->
+                    <!-- 4. FINANCES -->
+                    <div class="drawer-menu-group">
+                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('finances');">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-credit-card"></i>
+                                <span>Finances</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
+                    </div>
+
+                    <!-- 5. AIDE & LYANN -->
                     <div class="drawer-menu-group">
                         <button class="drawer-accordion-btn" data-target="submenuHelp">
                             <span class="drawer-accordion-label">
@@ -1707,21 +1706,15 @@ function ensureMobileHamburgerDrawer() {
                         </div>
                     </div>
 
-                    <!-- 5. PLUS -->
+                    <!-- 6. RÉGLAGES -->
                     <div class="drawer-menu-group">
-                        <button class="drawer-accordion-btn" data-target="submenuPlus">
+                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('settings');">
                             <span class="drawer-accordion-label">
-                                <i class="ph ph-dots-three-circle"></i>
-                                <span>Plus</span>
+                                <i class="ph ph-gear"></i>
+                                <span>Réglages</span>
                             </span>
                             <i class="ph ph-caret-right drawer-chevron"></i>
-                        </button>
-                        <div class="drawer-submenu" id="submenuPlus">
-                            <a href="#" class="drawer-sub-link open-account-modal-trigger"><i class="ph ph-bell"></i> Notifications</a>
-                            <a href="about.html#privacy" class="drawer-sub-link"><i class="ph ph-shield-check"></i> Confidentialité</a>
-                            <a href="about.html#cgu" class="drawer-sub-link"><i class="ph ph-file-lock"></i> CGU</a>
-                            <a href="about.html#legal" class="drawer-sub-link"><i class="ph ph-scales"></i> Mentions légales</a>
-                        </div>
+                        </a>
                     </div>
 
                 </div>
@@ -4789,54 +4782,271 @@ safeDomReady(() => {
         });
     }
 
-    // ==========================================================================
-    // LOGIQUE ESPACE MON COMPTE (#userAccountModal)
-    // ==========================================================================
-    const userAccountModal = document.getElementById('userAccountModal');
-    const closeUserAccountModalBtn = document.getElementById('closeUserAccountModalBtn');
-    const openAccountModalTriggers = document.querySelectorAll('.open-account-modal-trigger');
-    const accountTabBtns = document.querySelectorAll('.account-tab-btn');
-    const accountTabContents = document.querySelectorAll('.account-tab-content');
+    window.openAccountModalSubView = async function(subViewName = 'account') {
+        const modal = document.getElementById('userAccountModal');
+        if (!modal) return;
 
-    // Helper pour ouvrir un onglet spécifique du modal Mon Profil
-    function openAccountTab(tabId) {
-        if (userAccountModal) {
-            userAccountModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
+        let modalCard = modal.querySelector('.modal-card');
+        if (!modalCard) modalCard = modal;
 
-            setTimeout(() => {
-                const targetEl = document.getElementById(tabId);
-                if (targetEl) {
-                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }, 100);
+        const currentUserId = window.CURRENT_USER_ID || (window.LYANN_CURRENT_USER ? window.LYANN_CURRENT_USER.id : null);
+        let userProf = window.LYANN_CURRENT_USER || null;
+
+        if (!userProf && currentUserId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function') {
+            try {
+                userProf = await window.LYANN_API_CLIENT.getUserProfile(currentUserId);
+            } catch(e) {}
         }
-    }
-    window.openAccountTab = openAccountTab;
 
-    const accountModalBody = document.querySelector('#userAccountModal .modal-body');
-    if (accountModalBody) {
-        const accountObserver = new IntersectionObserver((entries) => {
-            let activeId = null;
-            let maxRatio = 0;
-            entries.forEach(entry => {
-                if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
-                    maxRatio = entry.intersectionRatio;
-                    activeId = entry.target.id;
-                }
-            });
-            if (activeId) {
-                const btn = document.querySelector(`.account-tab-btn[data-account-tab="${activeId}"]`);
-                if (btn && !btn.classList.contains('active')) {
-                    accountTabBtns.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                }
+        const rawFn = (userProf?.first_name || '').trim();
+        const rawLn = (userProf?.last_name || '').trim();
+        let displayName = 'Membre LYANN';
+        if (rawFn && rawLn) displayName = `${rawFn} ${rawLn.charAt(0).toUpperCase()}.`;
+        else if (rawFn) displayName = rawFn;
+        else if (userProf?.display_name) displayName = userProf.display_name;
+
+        const safeDisplayName = window.escapeHtmlAttr(displayName);
+        const userEmail = window.escapeHtmlAttr(userProf?.email || (window.LYANN_CURRENT_USER ? window.LYANN_CURRENT_USER.email : ''));
+        const avatarSrc = window.escapeHtmlAttr(window.resolveLyannAvatarSrc(userProf?.avatar_url));
+
+        let titleText = 'Mon compte';
+        let subViewContent = '';
+
+        if (subViewName === 'activity') {
+            titleText = 'Mon activité';
+            let myRequests = [];
+
+            if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && currentUserId) {
+                try {
+                    const { data: reqs } = await window.LYANN_API_CLIENT.supabase
+                        .from('requests')
+                        .select('*')
+                        .eq('requester_id', currentUserId)
+                        .order('created_at', { ascending: false });
+                    if (reqs) myRequests = reqs;
+                } catch(e) {}
             }
-        }, { root: accountModalBody, threshold: [0.1, 0.3, 0.6, 0.9] });
-        
-        accountTabContents.forEach(c => accountObserver.observe(c));
-    }
+
+            let requestsHTML = '';
+            if (myRequests.length > 0) {
+                requestsHTML = myRequests.map(r => `
+                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openHelpDetailModal==='function') window.openHelpDetailModal('${r.id}');">
+                        <div class="row-icon"><i class="ph ph-broadcast"></i></div>
+                        <div class="row-content">
+                            <strong>${window.escapeHtmlAttr(r.title || 'Besoin d\'aide')}</strong>
+                            <span>${window.escapeHtmlAttr(r.location || 'Guadeloupe')} • ${r.status === 'open' ? 'En cours' : 'Terminé'}</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron"></i>
+                    </div>
+                `).join('');
+            } else {
+                requestsHTML = `
+                    <div class="account-v3-empty" style="background:#F8FAFC; border:1.5px dashed #CBD5E1; border-radius:16px; padding:24px 16px; text-align:center;">
+                        <i class="ph ph-broadcast" style="font-size:2rem; color:#94A3B8; margin-bottom:8px; display:block;"></i>
+                        <p style="font-size:0.9rem; color:#64748B; margin:0 0 12px 0;">Tu n'as encore publié aucun Lyann.</p>
+                        <button class="btn btn-primary btn-sm" onclick="window.closeUserAccountModal(); if(typeof window.openHelpRequestModal==='function') window.openHelpRequestModal();" style="display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-plus"></i> Publier un besoin</button>
+                    </div>
+                `;
+            }
+
+            subViewContent = `
+                <div class="account-v3-section" style="margin-bottom:24px;">
+                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 12px 0;">Mes Lyanns (${myRequests.length})</h4>
+                    ${requestsHTML}
+                </div>
+                <div class="account-v3-section">
+                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 12px 0;">Mes échanges</h4>
+                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openChatWithUser==='function') window.openChatWithUser();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-chat-circle-dots"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Accéder à la messagerie</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;">Vos conversations et échanges en cours</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                </div>
+            `;
+        } else if (subViewName === 'finances') {
+            titleText = 'Finances';
+            let availableBal = '0,00 €';
+            let pendingBal = '0,00 €';
+
+            subViewContent = `
+                <div class="account-v3-balance-card" style="background: linear-gradient(135deg, #17231C 0%, #2D4A38 100%); color: white; border-radius: 18px; padding: 20px; margin-bottom: 20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <div>
+                            <span style="font-size:0.82rem; color:rgba(255,255,255,0.8); display:block;">Solde disponible</span>
+                            <strong style="font-size:1.4rem; color:white;">${availableBal}</strong>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size:0.82rem; color:rgba(255,255,255,0.8); display:block;">En cours</span>
+                            <strong style="font-size:1.2rem; color:white;">${pendingBal}</strong>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary" style="width:100%; justify-content:center; background:#4A7C59; border:none;" onclick="if(window.NotificationService) window.NotificationService.showToast('info', 'Demande de versement transmise.');"><i class="ph ph-hand-coins"></i> Retirer mes fonds</button>
+                </div>
+                <div class="account-v3-section">
+                    <div class="account-v3-row" onclick="window.location.href='payment-portal.html'" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-bank"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Compte de versement</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;">Gérer mes versements Stripe</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                    <div class="account-v3-row" onclick="window.location.href='pricing.html'" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-sparkle"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Abonnement LYANN</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;">Gestion de votre formule</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                </div>
+            `;
+        } else if (subViewName === 'settings') {
+            titleText = 'Réglages';
+            subViewContent = `
+                <div class="account-v3-section">
+                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-bell"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Notifications</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;">Préférences email et push</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                    <div class="account-v3-row" onclick="window.location.href='about.html#privacy'" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-eye-slash"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Confidentialité</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;">Visibilité et paramètres de compte</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openChangePasswordModal==='function') window.openChangePasswordModal();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-lock-key"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Sécurité</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;">Changer mon mot de passe</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                    <div class="account-v3-row" onclick="window.location.href='about.html#legal'" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-file-text"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Conditions & confidentialité</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;">CGU et mentions légales</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Default: sub-view 'account'
+            titleText = 'Mon compte';
+
+            let verifText = 'Non vérifié';
+            let verifClass = 'pill-yellow';
+            if (userProf?.is_pro_verified) {
+                verifText = 'PRO vérifié';
+                verifClass = 'pill-green';
+            } else if (userProf?.is_verified) {
+                verifText = 'Profil vérifié';
+                verifClass = 'pill-green';
+            }
+
+            subViewContent = `
+                <!-- IDENTITÉ -->
+                <div class="account-v3-section" style="margin-bottom:20px;">
+                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 10px 0;">Identité</h4>
+                    <div class="account-v3-card identity-card" style="display:flex; align-items:center; gap:14px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:16px; padding:16px;">
+                        <div class="identity-avatar-wrap" style="position:relative; flex-shrink:0;">
+                            <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid #FFF; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                            <button type="button" class="avatar-camera-btn" onclick="window.lyannOpenAvatarModal()" style="position:absolute; bottom:-2px; right:-2px; width:24px; height:24px; border-radius:50%; background:#4A7C59; color:white; border:2px solid white; display:flex; align-items:center; justify-content:center; font-size:0.75rem; cursor:pointer;" title="Changer de photo"><i class="ph ph-camera"></i></button>
+                        </div>
+                        <div style="flex:1;">
+                            <strong style="font-size:1.05rem; font-weight:700; color:#17231C; display:block;">${safeDisplayName}</strong>
+                            <span style="font-size:0.84rem; color:#64748B; display:block; margin-top:2px;">${userEmail}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROFIL PUBLIC -->
+                <div class="account-v3-section" style="margin-bottom:20px;">
+                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 10px 0;">Profil public</h4>
+                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(window.CURRENT_USER_ID) window.openPublicProfileModal(window.CURRENT_USER_ID);" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-user-focus"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Aperçu du profil public</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;">Ce que les autres Lyanneurs voient</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-pencil-line"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Modifier mon profil public</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;">Bio, compétences, photos et zone</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                </div>
+
+                <!-- VÉRIFICATION -->
+                <div class="account-v3-section">
+                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 10px 0;">Vérification</h4>
+                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openVerificationModal==='function') window.openVerificationModal();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
+                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-shield-check"></i></div>
+                        <div class="row-content" style="flex:1;">
+                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Statut de vérification</strong>
+                            <span style="font-size:0.8rem; color:#64748B; display:block;"><span class="pill-badge ${verifClass}">${verifText}</span></span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                    </div>
+                </div>
+            `;
+        }
+
+        modalCard.innerHTML = `
+            <div class="account-v3-container" style="max-width:680px; margin:0 auto; background:#FFF; border-radius:20px; overflow:hidden;">
+                <div class="account-v3-header" style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #F1F5F9; background:#FFF; position:sticky; top:0; z-index:10;">
+                    <button type="button" class="account-v3-back-btn" onclick="window.closeUserAccountModal()" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; color:#1E293B; cursor:pointer;"><i class="ph ph-arrow-left"></i></button>
+                    <h3 class="account-v3-title" style="font-family:'Outfit','Plus Jakarta Sans',sans-serif; font-size:1.2rem; font-weight:700; color:#17231C; margin:0; flex:1; text-align:center;">${titleText}</h3>
+                    <button type="button" class="modal-close-btn" onclick="window.closeUserAccountModal()" style="top:16px; right:16px;"><i class="ph ph-x"></i></button>
+                </div>
+                <div class="account-v3-body" style="padding:20px; box-sizing:border-box;">
+                    ${subViewContent}
+                </div>
+            </div>
+        `;
+
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeUserAccountModal = function() {
+        const modal = document.getElementById('userAccountModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        document.body.style.overflow = '';
+    };
+
+    window.openAccountTab = function(tabId) {
+        if (!tabId) return window.openAccountModalSubView('account');
+        if (tabId.includes('activity') || tabId.includes('demandes') || tabId.includes('prestations') || tabId.includes('missions') || tabId.includes('devis')) {
+            return window.openAccountModalSubView('activity');
+        }
+        if (tabId.includes('finance') || tabId.includes('payment')) {
+            return window.openAccountModalSubView('finances');
+        }
+        if (tabId.includes('setting') || tabId.includes('security')) {
+            return window.openAccountModalSubView('settings');
+        }
+        return window.openAccountModalSubView('account');
+    };
+
 
     // --- GESTION DYNAMIQUE DES SERVICES DE L'UTILISATEUR ---
     // --- GESTION DYNAMIQUE DES SERVICES DE L'UTILISATEUR (SUPABASE CONNECTED) ---
