@@ -2391,35 +2391,41 @@ safeDomReady(() => {
 
         const metrics = pData.metrics || {};
         const avgRating = metrics.average_rating ? Number(metrics.average_rating).toFixed(1) : null;
-        const reviewsCount = metrics.reviews_count || reviewsList.length || 0;
+        const reviewsCount = metrics.reviews_count || (reviewsList ? reviewsList.length : 0);
         const completedMissions = metrics.completed_missions || 0;
 
-        // Build Compact Trust Line
-        let trustLineHTML = '';
-        if (avgRating || reviewsCount > 0 || completedMissions > 0) {
-            trustLineHTML = `
-                <div class="lyann-trust-line-compact">
-                    <span class="lyann-trust-line-star"><i class="ph-fill ph-star"></i> ${avgRating || '5.0'}</span>
-                    <span class="lyann-trust-dot">•</span>
-                    <span>${reviewsCount} ${reviewsCount > 1 ? 'retours' : 'retour'}</span>
-                    <span class="lyann-trust-dot">•</span>
-                    <span>${completedMissions} ${completedMissions > 1 ? 'coups de main réalisés' : 'coup de main réalisé'}</span>
-                </div>
-            `;
-        } else {
-            trustLineHTML = `
-                <div class="lyann-trust-line-compact">
-                    <span class="lyann-badge lyann-badge-verified"><i class="ph ph-sparkle"></i> Nouveau sur LYANN</span>
-                    <span class="lyann-trust-dot">•</span>
-                    <span>Pas encore de retour</span>
-                </div>
-            `;
+        // Build Name Prénom N.
+        let rawFn = (pData.first_name || '').trim();
+        let rawLn = (pData.last_name || '').trim();
+        let formattedName = 'Lyanneur';
+        if (rawFn && rawLn) {
+            formattedName = `${rawFn} ${rawLn.charAt(0).toUpperCase()}.`;
+        } else if (rawFn) {
+            formattedName = rawFn;
+        } else if (pData.display_name && !pData.display_name.includes('-') && pData.display_name !== 'Lyanneur') {
+            formattedName = pData.display_name;
         }
+        const safeDisplayName = window.escapeHtmlAttr(formattedName);
+        const avatarSrc = window.escapeHtmlAttr(window.resolveLyannAvatarSrc(pData.avatar_url || pData.avatar));
 
-        // Build Badges
+        // Build Real Badges Only
         let badgesHTML = '';
         if (pData.is_verified) badgesHTML += '<span class="lyann-badge lyann-badge-verified"><i class="ph-fill ph-seal-check"></i> Profil vérifié</span> ';
         if (pData.is_pro_verified) badgesHTML += '<span class="lyann-badge lyann-badge-pro"><i class="ph ph-briefcase"></i> PRO</span>';
+
+        // Build Real Trust Metrics
+        let trustItems = [];
+        if (avgRating) trustItems.push(`<span class="lyann-trust-item"><i class="ph-fill ph-star" style="color:#F59E0B;"></i> ${avgRating} (${reviewsCount})</span>`);
+        if (completedMissions > 0) trustItems.push(`<span class="lyann-trust-item"><i class="ph ph-hand-heart" style="color:#4A7C59;"></i> ${completedMissions} ${completedMissions > 1 ? 'missions' : 'mission'}</span>`);
+        if (pData.member_since) trustItems.push(`<span class="lyann-trust-item"><i class="ph ph-calendar-blank"></i> Membre depuis ${window.escapeHtmlAttr(pData.member_since)}</span>`);
+        if (metrics.response_rate_percent !== null && metrics.response_rate_percent !== undefined) trustItems.push(`<span class="lyann-trust-item"><i class="ph ph-lightning"></i> ${metrics.response_rate_percent}% de réponse</span>`);
+
+        let trustLineHTML = '';
+        if (trustItems.length > 0) {
+            trustLineHTML = `<div class="lyann-trust-line-compact">${trustItems.join('<span class="lyann-trust-dot">•</span>')}</div>`;
+        } else {
+            trustLineHTML = `<div class="lyann-trust-line-compact"><span class="lyann-badge lyann-badge-verified" style="background:#F1F5F9; color:#475569;"><i class="ph ph-sparkle"></i> Nouveau membre sur LYANN</span></div>`;
+        }
 
         // Build CTA Group
         let ctaHTML = '';
@@ -2430,54 +2436,49 @@ safeDomReady(() => {
                 </div>
             `;
         } else {
+            const chatContactId = pData.id || '';
+            const chatContactName = safeDisplayName.replace(/'/g, "\\'");
+            const chatAvatarSrc = avatarSrc.replace(/'/g, "\\'");
             ctaHTML = `
                 <div class="lyann-profile-cta-group">
-                    <button type="button" class="btn btn-primary" onclick="window.openHelpRequestWithTarget('${pData.id}', '${pData.display_name}')"><i class="ph ph-hand-heart"></i> Demander un coup de main</button>
-                    <button type="button" class="btn btn-outline" onclick="window.openChatWithUser('${pData.display_name}', '${pData.avatar_url || ''}')"><i class="ph ph-chat-circle"></i> Écrire</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.openChatWithUser('${chatContactName}', '${chatAvatarSrc}', '${chatContactId}')"><i class="ph ph-chat-circle"></i> Contacter</button>
                 </div>
             `;
         }
 
-        // Build Completion Card (Self View Only)
+        // Build Own Profile Completion Prompts (Self View Only)
         let completionCardHTML = '';
         if (isSelf) {
-            const completionPct = pData.completion_pct || 40;
-            completionCardHTML = `
-                <div class="lyann-completion-card">
-                    <div class="lyann-completion-header">
-                        <span class="lyann-completion-title"><i class="ph ph-check-circle"></i> Ton profil est complet à</span>
-                        <span class="lyann-completion-pct-badge">${completionPct}%</span>
+            let missingPrompts = [];
+            if (!pData.bio || pData.bio.trim().length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus"></i> Presentation</span>');
+            if (!userServices || userServices.length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus"></i> Compétences</span>');
+            if (!portfolioItems || portfolioItems.length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Réalisation</span>');
+
+            if (missingPrompts.length > 0) {
+                completionCardHTML = `
+                    <div class="lyann-completion-card" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 14px 18px; margin-bottom: 16px;">
+                        <div class="lyann-completion-header" style="font-weight: 700; font-size: 0.9rem; color: #1E293B; margin-bottom: 8px;">
+                            <i class="ph ph-sparkle" style="color: #4A7C59;"></i> Ton profil peut être encore plus utile :
+                        </div>
+                        <div class="lyann-completion-items" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            ${missingPrompts.join('')}
+                        </div>
                     </div>
-                    <div class="lyann-completion-bar-bg">
-                        <div class="lyann-completion-bar-fill" style="width: ${completionPct}%;"></div>
-                    </div>
-                    <div class="lyann-completion-items">
-                        <span class="lyann-completion-chip" onclick="window.lyannOpenAvatarModal()"><i class="ph ph-camera"></i> Photo de profil</span>
-                        <span class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();"><i class="ph ph-user-focus"></i> Bio & Présentation</span>
-                        <span class="lyann-completion-chip" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-image"></i> Ajouter une réalisation</span>
-                    </div>
-                </div>
-            `;
+                `;
+            }
         }
 
-        // Build Services ("Ce que je peux faire")
+        // Build Skills ("Je peux aider pour")
         let servicesHTML = '';
-        if (userServices.length > 0) {
+        const allSkills = (userServices && userServices.length > 0) ? userServices.map(s => s.title || s) : (pData.skills || []);
+        if (allSkills.length > 0) {
             servicesHTML = `
                 <div class="lyann-profile-section">
                     <div class="lyann-section-header">
-                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Ce que je peux faire</h4>
+                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Je peux aider pour</h4>
                     </div>
-                    <div class="lyann-services-grid">
-                        ${userServices.map(s => `
-                            <div class="lyann-service-chip">
-                                <div class="lyann-service-icon"><i class="ph ph-wrench"></i></div>
-                                <div class="lyann-service-info">
-                                    <h5>${s.title}</h5>
-                                    <p>${s.description || 'Coup de main disponible.'}</p>
-                                </div>
-                            </div>
-                        `).join('')}
+                    <div class="lyann-skills-flex" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${allSkills.map(s => `<span class="lyann-service-tag" style="background: rgba(74, 124, 89, 0.1); color: #1F3827; font-weight: 600; font-size: 0.84rem; padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(74, 124, 89, 0.2);"><i class="ph ph-check" style="font-size: 0.8rem; margin-right: 4px;"></i> ${window.escapeHtmlAttr(s)}</span>`).join('')}
                     </div>
                 </div>
             `;
@@ -2485,52 +2486,47 @@ safeDomReady(() => {
             servicesHTML = `
                 <div class="lyann-profile-section">
                     <div class="lyann-section-header">
-                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Ce que je peux faire</h4>
+                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Je peux aider pour</h4>
                     </div>
-                    <div class="lyann-zero-data">
-                        <i class="ph ph-plus-circle lyann-zero-data-icon"></i>
-                        <span class="lyann-zero-data-title">Ajoute ce pour quoi tu peux donner un coup de main</span>
-                        <span class="lyann-zero-data-sub">Jardinage, entretien, petits travaux, garde...</span>
+                    <div class="lyann-zero-data" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="cursor:pointer; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 16px; text-align: center;">
+                        <span class="lyann-zero-data-title" style="font-size: 0.88rem; color: #475569; font-weight: 600;"><i class="ph ph-plus-circle"></i> Ajoute les compétences pour lesquelles tu peux aider</span>
                     </div>
                 </div>
             `;
         }
 
-        // Build Relocation Card ("Je me déplace")
+        // Build Intervention Zone
+        const locationCity = window.escapeHtmlAttr(pData.city || 'Guadeloupe');
+        const radiusText = pData.intervention_radius_km ? ` + autour de ${pData.intervention_radius_km} km` : '';
         const relocationHTML = `
             <div class="lyann-profile-section">
                 <div class="lyann-section-header">
-                    <h4 class="lyann-section-title"><i class="ph ph-navigation-arrow"></i> Je me déplace</h4>
+                    <h4 class="lyann-section-title"><i class="ph ph-navigation-arrow"></i> Zone</h4>
                 </div>
-                <div class="lyann-relocation-card">
-                    <div class="lyann-relocation-icon"><i class="ph ph-map-pin"></i></div>
-                    <div class="lyann-relocation-text">
-                        <strong>Autour de ${pData.city || 'Guadeloupe'}</strong>
-                        <span>Jusqu'à ${pData.intervention_radius_km || 10} km aux alentours</span>
+                <div class="lyann-relocation-card" style="display: flex; align-items: center; gap: 10px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 12px 16px;">
+                    <div class="lyann-relocation-icon" style="color: #4A7C59; font-size: 1.2rem;"><i class="ph ph-map-pin"></i></div>
+                    <div class="lyann-relocation-text" style="font-size: 0.88rem; color: #1E293B;">
+                        <strong>${locationCity}</strong><span style="color: #64748B;">${radiusText}</span>
                     </div>
                 </div>
             </div>
         `;
 
-        // Build Portfolio ("Mes réalisations")
+        // Build Portfolio ("Réalisations")
         let portfolioHTML = '';
-        if (portfolioItems.length > 0) {
+        if (portfolioItems && portfolioItems.length > 0) {
             portfolioHTML = `
                 <div class="lyann-profile-section">
-                    <div class="lyann-section-header">
-                        <h4 class="lyann-section-title"><i class="ph ph-images"></i> Mes réalisations</h4>
-                        ${isSelf ? '<button type="button" class="lyann-block-edit-btn" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Ajouter</button>' : ''}
+                    <div class="lyann-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 class="lyann-section-title"><i class="ph ph-images"></i> Réalisations</h4>
+                        ${isSelf ? '<button type="button" class="btn btn-outline btn-sm" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Ajouter</button>' : ''}
                     </div>
-                    <div class="lyann-portfolio-grid">
-                        ${portfolioItems.map((item, idx) => `
-                            <div class="lyann-portfolio-card" onclick="window.lyannOpenLightbox('${item.image_url}', '${(item.title || '').replace(/'/g, "\\'")}', '${(item.caption || '').replace(/'/g, "\\'")}')">
-                                <img src="${item.image_url}" alt="${item.title || 'Réalisation'}" class="lyann-portfolio-img">
-                                ${isSelf ? `<span class="lyann-portfolio-privacy-badge ${item.is_public ? 'public' : 'private'}">${item.is_public ? 'Public' : 'Privé'}</span>` : ''}
-                                <div class="lyann-portfolio-info">
-                                    <h5 class="lyann-portfolio-title">${item.title || 'Réalisation'}</h5>
-                                    ${item.caption ? `<p class="lyann-portfolio-caption">${item.caption}</p>` : ''}
-                                </div>
-                                ${isSelf ? `<button type="button" style="position:absolute; bottom:8px; right:8px; background:rgba(201,81,64,0.9); color:white; border:none; border-radius:8px; padding:4px 8px; font-size:0.75rem; cursor:pointer;" onclick="event.stopPropagation(); window.lyannDeletePortfolioItem('${item.id}');"><i class="ph ph-trash"></i></button>` : ''}
+                    <div class="lyann-portfolio-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                        ${portfolioItems.map(item => `
+                            <div class="lyann-portfolio-card" onclick="window.lyannOpenLightbox('${item.image_url.replace(/'/g, "\\'")}', '${(item.title || '').replace(/'/g, "\\'")}', '${(item.caption || '').replace(/'/g, "\\'")}')" style="cursor: pointer; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid #E2E8F0;">
+                                <img src="${item.image_url}" alt="${window.escapeHtmlAttr(item.title || 'Réalisation')}" class="lyann-portfolio-img" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block;">
+                                ${item.title ? `<div style="font-size: 0.76rem; font-weight: 600; padding: 4px 8px; color: #1E293B; background: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${window.escapeHtmlAttr(item.title)}</div>` : ''}
+                                ${isSelf ? `<button type="button" style="position:absolute; top:6px; right:6px; background:rgba(201,81,64,0.9); color:white; border:none; border-radius:50%; width:24px; height:24px; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="event.stopPropagation(); window.lyannDeletePortfolioItem('${item.id}');"><i class="ph ph-trash"></i></button>` : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -2539,113 +2535,71 @@ safeDomReady(() => {
         } else if (isSelf) {
             portfolioHTML = `
                 <div class="lyann-profile-section">
-                    <div class="lyann-section-header">
-                        <h4 class="lyann-section-title"><i class="ph ph-images"></i> Mes réalisations</h4>
-                        <button type="button" class="lyann-block-edit-btn" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Ajouter</button>
+                    <div class="lyann-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 class="lyann-section-title"><i class="ph ph-images"></i> Réalisations</h4>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Ajouter</button>
                     </div>
-                    <div class="lyann-zero-data" onclick="window.lyannOpenAddPortfolioModal()" style="cursor:pointer;">
-                        <i class="ph ph-image lyann-zero-data-icon"></i>
-                        <span class="lyann-zero-data-title">Aucune réalisation pour le moment</span>
-                        <span class="lyann-zero-data-sub">Clique ici pour ajouter tes premières photos de réalisations.</span>
+                    <div class="lyann-zero-data" onclick="window.lyannOpenAddPortfolioModal()" style="cursor:pointer; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 16px; text-align: center;">
+                        <span class="lyann-zero-data-title" style="font-size: 0.88rem; color: #475569; font-weight: 600;"><i class="ph ph-image"></i> Ajoute des réalisations pour montrer ce que tu sais faire</span>
                     </div>
                 </div>
             `;
         }
 
-        // Build Reviews ("Les retours")
+        // Build Reviews ("Recommandations")
         let reviewsHTML = `
             <div class="lyann-profile-section">
-                <div class="lyann-section-header">
-                    <h4 class="lyann-section-title"><i class="ph ph-chat-circle-dots"></i> Les retours (${reviewsCount})</h4>
+                <div class="lyann-section-header" style="margin-bottom: 10px;">
+                    <h4 class="lyann-section-title"><i class="ph ph-chat-circle-dots"></i> Recommandations (${reviewsCount})</h4>
                 </div>
         `;
-        if (reviewsList.length > 0) {
+        if (reviewsList && reviewsList.length > 0) {
             reviewsHTML += reviewsList.map(r => `
-                <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:14px; padding:14px 18px; margin-bottom:10px;">
+                <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:14px; padding:12px 16px; margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <div style="width:32px; height:32px; border-radius:50%; background:#E6EFE9; color:#2D6A4F; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">${r.name.charAt(0)}</div>
+                            <div style="width:32px; height:32px; border-radius:50%; background:#E6EFE9; color:#2D6A4F; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">${window.escapeHtmlAttr(r.name ? r.name.charAt(0) : 'M')}</div>
                             <div>
-                                <strong style="font-size:0.88rem; color:#1E293B; display:block;">${r.name}</strong>
-                                <span style="font-size:0.75rem; color:#64748B;"><i class="ph ph-map-pin"></i> ${r.city} • ${r.date}</span>
+                                <strong style="font-size:0.88rem; color:#1E293B; display:block;">${window.escapeHtmlAttr(r.name)}</strong>
+                                <span style="font-size:0.75rem; color:#64748B;"><i class="ph ph-map-pin"></i> ${window.escapeHtmlAttr(r.city || 'Guadeloupe')} • ${window.escapeHtmlAttr(r.date || '')}</span>
                             </div>
                         </div>
                         <div style="color:#F59E0B; font-weight:700; font-size:0.85rem; display:flex; align-items:center; gap:3px;">
-                            <i class="ph-fill ph-star"></i> ${r.rating}
+                            <i class="ph-fill ph-star"></i> ${window.escapeHtmlAttr(r.rating || '5.0')}
                         </div>
                     </div>
-                    <p style="font-size:0.88rem; color:#475569; margin:0; line-height:1.4;">${r.comment}</p>
+                    <p style="font-size:0.86rem; color:#475569; margin:0; line-height:1.4;">${window.escapeHtmlAttr(r.comment)}</p>
                 </div>
             `).join('');
         } else {
             reviewsHTML += `
-                <div class="lyann-zero-data">
-                    <i class="ph ph-chat-circle-dots lyann-zero-data-icon"></i>
-                    <span class="lyann-zero-data-title">Pas encore de retour</span>
-                    <span class="lyann-zero-data-sub">Ce membre n'a pas encore reçu d'avis post-mission.</span>
+                <div class="lyann-zero-data" style="background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 16px; text-align: center;">
+                    <span class="lyann-zero-data-title" style="font-size: 0.88rem; color: #64748B;"><i class="ph ph-chat-circle-dots"></i> Pas encore de retour</span>
                 </div>
             `;
         }
         reviewsHTML += `</div>`;
 
-        // Build Activity Metrics ("Son activité sur LYANN")
-        const activityTitle = isSelf ? "Mon activité sur LYANN" : "Son activité sur LYANN";
-        const activityHTML = `
-            <div class="lyann-profile-section">
-                <div class="lyann-section-header">
-                    <h4 class="lyann-section-title"><i class="ph ph-chart-line-up"></i> ${activityTitle}</h4>
-                </div>
-                <div class="lyann-activity-grid">
-                    <div class="lyann-activity-card">
-                        <span class="lyann-activity-val">${metrics.completed_missions || '0'}</span>
-                        <span class="lyann-activity-label">Coups de main réalisés</span>
-                    </div>
-                    <div class="lyann-activity-card">
-                        <span class="lyann-activity-val">${metrics.response_rate_percent !== null && metrics.response_rate_percent !== undefined ? metrics.response_rate_percent + ' %' : '—'}</span>
-                        <span class="lyann-activity-label">Taux de réponse</span>
-                    </div>
-                    <div class="lyann-activity-card">
-                        <span class="lyann-activity-val" style="font-size:0.88rem;">${metrics.avg_response_time_label || '—'}</span>
-                        <span class="lyann-activity-label">Temps de réponse</span>
-                    </div>
-                    <div class="lyann-activity-card">
-                        <span class="lyann-activity-val">${metrics.repeat_users_count || '0'}</span>
-                        <span class="lyann-activity-label">Habitués</span>
-                    </div>
-                    <div class="lyann-activity-card">
-                        <span class="lyann-activity-val" style="font-size:0.95rem;">${pData.member_since || '2026'}</span>
-                        <span class="lyann-activity-label">Membre depuis</span>
-                    </div>
-                    ${isSelf ? `
-                        <div class="lyann-activity-card">
-                            <span class="lyann-activity-val">${pData.completion_pct || 40} %</span>
-                            <span class="lyann-activity-label">Taux de complétion</span>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-
         // Inject Full Layout into Modal
         modalCard.innerHTML = `
             <button class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer" onclick="if(document.getElementById('publicMemberProfileModal')) document.getElementById('publicMemberProfileModal').classList.remove('active'); document.body.style.overflow='auto';" style="top:16px; right:16px; z-index:10;"><i class="ph ph-x"></i></button>
 
-            <div class="lyann-profile-hero">
+            <div class="lyann-profile-hero" style="margin-bottom: 16px;">
                 <div class="lyann-profile-hero-content">
                     <div class="lyann-profile-avatar-wrapper">
-                        <img src="${window.getLyannAvatarUrl(pData.avatar_url)}" onerror="window.handleAvatarError(this)" alt="${pData.display_name}" class="lyann-profile-avatar-img">
+                        <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="lyann-profile-avatar-img">
                         ${isSelf ? '<button type="button" class="lyann-avatar-edit-btn" onclick="window.lyannOpenAvatarModal()" title="Changer la photo"><i class="ph ph-camera"></i></button>' : ''}
                     </div>
                     <div class="lyann-profile-hero-details">
                         <div class="lyann-profile-name-row">
-                            <h3 class="lyann-profile-display-name">${pData.display_name}</h3>
+                            <h3 class="lyann-profile-display-name">${safeDisplayName}</h3>
                             ${badgesHTML}
                         </div>
                         <div class="lyann-profile-location">
-                            <i class="ph ph-map-pin"></i> ${pData.city} • ${pData.territory}
+                            <i class="ph ph-map-pin"></i> ${locationCity} · Guadeloupe
                         </div>
                         ${trustLineHTML}
-                        <p class="lyann-profile-bio">${pData.bio ? '"' + pData.bio + '"' : '"Membre actif de la communauté LYANN."'}</p>
+                        ${pData.bio ? `<p class="lyann-profile-bio" style="font-size:0.9rem; color:#475569; margin:8px 0;">${window.escapeHtmlAttr(pData.bio)}</p>` : ''}
                         ${ctaHTML}
                     </div>
                 </div>
@@ -2656,7 +2610,6 @@ safeDomReady(() => {
             ${relocationHTML}
             ${portfolioHTML}
             ${reviewsHTML}
-            ${activityHTML}
         `;
     }
 
