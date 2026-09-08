@@ -171,35 +171,35 @@
                         </form>
                     </div>
 
-                    <!-- BARRE DE FILTRES BOKANTAJ V2 -->
-                    <div class="feed-main-filters-bar" style="display: flex; gap: 8px; margin: 10px 0 8px 0; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch;">
-                        <button type="button" class="feed-pill filter-btn-v2 active" data-filter-v2="all" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; min-height: 40px;">
-                            <i class="ph ph-squares-four"></i> Tout
-                        </button>
-                        <button type="button" class="feed-pill filter-btn-v2" data-filter-v2="post" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; min-height: 40px;">
-                            <i class="ph ph-article"></i> Publications
-                        </button>
-                        <button type="button" class="feed-pill filter-btn-v2" data-filter-v2="lyann" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; min-height: 40px;">
-                            <i class="ph ph-hand-heart"></i> Lyanns
-                        </button>
-                        <button type="button" class="feed-pill filter-btn-v2" data-filter-v2="nearby" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; min-height: 40px;">
-                            <i class="ph ph-navigation-arrow"></i> Près de moi
+                    <!-- BARRE DE FILTRES BOKANTAJ V2 (POLISH V2: COMPACT & SCROLLER) -->
+                    <div class="bokantaj-top-filter-row" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 8px 0;">
+                        <div class="bokantaj-segment-group">
+                            <button type="button" class="feed-pill filter-btn-v2 active" data-filter-v2="all">Tout</button>
+                            <button type="button" class="feed-pill filter-btn-v2" data-filter-v2="post">Publications</button>
+                            <button type="button" class="feed-pill filter-btn-v2" data-filter-v2="lyann">Lyanns</button>
+                        </div>
+                        <button type="button" class="btn-bokantaj-filter-sheet" id="btnOpenBokantajFilterSheet" aria-label="Filtres avancés">
+                            <i class="ph ph-sliders-horizontal"></i>
+                            <span>Filtres</span>
                         </button>
                     </div>
 
-                    <!-- BANDEAU DE HASHTAGS BOKANTAJ (SANS DOUBLE #) -->
-                    <div class="suggestion-tags hashtag-filters-group" style="margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; white-space: nowrap; -webkit-overflow-scrolling: touch;">
-                        <button type="button" class="tag hashtag-tag" data-query="Plomberie"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Plomberie</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Climatisation"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Climatisation</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Jardinage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Jardinage</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Bricolage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Bricolage</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Transport"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Transport</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Électricité"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Électricité</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Peinture"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Peinture</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Ménage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Ménage</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Aide à la personne"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> AideAuxSeniors</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Garde d'enfants"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> GardeEnfants</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Informatique"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Informatique</button>
+                    <!-- ROW 2: HASHTAGS & LOCALISATION SCROLLER HORIZONTAL INTENTIONNEL -->
+                    <div class="bokantaj-topic-scroller suggestion-tags hashtag-filters-group">
+                        <button type="button" class="feed-pill filter-btn-v2 chip-pill" data-filter-v2="nearby">
+                            <i class="ph ph-navigation-arrow" style="color: #4A7C59;"></i> Près de moi
+                        </button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Plomberie"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Plomberie</button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Climatisation"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Climatisation</button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Jardinage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Jardinage</button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Bricolage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Bricolage</button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Transport"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Transport</button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Électricité"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Électricité</button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Peinture"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Peinture</button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Ménage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Ménage</button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Aide à la personne"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> AideAuxSeniors</button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Garde d'enfants"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> GardeEnfants</button>
+                        <button type="button" class="tag hashtag-tag chip-pill" data-query="Informatique"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> Informatique</button>
                     </div>
 
                     <!-- FLUX BOKANTAJ UNIFIÉ (INJECTÉ DYNAMIQUEMENT) -->
@@ -1614,6 +1614,56 @@
             </div>
             <div class="modal-footer" id="lyannDetailFooter" style="padding-top: 14px; border-top: 1px solid #E2E8F0; display: flex; gap: 12px; justify-content: flex-end;">
                 <!-- Dynamically populated by script.js -->
+            </div>
+        </div>
+    <!-- ========== BOTTOM SHEET FILTRES BOKANTAJ ========== -->
+    <div class="modal-overlay mobile-bottom-sheet" id="bokantajFilterSheetModal" style="display: none;">
+        <div class="mobile-bottom-sheet-card">
+            <div class="bottom-sheet-header">
+                <h3><i class="ph ph-sliders-horizontal" style="color: #4A7C59;"></i> Filtrer le Bokantaj</h3>
+                <button class="modal-close-btn" id="closeBokantajFilterSheetBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="bottom-sheet-body">
+                <!-- Localisation -->
+                <div class="filter-sheet-section">
+                    <h4>Localisation</h4>
+                    <label class="filter-sheet-toggle-label">
+                        <input type="checkbox" id="sheetNearbyToggle" class="filter-sheet-checkbox">
+                        <span>📍 Près de moi uniquement</span>
+                    </label>
+                </div>
+
+                <!-- Type -->
+                <div class="filter-sheet-section">
+                    <h4>Type de contenu</h4>
+                    <div class="filter-sheet-type-options">
+                        <button type="button" class="sheet-type-btn active" data-type="all">Tout</button>
+                        <button type="button" class="sheet-type-btn" data-type="post">📄 Publications</button>
+                        <button type="button" class="sheet-type-btn" data-type="lyann">🤝 Lyanns (Demandes)</button>
+                    </div>
+                </div>
+
+                <!-- Sujets & Catégories -->
+                <div class="filter-sheet-section">
+                    <h4>Sujets & Catégories</h4>
+                    <div class="filter-sheet-tags-grid">
+                        <button type="button" class="sheet-topic-tag" data-query="Plomberie">#Plomberie</button>
+                        <button type="button" class="sheet-topic-tag" data-query="Climatisation">#Climatisation</button>
+                        <button type="button" class="sheet-topic-tag" data-query="Jardinage">#Jardinage</button>
+                        <button type="button" class="sheet-topic-tag" data-query="Bricolage">#Bricolage</button>
+                        <button type="button" class="sheet-topic-tag" data-query="Transport">#Transport</button>
+                        <button type="button" class="sheet-topic-tag" data-query="Électricité">#Électricité</button>
+                        <button type="button" class="sheet-topic-tag" data-query="Peinture">#Peinture</button>
+                        <button type="button" class="sheet-topic-tag" data-query="Ménage">#Ménage</button>
+                        <button type="button" class="sheet-topic-tag" data-query="Aide à la personne">#AideAuxSeniors</button>
+                        <button type="button" class="sheet-topic-tag" data-query="Garde d'enfants">#GardeEnfants</button>
+                        <button type="button" class="sheet-topic-tag" data-query="Informatique">#Informatique</button>
+                    </div>
+                </div>
+            </div>
+            <div class="bottom-sheet-footer">
+                <button type="button" class="btn btn-outline" id="btnResetBokantajSheetFilters" style="flex: 1; justify-content: center;">Réinitialiser</button>
+                <button type="button" class="btn btn-primary" id="btnApplyBokantajSheetFilters" style="flex: 2; justify-content: center; font-weight: 800;">Appliquer les filtres</button>
             </div>
         </div>
     </div>

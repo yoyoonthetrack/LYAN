@@ -12654,7 +12654,12 @@ textarea:focus,
 
 /* 1. Fix Explorer Hero Spacing on Native & Mobile */
 @media (max-width: 768px) {
-    body.is-native-app .hero,
+    body.is-native-app .hero {
+        padding-top: calc(88px + env(safe-area-inset-top, 0px)) !important;
+        padding-bottom: 24px !important;
+        margin-bottom: 0 !important;
+    }
+
     body.is-native-app .results-hero-section,
     .results-page .results-hero-section {
         padding-top: calc(72px + env(safe-area-inset-top, 0px)) !important;
@@ -12900,5 +12905,306 @@ html, body {
     width: 100% !important;
     max-width: 100vw !important;
     box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   LYANN — MOBILE UX POLISH V2
+   ========================================================================== */
+
+/* 1. DRAWER HAMBURGER : INSET / FLOATING PANEL & SUBTLE BACKDROP */
+@media (max-width: 768px), (pointer: coarse) {
+    .hamburger-drawer-overlay {
+        background: rgba(15, 23, 42, 0.42) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+    }
+
+    .hamburger-drawer-card {
+        top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+        right: 12px !important;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+        left: auto !important;
+        height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px) !important;
+        width: 88vw !important;
+        max-width: 360px !important;
+        border-radius: 28px !important;
+        box-shadow: -8px 12px 36px rgba(0, 0, 0, 0.22) !important;
+        border: 1px solid rgba(229, 179, 69, 0.3) !important;
+        overflow: hidden !important;
+    }
+}
+
+/* 2. DRAWER CLOSE BUTTON (MIN TOUCH TARGET 44x44px & Z-INDEX) */
+.drawer-close-btn,
+.mobile-menu-close {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    z-index: 20 !important;
+    touch-action: manipulation !important;
+}
+
+/* 3 & 4. EXPLORER : INTENT CARDS COMPACT HORIZONTAL STACK (≤ 430px) */
+@media (max-width: 640px) {
+    .search-v2-cards {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .search-v2-card {
+        padding: 10px 14px !important;
+        align-items: center !important;
+        min-height: 52px !important;
+        border-radius: 14px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+    }
+
+    .search-v2-card-icon {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 18px !important;
+        border-radius: 10px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .search-v2-card-body h4 {
+        font-size: 0.92rem !important;
+        font-weight: 800 !important;
+        margin: 0 !important;
+        line-height: 1.2 !important;
+    }
+
+    .search-v2-card-body p {
+        font-size: 0.78rem !important;
+        color: var(--text-muted, #5C6E62) !important;
+        margin: 2px 0 0 0 !important;
+        line-height: 1.2 !important;
+    }
+
+    .search-v2-card-check {
+        position: static !important;
+        margin-left: auto !important;
+        width: 22px !important;
+        height: 22px !important;
+        flex-shrink: 0 !important;
+    }
+}
+
+/* 5 & 6. BOKANTAJ : COMPACT FILTERS & HORIZONTAL TOPIC SCROLLER */
+.bokantaj-top-filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.bokantaj-segment-group {
+    display: inline-flex;
+    background: rgba(74, 124, 89, 0.08);
+    padding: 3px;
+    border-radius: 20px;
+    border: 1px solid rgba(74, 124, 89, 0.15);
+    gap: 2px;
+}
+
+.bokantaj-segment-group .feed-pill {
+    padding: 6px 14px !important;
+    border-radius: 16px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-muted, #5C6E62) !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 34px !important;
+}
+
+.bokantaj-segment-group .feed-pill.active {
+    background: #FFFFFF !important;
+    color: var(--primary-dark, #1F3827) !important;
+    box-shadow: 0 2px 8px rgba(36, 51, 41, 0.1) !important;
+}
+
+.btn-bokantaj-filter-sheet {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: var(--primary-dark, #1F3827);
+    background: rgba(74, 124, 89, 0.1);
+    border: 1px solid rgba(74, 124, 89, 0.25);
+    cursor: pointer;
+    min-height: 36px;
+    transition: all 0.2s ease;
+}
+
+.btn-bokantaj-filter-sheet:active {
+    transform: scale(0.97);
+}
+
+.bokantaj-topic-scroller {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 12px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+}
+
+.bokantaj-topic-scroller::-webkit-scrollbar {
+    display: none !important;
+}
+
+.bokantaj-topic-scroller .chip-pill {
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 6px 12px !important;
+    border-radius: 20px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    background: #FFFFFF !important;
+    border: 1px solid rgba(74, 124, 89, 0.2) !important;
+    color: var(--text, #243329) !important;
+    min-height: 34px !important;
+}
+
+.bokantaj-topic-scroller .chip-pill.active {
+    background: rgba(74, 124, 89, 0.14) !important;
+    border-color: var(--primary, #4A7C59) !important;
+    color: var(--primary-dark, #1F3827) !important;
+}
+
+/* 6. BOKANTAJ CATEGORY FILTER BOTTOM SHEET */
+.mobile-bottom-sheet {
+    align-items: flex-end !important;
+    padding: 0 !important;
+}
+
+.mobile-bottom-sheet-card {
+    width: 100% !important;
+    max-width: 540px !important;
+    background: #FAF7F2 !important;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)) 20px !important;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2) !important;
+    max-height: 85vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 auto !important;
+}
+
+.bottom-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(74, 124, 89, 0.15);
+}
+
+.bottom-sheet-header h3 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--primary-dark, #1F3827);
+    margin: 0;
+}
+
+.bottom-sheet-body {
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-right: 4px;
+}
+
+.filter-sheet-section h4 {
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted, #5C6E62);
+    margin: 0 0 10px 0;
+}
+
+.filter-sheet-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text, #243329);
+    cursor: pointer;
+}
+
+.filter-sheet-type-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sheet-type-btn {
+    padding: 8px 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(74, 124, 89, 0.2);
+    background: #FFFFFF;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text, #243329);
+    cursor: pointer;
+}
+
+.sheet-type-btn.active {
+    background: var(--primary, #4A7C59);
+    color: #FFFFFF;
+    border-color: var(--primary, #4A7C59);
+}
+
+.filter-sheet-tags-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sheet-topic-tag {
+    padding: 6px 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(74, 124, 89, 0.2);
+    background: #FFFFFF;
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: var(--primary-dark, #1F3827);
+    cursor: pointer;
+}
+
+.sheet-topic-tag.active {
+    background: rgba(74, 124, 89, 0.18);
+    border-color: var(--primary, #4A7C59);
+    color: var(--primary-dark, #1F3827);
+}
+
+.bottom-sheet-footer {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(74, 124, 89, 0.15);
 }
 

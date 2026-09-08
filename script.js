@@ -850,126 +850,55 @@ window.renderAppHomeConnectedView = function() {
     const mainHero = document.querySelector('.hero');
     if (!mainHero) return;
 
-    let appHomeView = document.getElementById('appHomeView');
-    
-    // STABILIZATION V1: Skip full rebuild if App Home is already rendered and visible
-    if (appHomeView && appHomeView.offsetParent !== null && appHomeView.innerHTML.trim().length > 0) {
-        // Header might still need reinforcement
-        if (typeof window.ensureDeterministicAppHeader === 'function') {
-            window.ensureDeterministicAppHeader();
+    // Remove legacy appHomeView element if present to avoid duplicate action cards
+    document.getElementById('appHomeView')?.remove();
+
+    // Ensure hero section remains visible
+    mainHero.style.display = '';
+
+    // Hide the hero visual illustration (SVG) on native — it takes too much space
+    const heroVisual = mainHero.querySelector('.hero-visual');
+    if (heroVisual) heroVisual.style.display = 'none';
+
+    // Hide web-only marketing sections on native app connected home
+    document.querySelectorAll('.trust-section, .how-section, .categories-section, .testimonials-section, .final-cta, .lyann-footer, .cta-section').forEach(sec => {
+        if (sec) sec.style.display = 'none';
+    });
+    document.querySelectorAll('#about, #how-it-works').forEach(sec => {
+        if (sec && (sec.classList.contains('trust-section') || sec.classList.contains('how-section'))) {
+            sec.style.display = 'none';
         }
-        return;
-    }
-    
-    if (!appHomeView) {
-        appHomeView = document.createElement('div');
-        appHomeView.id = 'appHomeView';
-        appHomeView.className = 'app-home-view';
-        
-        mainHero.parentNode.insertBefore(appHomeView, mainHero);
-        mainHero.style.display = 'none'; // Hide Web hero when App Home is active
+    });
+
+    // Populate and display personalized greeting badge inside hero
+    const greetingBadge = document.getElementById('heroGreetingBadge');
+    const firstNameEl = document.getElementById('heroUserFirstName');
+
+    if (greetingBadge) {
+        greetingBadge.style.display = 'inline-flex';
     }
 
-    let firstName = '';
     try {
         if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
             window.LYANN_API_CLIENT.getCurrentUser().then(user => {
                 if (user) {
-                    firstName = user.user_metadata?.first_name || '';
+                    let firstName = user.user_metadata?.first_name || '';
                     if (!firstName) {
                         window.LYANN_API_CLIENT.supabase.from('profiles').select('first_name').eq('id', user.id).single()
                             .then(({ data }) => {
-                                if (data && data.first_name) {
-                                    firstName = data.first_name;
-                                    const el = document.getElementById('appHomeUserFirstName');
-                                    if (el) el.textContent = firstName ? ` ${firstName}` : '';
+                                if (data && data.first_name && firstNameEl) {
+                                    firstNameEl.textContent = ' ' + data.first_name;
                                 }
                             }).catch(() => {});
-                    } else {
-                        const el = document.getElementById('appHomeUserFirstName');
-                        if (el) el.textContent = ` ${firstName}`;
+                    } else if (firstNameEl) {
+                        firstNameEl.textContent = ' ' + firstName;
                     }
                 }
             }).catch(() => {});
         }
     } catch(e) {}
 
-    appHomeView.innerHTML = `
-        <div class="app-home-greeting-card">
-            <h2 class="app-home-greeting-title">Bonjour<span id="appHomeUserFirstName">${firstName ? ' ' + firstName : ''}</span>,</h2>
-            <p class="app-home-greeting-sub">Que souhaitez-vous faire aujourd'hui ?</p>
-        </div>
-
-        <div class="app-home-actions-grid">
-            <div class="app-home-action-card action-card-need" id="appHomeBtnNeed">
-                <div class="action-card-badge"><i class="ph-bold ph-paper-plane-tilt"></i></div>
-                <div class="action-card-content">
-                    <h3>J'ai un besoin</h3>
-                    <p>Décrivez simplement ce que vous recherchez.</p>
-                </div>
-                <i class="ph ph-caret-right action-card-arrow"></i>
-            </div>
-
-            <div class="app-home-action-card action-card-search" id="appHomeBtnSearch">
-                <div class="action-card-badge"><i class="ph-bold ph-users-three"></i></div>
-                <div class="action-card-content">
-                    <h3>Je cherche un Lyanneur</h3>
-                    <p>Trouvez la bonne personne près de chez vous.</p>
-                </div>
-                <i class="ph ph-caret-right action-card-arrow"></i>
-            </div>
-        </div>
-
-        <div class="app-home-section" id="appHomeSectionNext" style="display: none;">
-            <div class="app-home-section-header">
-                <h3>À suivre</h3>
-            </div>
-            <div class="app-home-next-cards-container" id="appHomeNextCards"></div>
-        </div>
-
-        <div class="app-home-section" id="appHomeSectionNearby" style="display: none;">
-            <div class="app-home-section-header">
-                <h3>Autour de vous</h3>
-                <a href="results.html" class="section-link-more">Voir tout</a>
-            </div>
-            <div class="app-home-nearby-scroll-grid" id="appHomeNearbyGrid"></div>
-        </div>
-
-        <div class="app-home-section" id="appHomeSectionBokantaj">
-            <div class="app-home-section-header">
-                <h3>Dans le Bokantaj</h3>
-                <a href="feed.html" class="section-link-more">Voir tout <i class="ph ph-arrow-right"></i></a>
-            </div>
-            <div class="app-home-bokantaj-preview-list" id="appHomeBokantajPreview">
-                <div style="background: #FFFFFF; border-radius: 16px; padding: 18px 16px; border: 1.5px solid #E5DFD5; text-align: center;">
-                    <p style="font-size: 0.9rem; color: #5C6E62; margin-bottom: 12px;">Découvrez les dernières publications de la communauté.</p>
-                    <a href="feed.html" class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px 16px;">Ouvrir le Bokantaj</a>
-                </div>
-            </div>
-        </div>
-    `;
-
-    const btnNeed = document.getElementById('appHomeBtnNeed');
-    if (btnNeed) {
-        btnNeed.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (typeof window.openLyannWizard === 'function') {
-                window.openLyannWizard();
-            } else {
-                window.location.href = 'results.html?intent=need';
-            }
-        });
-    }
-
-    const btnSearch = document.getElementById('appHomeBtnSearch');
-    if (btnSearch) {
-        btnSearch.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.location.href = 'results.html';
-        });
-    }
-
-    // 3. Header Natif Déterministe Mobile
+    // Header Natif Déterministe Mobile
     if (typeof window.ensureDeterministicAppHeader === 'function') {
         window.ensureDeterministicAppHeader();
     }
@@ -1660,25 +1589,31 @@ function ensureMobileHamburgerDrawer() {
 }
 
 window.openLyannHamburgerDrawer = function() {
-    const menu = document.getElementById('mobileMenu') || document.getElementById('mobileHamburgerDrawerOverlay');
-    if (menu) {
-        menu.classList.add('active');
-        if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();
-    } else if (typeof ensureMobileHamburgerDrawer === 'function') {
+    // Remove static legacy mobileMenu overlay if present to prevent dual-drawer conflicts
+    const legacyMenu = document.getElementById('mobileMenu');
+    if (legacyMenu && legacyMenu.parentNode) {
+        legacyMenu.remove();
+    }
+
+    if (typeof ensureMobileHamburgerDrawer === 'function') {
         ensureMobileHamburgerDrawer();
-        const overlay = document.getElementById('mobileHamburgerDrawerOverlay');
-        if (overlay) {
-            overlay.classList.add('active');
-            if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();
-        }
+    }
+
+    const overlay = document.getElementById('mobileHamburgerDrawerOverlay');
+    if (overlay) {
+        overlay.classList.add('active');
+        document.body.classList.add('drawer-open');
+        document.body.style.overflow = 'hidden';
     }
 };
 
 window.closeLyannHamburgerDrawer = function() {
-    document.querySelectorAll('.mobile-menu-overlay, #mobileHamburgerDrawerOverlay').forEach(menu => {
+    document.querySelectorAll('.mobile-menu-overlay, #mobileHamburgerDrawerOverlay, .hamburger-drawer-overlay').forEach(menu => {
         menu.classList.remove('active');
     });
-    if (typeof window.unlockBodyScroll === 'function') window.unlockBodyScroll();
+    document.body.classList.remove('drawer-open', 'modal-open', 'sheet-open');
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
 };
 
 // Master Hamburger Drawer & Global Header Click Delegator
@@ -1693,8 +1628,8 @@ document.addEventListener('click', (e) => {
     }
 
     // 2. Close Drawer Button or Backdrop
-    const closeBtn = e.target.closest('.mobile-menu-close, #closeMobileDrawerBtn');
-    const overlayBackdrop = (e.target.classList.contains('mobile-menu-overlay') || e.target.id === 'mobileHamburgerDrawerOverlay') ? e.target : null;
+    const closeBtn = e.target.closest('.mobile-menu-close, #closeMobileDrawerBtn, .drawer-close-btn');
+    const overlayBackdrop = (e.target.classList.contains('mobile-menu-overlay') || e.target.classList.contains('hamburger-drawer-overlay') || e.target.id === 'mobileHamburgerDrawerOverlay') ? e.target : null;
     if (closeBtn || overlayBackdrop) {
         e.preventDefault();
         e.stopPropagation();
@@ -1782,14 +1717,17 @@ document.addEventListener('click', (e) => {
 });
 
 function initDrawerEvents(overlay) {
-    const closeBtn = overlay.querySelector('#closeMobileDrawerBtn');
+    const closeBtn = overlay.querySelector('#closeMobileDrawerBtn') || overlay.querySelector('.drawer-close-btn') || overlay.querySelector('.mobile-menu-close');
     const logoutBtn = overlay.querySelector('#drawerLogoutBtn');
 
     if (closeBtn) {
-        closeBtn.addEventListener('click', (e) => {
+        const handleClose = (e) => {
             e.preventDefault();
+            e.stopPropagation();
             window.closeLyannHamburgerDrawer();
-        });
+        };
+        closeBtn.addEventListener('click', handleClose);
+        closeBtn.addEventListener('touchstart', handleClose, { passive: false });
     }
 
     if (logoutBtn) {
@@ -4052,6 +3990,142 @@ safeDomReady(() => {
             renderFlashFeed();
         });
     }
+
+    // === BOKANTAJ FILTER BOTTOM SHEET & COMPACT PILLS LOGIC (MOBILE UX POLISH V2) ===
+    const btnOpenFilterSheet = document.getElementById('btnOpenBokantajFilterSheet');
+    const filterSheetModal = document.getElementById('bokantajFilterSheetModal');
+    const closeFilterSheetBtn = document.getElementById('closeBokantajFilterSheetBtn');
+    const btnApplySheetFilters = document.getElementById('btnApplyBokantajSheetFilters');
+    const btnResetSheetFilters = document.getElementById('btnResetBokantajSheetFilters');
+    const sheetNearbyToggle = document.getElementById('sheetNearbyToggle');
+
+    // 1. Open Filter Sheet
+    if (btnOpenFilterSheet && filterSheetModal) {
+        btnOpenFilterSheet.addEventListener('click', (e) => {
+            e.preventDefault();
+            filterSheetModal.classList.add('active');
+            filterSheetModal.style.display = 'flex';
+            document.body.classList.add('sheet-open');
+        });
+    }
+
+    // 2. Close Filter Sheet
+    if (closeFilterSheetBtn && filterSheetModal) {
+        const closeSheet = () => {
+            filterSheetModal.classList.remove('active');
+            filterSheetModal.style.display = 'none';
+            document.body.classList.remove('sheet-open');
+        };
+        closeFilterSheetBtn.addEventListener('click', closeSheet);
+        filterSheetModal.addEventListener('click', (e) => {
+            if (e.target === filterSheetModal) closeSheet();
+        });
+    }
+
+    // 3. Sheet Type Buttons Toggle
+    const sheetTypeBtns = document.querySelectorAll('.sheet-type-btn');
+    sheetTypeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            sheetTypeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+
+    // 4. Sheet Topic Tags Toggle
+    const sheetTopicTags = document.querySelectorAll('.sheet-topic-tag');
+    sheetTopicTags.forEach(tag => {
+        tag.addEventListener('click', () => {
+            tag.classList.toggle('active');
+        });
+    });
+
+    // 5. Apply Sheet Filters
+    if (btnApplySheetFilters) {
+        btnApplySheetFilters.addEventListener('click', () => {
+            // Apply selected type
+            const activeTypeBtn = document.querySelector('.sheet-type-btn.active');
+            if (activeTypeBtn) {
+                activeFeedTypeFilter = activeTypeBtn.dataset.type || 'all';
+                // Sync row 1 segment buttons
+                document.querySelectorAll('.bokantaj-segment-group .feed-pill').forEach(btn => {
+                    if (btn.dataset.filterV2 === activeFeedTypeFilter) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+
+            // Apply nearby toggle
+            if (sheetNearbyToggle && sheetNearbyToggle.checked) {
+                activeFeedTerritoryFilter = 'nearby';
+                const nearbyChip = document.querySelector('.bokantaj-topic-scroller .chip-pill[data-filter-v2="nearby"]');
+                if (nearbyChip) nearbyChip.classList.add('active');
+            } else if (sheetNearbyToggle && !sheetNearbyToggle.checked && activeFeedTerritoryFilter === 'nearby') {
+                activeFeedTerritoryFilter = 'all';
+                const nearbyChip = document.querySelector('.bokantaj-topic-scroller .chip-pill[data-filter-v2="nearby"]');
+                if (nearbyChip) nearbyChip.classList.remove('active');
+            }
+
+            // Close sheet and re-render feed
+            if (filterSheetModal) {
+                filterSheetModal.classList.remove('active');
+                filterSheetModal.style.display = 'none';
+                document.body.classList.remove('sheet-open');
+            }
+
+            if (typeof renderFlashFeed === 'function') {
+                renderFlashFeed();
+            }
+        });
+    }
+
+    // 6. Reset Sheet Filters
+    if (btnResetSheetFilters) {
+        btnResetSheetFilters.addEventListener('click', () => {
+            activeFeedTypeFilter = 'all';
+            activeFeedTerritoryFilter = 'all';
+            if (sheetNearbyToggle) sheetNearbyToggle.checked = false;
+            sheetTypeBtns.forEach((b, i) => b.classList.toggle('active', i === 0));
+            sheetTopicTags.forEach(t => t.classList.remove('active'));
+            
+            document.querySelectorAll('.bokantaj-segment-group .feed-pill').forEach((btn, i) => {
+                btn.classList.toggle('active', i === 0);
+            });
+            document.querySelectorAll('.bokantaj-topic-scroller .chip-pill').forEach(chip => {
+                chip.classList.remove('active');
+            });
+
+            if (filterSheetModal) {
+                filterSheetModal.classList.remove('active');
+                filterSheetModal.style.display = 'none';
+                document.body.classList.remove('sheet-open');
+            }
+
+            if (typeof renderFlashFeed === 'function') {
+                renderFlashFeed();
+            }
+        });
+    }
+
+    // 7. Directly bind Row 1 & Row 2 Bokantaj segment & scroller buttons
+    document.querySelectorAll('.bokantaj-segment-group .feed-pill, .bokantaj-topic-scroller .chip-pill').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const filterVal = btn.dataset.filterV2;
+            if (filterVal === 'nearby') {
+                btn.classList.toggle('active');
+                activeFeedTerritoryFilter = btn.classList.contains('active') ? 'nearby' : 'all';
+                if (sheetNearbyToggle) sheetNearbyToggle.checked = btn.classList.contains('active');
+            } else if (filterVal) {
+                document.querySelectorAll('.bokantaj-segment-group .feed-pill').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeFeedTypeFilter = filterVal;
+            }
+            if (typeof renderFlashFeed === 'function') {
+                renderFlashFeed();
+            }
+        });
+    });
 
 
     // [Old Chat Logic Removed - Now in chat-logic.js]

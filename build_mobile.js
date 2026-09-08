@@ -34,7 +34,10 @@ const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'ass
 
 [iosPublic, androidPublic].forEach(capDest => {
     if (fs.existsSync(path.dirname(capDest))) {
-        if (!fs.existsSync(capDest)) fs.mkdirSync(capDest, { recursive: true });
+        if (fs.existsSync(capDest)) {
+            fs.rmSync(capDest, { recursive: true, force: true });
+        }
+        fs.mkdirSync(capDest, { recursive: true });
         filesToCopy.forEach(file => {
             const srcPath = path.join(srcDir, file);
             if (fs.existsSync(srcPath) && fs.statSync(srcPath).isFile()) {
