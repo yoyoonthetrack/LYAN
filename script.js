@@ -1018,13 +1018,9 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
             return false;
         }
         
-        // Allow demo mode ONLY on local development environments
-        const isLocalDev = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local') || host.endsWith('.test');
-        if (isLocalDev) {
-            if (window.location.search.includes('demo=true')) return true;
-            if (typeof localStorage !== 'undefined' && localStorage.getItem('lyann_dev_demo_mode') === 'true') return true;
-            if (window.LYANN_FORCE_DEMO_DATA === true) return true;
-        }
+        // Require explicit demo mode flag
+        if (typeof window.LYANN_DEMO_MODE !== 'undefined' && window.LYANN_DEMO_MODE === true) return true;
+        if (window.location.search && window.location.search.includes('demo=true')) return true;
         return false;
     };
 

@@ -6,14 +6,9 @@
 
 // Hard Production Lock check helper for AI Simulator
 function isSimulatorAllowed() {
-    if (typeof window === 'undefined' || !window.location) return false;
-    const host = window.location.hostname;
-    // HARD PRODUCTION LOCK: Never run AI simulator on production domains
-    if (host === 'lyann.app' || host === 'www.lyann.app' || host === 'admin.lyann.app' || host.endsWith('.lyann.app')) {
-        return false;
-    }
-    // Only allow when isExplicitDemoMode() is true on local dev
-    return typeof window.isExplicitDemoMode === 'function' ? window.isExplicitDemoMode() : false;
+    if (typeof window === 'undefined') return false;
+    // HARD PRODUCTION LOCK: Never run AI simulator unless explicitly activated via LYANN_DEMO_MODE === true
+    return typeof window.LYANN_DEMO_MODE !== 'undefined' && window.LYANN_DEMO_MODE === true;
 }
 
 window.DEMO_AI_ENABLED = isSimulatorAllowed();

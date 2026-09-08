@@ -1762,8 +1762,53 @@ document.addEventListener('touchstart', (e) => {
         });
     }
 
+    // CHAT PRODUCTION HYGIENE: Idempotent cleanup of legacy demo contacts from localStorage
+    function cleanupLegacyDemoChatData() {
+        const demoSignatures = [
+            "Prestataire LYANN",
+            "Tati Huguette Cazeau",
+            "Sarah Manicon",
+            "Marc (Plombier)",
+            "contact 1",
+            "contact 6",
+            "contact 9"
+        ];
+        try {
+            const stored = localStorage.getItem(CHAT_MSG_KEY);
+            if (stored) {
+                let data = JSON.parse(stored);
+                let changed = false;
+                demoSignatures.forEach(sig => {
+                    if (data[sig]) {
+                        delete data[sig];
+                        changed = true;
+                    }
+                });
+                Object.keys(data).forEach(k => {
+                    if (demoSignatures.includes(k)) {
+                        delete data[k];
+                        changed = true;
+                    }
+                });
+                if (changed) {
+                    localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
+                    console.log("🧹 [Chat Hygiene] Purged legacy demo contacts from localStorage.");
+                }
+            }
+            const lastActive = localStorage.getItem('lyann_last_active_contact');
+            if (lastActive) {
+                const parsed = JSON.parse(lastActive);
+                if (parsed && demoSignatures.includes(parsed.id)) {
+                    localStorage.removeItem('lyann_last_active_contact');
+                }
+            }
+        } catch(e) {}
+    }
+
     // Initialize & render chat contacts sidebar dynamically
     function initializeChatContacts() {
+        cleanupLegacyDemoChatData();
+
         if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
             return; // Zero mock contacts when Supabase is active
         }
@@ -1773,8 +1818,8 @@ document.addEventListener('touchstart', (e) => {
             if (stored) data = JSON.parse(stored);
         } catch(e) {}
         
-        // Ensure default contacts exist
-        const isDemoMode = typeof window.isExplicitDemoMode === 'function' ? window.isExplicitDemoMode() : false;
+        // Ensure default contacts exist ONLY when explicit demo mode is set
+        const isDemoMode = (typeof window.LYANN_DEMO_MODE !== 'undefined' && window.LYANN_DEMO_MODE === true);
         if (isDemoMode) {
             if (!data["Prestataire LYANN"]) {
                 data["Prestataire LYANN"] = [
@@ -1791,8 +1836,8 @@ document.addEventListener('touchstart', (e) => {
                     { id: "m3", text: "À très bientôt pour la rénovation de la cuisine !", sender: "them", timestamp: "Lundi", type: "text" }
                 ];
             }
+            localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
         }
-        localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
     }
 
     window.deleteConversation = function(contactId) {
@@ -1843,7 +1888,9 @@ document.addEventListener('touchstart', (e) => {
         const listContainer = document.getElementById('chatContactsList');
         if (!listContainer) return;
         
-        const isDemoMode = typeof window.isExplicitDemoMode === 'function' ? window.isExplicitDemoMode() : false;
+        cleanupLegacyDemoChatData();
+
+        const isDemoMode = (typeof window.LYANN_DEMO_MODE !== 'undefined' && window.LYANN_DEMO_MODE === true);
         const defaultContacts = isDemoMode ? [
             { id: "Prestataire LYANN", name: "Prestataire LYANN", avatar: "david-34.png", preview: "Bonjour ! Je suis dispo cet ap..." },
             { id: "Tati Huguette Cazeau", name: "Tati Huguette Cazeau", avatar: "huguette-68.png", preview: "Merci beaucoup pour votre aide !" },
@@ -1893,7 +1940,14 @@ document.addEventListener('touchstart', (e) => {
         window.LYANN_PROFILES_CACHE = window.LYANN_PROFILES_CACHE || {};
 
         if (contactsToRender.length === 0) {
-            listContainer.innerHTML = `<div style="padding: 40px 16px; text-align: center; color: var(--text-muted); font-size: 0.88rem;"><i class="ph ph-chat-circle-dots" style="font-size: 2.2rem; color: #CBD5E1; margin-bottom: 8px; display: block;"></i><p style="margin: 0; font-weight: 600; color: #64748B;">Vos échanges apparaîtront ici.</p></div>`;
+            listContainer.innerHTML = `
+                <div class="chat-empty-state" style="padding: 40px 16px; text-align: center; color: var(--text-muted, #64748B); font-size: 0.88rem;">
+                    <i class="ph ph-chat-circle-dots" style="font-size: 2.2rem; color: #CBD5E1; margin-bottom: 10px; display: block;"></i>
+                    <p style="margin: 0 0 6px 0; font-weight: 700; color: #334155; font-size: 0.95rem;">Aucune conversation pour le moment.</p>
+                    <p style="margin: 0 0 16px 0; font-size: 0.82rem; color: #64748B;">Vos échanges avec la communauté et les Lyanneurs apparaîtront ici.</p>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="if (typeof window.closeLyannChatModal === 'function') window.closeLyannChatModal(); window.location.href='#explorer';" style="border-radius: 20px; padding: 6px 14px; font-size: 0.8rem; font-weight: 700;"><i class="ph ph-compass"></i> Explorer les Lyanns</button>
+                </div>
+            `;
             return;
         }
 
