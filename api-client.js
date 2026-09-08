@@ -595,17 +595,17 @@ const LYANN_API_CLIENT = {
             // 1. Fetch Bokantaj Posts
             const { data: postsData, error: postsError } = await this.supabase
                 .from('bokantaj_posts')
-                .select(`*, profiles(first_name, last_name, avatar_url, city, territory)`)
+                .select('*')
                 .order('created_at', { ascending: false });
 
             if (postsError) {
                 console.warn("[LYANN API] Error fetching bokantaj_posts:", postsError);
             }
 
-            // 2. Fetch OPEN Requests (Lyanns) with author profiles
+            // 2. Fetch OPEN Requests (Lyanns)
             const { data: requestsData, error: requestsError } = await this.supabase
                 .from('requests')
-                .select(`*, profiles:requester_id(first_name, last_name, avatar_url, city, territory)`)
+                .select('*')
                 .eq('status', 'OPEN')
                 .order('created_at', { ascending: false });
 
@@ -615,6 +615,39 @@ const LYANN_API_CLIENT = {
 
             const posts = postsData || [];
             const openRequests = requestsData || [];
+
+            // 2b. Collect all author IDs & fetch public_profiles (bypassing RLS restriction on profiles)
+            const authorIds = Array.from(new Set([
+                ...posts.map(p => p.user_id || p.author_id),
+                ...openRequests.map(r => r.requester_id || r.user_id)
+            ].filter(Boolean)));
+
+            const profilesMap = {};
+            if (authorIds.length > 0) {
+                try {
+                    const { data: pubProfs } = await this.supabase
+                        .from('public_profiles')
+                        .select('id, first_name, last_name, avatar_url, city, territory')
+                        .in('id', authorIds);
+                    if (pubProfs && Array.isArray(pubProfs)) {
+                        pubProfs.forEach(p => { profilesMap[p.id] = p; });
+                    }
+                } catch (profErr) {
+                    console.warn("[LYANN API] Error fetching public_profiles for feed:", profErr);
+                }
+            }
+
+            function formatAuthorName(prof) {
+                if (!prof || !prof.first_name) return 'Lyanneur';
+                const fn = prof.first_name.trim();
+                if (!fn || fn.startsWith('step') || fn.startsWith('prod') || fn.startsWith('user_') || fn.startsWith('req_user_') || fn.startsWith('check_') || fn.startsWith('ua_') || fn.startsWith('ub_') || fn.startsWith('h_step')) {
+                    return 'Lyanneur';
+                }
+                const capFn = fn.charAt(0).toUpperCase() + fn.slice(1);
+                const ln = (prof.last_name || '').trim();
+                const init = ln ? ` ${ln.charAt(0).toUpperCase()}.` : '';
+                return `${capFn}${init}`;
+            }
 
             // 3. Fetch Likes & Comments for Counts & Current User Like State
             const postLikesCountMap = {};
@@ -665,16 +698,16 @@ const LYANN_API_CLIENT = {
 
             // 4. Format posts into unified presentation structures
             const formattedPosts = posts.map(p => {
-                const authorProf = p.profiles;
-                const firstName = authorProf ? (authorProf.first_name || 'Lyanneur') : 'Lyanneur';
-                const lastNameInit = authorProf && authorProf.last_name ? ` ${authorProf.last_name.charAt(0)}.` : '';
+                const authorProf = profilesMap[p.user_id || p.author_id];
+                const authorName = formatAuthorName(authorProf);
+                const avatarUrl = window.getLyannAvatarUrl(authorProf?.avatar_url);
                 
                 return {
                     id: p.id,
                     item_type: 'POST',
-                    author_id: p.author_id,
-                    author_name: `${firstName}${lastNameInit}`,
-                    author_avatar: window.getLyannAvatarUrl(authorProf?.avatar_url),
+                    author_id: p.user_id || p.author_id,
+                    author_name: authorName,
+                    author_avatar: avatarUrl,
                     author_city: authorProf?.city || authorProf?.territory || p.territory || 'Guadeloupe',
                     badge: p.post_type === 'dispo' ? '<i class="ph ph-lightning"></i> Disponibilité' : (p.post_type === 'besoin' ? '<i class="ph ph-magnifying-glass"></i> Besoin' : '<i class="ph ph-newspaper"></i> Info Bokantaj'),
                     type: p.post_type,
@@ -691,9 +724,9 @@ const LYANN_API_CLIENT = {
             });
 
             const formattedLyanns = openRequests.map(r => {
-                const authorProf = r.profiles;
-                const firstName = authorProf ? (authorProf.first_name || 'Lyanneur') : 'Lyanneur';
-                const lastNameInit = authorProf && authorProf.last_name ? ` ${authorProf.last_name.charAt(0)}.` : '';
+                const authorProf = profilesMap[r.requester_id || r.user_id];
+                const authorName = formatAuthorName(authorProf);
+                const avatarUrl = window.getLyannAvatarUrl(authorProf?.avatar_url);
                 const cityStr = authorProf ? (authorProf.city || authorProf.territory || 'Guadeloupe') : (r.location || 'Guadeloupe');
 
                 return {
@@ -701,8 +734,8 @@ const LYANN_API_CLIENT = {
                     request_id: r.id,
                     item_type: 'LYANN',
                     author_id: r.requester_id,
-                    author_name: `${firstName}${lastNameInit}`,
-                    author_avatar: window.getLyannAvatarUrl(authorProf?.avatar_url),
+                    author_name: authorName,
+                    author_avatar: avatarUrl,
                     author_city: cityStr,
                     badge: `LYANN · ${r.category || 'Besoin'}`,
                     type: 'lyann',
