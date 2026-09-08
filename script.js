@@ -5049,6 +5049,192 @@ safeDomReady(() => {
         });
     }
 
+    window.getRequestStatusBadge = function(statusRaw) {
+        const status = String(statusRaw || '').toUpperCase().trim();
+        if (status === 'OPEN' || status === 'PUBLISHED' || status === 'ACTIVE') {
+            return { label: 'Ouvert', class: 'pill-green' };
+        }
+        if (status === 'IN_PROGRESS' || status === 'EN_COURS' || status === 'PENDING') {
+            return { label: 'En cours', class: 'pill-blue' };
+        }
+        if (status === 'COMPLETED' || status === 'TERMINÉ' || status === 'CLOSED') {
+            return { label: 'Terminé', class: 'pill-gray' };
+        }
+        if (status === 'CANCELLED' || status === 'ANNULÉ') {
+            return { label: 'Annulé', class: 'pill-red' };
+        }
+        return { label: 'Ouvert', class: 'pill-green' };
+    };
+
+    window.renderMonActiviteSubView = async function(currentUserId, activeTab = 'requests') {
+        let myRequests = [];
+        let myMissions = [];
+        let myOffers = [];
+
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (client && client.supabase && currentUserId) {
+            try {
+                const { data: reqs } = await client.supabase
+                    .from('requests')
+                    .select('*')
+                    .eq('requester_id', currentUserId)
+                    .order('created_at', { ascending: false });
+                if (reqs) myRequests = reqs;
+            } catch(e) {}
+
+            try {
+                const { data: miss } = await client.supabase
+                    .from('missions')
+                    .select('*')
+                    .or(`requester_id.eq.${currentUserId},provider_id.eq.${currentUserId}`)
+                    .order('created_at', { ascending: false });
+                if (miss) myMissions = miss;
+            } catch(e) {}
+
+            try {
+                const { data: offs } = await client.supabase
+                    .from('offers')
+                    .select('*')
+                    .eq('user_id', currentUserId)
+                    .order('created_at', { ascending: false });
+                if (offs) myOffers = offs;
+            } catch(e) {}
+        }
+
+        const reqCount = myRequests.length;
+        const missCount = myMissions.length;
+        const offCount = myOffers.length;
+
+        let tabsHTML = `
+            <div class="activity-switch-tabs">
+                <button type="button" class="activity-tab-chip ${activeTab === 'requests' ? 'active' : ''}" onclick="window.switchActivityTab('requests', '${currentUserId}')">
+                    <i class="ph ph-broadcast"></i> Mes Lyanns (${reqCount})
+                </button>
+                <button type="button" class="activity-tab-chip ${activeTab === 'missions' ? 'active' : ''}" onclick="window.switchActivityTab('missions', '${currentUserId}')">
+                    <i class="ph ph-hand-heart"></i> Mes missions (${missCount})
+                </button>
+                <button type="button" class="activity-tab-chip ${activeTab === 'offers' ? 'active' : ''}" onclick="window.switchActivityTab('offers', '${currentUserId}')">
+                    <i class="ph ph-paper-plane-tilt"></i> Mes propositions (${offCount})
+                </button>
+            </div>
+        `;
+
+        let mainListHTML = '';
+
+        if (activeTab === 'requests') {
+            if (myRequests.length > 0) {
+                const rowsHTML = myRequests.map(r => {
+                    const userNeedTitle = (r.description && r.description.trim()) ? r.description.trim() : (r.title || 'Besoin d\'aide');
+                    const categorySubtitle = (r.category && r.category.trim()) ? r.category.trim() : (r.title || 'Lyann');
+                    
+                    let locShort = (r.location || 'Guadeloupe').split('(')[0].trim();
+                    
+                    let dateStr = '';
+                    if (r.created_at) {
+                        try {
+                            const d = new Date(r.created_at);
+                            dateStr = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+                        } catch(e) {}
+                    }
+
+                    let budgetStr = r.budget ? `${r.budget} €` : '';
+                    const statusBadge = window.getRequestStatusBadge(r.status);
+
+                    return `
+                        <div class="account-v3-row account-touch-row activity-card-row" onclick="window.closeUserAccountModal(); if (typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal('${r.id}'); else if (typeof window.openHelpDetailModal === 'function') window.openHelpDetailModal('${r.id}');">
+                            <div class="row-icon"><i class="ph ph-broadcast"></i></div>
+                            <div class="row-content" style="flex:1; min-width:0;">
+                                <strong class="row-title" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:0.95rem; line-height:1.35; color:#17231C; font-weight:700;">
+                                    ${window.escapeHtmlAttr(userNeedTitle)}
+                                </strong>
+                                <span class="row-subtitle" style="font-size:0.82rem; color:#64748B; margin-top:4px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    ${window.escapeHtmlAttr(categorySubtitle)} • ${window.escapeHtmlAttr(locShort)}${dateStr ? ' · ' + dateStr : ''}${budgetStr ? ' · ' + budgetStr : ''}
+                                </span>
+                            </div>
+                            <div class="row-right-badge" style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; margin-left:12px;">
+                                <span class="pill-badge ${statusBadge.class}" style="font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:12px;">
+                                    ${statusBadge.label}
+                                </span>
+                                <i class="ph ph-caret-right row-chevron" style="font-size:1rem; color:#94A3B8;"></i>
+                            </div>
+                        </div>
+                    `;
+                }).join('<div class="account-divider"></div>');
+
+                mainListHTML = `<div class="account-group-box">${rowsHTML}</div>`;
+            } else {
+                mainListHTML = `
+                    <div class="account-v3-empty" style="background:#FFFFFF; border:1px solid #EAE6DF; border-radius:18px; padding:32px 20px; text-align:center;">
+                        <i class="ph ph-broadcast" style="font-size:2.2rem; color:#94A3B8; margin-bottom:10px; display:block;"></i>
+                        <h5 style="font-size:1rem; font-weight:700; color:#17231C; margin:0 0 6px 0;">Aucun Lyann publié</h5>
+                        <p style="font-size:0.86rem; color:#64748B; margin:0 0 16px 0;">Tu n'as encore publié aucun besoin sur LYANN.</p>
+                        <button class="btn btn-primary btn-sm" onclick="window.closeUserAccountModal(); if(typeof window.openHelpRequestModal==='function') window.openHelpRequestModal();" style="display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-plus"></i> Publier un besoin</button>
+                    </div>
+                `;
+            }
+        } else if (activeTab === 'missions') {
+            if (myMissions.length > 0) {
+                const rowsHTML = myMissions.map(m => `
+                    <div class="account-v3-row account-touch-row">
+                        <div class="row-icon"><i class="ph ph-hand-heart"></i></div>
+                        <div class="row-content">
+                            <strong class="row-title">Mission #${m.id.slice(0, 8)}</strong>
+                            <span class="row-subtitle">Statut : ${m.status || 'En cours'}</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron"></i>
+                    </div>
+                `).join('<div class="account-divider"></div>');
+                mainListHTML = `<div class="account-group-box">${rowsHTML}</div>`;
+            } else {
+                mainListHTML = `
+                    <div class="account-v3-empty" style="background:#FFFFFF; border:1px solid #EAE6DF; border-radius:18px; padding:32px 20px; text-align:center;">
+                        <i class="ph ph-hand-heart" style="font-size:2.2rem; color:#94A3B8; margin-bottom:10px; display:block;"></i>
+                        <h5 style="font-size:1rem; font-weight:700; color:#17231C; margin:0 0 6px 0;">Aucune mission pour le moment</h5>
+                        <p style="font-size:0.86rem; color:#64748B; margin:0;">Vos missions en cours ou terminées apparaîtront ici.</p>
+                    </div>
+                `;
+            }
+        } else if (activeTab === 'offers') {
+            if (myOffers.length > 0) {
+                const rowsHTML = myOffers.map(o => `
+                    <div class="account-v3-row account-touch-row">
+                        <div class="row-icon"><i class="ph ph-paper-plane-tilt"></i></div>
+                        <div class="row-content">
+                            <strong class="row-title">Proposition #${o.id.slice(0, 8)}</strong>
+                            <span class="row-subtitle">Statut : ${o.status || 'Envoyée'}</span>
+                        </div>
+                        <i class="ph ph-caret-right row-chevron"></i>
+                    </div>
+                `).join('<div class="account-divider"></div>');
+                mainListHTML = `<div class="account-group-box">${rowsHTML}</div>`;
+            } else {
+                mainListHTML = `
+                    <div class="account-v3-empty" style="background:#FFFFFF; border:1px solid #EAE6DF; border-radius:18px; padding:32px 20px; text-align:center;">
+                        <i class="ph ph-paper-plane-tilt" style="font-size:2.2rem; color:#94A3B8; margin-bottom:10px; display:block;"></i>
+                        <h5 style="font-size:1rem; font-weight:700; color:#17231C; margin:0 0 6px 0;">Aucune proposition pour le moment</h5>
+                        <p style="font-size:0.86rem; color:#64748B; margin:0;">Vos offres et devis envoyés apparaîtront ici.</p>
+                    </div>
+                `;
+            }
+        }
+
+        return `
+            <div class="account-desktop-sections" id="monActiviteContainer">
+                <section class="account-desktop-section">
+                    ${tabsHTML}
+                    ${mainListHTML}
+                </section>
+            </div>
+        `;
+    };
+
+    window.switchActivityTab = async function(tabName, userId) {
+        const container = document.getElementById('monActiviteContainer');
+        if (!container) return;
+        const html = await window.renderMonActiviteSubView(userId, tabName);
+        container.outerHTML = html;
+    };
+
     window.openAccountModalSubView = async function(subViewName = 'account') {
         const session = await window.requireAuthSession(`Mon compte (${subViewName})`);
         if (!session || !session.user) return;
@@ -5081,64 +5267,7 @@ safeDomReady(() => {
         if (subViewName === 'activity') {
             titleText = 'Mon activité';
             subtitleText = "Vos demandes d'entraide, prestations et échanges.";
-            let myRequests = [];
-
-            if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && currentUserId) {
-                try {
-                    const { data: reqs } = await window.LYANN_API_CLIENT.supabase
-                        .from('requests')
-                        .select('*')
-                        .eq('requester_id', currentUserId)
-                        .order('created_at', { ascending: false });
-                    if (reqs) myRequests = reqs;
-                } catch(e) {}
-            }
-
-            let requestsHTML = '';
-            if (myRequests.length > 0) {
-                requestsHTML = myRequests.map(r => `
-                    <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openHelpDetailModal==='function') window.openHelpDetailModal('${r.id}');">
-                        <div class="row-icon"><i class="ph ph-broadcast"></i></div>
-                        <div class="row-content">
-                            <strong class="row-title">${window.escapeHtmlAttr(r.title || 'Besoin d\'aide')}</strong>
-                            <span class="row-subtitle">${window.escapeHtmlAttr(r.location || 'Guadeloupe')} • ${r.status === 'open' ? 'En cours' : 'Terminé'}</span>
-                        </div>
-                        <i class="ph ph-caret-right row-chevron"></i>
-                    </div>
-                `).join('');
-            } else {
-                requestsHTML = `
-                    <div class="account-v3-empty" style="background:#F8FAFC; border:1.5px dashed #CBD5E1; border-radius:16px; padding:24px 16px; text-align:center;">
-                        <i class="ph ph-broadcast" style="font-size:2rem; color:#94A3B8; margin-bottom:8px; display:block;"></i>
-                        <p style="font-size:0.9rem; color:#64748B; margin:0 0 12px 0;">Tu n'as encore publié aucun Lyann.</p>
-                        <button class="btn btn-primary btn-sm" onclick="window.closeUserAccountModal(); if(typeof window.openHelpRequestModal==='function') window.openHelpRequestModal();" style="display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-plus"></i> Publier un besoin</button>
-                    </div>
-                `;
-            }
-
-            subViewContent = `
-                <div class="account-desktop-sections">
-                    <section class="account-desktop-section">
-                        <h4 class="account-section-heading">MES LYANNS (${myRequests.length})</h4>
-                        <div class="account-group-box">
-                            ${requestsHTML}
-                        </div>
-                    </section>
-                    <section class="account-desktop-section">
-                        <h4 class="account-section-heading">MESSAGERIE & ÉCHANGES</h4>
-                        <div class="account-group-box">
-                            <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openLyannChatModal==='function') window.openLyannChatModal(); else if(typeof window.openChatWithUser==='function') window.openChatWithUser();">
-                                <div class="row-icon"><i class="ph ph-chat-circle-dots"></i></div>
-                                <div class="row-content">
-                                    <strong class="row-title">Accéder à la messagerie</strong>
-                                    <span class="row-subtitle">Vos conversations et échanges en cours</span>
-                                </div>
-                                <i class="ph ph-caret-right row-chevron"></i>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-            `;
+            subViewContent = await window.renderMonActiviteSubView(currentUserId, 'requests');
         } else if (subViewName === 'favorites') {
             titleText = 'Favoris';
             subtitleText = 'Vos Lyanneurs et contenus enregistrés.';
