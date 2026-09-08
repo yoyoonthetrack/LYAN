@@ -2285,17 +2285,17 @@ safeDomReady(() => {
                      document.querySelector('#publicMemberProfileModal .modal-card-dashboard');
         const modalBody = document.querySelector('#publicMemberProfileModal .profile-modal-body');
 
-        const containers = [card, modal, modalBody, document.documentElement, document.body].filter(Boolean);
+        const containers = [modalBody, card, modal, document.documentElement, document.body].filter(Boolean);
 
-        let scrollOwner = '#publicMemberProfileModal .modal-card';
+        let scrollOwner = '#publicMemberProfileModal .profile-modal-body';
         let scrollTopBeforeReset = 0;
 
         containers.forEach(el => {
             if (el && el.scrollTop > 0) {
                 scrollTopBeforeReset = Math.max(scrollTopBeforeReset, el.scrollTop);
-                if (el === card) scrollOwner = '#publicMemberProfileModal .modal-card';
+                if (el === modalBody) scrollOwner = '#publicMemberProfileModal .profile-modal-body';
+                else if (el === card) scrollOwner = '#publicMemberProfileModal .modal-card';
                 else if (el === modal) scrollOwner = '#publicMemberProfileModal';
-                else if (el === modalBody) scrollOwner = '#publicMemberProfileModal .profile-modal-body';
                 else if (el === document.documentElement || el === document.body) scrollOwner = 'window';
             }
             if (el) {
@@ -2782,36 +2782,38 @@ safeDomReady(() => {
         }
         reviewsHTML += `</div>`;
 
-        // Inject Full Layout into Modal
+        // Inject Full Layout into Modal with canonical .profile-modal-body scroller
         modalCard.innerHTML = `
             <button class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer" onclick="if(document.getElementById('publicMemberProfileModal')) document.getElementById('publicMemberProfileModal').classList.remove('active'); document.body.style.overflow='auto'; if(typeof window.resetProfileModalScroll==='function') window.resetProfileModalScroll();" style="top:16px; right:16px; z-index:10;"><i class="ph ph-x"></i></button>
 
-            <div class="lyann-profile-hero" style="margin-bottom: 16px;">
-                <div class="lyann-profile-hero-content">
-                    <div class="lyann-profile-avatar-wrapper">
-                        <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="lyann-profile-avatar-img">
-                        ${isSelf ? '<button type="button" class="lyann-avatar-edit-btn" onclick="window.lyannOpenAvatarModal()" title="Changer la photo"><i class="ph ph-camera"></i></button>' : ''}
-                    </div>
-                    <div class="lyann-profile-hero-details">
-                        <div class="lyann-profile-name-row">
-                            <h3 class="lyann-profile-display-name">${safeDisplayName}</h3>
-                            ${badgesHTML}
+            <div class="profile-modal-body">
+                <div class="lyann-profile-hero" style="margin-bottom: 16px;">
+                    <div class="lyann-profile-hero-content">
+                        <div class="lyann-profile-avatar-wrapper">
+                            <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="lyann-profile-avatar-img">
+                            ${isSelf ? '<button type="button" class="lyann-avatar-edit-btn" onclick="window.lyannOpenAvatarModal()" title="Changer la photo"><i class="ph ph-camera"></i></button>' : ''}
                         </div>
-                        <div class="lyann-profile-location">
-                            <i class="ph ph-map-pin"></i> ${locationCity} · Guadeloupe
+                        <div class="lyann-profile-hero-details">
+                            <div class="lyann-profile-name-row">
+                                <h3 class="lyann-profile-display-name">${safeDisplayName}</h3>
+                                ${badgesHTML}
+                            </div>
+                            <div class="lyann-profile-location">
+                                <i class="ph ph-map-pin"></i> ${locationCity} · Guadeloupe
+                            </div>
+                            ${trustLineHTML}
+                            ${pData.bio ? `<p class="lyann-profile-bio" style="font-size:0.9rem; color:#475569; margin:8px 0;">${window.escapeHtmlAttr(pData.bio)}</p>` : ''}
+                            ${ctaHTML}
                         </div>
-                        ${trustLineHTML}
-                        ${pData.bio ? `<p class="lyann-profile-bio" style="font-size:0.9rem; color:#475569; margin:8px 0;">${window.escapeHtmlAttr(pData.bio)}</p>` : ''}
-                        ${ctaHTML}
                     </div>
                 </div>
-            </div>
 
-            ${completionCardHTML}
-            ${servicesHTML}
-            ${relocationHTML}
-            ${portfolioHTML}
-            ${reviewsHTML}
+                ${completionCardHTML}
+                ${servicesHTML}
+                ${relocationHTML}
+                ${portfolioHTML}
+                ${reviewsHTML}
+            </div>
         `;
     }
 
