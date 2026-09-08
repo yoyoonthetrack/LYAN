@@ -5448,29 +5448,39 @@ safeDomReady(() => {
     updateNavbarScrollState();
 
     // Global Logout Handler ("Se déconnecter")
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
         const logoutBtn = e.target.closest('.btn-logout-trigger, .nav-logout-btn, .drawer-logout-btn');
         if (logoutBtn) {
             e.preventDefault();
+
+            if (typeof window.closeLyannHamburgerDrawer === 'function') window.closeLyannHamburgerDrawer();
+            const userAccountModal = document.getElementById('userAccountModal');
+            if (userAccountModal) {
+                userAccountModal.classList.remove('active');
+                userAccountModal.style.display = 'none';
+            }
+
             try {
                 if (typeof safeStorage !== 'undefined') {
                     safeStorage.removeItem('lyan_user_logged_in');
+                    safeStorage.removeItem('lyan_user_id');
                     safeStorage.removeItem('lyan_user_profile');
                 }
                 localStorage.removeItem('lyan_user_logged_in');
+                localStorage.removeItem('lyan_user_id');
                 localStorage.removeItem('lyan_user_profile');
                 sessionStorage.clear();
             } catch (err) {}
 
             if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                 try {
-                    window.LYANN_API_CLIENT.signOut();
+                    await window.LYANN_API_CLIENT.signOut();
                 } catch (err) {}
             }
 
             document.body.classList.remove('user-is-logged-in');
             if (typeof updateHeaderAuthState === 'function') {
-                updateHeaderAuthState();
+                await updateHeaderAuthState();
             }
 
             if (window.NotificationService) {
@@ -5479,9 +5489,13 @@ safeDomReady(() => {
                 showLyanToast('info', 'Déconnexion réussie');
             }
 
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 300);
+            const path = window.location.pathname;
+            const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
+            if (!isHome) {
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 300);
+            }
         }
     });
 
