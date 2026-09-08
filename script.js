@@ -5318,15 +5318,55 @@ safeDomReady(() => {
         }
 
         modalCard.innerHTML = `
-            <div class="account-v3-container">
-                <div class="account-v3-header">
-                    <button type="button" class="account-v3-back-btn" onclick="window.closeUserAccountModal()" aria-label="Retour"><i class="ph ph-arrow-left"></i></button>
-                    <h3 class="account-v3-title">${titleText}</h3>
-                    <button type="button" class="modal-close-btn account-v3-close-btn" onclick="window.closeUserAccountModal()" aria-label="Fermer"><i class="ph ph-x"></i></button>
-                </div>
-                <div class="account-v3-body">
-                    ${subViewContent}
-                </div>
+            <div class="account-shell-container">
+                <!-- DESKTOP SIDEBAR (Left Pane) -->
+                <aside class="account-desktop-sidebar">
+                    <div class="sidebar-user-profile">
+                        <div class="sidebar-avatar-wrap">
+                            <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="sidebar-user-avatar">
+                        </div>
+                        <div class="sidebar-user-info">
+                            <strong class="sidebar-user-name">${safeDisplayName}</strong>
+                            <span class="sidebar-user-location"><i class="ph ph-map-pin"></i> ${userTerritory}</span>
+                        </div>
+                    </div>
+
+                    <nav class="sidebar-nav-menu">
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'account' ? 'active' : ''}" onclick="window.openAccountModalSubView('account')">
+                            <i class="ph ph-user-gear"></i> Mon compte
+                        </button>
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'activity' ? 'active' : ''}" onclick="window.openAccountModalSubView('activity')">
+                            <i class="ph ph-broadcast"></i> Mon activité
+                        </button>
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'favorites' ? 'active' : ''}" onclick="window.openAccountModalSubView('favorites')">
+                            <i class="ph ph-star"></i> Favoris
+                        </button>
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'finances' ? 'active' : ''}" onclick="window.openAccountModalSubView('finances')">
+                            <i class="ph ph-credit-card"></i> Finances
+                        </button>
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'help' ? 'active' : ''}" onclick="window.openAccountModalSubView('help')">
+                            <i class="ph ph-question"></i> Aide & LYANN
+                        </button>
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'settings' ? 'active' : ''}" onclick="window.openAccountModalSubView('settings')">
+                            <i class="ph ph-gear"></i> Réglages
+                        </button>
+                    </nav>
+                </aside>
+
+                <!-- MAIN CONTENT PANE (Right Pane) -->
+                <main class="account-desktop-main">
+                    <header class="account-main-header">
+                        <button type="button" class="account-v3-back-btn mobile-only-btn" onclick="window.closeUserAccountModal()" aria-label="Retour"><i class="ph ph-arrow-left"></i></button>
+                        <div class="account-header-titles">
+                            <h3 class="account-main-title">${titleText}</h3>
+                            <span class="account-main-subtitle">${subtitleText}</span>
+                        </div>
+                        <button type="button" class="account-main-close-btn" onclick="window.closeUserAccountModal()" aria-label="Fermer"><i class="ph ph-x"></i></button>
+                    </header>
+                    <div class="account-main-body">
+                        ${subViewContent}
+                    </div>
+                </main>
             </div>
         `;
 

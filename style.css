@@ -14189,20 +14189,11 @@ body.is-native-app .navbar .nav-auth-btn {
     border: none;
     font-size: 0.9rem;
     font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s ease;
-    box-sizing: border-box;
-}
-
-.mobile-drawer-login-btn:hover {
-    background: #3B6447;
-}
-
 /* ==========================================================================
-   LYANN — REDESIGN RESPONSIVE « MON COMPTE » (MOBILE WEB + NATIVE APP)
+   LYANN — REFAIRE COMPLÈTEMENT L'ESPACE COMPTE WEB DESKTOP (ACCOUNT DESKTOP SHELL)
    ========================================================================== */
 
-/* 1. Mobile Viewport (< 768px) — Full Native Screen Experience */
+/* 1. Mobile Viewport (< 768px) — Full Native Mobile App Experience */
 @media (max-width: 767px) {
     #userAccountModal.modal-overlay {
         padding: 0 !important;
@@ -14229,7 +14220,7 @@ body.is-native-app .navbar .nav-auth-btn {
         border: none !important;
     }
 
-    .account-v3-container {
+    .account-shell-container {
         width: 100% !important;
         max-width: 100% !important;
         height: 100% !important;
@@ -14240,7 +14231,20 @@ body.is-native-app .navbar .nav-auth-btn {
         border-radius: 0 !important;
     }
 
-    .account-v3-header {
+    .account-desktop-sidebar {
+        display: none !important;
+    }
+
+    .account-desktop-main {
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: #FAF7F2 !important;
+    }
+
+    .account-main-header {
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
@@ -14256,8 +14260,12 @@ body.is-native-app .navbar .nav-auth-btn {
         box-sizing: content-box !important;
     }
 
+    .mobile-only-btn {
+        display: flex !important;
+    }
+
     .account-v3-back-btn,
-    .account-v3-close-btn {
+    .account-main-close-btn {
         width: 44px !important;
         height: 44px !important;
         min-width: 44px !important;
@@ -14276,23 +14284,24 @@ body.is-native-app .navbar .nav-auth-btn {
         touch-action: manipulation;
     }
 
-    .account-v3-back-btn:active,
-    .account-v3-close-btn:active {
-        background: #E6E0D4 !important;
-        transform: scale(0.96);
+    .account-header-titles {
+        flex: 1 !important;
+        text-align: center !important;
     }
 
-    .account-v3-title {
+    .account-main-title {
         font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
         font-size: 1.1rem !important;
         font-weight: 700 !important;
         color: #17231C !important;
         margin: 0 !important;
-        text-align: center !important;
-        flex: 1 !important;
     }
 
-    .account-v3-body {
+    .account-main-subtitle {
+        display: none !important;
+    }
+
+    .account-main-body {
         flex: 1 !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
@@ -14301,12 +14310,26 @@ body.is-native-app .navbar .nav-auth-btn {
         width: 100% !important;
     }
 
-    .account-v3-section {
+    .account-v3-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0 !important;
+        width: 100% !important;
+    }
+
+    .account-v3-col-left,
+    .account-v3-col-right {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+
+    .account-desktop-section {
         margin-bottom: 20px !important;
         width: 100% !important;
     }
 
-    .account-v3-section-title {
+    .account-section-heading {
         font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
         font-size: 0.78rem !important;
         font-weight: 800 !important;
@@ -14316,8 +14339,7 @@ body.is-native-app .navbar .nav-auth-btn {
         margin: 0 0 10px 4px !important;
     }
 
-    /* Identity Mobile Card */
-    .identity-card {
+    .identity-strip {
         display: flex !important;
         align-items: center !important;
         gap: 16px !important;
@@ -14330,20 +14352,12 @@ body.is-native-app .navbar .nav-auth-btn {
         box-sizing: border-box !important;
     }
 
-    .identity-avatar-wrap {
-        position: relative !important;
-        width: 60px !important;
-        height: 60px !important;
-        flex-shrink: 0 !important;
-    }
-
     .account-identity-avatar {
         width: 60px !important;
         height: 60px !important;
         border-radius: 50% !important;
         object-fit: cover !important;
         border: 2px solid #FFFFFF !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
     }
 
     .avatar-camera-btn {
@@ -14360,10 +14374,9 @@ body.is-native-app .navbar .nav-auth-btn {
         align-items: center !important;
         justify-content: center !important;
         font-size: 0.8rem !important;
-        cursor: pointer !important;
     }
 
-    .identity-text-info {
+    .identity-strip-text {
         flex: 1 !important;
         min-width: 0 !important;
     }
@@ -14375,9 +14388,6 @@ body.is-native-app .navbar .nav-auth-btn {
         color: #17231C !important;
         display: block !important;
         line-height: 1.3 !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
     }
 
     .identity-email {
@@ -14385,45 +14395,56 @@ body.is-native-app .navbar .nav-auth-btn {
         color: #64748B !important;
         display: block !important;
         margin-top: 2px !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
     }
 
-    /* Touch Rows (Aperçu, Modifier, Verification) */
+    .identity-territory {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        font-size: 0.78rem !important;
+        color: #4A7C59 !important;
+        font-weight: 600 !important;
+        margin-top: 4px !important;
+    }
+
+    .account-group-box {
+        background: #FFFFFF !important;
+        border: 1px solid #EAE6DF !important;
+        border-radius: 18px !important;
+        overflow: hidden !important;
+        width: 100% !important;
+    }
+
+    .account-divider {
+        height: 1px !important;
+        background: #F1ECE4 !important;
+        margin: 0 16px !important;
+    }
+
     .account-touch-row {
         display: flex !important;
         align-items: center !important;
         gap: 14px !important;
         background: #FFFFFF !important;
-        border: 1px solid #EAE6DF !important;
-        border-radius: 16px !important;
+        border: none !important;
         padding: 14px 18px !important;
-        min-height: 68px !important;
-        margin-bottom: 10px !important;
+        min-height: 64px !important;
         cursor: pointer !important;
         width: 100% !important;
         box-sizing: border-box !important;
-        transition: background 0.15s ease !important;
-        touch-action: manipulation !important;
-    }
-
-    .account-touch-row:active {
-        background: #F4F7F5 !important;
-        border-color: rgba(74, 124, 89, 0.3) !important;
     }
 
     .account-touch-row .row-icon {
-        width: 42px !important;
-        height: 42px !important;
-        min-width: 42px !important;
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
         border-radius: 12px !important;
         background: rgba(74, 124, 89, 0.1) !important;
         color: #4A7C59 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        font-size: 1.3rem !important;
+        font-size: 1.25rem !important;
         flex-shrink: 0 !important;
     }
 
@@ -14434,11 +14455,10 @@ body.is-native-app .navbar .nav-auth-btn {
 
     .account-touch-row .row-title {
         font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
-        font-size: 0.98rem !important;
+        font-size: 0.96rem !important;
         font-weight: 700 !important;
         color: #17231C !important;
         display: block !important;
-        line-height: 1.3 !important;
     }
 
     .account-touch-row .row-subtitle {
@@ -14446,13 +14466,11 @@ body.is-native-app .navbar .nav-auth-btn {
         color: #64748B !important;
         display: block !important;
         margin-top: 2px !important;
-        line-height: 1.3 !important;
     }
 
     .account-touch-row .row-chevron {
         font-size: 1.1rem !important;
         color: #94A3B8 !important;
-        flex-shrink: 0 !important;
     }
 }
 
@@ -14469,28 +14487,44 @@ body.is-native-app .navbar .nav-auth-btn {
 
     #userAccountModal .modal-card,
     #userAccountModal .modal-card-user-account,
-    .account-v3-container {
+    .account-shell-container {
         width: 100% !important;
-        max-width: 720px !important;
+        max-width: 740px !important;
         max-height: 90vh !important;
         border-radius: 24px !important;
         background: #FAF7F2 !important;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
         overflow: hidden !important;
         margin: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
 
-    .account-v3-header {
+    .account-desktop-sidebar {
+        display: none !important;
+    }
+
+    .account-desktop-main {
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .account-main-header {
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
-        padding: 18px 24px !important;
+        padding: 18px 28px !important;
         border-bottom: 1px solid #EAE6DF !important;
         background: #FFFFFF !important;
     }
 
+    .mobile-only-btn {
+        display: flex !important;
+    }
+
     .account-v3-back-btn,
-    .account-v3-close-btn {
+    .account-main-close-btn {
         width: 40px !important;
         height: 40px !important;
         border-radius: 50% !important;
@@ -14504,18 +14538,23 @@ body.is-native-app .navbar .nav-auth-btn {
         cursor: pointer !important;
     }
 
-    .account-v3-title {
+    .account-main-title {
         font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
-        font-size: 1.2rem !important;
+        font-size: 1.25rem !important;
         font-weight: 700 !important;
         color: #17231C !important;
         margin: 0 !important;
-        text-align: center !important;
-        flex: 1 !important;
     }
 
-    .account-v3-body {
-        padding: 24px !important;
+    .account-main-subtitle {
+        font-size: 0.84rem !important;
+        color: #64748B !important;
+        display: block !important;
+        margin-top: 2px !important;
+    }
+
+    .account-main-body {
+        padding: 24px 28px !important;
         box-sizing: border-box !important;
         max-height: calc(90vh - 75px) !important;
         overflow-y: auto !important;
@@ -14524,24 +14563,18 @@ body.is-native-app .navbar .nav-auth-btn {
     .account-v3-grid {
         display: flex !important;
         flex-direction: column !important;
-        gap: 16px !important;
+        gap: 18px !important;
         width: 100% !important;
     }
 
-    .identity-card {
+    .identity-strip {
         display: flex !important;
         align-items: center !important;
-        gap: 16px !important;
+        gap: 18px !important;
         background: #FFFFFF !important;
         border: 1px solid #EAE6DF !important;
         border-radius: 20px !important;
         padding: 20px !important;
-    }
-
-    .identity-avatar-wrap {
-        position: relative !important;
-        width: 64px !important;
-        height: 64px !important;
     }
 
     .account-identity-avatar {
@@ -14549,7 +14582,6 @@ body.is-native-app .navbar .nav-auth-btn {
         height: 64px !important;
         border-radius: 50% !important;
         object-fit: cover !important;
-        border: 2px solid #FFFFFF !important;
     }
 
     .avatar-camera-btn {
@@ -14570,17 +14602,14 @@ body.is-native-app .navbar .nav-auth-btn {
 
     .identity-display-name {
         font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
-        font-size: 1.15rem !important;
+        font-size: 1.18rem !important;
         font-weight: 700 !important;
         color: #17231C !important;
-        display: block !important;
     }
 
     .identity-email {
-        font-size: 0.85rem !important;
+        font-size: 0.86rem !important;
         color: #64748B !important;
-        display: block !important;
-        margin-top: 2px !important;
     }
 
     .identity-territory {
@@ -14590,7 +14619,13 @@ body.is-native-app .navbar .nav-auth-btn {
         font-size: 0.8rem !important;
         color: #4A7C59 !important;
         font-weight: 600 !important;
-        margin-top: 4px !important;
+    }
+
+    .account-group-box {
+        background: #FFFFFF !important;
+        border: 1px solid #EAE6DF !important;
+        border-radius: 20px !important;
+        overflow: hidden !important;
     }
 
     .account-touch-row {
@@ -14598,24 +14633,21 @@ body.is-native-app .navbar .nav-auth-btn {
         align-items: center !important;
         gap: 14px !important;
         background: #FFFFFF !important;
-        border: 1px solid #EAE6DF !important;
-        border-radius: 16px !important;
         padding: 16px 20px !important;
         min-height: 68px !important;
-        margin-bottom: 12px !important;
         cursor: pointer !important;
     }
 
     .account-touch-row .row-icon {
-        width: 40px !important;
-        height: 40px !important;
-        border-radius: 10px !important;
+        width: 42px !important;
+        height: 42px !important;
+        border-radius: 12px !important;
         background: rgba(74, 124, 89, 0.1) !important;
         color: #4A7C59 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        font-size: 1.2rem !important;
+        font-size: 1.25rem !important;
     }
 
     .account-touch-row .row-content {
@@ -14627,14 +14659,11 @@ body.is-native-app .navbar .nav-auth-btn {
         font-size: 1rem !important;
         font-weight: 700 !important;
         color: #17231C !important;
-        display: block !important;
     }
 
     .account-touch-row .row-subtitle {
         font-size: 0.85rem !important;
         color: #64748B !important;
-        display: block !important;
-        margin-top: 2px !important;
     }
 
     .account-touch-row .row-chevron {
@@ -14643,46 +14672,192 @@ body.is-native-app .navbar .nav-auth-btn {
     }
 }
 
-/* 3. Desktop Viewport (>= 1024px) — Dedicated 2-Column Desktop Composition */
+/* 3. Desktop Viewport (>= 1024px) — Dedicated Account Center Shell with Sidebar */
 @media (min-width: 1024px) {
     #userAccountModal.modal-overlay {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: 32px !important;
+        padding: 24px !important;
         background: rgba(15, 23, 19, 0.55) !important;
         backdrop-filter: blur(8px) !important;
     }
 
     #userAccountModal .modal-card,
     #userAccountModal .modal-card-user-account,
-    .account-v3-container {
-        width: 100% !important;
-        max-width: 1040px !important;
-        max-height: 88vh !important;
+    .account-shell-container {
+        width: min(1180px, calc(100vw - 80px)) !important;
+        height: min(780px, calc(100vh - 80px)) !important;
+        max-width: 1180px !important;
+        max-height: 840px !important;
+        display: flex !important;
+        flex-direction: row !important;
         border-radius: 24px !important;
         background: #FAF7F2 !important;
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
         overflow: hidden !important;
         margin: auto !important;
-        border: 1px solid rgba(255, 255, 255, 0.6) !important;
+        border: 1px solid rgba(255, 255, 255, 0.7) !important;
     }
 
-    .account-v3-header {
+    /* Left Sidebar Navigation Pane */
+    .account-desktop-sidebar {
+        width: 280px !important;
+        min-width: 280px !important;
+        background: #FFFFFF !important;
+        border-right: 1px solid #EAE6DF !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 28px 20px !important;
+        box-sizing: border-box !important;
+    }
+
+    .sidebar-user-profile {
+        display: flex !important;
+        align-items: center !important;
+        gap: 14px !important;
+        margin-bottom: 28px !important;
+        padding-bottom: 20px !important;
+        border-bottom: 1px solid #F1ECE4 !important;
+    }
+
+    .sidebar-avatar-wrap {
+        width: 54px !important;
+        height: 54px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .sidebar-user-avatar {
+        width: 54px !important;
+        height: 54px !important;
+        border-radius: 50% !important;
+        object-fit: cover !important;
+        border: 2px solid #FFFFFF !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .sidebar-user-info {
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+
+    .sidebar-user-name {
+        font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        color: #17231C !important;
+        display: block !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .sidebar-user-location {
+        font-size: 0.8rem !important;
+        color: #4A7C59 !important;
+        font-weight: 600 !important;
+        display: block !important;
+        margin-top: 2px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .sidebar-nav-menu {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 4px !important;
+        flex: 1 !important;
+    }
+
+    .sidebar-nav-btn {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        width: 100% !important;
+        padding: 12px 16px !important;
+        border-radius: 14px !important;
+        background: transparent !important;
+        border: none !important;
+        font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        color: #475569 !important;
+        cursor: pointer !important;
+        transition: all 0.18s ease !important;
+        text-align: left !important;
+    }
+
+    .sidebar-nav-btn i {
+        font-size: 1.25rem !important;
+        color: #64748B !important;
+        transition: color 0.18s ease !important;
+    }
+
+    .sidebar-nav-btn:hover {
+        background: #F4F0E8 !important;
+        color: #17231C !important;
+    }
+
+    .sidebar-nav-btn:hover i {
+        color: #17231C !important;
+    }
+
+    .sidebar-nav-btn.active {
+        background: #EBF2ED !important;
+        color: #4A7C59 !important;
+        font-weight: 700 !important;
+        box-shadow: inset 3px 0 0 #4A7C59 !important;
+    }
+
+    .sidebar-nav-btn.active i {
+        color: #4A7C59 !important;
+    }
+
+    /* Right Main Content Pane */
+    .account-desktop-main {
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        background: #FAF7F2 !important;
+        overflow: hidden !important;
+    }
+
+    .account-main-header {
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
-        height: 64px !important;
-        padding: 0 28px !important;
+        height: 72px !important;
+        padding: 0 36px !important;
         background: #FFFFFF !important;
         border-bottom: 1px solid #EAE6DF !important;
-        position: sticky !important;
-        top: 0 !important;
-        z-index: 10 !important;
+        flex-shrink: 0 !important;
     }
 
-    .account-v3-back-btn,
-    .account-v3-close-btn {
+    .mobile-only-btn {
+        display: none !important;
+    }
+
+    .account-header-titles {
+        flex: 1 !important;
+    }
+
+    .account-main-title {
+        font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
+        font-size: 1.35rem !important;
+        font-weight: 700 !important;
+        color: #17231C !important;
+        margin: 0 !important;
+    }
+
+    .account-main-subtitle {
+        font-size: 0.86rem !important;
+        color: #64748B !important;
+        display: block !important;
+        margin-top: 2px !important;
+    }
+
+    .account-main-close-btn {
         width: 40px !important;
         height: 40px !important;
         border-radius: 50% !important;
@@ -14694,35 +14869,25 @@ body.is-native-app .navbar .nav-auth-btn {
         justify-content: center !important;
         font-size: 1.15rem !important;
         cursor: pointer !important;
-        transition: background 0.2s ease !important;
+        transition: background 0.18s ease !important;
     }
 
-    .account-v3-back-btn:hover,
-    .account-v3-close-btn:hover {
+    .account-main-close-btn:hover {
         background: #E6E0D4 !important;
     }
 
-    .account-v3-title {
-        font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
-        font-size: 1.28rem !important;
-        font-weight: 700 !important;
-        color: #17231C !important;
-        margin: 0 !important;
+    .account-main-body {
         flex: 1 !important;
-        text-align: center !important;
-    }
-
-    .account-v3-body {
-        padding: 28px 32px 36px 32px !important;
+        padding: 32px 36px !important;
         box-sizing: border-box !important;
-        max-height: calc(88vh - 64px) !important;
         overflow-y: auto !important;
         background: #FAF7F2 !important;
     }
 
+    /* 2-Column Responsive Inner Grid for Mon compte */
     .account-v3-grid {
         display: grid !important;
-        grid-template-columns: minmax(320px, 0.9fr) minmax(480px, 1.4fr) !important;
+        grid-template-columns: minmax(300px, 0.9fr) minmax(420px, 1.4fr) !important;
         gap: 28px !important;
         align-items: start !important;
         width: 100% !important;
@@ -14736,12 +14901,12 @@ body.is-native-app .navbar .nav-auth-btn {
         width: 100% !important;
     }
 
-    .account-v3-section {
+    .account-desktop-section {
         margin-bottom: 0 !important;
         width: 100% !important;
     }
 
-    .account-v3-section-title {
+    .account-section-heading {
         font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
         font-size: 0.82rem !important;
         font-weight: 800 !important;
@@ -14751,8 +14916,8 @@ body.is-native-app .navbar .nav-auth-btn {
         margin: 0 0 12px 4px !important;
     }
 
-    /* Left Column Identity Card Desktop Enhancements */
-    .identity-card {
+    /* Identity Strip */
+    .identity-strip {
         background: #FFFFFF !important;
         border: 1px solid #EAE6DF !important;
         border-radius: 20px !important;
@@ -14763,13 +14928,6 @@ body.is-native-app .navbar .nav-auth-btn {
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03) !important;
         width: 100% !important;
         box-sizing: border-box !important;
-    }
-
-    .identity-avatar-wrap {
-        position: relative !important;
-        width: 72px !important;
-        height: 72px !important;
-        flex-shrink: 0 !important;
     }
 
     .account-identity-avatar {
@@ -14803,7 +14961,7 @@ body.is-native-app .navbar .nav-auth-btn {
         background: #3B6447 !important;
     }
 
-    .identity-text-info {
+    .identity-strip-text {
         flex: 1 !important;
         min-width: 0 !important;
     }
@@ -14838,28 +14996,38 @@ body.is-native-app .navbar .nav-auth-btn {
         border-radius: 12px !important;
     }
 
-    /* Right Column Touch Rows Desktop Enhancements */
+    /* Single Group Container for Profil Public & Verification */
+    .account-group-box {
+        background: #FFFFFF !important;
+        border: 1px solid #EAE6DF !important;
+        border-radius: 20px !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03) !important;
+        width: 100% !important;
+    }
+
+    .account-divider {
+        height: 1px !important;
+        background: #F1ECE4 !important;
+        margin: 0 20px !important;
+    }
+
     .account-touch-row {
         display: flex !important;
         align-items: center !important;
         gap: 16px !important;
         background: #FFFFFF !important;
-        border: 1px solid #EAE6DF !important;
-        border-radius: 18px !important;
+        border: none !important;
         padding: 18px 22px !important;
         min-height: 74px !important;
-        margin-bottom: 14px !important;
         cursor: pointer !important;
         width: 100% !important;
         box-sizing: border-box !important;
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
 
     .account-touch-row:hover {
-        background: #FFFFFF !important;
-        border-color: rgba(74, 124, 89, 0.4) !important;
-        box-shadow: 0 6px 20px rgba(74, 124, 89, 0.08) !important;
-        transform: translateY(-2px) !important;
+        background: #FDFBF7 !important;
     }
 
     .account-touch-row .row-icon {
@@ -14910,5 +15078,3 @@ body.is-native-app .navbar .nav-auth-btn {
         color: #4A7C59 !important;
     }
 }
-
-
