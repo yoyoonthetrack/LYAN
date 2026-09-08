@@ -106,12 +106,8 @@ runOnDomReady(() => {
                         // Purge any stale mock/cached local profile
                         if (typeof safeStorage !== 'undefined') {
                             safeStorage.removeItem('lyan_user_profile');
-                            safeStorage.setItem('lyan_user_logged_in', 'true');
-                            safeStorage.setItem('lyan_user_id', data.session.user.id);
                         }
                         localStorage.removeItem('lyan_user_profile');
-                        localStorage.setItem('lyan_user_logged_in', 'true');
-                        localStorage.setItem('lyan_user_id', data.session.user.id);
 
                         if (loginModal) loginModal.classList.remove('active');
                         document.body.style.overflow = '';
@@ -135,54 +131,10 @@ runOnDomReady(() => {
                     else alert(err.message || 'Erreur de connexion.');
                     return;
                 }
-            }
-
-            // Offline Dev Fallback ONLY if Supabase SDK is absent
-            const users = getRegisteredUsers();
-            const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-            if (foundUser && foundUser.password !== password) {
-                if (window.lyannAlert) window.lyannAlert('Mot de passe incorrect. Veuillez vérifier votre saisie.');
-                else alert('Mot de passe incorrect. Veuillez vérifier votre saisie.');
-                if (pwInput) pwInput.focus();
                 return;
             }
 
-            const activeProfile = foundUser ? {
-                firstName: foundUser.firstName,
-                lastName: foundUser.lastName,
-                email: foundUser.email,
-                avatar: foundUser.avatar || '',
-                createdAt: new Date().toISOString()
-            } : {
-                firstName: email.split('@')[0],
-                lastName: '',
-                email: email,
-                avatar: '',
-                createdAt: new Date().toISOString()
-            };
-
-            if (typeof safeStorage !== 'undefined') {
-                safeStorage.setItem('lyan_user_logged_in', 'true');
-                safeStorage.setItem('lyan_user_profile', JSON.stringify(activeProfile));
-            }
-            localStorage.setItem('lyan_user_logged_in', 'true');
-            localStorage.setItem('lyan_user_profile', JSON.stringify(activeProfile));
-
-            if (loginModal) loginModal.classList.remove('active');
-            document.body.style.overflow = '';
-
-            if (window.NotificationService) {
-                window.NotificationService.showToast('success', `Connexion réussie ! Bienvenue ${activeProfile.firstName}.`);
-            } else if (window.lyannAlert) {
-                window.lyannAlert(`Connexion réussie ! Bienvenue ${activeProfile.firstName}.`);
-            }
-
-            if (typeof window.updateHeaderAuthState === 'function') {
-                window.updateHeaderAuthState();
-            } else {
-                window.location.reload();
-            }
+            if (window.lyannAlert) window.lyannAlert('Authentification Supabase indisponible.');
         });
     }
 
@@ -198,42 +150,11 @@ runOnDomReady(() => {
                         options: { redirectTo: window.location.origin }
                     });
                 } catch(err) {
-                    console.warn("Supabase Google OAuth fallback:", err);
+                    console.warn("Supabase Google OAuth error:", err);
+                    if (window.lyannAlert) window.lyannAlert('Erreur lors de la connexion Google: ' + err.message);
                 }
-            }
-
-            const googleUser = {
-                firstName: 'Alexandre',
-                lastName: 'Gouyette',
-                email: 'alexandre.google@gmail.com',
-                avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-                isGoogleAuth: true,
-                createdAt: new Date().toISOString()
-            };
-
-            registerUser({ ...googleUser, password: 'google_oauth_protected' });
-
-            if (typeof safeStorage !== 'undefined') {
-                safeStorage.setItem('lyan_user_logged_in', 'true');
-                safeStorage.setItem('lyan_user_profile', JSON.stringify(googleUser));
-            }
-            localStorage.setItem('lyan_user_logged_in', 'true');
-            localStorage.setItem('lyan_user_profile', JSON.stringify(googleUser));
-
-            if (loginModal) loginModal.classList.remove('active');
-            if (onboardingModal) onboardingModal.classList.remove('active');
-            document.body.style.overflow = '';
-
-            if (window.NotificationService) {
-                window.NotificationService.showToast('success', 'Connexion avec Google réussie ! Bienvenue Alexandre.');
-            } else if (window.lyannAlert) {
-                window.lyannAlert('Connexion avec Google réussie ! Bienvenue Alexandre.');
-            }
-
-            if (typeof window.updateHeaderAuthState === 'function') {
-                window.updateHeaderAuthState();
             } else {
-                window.location.reload();
+                if (window.lyannAlert) window.lyannAlert('Client Supabase indisponible pour la connexion Google.');
             }
         });
     });
@@ -473,21 +394,15 @@ runOnDomReady(() => {
     }
 
     // Final actions
-    const finalizeOnboarding = () => {
+    const finalizeOnboarding = async () => {
         if (onboardingModal) {
             onboardingModal.classList.remove('active');
             onboardingModal.style.display = 'none';
         }
         document.body.style.overflow = '';
         
-        if (typeof safeStorage !== 'undefined') {
-            safeStorage.setItem('lyan_user_logged_in', 'true');
-        } else {
-            localStorage.setItem('lyan_user_logged_in', 'true');
-        }
-        
         if (typeof window.updateHeaderAuthState === 'function') {
-            window.updateHeaderAuthState();
+            await window.updateHeaderAuthState();
         } else {
             window.dispatchEvent(new Event('lyann_auth_changed'));
         }

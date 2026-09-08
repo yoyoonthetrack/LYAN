@@ -4338,7 +4338,7 @@ safeDomReady(() => {
                 role: "Membre Communauté",
                 city: "Guadeloupe",
                 bio: "Membre engagé de la communauté LYANN.",
-                badge: "Profil Vérifié",
+                badge: "",
                 rating: null,
                 skills: []
             };
@@ -4356,7 +4356,7 @@ safeDomReady(() => {
         const avatarSrc = window.getLyannAvatarUrl(member.avatar_url || member.avatar);
         const cityText = member.commune || member.city || member.locationName || 'Guadeloupe';
         const roleText = member.role || (member.is_pro ? 'Professionnel' : 'Membre LYANN');
-        const badgeText = member.badge || (member.is_pro ? 'Artisan PRO' : 'Profil Vérifié');
+        const badgeText = member.badge || (member.is_pro ? 'Artisan PRO' : (member.is_verified ? 'Profil Vérifié' : ''));
         const bioText = member.bio || member.description || 'Membre actif de la communauté LYANN.';
         const skillsList = Array.isArray(member.skills) ? member.skills : (typeof member.skills === 'string' ? member.skills.split(',') : []);
 
@@ -4783,13 +4783,16 @@ safeDomReady(() => {
     }
 
     window.openAccountModalSubView = async function(subViewName = 'account') {
+        const session = await window.requireAuthSession(`Mon compte (${subViewName})`);
+        if (!session || !session.user) return;
+
         const modal = document.getElementById('userAccountModal');
         if (!modal) return;
 
         let modalCard = modal.querySelector('.modal-card');
         if (!modalCard) modalCard = modal;
 
-        const currentUserId = window.CURRENT_USER_ID || (window.LYANN_CURRENT_USER ? window.LYANN_CURRENT_USER.id : null);
+        const currentUserId = session.user.id;
         let userProf = window.LYANN_CURRENT_USER || null;
 
         if (!userProf && currentUserId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function') {
@@ -5606,87 +5609,152 @@ safeDomReady(() => {
 
     let authInitializationComplete = false;
 
-    async function updateHeaderAuthState() {
-        let isLoggedIn = false;
-        let userId = null;
-        let currentSession = null;
+    // ABSOLUTE AUTH CONTRACT: Supabase Auth Session is the ONLY source of truth.
+    async function getActiveSupabaseSession() {
+        if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+            console.log('[AUTH_TRACE] getSession result: no Supabase client available');
+            return null;
+        }
+        try {
+            const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.getSession();
+            const session = data?.session;
+            const isValid = !!(session && session.user && !error);
+            console.log('[AUTH_TRACE] getSession result:', {
+                hasSession: isValid,
+                userId: session?.user?.id || null,
+                email: session?.user?.email || null
+            });
+            return isValid ? session : null;
+        } catch (err) {
+            console.warn('[AUTH_TRACE] getSession error:', err);
+            return null;
+        }
+    }
+    window.getActiveSupabaseSession = getActiveSupabaseSession;
 
-        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-            try {
-                const { data } = await window.LYANN_API_CLIENT.getSession();
-                if (data && data.session && data.session.user) {
-                    isLoggedIn = true;
-                    userId = data.session.user.id;
-                    currentSession = data.session;
+    // PROTECTED ROUTE GATE: Require valid Supabase session before allowing access
+    async function requireAuthSession(actionName = 'protected action') {
+        const session = await getActiveSupabaseSession();
+        if (!session || !session.user) {
+            console.log(`[AUTH_TRACE] protected route gate: DENIED for '${actionName}' - valid session required.`);
+            window.CURRENT_USER_ID = null;
+            window.LYANN_CURRENT_USER = null;
+            document.body.classList.remove('user-is-logged-in');
+            syncDrawerAuthState(false, null);
+            if (typeof window.openLoginModal === 'function') {
+                window.openLoginModal();
+            } else if (typeof showAppWelcomeScreen === 'function') {
+                showAppWelcomeScreen();
+            }
+            return null;
+        }
+        console.log(`[AUTH_TRACE] protected route gate: GRANTED for '${actionName}' (userId: ${session.user.id}).`);
+        return session;
+    }
+    window.requireAuthSession = requireAuthSession;
+
+    // Synchronize Hamburger Drawer & Header elements based strictly on verified session state
+    function syncDrawerAuthState(isLoggedIn, profileData) {
+        const drawerUserName = document.getElementById('drawerUserName');
+        const drawerUserBadge = document.getElementById('drawerUserBadge');
+        const drawerUserAvatar = document.getElementById('drawerUserAvatar');
+        
+        console.log('[AUTH_TRACE] drawer state update:', { isLoggedIn, profileId: profileData?.id || null });
+
+        if (isLoggedIn && profileData) {
+            const rawFn = (profileData.first_name || profileData.firstName || '').trim();
+            const rawLn = (profileData.last_name || profileData.lastName || '').trim();
+            let nameStr = 'Membre LYANN';
+            if (rawFn && rawLn) nameStr = `${rawFn} ${rawLn.charAt(0).toUpperCase()}.`;
+            else if (rawFn) nameStr = rawFn;
+            else if (profileData.display_name) nameStr = profileData.display_name;
+            else if (profileData.email) nameStr = profileData.email.split('@')[0];
+
+            if (drawerUserName) drawerUserName.textContent = nameStr;
+
+            // Render drawer badge ONLY IF real backend data verifies it
+            if (drawerUserBadge) {
+                if (profileData.is_pro || profileData.is_pro_verified || profileData.pro_verification_status === 'verified') {
+                    drawerUserBadge.innerHTML = '<span class="account-v3-badge account-v3-badge-pro"><i class="ph-fill ph-seal-check"></i> PRO</span>';
+                    drawerUserBadge.style.display = 'inline-flex';
+                } else if (profileData.is_verified || profileData.verification_status === 'verified') {
+                    drawerUserBadge.innerHTML = '<span class="account-v3-badge account-v3-badge-verified"><i class="ph-fill ph-seal-check"></i> Profil vérifié</span>';
+                    drawerUserBadge.style.display = 'inline-flex';
                 } else {
-                    // Fallback UX state while loading or if offline
-                    const storedLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
-                    const storedUserId = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_id') : localStorage.getItem('lyan_user_id'));
-                    
-                    if (!authInitializationComplete && storedLoggedIn && storedUserId) {
-                        isLoggedIn = true;
-                        userId = storedUserId;
-                    } else if (authInitializationComplete && !data?.session) {
-                        isLoggedIn = false;
-                    } else {
-                        isLoggedIn = storedLoggedIn && !!storedUserId;
-                        userId = storedUserId;
-                    }
+                    drawerUserBadge.textContent = '';
+                    drawerUserBadge.style.display = 'none';
                 }
-                console.log('[AUTH] state check:', {
-                    event: 'UPDATE_HEADER_AUTH_STATE',
-                    hasSession: !!currentSession,
-                    userId: userId || null,
-                    initializationComplete: authInitializationComplete
-                });
-            } catch (err) {
-                console.warn("[AUTH] Supabase session verification error:", err);
-                const storedLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
-                const storedUserId = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_id') : localStorage.getItem('lyan_user_id'));
-                isLoggedIn = storedLoggedIn && !!storedUserId;
-                userId = storedUserId;
+            }
+
+            if (drawerUserAvatar) {
+                drawerUserAvatar.src = window.resolveLyannAvatarSrc(profileData.avatar_url);
             }
         } else {
-            const storedLoggedIn = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_logged_in') : localStorage.getItem('lyan_user_logged_in')) === 'true';
-            const storedUserId = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_id') : localStorage.getItem('lyan_user_id'));
-            isLoggedIn = storedLoggedIn && !!storedUserId;
-            userId = storedUserId;
+            if (drawerUserName) drawerUserName.textContent = 'Connexion / Inscription';
+            if (drawerUserBadge) {
+                drawerUserBadge.textContent = '';
+                drawerUserBadge.style.display = 'none';
+            }
+            if (drawerUserAvatar) {
+                drawerUserAvatar.src = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E";
+            }
         }
+    }
+    window.syncDrawerAuthState = syncDrawerAuthState;
+
+    async function updateHeaderAuthState() {
+        const session = await getActiveSupabaseSession();
+        const isLoggedIn = !!session;
+        const userId = session?.user?.id || null;
+
+        console.log('[AUTH_TRACE] updateHeaderAuthState:', {
+            isLoggedIn,
+            userId,
+            initializationComplete: authInitializationComplete
+        });
 
         if (isLoggedIn && userId) {
-            console.log("⚡ [BOOT 04] auth init entered: logged in user", userId);
             document.body.classList.add('user-is-logged-in');
             document.querySelector('.app-welcome-screen')?.remove();
             window.CURRENT_USER_ID = userId;
-            if (typeof safeStorage !== 'undefined') safeStorage.setItem('lyan_user_logged_in', 'true');
+
+            if (typeof safeStorage !== 'undefined') {
+                safeStorage.setItem('lyan_user_logged_in', 'true');
+                safeStorage.setItem('lyan_user_id', userId);
+            }
             localStorage.setItem('lyan_user_logged_in', 'true');
-            
-            await loadAndApplyUserProfile(userId, currentSession);
+            localStorage.setItem('lyan_user_id', userId);
+
+            const profileData = await loadAndApplyUserProfile(userId, session);
+            syncDrawerAuthState(true, profileData);
 
             if (isNativePlatform()) {
                 const path = window.location.pathname;
                 const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
-                
-                // ALWAYS enforce deterministic native header on native platform
                 if (typeof window.ensureDeterministicAppHeader === 'function') {
                     window.ensureDeterministicAppHeader();
                 }
-
                 if (isHome && typeof window.renderAppHomeConnectedView === 'function') {
                     window.renderAppHomeConnectedView();
                 }
             }
-        } else if (authInitializationComplete) {
+        } else {
             document.body.classList.remove('user-is-logged-in');
             window.CURRENT_USER_ID = null;
-            if (typeof safeStorage !== 'undefined') {
-                safeStorage.removeItem('lyan_user_logged_in');
-                safeStorage.removeItem('lyan_user_id');
-                safeStorage.removeItem('lyan_user_profile');
-            }
-            localStorage.removeItem('lyan_user_logged_in');
-            localStorage.removeItem('lyan_user_id');
-            localStorage.removeItem('lyan_user_profile');
+            window.LYANN_CURRENT_USER = null;
+
+            try {
+                if (typeof safeStorage !== 'undefined') {
+                    safeStorage.removeItem('lyan_user_logged_in');
+                    safeStorage.removeItem('lyan_user_id');
+                    safeStorage.removeItem('lyan_user_profile');
+                }
+                localStorage.removeItem('lyan_user_logged_in');
+                localStorage.removeItem('lyan_user_id');
+                localStorage.removeItem('lyan_user_profile');
+            } catch(e) {}
+
+            syncDrawerAuthState(false, null);
 
             if (isNativePlatform()) {
                 const path = window.location.pathname;
@@ -5703,6 +5771,12 @@ safeDomReady(() => {
             const firstNameEls = document.querySelectorAll('#overviewFirstName');
             firstNameEls.forEach(el => {
                 if (el) el.textContent = 'Membre';
+            });
+
+            // Clear self badges when logged out
+            const selfBadges = document.querySelectorAll('#accountModalBadge, #drawerUserBadge');
+            selfBadges.forEach(b => {
+                if (b) { b.textContent = ''; b.style.display = 'none'; }
             });
 
             // Reset Account KPI elements on logout
@@ -5727,47 +5801,26 @@ safeDomReady(() => {
     // Subscribe to Supabase Auth Changes
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         window.LYANN_API_CLIENT.supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('[AUTH] event:', event, '| hasSession:', !!session, '| userId:', session?.user?.id || null);
+            console.log('[AUTH_TRACE] onAuthStateChange event:', event, '| hasSession:', !!session, '| userId:', session?.user?.id || null);
 
-            // MANDATORY GUARD: Do not purge or force logged-out state on transient INITIAL_SESSION with null session
-            if (event === 'INITIAL_SESSION' && !session) {
-                console.log('[AUTH] INITIAL_SESSION null transient state -> Skipping premature purge');
-                return;
-            }
+            authInitializationComplete = true;
 
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || (event === 'INITIAL_SESSION' && session)) {
-                authInitializationComplete = true;
+            if ((event === 'INITIAL_SESSION' && session) || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+                console.log('[AUTH_TRACE] SIGNED_IN verified:', session?.user?.id || null);
                 if (session && session.user) {
-                    if (window.CURRENT_USER_ID && window.CURRENT_USER_ID !== session.user.id) {
-                        if (typeof safeStorage !== 'undefined') safeStorage.removeItem('lyan_user_profile');
-                        localStorage.removeItem('lyan_user_profile');
-                    }
-
                     window.CURRENT_USER_ID = session.user.id;
-                    if (typeof safeStorage !== 'undefined') {
-                        safeStorage.setItem('lyan_user_logged_in', 'true');
-                        safeStorage.setItem('lyan_user_id', session.user.id);
-                    }
-                    localStorage.setItem('lyan_user_logged_in', 'true');
-                    localStorage.setItem('lyan_user_id', session.user.id);
-
-                    await loadAndApplyUserProfile(session.user.id, session);
                 }
                 await updateHeaderAuthState();
-            } else if (event === 'SIGNED_OUT') {
-                authInitializationComplete = true;
+            } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
+                console.log('[AUTH_TRACE] SIGNED_OUT or null INITIAL_SESSION confirmed.');
                 window.CURRENT_USER_ID = null;
-                if (typeof safeStorage !== 'undefined') {
-                    safeStorage.removeItem('lyan_user_logged_in');
-                    safeStorage.removeItem('lyan_user_id');
-                    safeStorage.removeItem('lyan_user_profile');
-                }
-                localStorage.removeItem('lyan_user_logged_in');
-                localStorage.removeItem('lyan_user_id');
-                localStorage.removeItem('lyan_user_profile');
+                window.LYANN_CURRENT_USER = null;
                 await updateHeaderAuthState();
-                if (!window.location.pathname.endsWith('index.html') && window.location.pathname !== '/') {
-                    window.location.href = 'index.html';
+
+                const userAccountModal = document.getElementById('userAccountModal');
+                if (userAccountModal) {
+                    userAccountModal.classList.remove('active');
+                    userAccountModal.style.display = 'none';
                 }
             }
         });
@@ -5775,31 +5828,11 @@ safeDomReady(() => {
 
     // Canonical Auth Bootstrap on startup
     (async function bootstrapAuth() {
-        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-            try {
-                const { data } = await window.LYANN_API_CLIENT.getSession();
-                const session = data?.session;
-                console.log('[AUTH] bootstrap getSession:', { hasSession: !!session, userId: session?.user?.id || null });
-                if (session && session.user) {
-                    window.CURRENT_USER_ID = session.user.id;
-                    if (typeof safeStorage !== 'undefined') {
-                        safeStorage.setItem('lyan_user_logged_in', 'true');
-                        safeStorage.setItem('lyan_user_id', session.user.id);
-                    }
-                    localStorage.setItem('lyan_user_logged_in', 'true');
-                    localStorage.setItem('lyan_user_id', session.user.id);
-                    await loadAndApplyUserProfile(session.user.id, session);
-                }
-            } catch (e) {
-                console.warn('[AUTH] bootstrap getSession error:', e);
-            } finally {
-                authInitializationComplete = true;
-                await updateHeaderAuthState();
-            }
-        } else {
-            authInitializationComplete = true;
-            await updateHeaderAuthState();
-        }
+        authInitializationComplete = false;
+        const session = await getActiveSupabaseSession();
+        console.log('[AUTH_TRACE] INITIAL_SESSION bootstrap getSession:', { hasSession: !!session, userId: session?.user?.id || null });
+        authInitializationComplete = true;
+        await updateHeaderAuthState();
     })();
 
     const accountLogoutBtn = document.getElementById('accountLogoutBtn');
