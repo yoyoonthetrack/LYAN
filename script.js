@@ -5879,60 +5879,132 @@ safeDomReady(() => {
         return profileData;
     }
 
+    // E.164 Normalization Helper (Guadeloupe & French West Indies Default +590)
+    window.normalizeToE164 = function(rawPhone) {
+        if (!rawPhone || typeof rawPhone !== 'string') return '';
+        let cleaned = rawPhone.replace(/\s+/g, '').replace(/[-().]/g, '');
+        if (cleaned.startsWith('0690') || cleaned.startsWith('0590') || cleaned.startsWith('0691')) {
+            return '+590' + cleaned.substring(1);
+        }
+        if (cleaned.startsWith('06') || cleaned.startsWith('07') || cleaned.startsWith('01') || cleaned.startsWith('02') || cleaned.startsWith('03') || cleaned.startsWith('04') || cleaned.startsWith('05')) {
+            return '+33' + cleaned.substring(1);
+        }
+        if (cleaned.startsWith('0')) {
+            return '+590' + cleaned.substring(1);
+        }
+        if (!cleaned.startsWith('+') && cleaned.length >= 9) {
+            return '+590' + cleaned;
+        }
+        return cleaned;
+    };
+
+    // Canonical Phone Verification Service (Account Linking via updateUser({ phone }))
+    window.LyannPhoneVerificationService = {
+        async sendVerificationOtp(rawPhone) {
+            const phone = window.normalizeToE164(rawPhone);
+            if (!phone || phone.length < 10) {
+                return { success: false, error: 'Numéro de téléphone invalide. Exemple : 06 90 12 34 56' };
+            }
+
+            if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+                return { success: false, error: 'Client Supabase indisponible.' };
+            }
+
+            try {
+                // Update user phone number on existing authenticated account (triggers SMS OTP)
+                const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.updateUser({
+                    phone: phone
+                });
+
+                if (error) {
+                    console.warn('[PHONE_VERIFY_SERVICE] updateUser phone error:', error);
+                    if (error.code === 'phone_provider_disabled' || error.message.includes('provider') || error.status === 400) {
+                        return {
+                            success: false,
+                            isConfigError: true,
+                            error: '⚠️ Fournisseur SMS (Twilio / MessageBird) non configuré dans Supabase Auth (EXTERNAL CONFIG REQUIRED).'
+                        };
+                    }
+                    return { success: false, error: error.message };
+                }
+
+                const masked = phone.length > 6 ? `•• •• •• ${phone.slice(-4, -2)} ${phone.slice(-2)}` : phone;
+                return { success: true, phone, masked };
+            } catch (err) {
+                console.error('[PHONE_VERIFY_SERVICE] sendVerificationOtp exception:', err);
+                return {
+                    success: false,
+                    isConfigError: true,
+                    error: '⚠️ Fournisseur SMS non configuré dans Supabase.'
+                };
+            }
+        },
+
+        async verifyPhoneToken(phone, token) {
+            const normalizedPhone = window.normalizeToE164(phone);
+            const cleanToken = (token || '').trim();
+            if (!cleanToken || cleanToken.length < 6) {
+                return { success: false, error: 'Veuillez saisir le code à 6 chiffres reçu par SMS.' };
+            }
+
+            if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+                return { success: false, error: 'Client Supabase indisponible.' };
+            }
+
+            try {
+                const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.verifyOtp({
+                    phone: normalizedPhone,
+                    token: cleanToken,
+                    type: 'phone_change'
+                });
+
+                if (error) {
+                    console.warn('[PHONE_VERIFY_SERVICE] verifyOtp error:', error.message);
+                    return { success: false, error: 'Code de vérification incorrect ou expiré. Réessayez.' };
+                }
+
+                const user = data?.user || (await window.LYANN_API_CLIENT.supabase.auth.getUser())?.data?.user;
+                if (user && user.id) {
+                    await window.LYANN_API_CLIENT.supabase
+                        .from('profiles')
+                        .update({ phone: normalizedPhone, phone_verified: true })
+                        .eq('id', user.id);
+                }
+
+                return { success: true, user };
+            } catch (err) {
+                console.error('[PHONE_VERIFY_SERVICE] verifyPhoneToken exception:', err);
+                return { success: false, error: err.message };
+            }
+        }
+    };
+
     // Phone Verification Flow Handler
     window.handlePhoneVerificationSubmit = async function(rawPhoneInput) {
         const raw = (rawPhoneInput || '').trim();
         if (!raw) {
-            if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                window.NotificationService.showToast('warning', 'Veuillez saisir un numéro de téléphone valide.');
-            } else {
-                alert('Veuillez saisir un numéro de téléphone valide.');
-            }
-            return;
-        }
-
-        let cleaned = raw.replace(/\s+/g, '').replace(/[-().]/g, '');
-        if (cleaned.startsWith('0')) {
-            cleaned = '+590' + cleaned.substring(1);
-        }
-        if (!cleaned.startsWith('+')) {
-            cleaned = '+' + cleaned;
-        }
-
-        console.log('[PHONE_VERIFICATION] Attempting SMS OTP for phone:', cleaned);
-
-        if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
-            console.error('[PHONE_VERIFICATION] Supabase client not initialized');
-            return;
-        }
-
-        try {
-            const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithOtp({
-                phone: cleaned
-            });
-
-            if (error) {
-                console.warn('[PHONE_VERIFICATION] Supabase OTP error:', error.message);
-                const msg = `⚠️ Vérification SMS bloquée (EXTERNAL CONFIGURATION REQUIRED) : Fournisseur SMS (Twilio/MessageBird) non configuré dans Supabase Auth.`;
-                if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                    window.NotificationService.showToast('warning', msg);
-                } else {
-                    alert(msg);
-                }
-                return;
-            }
-
-            if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                window.NotificationService.showToast('success', 'Code SMS envoyé ! Entrez le code à 6 chiffres reçu.');
-            }
-        } catch (err) {
-            console.error('[PHONE_VERIFICATION] Unexpected error:', err);
-            const msg = `⚠️ Vérification SMS bloquée (EXTERNAL CONFIGURATION REQUIRED) : Fournisseur SMS non configuré dans Supabase.`;
+            const msg = 'Veuillez saisir un numéro de téléphone valide.';
             if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
                 window.NotificationService.showToast('warning', msg);
             } else {
                 alert(msg);
             }
+            return;
+        }
+
+        const res = await window.LyannPhoneVerificationService.sendVerificationOtp(raw);
+
+        if (!res.success) {
+            if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                window.NotificationService.showToast('warning', res.error);
+            } else {
+                alert(res.error);
+            }
+            return;
+        }
+
+        if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+            window.NotificationService.showToast('success', `SMS envoyé à ${res.masked}. Saisissez le code à 6 chiffres.`);
         }
     };
 
