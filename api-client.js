@@ -286,7 +286,7 @@ const LYANN_API_CLIENT = {
                     user_id: p.id,
                     first_name: p.first_name,
                     last_name_initial: p.last_name ? (p.last_name.substring(0, 1).toUpperCase() + '.') : '',
-                    display_name: window.formatPublicName ? window.formatPublicName(p, null, 'Membre') : `${p.first_name || 'Membre'} ${p.last_name ? (p.last_name.substring(0, 1).toUpperCase() + '.') : ''}`.trim(),
+                    display_name: window.formatPublicName ? window.formatPublicName(p, null, 'Membre') : `${p.first_name || 'Membre'}${p.last_name ? '.' + p.last_name.substring(0, 1).toUpperCase() : ''}`.trim(),
                     city: (p.city && p.city.trim().toLowerCase() !== 'guadeloupe') ? p.city.trim() : null,
                     territory: p.territory || 'Guadeloupe (971)',
                     bio: p.bio || '',
@@ -643,10 +643,7 @@ const LYANN_API_CLIENT = {
                 if (!fn || fn.startsWith('step') || fn.startsWith('prod') || fn.startsWith('user_') || fn.startsWith('req_user_') || fn.startsWith('check_') || fn.startsWith('ua_') || fn.startsWith('ub_') || fn.startsWith('h_step')) {
                     return 'Lyanneur';
                 }
-                const capFn = fn.charAt(0).toUpperCase() + fn.slice(1);
-                const ln = (prof.last_name || '').trim();
-                const init = ln ? ` ${ln.charAt(0).toUpperCase()}.` : '';
-                return `${capFn}${init}`;
+                return window.formatPublicName ? window.formatPublicName(prof, null, 'Lyanneur') : `${fn}${prof.last_name ? '.' + prof.last_name.trim().charAt(0).toUpperCase() : ''}`;
             }
 
             // 3. Fetch Likes & Comments for Counts & Current User Like State
@@ -2330,7 +2327,7 @@ window.LyannFavoritesService = {
                             favId: fav.id,
                             entity_type: 'PROFILE',
                             entity_id: p.id,
-                            title: window.formatPublicName ? window.formatPublicName(p, null, 'Lyanneur') : `${p.first_name || 'Lyanneur'} ${p.last_name ? p.last_name.charAt(0) + '.' : ''}`.trim(),
+                            title: window.formatPublicName ? window.formatPublicName(p, null, 'Lyanneur') : `${p.first_name || 'Lyanneur'}${p.last_name ? '.' + p.last_name.charAt(0).toUpperCase() : ''}`.trim(),
                             subtitle: p.primary_activity || p.role || p.city || p.territory || 'Membre LYANN',
                             avatar: window.getLyannAvatarUrl ? window.getLyannAvatarUrl(p.avatar_url) : (p.avatar_url || '/default-avatar.svg'),
                             created_at: fav.created_at,
@@ -2364,7 +2361,7 @@ window.LyannFavoritesService = {
                         .maybeSingle();
 
                     if (post) {
-                        const authorName = post.profiles ? (window.formatPublicName ? window.formatPublicName(post.profiles, null, 'Membre') : `${post.profiles.first_name} ${post.profiles.last_name ? post.profiles.last_name.charAt(0) + '.' : ''}`) : 'Membre';
+                        const authorName = post.profiles ? (window.formatPublicName ? window.formatPublicName(post.profiles, null, 'Membre') : `${post.profiles.first_name}${post.profiles.last_name ? '.' + post.profiles.last_name.charAt(0).toUpperCase() : ''}`) : 'Membre';
                         hydrated.push({
                             favId: fav.id,
                             entity_type: 'BOKANTAJ_POST',

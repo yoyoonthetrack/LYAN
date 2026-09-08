@@ -276,11 +276,8 @@ window.openChatWithUser = async function (name, avatar, contactId = name, initia
     if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function' && contactId && isUUID(contactId)) {
         try {
             const prof = await window.LYANN_API_CLIENT.getUserProfile(contactId);
-            if (prof && prof.first_name) {
-                const fn = prof.first_name.trim();
-                const ln = (prof.last_name || '').trim();
-                const init = ln ? ` ${ln.charAt(0)}.` : '';
-                displayName = `${fn}${init}`;
+            if (prof) {
+                displayName = window.formatPublicName ? window.formatPublicName(prof, null, 'Contact') : (prof.first_name || 'Contact');
                 displayAvatar = window.getLyannAvatarUrl(prof.avatar_url);
             }
         } catch(e) {}
@@ -1936,11 +1933,8 @@ document.addEventListener('touchstart', (e) => {
                                     .eq('id', partnerId)
                                     .maybeSingle();
                                 if (pData) {
-                                    const fn = (pData.first_name || '').trim();
-                                    const ln = (pData.last_name || '').trim();
-                                    const init = ln ? ` ${ln.charAt(0)}.` : '';
                                     partnerProfile = {
-                                        displayName: `${fn}${init}`.trim() || 'Membre LYANN',
+                                        displayName: window.formatPublicName ? window.formatPublicName(pData, null, 'Membre LYANN') : (pData.first_name || 'Membre LYANN'),
                                         avatar: window.getLyannAvatarUrl(pData.avatar_url)
                                     };
                                     window.LYANN_PROFILES_CACHE[partnerId] = partnerProfile;

@@ -2505,9 +2505,8 @@ safeDomReady(() => {
                     .eq('target_id', memberId)
                     .order('created_at', { ascending: false });
 
-                if (dbReviews && Array.isArray(dbReviews)) {
                     reviewsList = dbReviews.map(r => ({
-                        name: `${r.author?.first_name || 'Membre'} ${r.author?.last_name ? r.author.last_name.substring(0, 1) + '.' : ''}`.trim(),
+                        name: window.formatPublicName(r.author, null, 'Membre'),
                         city: r.author?.city || 'Guadeloupe',
                         date: new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
                         rating: Number(r.rating).toFixed(1),
@@ -2615,7 +2614,7 @@ safeDomReady(() => {
         if (profileOrFirstName && typeof profileOrFirstName === 'object') {
             fn = (profileOrFirstName.first_name || '').trim();
             ln = (profileOrFirstName.last_name || profileOrFirstName.last_name_initial || '').trim();
-            dn = (profileOrFirstName.display_name || '').trim();
+            dn = (profileOrFirstName.display_name || profileOrFirstName.name || profileOrFirstName.full_name || '').trim();
         } else {
             fn = (profileOrFirstName || '').trim();
             ln = (lastName || '').trim();
@@ -2623,21 +2622,29 @@ safeDomReady(() => {
         }
 
         const cleanFn = window.capitalizeLyannName(fn);
-        const cleanLnInit = ln ? ln.charAt(0).toUpperCase() + '.' : '';
+        const cleanLnInit = ln ? ln.replace(/[^a-zA-Z]/g, '').charAt(0).toUpperCase() : '';
 
         if (cleanFn && cleanLnInit) {
-            return `${cleanFn} ${cleanLnInit}`;
+            return `${cleanFn}.${cleanLnInit}`;
         }
         if (cleanFn) {
             return cleanFn;
         }
         if (dn && dn !== 'Lyanneur' && dn !== 'Membre LYANN') {
-            if (dn.includes(' ') && !dn.includes('-')) {
+            if (dn.includes('.') && !dn.endsWith('.')) {
+                const parts = dn.split('.');
+                const firstP = window.capitalizeLyannName(parts[0]);
+                const lastP = parts[1] ? parts[1].replace(/[^a-zA-Z]/g, '').charAt(0).toUpperCase() : '';
+                if (firstP && lastP) return `${firstP}.${lastP}`;
+                if (firstP) return firstP;
+            }
+            if (dn.includes(' ')) {
                 const parts = dn.trim().split(/\s+/);
                 if (parts.length > 1) {
                     const firstP = window.capitalizeLyannName(parts[0]);
-                    const lastP = parts[parts.length - 1].charAt(0).toUpperCase() + '.';
-                    return `${firstP} ${lastP}`;
+                    const lastP = parts[parts.length - 1].replace(/[^a-zA-Z]/g, '').charAt(0).toUpperCase();
+                    if (firstP && lastP) return `${firstP}.${lastP}`;
+                    if (firstP) return firstP;
                 }
             }
             return window.capitalizeLyannName(dn);
@@ -2899,7 +2906,7 @@ safeDomReady(() => {
 
                 if (dbReviews && dbReviews.length > 0) {
                     reviews = dbReviews.map(r => ({
-                        name: `${r.author?.first_name || 'Membre'} ${r.author?.last_name ? r.author.last_name.substring(0, 1) + '.' : ''}`,
+                        name: window.formatPublicName(r.author, null, 'Membre'),
                         city: r.author?.city || 'Guadeloupe',
                         date: new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
                         rating: Number(r.rating).toFixed(1),
@@ -3567,7 +3574,7 @@ safeDomReady(() => {
             }
 
             container.innerHTML = realProfiles.map(p => {
-                const name = `${p.first_name || 'Lyanneur'} ${p.last_name ? p.last_name.trim().charAt(0) + '.' : ''}`;
+                const name = window.formatPublicName(p, null, 'Lyanneur');
                 const avatar = window.getLyannAvatarUrl(p.avatar_url);
                 const location = p.city || p.territory || '';
 
@@ -4087,7 +4094,7 @@ safeDomReady(() => {
                         }
                         return cmts.map(c => {
                             const author = c.profiles;
-                            const name = author ? `${author.first_name || 'Lyanneur'} ${(author.last_name || '').charAt(0)}.` : 'Lyanneur';
+                            const name = author ? window.formatPublicName(author, null, 'Lyanneur') : 'Lyanneur';
                             const avatar = window.getLyannAvatarUrl(author?.avatar_url);
                             const date = new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                             const isChild = !!c.parent_comment_id;
@@ -4167,7 +4174,7 @@ safeDomReady(() => {
                     if (listEl) {
                         listEl.innerHTML = comments.map(c => {
                             const author = c.profiles;
-                            const name = author ? `${author.first_name || 'Lyanneur'} ${(author.last_name || '').charAt(0)}.` : 'Lyanneur';
+                            const name = author ? window.formatPublicName(author, null, 'Lyanneur') : 'Lyanneur';
                             const avatar = author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.author_id}`;
                             const date = new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                             const isChild = !!c.parent_comment_id;
@@ -5071,12 +5078,7 @@ safeDomReady(() => {
             } catch(e) {}
         }
 
-        const rawFn = (userProf?.first_name || '').trim();
-        const rawLn = (userProf?.last_name || '').trim();
-        let displayName = 'Membre LYANN';
-        if (rawFn && rawLn) displayName = `${rawFn} ${rawLn.charAt(0).toUpperCase()}.`;
-        else if (rawFn) displayName = rawFn;
-        else if (userProf?.display_name) displayName = userProf.display_name;
+        const displayName = window.formatPublicName(userProf, null, 'Membre LYANN');
 
         const safeDisplayName = window.escapeHtmlAttr(displayName);
         const userEmail = window.escapeHtmlAttr(userProf?.email || (window.LYANN_CURRENT_USER ? window.LYANN_CURRENT_USER.email : ''));
@@ -8623,8 +8625,8 @@ async function fetchCandidatesForPostPublishMatching() {
                     id: p.id,
                     candidate_id: p.id,
                     user_id: p.id,
-                    name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Lyanneur',
-                    display_name: `${p.first_name || 'Lyanneur'} ${(p.last_name || '').charAt(0)}.`.trim(),
+                    name: window.formatPublicName(p, null, 'Lyanneur'),
+                    display_name: window.formatPublicName(p, null, 'Lyanneur'),
                     avatar: window.getLyannAvatarUrl(p.avatar_url),
                     role: p.headline || p.activity || 'Services',
                     category: p.category || p.activity || 'general',
@@ -8870,9 +8872,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         return;
     }
 
-    const firstName = authorProf ? (authorProf.first_name || 'Lyanneur') : 'Lyanneur';
-    const lastNameInit = authorProf && authorProf.last_name ? ` ${authorProf.last_name.charAt(0)}.` : '';
-    const authorName = `${firstName}${lastNameInit}`;
+    const authorName = authorProf ? window.formatPublicName(authorProf, null, 'Lyanneur') : 'Lyanneur';
     const authorAvatar = window.getLyannAvatarUrl(authorProf?.avatar_url);
     const locationStr = requestData.location || authorProf?.city || 'Guadeloupe';
     const dateStr = requestData.created_at ? new Date(requestData.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Récemment';
@@ -9064,7 +9064,7 @@ window.loadUserReceivedInvitationsUI = async function() {
         for (const inv of invitations) {
             const req = inv.requests || {};
             const requester = inv.requester || {};
-            const requesterName = `${requester.first_name || 'Un utilisateur'} ${(requester.last_name || '').charAt(0)}.`.trim();
+            const requesterName = window.formatPublicName(requester, null, 'Un utilisateur');
             const dateStr = inv.created_at ? new Date(inv.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
             const budgetStr = req.budget ? `${req.budget} €` : 'Sur devis';
 

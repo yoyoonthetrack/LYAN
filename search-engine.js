@@ -354,10 +354,8 @@
                 proSubscriptionBadge = "PRO";
             }
 
-            // Format Name (First Name + Last Initial)
-            const rawName = c.name || c.first_name || "Lyanneur";
-            const nameParts = rawName.trim().split(/\s+/);
-            const displayName = nameParts.length > 1 ? `${nameParts[0]} ${nameParts[1].charAt(0)}.` : nameParts[0];
+            // Format Name (Canonical Prénom.N)
+            const displayName = window.formatPublicName ? window.formatPublicName(c, null, c.name || "Lyanneur") : (c.first_name || c.name || "Lyanneur");
 
             return {
                 id: candId,
