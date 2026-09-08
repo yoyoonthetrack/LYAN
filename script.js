@@ -1,6 +1,14 @@
 console.log("[LYANN_NATIVE_BUILD] 9c9ec8f-PROBE-1502");
 window.__LYANN_NATIVE_BUILD__ = "9c9ec8f-PROBE-1502";
 console.log("⚡ [BOOT 01] script.js loaded");
+console.log("[AUTH_REAL] app boot");
+window.__LYANN_AUTH_REAL__ = window.__LYANN_AUTH_REAL__ || {
+    hasSession: false,
+    userId: null,
+    lastAuthEvent: 'APP_BOOT',
+    loginScreenMounted: false,
+    appHomeMounted: false
+};
 
 // === LYANN TEMPORARY RUNTIME DIAGNOSTICS & TRACE ENGINE ===
 window.__LYANN_RUNTIME_DIAG__ = window.__LYANN_RUNTIME_DIAG__ || {
@@ -594,6 +602,9 @@ function formatRelativeTime(isoString) {
 
 // === APP WELCOME SCREEN (GUEST MODE / ONBOARDING / LOGIN) ===
 function showAppWelcomeScreen() {
+    console.log('[AUTH_REAL] welcome/login screen mounted = true');
+    if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.loginScreenMounted = true;
+
     if (document.querySelector('.app-welcome-screen')) return;
 
     const screen = document.createElement('div');
@@ -629,6 +640,8 @@ function showAppWelcomeScreen() {
 
     document.getElementById('btnWelcomeGuest')?.addEventListener('click', () => {
         triggerHaptic('light');
+        console.log('[AUTH_REAL] welcome/login screen mounted = false');
+        if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.loginScreenMounted = false;
         screen.remove(); // Dismiss welcome view
     });
 }
@@ -638,6 +651,8 @@ async function initMobileHomeDashboard() {
     const isLoggedIn = document.body.classList.contains('user-is-logged-in');
 
     if (!isLoggedIn) {
+        console.log('[AUTH_REAL] App Home mounted = false');
+        if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.appHomeMounted = false;
         showAppWelcomeScreen();
         return;
     }
@@ -1000,6 +1015,9 @@ window.injectMobileInterface = injectMobileInterface;
 
 // === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===
 window.renderAppHomeConnectedView = function() {
+    console.log('[AUTH_REAL] App Home mounted = true');
+    if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.appHomeMounted = true;
+
     const mainHero = document.querySelector('.hero');
     if (!mainHero) return;
 
@@ -5218,31 +5236,23 @@ safeDomReady(() => {
         }
     });
 
-    openAccountModalTriggers.forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    // Account V3 modal triggers & close handler delegation
+    document.addEventListener('click', (e) => {
+        const openTrigger = e.target.closest('a[href="#account"], .open-account-modal-trigger');
+        if (openTrigger) {
             e.preventDefault();
-            if (userAccountModal) {
-                userAccountModal.classList.add('active');
-                document.body.style.overflow = 'hidden';
+            if (typeof window.openAccountModalSubView === 'function') {
+                window.openAccountModalSubView('account');
             }
-        });
-    });
+        }
 
-    if (closeUserAccountModalBtn) {
-        closeUserAccountModalBtn.addEventListener('click', () => {
-            if (userAccountModal) {
-                userAccountModal.classList.remove('active');
-                document.body.style.overflow = '';
+        const closeTrigger = e.target.closest('#closeUserAccountModalBtn, .close-account-modal');
+        if (closeTrigger) {
+            e.preventDefault();
+            if (typeof window.closeUserAccountModal === 'function') {
+                window.closeUserAccountModal();
             }
-        });
-    }
-
-    // Gestion des onglets Mon Compte (15 Onglets)
-    accountTabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const targetTab = btn.getAttribute('data-account-tab');
-            openAccountTab(targetTab);
-        });
+        }
     });
 
     // ==========================================================================
@@ -5613,6 +5623,12 @@ safeDomReady(() => {
     async function getActiveSupabaseSession() {
         if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
             console.log('[AUTH_TRACE] getSession result: no Supabase client available');
+            console.log('[AUTH_REAL] getSession session exists = false');
+            console.log('[AUTH_REAL] getSession user id = null');
+            if (window.__LYANN_AUTH_REAL__) {
+                window.__LYANN_AUTH_REAL__.hasSession = false;
+                window.__LYANN_AUTH_REAL__.userId = null;
+            }
             return null;
         }
         try {
@@ -5624,9 +5640,21 @@ safeDomReady(() => {
                 userId: session?.user?.id || null,
                 email: session?.user?.email || null
             });
+            console.log('[AUTH_REAL] getSession session exists = ' + isValid);
+            console.log('[AUTH_REAL] getSession user id = ' + (session?.user?.id || 'null'));
+            if (window.__LYANN_AUTH_REAL__) {
+                window.__LYANN_AUTH_REAL__.hasSession = isValid;
+                window.__LYANN_AUTH_REAL__.userId = session?.user?.id || null;
+            }
             return isValid ? session : null;
         } catch (err) {
             console.warn('[AUTH_TRACE] getSession error:', err);
+            console.log('[AUTH_REAL] getSession session exists = false');
+            console.log('[AUTH_REAL] getSession user id = null');
+            if (window.__LYANN_AUTH_REAL__) {
+                window.__LYANN_AUTH_REAL__.hasSession = false;
+                window.__LYANN_AUTH_REAL__.userId = null;
+            }
             return null;
         }
     }
@@ -5637,6 +5665,7 @@ safeDomReady(() => {
         const session = await getActiveSupabaseSession();
         if (!session || !session.user) {
             console.log(`[AUTH_TRACE] protected route gate: DENIED for '${actionName}' - valid session required.`);
+            console.log('[AUTH_REAL] requireAuthSession result = deny');
             window.CURRENT_USER_ID = null;
             window.LYANN_CURRENT_USER = null;
             document.body.classList.remove('user-is-logged-in');
@@ -5649,6 +5678,7 @@ safeDomReady(() => {
             return null;
         }
         console.log(`[AUTH_TRACE] protected route gate: GRANTED for '${actionName}' (userId: ${session.user.id}).`);
+        console.log('[AUTH_REAL] requireAuthSession result = allow');
         return session;
     }
     window.requireAuthSession = requireAuthSession;
@@ -5802,6 +5832,20 @@ safeDomReady(() => {
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         window.LYANN_API_CLIENT.supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('[AUTH_TRACE] onAuthStateChange event:', event, '| hasSession:', !!session, '| userId:', session?.user?.id || null);
+
+            if (window.__LYANN_AUTH_REAL__) {
+                window.__LYANN_AUTH_REAL__.lastAuthEvent = event;
+                window.__LYANN_AUTH_REAL__.hasSession = !!session;
+                window.__LYANN_AUTH_REAL__.userId = session?.user?.id || null;
+            }
+
+            if (event === 'INITIAL_SESSION') {
+                console.log('[AUTH_REAL] INITIAL_SESSION session exists = ' + !!session);
+            } else if (event === 'SIGNED_IN') {
+                console.log('[AUTH_REAL] SIGNED_IN');
+            } else if (event === 'SIGNED_OUT') {
+                console.log('[AUTH_REAL] SIGNED_OUT');
+            }
 
             authInitializationComplete = true;
 
