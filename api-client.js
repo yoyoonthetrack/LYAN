@@ -286,7 +286,7 @@ const LYANN_API_CLIENT = {
                     user_id: p.id,
                     first_name: p.first_name,
                     last_name_initial: p.last_name ? (p.last_name.substring(0, 1).toUpperCase() + '.') : '',
-                    display_name: window.formatPublicName ? window.formatPublicName(p, null, 'Membre') : `${p.first_name || 'Membre'}${p.last_name ? '.' + p.last_name.substring(0, 1).toUpperCase() : ''}`.trim(),
+                    display_name: window.formatPublicName ? window.formatPublicName(p, null, 'Membre') : (p.first_name ? `${p.first_name.trim()}${p.last_name ? '.' + p.last_name.trim().substring(0, 1).toUpperCase() : ''}` : 'Membre'),
                     city: (p.city && p.city.trim().toLowerCase() !== 'guadeloupe') ? p.city.trim() : null,
                     territory: p.territory || 'Guadeloupe (971)',
                     bio: p.bio || '',

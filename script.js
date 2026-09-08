@@ -6259,13 +6259,7 @@ safeDomReady(() => {
         console.log('[AUTH_TRACE] drawer state update:', { isLoggedIn, profileId: profileData?.id || null });
 
         if (isLoggedIn && profileData) {
-            const rawFn = (profileData.first_name || profileData.firstName || '').trim();
-            const rawLn = (profileData.last_name || profileData.lastName || '').trim();
-            let nameStr = 'Membre LYANN';
-            if (rawFn && rawLn) nameStr = `${rawFn} ${rawLn.charAt(0).toUpperCase()}.`;
-            else if (rawFn) nameStr = rawFn;
-            else if (profileData.display_name) nameStr = profileData.display_name;
-            else if (profileData.email) nameStr = profileData.email.split('@')[0];
+            const nameStr = window.formatPublicName ? window.formatPublicName(profileData, null, 'Membre LYANN') : (profileData.first_name || 'Membre LYANN');
 
             if (drawerUserName) drawerUserName.textContent = nameStr;
 
@@ -7674,7 +7668,7 @@ safeDomReady(() => {
                     }).map(p => ({
                         id: p.id,
                         user_id: p.id,
-                        name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Lyanneur',
+                        name: window.formatPublicName ? window.formatPublicName(p, null, 'Lyanneur') : (p.first_name || 'Lyanneur'),
                         avatar: window.getLyannAvatarUrl(p.avatar_url),
                         role: p.headline || p.activity || p.role || 'Services & Entraide',
                         category: p.category || p.activity || 'general',
