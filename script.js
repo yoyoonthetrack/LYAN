@@ -3532,65 +3532,62 @@ safeDomReady(() => {
                         cardBody = rawContent;
                     }
 
-                    const cardTitleHTML = cardHeadline ? `<div style="font-weight: 800; font-size: 0.98rem; color: #1E2822; margin-bottom: 2px; line-height: 1.3;">${cardHeadline}</div>` : '';
-                    const cardBodyHTML = cardBody ? `<div style="font-size: 0.88rem; color: #475569; margin-bottom: 4px; line-height: 1.4;">${safeMentions(cardBody)}</div>` : '';
-                    const budgetHTML = (isLyann && post.budget) ? `<span style="font-size: 0.78rem; font-weight: 700; color: var(--primary-dark); margin-left: 8px;">· Budget : ${post.budget} €</span>` : '';
+                    const cardTitleHTML = cardHeadline ? `<div style="font-weight: 800; font-size: 1.05rem; color: #17231C; margin-bottom: 4px; line-height: 1.35;">${cardHeadline}</div>` : '';
+                    const cardBodyHTML = cardBody ? `<div style="font-size: 0.88rem; color: #475569; line-height: 1.45;">${safeMentions(cardBody)}</div>` : '';
+                    const budgetHTML = (isLyann && post.budget) ? ` · Budget : ${post.budget} €` : '';
 
                     let ctaButtonHTML = '';
                     let viewLinkHTML = '';
 
                     if (isLyann) {
                         if (isOwnLyann) {
-                            viewLinkHTML = `<button class="btn-open-lyann-detail" data-request-id="${targetId}" style="background: none; border: none; color: var(--primary, #4A7C59); font-weight: 700; font-size: 0.8rem; cursor: pointer; padding: 0;">Gérer <i class="ph ph-arrow-right"></i></button>`;
+                            viewLinkHTML = `<button class="btn-open-lyann-detail" data-request-id="${targetId}" style="background: none; border: none; color: var(--primary, #4A7C59); font-weight: 700; font-size: 0.84rem; cursor: pointer; padding: 6px 8px;">Gérer <i class="ph ph-arrow-right"></i></button>`;
                         } else {
-                            viewLinkHTML = `<button class="btn-open-lyann-detail" data-request-id="${targetId}" style="background: none; border: none; color: var(--primary, #4A7C59); font-weight: 700; font-size: 0.8rem; cursor: pointer; padding: 0;">Voir <i class="ph ph-arrow-right"></i></button>`;
-                            ctaButtonHTML = `<button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${post.author_avatar || post.authorAvatar || ''}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: var(--primary, #4A7C59); color: #FFF; font-weight: 800; border-radius: 20px; min-height: 44px; padding: 0 16px; border: none; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
+                            viewLinkHTML = `<button class="btn-open-lyann-detail" data-request-id="${targetId}" style="background: none; border: none; color: var(--primary, #4A7C59); font-weight: 700; font-size: 0.84rem; cursor: pointer; padding: 6px 8px;">Voir <i class="ph ph-arrow-right"></i></button>`;
+                            ctaButtonHTML = `<button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${post.author_avatar || post.authorAvatar || ''}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: var(--primary, #4A7C59); color: #FFF; font-weight: 800; border-radius: 22px; min-height: 44px; padding: 0 16px; border: none; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
                         }
                     }
 
                     return `
-                        <div class="flash-card ${isLyann ? 'lyann-card' : ''}" id="${post.id || ''}" style="${isLyann ? 'border-left: 3px solid var(--primary, #4A7C59); background: #FAF7F2; border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; border-top: 1px solid rgba(74, 124, 89, 0.18); border-right: 1px solid rgba(74, 124, 89, 0.18); border-bottom: 1px solid rgba(74, 124, 89, 0.18); box-shadow: 0 2px 8px rgba(0,0,0,0.02);' : 'background: #FFFFFF; border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);'}">
-                            <!-- HEADER COMPACT -->
-                            <div class="flash-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <div class="flash-author-block trigger-quick-profile" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                                    <img src="${post.author_avatar || post.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorId}`}" alt="${authorDisplayName}" class="flash-avatar" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
-                                    <div class="flash-author-info" style="line-height: 1.2;">
-                                        <strong style="color: #17231C; font-size: 0.88rem;">${authorDisplayName}</strong>
-                                        <span style="display: block; font-size: 0.75rem; color: var(--text-muted, #64748B);">${locationText}</span>
+                        <div class="flash-card ${isLyann ? 'lyann-card' : ''}" id="${post.id || ''}" style="${isLyann ? 'background: #FAF7F2; border-radius: 20px; padding: 14px 16px; margin-bottom: 12px; border: 1px solid rgba(74, 124, 89, 0.18); box-shadow: 0 2px 10px rgba(0,0,0,0.02);' : 'background: #FFFFFF; border-radius: 20px; padding: 14px 16px; margin-bottom: 12px; border: 1px solid #E2E8F0; box-shadow: 0 2px 10px rgba(0,0,0,0.02);'}">
+                            <!-- HEADER ROW: AVATAR (44px) + IDENTITY/LOCATION/DATE (LEFT) | BADGE (RIGHT) -->
+                            <div class="flash-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px;">
+                                <div class="flash-author-block trigger-quick-profile" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                                    <img src="${post.author_avatar || post.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorId}`}" alt="${authorDisplayName}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
+                                    <div class="flash-author-info" style="line-height: 1.25; min-width: 0;">
+                                        <strong style="color: #17231C; font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 4px;">${authorDisplayName} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.85rem;"></i></strong>
+                                        <span style="display: block; font-size: 0.78rem; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.75rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
                                     </div>
                                 </div>
-                                <div class="flash-meta-badges">
-                                    <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 800; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; text-transform: uppercase;' : 'background: #F1F5F9; color: #475569; font-weight: 700; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem;'}">${badgeText}</span>
+                                <div class="flash-meta-badges" style="flex-shrink: 0;">
+                                    <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 800; padding: 4px 10px; border-radius: 12px; font-size: 0.72rem; text-transform: uppercase; white-space: nowrap;' : 'background: #F1F5F9; color: #475569; font-weight: 700; padding: 4px 10px; border-radius: 12px; font-size: 0.72rem; white-space: nowrap;'}">${badgeText}</span>
                                 </div>
                             </div>
 
-                            <!-- BODY COMPACT -->
-                            <div class="flash-card-body">
+                            <!-- BODY BLOCK: HERO TITLE & CONTENT -->
+                            <div class="flash-card-body" style="margin-bottom: 12px;">
                                 ${cardTitleHTML}
                                 ${cardBodyHTML}
                                 ${mediaHTML}
                             </div>
 
-                            <!-- META ROW (TIMESTAMP + VOIR LINK) -->
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 0.78rem; color: #64748B;">
-                                <span><i class="ph ph-clock"></i> ${timeAgoText}${budgetHTML}</span>
-                                ${viewLinkHTML}
-                            </div>
-
-                            <!-- FOOTER / ACTIONS (TEXT TRIGGERS + PRIMARY CTA) -->
-                            <div class="flash-card-footer" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.06);">
-                                <div class="flash-actions-bar" style="display: flex; align-items: center; gap: 10px;">
-                                    <button class="flash-action-btn btn-like-flash ${userHasLiked ? 'liked' : ''}" data-target-id="${targetId}" data-target-type="${targetType}" style="background: none; border: none; color: ${userHasLiked ? '#E76F51' : '#64748B'}; font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 4px 0; display: inline-flex; align-items: center; gap: 4px;">
-                                        <i class="ph-fill ph-heart" style="color: ${userHasLiked ? '#E76F51' : '#94A3B8'}; font-size: 1.05rem;"></i> <span class="like-count">${displayLikes}</span>
+                            <!-- FOOTER / ACTIONS ROW: COMPACT & BALANCED -->
+                            <div class="flash-card-footer" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.06);">
+                                <div class="flash-actions-bar" style="display: flex; align-items: center; gap: 12px;">
+                                    <button class="flash-action-btn btn-like-flash ${userHasLiked ? 'liked' : ''}" data-target-id="${targetId}" data-target-type="${targetType}" style="background: none; border: none; color: ${userHasLiked ? '#E76F51' : '#64748B'}; font-weight: 700; font-size: 0.84rem; cursor: pointer; padding: 4px 0; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="ph-fill ph-heart" style="color: ${userHasLiked ? '#E76F51' : '#94A3B8'}; font-size: 1.1rem;"></i> <span class="like-count">${displayLikes}</span>
                                     </button>
-                                    <button class="flash-action-btn btn-comments-toggle" data-target-id="${targetId}" data-target-type="${targetType}" style="background: none; border: none; color: #64748B; font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 4px 0; display: inline-flex; align-items: center; gap: 4px;">
-                                        <i class="ph ph-chat-circle" style="font-size: 1.05rem;"></i> <span class="comments-count-label">${(post.comments_count || 0) > 0 ? post.comments_count : ''} Commenter</span>
+                                    <button class="flash-action-btn btn-comments-toggle" data-target-id="${targetId}" data-target-type="${targetType}" style="background: none; border: none; color: #64748B; font-weight: 700; font-size: 0.84rem; cursor: pointer; padding: 4px 0; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="ph ph-chat-circle" style="font-size: 1.1rem;"></i> <span class="comments-count-label">${(post.comments_count || 0) > 0 ? post.comments_count : ''} Commenter</span>
                                     </button>
-                                    <button class="flash-action-btn btn-share-post" data-target-id="${targetId}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: none; border: none; color: #64748B; font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 4px 0; display: inline-flex; align-items: center;">
-                                        <i class="ph ph-share-network" style="font-size: 1.05rem;"></i>
+                                    <button class="flash-action-btn btn-share-post" data-target-id="${targetId}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: none; border: none; color: #64748B; font-weight: 700; font-size: 0.84rem; cursor: pointer; padding: 4px 0; display: inline-flex; align-items: center;">
+                                        <i class="ph ph-share-network" style="font-size: 1.1rem;"></i>
                                     </button>
                                 </div>
-                                ${ctaButtonHTML}
+                                <div class="flash-cta-bar" style="display: flex; align-items: center; gap: 6px;">
+                                    ${viewLinkHTML}
+                                    ${ctaButtonHTML}
+                                </div>
                             </div>
 
                             <div class="comments-drawer" id="comments-drawer-${targetId}" style="display: none; padding: 10px 12px; border-top: 1px solid #E2E8F0; background: #F8FAFC; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; margin-top: 8px;">
