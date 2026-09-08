@@ -131,7 +131,7 @@
                     <!-- BLOC COMPOSITEUR SOCIAL (BOKANTAJ V2) -->
                     <div class="flash-composer-card" id="flashComposerCard" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
                         <div class="composer-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-                            <img id="composerUserAvatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" alt="Avatar" class="user-avatar-circle" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);">
+                            <img id="composerUserAvatar" src="default-avatar.svg" onerror="window.handleAvatarError(this)" alt="Avatar" class="user-avatar-circle" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);">
                             <div class="composer-title-block">
                                 <h4 style="font-size: 1rem; font-weight: 800; color: #17231C; margin: 0;">Quoi de neuf près de chez vous ?</h4>
                                 <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Partagez avec les Lyanneurs du quartier</p>
@@ -983,7 +983,7 @@
 
             <div class="account-modal-header">
                 <div class="account-user-profile-summary">
-                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=LyannUser" alt="Avatar Utilisateur" id="accountModalAvatar" class="account-avatar-lg">
+                    <img src="default-avatar.svg" onerror="window.handleAvatarError(this)" alt="Avatar Utilisateur" id="accountModalAvatar" class="account-avatar-lg">
                     <div>
                         <h3 class="account-user-name" id="accountModalName">Mon Compte LYANN</h3>
                         <div class="account-user-meta">

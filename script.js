@@ -41,6 +41,32 @@ function isNativePlatform() {
     return window.Capacitor !== undefined && window.Capacitor.isNativePlatform();
 }
 
+// === LYANN SINGLE SOURCE OF TRUTH DEFAULT USER AVATAR ===
+if (!window.getLyannDefaultAvatar) {
+    window.LYANN_DEFAULT_AVATAR_PATH = 'default-avatar.svg';
+    window.LYANN_DEFAULT_AVATAR_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="50" fill="%23FAF7F2"/><circle cx="50" cy="50" r="48" fill="%23EBF2ED" stroke="rgba(74,124,89,0.25)" stroke-width="2"/><circle cx="50" cy="38" r="16" fill="%234A7C59"/><path d="M 22 84 C 22 66, 34 58, 50 58 C 66 58, 78 66, 78 84 Z" fill="%234A7C59"/></svg>`;
+
+    window.getLyannDefaultAvatar = function() {
+        return window.LYANN_DEFAULT_AVATAR_PATH;
+    };
+
+    window.getLyannAvatarUrl = function(url) {
+        if (!url || typeof url !== 'string') return window.LYANN_DEFAULT_AVATAR_PATH;
+        const clean = url.trim();
+        if (!clean || clean === 'null' || clean === 'undefined' || clean.includes('dicebear.com') || clean.includes('bottts') || clean.includes('avataaars')) {
+            return window.LYANN_DEFAULT_AVATAR_PATH;
+        }
+        return clean;
+    };
+
+    window.handleAvatarError = function(imgEl) {
+        if (imgEl && !imgEl.dataset.fallbackDone) {
+            imgEl.dataset.fallbackDone = 'true';
+            imgEl.src = window.LYANN_DEFAULT_AVATAR_PATH;
+        }
+    };
+}
+
 // === LYANN OFFICIAL DOM COMMUNES DICTIONARY ===
 window.LYANN_DOM_COMMUNES = {
     'Guadeloupe (971)': [
@@ -2463,7 +2489,7 @@ safeDomReady(() => {
             <div class="lyann-profile-hero">
                 <div class="lyann-profile-hero-content">
                     <div class="lyann-profile-avatar-wrapper">
-                        <img src="${pData.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(pData.display_name || 'LyannUser')}" alt="${pData.display_name}" class="lyann-profile-avatar-img">
+                        <img src="${window.getLyannAvatarUrl(pData.avatar_url)}" onerror="window.handleAvatarError(this)" alt="${pData.display_name}" class="lyann-profile-avatar-img">
                         ${isSelf ? '<button type="button" class="lyann-avatar-edit-btn" onclick="window.lyannOpenAvatarModal()" title="Changer la photo"><i class="ph ph-camera"></i></button>' : ''}
                     </div>
                     <div class="lyann-profile-hero-details">
@@ -3176,7 +3202,7 @@ safeDomReady(() => {
 
             container.innerHTML = realProfiles.map(p => {
                 const name = `${p.first_name || 'Lyanneur'} ${p.last_name ? p.last_name.trim().charAt(0) + '.' : ''}`;
-                const avatar = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.id}`;
+                const avatar = window.getLyannAvatarUrl(p.avatar_url);
                 const location = p.city || p.territory || '';
 
                 let displayActivity = p.primary_activity || p.role || '';
@@ -3571,7 +3597,7 @@ safeDomReady(() => {
                             <div class="flash-card-header" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; box-sizing: border-box;">
                                     <div class="flash-author-block trigger-quick-profile" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
-                                        <img src="${post.author_avatar || post.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorId}`}" alt="${authorDisplayName}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
+                                        <img src="${window.getLyannAvatarUrl(post.author_avatar || post.authorAvatar)}" onerror="window.handleAvatarError(this)" alt="${authorDisplayName}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
                                         <div class="flash-author-info" style="line-height: 1.25; min-width: 0; flex: 1;">
                                             <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayName} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i></strong>
                                             <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
@@ -3695,7 +3721,7 @@ safeDomReady(() => {
                         return cmts.map(c => {
                             const author = c.profiles;
                             const name = author ? `${author.first_name || 'Lyanneur'} ${(author.last_name || '').charAt(0)}.` : 'Lyanneur';
-                            const avatar = author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.author_id}`;
+                            const avatar = window.getLyannAvatarUrl(author?.avatar_url);
                             const date = new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                             const isChild = !!c.parent_comment_id;
                             return `
@@ -4236,7 +4262,7 @@ safeDomReady(() => {
             displayName = `${member.first_name.trim()}${init}`;
         }
 
-        const avatarSrc = member.avatar_url || member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.id || memberId}`;
+        const avatarSrc = window.getLyannAvatarUrl(member.avatar_url || member.avatar);
         const cityText = member.commune || member.city || member.locationName || 'Guadeloupe';
         const roleText = member.role || (member.is_pro ? 'Professionnel' : 'Membre LYANN');
         const badgeText = member.badge || (member.is_pro ? 'Artisan PRO' : 'Profil Vérifié');
@@ -6666,7 +6692,7 @@ safeDomReady(() => {
                         id: p.id,
                         user_id: p.id,
                         name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Lyanneur',
-                        avatar: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.id}`,
+                        avatar: window.getLyannAvatarUrl(p.avatar_url),
                         role: p.headline || p.activity || p.role || 'Services & Entraide',
                         category: p.category || p.activity || 'general',
                         city: p.city || p.location || 'Guadeloupe',
@@ -7489,7 +7515,7 @@ async function fetchCandidatesForPostPublishMatching() {
                     user_id: p.id,
                     name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Lyanneur',
                     display_name: `${p.first_name || 'Lyanneur'} ${(p.last_name || '').charAt(0)}.`.trim(),
-                    avatar: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.id}`,
+                    avatar: window.getLyannAvatarUrl(p.avatar_url),
                     role: p.headline || p.activity || 'Services',
                     category: p.category || p.activity || 'general',
                     city: p.city || p.location || 'Guadeloupe',
@@ -7727,7 +7753,7 @@ window.openLyannDetailModal = async function(requestId) {
     const firstName = authorProf ? (authorProf.first_name || 'Lyanneur') : 'Lyanneur';
     const lastNameInit = authorProf && authorProf.last_name ? ` ${authorProf.last_name.charAt(0)}.` : '';
     const authorName = `${firstName}${lastNameInit}`;
-    const authorAvatar = authorProf?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${requestData.requester_id}`;
+    const authorAvatar = window.getLyannAvatarUrl(authorProf?.avatar_url);
     const locationStr = requestData.location || authorProf?.city || 'Guadeloupe';
     const dateStr = requestData.created_at ? new Date(requestData.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Récemment';
 
@@ -7954,7 +7980,7 @@ window.loadUserReceivedInvitationsUI = async function() {
                 <div class="received-invitation-card" style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <img src="${requester.avatar_url || 'david-34.png'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            <img src="${window.getLyannAvatarUrl(requester.avatar_url)}" onerror="window.handleAvatarError(this)" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                             <div>
                                 <strong style="font-size: 0.95rem; color: var(--text-dark);">${requesterName} a besoin d'un coup de main</strong>
                                 <div style="font-size: 0.78rem; color: var(--text-muted);"><i class="ph ph-map-pin"></i> ${req.location || requester.city || 'Guadeloupe'} · ${dateStr}</div>

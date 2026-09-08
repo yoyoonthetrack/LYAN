@@ -22,9 +22,31 @@ if (window.supabase) {
         }
     });
     console.log("⚡ Supabase client initialized with session persistence.");
-} else {
-    console.warn("⚠️ Supabase JS SDK missing. Running in Mock Mode only.");
+if (!window.getLyannDefaultAvatar) {
+    window.LYANN_DEFAULT_AVATAR_PATH = 'default-avatar.svg';
+    window.LYANN_DEFAULT_AVATAR_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="50" fill="%23FAF7F2"/><circle cx="50" cy="50" r="48" fill="%23EBF2ED" stroke="rgba(74,124,89,0.25)" stroke-width="2"/><circle cx="50" cy="38" r="16" fill="%234A7C59"/><path d="M 22 84 C 22 66, 34 58, 50 58 C 66 58, 78 66, 78 84 Z" fill="%234A7C59"/></svg>`;
+
+    window.getLyannDefaultAvatar = function() {
+        return window.LYANN_DEFAULT_AVATAR_PATH;
+    };
+
+    window.getLyannAvatarUrl = function(url) {
+        if (!url || typeof url !== 'string') return window.LYANN_DEFAULT_AVATAR_PATH;
+        const clean = url.trim();
+        if (!clean || clean === 'null' || clean === 'undefined' || clean.includes('dicebear.com') || clean.includes('bottts') || clean.includes('avataaars')) {
+            return window.LYANN_DEFAULT_AVATAR_PATH;
+        }
+        return clean;
+    };
+
+    window.handleAvatarError = function(imgEl) {
+        if (imgEl && !imgEl.dataset.fallbackDone) {
+            imgEl.dataset.fallbackDone = 'true';
+            imgEl.src = window.LYANN_DEFAULT_AVATAR_PATH;
+        }
+    };
 }
+
 
 // ----------------------------------------------------------------------
 // MOCK LOCAL DATABASE FOR MISSIONS (Used for DEV/AI testing)
@@ -605,7 +627,7 @@ const LYANN_API_CLIENT = {
                     item_type: 'POST',
                     author_id: p.author_id,
                     author_name: `${firstName}${lastNameInit}`,
-                    author_avatar: authorProf?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.author_id}`,
+                    author_avatar: window.getLyannAvatarUrl(authorProf?.avatar_url),
                     author_city: authorProf?.city || authorProf?.territory || p.territory || 'Guadeloupe',
                     badge: p.post_type === 'dispo' ? '<i class="ph ph-lightning"></i> Disponibilité' : (p.post_type === 'besoin' ? '<i class="ph ph-magnifying-glass"></i> Besoin' : '<i class="ph ph-newspaper"></i> Info Bokantaj'),
                     type: p.post_type,
@@ -633,7 +655,7 @@ const LYANN_API_CLIENT = {
                     item_type: 'LYANN',
                     author_id: r.requester_id,
                     author_name: `${firstName}${lastNameInit}`,
-                    author_avatar: authorProf?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.requester_id}`,
+                    author_avatar: window.getLyannAvatarUrl(authorProf?.avatar_url),
                     author_city: cityStr,
                     badge: `LYANN · ${r.category || 'Besoin'}`,
                     type: 'lyann',

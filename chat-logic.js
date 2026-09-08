@@ -281,8 +281,7 @@ window.openChatWithUser = async function (name, avatar, contactId = name, initia
                 const ln = (prof.last_name || '').trim();
                 const init = ln ? ` ${ln.charAt(0)}.` : '';
                 displayName = `${fn}${init}`;
-                if (prof.avatar_url) displayAvatar = prof.avatar_url;
-                else displayAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${contactId}`;
+                displayAvatar = window.getLyannAvatarUrl(prof.avatar_url);
             }
         } catch(e) {}
     }
