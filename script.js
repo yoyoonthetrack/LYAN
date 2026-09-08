@@ -5256,64 +5256,63 @@ safeDomReady(() => {
 
             subViewContent = `
                 <!-- IDENTITÉ -->
-                <div class="account-v3-section" style="margin-bottom:20px;">
-                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 10px 0;">Identité</h4>
-                    <div class="account-v3-card identity-card" style="display:flex; align-items:center; gap:14px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:16px; padding:16px;">
-                        <div class="identity-avatar-wrap" style="position:relative; flex-shrink:0;">
-                            <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid #FFF; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                            <button type="button" class="avatar-camera-btn" onclick="window.lyannOpenAvatarModal()" style="position:absolute; bottom:-2px; right:-2px; width:24px; height:24px; border-radius:50%; background:#4A7C59; color:white; border:2px solid white; display:flex; align-items:center; justify-content:center; font-size:0.75rem; cursor:pointer;" title="Changer de photo"><i class="ph ph-camera"></i></button>
+                <div class="account-v3-section identity-section">
+                    <div class="account-v3-card identity-card">
+                        <div class="identity-avatar-wrap">
+                            <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="account-identity-avatar">
+                            <button type="button" class="avatar-camera-btn" onclick="window.lyannOpenAvatarModal()" aria-label="Changer de photo" title="Changer de photo"><i class="ph ph-camera"></i></button>
                         </div>
-                        <div style="flex:1;">
-                            <strong style="font-size:1.05rem; font-weight:700; color:#17231C; display:block;">${safeDisplayName}</strong>
-                            <span style="font-size:0.84rem; color:#64748B; display:block; margin-top:2px;">${userEmail}</span>
+                        <div class="identity-text-info">
+                            <strong class="identity-display-name">${safeDisplayName}</strong>
+                            <span class="identity-email">${userEmail}</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- PROFIL PUBLIC -->
-                <div class="account-v3-section" style="margin-bottom:20px;">
-                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 10px 0;">Profil public</h4>
-                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); window.openPublicProfileModal();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-user-focus"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Aperçu du profil public</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;">Ce que les autres Lyanneurs voient</span>
+                <div class="account-v3-section">
+                    <h4 class="account-v3-section-title">PROFIL PUBLIC</h4>
+                    <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); window.openPublicProfileModal();">
+                        <div class="row-icon"><i class="ph ph-user-focus"></i></div>
+                        <div class="row-content">
+                            <strong class="row-title">Aperçu du profil public</strong>
+                            <span class="row-subtitle">Ce que les autres Lyanneurs voient</span>
                         </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                        <i class="ph ph-caret-right row-chevron"></i>
                     </div>
-                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-pencil-line"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Modifier mon profil public</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;">Bio, compétences, photos et zone</span>
+                    <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
+                        <div class="row-icon"><i class="ph ph-pencil-line"></i></div>
+                        <div class="row-content">
+                            <strong class="row-title">Modifier mon profil public</strong>
+                            <span class="row-subtitle">Bio, compétences, photos et zone</span>
                         </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                        <i class="ph ph-caret-right row-chevron"></i>
                     </div>
                 </div>
 
                 <!-- VÉRIFICATION -->
                 <div class="account-v3-section">
-                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 10px 0;">Vérification</h4>
-                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openVerificationModal==='function') window.openVerificationModal();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-shield-check"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Statut de vérification</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;"><span class="pill-badge ${verifClass}">${verifText}</span></span>
+                    <h4 class="account-v3-section-title">VÉRIFICATION</h4>
+                    <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openVerificationModal==='function') window.openVerificationModal();">
+                        <div class="row-icon"><i class="ph ph-shield-check"></i></div>
+                        <div class="row-content">
+                            <strong class="row-title">Statut de vérification</strong>
+                            <span class="row-subtitle"><span class="pill-badge ${verifClass}">${verifText}</span></span>
                         </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
+                        <i class="ph ph-caret-right row-chevron"></i>
                     </div>
                 </div>
             `;
         }
 
         modalCard.innerHTML = `
-            <div class="account-v3-container" style="max-width:680px; margin:0 auto; background:#FFF; border-radius:20px; overflow:hidden;">
-                <div class="account-v3-header" style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #F1F5F9; background:#FFF; position:sticky; top:0; z-index:10;">
-                    <button type="button" class="account-v3-back-btn" onclick="window.closeUserAccountModal()" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; color:#1E293B; cursor:pointer;"><i class="ph ph-arrow-left"></i></button>
-                    <h3 class="account-v3-title" style="font-family:'Outfit','Plus Jakarta Sans',sans-serif; font-size:1.2rem; font-weight:700; color:#17231C; margin:0; flex:1; text-align:center;">${titleText}</h3>
-                    <button type="button" class="modal-close-btn" onclick="window.closeUserAccountModal()" style="top:16px; right:16px;"><i class="ph ph-x"></i></button>
+            <div class="account-v3-container">
+                <div class="account-v3-header">
+                    <button type="button" class="account-v3-back-btn" onclick="window.closeUserAccountModal()" aria-label="Retour"><i class="ph ph-arrow-left"></i></button>
+                    <h3 class="account-v3-title">${titleText}</h3>
+                    <button type="button" class="modal-close-btn account-v3-close-btn" onclick="window.closeUserAccountModal()" aria-label="Fermer"><i class="ph ph-x"></i></button>
                 </div>
-                <div class="account-v3-body" style="padding:20px; box-sizing:border-box;">
+                <div class="account-v3-body">
                     ${subViewContent}
                 </div>
             </div>
