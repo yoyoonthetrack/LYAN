@@ -409,26 +409,7 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>
-                                        <div style="display: flex; align-items: center; gap: 12px;">
-                                            <img src="david-34.png" alt="Avatar" class="user-avatar-sm">
-                                            <div>
-                                                 <div style="font-weight: 800;">Prestataire LYANN</div>
-                                                <div style="font-size: 0.75rem; color: var(--admin-text-muted);">Inscrit le 14/01/2026</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div>david.jean-baptiste@lyann.app</div>
-                                        <div style="font-size: 0.78rem; color: var(--admin-brand-yellow);">Baie-Mahault (Guadeloupe 971)</div>
-                                    </td>
-                                    <td><span class="status-badge verified">VÉRIFIÉ ✔</span></td>
-                                    <td><strong>48 missions</strong> • ⭐️ 4.9/5</td>
-                                    <td><span class="status-badge active" style="background: rgba(229,179,69,0.2); color:#E5B345;">PRO MENSUEL</span></td>
-                                    <td>
-                                        <button class="admin-btn admin-btn-sm admin-btn-secondary btn-open-user-modal" data-user-email="david.jean-baptiste@lyann.app"><i class="ph-bold ph-eye"></i> Fiche Complexe</button>
-                                         <button class="admin-btn admin-btn-sm admin-btn-danger btn-suspend-user" data-user-name="Prestataire LYANN"><i class="ph-bold ph-user-minus"></i> Suspendre</button>
-                                    </td>
+                                    <td colspan="6" style="text-align:center; padding:20px; color:var(--admin-text-muted);">Chargement des membres...</td>
                                 </tr>
                                 <tr>
                                     <td>
@@ -464,7 +445,7 @@
             <section id="sec-user-detail" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">Fiche Utilisateur Administrateur</h1>
+                        <h1 class="admin-page-title">Fiche Utilisateur</h1>
                         <p class="admin-page-sub">Consultation intégrale de l'identité, de l'historique, des finances et des droits d'un membre.</p>
                     </div>
                     <button class="admin-btn admin-btn-secondary" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-users\']').click();"><i class="ph-bold ph-arrow-left"></i> Retour Liste Membres</button>
@@ -473,36 +454,33 @@
                 <div class="admin-grid-3">
                     <div class="admin-card">
                         <div style="text-align: center; margin-bottom: 20px;">
-                            <img src="david-34.png" alt="Avatar" style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--admin-brand-primary); margin-bottom: 12px;">
-                            <h2 style="font-size: 1.2rem;">Prestataire LYANN</h2>
-                            <p style="color: var(--admin-brand-yellow); font-size: 0.85rem;">Baie-Mahault (Guadeloupe 971)</p>
+                            <img src="avatar-male-blue.png" alt="Avatar" style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--admin-brand-primary); margin-bottom: 12px;">
+                            <h2 style="font-size: 1.2rem;" id="adminDetailUserName">Membre LYANN</h2>
+                            <p style="color: var(--admin-brand-yellow); font-size: 0.85rem;">Guadeloupe (971)</p>
                             <div style="margin-top: 8px;"><span class="status-badge verified">VÉRIFIÉ ✔</span></div>
                         </div>
 
                         <div style="border-top: 1px solid var(--admin-border); padding-top: 16px;">
                             <div style="font-size: 0.8rem; color: var(--admin-text-muted);">E-mail</div>
-                            <div style="font-weight: 700; margin-bottom: 10px;">david.jean-baptiste@lyann.app</div>
+                            <div style="font-weight: 700; margin-bottom: 10px;" id="adminDetailUserEmail">—</div>
                             <div style="font-size: 0.8rem; color: var(--admin-text-muted);">Téléphone</div>
-                            <div style="font-weight: 700; margin-bottom: 10px;">+590 690 12 34 56</div>
+                            <div style="font-weight: 700; margin-bottom: 10px;" id="adminDetailUserPhone">—</div>
                             <div style="font-size: 0.8rem; color: var(--admin-text-muted);">Compte Stripe Connect</div>
-                            <div style="font-family: var(--admin-font-mono); font-size: 0.78rem; color: var(--admin-accent-blue);">acct_1N9xZ8LyannDom971</div>
+                            <div style="font-family: var(--admin-font-mono); font-size: 0.78rem; color: var(--admin-accent-blue);" id="adminDetailStripeAcc">—</div>
                         </div>
                     </div>
 
                     <div class="admin-card" style="grid-column: span 2;">
                         <h3 style="margin-bottom: 16px; color: var(--admin-brand-yellow);"><i class="ph-bold ph-clock-counter-clockwise"></i> Historique des Actions Admin sur ce Compte</h3>
-                        <div style="background: var(--admin-bg); padding: 14px; border-radius: 12px; font-family: var(--admin-font-mono); font-size: 0.8rem; line-height: 1.8;">
-                            <div>[14/01/2026 10:15] INSCRIPTION COMPTE • Origine: App iOS Guadeloupe</div>
-                            <div>[15/01/2026 14:20] VALIDATION KYC • Statut: Vérifié par Administrateur</div>
-                            <div>[20/01/2026 18:45] PASSAGE SOUSCRIPTION • Formule Pro Mensuelle (14,99 €/mois)</div>
-                            <div>[02/09/2026 09:30] VIREMENT DE PAIEMENT • 450,00 € versé via Stripe Connect</div>
+                        <div style="background: var(--admin-bg); padding: 14px; border-radius: 12px; font-family: var(--admin-font-mono); font-size: 0.8rem; line-height: 1.8;" id="adminDetailAuditLogs">
+                            <div>Compte actif en base Supabase</div>
                         </div>
 
                         <h3 style="margin-top: 24px; margin-bottom: 16px; color: var(--admin-brand-yellow);"><i class="ph-bold ph-gear"></i> Actions d'Administration Sensibles</h3>
                         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <button class="admin-btn admin-btn-primary btn-approve-kyc" data-user-name="Prestataire LYANN"><i class="ph-bold ph-check-circle"></i> Réattester KYC</button>
+                            <button class="admin-btn admin-btn-primary btn-approve-kyc"><i class="ph-bold ph-check-circle"></i> Réattester KYC</button>
                             <button class="admin-btn admin-btn-secondary"><i class="ph-bold ph-sparkle"></i> Offrir Abonnement Pro</button>
-                            <button class="admin-btn admin-btn-danger btn-suspend-user" data-user-name="Prestataire LYANN"><i class="ph-bold ph-user-minus"></i> Suspendre le Compte</button>
+                            <button class="admin-btn admin-btn-danger btn-suspend-user"><i class="ph-bold ph-user-minus"></i> Suspendre le Compte</button>
                         </div>
                     </div>
                 </div>
@@ -571,14 +549,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td><strong>Entretien & Nettoyage Split Climatisation</strong></td>
-                                <td>Prestataire LYANN</td>
-                                <td>Forfaitaire</td>
-                                <td>65,00 € / Unité</td>
-                                <td><span class="status-badge active">ACTIF</span></td>
-                                <td>
-                                    <button class="admin-btn admin-btn-sm admin-btn-secondary"><i class="ph-bold ph-pencil"></i> Éditer</button>
-                                </td>
+                                <td colspan="6" style="text-align:center; padding:20px; color:var(--admin-text-muted);">Aucun service configuré</td>
                             </tr>
                         </tbody>
                     </table>
@@ -610,18 +581,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td style="font-family: var(--admin-font-mono); color: var(--admin-brand-yellow);">#MIS-97184</td>
-                                <td>
-                                    <div><strong>Huguette S.</strong> ➔ <strong>David J.</strong></div>
-                                    <div style="font-size: 0.75rem; color: var(--admin-text-muted);">Initiée le 02/09/2026</div>
-                                </td>
-                                <td>Réparation Climatiseur Split (Baie-Mahault)</td>
-                                <td><strong>159,40 €</strong> (Fonds Sécurisés)</td>
-                                <td><span class="status-badge active">FUNDS_SECURED</span></td>
-                                <td>
-                                    <button class="admin-btn admin-btn-sm admin-btn-secondary"><i class="ph-bold ph-clock"></i> Timeline</button>
-                                    <button class="admin-btn admin-btn-sm admin-btn-primary btn-release-payout" data-amount="159.40 €" data-provider="Prestataire LYANN"><i class="ph-bold ph-paper-plane-tilt"></i> Libérer Payout</button>
-                                </td>
+                                <td colspan="6" style="text-align:center; padding:20px; color:var(--admin-text-muted);">Chargement des missions...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -677,12 +637,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td style="font-family: var(--admin-font-mono);">#DEV-4401</td>
-                                <td>Prestataire LYANN</td>
-                                <td>Huguette S.</td>
-                                <td>159,40 €</td>
-                                <td>2 / 2 Validés</td>
-                                <td><span class="status-badge verified">ACCEPTED</span></td>
+                                <td colspan="6" style="text-align:center; padding:20px; color:var(--admin-text-muted);">Chargement des devis...</td>
                             </tr>
                         </tbody>
                     </table>

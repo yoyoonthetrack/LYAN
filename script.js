@@ -919,7 +919,7 @@ function injectMobileInterface() {
                 <button type="button" class="sheet-option-btn" id="btnSheetNeedHelp">
                     <span class="sheet-option-icon"><i class="ph ph-magnifying-glass"></i></span>
                     <div class="sheet-option-info">
-                        <h4>Besoin d'un coup de main</h4>
+                        <h4>Publier un besoin</h4>
                         <p>Publiez ce dont vous avez besoin.</p>
                     </div>
                 </button>
@@ -8558,7 +8558,7 @@ window.loadUserReceivedInvitationsUI = async function() {
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <img src="${window.getLyannAvatarUrl(requester.avatar_url)}" onerror="window.handleAvatarError(this)" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                             <div>
-                                <strong style="font-size: 0.95rem; color: var(--text-dark);">${requesterName} a besoin d'un coup de main</strong>
+                                <strong style="font-size: 0.95rem; color: var(--text-dark);">${requesterName} a un besoin</strong>
                                 <div style="font-size: 0.78rem; color: var(--text-muted);"><i class="ph ph-map-pin"></i> ${req.location || requester.city || 'Guadeloupe'} · ${dateStr}</div>
                             </div>
                         </div>
@@ -9037,7 +9037,7 @@ window.openHelpRequestWithTarget = function(targetUserId, targetName) {
     const reqModal = document.getElementById('modal-request-help');
     if (bookingModal) {
         const targetNameEl = document.getElementById('bookingTargetMemberName');
-        if (targetNameEl) targetNameEl.textContent = `Demander un coup de main à ${targetName}`;
+        if (targetNameEl) targetNameEl.textContent = `Demander un service à ${targetName}`;
         bookingModal.classList.add('active');
     } else if (reqModal) {
         reqModal.classList.add('active');

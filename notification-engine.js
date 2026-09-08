@@ -274,7 +274,7 @@
         for (const candidate of candidates) {
             // Privacy protection: No scores or breakdown in notification body
             const cityPart = need.city || candidate.city || 'Guadeloupe';
-            const title = "Nouveau coup de main près de chez vous";
+            const title = "Nouveau besoin près de chez vous";
             const body = `Quelqu'un à ${cityPart} cherche de l'aide : "${need.title || need.description || 'Demande de service'}".`;
 
             const notifResult = createNotification({
