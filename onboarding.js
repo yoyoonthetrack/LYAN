@@ -138,6 +138,9 @@ runOnDomReady(() => {
         });
     }
 
+    // Canonical Native OAuth Callback URL
+    const CANONICAL_NATIVE_CALLBACK = 'app.lyann.dom://google-auth';
+
     // Google OAuth Handler
     const googleAuthBtns = document.querySelectorAll('.btn-google-auth, #btnGoogleLogin, #btnGoogleSignup, #googleAuthBtn, .btn-google');
     googleAuthBtns.forEach(btn => {
@@ -145,8 +148,9 @@ runOnDomReady(() => {
             e.preventDefault();
             if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                 try {
-                    const isNative = (typeof window.isNativePlatform === 'function' && window.isNativePlatform());
-                    const redirectUrl = isNative ? 'app.lyann.dom://' : window.location.origin;
+                    const isNative = (typeof window.isNativePlatform === 'function' && window.isNativePlatform()) || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+                    const redirectUrl = isNative ? CANONICAL_NATIVE_CALLBACK : window.location.origin;
+                    console.log('[Google Auth] Initiating OAuth with redirectTo:', redirectUrl);
                     const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithOAuth({
                         provider: 'google',
                         options: { redirectTo: redirectUrl }
@@ -168,6 +172,55 @@ runOnDomReady(() => {
             }
         });
     });
+
+    // Native Capacitor App Deep Link Listener for Google OAuth Return
+    if (!window.__nativeOAuthListenerBound__ && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+        window.__nativeOAuthListenerBound__ = true;
+        try {
+            window.Capacitor.Plugins.App.addListener('appUrlOpen', async (data) => {
+                console.log('[NATIVE_OAUTH] appUrlOpen received URL:', data?.url);
+                if (data && data.url && (data.url.includes('google-auth') || data.url.startsWith('app.lyann.dom'))) {
+                    try {
+                        const normalizedUrl = data.url.replace(/^app\.lyann\.dom:\/\//i, 'https://app.lyann.dom/');
+                        const urlObj = new URL(normalizedUrl);
+                        const code = urlObj.searchParams.get('code');
+                        
+                        if (code && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+                            console.log('[NATIVE_OAUTH] Exchanging PKCE code for session...');
+                            const { data: sessionData, error: sessionErr } = await window.LYANN_API_CLIENT.supabase.auth.exchangeCodeForSession(code);
+                            if (sessionErr) {
+                                console.error('[NATIVE_OAUTH] exchangeCodeForSession error:', sessionErr);
+                            } else {
+                                console.log('[NATIVE_OAUTH] Session established via PKCE code exchange!', sessionData?.session?.user?.id);
+                            }
+                        } else if (urlObj.hash && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+                            const hashParams = new URLSearchParams(urlObj.hash.substring(1));
+                            const accessToken = hashParams.get('access_token');
+                            const refreshToken = hashParams.get('refresh_token');
+                            if (accessToken && refreshToken) {
+                                console.log('[NATIVE_OAUTH] Setting Supabase session from hash tokens...');
+                                await window.LYANN_API_CLIENT.supabase.auth.setSession({
+                                    access_token: accessToken,
+                                    refresh_token: refreshToken
+                                });
+                            }
+                        }
+
+                        if (typeof window.checkAuthState === 'function') {
+                            await window.checkAuthState();
+                        } else {
+                            window.location.reload();
+                        }
+                    } catch (err) {
+                        console.error('[NATIVE_OAUTH] Error processing callback URL:', err);
+                    }
+                }
+            });
+            console.log('[NATIVE_OAUTH] Capacitor appUrlOpen listener successfully attached.');
+        } catch (err) {
+            console.warn('[NATIVE_OAUTH] Failed to attach Capacitor appUrlOpen listener:', err);
+        }
+    }
 
     // Attach Signup Triggers
     const signupTriggers = document.querySelectorAll('.open-signup-trigger, .open-register-modal, #btnWelcomeSignup');
