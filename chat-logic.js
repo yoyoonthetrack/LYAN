@@ -1765,6 +1765,11 @@ document.addEventListener('touchstart', (e) => {
     function cleanupLegacyDemoChatData() {
         const demoSignatures = [
             "Prestataire LYANN",
+            "David Jean-Baptiste",
+            "David M.",
+            "David M. (34 ans)",
+            "David",
+            "1",
             "Tati Huguette Cazeau",
             "Sarah Manicon",
             "Marc (Plombier)",
@@ -1773,18 +1778,13 @@ document.addEventListener('touchstart', (e) => {
             "contact 9"
         ];
         try {
+            const isRealSupabase = (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && !(typeof window.LYANN_DEMO_MODE !== 'undefined' && window.LYANN_DEMO_MODE === true));
             const stored = localStorage.getItem(CHAT_MSG_KEY);
             if (stored) {
                 let data = JSON.parse(stored);
                 let changed = false;
-                demoSignatures.forEach(sig => {
-                    if (data[sig]) {
-                        delete data[sig];
-                        changed = true;
-                    }
-                });
                 Object.keys(data).forEach(k => {
-                    if (demoSignatures.includes(k)) {
+                    if (demoSignatures.includes(k) || (isRealSupabase && !isUUID(k))) {
                         delete data[k];
                         changed = true;
                     }
@@ -1797,7 +1797,7 @@ document.addEventListener('touchstart', (e) => {
             const lastActive = localStorage.getItem('lyann_last_active_contact');
             if (lastActive) {
                 const parsed = JSON.parse(lastActive);
-                if (parsed && demoSignatures.includes(parsed.id)) {
+                if (parsed && (demoSignatures.includes(parsed.id) || (isRealSupabase && !isUUID(parsed.id)))) {
                     localStorage.removeItem('lyann_last_active_contact');
                 }
             }
@@ -1883,19 +1883,16 @@ document.addEventListener('touchstart', (e) => {
         }
     };
 
-    function renderChatContacts() {
+    async function renderChatContacts() {
         const listContainer = document.getElementById('chatContactsList');
         if (!listContainer) return;
         
         cleanupLegacyDemoChatData();
 
         const isDemoMode = (typeof window.LYANN_DEMO_MODE !== 'undefined' && window.LYANN_DEMO_MODE === true);
-        const defaultContacts = isDemoMode ? [
-            { id: "Prestataire LYANN", name: "Prestataire LYANN", avatar: "david-34.png", preview: "Bonjour ! Je suis dispo cet ap..." },
-            { id: "Tati Huguette Cazeau", name: "Tati Huguette Cazeau", avatar: "huguette-68.png", preview: "Merci beaucoup pour votre aide !" },
-            { id: "Sarah Manicon", name: "Sarah Manicon", avatar: "sarah-29.png", preview: "À très bientôt pour la rénovation !" }
-        ] : [];
+        const isRealSupabase = (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && !isDemoMode);
 
+        let allContacts = [];
         let storedMsgs = {};
         try {
             const stored = localStorage.getItem(CHAT_MSG_KEY);
@@ -1907,27 +1904,103 @@ document.addEventListener('touchstart', (e) => {
             deletedConvs = JSON.parse(localStorage.getItem('lyann_deleted_conversations') || '[]');
         } catch(e) {}
 
-        const allContacts = [...defaultContacts];
-        Object.keys(storedMsgs).forEach(contactId => {
-            if (!allContacts.some(c => c.id === contactId)) {
-                let avatar = 'avatar-male-blue.png';
-                if (window.LYANN_MEMBERS) {
-                    const member = window.LYANN_MEMBERS.find(m => m.name === contactId || `${m.name} (${m.age} ans)` === contactId);
-                    if (member) avatar = member.avatar;
-                }
-                
-                const msgs = storedMsgs[contactId] || [];
-                const lastMsg = msgs[msgs.length - 1];
-                const preview = lastMsg ? (lastMsg.sender === 'me' ? 'Vous : ' + lastMsg.text : lastMsg.text) : 'Nouvelle conversation';
+        if (isRealSupabase) {
+            const myUserId = getMyId();
+            if (myUserId && isUUID(myUserId)) {
+                try {
+                    const { data: convParts } = await window.LYANN_API_CLIENT.getUserConversations(myUserId);
+                    if (convParts && Array.isArray(convParts) && convParts.length > 0) {
+                        const convIds = convParts.map(cp => cp.conversation_id).filter(Boolean);
+                        const { data: allParts } = await window.LYANN_API_CLIENT.supabase
+                            .from('conversation_participants')
+                            .select('conversation_id, user_id')
+                            .in('conversation_id', convIds)
+                            .neq('user_id', myUserId);
+                        
+                        const partnerMap = {};
+                        if (allParts) {
+                            allParts.forEach(p => { partnerMap[p.conversation_id] = p.user_id; });
+                        }
 
-                allContacts.push({
-                    id: contactId,
-                    name: contactId,
-                    avatar: avatar,
-                    preview: preview
-                });
+                        window.LYANN_PROFILES_CACHE = window.LYANN_PROFILES_CACHE || {};
+
+                        for (const convId of convIds) {
+                            const partnerId = partnerMap[convId];
+                            if (!partnerId) continue;
+
+                            let partnerProfile = window.LYANN_PROFILES_CACHE[partnerId];
+                            if (!partnerProfile) {
+                                const { data: pData } = await window.LYANN_API_CLIENT.supabase
+                                    .from('public_profiles')
+                                    .select('id, first_name, last_name, avatar_url')
+                                    .eq('id', partnerId)
+                                    .maybeSingle();
+                                if (pData) {
+                                    const fn = (pData.first_name || '').trim();
+                                    const ln = (pData.last_name || '').trim();
+                                    const init = ln ? ` ${ln.charAt(0)}.` : '';
+                                    partnerProfile = {
+                                        displayName: `${fn}${init}`.trim() || 'Membre LYANN',
+                                        avatar: window.getLyannAvatarUrl(pData.avatar_url)
+                                    };
+                                    window.LYANN_PROFILES_CACHE[partnerId] = partnerProfile;
+                                }
+                            }
+
+                            const { data: msgs } = await window.LYANN_API_CLIENT.supabase
+                                .from('messages')
+                                .select('content, sender_id, created_at')
+                                .eq('conversation_id', convId)
+                                .order('created_at', { ascending: false })
+                                .limit(1);
+
+                            const lastMsg = (msgs && msgs.length > 0) ? msgs[0] : null;
+                            const preview = lastMsg
+                                ? (lastMsg.sender_id === myUserId ? 'Vous : ' + lastMsg.content : lastMsg.content)
+                                : 'Nouvelle conversation';
+
+                            allContacts.push({
+                                id: partnerId,
+                                conversationId: convId,
+                                name: partnerProfile ? partnerProfile.displayName : 'Membre LYANN',
+                                avatar: partnerProfile ? partnerProfile.avatar : 'avatar-male-blue.png',
+                                preview: preview
+                            });
+                        }
+                    }
+                } catch(err) {
+                    console.warn('[Real Chat Contacts Error]', err);
+                }
             }
-        });
+        } else {
+            const defaultContacts = isDemoMode ? [
+                { id: "Prestataire LYANN", name: "Prestataire LYANN", avatar: "david-34.png", preview: "Bonjour ! Je suis dispo cet ap..." },
+                { id: "Tati Huguette Cazeau", name: "Tati Huguette Cazeau", avatar: "huguette-68.png", preview: "Merci beaucoup pour votre aide !" },
+                { id: "Sarah Manicon", name: "Sarah Manicon", avatar: "sarah-29.png", preview: "À très bientôt pour la rénovation !" }
+            ] : [];
+
+            allContacts = [...defaultContacts];
+            Object.keys(storedMsgs).forEach(contactId => {
+                if (!allContacts.some(c => c.id === contactId)) {
+                    let avatar = 'avatar-male-blue.png';
+                    if (window.LYANN_MEMBERS) {
+                        const member = window.LYANN_MEMBERS.find(m => m.name === contactId || `${m.name} (${m.age} ans)` === contactId);
+                        if (member) avatar = member.avatar;
+                    }
+                    
+                    const msgs = storedMsgs[contactId] || [];
+                    const lastMsg = msgs[msgs.length - 1];
+                    const preview = lastMsg ? (lastMsg.sender === 'me' ? 'Vous : ' + lastMsg.text : lastMsg.text) : 'Nouvelle conversation';
+
+                    allContacts.push({
+                        id: contactId,
+                        name: contactId,
+                        avatar: avatar,
+                        preview: preview
+                    });
+                }
+            });
+        }
 
         const activeContacts = allContacts.filter(c => !deletedConvs.includes(c.id));
 
@@ -1936,7 +2009,6 @@ document.addEventListener('touchstart', (e) => {
         const contactsToRender = query
             ? activeContacts.filter(c => c.name.toLowerCase().includes(query) || (c.preview && c.preview.toLowerCase().includes(query)))
             : activeContacts;
-        window.LYANN_PROFILES_CACHE = window.LYANN_PROFILES_CACHE || {};
 
         if (contactsToRender.length === 0) {
             listContainer.innerHTML = `
@@ -2047,6 +2119,28 @@ document.addEventListener('touchstart', (e) => {
     }
 
     window.renderChatContacts = renderChatContacts;
+
+    window.openLyannChatModal = function() {
+        document.body.classList.add('hide-bottom-nav');
+        document.body.classList.add('in-chat-active');
+        const modal = document.getElementById('chatModal');
+        if (modal) {
+            modal.removeAttribute('style');
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        }
+        document.body.style.overflow = 'hidden';
+        const chatLayout = document.querySelector('.chat-modal-layout');
+        if (chatLayout) {
+            chatLayout.classList.remove('mobile-conversation-active');
+        }
+        if (typeof window.renderChatContacts === 'function') {
+            window.renderChatContacts();
+        }
+        if (typeof initChatCloseBtn === 'function') {
+            initChatCloseBtn();
+        }
+    };
 
     initializeChatContacts();
     renderChatContacts();

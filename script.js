@@ -1890,8 +1890,6 @@ document.addEventListener('click', (e) => {
             e.preventDefault();
             if (typeof window.openLyannChatModal === 'function') {
                 window.openLyannChatModal();
-            } else if (typeof window.openChatWithUser === 'function') {
-                window.openChatWithUser('Prestataire LYANN', 'david-34.png', '1');
             } else {
                 window.location.href = 'index.html?action=openchat';
             }
@@ -5111,7 +5109,7 @@ safeDomReady(() => {
                 </div>
                 <div class="account-v3-section">
                     <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 12px 0;">Mes échanges</h4>
-                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openChatWithUser==='function') window.openChatWithUser();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; cursor:pointer;">
+                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openLyannChatModal==='function') window.openLyannChatModal(); else if(typeof window.openChatWithUser==='function') window.openChatWithUser();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; cursor:pointer;">
                         <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-chat-circle-dots"></i></div>
                         <div class="row-content" style="flex:1;">
                             <strong style="font-size:0.94rem; color:#1E293B; display:block;">Accéder à la messagerie</strong>
@@ -5621,8 +5619,8 @@ safeDomReady(() => {
                 speedDialWrapper.classList.remove('active');
                 const chatModal = document.getElementById('chatModal');
                 if (chatModal) {
-                    let targetName = 'Prestataire LYANN';
-                    let targetAvatar = 'david-34.png';
+                    let targetName = null;
+                    let targetAvatar = null;
                     try {
                         const stored = localStorage.getItem('lyann_last_active_contact');
                         if (stored) {
@@ -5631,7 +5629,11 @@ safeDomReady(() => {
                             targetAvatar = parsed.avatar;
                         }
                     } catch(e) {}
-                    openChatWithUser(targetName, targetAvatar, targetName);
+                    if (targetName && typeof window.openChatWithUser === 'function') {
+                        window.openChatWithUser(targetName, targetAvatar, targetName);
+                    } else if (typeof window.openLyannChatModal === 'function') {
+                        window.openLyannChatModal();
+                    }
                 } else {
                     window.location.href = 'feed.html?action=openchat';
                 }
@@ -6779,8 +6781,8 @@ safeDomReady(() => {
     floatingChat.addEventListener('click', () => {
         const chatModal = document.getElementById('chatModal');
         if (chatModal) {
-            let targetName = 'Prestataire LYANN';
-            let targetAvatar = 'david-34.png';
+            let targetName = null;
+            let targetAvatar = null;
             try {
                 const stored = localStorage.getItem('lyann_last_active_contact');
                 if (stored) {
@@ -6789,7 +6791,11 @@ safeDomReady(() => {
                     targetAvatar = parsed.avatar;
                 }
             } catch(e) {}
-            openChatWithUser(targetName, targetAvatar, targetName);
+            if (targetName && typeof window.openChatWithUser === 'function') {
+                window.openChatWithUser(targetName, targetAvatar, targetName);
+            } else if (typeof window.openLyannChatModal === 'function') {
+                window.openLyannChatModal();
+            }
             const notif = document.getElementById('floatingChatNotif');
             if (notif) notif.classList.remove('active');
         } else {
@@ -6806,8 +6812,8 @@ safeDomReady(() => {
             if (nameParam) {
                 openChatWithUser(decodeURIComponent(nameParam), "david-34.png");
             } else {
-                let targetName = 'Prestataire LYANN';
-                let targetAvatar = 'david-34.png';
+                let targetName = null;
+                let targetAvatar = null;
                 try {
                     const stored = localStorage.getItem('lyann_last_active_contact');
                     if (stored) {
@@ -6816,7 +6822,11 @@ safeDomReady(() => {
                         targetAvatar = parsed.avatar;
                     }
                 } catch(e) {}
-                openChatWithUser(targetName, targetAvatar, targetName);
+                if (targetName && typeof window.openChatWithUser === 'function') {
+                    window.openChatWithUser(targetName, targetAvatar, targetName);
+                } else if (typeof window.openLyannChatModal === 'function') {
+                    window.openLyannChatModal();
+                }
             }
         }, 500);
     } else if (chatActionParam === 'email_confirmed' || urlParams.has('confirmed')) {
@@ -6979,9 +6989,13 @@ safeDomReady(() => {
             item.addEventListener('click', () => {
                 const chatModal = document.getElementById('chatModal');
                 if (chatModal) {
-                    openChatWithUser(log.recipientName || "Prestataire LYANN", "david-34.png");
+                    if (log.recipientName) {
+                        openChatWithUser(log.recipientName, "david-34.png");
+                    } else if (typeof window.openLyannChatModal === 'function') {
+                        window.openLyannChatModal();
+                    }
                 } else {
-                    window.location.href = `feed.html?action=openchat&name=${encodeURIComponent(log.recipientName || "Prestataire LYANN")}`;
+                    window.location.href = log.recipientName ? `feed.html?action=openchat&name=${encodeURIComponent(log.recipientName)}` : 'feed.html?action=openchat';
                 }
                 if (navNotifDropdown) navNotifDropdown.style.display = 'none';
             });
