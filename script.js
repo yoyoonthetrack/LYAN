@@ -2712,7 +2712,7 @@ safeDomReady(() => {
             ctaHTML = `
                 <div class="lyann-profile-cta-group" style="display: flex; align-items: center; gap: 8px;">
                     <button type="button" class="btn btn-primary btn-sm" onclick="window.openChatWithUser('${chatContactName}', '${chatAvatarSrc}', '${chatContactId}')"><i class="ph ph-chat-circle"></i> Contacter</button>
-                    <button type="button" class="btn-fav-toggle" data-fav-type="PROFILE" data-fav-id="${pData.id}" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: 1px solid #CBD5E1; border-radius: 50%; padding: 8px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #64748B; cursor: pointer; flex-shrink: 0;">
+                    <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="PROFILE" data-favorite-id="${pData.id}" data-fav-type="PROFILE" data-fav-id="${pData.id}" data-surface="profile-modal" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: 1px solid #CBD5E1; border-radius: 50%; padding: 8px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #64748B; cursor: pointer; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                         <i class="ph ph-bookmark-simple"></i>
                     </button>
                 </div>
@@ -3975,7 +3975,7 @@ safeDomReady(() => {
                                             <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn-fav-toggle" data-fav-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-fav-id="${targetId}" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; flex-shrink: 0;">
+                                    <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-favorite-id="${targetId}" data-fav-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-fav-id="${targetId}" data-surface="bokantaj-feed" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                                         <i class="ph ph-bookmark-simple"></i>
                                     </button>
                                 </div>
@@ -6386,7 +6386,7 @@ safeDomReady(() => {
                         ${extraHTML && item.entity_type === 'REQUEST' ? extraHTML : ''}
                     </div>
                     ${extraHTML && item.entity_type === 'BOKANTAJ_POST' ? extraHTML : ''}
-                    <button type="button" class="btn-fav-toggle is-favorite" data-fav-type="${item.entity_type}" data-fav-id="${item.entity_id}" aria-label="Retirer des favoris" title="Retirer des favoris" style="background:none; border:none; color:#4A7C59; font-size:1.3rem; cursor:pointer; padding:10px; min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <button type="button" class="lyann-favorite-btn btn-fav-toggle is-favorite" data-favorite-type="${item.entity_type}" data-favorite-id="${item.entity_id}" data-fav-type="${item.entity_type}" data-fav-id="${item.entity_id}" data-surface="favorites-view" aria-label="Retirer des favoris" title="Retirer des favoris" style="background:none; border:none; color:#4A7C59; font-size:1.3rem; cursor:pointer; padding:10px; min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; position:relative; z-index:20; pointer-events:auto; touch-action:manipulation; -webkit-tap-highlight-color:transparent; flex-shrink:0;">
                         <i class="ph-fill ph-bookmark-simple"></i>
                     </button>
                 </div>
@@ -6419,14 +6419,20 @@ safeDomReady(() => {
         if (!window.LyannFavoritesService || typeof window.LyannFavoritesService.getMyFavorites !== 'function') return;
         const favs = await window.LyannFavoritesService.getMyFavorites();
         const favMap = {};
-        favs.forEach(f => {
-            favMap[`${f.entity_type}:${f.entity_id}`] = true;
-        });
+        if (Array.isArray(favs)) {
+            favs.forEach(f => {
+                if (f && f.entity_type && f.entity_id) {
+                    favMap[`${f.entity_type}:${f.entity_id}`] = true;
+                }
+            });
+        }
 
-        document.querySelectorAll('.btn-fav-toggle').forEach(btn => {
-            const type = btn.dataset.favType;
-            const id = btn.dataset.favId;
-            const isFav = favMap[`${type}:${id}`];
+        document.querySelectorAll('.lyann-favorite-btn, .btn-fav-toggle').forEach(btn => {
+            const type = btn.dataset.favoriteType || btn.dataset.favType;
+            const id = btn.dataset.favoriteId || btn.dataset.favId;
+            if (!type || !id) return;
+
+            const isFav = !!favMap[`${type}:${id}`];
             if (isFav) {
                 btn.classList.add('is-favorite');
                 btn.style.color = '#4A7C59';
@@ -6449,6 +6455,101 @@ safeDomReady(() => {
 
     if (!window.__favToggleDelegatorBound__) {
         window.__favToggleDelegatorBound__ = true;
+
+        let lastFavoriteTapTime = 0;
+
+        async function handleFavoriteBtnTap(e) {
+            const favBtn = e.target.closest('.lyann-favorite-btn, .btn-fav-toggle');
+            if (!favBtn) return;
+
+            // De-duplicate fast touchend -> click events within 350ms
+            const now = Date.now();
+            if (now - lastFavoriteTapTime < 350) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            lastFavoriteTapTime = now;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const surface = favBtn.dataset.surface || (favBtn.closest('.flash-card') ? 'bokantaj-feed' : favBtn.closest('.talent-card') ? 'search-explorer' : favBtn.closest('#publicMemberProfileModal') ? 'profile-modal' : favBtn.closest('#lyannDetailModal') ? 'lyann-detail' : 'general');
+            const type = favBtn.dataset.favoriteType || favBtn.dataset.favType;
+            const id = favBtn.dataset.favoriteId || favBtn.dataset.favId;
+
+            let isAuthenticated = false;
+            if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getCurrentUserId === 'function') {
+                const uid = window.LYANN_API_CLIENT.getCurrentUserId();
+                if (uid) isAuthenticated = true;
+            }
+            if (!isAuthenticated && window.supabaseClient) {
+                try {
+                    const { data } = await window.supabaseClient.auth.getSession();
+                    if (data?.session?.user) isAuthenticated = true;
+                } catch (err) {}
+            }
+
+            console.log(`[FavoriteTap] surface=${surface} entityType=${type} entityId=${id} authenticated=${isAuthenticated} handlerReached=true`);
+
+            if (!type || !id) {
+                console.warn('[FavoriteTap] Missing parameters type or id:', { type, id });
+                return;
+            }
+
+            if (!isAuthenticated) {
+                if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                    window.NotificationService.showToast('info', 'Connectez-vous pour enregistrer vos favoris.');
+                } else if (typeof window.lyannAlert === 'function') {
+                    window.lyannAlert('Connectez-vous pour enregistrer vos favoris.');
+                }
+                if (typeof window.openAuthModal === 'function') {
+                    window.openAuthModal('login');
+                }
+                return;
+            }
+
+            favBtn.style.opacity = '0.5';
+            favBtn.disabled = true;
+
+            try {
+                const res = await window.LyannFavoritesService.toggleFavorite(type, id);
+                if (res.isFavorite) {
+                    favBtn.classList.add('is-favorite');
+                    favBtn.style.color = '#4A7C59';
+                    favBtn.innerHTML = '<i class="ph-fill ph-bookmark-simple"></i>';
+                    favBtn.setAttribute('aria-label', 'Retirer des favoris');
+                    favBtn.setAttribute('title', 'Retirer des favoris');
+                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                        window.NotificationService.showToast('success', 'Ajouté à vos favoris.');
+                    }
+                } else {
+                    favBtn.classList.remove('is-favorite');
+                    favBtn.style.color = '#94A3B8';
+                    favBtn.innerHTML = '<i class="ph ph-bookmark-simple"></i>';
+                    favBtn.setAttribute('aria-label', 'Ajouter aux favoris');
+                    favBtn.setAttribute('title', 'Ajouter aux favoris');
+                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                        window.NotificationService.showToast('info', 'Retiré de vos favoris.');
+                    }
+                }
+                if (document.getElementById('favSubViewContainer')) {
+                    const activeFilter = document.querySelector('.fav-tab-btn.active')?.dataset.favFilter || 'ALL';
+                    window.loadAccountFavoritesSubView(activeFilter);
+                }
+            } catch (err) {
+                console.error('[FavoriteTap] Toggle error:', err);
+            } finally {
+                favBtn.style.opacity = '1';
+                favBtn.disabled = false;
+            }
+        }
+
+        // Bind delegator with capture: true on both touchend and click for immediate iOS WebKit response
+        document.addEventListener('touchend', handleFavoriteBtnTap, { passive: false, capture: true });
+        document.addEventListener('click', handleFavoriteBtnTap, { capture: true });
+
+        // Tab filter delegator for Account Center Favorites SubView
         document.addEventListener('click', async function(e) {
             const filterBtn = e.target.closest('.fav-tab-btn');
             if (filterBtn) {
@@ -6463,78 +6564,8 @@ safeDomReady(() => {
                 filterBtn.style.color = '#FFF';
                 const filter = filterBtn.dataset.favFilter || 'ALL';
                 window.loadAccountFavoritesSubView(filter);
-                return;
             }
-
-            const favBtn = e.target.closest('.btn-fav-toggle');
-            if (favBtn) {
-                e.preventDefault();
-                e.stopPropagation();
-                const type = favBtn.dataset.favType;
-                const id = favBtn.dataset.favId;
-                if (!type || !id) return;
-
-                // Check auth state
-                let isAuthenticated = false;
-                if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getCurrentUserId === 'function') {
-                    const uid = window.LYANN_API_CLIENT.getCurrentUserId();
-                    if (uid) isAuthenticated = true;
-                }
-                if (!isAuthenticated && window.supabaseClient) {
-                    try {
-                        const { data } = await window.supabaseClient.auth.getSession();
-                        if (data?.session?.user) isAuthenticated = true;
-                    } catch (e) {}
-                }
-
-                if (!isAuthenticated) {
-                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                        window.NotificationService.showToast('info', 'Connectez-vous pour enregistrer vos favoris.');
-                    } else if (typeof window.lyannAlert === 'function') {
-                        window.lyannAlert('Connectez-vous pour enregistrer vos favoris.');
-                    }
-                    if (typeof window.openAuthModal === 'function') {
-                        window.openAuthModal('login');
-                    }
-                    return;
-                }
-
-                favBtn.style.opacity = '0.5';
-                favBtn.disabled = true;
-
-                try {
-                    const res = await window.LyannFavoritesService.toggleFavorite(type, id);
-                    if (res.isFavorite) {
-                        favBtn.classList.add('is-favorite');
-                        favBtn.style.color = '#4A7C59';
-                        favBtn.innerHTML = '<i class="ph-fill ph-bookmark-simple"></i>';
-                        favBtn.setAttribute('aria-label', 'Retirer des favoris');
-                        favBtn.setAttribute('title', 'Retirer des favoris');
-                        if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                            window.NotificationService.showToast('success', 'Ajouté à vos favoris.');
-                        }
-                    } else {
-                        favBtn.classList.remove('is-favorite');
-                        favBtn.style.color = '#94A3B8';
-                        favBtn.innerHTML = '<i class="ph ph-bookmark-simple"></i>';
-                        favBtn.setAttribute('aria-label', 'Ajouter aux favoris');
-                        favBtn.setAttribute('title', 'Ajouter aux favoris');
-                        if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                            window.NotificationService.showToast('info', 'Retiré de vos favoris.');
-                        }
-                    }
-                    if (document.getElementById('favSubViewContainer')) {
-                        const activeFilter = document.querySelector('.fav-tab-btn.active')?.dataset.favFilter || 'ALL';
-                        window.loadAccountFavoritesSubView(activeFilter);
-                    }
-                } catch (err) {
-                    console.error('Favorite toggle error:', err);
-                } finally {
-                    favBtn.style.opacity = '1';
-                    favBtn.disabled = false;
-                }
-            }
-        });
+        }, { capture: true });
     }
 
     let authInitializationComplete = false;
@@ -7920,7 +7951,7 @@ safeDomReady(() => {
                                 <span class="talent-role" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${role} · ${city}</span>
                             </div>
                         </div>
-                        <button type="button" class="btn-fav-toggle" data-fav-type="PROFILE" data-fav-id="${candId}" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; flex-shrink: 0;">
+                        <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="PROFILE" data-favorite-id="${candId}" data-fav-type="PROFILE" data-fav-id="${candId}" data-surface="search-explorer" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                             <i class="ph ph-bookmark-simple"></i>
                         </button>
                     </div>
@@ -9147,7 +9178,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                         <h4 id="lyannDetailTitle" style="margin: 6px 0 0 0; font-size: 1.15rem; font-weight: 800; color: #1E2822;">Besoin d'entraide</h4>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <button type="button" class="btn-fav-toggle" id="lyannDetailFavBtn" data-fav-type="REQUEST" data-fav-id="${requestId}" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 6px; font-size: 1.3rem; cursor: pointer; color: #94A3B8; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; flex-shrink: 0;">
+                        <button type="button" class="lyann-favorite-btn btn-fav-toggle" id="lyannDetailFavBtn" data-favorite-type="REQUEST" data-favorite-id="${requestId}" data-fav-type="REQUEST" data-fav-id="${requestId}" data-surface="lyann-detail" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 6px; font-size: 1.3rem; cursor: pointer; color: #94A3B8; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                             <i class="ph ph-bookmark-simple"></i>
                         </button>
                         <span id="lyannDetailStatus" style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">● OPEN</span>
@@ -9258,7 +9289,10 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
 
     const favDetailBtn = document.getElementById('lyannDetailFavBtn');
     if (favDetailBtn && requestData.id) {
+        favDetailBtn.dataset.favoriteId = requestData.id;
         favDetailBtn.dataset.favId = requestData.id;
+        favDetailBtn.dataset.favoriteType = 'REQUEST';
+        favDetailBtn.dataset.favType = 'REQUEST';
     }
     if (typeof window.syncFavoriteButtonStates === 'function') {
         window.syncFavoriteButtonStates();

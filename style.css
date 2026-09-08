@@ -15170,4 +15170,41 @@ body.is-native-app .navbar .nav-auth-btn {
     color: #DC2626 !important;
 }
 
+/* ==========================================================================
+   FAVORITES V2 — BOOKMARK BUTTON TOUCH TARGET & HIT TEST (IOS & WEB)
+   ========================================================================== */
+.lyann-favorite-btn,
+.btn-fav-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    position: relative !important;
+    z-index: 20 !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+}
+
+.lyann-favorite-btn i,
+.btn-fav-toggle i {
+    pointer-events: none !important;
+    font-size: 1.3rem;
+}
+
+.lyann-favorite-btn:active,
+.btn-fav-toggle:active {
+    transform: scale(0.92) !important;
+}
+
 
