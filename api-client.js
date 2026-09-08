@@ -1861,6 +1861,11 @@ const LYANN_API_CLIENT = {
             console.error("Erreur création demande Supabase DB:", error);
             throw error;
         }
+
+        if (data && payload.media_urls && Array.isArray(payload.media_urls)) {
+            data.media_urls = payload.media_urls;
+        }
+
         return data;
     },
 

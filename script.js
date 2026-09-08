@@ -5575,28 +5575,11 @@ safeDomReady(() => {
             sdActionMakeRequest.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                speedDialWrapper.classList.remove('active');
-                
-                const wizardModal = document.getElementById('modal-request-help');
-                if (wizardModal) {
-                    wizardModal.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                    // Reset au step 1
-                    const allSteps = wizardModal.querySelectorAll('.wizard-step');
-                    allSteps.forEach((s, i) => {
-                        s.style.display = (i === 0) ? 'block' : 'none';
-                    });
-                    const prevBtn = document.getElementById('wizardBtnPrev');
-                    const nextBtn = document.getElementById('wizardBtnNext');
-                    const submitBtn = document.getElementById('wizardBtnSubmit');
-                    if (prevBtn) prevBtn.style.visibility = 'hidden';
-                    if (nextBtn) nextBtn.style.display = 'block';
-                    if (submitBtn) submitBtn.style.display = 'none';
-                    const progressFill = wizardModal.querySelector('.wizard-progress-fill');
-                    if (progressFill) progressFill.style.width = '16.66%';
+                if (speedDialWrapper) speedDialWrapper.classList.remove('active');
+                if (typeof window.openLyannWizard === 'function') {
+                    window.openLyannWizard();
                 } else {
-                    // Page sans modale → rediriger
-                    window.location.href = 'feed.html';
+                    window.location.href = 'feed.html?openWizard=true';
                 }
             });
         }
@@ -8006,8 +7989,14 @@ safeDomReady(() => {
     
     const steps = modalRequestHelp.querySelectorAll('.wizard-step');
 
+    window.wizardSelectedPhotos = window.wizardSelectedPhotos || [];
+
     window.openLyannWizard = function(prefillQuery = null) {
         if(modalRequestHelp) {
+            window.wizardSelectedPhotos = [];
+            if (typeof window.renderWizardPhotoPreviews === 'function') {
+                window.renderWizardPhotoPreviews();
+            }
             modalRequestHelp.classList.add('active');
             document.body.style.overflow = 'hidden';
             goToStep(1);
@@ -8062,12 +8051,12 @@ safeDomReady(() => {
             progressBar.style.width = `${(currentStep / totalSteps) * 100}%`;
         }
 
-        // Update buttons
-        btnPrev.style.visibility = currentStep > 1 ? 'visible' : 'hidden';
+        // Update buttons: Publier strictly on final review step (6)
+        if (btnPrev) btnPrev.style.visibility = currentStep > 1 ? 'visible' : 'hidden';
         
         if (currentStep === totalSteps) {
-            btnNext.style.display = 'none';
-            btnSubmit.style.display = 'block';
+            if (btnNext) btnNext.style.display = 'none';
+            if (btnSubmit) btnSubmit.style.display = 'inline-flex';
             
             // Populate summary
             const desc = document.getElementById('wizardDescInput').value;
@@ -8086,67 +8075,112 @@ safeDomReady(() => {
             }
             
         } else {
-            btnNext.style.display = 'block';
-            btnSubmit.style.display = 'none';
+            if (btnNext) btnNext.style.display = 'inline-flex';
+            if (btnSubmit) btnSubmit.style.display = 'none';
+        }
+
+        if (currentStep === 3) {
+            if (typeof window.renderWizardPhotoPreviews === 'function') {
+                window.renderWizardPhotoPreviews();
+            }
         }
     }
 
-    // --- BUG 2 FIX : PHOTOS ---
+    // --- PHOTO SELECTION, PREVIEW & PERSISTENCE ENGINE ---
+    window.renderWizardPhotoPreviews = function() {
+        const wizardPhotoPreviewContainer = document.getElementById('wizardPhotoPreviewContainer');
+        const wizardPhotoPlaceholder = document.getElementById('wizardPhotoPlaceholder');
+        if (!wizardPhotoPreviewContainer || !wizardPhotoPlaceholder) return;
+
+        wizardPhotoPreviewContainer.innerHTML = '';
+        if (!window.wizardSelectedPhotos || window.wizardSelectedPhotos.length === 0) {
+            wizardPhotoPlaceholder.style.display = 'block';
+            wizardPhotoPreviewContainer.style.display = 'none';
+            return;
+        }
+
+        wizardPhotoPlaceholder.style.display = 'none';
+        wizardPhotoPreviewContainer.style.display = 'flex';
+
+        window.wizardSelectedPhotos.forEach((file, idx) => {
+            const imgContainer = document.createElement('div');
+            imgContainer.style.cssText = "position: relative; width: 80px; height: 80px; margin: 4px; display: inline-block;";
+
+            const img = document.createElement('img');
+            img.style.cssText = "width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); shadow: var(--shadow-sm);";
+
+            if (file._previewUrl) {
+                img.src = file._previewUrl;
+            } else {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    file._previewUrl = e.target.result;
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.className = 'photo-remove-btn';
+            removeBtn.setAttribute('aria-label', 'Supprimer la photo');
+            removeBtn.style.cssText = "position: absolute; top: -6px; right: -6px; background: #E74C3C; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; line-height: 1; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.2);";
+            removeBtn.onclick = (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation(); // prevent triggering file picker
+                window.wizardSelectedPhotos.splice(idx, 1);
+                window.renderWizardPhotoPreviews();
+            };
+
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(removeBtn);
+            wizardPhotoPreviewContainer.appendChild(imgContainer);
+        });
+    };
+
     const wizardPhotoUploadZone = document.getElementById('wizardPhotoUploadZone');
     const wizardPhotoInput = document.getElementById('wizardPhotoInput');
-    const wizardPhotoPlaceholder = document.getElementById('wizardPhotoPlaceholder');
-    const wizardPhotoPreviewContainer = document.getElementById('wizardPhotoPreviewContainer');
-    
-    if (wizardPhotoUploadZone && wizardPhotoInput) {
+
+    if (wizardPhotoUploadZone) {
         wizardPhotoUploadZone.addEventListener('click', (e) => {
-            // Prevent triggering again if clicking on the input itself or remove buttons
-            if (e.target !== wizardPhotoInput && !e.target.closest('.photo-remove-btn')) {
-                wizardPhotoInput.click();
+            if (e.target.closest('.photo-remove-btn')) return;
+            const input = document.getElementById('wizardPhotoInput');
+            if (input) {
+                input.click();
             }
         });
+    }
 
-        wizardPhotoInput.addEventListener('change', () => {
-            wizardPhotoPreviewContainer.innerHTML = '';
-            if (wizardPhotoInput.files && wizardPhotoInput.files.length > 0) {
-                wizardPhotoPlaceholder.style.display = 'none';
-                wizardPhotoPreviewContainer.style.display = 'flex';
-                
-                Array.from(wizardPhotoInput.files).forEach((file) => {
-                    if (file.type.startsWith('image/')) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            const imgContainer = document.createElement('div');
-                            imgContainer.style.position = 'relative';
-                            
-                            const img = document.createElement('img');
-                            img.src = e.target.result;
-                            img.style.cssText = "width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);";
-                            
-                            const removeBtn = document.createElement('div');
-                            removeBtn.innerHTML = '&times;';
-                            removeBtn.className = 'photo-remove-btn';
-                            removeBtn.style.cssText = "position: absolute; top: -5px; right: -5px; background: #E74C3C; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; cursor: pointer; line-height: 1;";
-                            removeBtn.onclick = (ev) => {
-                                ev.stopPropagation(); // prevent opening file picker
-                                imgContainer.remove();
-                                if (wizardPhotoPreviewContainer.children.length === 0) {
-                                    wizardPhotoPlaceholder.style.display = 'block';
-                                    wizardPhotoPreviewContainer.style.display = 'none';
-                                    wizardPhotoInput.value = ''; // clear input
-                                }
-                            };
-                            
-                            imgContainer.appendChild(img);
-                            imgContainer.appendChild(removeBtn);
-                            wizardPhotoPreviewContainer.appendChild(imgContainer);
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            } else {
-                wizardPhotoPlaceholder.style.display = 'block';
-                wizardPhotoPreviewContainer.style.display = 'none';
-            }
+    if (wizardPhotoInput) {
+        wizardPhotoInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files || []);
+            if (files.length === 0) return;
+
+            const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+            const maxSize = 5 * 1024 * 1024; // 5MB
+
+            files.forEach((file) => {
+                const fileType = (file.type || '').toLowerCase();
+                if (!allowedMimes.includes(fileType)) {
+                    const msg = `Format de fichier non accepté pour "${file.name}". Seuls JPG, PNG et WEBP sont autorisés.`;
+                    if (window.NotificationService) window.NotificationService.showToast('error', msg);
+                    else alert(msg);
+                    return;
+                }
+
+                if (file.size > maxSize) {
+                    const msg = `La photo "${file.name}" dépasse la limite de 5 Mo (${(file.size / (1024 * 1024)).toFixed(1)} Mo).`;
+                    if (window.NotificationService) window.NotificationService.showToast('error', msg);
+                    else alert(msg);
+                    return;
+                }
+
+                window.wizardSelectedPhotos.push(file);
+            });
+
+            e.target.value = ''; // Reset input to allow selecting same file again if removed
+            window.renderWizardPhotoPreviews();
         });
     }
 
@@ -8256,7 +8290,7 @@ safeDomReady(() => {
                         if (!banner) {
                             banner = document.createElement('div');
                             banner.id = bannerId;
-                            banner.style.cssText = "background: rgba(74, 124, 89, 0.08); border: 1px solid rgba(74, 124, 89, 0.3); padding: 14px 16px; border-radius: 12px; margin-bottom: 20px; font-size: 0.92rem; color: #1F3827; display: flex; align-items: center; gap: 10px;";
+                            banner.style.cssText = "background: rgba(74, 124, 89, 0.08); border: 1px solid rgba(74, 124, 89, 0.3); padding: 14px 16px; border-radius: 12px; margin-bottom: 20px; font-size: 0.92rem; color: #1F3827; display: flex; align-items: flex-start; gap: 10px; width: 100%; box-sizing: border-box;";
                             step2.insertBefore(banner, step2.firstChild);
                         }
 
@@ -8264,12 +8298,12 @@ safeDomReady(() => {
                             banner.style.background = "rgba(74, 124, 89, 0.08)";
                             banner.style.borderColor = "rgba(74, 124, 89, 0.3)";
                             banner.style.color = "#1F3827";
-                            banner.innerHTML = `<i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.25rem; flex-shrink: 0;"></i> <div><b>Nous avons compris :</b> ${window.escapeSearchHtml(result.title)}</div>`;
+                            banner.innerHTML = `<i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.25rem; flex-shrink: 0; margin-top: 2px;"></i> <div style="flex: 1; min-width: 0; white-space: normal; word-break: break-word; overflow-wrap: anywhere;"><b>Nous avons compris :</b> ${window.escapeSearchHtml(result.title)}</div>`;
                         } else {
                             banner.style.background = "#FFF9EC";
                             banner.style.borderColor = "rgba(229, 179, 69, 0.4)";
                             banner.style.color = "#8A6405";
-                            banner.innerHTML = `<i class="ph-fill ph-info" style="color: #E5B345; font-size: 1.25rem; flex-shrink: 0;"></i> <div><b>Demande enregistrée :</b> ${window.escapeSearchHtml(result ? result.title : desc)} <span style="font-size:0.85rem; color: var(--text-muted); font-weight:400; display: block; margin-top:2px;">Vous pouvez adapter le domaine ci-dessous si souhaité.</span></div>`;
+                            banner.innerHTML = `<i class="ph-fill ph-info" style="color: #E5B345; font-size: 1.25rem; flex-shrink: 0; margin-top: 2px;"></i> <div style="flex: 1; min-width: 0; white-space: normal; word-break: break-word; overflow-wrap: anywhere;"><b>Demande enregistrée :</b> ${window.escapeSearchHtml(result ? result.title : desc)} <span style="font-size:0.85rem; color: var(--text-muted); font-weight:400; display: block; margin-top:2px;">Vous pouvez adapter le domaine ci-dessous si souhaité.</span></div>`;
                         }
                     }
 
@@ -8384,6 +8418,21 @@ safeDomReady(() => {
             btnSubmit.disabled = true;
             btnSubmit.innerHTML = '<i class="ph ph-spinner spin"></i> Publication...';
 
+            let uploadedPhotoUrls = [];
+            if (window.wizardSelectedPhotos && window.wizardSelectedPhotos.length > 0) {
+                btnSubmit.innerHTML = '<i class="ph ph-spinner spin"></i> Envoi des photos...';
+                for (const photoFile of window.wizardSelectedPhotos) {
+                    try {
+                        const url = await window.LYANN_API_CLIENT.uploadRequestPhoto(photoFile);
+                        if (url) {
+                            uploadedPhotoUrls.push(url);
+                        }
+                    } catch (uploadErr) {
+                        console.warn("Notice: Storage photo upload warning:", uploadErr);
+                    }
+                }
+            }
+
             try {
                 // Call real Supabase DB API
                 const createdRequest = await window.LYANN_API_CLIENT.createRequest({
@@ -8393,8 +8442,14 @@ safeDomReady(() => {
                     location: location,
                     budget: budgetVal,
                     urgency: urgencyVal,
-                    status: 'OPEN'
+                    status: 'OPEN',
+                    media_urls: uploadedPhotoUrls
                 });
+
+                window.wizardSelectedPhotos = [];
+                if (typeof window.renderWizardPhotoPreviews === 'function') {
+                    window.renderWizardPhotoPreviews();
+                }
 
                 console.log("✅ Real Request successfully inserted into Supabase DB:", createdRequest);
 
