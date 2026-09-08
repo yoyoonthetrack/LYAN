@@ -62,6 +62,7 @@ if (!window.getLyannDefaultAvatar) {
     window.handleAvatarError = function(imgEl) {
         if (imgEl && !imgEl.dataset.fallbackDone) {
             imgEl.dataset.fallbackDone = 'true';
+            imgEl.onerror = null;
             imgEl.src = window.LYANN_DEFAULT_AVATAR_PATH;
         }
     };

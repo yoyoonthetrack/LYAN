@@ -22,6 +22,10 @@ if (window.supabase) {
         }
     });
     console.log("⚡ Supabase client initialized with session persistence.");
+} else {
+    console.warn("⚠️ Supabase JS SDK missing. Running in Mock Mode only.");
+}
+
 if (!window.getLyannDefaultAvatar) {
     window.LYANN_DEFAULT_AVATAR_PATH = 'default-avatar.svg';
     window.LYANN_DEFAULT_AVATAR_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="50" fill="%23FAF7F2"/><circle cx="50" cy="50" r="48" fill="%23EBF2ED" stroke="rgba(74,124,89,0.25)" stroke-width="2"/><circle cx="50" cy="38" r="16" fill="%234A7C59"/><path d="M 22 84 C 22 66, 34 58, 50 58 C 66 58, 78 66, 78 84 Z" fill="%234A7C59"/></svg>`;
@@ -42,6 +46,7 @@ if (!window.getLyannDefaultAvatar) {
     window.handleAvatarError = function(imgEl) {
         if (imgEl && !imgEl.dataset.fallbackDone) {
             imgEl.dataset.fallbackDone = 'true';
+            imgEl.onerror = null;
             imgEl.src = window.LYANN_DEFAULT_AVATAR_PATH;
         }
     };
