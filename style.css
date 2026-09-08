@@ -14189,6 +14189,8 @@ body.is-native-app .navbar .nav-auth-btn {
     border: none;
     font-size: 0.9rem;
     font-weight: 600;
+}
+
 /* ==========================================================================
    LYANN — REFAIRE COMPLÈTEMENT L'ESPACE COMPTE WEB DESKTOP (ACCOUNT DESKTOP SHELL)
    ========================================================================== */
@@ -14684,26 +14686,36 @@ body.is-native-app .navbar .nav-auth-btn {
     }
 
     #userAccountModal .modal-card,
-    #userAccountModal .modal-card-user-account,
-    .account-shell-container {
-        width: min(1180px, calc(100vw - 80px)) !important;
-        height: min(780px, calc(100vh - 80px)) !important;
+    #userAccountModal .modal-card-user-account {
+        width: min(1180px, calc(100vw - 64px)) !important;
+        height: min(780px, calc(100vh - 64px)) !important;
         max-width: 1180px !important;
-        max-height: 840px !important;
+        max-height: 780px !important;
         display: flex !important;
-        flex-direction: row !important;
+        flex-direction: column !important;
         border-radius: 24px !important;
         background: #FAF7F2 !important;
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
         overflow: hidden !important;
         margin: auto !important;
         border: 1px solid rgba(255, 255, 255, 0.7) !important;
+        padding: 0 !important;
+    }
+
+    .account-desktop-shell,
+    .account-shell-container {
+        width: 100% !important;
+        height: 100% !important;
+        display: grid !important;
+        grid-template-columns: 270px minmax(0, 1fr) !important;
+        background: #FAF7F2 !important;
+        overflow: hidden !important;
     }
 
     /* Left Sidebar Navigation Pane */
     .account-desktop-sidebar {
-        width: 280px !important;
-        min-width: 280px !important;
+        width: 270px !important;
+        min-width: 270px !important;
         background: #FFFFFF !important;
         border-right: 1px solid #EAE6DF !important;
         display: flex !important;

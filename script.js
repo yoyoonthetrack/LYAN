@@ -5400,7 +5400,7 @@ safeDomReady(() => {
         }
 
         modalCard.innerHTML = `
-            <div class="account-shell-container">
+            <div class="account-desktop-shell account-shell-container">
                 <!-- DESKTOP SIDEBAR (Left Pane) -->
                 <aside class="account-desktop-sidebar">
                     <div class="sidebar-user-profile">
