@@ -5254,52 +5254,64 @@ safeDomReady(() => {
                 verifClass = 'pill-green';
             }
 
+            const userTerritory = window.escapeHtmlAttr(userProf?.territory || userProf?.city || 'Guadeloupe (971)');
+
             subViewContent = `
-                <!-- IDENTITÉ -->
-                <div class="account-v3-section identity-section">
-                    <div class="account-v3-card identity-card">
-                        <div class="identity-avatar-wrap">
-                            <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="account-identity-avatar">
-                            <button type="button" class="avatar-camera-btn" onclick="window.lyannOpenAvatarModal()" aria-label="Changer de photo" title="Changer de photo"><i class="ph ph-camera"></i></button>
+                <div class="account-v3-grid">
+                    <!-- LEFT COLUMN: IDENTITÉ & VÉRIFICATION -->
+                    <div class="account-v3-col-left">
+                        <!-- IDENTITÉ -->
+                        <div class="account-v3-section identity-section">
+                            <h4 class="account-v3-section-title">IDENTITÉ</h4>
+                            <div class="account-v3-card identity-card">
+                                <div class="identity-avatar-wrap">
+                                    <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="account-identity-avatar">
+                                    <button type="button" class="avatar-camera-btn" onclick="window.lyannOpenAvatarModal()" aria-label="Changer de photo" title="Changer de photo"><i class="ph ph-camera"></i></button>
+                                </div>
+                                <div class="identity-text-info">
+                                    <strong class="identity-display-name">${safeDisplayName}</strong>
+                                    <span class="identity-email">${userEmail}</span>
+                                    <span class="identity-territory"><i class="ph ph-map-pin"></i> ${userTerritory}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="identity-text-info">
-                            <strong class="identity-display-name">${safeDisplayName}</strong>
-                            <span class="identity-email">${userEmail}</span>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- PROFIL PUBLIC -->
-                <div class="account-v3-section">
-                    <h4 class="account-v3-section-title">PROFIL PUBLIC</h4>
-                    <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); window.openPublicProfileModal();">
-                        <div class="row-icon"><i class="ph ph-user-focus"></i></div>
-                        <div class="row-content">
-                            <strong class="row-title">Aperçu du profil public</strong>
-                            <span class="row-subtitle">Ce que les autres Lyanneurs voient</span>
+                        <!-- VÉRIFICATION -->
+                        <div class="account-v3-section verification-section">
+                            <h4 class="account-v3-section-title">VÉRIFICATION</h4>
+                            <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openVerificationModal==='function') window.openVerificationModal();">
+                                <div class="row-icon"><i class="ph ph-shield-check"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Statut de vérification</strong>
+                                    <span class="row-subtitle"><span class="pill-badge ${verifClass}">${verifText}</span></span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
                         </div>
-                        <i class="ph ph-caret-right row-chevron"></i>
                     </div>
-                    <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
-                        <div class="row-icon"><i class="ph ph-pencil-line"></i></div>
-                        <div class="row-content">
-                            <strong class="row-title">Modifier mon profil public</strong>
-                            <span class="row-subtitle">Bio, compétences, photos et zone</span>
-                        </div>
-                        <i class="ph ph-caret-right row-chevron"></i>
-                    </div>
-                </div>
 
-                <!-- VÉRIFICATION -->
-                <div class="account-v3-section">
-                    <h4 class="account-v3-section-title">VÉRIFICATION</h4>
-                    <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openVerificationModal==='function') window.openVerificationModal();">
-                        <div class="row-icon"><i class="ph ph-shield-check"></i></div>
-                        <div class="row-content">
-                            <strong class="row-title">Statut de vérification</strong>
-                            <span class="row-subtitle"><span class="pill-badge ${verifClass}">${verifText}</span></span>
+                    <!-- RIGHT COLUMN: PROFIL PUBLIC -->
+                    <div class="account-v3-col-right">
+                        <!-- PROFIL PUBLIC -->
+                        <div class="account-v3-section public-profile-section">
+                            <h4 class="account-v3-section-title">PROFIL PUBLIC</h4>
+                            <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); window.openPublicProfileModal();">
+                                <div class="row-icon"><i class="ph ph-user-focus"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Aperçu du profil public</strong>
+                                    <span class="row-subtitle">Ce que les autres Lyanneurs voient</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                            <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
+                                <div class="row-icon"><i class="ph ph-pencil-line"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Modifier mon profil public</strong>
+                                    <span class="row-subtitle">Bio, compétences, photos et zone</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
                         </div>
-                        <i class="ph ph-caret-right row-chevron"></i>
                     </div>
                 </div>
             `;
