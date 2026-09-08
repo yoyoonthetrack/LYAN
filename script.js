@@ -4161,20 +4161,73 @@ safeDomReady(() => {
         });
     }
 
-    window.openQuickProfileModal = function(memberId) {
-        const member = LYANN_MEMBERS.find(m => String(m.id) === String(memberId)) || LYANN_MEMBERS[0];
+    window.openQuickProfileModal = async function(memberId) {
+        let member = null;
+
+        // Fetch from Supabase API if UUID
+        if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function' && memberId && isUUID(memberId)) {
+            try {
+                member = await window.LYANN_API_CLIENT.getUserProfile(memberId);
+            } catch(e) {}
+        }
+
+        if (!member && window.LYANN_MEMBERS && Array.isArray(window.LYANN_MEMBERS)) {
+            member = window.LYANN_MEMBERS.find(m => String(m.id) === String(memberId) || m.name === memberId) || null;
+        }
+
+        if (!member) {
+            member = {
+                id: memberId,
+                name: "Membre LYANN",
+                role: "Membre Communauté",
+                city: "Guadeloupe",
+                bio: "Membre engagé de la communauté LYANN.",
+                badge: "Profil Vérifié",
+                rating: null,
+                skills: []
+            };
+        }
+
         currentQuickMember = member;
 
-        if (quickAvatarImg) quickAvatarImg.src = member.avatar;
-        if (quickProfileName) quickProfileName.textContent = member.name;
-        if (quickProfileRole) quickProfileRole.textContent = member.role;
-        if (quickProfileCity) quickProfileCity.innerHTML = `<i class="ph ph-map-pin"></i> ${member.city}, ${member.locationName}`;
-        if (quickProfileBadge) quickProfileBadge.textContent = member.badge;
-        if (quickProfileRating) quickProfileRating.textContent = `⭐ ${member.rating} (${member.reviewsCount} avis)`;
-        if (quickProfileBio) quickProfileBio.textContent = member.bio;
+        let displayName = member.name || member.full_name;
+        if (member.first_name) {
+            const ln = (member.last_name || '').trim();
+            const init = ln ? ` ${ln.charAt(0).toUpperCase()}.` : '';
+            displayName = `${member.first_name.trim()}${init}`;
+        }
+
+        const avatarSrc = member.avatar_url || member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.id || memberId}`;
+        const cityText = member.commune || member.city || member.locationName || 'Guadeloupe';
+        const roleText = member.role || (member.is_pro ? 'Professionnel' : 'Membre LYANN');
+        const badgeText = member.badge || (member.is_pro ? 'Artisan PRO' : 'Profil Vérifié');
+        const bioText = member.bio || member.description || 'Membre actif de la communauté LYANN.';
+        const skillsList = Array.isArray(member.skills) ? member.skills : (typeof member.skills === 'string' ? member.skills.split(',') : []);
+
+        if (quickAvatarImg) quickAvatarImg.src = avatarSrc;
+        if (quickProfileName) quickProfileName.textContent = displayName;
+        if (quickProfileRole) quickProfileRole.textContent = roleText;
+        if (quickProfileCity) quickProfileCity.innerHTML = `<i class="ph ph-map-pin"></i> ${cityText}`;
+        if (quickProfileBadge) quickProfileBadge.textContent = badgeText;
+        
+        if (quickProfileRating) {
+            if (member.rating && member.reviewsCount) {
+                quickProfileRating.textContent = `⭐ ${member.rating} (${member.reviewsCount} avis)`;
+                quickProfileRating.style.display = 'inline';
+            } else {
+                quickProfileRating.style.display = 'none';
+            }
+        }
+        
+        if (quickProfileBio) quickProfileBio.textContent = bioText;
 
         if (quickProfileSkills) {
-            quickProfileSkills.innerHTML = member.skills.map(s => `<span class="quick-skill-pill">${s}</span>`).join('');
+            if (skillsList.length > 0) {
+                quickProfileSkills.innerHTML = skillsList.map(s => `<span class="quick-skill-pill">${s.trim()}</span>`).join('');
+                quickProfileSkills.style.display = 'flex';
+            } else {
+                quickProfileSkills.style.display = 'none';
+            }
         }
 
         if (quickProfileModal) {
@@ -4182,7 +4235,7 @@ safeDomReady(() => {
             quickProfileModal.style.display = 'flex';
         }
         document.body.style.overflow = 'hidden';
-    }
+    };
 
     if (quickStartChatBtn) {
         quickStartChatBtn.addEventListener('click', async () => {
