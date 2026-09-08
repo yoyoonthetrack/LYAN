@@ -22,9 +22,13 @@ const filesToCopy = filesInRoot.filter(file => {
 filesToCopy.forEach(file => {
     const srcPath = path.join(srcDir, file);
     const destPath = path.join(destDir, file);
-    if (fs.statSync(srcPath).isFile()) {
-        fs.copyFileSync(srcPath, destPath);
-        console.log(`Copied ${file} -> www/`);
+    try {
+        if (fs.statSync(srcPath).isFile()) {
+            fs.copyFileSync(srcPath, destPath);
+            console.log(`Copied ${file} -> www/`);
+        }
+    } catch (e) {
+        console.warn(`Warning: Could not copy ${file}:`, e.message);
     }
 });
 
@@ -40,13 +44,18 @@ const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'ass
         fs.mkdirSync(capDest, { recursive: true });
         filesToCopy.forEach(file => {
             const srcPath = path.join(srcDir, file);
-            if (fs.existsSync(srcPath) && fs.statSync(srcPath).isFile()) {
-                fs.copyFileSync(srcPath, path.join(capDest, file));
+            try {
+                if (fs.existsSync(srcPath) && fs.statSync(srcPath).isFile()) {
+                    fs.copyFileSync(srcPath, path.join(capDest, file));
+                }
+            } catch (e) {
+                console.warn(`Warning: Could not sync ${file} to ${capDest}:`, e.message);
             }
         });
         console.log(`Synced to ${capDest}`);
     }
 });
+
 
 console.log('Mobile build assets prepared and synced successfully!');
 
