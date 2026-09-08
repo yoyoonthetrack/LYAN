@@ -905,15 +905,8 @@ function injectMobileInterface() {
         if (tabMoi) {
             tabMoi.addEventListener('click', (e) => {
                 e.preventDefault();
-                const profileTrigger = document.querySelector('.open-account-modal-trigger');
-                if (profileTrigger) {
-                    profileTrigger.click();
-                } else {
-                    const userAccountModal = document.getElementById('userAccountModal');
-                    if (userAccountModal) {
-                        userAccountModal.style.display = 'flex';
-                        userAccountModal.classList.add('active');
-                    }
+                if (typeof window.openAccountModalSubView === 'function') {
+                    window.openAccountModalSubView('account');
                 }
             });
         }
@@ -1877,9 +1870,8 @@ document.addEventListener('click', (e) => {
         // Handle specific modal triggers
         if (drawerLink.classList.contains('open-account-modal-trigger')) {
             e.preventDefault();
-            const userAccountModal = document.getElementById('userAccountModal');
-            if (userAccountModal) {
-                userAccountModal.classList.add('active');
+            if (typeof window.openAccountModalSubView === 'function') {
+                window.openAccountModalSubView('account');
             } else {
                 window.location.href = 'index.html?action=account';
             }
@@ -5077,16 +5069,18 @@ safeDomReady(() => {
         }
 
         const displayName = window.formatPublicName(userProf, null, 'Membre LYANN');
-
         const safeDisplayName = window.escapeHtmlAttr(displayName);
         const userEmail = window.escapeHtmlAttr(userProf?.email || (window.LYANN_CURRENT_USER ? window.LYANN_CURRENT_USER.email : ''));
         const avatarSrc = window.escapeHtmlAttr(window.resolveLyannAvatarSrc(userProf?.avatar_url));
+        const userTerritory = window.escapeHtmlAttr(userProf?.territory || userProf?.city || 'Guadeloupe (971)');
 
         let titleText = 'Mon compte';
+        let subtitleText = 'Gérez votre profil, votre sécurité et vos préférences.';
         let subViewContent = '';
 
         if (subViewName === 'activity') {
             titleText = 'Mon activité';
+            subtitleText = "Vos demandes d'entraide, prestations et échanges.";
             let myRequests = [];
 
             if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && currentUserId) {
@@ -5103,11 +5097,11 @@ safeDomReady(() => {
             let requestsHTML = '';
             if (myRequests.length > 0) {
                 requestsHTML = myRequests.map(r => `
-                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openHelpDetailModal==='function') window.openHelpDetailModal('${r.id}');">
+                    <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openHelpDetailModal==='function') window.openHelpDetailModal('${r.id}');">
                         <div class="row-icon"><i class="ph ph-broadcast"></i></div>
                         <div class="row-content">
-                            <strong>${window.escapeHtmlAttr(r.title || 'Besoin d\'aide')}</strong>
-                            <span>${window.escapeHtmlAttr(r.location || 'Guadeloupe')} • ${r.status === 'open' ? 'En cours' : 'Terminé'}</span>
+                            <strong class="row-title">${window.escapeHtmlAttr(r.title || 'Besoin d\'aide')}</strong>
+                            <span class="row-subtitle">${window.escapeHtmlAttr(r.location || 'Guadeloupe')} • ${r.status === 'open' ? 'En cours' : 'Terminé'}</span>
                         </div>
                         <i class="ph ph-caret-right row-chevron"></i>
                     </div>
@@ -5123,40 +5117,49 @@ safeDomReady(() => {
             }
 
             subViewContent = `
-                <div class="account-v3-section" style="margin-bottom:24px;">
-                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 12px 0;">Mes Lyanns (${myRequests.length})</h4>
-                    ${requestsHTML}
-                </div>
-                <div class="account-v3-section">
-                    <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0 0 12px 0;">Mes échanges</h4>
-                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openLyannChatModal==='function') window.openLyannChatModal(); else if(typeof window.openChatWithUser==='function') window.openChatWithUser();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-chat-circle-dots"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Accéder à la messagerie</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;">Vos conversations et échanges en cours</span>
+                <div class="account-desktop-sections">
+                    <section class="account-desktop-section">
+                        <h4 class="account-section-heading">MES LYANNS (${myRequests.length})</h4>
+                        <div class="account-group-box">
+                            ${requestsHTML}
                         </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
-                    </div>
+                    </section>
+                    <section class="account-desktop-section">
+                        <h4 class="account-section-heading">MESSAGERIE & ÉCHANGES</h4>
+                        <div class="account-group-box">
+                            <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openLyannChatModal==='function') window.openLyannChatModal(); else if(typeof window.openChatWithUser==='function') window.openChatWithUser();">
+                                <div class="row-icon"><i class="ph ph-chat-circle-dots"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Accéder à la messagerie</strong>
+                                    <span class="row-subtitle">Vos conversations et échanges en cours</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             `;
         } else if (subViewName === 'favorites') {
             titleText = 'Favoris';
+            subtitleText = 'Vos Lyanneurs et contenus enregistrés.';
             subViewContent = `
-                <div class="account-v3-section">
-                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-                        <h4 class="account-v3-section-title" style="font-size:1.05rem; font-weight:650; color:#1E293B; margin:0;">
-                            ⭐ Mes Favoris <span id="favCountBadge" style="font-size:0.85rem; font-weight:600; color:#64748B;">(0)</span>
-                        </h4>
-                        <div class="fav-filter-tabs" style="display: flex; gap: 6px; font-size: 0.8rem; overflow-x: auto; padding-bottom: 4px;">
-                            <button type="button" class="fav-tab-btn active" data-fav-filter="ALL" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #1E293B; color: #FFF; font-weight: 600; cursor: pointer;">Tout</button>
-                            <button type="button" class="fav-tab-btn" data-fav-filter="PROFILE" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #FFF; color: #475569; font-weight: 600; cursor: pointer;">Lyanneurs</button>
-                            <button type="button" class="fav-tab-btn" data-fav-filter="REQUEST" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #FFF; color: #475569; font-weight: 600; cursor: pointer;">Lyanns</button>
-                            <button type="button" class="fav-tab-btn" data-fav-filter="BOKANTAJ_POST" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #FFF; color: #475569; font-weight: 600; cursor: pointer;">Publications</button>
+                <div class="account-desktop-sections">
+                    <section class="account-desktop-section">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                            <h4 class="account-section-heading" style="margin: 0;">
+                                MES FAVORIS <span id="favCountBadge" style="font-size:0.85rem; font-weight:600; color:#64748B;">(0)</span>
+                            </h4>
+                            <div class="fav-filter-tabs" style="display: flex; gap: 6px; font-size: 0.8rem; overflow-x: auto; padding-bottom: 4px;">
+                                <button type="button" class="fav-tab-btn active" data-fav-filter="ALL" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #1E293B; color: #FFF; font-weight: 600; cursor: pointer;">Tout</button>
+                                <button type="button" class="fav-tab-btn" data-fav-filter="PROFILE" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #FFF; color: #475569; font-weight: 600; cursor: pointer;">Lyanneurs</button>
+                                <button type="button" class="fav-tab-btn" data-fav-filter="REQUEST" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #FFF; color: #475569; font-weight: 600; cursor: pointer;">Lyanns</button>
+                                <button type="button" class="fav-tab-btn" data-fav-filter="BOKANTAJ_POST" style="padding: 4px 12px; border-radius: 20px; border: 1px solid #CBD5E1; background: #FFF; color: #475569; font-weight: 600; cursor: pointer;">Publications</button>
+                            </div>
                         </div>
-                    </div>
-                    <div id="favSubViewContainer" class="account-v3-desktop-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
-                        <div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: #64748B;">Chargement de vos favoris...</div>
-                    </div>
+                        <div id="favSubViewContainer" class="account-v3-desktop-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;">
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: #64748B;">Chargement de vos favoris...</div>
+                        </div>
+                    </section>
                 </div>
             `;
             setTimeout(() => {
@@ -5166,83 +5169,140 @@ safeDomReady(() => {
             }, 50);
         } else if (subViewName === 'finances') {
             titleText = 'Finances';
+            subtitleText = 'Solde, versements et formule LYANN.';
             let availableBal = '0,00 €';
             let pendingBal = '0,00 €';
 
             subViewContent = `
-                <div class="account-v3-balance-card" style="background: linear-gradient(135deg, #17231C 0%, #2D4A38 100%); color: white; border-radius: 18px; padding: 20px; margin-bottom: 20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <div>
-                            <span style="font-size:0.82rem; color:rgba(255,255,255,0.8); display:block;">Solde disponible</span>
-                            <strong style="font-size:1.4rem; color:white;">${availableBal}</strong>
+                <div class="account-desktop-sections">
+                    <section class="account-desktop-section">
+                        <div class="account-v3-balance-card" style="background: linear-gradient(135deg, #17231C 0%, #2D4A38 100%); color: white; border-radius: 20px; padding: 24px; margin-bottom: 8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                                <div>
+                                    <span style="font-size:0.82rem; color:rgba(255,255,255,0.8); display:block;">Solde disponible</span>
+                                    <strong style="font-size:1.6rem; color:white;">${availableBal}</strong>
+                                </div>
+                                <div style="text-align:right;">
+                                    <span style="font-size:0.82rem; color:rgba(255,255,255,0.8); display:block;">En cours</span>
+                                    <strong style="font-size:1.3rem; color:white;">${pendingBal}</strong>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary" style="width:100%; justify-content:center; background:#4A7C59; border:none; padding:12px; font-weight:700;" onclick="if(window.NotificationService) window.NotificationService.showToast('info', 'Demande de versement transmise.');"><i class="ph ph-hand-coins"></i> Retirer mes fonds</button>
                         </div>
-                        <div style="text-align:right;">
-                            <span style="font-size:0.82rem; color:rgba(255,255,255,0.8); display:block;">En cours</span>
-                            <strong style="font-size:1.2rem; color:white;">${pendingBal}</strong>
+                    </section>
+                    <section class="account-desktop-section">
+                        <h4 class="account-section-heading">MOYENS DE PAIEMENT & ABONNEMENT</h4>
+                        <div class="account-group-box">
+                            <div class="account-touch-row" onclick="window.location.href='payment-portal.html'">
+                                <div class="row-icon"><i class="ph ph-bank"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Compte de versement</strong>
+                                    <span class="row-subtitle">Gérer mes versements Stripe</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.location.href='pricing.html'">
+                                <div class="row-icon"><i class="ph ph-sparkle"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Abonnement LYANN</strong>
+                                    <span class="row-subtitle">Gestion de votre formule</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
                         </div>
-                    </div>
-                    <button type="button" class="btn btn-primary" style="width:100%; justify-content:center; background:#4A7C59; border:none;" onclick="if(window.NotificationService) window.NotificationService.showToast('info', 'Demande de versement transmise.');"><i class="ph ph-hand-coins"></i> Retirer mes fonds</button>
+                    </section>
                 </div>
-                <div class="account-v3-section">
-                    <div class="account-v3-row" onclick="window.location.href='payment-portal.html'" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-bank"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Compte de versement</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;">Gérer mes versements Stripe</span>
+            `;
+        } else if (subViewName === 'help') {
+            titleText = 'Aide & LYANN';
+            subtitleText = 'Guides, support et informations LYANN.';
+            subViewContent = `
+                <div class="account-desktop-sections">
+                    <section class="account-desktop-section">
+                        <h4 class="account-section-heading">CENTRE D'AIDE</h4>
+                        <div class="account-group-box">
+                            <div class="account-touch-row" onclick="window.location.href='how-it-works.html'">
+                                <div class="row-icon"><i class="ph ph-book-open"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Comment ça marche</strong>
+                                    <span class="row-subtitle">Guide d'utilisation et règles de la communauté</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.location.href='about.html#support'">
+                                <div class="row-icon"><i class="ph ph-headset"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Aide & support</strong>
+                                    <span class="row-subtitle">Contacter l'équipe support LYANN</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.location.href='about.html'">
+                                <div class="row-icon"><i class="ph ph-info"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">À propos de LYANN</strong>
+                                    <span class="row-subtitle">Mission et équipe en Guadeloupe</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
                         </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
-                    </div>
-                    <div class="account-v3-row" onclick="window.location.href='pricing.html'" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-sparkle"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Abonnement LYANN</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;">Gestion de votre formule</span>
-                        </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
-                    </div>
+                    </section>
                 </div>
             `;
         } else if (subViewName === 'settings') {
             titleText = 'Réglages';
+            subtitleText = 'Notifications, sécurité et confidentialité.';
             subViewContent = `
-                <div class="account-v3-section">
-                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-bell"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Notifications</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;">Préférences email et push</span>
+                <div class="account-desktop-sections">
+                    <section class="account-desktop-section">
+                        <h4 class="account-section-heading">PARAMÈTRES DU COMPTE</h4>
+                        <div class="account-group-box">
+                            <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
+                                <div class="row-icon"><i class="ph ph-bell"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Notifications</strong>
+                                    <span class="row-subtitle">Préférences email et push</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.location.href='about.html#privacy'">
+                                <div class="row-icon"><i class="ph ph-eye-slash"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Confidentialité</strong>
+                                    <span class="row-subtitle">Visibilité et paramètres de compte</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openChangePasswordModal==='function') window.openChangePasswordModal();">
+                                <div class="row-icon"><i class="ph ph-lock-key"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Sécurité</strong>
+                                    <span class="row-subtitle">Changer mon mot de passe</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.location.href='about.html#legal'">
+                                <div class="row-icon"><i class="ph ph-file-text"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Conditions & confidentialité</strong>
+                                    <span class="row-subtitle">CGU et mentions légales</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
                         </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
-                    </div>
-                    <div class="account-v3-row" onclick="window.location.href='about.html#privacy'" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-eye-slash"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Confidentialité</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;">Visibilité et paramètres de compte</span>
-                        </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
-                    </div>
-                    <div class="account-v3-row" onclick="window.closeUserAccountModal(); if(typeof window.openChangePasswordModal==='function') window.openChangePasswordModal();" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-lock-key"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Sécurité</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;">Changer mon mot de passe</span>
-                        </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
-                    </div>
-                    <div class="account-v3-row" onclick="window.location.href='about.html#legal'" style="display:flex; align-items:center; gap:12px; background:#FFF; border:1px solid #E2E8F0; border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;">
-                        <div class="row-icon" style="width:36px; height:36px; border-radius:10px; background:rgba(74,124,89,0.1); color:#4A7C59; display:flex; align-items:center; justify-content:center; font-size:1.15rem;"><i class="ph ph-file-text"></i></div>
-                        <div class="row-content" style="flex:1;">
-                            <strong style="font-size:0.94rem; color:#1E293B; display:block;">Conditions & confidentialité</strong>
-                            <span style="font-size:0.8rem; color:#64748B; display:block;">CGU et mentions légales</span>
-                        </div>
-                        <i class="ph ph-caret-right row-chevron" style="color:#94A3B8;"></i>
-                    </div>
+                    </section>
                 </div>
             `;
         } else {
             // Default: sub-view 'account'
             titleText = 'Mon compte';
+            subtitleText = 'Gérez votre profil, votre sécurité et vos préférences.';
 
             let verifText = 'Non vérifié';
             let verifClass = 'pill-yellow';
@@ -5254,65 +5314,87 @@ safeDomReady(() => {
                 verifClass = 'pill-green';
             }
 
-            const userTerritory = window.escapeHtmlAttr(userProf?.territory || userProf?.city || 'Guadeloupe (971)');
-
             subViewContent = `
-                <div class="account-v3-grid">
-                    <!-- LEFT COLUMN: IDENTITÉ & VÉRIFICATION -->
-                    <div class="account-v3-col-left">
-                        <!-- IDENTITÉ -->
-                        <div class="account-v3-section identity-section">
-                            <h4 class="account-v3-section-title">IDENTITÉ</h4>
-                            <div class="account-v3-card identity-card">
-                                <div class="identity-avatar-wrap">
-                                    <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="account-identity-avatar">
-                                    <button type="button" class="avatar-camera-btn" onclick="window.lyannOpenAvatarModal()" aria-label="Changer de photo" title="Changer de photo"><i class="ph ph-camera"></i></button>
-                                </div>
-                                <div class="identity-text-info">
-                                    <strong class="identity-display-name">${safeDisplayName}</strong>
-                                    <span class="identity-email">${userEmail}</span>
-                                    <span class="identity-territory"><i class="ph ph-map-pin"></i> ${userTerritory}</span>
+                <div class="account-desktop-sections">
+                    <!-- SECTION 1: IDENTITÉ -->
+                    <section class="account-desktop-section">
+                        <h4 class="account-section-heading">IDENTITÉ</h4>
+                        <div class="identity-strip">
+                            <div class="identity-avatar-wrap">
+                                <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="account-identity-avatar">
+                                <button type="button" class="avatar-camera-btn" onclick="window.lyannOpenAvatarModal()" aria-label="Changer de photo" title="Changer de photo"><i class="ph ph-camera"></i></button>
+                            </div>
+                            <div class="identity-strip-text">
+                                <strong class="identity-display-name">${safeDisplayName}</strong>
+                                <span class="identity-location"><i class="ph ph-map-pin"></i> ${userTerritory}</span>
+                            </div>
+                            <button type="button" class="btn btn-outline btn-sm identity-edit-btn" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
+                                <i class="ph ph-pencil"></i> Modifier mon profil public
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- SECTION 2: SÉCURITÉ & VÉRIFICATION -->
+                    <section class="account-desktop-section">
+                        <h4 class="account-section-heading">SÉCURITÉ & VÉRIFICATION</h4>
+                        <div class="account-group-box">
+                            <div class="account-touch-row">
+                                <div class="row-icon"><i class="ph ph-user-check"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Statut du compte</strong>
+                                    <span class="row-subtitle">Compte actif • Membre LYANN</span>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- VÉRIFICATION -->
-                        <div class="account-v3-section verification-section">
-                            <h4 class="account-v3-section-title">VÉRIFICATION</h4>
-                            <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openVerificationModal==='function') window.openVerificationModal();">
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openVerificationModal==='function') window.openVerificationModal();">
                                 <div class="row-icon"><i class="ph ph-shield-check"></i></div>
                                 <div class="row-content">
-                                    <strong class="row-title">Statut de vérification</strong>
+                                    <strong class="row-title">Vérification</strong>
                                     <span class="row-subtitle"><span class="pill-badge ${verifClass}">${verifText}</span></span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row">
+                                <div class="row-icon"><i class="ph ph-envelope-simple"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Email</strong>
+                                    <span class="row-subtitle">${userEmail || 'Email non renseigné'}</span>
+                                </div>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row">
+                                <div class="row-icon"><i class="ph ph-phone"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Téléphone</strong>
+                                    <span class="row-subtitle">Vérification SMS bientôt disponible</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <!-- RIGHT COLUMN: PROFIL PUBLIC -->
-                    <div class="account-v3-col-right">
-                        <!-- PROFIL PUBLIC -->
-                        <div class="account-v3-section public-profile-section">
-                            <h4 class="account-v3-section-title">PROFIL PUBLIC</h4>
-                            <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); window.openPublicProfileModal();">
-                                <div class="row-icon"><i class="ph ph-user-focus"></i></div>
+                    <!-- SECTION 3: ABONNEMENT -->
+                    <section class="account-desktop-section">
+                        <h4 class="account-section-heading">ABONNEMENT</h4>
+                        <div class="account-group-box">
+                            <div class="account-touch-row">
+                                <div class="row-icon"><i class="ph ph-sparkle"></i></div>
                                 <div class="row-content">
-                                    <strong class="row-title">Aperçu du profil public</strong>
-                                    <span class="row-subtitle">Ce que les autres Lyanneurs voient</span>
+                                    <strong class="row-title">Plan actuel</strong>
+                                    <span class="row-subtitle">Formule Découverte Gratuit</span>
                                 </div>
-                                <i class="ph ph-caret-right row-chevron"></i>
                             </div>
-                            <div class="account-v3-row account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
-                                <div class="row-icon"><i class="ph ph-pencil-line"></i></div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.location.href='pricing.html'">
+                                <div class="row-icon"><i class="ph ph-credit-card"></i></div>
                                 <div class="row-content">
-                                    <strong class="row-title">Modifier mon profil public</strong>
-                                    <span class="row-subtitle">Bio, compétences, photos et zone</span>
+                                    <strong class="row-title">Gérer l'abonnement</strong>
+                                    <span class="row-subtitle">Découvrir les offres LYANN Pro & Premium</span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
             `;
         }
@@ -5351,6 +5433,12 @@ safeDomReady(() => {
                             <i class="ph ph-gear"></i> Réglages
                         </button>
                     </nav>
+
+                    <div class="sidebar-footer">
+                        <button type="button" class="sidebar-logout-btn btn-logout-trigger">
+                            <i class="ph ph-sign-out"></i> Se déconnecter
+                        </button>
+                    </div>
                 </aside>
 
                 <!-- MAIN CONTENT PANE (Right Pane) -->
@@ -5373,6 +5461,11 @@ safeDomReady(() => {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     };
+
+    window.openAccountModal = function(subView = 'account') {
+        return window.openAccountModalSubView(subView);
+    };
+    window.openUserAccountModal = window.openAccountModal;
 
     window.closeUserAccountModal = function() {
         const modal = document.getElementById('userAccountModal');
