@@ -2280,12 +2280,13 @@ safeDomReady(() => {
     let memberRecommendations = {};
 
     async function openPublicMemberProfile(memberId) {
+        const client = window.LYANN_API_CLIENT || window.apiClient;
         console.log('[PROFILE_ID_TRACE] openPublicMemberProfile memberId =', memberId);
 
         let activeUserId = null;
-        if (window.apiClient && window.apiClient.getSession) {
+        if (client && client.getSession) {
             try {
-                const s = await window.apiClient.getSession();
+                const s = await client.getSession();
                 activeUserId = s?.data?.session?.user?.id || null;
             } catch (e) {}
         }
@@ -2355,12 +2356,14 @@ safeDomReady(() => {
         }
 
         // 2. Query real Supabase Profile if valid memberId / UUID
-        if (window.apiClient && window.apiClient.getProfile && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
+        let dbProfileFound = false;
+        if (client && client.getProfile && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
             console.log('[PROFILE_ID_TRACE] Supabase profile query id =', memberId);
             try {
-                const profRes = await window.apiClient.getProfile(memberId);
+                const profRes = await client.getProfile(memberId);
                 if (profRes && profRes.data) {
                     const p = profRes.data;
+                    dbProfileFound = true;
                     profileData.id = p.id || memberId;
                     profileData.first_name = (p.first_name || '').trim();
                     profileData.last_name = (p.last_name || '').trim();
@@ -2389,10 +2392,10 @@ safeDomReady(() => {
         console.log('[PROFILE_ID_TRACE] returned profile name =', profileData.display_name);
 
         // 3. Query real Trust & Reputation Engine (RPC)
-        if (window.apiClient && window.apiClient.getUserTrustAndReputation && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
+        if (client && client.getUserTrustAndReputation && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
             console.log('[PROFILE_ID_TRACE] trust/reputation profile id =', memberId);
             try {
-                const trustRes = await window.apiClient.getUserTrustAndReputation(memberId);
+                const trustRes = await client.getUserTrustAndReputation(memberId);
                 if (trustRes && trustRes.data && !trustRes.data.error) {
                     const t = trustRes.data;
                     if (t.first_name) profileData.first_name = t.first_name;
@@ -2426,30 +2429,30 @@ safeDomReady(() => {
 
         // 4. Query real portfolio
         let portfolioItems = [];
-        if (window.apiClient && window.apiClient.getUserPortfolio && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
+        if (client && client.getUserPortfolio && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
             console.log('[PROFILE_ID_TRACE] portfolio profile id =', memberId);
             try {
-                const portRes = await window.apiClient.getUserPortfolio(memberId, isSelf);
+                const portRes = await client.getUserPortfolio(memberId, isSelf);
                 if (portRes && portRes.data) portfolioItems = portRes.data;
             } catch (e) {}
         }
 
         // 5. Query real services
         let userServices = [];
-        if (window.apiClient && window.apiClient.getUserServices && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
+        if (client && client.getUserServices && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
             console.log('[PROFILE_ID_TRACE] services profile id =', memberId);
             try {
-                const servRes = await window.apiClient.getUserServices(memberId);
+                const servRes = await client.getUserServices(memberId);
                 if (servRes && servRes.data) userServices = servRes.data;
             } catch (e) {}
         }
 
         // 6. Query real reviews
         let reviewsList = [];
-        if (window.apiClient && window.apiClient.supabase && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
+        if (client && client.supabase && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
             console.log('[PROFILE_ID_TRACE] reviews profile id =', memberId);
             try {
-                const { data: dbReviews } = await window.apiClient.supabase
+                const { data: dbReviews } = await client.supabase
                     .from('reviews')
                     .select('*, author:profiles!author_id(first_name, last_name, avatar_url, city)')
                     .eq('target_id', memberId)
@@ -2476,6 +2479,16 @@ safeDomReady(() => {
             }
         }
 
+        console.log('[PROFILE_RECOVERY] authUserId:', activeUserId);
+        console.log('[PROFILE_RECOVERY] targetProfileId:', memberId);
+        console.log('[PROFILE_RECOVERY] loader:', 'openPublicMemberProfile');
+        console.log('[PROFILE_RECOVERY] tableOrView:', 'public.profiles');
+        console.log('[PROFILE_RECOVERY] queryColumn:', 'id');
+        console.log('[PROFILE_RECOVERY] returnedProfileId:', profileData.id);
+        console.log('[PROFILE_RECOVERY] returnedName:', profileData.display_name);
+        console.log('[PROFILE_RECOVERY] profileFound:', dbProfileFound);
+        console.log('[PROFILE_RECOVERY] renderedName:', profileData.display_name);
+
         // Populate DOM elements in publicMemberProfileModal
         renderStep9ProfileModalDOM(profileData, isSelf, portfolioItems, userServices, reviewsList);
 
@@ -2491,11 +2504,12 @@ safeDomReady(() => {
 
     window.openPublicMemberProfile = openPublicMemberProfile;
     window.openPublicProfileModal = async function(targetId) {
+        const client = window.LYANN_API_CLIENT || window.apiClient;
         let finalId = targetId;
         let sessionUserId = null;
-        if (window.apiClient && window.apiClient.getSession) {
+        if (client && client.getSession) {
             try {
-                const sessionRes = await window.apiClient.getSession();
+                const sessionRes = await client.getSession();
                 sessionUserId = sessionRes?.data?.session?.user?.id || null;
             } catch (e) {}
         } else if (typeof window.getActiveSupabaseSession === 'function') {

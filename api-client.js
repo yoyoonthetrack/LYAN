@@ -2139,5 +2139,7 @@ const LYANN_API_CLIENT = {
 };
 
 window.LYANN_API_CLIENT = LYANN_API_CLIENT;
+window.apiClient = LYANN_API_CLIENT;
+
 
 
