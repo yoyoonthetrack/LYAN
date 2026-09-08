@@ -1412,8 +1412,8 @@
                             <input type="radio" name="wizardBudget" value="fixe" style="width: 20px; height: 20px;">
                             <span style="font-weight: 600;">J'ai un budget fixe</span>
                         </label>
-                        <div id="wizardBudgetInputContainer" style="display: flex; align-items: center; gap: 10px; padding-left: 30px; opacity: 0.5;">
-                            <input type="number" id="wizardBudgetInput" class="modal-input" placeholder="Ex: 50" style="width: 100px; margin: 0;" disabled> <span style="font-weight: 700;">€</span>
+                        <div id="wizardBudgetInputContainer" style="display: flex; align-items: center; gap: 10px; padding-left: 30px; opacity: 0.5; transition: opacity 0.2s ease;">
+                            <input type="number" id="wizardBudgetInput" class="modal-input" placeholder="Ex: 50" min="1" step="any" inputmode="decimal" style="width: 120px; margin: 0;" disabled aria-disabled="true"> <span style="font-weight: 700;">€</span>
                         </div>
                     </div>
                 </div>

@@ -8051,15 +8051,31 @@ safeDomReady(() => {
             progressBar.style.width = `${(currentStep / totalSteps) * 100}%`;
         }
 
-        // Update buttons: Publier strictly on final review step (6)
-        if (btnPrev) btnPrev.style.visibility = currentStep > 1 ? 'visible' : 'hidden';
-        
-        if (currentStep === totalSteps) {
-            if (btnNext) btnNext.style.display = 'none';
-            if (btnSubmit) btnSubmit.style.display = 'inline-flex';
+        // Dynamically query footer buttons within modal container
+        const modal = document.getElementById('modal-request-help') || document.getElementById('wizardModal') || modalRequestHelp;
+        const curBtnPrev = modal ? modal.querySelector('#wizardBtnPrev') : document.getElementById('wizardBtnPrev');
+        const curBtnNext = modal ? modal.querySelector('#wizardBtnNext') : document.getElementById('wizardBtnNext');
+        const curBtnSubmit = modal ? modal.querySelector('#wizardBtnSubmit') : document.getElementById('wizardBtnSubmit');
+
+        // STRICT STEP BUTTON VISIBILITY ENGINE (Enforced with !important)
+        if (currentStep === 1) {
+            if (curBtnPrev) curBtnPrev.style.setProperty('visibility', 'hidden', 'important');
+            if (curBtnNext) curBtnNext.style.setProperty('display', 'inline-flex', 'important');
+            if (curBtnSubmit) curBtnSubmit.style.setProperty('display', 'none', 'important');
+        } else if (currentStep >= 2 && currentStep <= 5) {
+            if (curBtnPrev) curBtnPrev.style.setProperty('visibility', 'visible', 'important');
+            if (curBtnNext) curBtnNext.style.setProperty('display', 'inline-flex', 'important');
+            if (curBtnSubmit) curBtnSubmit.style.setProperty('display', 'none', 'important');
+        } else if (currentStep === totalSteps) { // Step 6 Review & Publish
+            if (curBtnPrev) curBtnPrev.style.setProperty('visibility', 'visible', 'important');
+            if (curBtnNext) curBtnNext.style.setProperty('display', 'none', 'important');
+            if (curBtnSubmit) {
+                curBtnSubmit.style.setProperty('display', 'inline-flex', 'important');
+                curBtnSubmit.innerHTML = 'PUBLIER';
+            }
             
-            // Populate summary
-            const desc = document.getElementById('wizardDescInput').value;
+            // Populate step 6 summary
+            const desc = document.getElementById('wizardDescInput')?.value || '';
             const summaryDesc = document.getElementById('wizardSummaryDesc');
             if(summaryDesc) summaryDesc.textContent = desc ? `"${desc}"` : `"J'ai besoin d'aide pour..."`;
 
@@ -8073,15 +8089,17 @@ safeDomReady(() => {
                     : 'Guadeloupe (971)';
                 summaryCity.innerHTML = `<i class="ph ph-map-pin"></i> ${city} (${terrName})`;
             }
-            
-        } else {
-            if (btnNext) btnNext.style.display = 'inline-flex';
-            if (btnSubmit) btnSubmit.style.display = 'none';
         }
 
         if (currentStep === 3) {
             if (typeof window.renderWizardPhotoPreviews === 'function') {
                 window.renderWizardPhotoPreviews();
+            }
+        }
+
+        if (currentStep === 5) {
+            if (typeof window.updateWizardBudgetState === 'function') {
+                window.updateWizardBudgetState();
             }
         }
     }
@@ -8184,30 +8202,77 @@ safeDomReady(() => {
         });
     }
 
-    // --- BUG 3 FIX : BUDGET ---
+    // --- STEP 5 BUDGET STATE ENGINE & PERSISTENCE ---
+    window.wizardBudgetChoice = 'devis';
+    window.wizardFixedBudgetValue = '';
+
+    window.updateWizardBudgetState = function() {
+        const budgetRadios = document.getElementsByName('wizardBudget');
+        const wizardBudgetInputContainer = document.getElementById('wizardBudgetInputContainer');
+        const wizardBudgetInput = document.getElementById('wizardBudgetInput');
+        if (!wizardBudgetInput) return;
+
+        let currentChoice = window.wizardBudgetChoice || 'devis';
+        for (const radio of budgetRadios) {
+            if (radio.checked) {
+                currentChoice = radio.value;
+                break;
+            }
+        }
+        window.wizardBudgetChoice = currentChoice;
+
+        if (currentChoice === 'fixe') {
+            // Enable input & container
+            wizardBudgetInput.disabled = false;
+            wizardBudgetInput.removeAttribute('disabled');
+            wizardBudgetInput.setAttribute('aria-disabled', 'false');
+            wizardBudgetInput.style.pointerEvents = 'auto';
+            wizardBudgetInput.style.cursor = 'text';
+
+            if (wizardBudgetInputContainer) {
+                wizardBudgetInputContainer.style.opacity = '1';
+                wizardBudgetInputContainer.style.pointerEvents = 'auto';
+            }
+            if (window.wizardFixedBudgetValue) {
+                wizardBudgetInput.value = window.wizardFixedBudgetValue;
+            }
+        } else {
+            // Disable input & clear
+            wizardBudgetInput.disabled = true;
+            wizardBudgetInput.setAttribute('disabled', 'disabled');
+            wizardBudgetInput.setAttribute('aria-disabled', 'true');
+            wizardBudgetInput.style.pointerEvents = 'none';
+            wizardBudgetInput.style.cursor = 'not-allowed';
+            wizardBudgetInput.value = '';
+            if (wizardBudgetInputContainer) {
+                wizardBudgetInputContainer.style.opacity = '0.5';
+                wizardBudgetInputContainer.style.pointerEvents = 'none';
+            }
+        }
+    };
+
     const budgetRadios = document.getElementsByName('wizardBudget');
-    const wizardBudgetInputContainer = document.getElementById('wizardBudgetInputContainer');
     const wizardBudgetInput = document.getElementById('wizardBudgetInput');
-    
-    if (budgetRadios && budgetRadios.length > 0 && wizardBudgetInput) {
+
+    if (budgetRadios && budgetRadios.length > 0) {
         budgetRadios.forEach(radio => {
             radio.addEventListener('change', () => {
-                if (radio.value === 'fixe') {
-                    wizardBudgetInput.disabled = false;
-                    if (wizardBudgetInputContainer) wizardBudgetInputContainer.style.opacity = '1';
-                } else {
-                    wizardBudgetInput.disabled = true;
-                    wizardBudgetInput.value = '';
-                    if (wizardBudgetInputContainer) wizardBudgetInputContainer.style.opacity = '0.5';
+                if (radio.checked) {
+                    window.wizardBudgetChoice = radio.value;
                 }
+                window.updateWizardBudgetState();
             });
         });
-        
-        // Prevent negative values
-        wizardBudgetInput.addEventListener('input', () => {
-            if (wizardBudgetInput.value < 0) {
-                wizardBudgetInput.value = '';
+    }
+
+    if (wizardBudgetInput) {
+        wizardBudgetInput.addEventListener('input', (e) => {
+            let val = e.target.value;
+            if (val !== '' && (parseFloat(val) < 0 || isNaN(parseFloat(val)))) {
+                e.target.value = '';
+                val = '';
             }
+            window.wizardFixedBudgetValue = val;
         });
     }
 
@@ -8394,7 +8459,7 @@ safeDomReady(() => {
             const urgencySelect = document.getElementById('wizardDateType');
             const urgencyVal = urgencySelect ? urgencySelect.value : 'flexible';
 
-            // Budget handling
+            // Budget handling & validation
             let budgetVal = null;
             const budgetRadios = document.getElementsByName('wizardBudget');
             let selectedBudgetChoice = 'devis';
@@ -8406,10 +8471,19 @@ safeDomReady(() => {
             }
 
             if (selectedBudgetChoice === 'fixe') {
-                const budgetInput = document.querySelector('#modal-request-help input[type="number"]');
-                if (budgetInput && budgetInput.value) {
-                    budgetVal = parseFloat(budgetInput.value);
+                const budgetInput = document.getElementById('wizardBudgetInput') || document.querySelector('#modal-request-help input[type="number"]');
+                const rawVal = (budgetInput ? budgetInput.value : window.wizardFixedBudgetValue || '').trim();
+                const numVal = parseFloat(rawVal);
+                if (!rawVal || isNaN(numVal) || numVal <= 0) {
+                    const msg = "Veuillez saisir un budget fixe valide et supérieur à 0 €.";
+                    if (window.NotificationService) window.NotificationService.showToast('error', msg);
+                    else alert(msg);
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = 'Publier mon besoin <i class="ph ph-paper-plane-right"></i>';
+                    goToStep(5);
+                    return;
                 }
+                budgetVal = numVal;
             }
 
             const title = subCatText ? `${categoryText} - ${subCatText}` : categoryText;
@@ -8619,15 +8693,25 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
         </div>
     `;
 
+    const createdRequestId = createdRequest ? (createdRequest.id || createdRequest.request_id) : null;
+    if (createdRequestId) {
+        window._lastCreatedRequestId = createdRequestId;
+        window._lastCreatedRequestObject = createdRequest;
+    }
+
     const btnViewMyLyann = document.getElementById('btnPostPublishViewMyLyann');
     if (btnViewMyLyann) {
         btnViewMyLyann.onclick = (e) => {
             if (e) e.preventDefault();
             wizardModal.classList.remove('active');
             document.body.style.overflow = '';
-            const targetReqId = createdRequest ? (createdRequest.id || createdRequest.request_id) : null;
+            const targetReqId = createdRequestId || window._lastCreatedRequestId;
+            const targetReqObj = createdRequest || window._lastCreatedRequestObject;
+            console.log('[POST-PUBLISH] Opening exact created Lyann:', targetReqId, targetReqObj);
             if (targetReqId && typeof window.openLyannDetailModal === 'function') {
-                window.openLyannDetailModal(targetReqId);
+                window.openLyannDetailModal(targetReqId, targetReqObj);
+            } else if (targetReqId) {
+                window.location.assign(`feed.html?openLyann=${targetReqId}`);
             }
         };
     }
@@ -8653,7 +8737,7 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
 }
 
 // --- FICHE DÉTAILLÉE DU LYANN (MODAL FICHE LYANN) ---
-window.openLyannDetailModal = async function(requestId) {
+window.openLyannDetailModal = async function(requestId, initialData = null) {
     let modal = document.getElementById('lyannDetailModal');
     if (!modal) {
         // Dynamically create modal if not present on page
@@ -8718,10 +8802,10 @@ window.openLyannDetailModal = async function(requestId) {
         };
     }
 
-    let requestData = null;
-    let authorProf = null;
+    let requestData = initialData || null;
+    let authorProf = initialData ? (initialData.profiles || null) : null;
 
-    if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+    if (!requestData && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         try {
             const { data, error } = await window.LYANN_API_CLIENT.supabase
                 .from('requests')
