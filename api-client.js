@@ -39,14 +39,50 @@ if (!window.getLyannDefaultAvatar) {
         return window.LYANN_DEFAULT_AVATAR_SVG;
     };
 
-    window.getLyannAvatarUrl = function(url) {
-        if (!url || typeof url !== 'string') return window.LYANN_DEFAULT_AVATAR_SVG;
-        const clean = url.trim();
-        if (!clean || clean === 'null' || clean === 'undefined' || clean.includes('dicebear.com') || clean.includes('bottts') || clean.includes('avataaars') || clean.includes('avatar_01.png') || clean.includes('david-34.png')) {
-            return window.LYANN_DEFAULT_AVATAR_SVG;
+    window.escapeHtmlAttr = function(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    };
+
+    window.resolveLyannAvatarSrc = function(input) {
+        if (!input) return window.getLyannDefaultAvatar();
+
+        let raw = input;
+        if (typeof input === 'object') {
+            raw = input.avatar_url || input.author_avatar || input.authorAvatar || input.avatar || input.profile_photo || '';
         }
+
+        if (typeof raw !== 'string') return window.getLyannDefaultAvatar();
+
+        let clean = raw.trim();
+        if (!clean) return window.getLyannDefaultAvatar();
+
+        // Extract URL if caller passed raw <img> tag
+        if (clean.includes('<') || clean.includes('>')) {
+            const match = clean.match(/src=["']([^"']+)["']/i);
+            if (match && match[1]) {
+                clean = match[1].trim();
+            } else {
+                return window.getLyannDefaultAvatar();
+            }
+        }
+
+        if (clean === 'null' || clean === 'undefined' || 
+            clean.includes('dicebear.com') || clean.includes('bottts') || 
+            clean.includes('avataaars') || clean.includes('avatar_01.png') || 
+            clean.includes('david-34.png') || clean === 'default-avatar.svg') {
+            return window.getLyannDefaultAvatar();
+        }
+
         return clean;
     };
+
+    window.getLyannAvatarUrl = window.resolveLyannAvatarSrc;
 
     window.handleAvatarError = function(imgEl) {
         if (imgEl && !imgEl.dataset.fallbackDone) {
@@ -56,6 +92,7 @@ if (!window.getLyannDefaultAvatar) {
         }
     };
 }
+
 
 
 // ----------------------------------------------------------------------

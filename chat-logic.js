@@ -1977,7 +1977,7 @@ document.addEventListener('touchstart', (e) => {
                 <div class="chat-contact-swipe-wrapper" data-chat-member-id="${c.id}">
                     <div class="chat-contact-item ${isActive ? 'active' : ''}" data-chat-member-id="${c.id}">
                         <div class="chat-contact-avatar-wrap">
-                            <img src="${displayAvatar}" alt="${displayName}" class="chat-contact-avatar" onerror="this.src='avatar-male-blue.png'">
+                            <img src="${window.resolveLyannAvatarSrc(displayAvatar)}" alt="${displayName}" class="chat-contact-avatar" onerror="window.handleAvatarError(this)">
                         </div>
                         <div class="chat-contact-info">
                             <div class="chat-contact-name">${displayName}</div>

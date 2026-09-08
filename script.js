@@ -118,14 +118,50 @@ if (!window.getLyannDefaultAvatar) {
         return window.LYANN_DEFAULT_AVATAR_SVG;
     };
 
-    window.getLyannAvatarUrl = function(url) {
-        if (!url || typeof url !== 'string') return window.LYANN_DEFAULT_AVATAR_SVG;
-        const clean = url.trim();
-        if (!clean || clean === 'null' || clean === 'undefined' || clean.includes('dicebear.com') || clean.includes('bottts') || clean.includes('avataaars') || clean.includes('avatar_01.png') || clean.includes('david-34.png')) {
-            return window.LYANN_DEFAULT_AVATAR_SVG;
+    window.escapeHtmlAttr = function(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    };
+
+    window.resolveLyannAvatarSrc = function(input) {
+        if (!input) return window.getLyannDefaultAvatar();
+
+        let raw = input;
+        if (typeof input === 'object') {
+            raw = input.avatar_url || input.author_avatar || input.authorAvatar || input.avatar || input.profile_photo || '';
         }
+
+        if (typeof raw !== 'string') return window.getLyannDefaultAvatar();
+
+        let clean = raw.trim();
+        if (!clean) return window.getLyannDefaultAvatar();
+
+        // Extract URL if caller passed raw <img> tag
+        if (clean.includes('<') || clean.includes('>')) {
+            const match = clean.match(/src=["']([^"']+)["']/i);
+            if (match && match[1]) {
+                clean = match[1].trim();
+            } else {
+                return window.getLyannDefaultAvatar();
+            }
+        }
+
+        if (clean === 'null' || clean === 'undefined' || 
+            clean.includes('dicebear.com') || clean.includes('bottts') || 
+            clean.includes('avataaars') || clean.includes('avatar_01.png') || 
+            clean.includes('david-34.png') || clean === 'default-avatar.svg') {
+            return window.getLyannDefaultAvatar();
+        }
+
         return clean;
     };
+
+    window.getLyannAvatarUrl = window.resolveLyannAvatarSrc;
 
     window.handleAvatarError = function(imgEl) {
         if (imgEl && !imgEl.dataset.fallbackDone) {
@@ -135,6 +171,7 @@ if (!window.getLyannDefaultAvatar) {
         }
     };
 }
+
 
 // === LYANN OFFICIAL DOM COMMUNES DICTIONARY ===
 window.LYANN_DOM_COMMUNES = {
@@ -3618,7 +3655,7 @@ safeDomReady(() => {
                         } else {
                             actionBtnHTML = `
                                 <button class="flash-action-btn btn-open-lyann-detail" data-request-id="${targetId}" style="background: #F1F5F9; color: #334155; font-weight: 700; border-radius: 20px; min-height: 40px;"><i class="ph ph-eye"></i> <span>Voir le Lyann</span></button>
-                                <button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${(post.author_name || post.authorName || '').replace(/"/g, '&quot;')}" data-requester-avatar="${(post.author_avatar || post.authorAvatar || '').replace(/"/g, '&quot;')}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: var(--primary); color: #FFF; font-weight: 800; border-radius: 20px; min-height: 40px;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>
+                                <button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${window.escapeHtmlAttr(post.author_name || post.authorName || '')}" data-requester-avatar="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" data-title="${window.escapeHtmlAttr(post.title || post.content || '')}" style="background: var(--primary); color: #FFF; font-weight: 800; border-radius: 20px; min-height: 40px;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>
                             `;
                         }
                     } else {
@@ -3681,7 +3718,7 @@ safeDomReady(() => {
                         const secondaryCtaHTML = `<button class="flash-action-btn btn-open-lyann-detail lyann-cta-secondary" data-request-id="${targetId}"><i class="ph ${viewIcon}"></i> <span>${viewLabel}</span></button>`;
                         
                         if (!isOwnLyann) {
-                            const primaryCtaHTML = `<button class="flash-action-btn btn-help-lyann lyann-cta-primary" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${(post.author_avatar || post.authorAvatar || '').replace(/"/g, '&quot;')}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
+                            const primaryCtaHTML = `<button class="flash-action-btn btn-help-lyann lyann-cta-primary" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${window.escapeHtmlAttr(authorDisplayName)}" data-requester-avatar="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" data-title="${window.escapeHtmlAttr(post.title || post.content || '')}"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
                             
                             ctaRowHTML = `
                                 <div class="lyann-cta-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; box-sizing: border-box; margin-top: 8px;">
@@ -3704,7 +3741,7 @@ safeDomReady(() => {
                             <div class="flash-card-header" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; box-sizing: border-box;">
                                     <div class="flash-author-block trigger-quick-profile" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
-                                        <img src="${window.getLyannAvatarUrl(post.author_avatar || post.authorAvatar)}" onerror="window.handleAvatarError(this)" alt="${authorDisplayName}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
+                                        <img src="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" onerror="window.handleAvatarError(this)" alt="${window.escapeHtmlAttr(authorDisplayName)}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
                                         <div class="flash-author-info" style="line-height: 1.25; min-width: 0; flex: 1;">
                                             <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayName} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i></strong>
                                             <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
@@ -3715,6 +3752,7 @@ safeDomReady(() => {
                                     <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; text-transform: uppercase; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; letter-spacing: 0.02em;' : 'background: #F1F5F9; color: #475569; font-weight: 600; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box;'}">${badgeText}</span>
                                 </div>
                             </div>
+
 
                             <!-- BODY BLOCK: HERO TITLE & CONTENT (CONDITIONNEL, SANS GAP SI VIDE) -->
                             ${bodyBlockHTML}
