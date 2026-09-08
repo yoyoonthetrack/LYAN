@@ -22,50 +22,64 @@
         ];
 
         const selectedSkills = new Set();
-        let currentAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
+        let currentAvatar = (typeof window.resolveLyannAvatarSrc === 'function') ? window.resolveLyannAvatarSrc() : '/default-avatar.svg';
 
-        // Load existing profile if present
-        function loadExistingProfile() {
+        // Load existing profile from Supabase & local storage
+        async function loadExistingProfile() {
             try {
+                let prof = null;
                 const raw = localStorage.getItem('lyan_user_profile') || (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_profile') : null);
                 if (raw) {
-                    const prof = JSON.parse(raw);
-                    if (prof.firstName) {
-                        const fn = document.getElementById('cpFirstName');
-                        if (fn) fn.value = prof.firstName;
-                    }
-                    if (prof.lastName) {
-                        const ln = document.getElementById('cpLastName');
-                        if (ln) ln.value = prof.lastName;
-                    }
-                    if (prof.headline) {
-                        const hl = document.getElementById('cpHeadline');
-                        if (hl) hl.value = prof.headline;
-                    }
-                    if (prof.city) {
-                        const ci = document.getElementById('cpCityInput');
-                        if (ci) ci.value = prof.city;
-                    }
-                    if (prof.phone) {
-                        const ph = document.getElementById('cpPhone');
-                        if (ph) ph.value = prof.phone;
-                    }
-                    if (prof.bio) {
-                        const bi = document.getElementById('cpBio');
-                        if (bi) bi.value = prof.bio;
-                    }
-                    if (prof.avatar) {
-                        currentAvatar = prof.avatar;
-                        const prev = document.getElementById('cpAvatarPreview');
-                        if (prev) prev.src = prof.avatar;
-                    }
-                    if (prof.skills && Array.isArray(prof.skills)) {
-                        selectedSkills.clear();
-                        prof.skills.forEach(s => selectedSkills.add(s));
-                        updateSkillTagsUI();
-                    }
+                    try { prof = JSON.parse(raw); } catch (e) {}
                 }
-            } catch(e) {}
+
+                let userSession = null;
+                if (window.apiClient && typeof window.apiClient.getSession === 'function') {
+                    try {
+                        const res = await window.apiClient.getSession();
+                        userSession = res?.data?.session?.user;
+                    } catch (e) {}
+                }
+
+                const fn = prof?.firstName || prof?.first_name || userSession?.user_metadata?.first_name || '';
+                const ln = prof?.lastName || prof?.last_name || userSession?.user_metadata?.last_name || '';
+                const headline = prof?.headline || prof?.primary_activity || '';
+                const city = prof?.city || prof?.territory || '';
+                const phone = prof?.phone || '';
+                const bio = prof?.bio || '';
+                const rawAvatar = prof?.avatar || prof?.avatar_url || userSession?.user_metadata?.avatar_url || null;
+
+                currentAvatar = (typeof window.resolveLyannAvatarSrc === 'function') ? window.resolveLyannAvatarSrc(rawAvatar) : (rawAvatar || '/default-avatar.svg');
+
+                const fnEl = document.getElementById('cpFirstName');
+                if (fnEl && fn) fnEl.value = fn;
+
+                const lnEl = document.getElementById('cpLastName');
+                if (lnEl && ln) lnEl.value = ln;
+
+                const hlEl = document.getElementById('cpHeadline');
+                if (hlEl && headline) hlEl.value = headline;
+
+                const ciEl = document.getElementById('cpCityInput');
+                if (ciEl && city) ciEl.value = city;
+
+                const phEl = document.getElementById('cpPhone');
+                if (phEl && phone) phEl.value = phone;
+
+                const biEl = document.getElementById('cpBio');
+                if (biEl && bio) biEl.value = bio;
+
+                const prev = document.getElementById('cpAvatarPreview');
+                if (prev) prev.src = currentAvatar;
+
+                if (prof?.skills && Array.isArray(prof.skills)) {
+                    selectedSkills.clear();
+                    prof.skills.forEach(s => selectedSkills.add(s));
+                    updateSkillTagsUI();
+                }
+            } catch(e) {
+                console.warn('[PROFILE_COMPLETION] loadExistingProfile error:', e);
+            }
         }
 
         // Skill tag clicks
@@ -94,24 +108,20 @@
             });
         }
 
-        // Preset avatar selection
-        const presetAvatars = document.querySelectorAll('.cp-preset-avatar');
-        presetAvatars.forEach(img => {
-            img.addEventListener('click', () => {
-                presetAvatars.forEach(a => a.classList.remove('active'));
-                img.classList.add('active');
-                currentAvatar = img.src;
-                const prev = document.getElementById('cpAvatarPreview');
-                if (prev) prev.src = currentAvatar;
-            });
-        });
-
         // File upload avatar preview
         const avatarInput = document.getElementById('cpAvatarUploadInput');
         if (avatarInput) {
             avatarInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
+                    if (!file.type.match(/^image\/(jpeg|jpg|png|webp)$/i)) {
+                        if (window.NotificationService) {
+                            window.NotificationService.showToast('warning', 'Veuillez choisir une image au format JPEG, PNG ou WebP.');
+                        } else if (window.lyannAlert) {
+                            window.lyannAlert('Veuillez choisir une image au format JPEG, PNG ou WebP.');
+                        }
+                        return;
+                    }
                     const reader = new FileReader();
                     reader.onload = (evt) => {
                         currentAvatar = evt.target.result;
@@ -199,8 +209,8 @@
         });
 
         // Open wizard function
-        window.openCompleteProfileModal = function() {
-            loadExistingProfile();
+        window.openCompleteProfileModal = async function() {
+            await loadExistingProfile();
             currentStep = 0;
             updateWizardUI();
             if (modal) {
