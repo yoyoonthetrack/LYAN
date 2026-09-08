@@ -647,10 +647,11 @@ function injectMobileInterface() {
 
     // NATIVE APP CONNECTED HOMEPAGE: Render App Home View on index.html when logged in
     if (isHome && isLoggedIn && !hasDeepLink) {
+        document.querySelector('.app-welcome-screen')?.remove();
         if (typeof window.renderAppHomeConnectedView === 'function') {
             window.renderAppHomeConnectedView();
         }
-    } else if (isHome && !isLoggedIn && !hasDeepLink) {
+    } else if (isHome && !isLoggedIn && !hasDeepLink && typeof authInitializationComplete !== 'undefined' && authInitializationComplete) {
         if (typeof showAppWelcomeScreen === 'function') {
             showAppWelcomeScreen();
         }
@@ -4099,11 +4100,22 @@ safeDomReady(() => {
                 closeLoginModal();
                 loginForm.reset();
 
-                const currentPath = window.location.pathname;
-                if (!currentPath.includes('feed.html') && !currentPath.includes('results.html') && !currentPath.includes('payment-portal.html')) {
-                    window.location.href = 'feed.html';
-                } else {
+                document.querySelector('.app-welcome-screen')?.remove();
+
+                if (isNativePlatform()) {
                     await updateHeaderAuthState();
+                    const path = window.location.pathname;
+                    const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
+                    if (isHome && typeof window.renderAppHomeConnectedView === 'function') {
+                        window.renderAppHomeConnectedView();
+                    }
+                } else {
+                    const currentPath = window.location.pathname;
+                    if (!currentPath.includes('feed.html') && !currentPath.includes('results.html') && !currentPath.includes('payment-portal.html')) {
+                        window.location.href = 'feed.html';
+                    } else {
+                        await updateHeaderAuthState();
+                    }
                 }
 
                 try {
@@ -5004,11 +5016,20 @@ safeDomReady(() => {
 
         if (isLoggedIn && userId) {
             document.body.classList.add('user-is-logged-in');
+            document.querySelector('.app-welcome-screen')?.remove();
             window.CURRENT_USER_ID = userId;
             if (typeof safeStorage !== 'undefined') safeStorage.setItem('lyan_user_logged_in', 'true');
             localStorage.setItem('lyan_user_logged_in', 'true');
             
             await loadAndApplyUserProfile(userId, currentSession);
+
+            if (isNativePlatform()) {
+                const path = window.location.pathname;
+                const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
+                if (isHome && typeof window.renderAppHomeConnectedView === 'function') {
+                    window.renderAppHomeConnectedView();
+                }
+            }
         } else if (authInitializationComplete) {
             document.body.classList.remove('user-is-logged-in');
             window.CURRENT_USER_ID = null;
@@ -5020,6 +5041,14 @@ safeDomReady(() => {
             localStorage.removeItem('lyan_user_logged_in');
             localStorage.removeItem('lyan_user_id');
             localStorage.removeItem('lyan_user_profile');
+
+            if (isNativePlatform()) {
+                const path = window.location.pathname;
+                const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
+                if (isHome && typeof showAppWelcomeScreen === 'function') {
+                    showAppWelcomeScreen();
+                }
+            }
 
             const nameEls = document.querySelectorAll('.user-name-display, #accountUserName, #accountModalName, #drawerUserName, #profileUserName, #quickProfileName, #publicMemberName');
             nameEls.forEach(el => {
