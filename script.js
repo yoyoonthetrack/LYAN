@@ -2280,8 +2280,7 @@ safeDomReady(() => {
     let memberRecommendations = {};
 
     async function openPublicMemberProfile(memberId) {
-        const fallbackMember = LYANN_MEMBERS.find(m => String(m.id) === String(memberId)) || LYANN_MEMBERS[0];
-        currentVisitingMember = fallbackMember;
+        console.log('[PROFILE_ID_TRACE] openPublicMemberProfile memberId =', memberId);
 
         let activeUserId = null;
         if (window.apiClient && window.apiClient.getSession) {
@@ -2290,25 +2289,32 @@ safeDomReady(() => {
                 activeUserId = s?.data?.session?.user?.id || null;
             } catch (e) {}
         }
-        const isSelf = activeUserId && (String(activeUserId) === String(memberId));
+        
+        if (!memberId && activeUserId) {
+            memberId = activeUserId;
+        }
 
-        // Fetch real Trust & Reputation data
+        const isSelf = !!(activeUserId && String(activeUserId) === String(memberId));
+
+        // 1. Initial neutral profile template (NO fallback to Jocelyn / LYANN_MEMBERS[0])
         let profileData = {
             id: memberId,
-            display_name: fallbackMember.name,
-            first_name: fallbackMember.name ? fallbackMember.name.split(' ')[0] : 'Membre',
-            last_name_initial: fallbackMember.name && fallbackMember.name.split(' ')[1] ? fallbackMember.name.split(' ')[1].substring(0, 1) + '.' : '',
-            city: fallbackMember.city || 'Guadeloupe',
-            territory: fallbackMember.locationName || 'Guadeloupe (971)',
-            bio: fallbackMember.bio || '',
-            avatar_url: fallbackMember.avatar,
-            is_verified: !!fallbackMember.badge,
-            is_pro_verified: !!fallbackMember.isPro,
-            completion_pct: 75,
-            member_since: '2026',
+            first_name: '',
+            last_name: '',
+            last_name_initial: '',
+            display_name: 'Lyanneur',
+            city: 'Guadeloupe',
+            territory: 'Guadeloupe (971)',
+            bio: '',
+            avatar_url: null,
+            is_verified: false,
+            is_pro_verified: false,
+            completion_pct: 20,
+            member_since: null,
+            skills: [],
             metrics: {
-                average_rating: fallbackMember.rating || null,
-                reviews_count: fallbackMember.reviewsCount || 0,
+                average_rating: null,
+                reviews_count: 0,
                 completed_missions: 0,
                 response_rate_percent: null,
                 avg_response_time_label: '—',
@@ -2316,54 +2322,132 @@ safeDomReady(() => {
             }
         };
 
-        if (window.apiClient && window.apiClient.getUserTrustAndReputation && memberId && String(memberId).includes('-')) {
+        // Check if memberId matches a legacy static member explicitly (numeric ID only)
+        const matchLegacyMember = (window.LYANN_MEMBERS && Array.isArray(window.LYANN_MEMBERS))
+            ? window.LYANN_MEMBERS.find(m => String(m.id) === String(memberId))
+            : null;
+
+        if (matchLegacyMember) {
+            currentVisitingMember = matchLegacyMember;
+            profileData = {
+                id: memberId,
+                display_name: matchLegacyMember.name,
+                first_name: matchLegacyMember.name ? matchLegacyMember.name.split(' ')[0] : 'Membre',
+                last_name_initial: matchLegacyMember.name && matchLegacyMember.name.split(' ')[1] ? matchLegacyMember.name.split(' ')[1].substring(0, 1) + '.' : '',
+                city: matchLegacyMember.city || 'Guadeloupe',
+                territory: matchLegacyMember.locationName || 'Guadeloupe (971)',
+                bio: matchLegacyMember.bio || '',
+                avatar_url: matchLegacyMember.avatar,
+                is_verified: !!matchLegacyMember.badge,
+                is_pro_verified: !!matchLegacyMember.isPro,
+                completion_pct: 75,
+                member_since: '2026',
+                skills: matchLegacyMember.skills || [],
+                metrics: {
+                    average_rating: matchLegacyMember.rating || null,
+                    reviews_count: matchLegacyMember.reviewsCount || 0,
+                    completed_missions: 0,
+                    response_rate_percent: null,
+                    avg_response_time_label: '—',
+                    repeat_users_count: 0
+                }
+            };
+        }
+
+        // 2. Query real Supabase Profile if valid memberId / UUID
+        if (window.apiClient && window.apiClient.getProfile && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
+            console.log('[PROFILE_ID_TRACE] Supabase profile query id =', memberId);
+            try {
+                const profRes = await window.apiClient.getProfile(memberId);
+                if (profRes && profRes.data) {
+                    const p = profRes.data;
+                    profileData.id = p.id || memberId;
+                    profileData.first_name = (p.first_name || '').trim();
+                    profileData.last_name = (p.last_name || '').trim();
+                    profileData.last_name_initial = profileData.last_name ? (profileData.last_name.charAt(0).toUpperCase() + '.') : '';
+                    if (profileData.first_name) {
+                        profileData.display_name = `${profileData.first_name} ${profileData.last_name_initial}`.trim();
+                    } else if (p.display_name) {
+                        profileData.display_name = p.display_name;
+                    }
+                    profileData.city = p.city || 'Guadeloupe';
+                    profileData.territory = p.territory || 'Guadeloupe (971)';
+                    profileData.bio = p.bio || '';
+                    profileData.avatar_url = p.avatar_url || null;
+                    profileData.is_verified = !!p.is_verified;
+                    profileData.is_pro_verified = !!(p.is_pro && p.kyc_verified);
+                    if (p.created_at) {
+                        profileData.member_since = new Date(p.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+                    }
+                }
+            } catch (err) {
+                console.warn('[PROFILE V2] getProfile query notice:', err);
+            }
+        }
+
+        console.log('[PROFILE_ID_TRACE] returned profile.id =', profileData.id);
+        console.log('[PROFILE_ID_TRACE] returned profile name =', profileData.display_name);
+
+        // 3. Query real Trust & Reputation Engine (RPC)
+        if (window.apiClient && window.apiClient.getUserTrustAndReputation && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
+            console.log('[PROFILE_ID_TRACE] trust/reputation profile id =', memberId);
             try {
                 const trustRes = await window.apiClient.getUserTrustAndReputation(memberId);
                 if (trustRes && trustRes.data && !trustRes.data.error) {
                     const t = trustRes.data;
-                    profileData = {
-                        ...profileData,
-                        ...t,
-                        display_name: t.display_name || profileData.display_name,
-                        city: t.city || profileData.city,
-                        territory: t.territory || profileData.territory,
-                        bio: t.bio || profileData.bio,
-                        avatar_url: t.avatar_url || profileData.avatar_url,
-                        is_verified: !!t.is_verified,
-                        is_pro_verified: !!t.is_pro_verified,
-                        completion_pct: t.completion_pct || 40,
-                        metrics: {
-                            ...profileData.metrics,
-                            ...(t.metrics || {})
-                        }
-                    };
+                    if (t.first_name) profileData.first_name = t.first_name;
+                    if (t.last_name_initial) profileData.last_name_initial = t.last_name_initial;
+                    if (t.display_name) profileData.display_name = t.display_name;
+                    if (t.city) profileData.city = t.city;
+                    if (t.territory) profileData.territory = t.territory;
+                    if (t.bio !== undefined && t.bio !== null) profileData.bio = t.bio;
+                    if (t.avatar_url !== undefined && t.avatar_url !== null) profileData.avatar_url = t.avatar_url;
+                    profileData.is_verified = !!t.is_verified;
+                    profileData.is_pro_verified = !!t.is_pro_verified;
+                    if (t.completion_pct) profileData.completion_pct = t.completion_pct;
+                    if (t.member_since) profileData.member_since = t.member_since;
+                    if (Array.isArray(t.skills) && t.skills.length > 0) profileData.skills = t.skills;
+                    
+                    if (t.metrics) {
+                        profileData.metrics = {
+                            average_rating: t.metrics.average_rating ?? null,
+                            reviews_count: t.metrics.reviews_count ?? 0,
+                            completed_missions: t.metrics.completed_missions ?? 0,
+                            response_rate_percent: t.metrics.response_rate_percent ?? null,
+                            avg_response_time_label: t.metrics.avg_response_time_label || '—',
+                            repeat_users_count: t.metrics.repeat_users_count ?? 0
+                        };
+                    }
                 }
             } catch (err) {
-                console.warn('Trust Engine RPC query notice:', err);
+                console.warn('[PROFILE V2] Trust Engine query notice:', err);
             }
         }
 
-        // Fetch real portfolio
+        // 4. Query real portfolio
         let portfolioItems = [];
-        if (window.apiClient && window.apiClient.getUserPortfolio && memberId && String(memberId).includes('-')) {
+        if (window.apiClient && window.apiClient.getUserPortfolio && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
+            console.log('[PROFILE_ID_TRACE] portfolio profile id =', memberId);
             try {
                 const portRes = await window.apiClient.getUserPortfolio(memberId, isSelf);
                 if (portRes && portRes.data) portfolioItems = portRes.data;
             } catch (e) {}
         }
 
-        // Fetch real services
+        // 5. Query real services
         let userServices = [];
-        if (window.apiClient && window.apiClient.getUserServices && memberId && String(memberId).includes('-')) {
+        if (window.apiClient && window.apiClient.getUserServices && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
+            console.log('[PROFILE_ID_TRACE] services profile id =', memberId);
             try {
                 const servRes = await window.apiClient.getUserServices(memberId);
                 if (servRes && servRes.data) userServices = servRes.data;
             } catch (e) {}
         }
 
-        // Fetch real reviews
+        // 6. Query real reviews
         let reviewsList = [];
-        if (window.apiClient && window.apiClient.supabase && memberId && String(memberId).includes('-')) {
+        if (window.apiClient && window.apiClient.supabase && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
+            console.log('[PROFILE_ID_TRACE] reviews profile id =', memberId);
             try {
                 const { data: dbReviews } = await window.apiClient.supabase
                     .from('reviews')
@@ -2371,9 +2455,9 @@ safeDomReady(() => {
                     .eq('target_id', memberId)
                     .order('created_at', { ascending: false });
 
-                if (dbReviews && dbReviews.length > 0) {
+                if (dbReviews && Array.isArray(dbReviews)) {
                     reviewsList = dbReviews.map(r => ({
-                        name: `${r.author?.first_name || 'Membre'} ${r.author?.last_name ? r.author.last_name.substring(0, 1) + '.' : ''}`,
+                        name: `${r.author?.first_name || 'Membre'} ${r.author?.last_name ? r.author.last_name.substring(0, 1) + '.' : ''}`.trim(),
                         city: r.author?.city || 'Guadeloupe',
                         date: new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
                         rating: Number(r.rating).toFixed(1),
@@ -2381,6 +2465,15 @@ safeDomReady(() => {
                     }));
                 }
             } catch (e) {}
+        }
+
+        // 7. Ensure reviews count and metrics consistency
+        const actualReviewsCount = reviewsList.length;
+        if (profileData.metrics) {
+            profileData.metrics.reviews_count = actualReviewsCount;
+            if (actualReviewsCount === 0) {
+                profileData.metrics.average_rating = null;
+            }
         }
 
         // Populate DOM elements in publicMemberProfileModal
@@ -2399,14 +2492,26 @@ safeDomReady(() => {
     window.openPublicMemberProfile = openPublicMemberProfile;
     window.openPublicProfileModal = async function(targetId) {
         let finalId = targetId;
-        if (!finalId) {
-            const session = (typeof window.getActiveSupabaseSession === 'function') 
-                ? await window.getActiveSupabaseSession() 
-                : null;
-            if (session && session.user) {
-                finalId = session.user.id;
-            }
+        let sessionUserId = null;
+        if (window.apiClient && window.apiClient.getSession) {
+            try {
+                const sessionRes = await window.apiClient.getSession();
+                sessionUserId = sessionRes?.data?.session?.user?.id || null;
+            } catch (e) {}
+        } else if (typeof window.getActiveSupabaseSession === 'function') {
+            try {
+                const sessionRes = await window.getActiveSupabaseSession();
+                sessionUserId = sessionRes?.user?.id || null;
+            } catch (e) {}
         }
+
+        console.log('[PROFILE_ID_TRACE] session.user.id =', sessionUserId);
+        console.log('[PROFILE_ID_TRACE] requested memberId =', targetId);
+
+        if (!finalId) {
+            finalId = sessionUserId;
+        }
+
         if (!finalId) {
             console.warn('[PROFILE V2] openPublicProfileModal: No targetId or active Supabase session.');
             if (typeof window.openLoginModal === 'function') {
@@ -2414,6 +2519,7 @@ safeDomReady(() => {
             }
             return;
         }
+
         return await openPublicMemberProfile(finalId);
     };
     window.openProfileV2Modal = window.openPublicProfileModal;
@@ -2423,8 +2529,9 @@ safeDomReady(() => {
         if (!modalCard) return;
 
         const metrics = pData.metrics || {};
-        const avgRating = metrics.average_rating ? Number(metrics.average_rating).toFixed(1) : null;
-        const reviewsCount = metrics.reviews_count || (reviewsList ? reviewsList.length : 0);
+        const realReviewsCount = (reviewsList && Array.isArray(reviewsList)) ? reviewsList.length : 0;
+        const reviewsCount = realReviewsCount;
+        const avgRating = (reviewsCount > 0 && metrics.average_rating) ? Number(metrics.average_rating).toFixed(1) : null;
         const completedMissions = metrics.completed_missions || 0;
 
         // Build Name Prénom N.
