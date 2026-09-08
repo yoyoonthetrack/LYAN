@@ -388,6 +388,112 @@ const LYANN_API_CLIENT = {
         return { data: { success: true } };
     },
 
+    async getUserSkills(userId) {
+        if (!this.supabase || !userId) return [];
+        try {
+            // 1. Fetch skills from profiles.intervention_zone
+            const { data: profData } = await this.supabase
+                .from('profiles')
+                .select('intervention_zone')
+                .eq('id', userId)
+                .maybeSingle();
+
+            const profileSkills = Array.isArray(profData?.intervention_zone) ? profData.intervention_zone : [];
+
+            // 2. Fetch skills from services table
+            const { data: servData } = await this.supabase
+                .from('services')
+                .select('title')
+                .eq('owner_id', userId);
+
+            const serviceSkills = (servData || []).map(s => s.title).filter(Boolean);
+
+            const combined = [...new Set([...profileSkills, ...serviceSkills])];
+            return combined;
+        } catch (e) {
+            console.warn('[getUserSkills] Exception:', e);
+            return [];
+        }
+    },
+
+    async syncUserSkills(userId, skillsArray) {
+        if (!this.supabase || !userId) {
+            return { error: { message: 'Supabase non initialisé ou session manquante.' } };
+        }
+
+        const selectedSkills = Array.isArray(skillsArray) ? skillsArray.map(s => String(s).trim()).filter(Boolean) : [];
+        console.log(`[ProfileSkillsSave] userId=${userId} selectedCount=${selectedSkills.length} saveStarted=true`);
+
+        try {
+            // 1. Update profiles table intervention_zone array column (Authoritative profile skills storage)
+            const { data: profRes, error: profErr } = await this.supabase
+                .from('profiles')
+                .update({
+                    intervention_zone: selectedSkills,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', userId)
+                .select('id, intervention_zone')
+                .single();
+
+            if (profErr) {
+                console.error(`[ProfileSkillsSave] userId=${userId} selectedCount=${selectedSkills.length} addedCount=0 removedCount=0 result=ERROR errorCode=${profErr.code || 'PROF_ERR'} errorMessage=${profErr.message}`);
+                return { error: profErr };
+            }
+
+            // 2. Attempt sync to services table (best effort for search/matching indexing)
+            try {
+                const { data: existing } = await this.supabase
+                    .from('services')
+                    .select('id, title')
+                    .eq('owner_id', userId);
+
+                const existingMap = new Map();
+                (existing || []).forEach(item => {
+                    if (item.title) existingMap.set(item.title.toLowerCase().trim(), item.id);
+                });
+
+                const selectedSet = new Set(selectedSkills.map(s => s.toLowerCase().trim()));
+
+                const idsToDelete = [];
+                existingMap.forEach((id, titleLower) => {
+                    if (!selectedSet.has(titleLower)) idsToDelete.push(id);
+                });
+
+                if (idsToDelete.length > 0) {
+                    await this.supabase.from('services').delete().in('id', idsToDelete);
+                }
+
+                const skillsToInsert = [];
+                selectedSkills.forEach(title => {
+                    const titleLower = title.toLowerCase().trim();
+                    if (!existingMap.has(titleLower)) {
+                        skillsToInsert.push({
+                            owner_id: userId,
+                            title: title,
+                            category: titleLower.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'general',
+                            description: 'Compétence certifiée profil',
+                            is_active: true
+                        });
+                    }
+                });
+
+                if (skillsToInsert.length > 0) {
+                    await this.supabase.from('services').insert(skillsToInsert);
+                }
+            } catch (servSyncErr) {
+                console.warn('[ProfileSkillsSave] Optional services table sync notice:', servSyncErr.message || servSyncErr);
+            }
+
+            console.log(`[ProfileSkillsSave] userId=${userId} selectedCount=${selectedSkills.length} addedCount=0 removedCount=0 result=SUCCESS`);
+            return { data: { success: true, skills: profRes.intervention_zone || selectedSkills } };
+
+        } catch (err) {
+            console.error(`[ProfileSkillsSave] userId=${userId} selectedCount=${selectedSkills.length} addedCount=0 removedCount=0 result=ERROR errorCode=EXCEPTION errorMessage=${err.message || String(err)}`);
+            return { error: { message: err.message || String(err) } };
+        }
+    },
+
     async getUserServices(userId) {
         if (!this.supabase) return { data: [] };
         return await this.supabase

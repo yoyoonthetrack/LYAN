@@ -268,6 +268,24 @@
                 } else {
                     setupLocationCascading(territory, null, rawCity);
                 }
+
+                // Fetch canonical skills from public.services table in Supabase
+                if (userSession?.id && window.apiClient && typeof window.apiClient.getUserSkills === 'function') {
+                    try {
+                        const fetchedSkills = await window.apiClient.getUserSkills(userSession.id);
+                        if (Array.isArray(fetchedSkills)) {
+                            selectedSkills.clear();
+                            fetchedSkills.forEach(s => selectedSkills.add(s));
+                            updateSkillTagsUI();
+                        }
+                    } catch (e) {
+                        console.warn('[PROFILE_COMPLETION] getUserSkills load error:', e);
+                    }
+                } else if (localProf?.skills && Array.isArray(localProf.skills)) {
+                    selectedSkills.clear();
+                    localProf.skills.forEach(s => selectedSkills.add(s));
+                    updateSkillTagsUI();
+                }
             } catch(e) {
                 console.warn('[PROFILE_COMPLETION] loadExistingProfile error:', e);
             }
@@ -542,7 +560,23 @@
                     return; // DO NOT CLOSE MODAL ON MUTATION FAILURE
                 }
 
-                console.log(`[ProfileSaveResult] profilesUpdate=SUCCESS skillsUpdate=SUCCESS avatarUpload=${avatarUploadStatus}`);
+                // Call Supabase DB skills sync (public.services)
+                let skillsUpdateStatus = 'SUCCESS';
+                if (window.apiClient && typeof window.apiClient.syncUserSkills === 'function') {
+                    const { data: skillsRes, error: skillsError } = await window.apiClient.syncUserSkills(userId, skillsArr);
+                    if (skillsError) {
+                        skillsUpdateStatus = 'ERROR';
+                        console.error(`[ProfileSaveResult] profilesUpdate=SUCCESS skillsUpdate=ERROR avatarUpload=${avatarUploadStatus} errorCode=${skillsError.code || 'SKILLS_ERR'} errorMessage=${skillsError.message || 'Skills sync failed'}`);
+                        const errText = `Échec de la sauvegarde des compétences (${skillsError.code || 'ERR'}): ${skillsError.message || 'Erreur inconnue'}`;
+                        if (window.lyannAlert) window.lyannAlert(errText);
+                        else alert(errText);
+                        nextBtn.disabled = false;
+                        nextBtn.innerHTML = originalBtnHtml;
+                        return; // DO NOT CLOSE MODAL ON SKILLS MUTATION FAILURE
+                    }
+                }
+
+                console.log(`[ProfileSaveResult] profilesUpdate=SUCCESS skillsUpdate=${skillsUpdateStatus} avatarUpload=${avatarUploadStatus}`);
 
                 // Real DB SUCCESS Confirmation Achieved
                 const updatedProfile = dbData || {
