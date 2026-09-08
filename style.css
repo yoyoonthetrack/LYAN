@@ -13466,30 +13466,40 @@ html, body {
 }
 
 .lyann-cta-secondary {
-    background: #E5B345 !important;
+    background: #FFFFFF !important;
     color: #17231C !important;
     font-weight: 700 !important;
     font-size: 0.88rem !important;
     border-radius: 22px !important;
     min-height: 44px !important;
     padding: 0 16px !important;
-    border: 1px solid rgba(23, 35, 28, 0.12) !important;
-    box-shadow: 0 2px 8px rgba(229, 179, 69, 0.2) !important;
+    border: 1.5px solid #E5B345 !important;
+    box-shadow: 0 2px 8px rgba(229, 179, 69, 0.08) !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 6px !important;
     cursor: pointer !important;
-    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    transition: transform 0.15s ease, background 0.15s ease !important;
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     width: 100% !important;
     box-sizing: border-box !important;
 }
 
-.lyann-cta-primary:active,
-.lyann-cta-secondary:active {
+.lyann-cta-secondary i {
+    color: #D49C24 !important;
+    font-size: 1.05rem !important;
+}
+
+.lyann-cta-primary:active {
     transform: scale(0.98) !important;
 }
+
+.lyann-cta-secondary:active {
+    background: #FFFDF7 !important;
+    transform: scale(0.98) !important;
+}
+
 
 /* Bokantaj Card Surface & Soft Elevation Polish (Scoped strictly to Bokantaj feed cards) */
 .flash-card.lyann-card {
