@@ -1517,10 +1517,18 @@ function ensureMobileHamburgerDrawer() {
                 </div>
 
                 <!-- PIED DE PAGE DRAWER -->
-                <div class="drawer-footer">
-                    <button class="drawer-logout-btn" id="drawerLogoutBtn">
+                <div class="drawer-footer logged-in-only">
+                    <button class="drawer-logout-btn btn-logout-trigger" id="drawerLogoutBtn">
                         <i class="ph ph-sign-out"></i>
                         <span>Se déconnecter</span>
+                    </button>
+                </div>
+                <div class="drawer-footer logged-out-only" style="display: flex; flex-direction: column; gap: 8px;">
+                    <button class="btn btn-primary open-login-trigger" style="width: 100%; justify-content: center;">
+                        <i class="ph ph-sign-in"></i> Se connecter
+                    </button>
+                    <button class="btn btn-outline open-signup-trigger" style="width: 100%; justify-content: center;">
+                        S'inscrire
                     </button>
                 </div>
 
@@ -1665,22 +1673,37 @@ function initDrawerEvents(overlay) {
     }
 
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', (e) => {
+        logoutBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             window.closeLyannHamburgerDrawer();
-            if (typeof safeStorage !== 'undefined') {
-                safeStorage.removeItem('lyan_user_logged_in');
-                safeStorage.removeItem('lyan_user_profile');
+            
+            try {
+                if (typeof safeStorage !== 'undefined') {
+                    safeStorage.removeItem('lyan_user_logged_in');
+                    safeStorage.removeItem('lyan_user_id');
+                    safeStorage.removeItem('lyan_user_profile');
+                }
+                localStorage.removeItem('lyan_user_logged_in');
+                localStorage.removeItem('lyan_user_id');
+                localStorage.removeItem('lyan_user_profile');
+                sessionStorage.clear();
+            } catch (err) {}
+
+            if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+                try {
+                    await window.LYANN_API_CLIENT.signOut();
+                } catch (err) {}
             }
-            localStorage.removeItem('lyan_user_logged_in');
-            localStorage.removeItem('lyan_user_profile');
+
+            document.body.classList.remove('user-is-logged-in');
+            if (typeof updateHeaderAuthState === 'function') {
+                await updateHeaderAuthState();
+            }
+
             if (window.NotificationService) {
                 window.NotificationService.showToast('info', 'Vous avez été déconnecté.');
-            }
-            if (typeof window.updateHeaderAuthState === 'function') {
-                window.updateHeaderAuthState();
-            } else {
-                window.location.reload();
+            } else if (typeof showLyanToast === 'function') {
+                showLyanToast('info', 'Déconnexion réussie');
             }
         });
     }
