@@ -5866,11 +5866,12 @@ safeDomReady(() => {
         const kycList = document.getElementById('accountKycList');
         if (kycList) {
             const isEmailConf = forcedSession?.user?.email_confirmed_at ? '✅ Email vérifié (' + userEmail + ')' : '⏳ Email en attente de confirmation (' + userEmail + ')';
+            const userPhone = profileData?.phone || forcedSession?.user?.phone || '';
             kycList.innerHTML = `
                 <li>${isEmailConf}</li>
                 <li style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                    <span>⏳ Numéro mobile non certifié</span>
-                    <button type="button" id="btnVerifyPhoneAcc" class="btn btn-outline btn-xs btn-p2 btn-verify-phone" style="font-size: 0.75rem; padding: 3px 10px; border-radius: 6px;">Vérifier</button>
+                    <span>📱 Numéro mobile : ${userPhone ? window.escapeHtmlAttr(userPhone) : 'Non renseigné'}</span>
+                    <span class="kyc-badge-deferred" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; background: #F1F5F9; color: #64748B; font-weight: 600;">Vérification SMS bientôt disponible</span>
                 </li>
                 <li>⏳ Pièce d'identité non transmise</li>
             `;
