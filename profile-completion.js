@@ -358,14 +358,16 @@
         // Global helper to update user account modal widgets
         function updateAccountModalProfileWidgets(prof) {
             if (!prof) return;
+            const canonicalName = window.formatPublicName ? window.formatPublicName(prof, null, 'Lyanneur') : (prof.firstName || prof.first_name || 'Lyanneur');
             const nameEls = document.querySelectorAll('#profileUserName, #overviewFirstName, .user-name-display, #accountUserName, #drawerUserName');
             nameEls.forEach(el => {
-                if (el) el.textContent = prof.firstName + (prof.lastName ? ' ' + prof.lastName : '');
+                if (el) el.textContent = canonicalName;
             });
 
             const locEls = document.querySelectorAll('#profileLocationText');
+            const formattedLoc = window.formatProfileLocation ? window.formatProfileLocation(prof.city || prof.commune, prof.territory) : (prof.city || 'Guadeloupe');
             locEls.forEach(el => {
-                if (el) el.innerHTML = `<i class="ph ph-map-pin"></i> ${prof.city || 'Guadeloupe (971)'}`;
+                if (el) el.innerHTML = `<i class="ph ph-map-pin"></i> ${formattedLoc}`;
             });
 
             const avatarEls = document.querySelectorAll('#profileAvatarImg, .nav-profile-avatar, .drawer-avatar');

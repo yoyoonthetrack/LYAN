@@ -2419,12 +2419,8 @@ safeDomReady(() => {
                     profileData.first_name = (p.first_name || '').trim();
                     profileData.last_name = (p.last_name || '').trim();
                     profileData.last_name_initial = profileData.last_name ? (profileData.last_name.charAt(0).toUpperCase() + '.') : '';
-                    if (profileData.first_name) {
-                        profileData.display_name = `${profileData.first_name} ${profileData.last_name_initial}`.trim();
-                    } else if (p.display_name) {
-                        profileData.display_name = p.display_name;
-                    }
-                    profileData.city = p.city || 'Guadeloupe';
+                    profileData.display_name = window.formatPublicName(profileData, null, 'Lyanneur');
+                    profileData.city = (p.city && p.city.trim().toLowerCase() !== 'guadeloupe') ? p.city.trim() : null;
                     profileData.territory = p.territory || 'Guadeloupe (971)';
                     profileData.bio = p.bio || '';
                     profileData.avatar_url = p.avatar_url || null;
@@ -2601,6 +2597,16 @@ safeDomReady(() => {
     };
     window.openProfileV2Modal = window.openPublicProfileModal;
 
+    window.capitalizeLyannName = function(str) {
+        if (!str || typeof str !== 'string') return '';
+        const trimmed = str.trim();
+        if (!trimmed) return '';
+        return trimmed.split(/(\s+|-)/).map(part => {
+            if (!part || /^(\s+|-)$/.test(part)) return part;
+            return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+        }).join('');
+    };
+
     window.formatPublicName = function(profileOrFirstName, lastName, fallback) {
         let fn = '';
         let ln = '';
@@ -2608,7 +2614,7 @@ safeDomReady(() => {
 
         if (profileOrFirstName && typeof profileOrFirstName === 'object') {
             fn = (profileOrFirstName.first_name || '').trim();
-            ln = (profileOrFirstName.last_name || '').trim();
+            ln = (profileOrFirstName.last_name || profileOrFirstName.last_name_initial || '').trim();
             dn = (profileOrFirstName.display_name || '').trim();
         } else {
             fn = (profileOrFirstName || '').trim();
@@ -2616,22 +2622,42 @@ safeDomReady(() => {
             dn = (fallback || '').trim();
         }
 
-        if (fn && ln) {
-            return `${fn} ${ln.charAt(0).toUpperCase()}.`;
+        const cleanFn = window.capitalizeLyannName(fn);
+        const cleanLnInit = ln ? ln.charAt(0).toUpperCase() + '.' : '';
+
+        if (cleanFn && cleanLnInit) {
+            return `${cleanFn} ${cleanLnInit}`;
         }
-        if (fn) {
-            return fn;
+        if (cleanFn) {
+            return cleanFn;
         }
         if (dn && dn !== 'Lyanneur' && dn !== 'Membre LYANN') {
             if (dn.includes(' ') && !dn.includes('-')) {
                 const parts = dn.trim().split(/\s+/);
                 if (parts.length > 1) {
-                    return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+                    const firstP = window.capitalizeLyannName(parts[0]);
+                    const lastP = parts[parts.length - 1].charAt(0).toUpperCase() + '.';
+                    return `${firstP} ${lastP}`;
                 }
             }
-            return dn;
+            return window.capitalizeLyannName(dn);
         }
         return fallback || 'Lyanneur';
+    };
+
+    window.formatProfileLocation = function(city, territory) {
+        let terrName = (territory || 'Guadeloupe').trim();
+        if (terrName.toLowerCase().includes('guadeloupe')) {
+            terrName = 'Guadeloupe';
+        }
+
+        let cleanCity = city ? city.trim() : '';
+        if (!cleanCity || cleanCity.toLowerCase() === 'guadeloupe' || cleanCity.toLowerCase() === terrName.toLowerCase()) {
+            return terrName;
+        }
+
+        cleanCity = window.capitalizeLyannName(cleanCity);
+        return `${cleanCity} · ${terrName}`;
     };
 
     function renderStep9ProfileModalDOM(pData, isSelf, portfolioItems, userServices, reviewsList) {
@@ -2737,7 +2763,7 @@ safeDomReady(() => {
         }
 
         // Build Intervention Zone
-        const locationCity = window.escapeHtmlAttr(pData.city || 'Guadeloupe');
+        const formattedLocation = window.formatProfileLocation(pData.city, pData.territory);
         const radiusText = pData.intervention_radius_km ? ` + autour de ${pData.intervention_radius_km} km` : '';
         const relocationHTML = `
             <div class="lyann-profile-section">
@@ -2747,7 +2773,7 @@ safeDomReady(() => {
                 <div class="lyann-relocation-card" style="display: flex; align-items: center; gap: 10px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 12px 16px;">
                     <div class="lyann-relocation-icon" style="color: #4A7C59; font-size: 1.2rem;"><i class="ph ph-map-pin"></i></div>
                     <div class="lyann-relocation-text" style="font-size: 0.88rem; color: #1E293B;">
-                        <strong>${locationCity}</strong><span style="color: #64748B;">${radiusText}</span>
+                        <strong>${window.escapeHtmlAttr(formattedLocation)}</strong><span style="color: #64748B;">${radiusText}</span>
                     </div>
                 </div>
             </div>
@@ -2838,7 +2864,7 @@ safeDomReady(() => {
                                 ${badgesHTML}
                             </div>
                             <div class="lyann-profile-location">
-                                <i class="ph ph-map-pin"></i> ${locationCity} · Guadeloupe
+                                <i class="ph ph-map-pin"></i> ${window.escapeHtmlAttr(formattedLocation)}
                             </div>
                             ${trustLineHTML}
                             ${pData.bio ? `<p class="lyann-profile-bio" style="font-size:0.9rem; color:#475569; margin:8px 0;">${window.escapeHtmlAttr(pData.bio)}</p>` : ''}
@@ -4596,15 +4622,9 @@ safeDomReady(() => {
 
         currentQuickMember = member;
 
-        let displayName = member.name || member.full_name;
-        if (member.first_name) {
-            const ln = (member.last_name || '').trim();
-            const init = ln ? ` ${ln.charAt(0).toUpperCase()}.` : '';
-            displayName = `${member.first_name.trim()}${init}`;
-        }
-
+        const displayName = window.formatPublicName(member, null, member.name || member.full_name || 'Membre LYANN');
         const avatarSrc = window.getLyannAvatarUrl(member.avatar_url || member.avatar);
-        const cityText = member.commune || member.city || member.locationName || 'Guadeloupe';
+        const cityText = window.formatProfileLocation(member.commune || member.city || member.locationName, member.territory);
         const roleText = member.role || (member.is_pro ? 'Professionnel' : 'Membre LYANN');
         const badgeText = member.badge || (member.is_pro ? 'Artisan PRO' : (member.is_verified ? 'Profil Vérifié' : ''));
         const bioText = member.bio || member.description || 'Membre actif de la communauté LYANN.';
