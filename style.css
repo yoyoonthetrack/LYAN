@@ -13516,3 +13516,11 @@ html, body {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
     border-radius: 20px !important;
 }
+
+/* Fail-safe Public Web Header Suppression on Native App Shell */
+body.is-native-app .open-login-trigger,
+body.is-native-app .navbar .nav-search,
+body.is-native-app .navbar .nav-actions .open-login-trigger,
+body.is-native-app .navbar .nav-auth-btn {
+    display: none !important;
+}

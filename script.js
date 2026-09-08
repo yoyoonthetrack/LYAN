@@ -664,7 +664,7 @@ function injectMobileInterface() {
     const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
     const isExplorer = path.includes('results.html');
     const isBokantaj = path.includes('feed.html');
-    const isLoggedIn = document.body.classList.contains('user-is-logged-in');
+    const isLoggedIn = document.body.classList.contains('user-is-logged-in') || localStorage.getItem('lyan_user_logged_in') === 'true';
 
     // DEEP LINK CHECK: Deep links bypass Accueil App and route directly
     const hasDeepLink = window.location.search && (
@@ -673,6 +673,11 @@ function injectMobileInterface() {
         window.location.search.includes('post_id=') ||
         window.location.search.includes('chat=')
     );
+
+    // Ensure deterministic native app header is applied immediately for ALL native routes
+    if (typeof window.ensureDeterministicAppHeader === 'function') {
+        window.ensureDeterministicAppHeader();
+    }
 
     // NATIVE APP CONNECTED HOMEPAGE: Render App Home View on index.html when logged in
     if (isHome && isLoggedIn && !hasDeepLink) {
@@ -953,8 +958,8 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
     const navbar = document.querySelector('.navbar');
     if (!navbar) return;
     
-    // STABILIZATION V1: Sentinel — skip re-render if header already set for this view type
-    if (navbar.getAttribute('data-native-header-active') === viewType) {
+    // STABILIZATION V1: Sentinel — skip re-render ONLY if header is set AND native header row is present
+    if (navbar.getAttribute('data-native-header-active') === viewType && navbar.querySelector('.native-header-row')) {
         return;
     }
     const container = navbar.querySelector('.nav-container') || navbar;
@@ -5361,16 +5366,13 @@ safeDomReady(() => {
                 const path = window.location.pathname;
                 const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
                 
-                // STABILIZATION V1: Only render App Home if not already rendered
-                // Prevents race condition where TOKEN_REFRESHED events rebuild the header
-                const nativeHeaderActive = document.querySelector('.navbar[data-native-header-active]');
-                if (isHome && typeof window.renderAppHomeConnectedView === 'function' && !nativeHeaderActive) {
+                // ALWAYS enforce deterministic native header on native platform
+                if (typeof window.ensureDeterministicAppHeader === 'function') {
+                    window.ensureDeterministicAppHeader();
+                }
+
+                if (isHome && typeof window.renderAppHomeConnectedView === 'function') {
                     window.renderAppHomeConnectedView();
-                } else if (isHome && nativeHeaderActive) {
-                    // Header already active — just ensure it stays visible
-                    if (typeof window.ensureDeterministicAppHeader === 'function') {
-                        window.ensureDeterministicAppHeader();
-                    }
                 }
             }
         } else if (authInitializationComplete) {
