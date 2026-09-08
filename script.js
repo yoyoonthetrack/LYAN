@@ -3532,12 +3532,12 @@ safeDomReady(() => {
                         cardBody = rawContent;
                     }
 
-                    const cardTitleHTML = cardHeadline ? `<div style="font-weight: 800; font-size: 1.02rem; color: #17231C; line-height: 1.35; margin-bottom: 2px;">${cardHeadline}</div>` : '';
-                    const cardBodyHTML = cardBody ? `<div style="font-size: 0.88rem; color: #475569; line-height: 1.45;">${safeMentions(cardBody)}</div>` : '';
+                    const cardTitleHTML = cardHeadline ? `<div class="lyann-card-title" style="font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif; font-weight: 650; font-size: 1.15rem; color: #17231C; line-height: 1.3; letter-spacing: -0.015em; margin-bottom: 4px; word-break: break-word;">${cardHeadline}</div>` : '';
+                    const cardBodyHTML = cardBody ? `<div class="lyann-card-description" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 450; font-size: 0.95rem; color: #334155; line-height: 1.5; word-break: break-word; margin-top: 2px;">${safeMentions(cardBody)}</div>` : '';
                     const budgetHTML = (isLyann && post.budget) ? ` · Budget : ${post.budget} €` : '';
 
                     let hasBodyContent = cardHeadline || cardBody || mediaHTML;
-                    let bodyBlockHTML = hasBodyContent ? `<div class="flash-card-body" style="margin-bottom: 8px;">${cardTitleHTML}${cardBodyHTML}${mediaHTML}</div>` : '';
+                    let bodyBlockHTML = hasBodyContent ? `<div class="flash-card-body" style="margin-top: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">${cardTitleHTML}${cardBodyHTML}${mediaHTML}</div>` : '';
 
                     let ctaButtonHTML = '';
                     let viewLinkHTML = '';
@@ -3547,7 +3547,7 @@ safeDomReady(() => {
                             viewLinkHTML = `<button class="btn-open-lyann-detail" data-request-id="${targetId}" style="background: none; border: none; color: var(--primary, #4A7C59); font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 4px 6px;">Gérer <i class="ph ph-arrow-right"></i></button>`;
                         } else {
                             viewLinkHTML = `<button class="btn-open-lyann-detail" data-request-id="${targetId}" style="background: none; border: none; color: var(--primary, #4A7C59); font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 4px 6px;">Voir <i class="ph ph-arrow-right"></i></button>`;
-                            ctaButtonHTML = `<button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${post.author_avatar || post.authorAvatar || ''}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="width: 100%; max-width: 100%; background: var(--primary, #4A7C59); color: #FFF; font-weight: 800; border-radius: 22px; min-height: 44px; padding: 0 16px; border: none; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
+                            ctaButtonHTML = `<button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${post.author_avatar || post.authorAvatar || ''}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="width: 100%; max-width: 100%; background: var(--primary, #4A7C59); color: #FFF; font-weight: 700; border-radius: 22px; min-height: 44px; padding: 0 16px; border: none; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
                         }
                     }
 
@@ -3559,13 +3559,13 @@ safeDomReady(() => {
                                     <div class="flash-author-block trigger-quick-profile" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
                                         <img src="${post.author_avatar || post.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorId}`}" alt="${authorDisplayName}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
                                         <div class="flash-author-info" style="line-height: 1.25; min-width: 0; flex: 1;">
-                                            <strong style="color: #17231C; font-size: 0.92rem; font-weight: 800; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayName} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i></strong>
-                                            <span style="display: block; font-size: 0.76rem; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
+                                            <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayName} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i></strong>
+                                            <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="flash-meta-badges" style="display: flex; align-items: center; width: 100%; box-sizing: border-box; margin-top: 2px;">
-                                    <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 800; padding: 4px 10px; border-radius: 12px; font-size: 0.72rem; text-transform: uppercase; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box;' : 'background: #F1F5F9; color: #475569; font-weight: 700; padding: 4px 10px; border-radius: 12px; font-size: 0.72rem; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box;'}">${badgeText}</span>
+                                    <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; text-transform: uppercase; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; letter-spacing: 0.02em;' : 'background: #F1F5F9; color: #475569; font-weight: 600; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box;'}">${badgeText}</span>
                                 </div>
                             </div>
 

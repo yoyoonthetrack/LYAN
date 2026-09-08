@@ -13401,3 +13401,28 @@ html, body {
         box-sizing: border-box !important;
     }
 }
+
+/* Bokantaj Card Typography Polish (Scoped strictly to .flash-card / .lyann-card) */
+.flash-card .lyann-author-name {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.98rem !important;
+    color: #17231C !important;
+}
+
+.flash-card .lyann-card-title {
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 650 !important;
+    font-size: 1.15rem !important;
+    color: #17231C !important;
+    line-height: 1.3 !important;
+    letter-spacing: -0.015em !important;
+}
+
+.flash-card .lyann-card-description {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 450 !important;
+    font-size: 0.95rem !important;
+    color: #334155 !important;
+    line-height: 1.5 !important;
+}
