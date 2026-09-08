@@ -22,8 +22,10 @@ if (window.supabase) {
         }
     });
     console.log("⚡ Supabase client initialized with session persistence.");
+    console.log("⚡ [BOOT 03] Supabase ready");
 } else {
     console.warn("⚠️ Supabase JS SDK missing. Running in Mock Mode only.");
+    console.log("⚡ [BOOT 03] Supabase ready (Mock Mode)");
 }
 
 const RAW_LYANN_DEFAULT_AVATAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="50" fill="#FAF7F2"/><circle cx="50" cy="50" r="48" fill="#EBF2ED" stroke="rgba(74,124,89,0.25)" stroke-width="2"/><circle cx="50" cy="38" r="16" fill="#4A7C59"/><path d="M 22 84 C 22 66, 34 58, 50 58 C 66 58, 78 66, 78 84 Z" fill="#4A7C59"/></svg>`;

@@ -1,6 +1,4 @@
-/**
- * LYANN - Script (Community, Trust, Member Search & Interactive Signup Workflow)
- */
+console.log("⚡ [BOOT 01] script.js loaded");
 
 // === CAPACITOR MOBILE DETECTOR & DYNAMIC BRIDGE INJECTION ===
 (function() {
@@ -14,6 +12,12 @@
             console.log("⚡ Capacitor Native Bridge Loaded Dynamically!");
             if (typeof initializeNativeFeatures === 'function') {
                 initializeNativeFeatures();
+            }
+            if (typeof injectMobileInterface === 'function') {
+                injectMobileInterface();
+            }
+            if (typeof window.ensureDeterministicAppHeader === 'function') {
+                window.ensureDeterministicAppHeader();
             }
         };
     }
@@ -38,7 +42,25 @@ window.unlockBodyScroll = function() {
 };
 
 function isNativePlatform() {
-    return window.Capacitor !== undefined && window.Capacitor.isNativePlatform();
+    if (typeof window === 'undefined') return false;
+    if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+        return true;
+    }
+    if (window.Capacitor && typeof window.Capacitor.getPlatform === 'function') {
+        const p = window.Capacitor.getPlatform();
+        if (p === 'ios' || p === 'android') return true;
+    }
+    if (window.location && window.location.origin && (
+        window.location.origin.includes('capacitor://') || 
+        window.location.href.startsWith('capacitor://') ||
+        (window.location.origin.includes('http://localhost') && window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes('Capacitor'))
+    )) {
+        return true;
+    }
+    if (window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.bridge || window.webkit.messageHandlers.capacitor)) {
+        return true;
+    }
+    return false;
 }
 
 // === LYANN SINGLE SOURCE OF TRUTH DEFAULT USER AVATAR ===
@@ -656,7 +678,9 @@ window.openLyannMessagesModal = function() {
 };
 
 function injectMobileInterface() {
+    console.log("⚡ [BOOT 05] injectMobileInterface entered");
     if (!isNativePlatform()) return;
+    console.log("⚡ [BOOT 06] native detected: true");
 
     document.body.classList.add('is-native-app');
 
@@ -721,6 +745,7 @@ function injectMobileInterface() {
             </button>
         `;
         document.body.appendChild(bottomNav);
+        console.log("⚡ [BOOT 10] bottom nav listeners attached");
 
         bottomNav.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -1041,6 +1066,7 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
     navbar.setAttribute('data-native-header-active', viewType);
     navbar.style.display = '';
     navbar.style.visibility = 'visible';
+    console.log("⚡ [BOOT 07] native header mounted for viewType:", viewType);
 };
 
     window.isExplicitDemoMode = function() {
@@ -1651,6 +1677,7 @@ document.addEventListener('click', (e) => {
     // 1. Open Drawer Button
     const openBtn = e.target.closest('.mobile-menu-btn, #openMobileDrawerBtn, .open-drawer-trigger, .hamburger-menu-btn, #btnHeaderHamburger');
     if (openBtn) {
+        console.log("⚡ [BOOT 08] hamburger listener attached/triggered");
         e.preventDefault();
         e.stopPropagation();
         window.openLyannHamburgerDrawer();
@@ -1670,6 +1697,7 @@ document.addEventListener('click', (e) => {
     // 3. Global Login Triggers (Navbar, Drawer, Footer, Body)
     const loginTrigger = e.target.closest('.open-login-trigger, a[href="#login"], .open-login-modal');
     if (loginTrigger) {
+        console.log("⚡ [BOOT 09] login listener attached/triggered");
         e.preventDefault();
         e.stopPropagation();
         window.closeLyannHamburgerDrawer();
@@ -1856,6 +1884,7 @@ function safeDomReady(fn) {
 }
 
 safeDomReady(() => {
+    console.log("⚡ [BOOT 02] DOM ready");
     // Initialize official DOM communes autocomplete engine
     initLyannCommunesAutocomplete();
 
@@ -5354,6 +5383,7 @@ safeDomReady(() => {
         }
 
         if (isLoggedIn && userId) {
+            console.log("⚡ [BOOT 04] auth init entered: logged in user", userId);
             document.body.classList.add('user-is-logged-in');
             document.querySelector('.app-welcome-screen')?.remove();
             window.CURRENT_USER_ID = userId;
