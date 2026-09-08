@@ -3547,7 +3547,7 @@ safeDomReady(() => {
                             viewLinkHTML = `<button class="btn-open-lyann-detail" data-request-id="${targetId}" style="background: none; border: none; color: var(--primary, #4A7C59); font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 4px 6px;">Gérer <i class="ph ph-arrow-right"></i></button>`;
                         } else {
                             viewLinkHTML = `<button class="btn-open-lyann-detail" data-request-id="${targetId}" style="background: none; border: none; color: var(--primary, #4A7C59); font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 4px 6px;">Voir <i class="ph ph-arrow-right"></i></button>`;
-                            ctaButtonHTML = `<button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${post.author_avatar || post.authorAvatar || ''}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="width: 100%; max-width: 100%; background: var(--primary, #4A7C59); color: #FFF; font-weight: 700; border-radius: 22px; min-height: 44px; padding: 0 16px; border: none; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
+                            ctaButtonHTML = `<button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${authorDisplayName.replace(/"/g, '&quot;')}" data-requester-avatar="${post.author_avatar || post.authorAvatar || ''}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="width: auto; max-width: 100%; align-self: flex-end; background: var(--primary, #4A7C59); color: #FFF; font-weight: 700; border-radius: 22px; min-height: 44px; padding: 0 22px; border: none; font-size: 0.88rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
                         }
                     }
 
@@ -3588,7 +3588,7 @@ safeDomReady(() => {
                                     </div>
                                     ${viewLinkHTML}
                                 </div>
-                                ${ctaButtonHTML ? `<div style="width: 100%; max-width: 100%; box-sizing: border-box; margin-top: 2px;">${ctaButtonHTML}</div>` : ''}
+                                ${ctaButtonHTML ? `<div style="display: flex; justify-content: flex-end; width: 100%; max-width: 100%; box-sizing: border-box; margin-top: 2px;">${ctaButtonHTML}</div>` : ''}
                             </div>
 
                             <div class="comments-drawer" id="comments-drawer-${targetId}" style="display: none; padding: 10px 12px; border-top: 1px solid #E2E8F0; background: #F8FAFC; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; margin-top: 8px; width: 100%; box-sizing: border-box;">

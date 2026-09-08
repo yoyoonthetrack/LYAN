@@ -13056,14 +13056,22 @@ html, body {
     transform: scale(0.97);
 }
 
-.bokantaj-topic-scroller {
+.bokantaj-topic-scroller,
+.bokantaj-topic-scroller.suggestion-tags {
     display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
     align-items: center !important;
+    justify-content: flex-start !important;
     gap: 8px !important;
     overflow-x: auto !important;
+    overflow-y: hidden !important;
     white-space: nowrap !important;
     padding-bottom: 6px !important;
     margin-bottom: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
     -webkit-overflow-scrolling: touch !important;
     scrollbar-width: none !important;
 }
@@ -13072,8 +13080,13 @@ html, body {
     display: none !important;
 }
 
-.bokantaj-topic-scroller .chip-pill {
+.bokantaj-topic-scroller > *,
+.bokantaj-topic-scroller .chip-pill,
+.bokantaj-topic-scroller .tag,
+.bokantaj-topic-scroller .hashtag-tag {
+    flex: 0 0 auto !important;
     flex-shrink: 0 !important;
+    white-space: nowrap !important;
     display: inline-flex !important;
     align-items: center !important;
     gap: 4px !important;
@@ -13087,11 +13100,13 @@ html, body {
     min-height: 34px !important;
 }
 
-.bokantaj-topic-scroller .chip-pill.active {
+.bokantaj-topic-scroller .chip-pill.active,
+.bokantaj-topic-scroller .tag.active {
     background: rgba(74, 124, 89, 0.14) !important;
     border-color: var(--primary, #4A7C59) !important;
     color: var(--primary-dark, #1F3827) !important;
 }
+
 
 /* 6. BOKANTAJ CATEGORY FILTER BOTTOM SHEET */
 .mobile-bottom-sheet {
@@ -13425,4 +13440,12 @@ html, body {
     font-size: 0.95rem !important;
     color: #334155 !important;
     line-height: 1.5 !important;
+}
+
+.flash-card .btn-help-lyann {
+    width: auto !important;
+    max-width: 100% !important;
+    align-self: flex-end !important;
+    padding: 0 22px !important;
+    min-height: 44px !important;
 }
