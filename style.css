@@ -537,6 +537,60 @@ h1, h2, h3, h4 {
     gap: 12px;
 }
 
+/* Desktop Main Navigation Links (Web Desktop Header) */
+.desktop-nav-menu {
+    display: none;
+    align-items: center;
+    gap: 18px;
+    margin-left: 28px;
+    margin-right: auto;
+}
+
+@media (min-width: 860px) {
+    .desktop-nav-menu {
+        display: flex !important;
+    }
+}
+
+.is-native-app .desktop-nav-menu {
+    display: none !important;
+}
+
+.desktop-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1F3827;
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.desktop-nav-link:hover {
+    color: #4A7C59;
+    background: rgba(74, 124, 89, 0.08);
+}
+
+.desktop-nav-link.active {
+    color: #4A7C59;
+    background: rgba(74, 124, 89, 0.12);
+    font-weight: 800;
+}
+
+.desktop-nav-link.nav-link-bokantaj {
+    color: #1F3827;
+}
+
+.desktop-nav-link.nav-link-bokantaj:hover,
+.desktop-nav-link.nav-link-bokantaj.active {
+    color: #E76F51;
+    background: rgba(231, 111, 81, 0.1);
+}
+
 .mobile-header-actions {
     display: flex !important;
     align-items: center !important;
