@@ -1289,7 +1289,7 @@
                             <div class="mobile-form-group">
                                 <label class="mobile-form-label">Montant proposé</label>
                                 <div class="amount-input-wrapper">
-                                    <input type="number" id="dpAmount" class="amount-input-field" placeholder="80" min="5" max="10000" required>
+                                    <input type="number" id="dpAmount" class="amount-input-field" placeholder="80" min="5" max="10000" step="any" inputmode="decimal" required>
                                     <span class="amount-input-symbol">€</span>
                                 </div>
                             </div>
@@ -1364,7 +1364,7 @@
                             </div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant total (€)</label>
-                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="200" required style="width: 100%; box-sizing: border-box;">
+                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="5" step="any" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
                             </div>
                             
                             <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
@@ -1373,19 +1373,19 @@
                                 <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
                                     <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 1:</span>
                                     <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
                                     <span style="font-size: 0.8rem;">%</span>
                                 </div>
                                 <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
                                     <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 2:</span>
                                     <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
                                     <span style="font-size: 0.8rem;">%</span>
                                 </div>
                                 <div style="display: flex; gap: 10px; align-items: center;">
                                     <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 3:</span>
                                     <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
                                     <span style="font-size: 0.8rem;">%</span>
                                 </div>
                                 <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des Parties doit faire 100%.</p>

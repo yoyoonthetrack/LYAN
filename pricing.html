@@ -136,7 +136,7 @@
             <div class="pricing-grid">
                 
                 <!-- 1. LYANNEUR (Gratuit) -->
-                <div class="pricing-card plan-lyanneur">
+                <div class="pricing-card plan-lyanneur" data-plan="FREE" tabindex="0" role="button" aria-label="Offre Lyanneur Gratuit">
                     <div>
                         <span class="plan-badge badge-lyanneur">LYANNEUR</span>
                         <h3 class="plan-name">Lyanneur</h3>
@@ -155,19 +155,18 @@
                         </ul>
                     </div>
                     <div class="plan-action">
-                        <button class="btn btn-plan-lyanneur open-signup-trigger" data-plan="lyanneur">S'inscrire gratuitement</button>
+                        <button type="button" class="btn btn-plan-lyanneur" data-plan-cta="FREE">Offre actuelle</button>
                     </div>
                 </div>
 
-                <!-- 2. LYANNEUR PLUS (9,90 €) -->
-                <div class="pricing-card plan-plus">
+                <!-- 2. LYANNEUR PLUS (9,90 € / mois | 99 € / an) -->
+                <div class="pricing-card plan-plus" data-plan="PLUS" tabindex="0" role="button" aria-label="Offre Lyanneur Plus">
                     <div>
                         <span class="plan-badge badge-plus">LYANNEUR +</span>
                         <h3 class="plan-name">Lyanneur Plus</h3>
                         <p class="plan-tagline">Pour les talents qui souhaitent recevoir davantage de demandes.</p>
                         <div class="plan-price">
-                            <span class="price-currency">€</span>
-                            <span class="price-val" data-monthly="9,90" data-yearly="7,90">9,90</span>
+                            <span class="price-val" data-monthly="9,90 €" data-yearly="99 €">9,90 €</span>
                             <span class="price-period">/ mois</span>
                         </div>
                         <ul class="plan-features-list">
@@ -180,20 +179,19 @@
                         </ul>
                     </div>
                     <div class="plan-action">
-                        <button class="btn btn-plan-plus open-signup-trigger" data-plan="plus">Choisir Lyanneur Plus</button>
+                        <button type="button" class="btn btn-plan-plus" data-plan-cta="PLUS">Choisir Plus</button>
                     </div>
                 </div>
 
-                <!-- 3. LYANNEUR ULTIME (29,90 €) — OFFRE STAR -->
-                <div class="pricing-card plan-ultime popular-plan">
+                <!-- 3. LYANNEUR ULTIME (29,90 € / mois | 299 € / an) — OFFRE STAR -->
+                <div class="pricing-card plan-ultime popular-plan" data-plan="ULTIME" tabindex="0" role="button" aria-label="Offre Lyanneur Ultime">
                     <div class="popular-ribbon">⭐ La plus populaire</div>
                     <div>
                         <span class="plan-badge badge-ultime">LYANNEUR ULTIME</span>
                         <h3 class="plan-name">Lyanneur Ultime</h3>
                         <p class="plan-tagline">Pour maximiser sa visibilité et recevoir un maximum de demandes directes.</p>
                         <div class="plan-price">
-                            <span class="price-currency">€</span>
-                            <span class="price-val" data-monthly="29,90" data-yearly="23,90">29,90</span>
+                            <span class="price-val" data-monthly="29,90 €" data-yearly="299 €">29,90 €</span>
                             <span class="price-period">/ mois</span>
                         </div>
                         <ul class="plan-features-list">
@@ -208,13 +206,13 @@
                         </ul>
                     </div>
                     <div class="plan-action">
-                        <button class="btn btn-plan-ultime open-signup-trigger" data-plan="ultime">Devenir Lyanneur Ultime</button>
+                        <button type="button" class="btn btn-plan-ultime" data-plan-cta="ULTIME">Choisir Ultime</button>
                         <div class="plan-target-note">Idéal indépendant & autoentrepreneur</div>
                     </div>
                 </div>
 
-                <!-- 4. LYANNEUR PRO (59,90 €) -->
-                <div class="pricing-card plan-pro">
+                <!-- 4. LYANNEUR PRO (59,90 € / mois | 599 € / an) -->
+                <div class="pricing-card plan-pro" data-plan="PRO" tabindex="0" role="button" aria-label="Offre Lyanneur PRO">
                     <div>
                         <div class="pro-official-badge-preview">
                             <i class="ph-fill ph-shield-check" style="color: #E8B83F;"></i>
@@ -224,8 +222,7 @@
                         <h3 class="plan-name">Lyanneur PRO</h3>
                         <p class="plan-tagline">Pour les entreprises structurées et artisans certifiés avec SIRET.</p>
                         <div class="plan-price">
-                            <span class="price-currency">€</span>
-                            <span class="price-val" data-monthly="59,90" data-yearly="47,90">59,90</span>
+                            <span class="price-val" data-monthly="59,90 €" data-yearly="599 €">59,90 €</span>
                             <span class="price-period">/ mois</span>
                         </div>
                         <ul class="plan-features-list">
@@ -242,7 +239,7 @@
                         </ul>
                     </div>
                     <div class="plan-action">
-                        <button class="btn btn-plan-pro open-signup-trigger" data-plan="pro">Souscrire au compte PRO</button>
+                        <button type="button" class="btn btn-plan-pro" data-plan-cta="PRO">Choisir PRO</button>
                         <div class="pro-verification-note">
                             <i class="ph ph-info"></i> Le badge <strong>PRO VÉRIFIÉ PAR LYANN</strong> est accordé après contrôle SIRET & Assurance par notre équipe.
                         </div>
@@ -1108,7 +1105,7 @@
                             <div class="mobile-form-group">
                                 <label class="mobile-form-label">Montant proposé</label>
                                 <div class="amount-input-wrapper">
-                                    <input type="number" id="dpAmount" class="amount-input-field" placeholder="80" min="5" max="10000" required>
+                                    <input type="number" id="dpAmount" class="amount-input-field" placeholder="80" min="5" max="10000" step="any" inputmode="decimal" required>
                                     <span class="amount-input-symbol">€</span>
                                 </div>
                             </div>
@@ -1183,7 +1180,7 @@
                             </div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant total (€)</label>
-                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="200" required style="width: 100%; box-sizing: border-box;">
+                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="5" step="any" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
                             </div>
                             
                             <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
@@ -1192,19 +1189,19 @@
                                 <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
                                     <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 1:</span>
                                     <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
                                     <span style="font-size: 0.8rem;">%</span>
                                 </div>
                                 <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
                                     <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 2:</span>
                                     <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
                                     <span style="font-size: 0.8rem;">%</span>
                                 </div>
                                 <div style="display: flex; gap: 10px; align-items: center;">
                                     <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 3:</span>
                                     <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
+                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
                                     <span style="font-size: 0.8rem;">%</span>
                                 </div>
                                 <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des jalons doit faire 100%.</p>
@@ -1490,6 +1487,34 @@
                     </div>
                 </form>
             </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL DÉTAIL / SOUSCRIPTION ABONNEMENT (#modalSubscriptionDetail) ========== -->
+    <div class="modal-overlay" id="modalSubscriptionDetail" style="display: none; z-index: 99999;">
+        <div class="modal-card" style="max-width: 480px; width: 90%; padding: 28px; text-align: center; border-radius: 24px; position: relative; background: #FFFFFF; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
+            <button type="button" class="modal-close-btn" id="closeSubDetailBtn" aria-label="Fermer" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #6B7280;"><i class="ph ph-x"></i></button>
+
+            <div id="subDetailHeader" style="margin-bottom: 18px;">
+                <!-- Badge & Title dynamically inserted -->
+            </div>
+
+            <div id="subDetailPriceBox" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 18px; margin-bottom: 20px;">
+                <!-- Dynamic price & period -->
+            </div>
+
+            <div id="subDetailFeatures" style="text-align: left; margin-bottom: 24px; font-size: 0.9rem; color: #334155; line-height: 1.6;">
+                <!-- Features -->
+            </div>
+
+            <div style="background: rgba(231, 111, 81, 0.08); border: 1px solid rgba(231, 111, 81, 0.25); border-radius: 14px; padding: 14px; margin-bottom: 24px; text-align: left; display: flex; gap: 12px; align-items: flex-start;">
+                <i class="ph ph-info" style="color: #E76F51; font-size: 1.3rem; flex-shrink: 0; margin-top: 2px;"></i>
+                <span style="font-size: 0.84rem; color: #1E293B; line-height: 1.45;">
+                    <strong>Information LYANN :</strong> Les abonnements payants seront disponibles prochainement sur LYANN. Votre compte conserve la formule <strong>Lyanneur (Gratuit)</strong> sans aucun frais.
+                </span>
+            </div>
+
+            <button type="button" class="btn btn-primary" id="btnSubDetailClose" style="width: 100%; justify-content: center; font-weight: 800; padding: 14px; font-size: 1rem; border-radius: 14px;">Compris</button>
         </div>
     </div>
 

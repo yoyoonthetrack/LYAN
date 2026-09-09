@@ -4339,12 +4339,35 @@ input:checked + .slider:before {
     flex-direction: column;
     justify-content: space-between;
     position: relative;
-    transition: var(--transition);
+    transition: all 0.22s ease-in-out;
     box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: rgba(74, 124, 89, 0.15);
+    touch-action: manipulation;
+    z-index: 1;
+    pointer-events: auto;
 }
 
-.pricing-card:hover {
+.pricing-card:hover,
+.pricing-card:focus-visible {
     transform: translateY(-6px);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+    outline: 2px solid var(--primary, #4A7C59);
+    outline-offset: 2px;
+}
+
+.pricing-card:active {
+    transform: scale(0.98);
+    opacity: 0.95;
+}
+
+.pricing-card .plan-action button {
+    pointer-events: auto;
+    cursor: pointer;
+    touch-action: manipulation;
+    min-height: 46px;
 }
 
 /* Card Colors & Borders */

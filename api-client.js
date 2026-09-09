@@ -333,7 +333,7 @@ const LYANN_API_CLIENT = {
                     is_verified: !!p.is_verified,
                     is_pro_verified: !!(p.is_pro && p.kyc_verified),
                     member_since: p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '2026',
-                    skills: [],
+                    skills: p.intervention_zone || [],
                     intervention_zone: p.intervention_zone || [],
                     intervention_radius_km: p.intervention_radius_km || 10,
                     completion_pct: 20,
@@ -391,25 +391,19 @@ const LYANN_API_CLIENT = {
     async getUserSkills(userId) {
         if (!this.supabase || !userId) return [];
         try {
-            // 1. Fetch skills from profiles.intervention_zone
-            const { data: profData } = await this.supabase
-                .from('profiles')
-                .select('intervention_zone')
-                .eq('id', userId)
-                .maybeSingle();
-
-            const profileSkills = Array.isArray(profData?.intervention_zone) ? profData.intervention_zone : [];
-
-            // 2. Fetch skills from services table
-            const { data: servData } = await this.supabase
+            // Fetch skills exclusively from canonical public.services table
+            const { data: servData, error } = await this.supabase
                 .from('services')
                 .select('title')
                 .eq('owner_id', userId);
 
-            const serviceSkills = (servData || []).map(s => s.title).filter(Boolean);
+            if (error) {
+                console.warn('[getUserSkills] DB error fetching services:', error.message);
+                return [];
+            }
 
-            const combined = [...new Set([...profileSkills, ...serviceSkills])];
-            return combined;
+            const serviceSkills = (servData || []).map(s => s.title).filter(Boolean);
+            return [...new Set(serviceSkills)];
         } catch (e) {
             console.warn('[getUserSkills] Exception:', e);
             return [];
@@ -421,75 +415,80 @@ const LYANN_API_CLIENT = {
             return { error: { message: 'Supabase non initialisé ou session manquante.' } };
         }
 
-        const selectedSkills = Array.isArray(skillsArray) ? skillsArray.map(s => String(s).trim()).filter(Boolean) : [];
-        console.log(`[ProfileSkillsSave] userId=${userId} selectedCount=${selectedSkills.length} saveStarted=true`);
+        const selectedSkills = Array.isArray(skillsArray) 
+            ? [...new Set(skillsArray.map(s => String(s).trim()).filter(Boolean))]
+            : [];
 
         try {
-            // 1. Update profiles table intervention_zone array column (Authoritative profile skills storage)
-            const { data: profRes, error: profErr } = await this.supabase
-                .from('profiles')
-                .update({
-                    intervention_zone: selectedSkills,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', userId)
-                .select('id, intervention_zone')
-                .single();
+            // Fetch current services state from canonical public.services table
+            const { data: existing, error: fetchErr } = await this.supabase
+                .from('services')
+                .select('id, title')
+                .eq('owner_id', userId);
 
-            if (profErr) {
-                console.error(`[ProfileSkillsSave] userId=${userId} selectedCount=${selectedSkills.length} addedCount=0 removedCount=0 result=ERROR errorCode=${profErr.code || 'PROF_ERR'} errorMessage=${profErr.message}`);
-                return { error: profErr };
+            if (fetchErr) {
+                console.error(`[ProfileSkillsSave]\nuserId=${userId}\nselectedCount=${selectedSkills.length}\naddedCount=0\nremovedCount=0\nresult=ERROR\nerrorCode=${fetchErr.code || 'FETCH_ERR'}\nerrorMessage=${fetchErr.message}`);
+                return { error: fetchErr };
             }
 
-            // 2. Attempt sync to services table (best effort for search/matching indexing)
-            try {
-                const { data: existing } = await this.supabase
+            const existingMap = new Map();
+            (existing || []).forEach(item => {
+                if (item.title) existingMap.set(item.title.toLowerCase().trim(), item.id);
+            });
+
+            const nextSet = new Set(selectedSkills.map(s => s.toLowerCase().trim()));
+
+            const idsToDelete = [];
+            existingMap.forEach((id, titleLower) => {
+                if (!nextSet.has(titleLower)) idsToDelete.push(id);
+            });
+
+            const skillsToInsert = [];
+            selectedSkills.forEach(title => {
+                const titleLower = title.toLowerCase().trim();
+                if (!existingMap.has(titleLower)) {
+                    skillsToInsert.push({
+                        owner_id: userId,
+                        title: title,
+                        category: 'general',
+                        is_active: true
+                    });
+                }
+            });
+
+            const addedCount = skillsToInsert.length;
+            const removedCount = idsToDelete.length;
+
+            // Execute deletions if any
+            if (idsToDelete.length > 0) {
+                const { error: delErr } = await this.supabase
                     .from('services')
-                    .select('id, title')
-                    .eq('owner_id', userId);
+                    .delete()
+                    .in('id', idsToDelete);
 
-                const existingMap = new Map();
-                (existing || []).forEach(item => {
-                    if (item.title) existingMap.set(item.title.toLowerCase().trim(), item.id);
-                });
-
-                const selectedSet = new Set(selectedSkills.map(s => s.toLowerCase().trim()));
-
-                const idsToDelete = [];
-                existingMap.forEach((id, titleLower) => {
-                    if (!selectedSet.has(titleLower)) idsToDelete.push(id);
-                });
-
-                if (idsToDelete.length > 0) {
-                    await this.supabase.from('services').delete().in('id', idsToDelete);
+                if (delErr) {
+                    console.error(`[ProfileSkillsSave]\nuserId=${userId}\nselectedCount=${selectedSkills.length}\naddedCount=0\nremovedCount=0\nresult=ERROR\nerrorCode=${delErr.code || 'DELETE_ERR'}\nerrorMessage=${delErr.message}`);
+                    return { error: delErr };
                 }
-
-                const skillsToInsert = [];
-                selectedSkills.forEach(title => {
-                    const titleLower = title.toLowerCase().trim();
-                    if (!existingMap.has(titleLower)) {
-                        skillsToInsert.push({
-                            owner_id: userId,
-                            title: title,
-                            category: titleLower.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'general',
-                            description: 'Compétence certifiée profil',
-                            is_active: true
-                        });
-                    }
-                });
-
-                if (skillsToInsert.length > 0) {
-                    await this.supabase.from('services').insert(skillsToInsert);
-                }
-            } catch (servSyncErr) {
-                console.warn('[ProfileSkillsSave] Optional services table sync notice:', servSyncErr.message || servSyncErr);
             }
 
-            console.log(`[ProfileSkillsSave] userId=${userId} selectedCount=${selectedSkills.length} addedCount=0 removedCount=0 result=SUCCESS`);
-            return { data: { success: true, skills: profRes.intervention_zone || selectedSkills } };
+            // Execute insertions if any
+            if (skillsToInsert.length > 0) {
+                const { error: insErr } = await this.supabase
+                    .from('services')
+                    .insert(skillsToInsert);
+
+                if (insErr) {
+                    console.error(`[ProfileSkillsSave]\nuserId=${userId}\nselectedCount=${selectedSkills.length}\naddedCount=0\nremovedCount=0\nresult=ERROR\nerrorCode=${insErr.code || 'INSERT_ERR'}\nerrorMessage=${insErr.message}`);
+                    return { error: insErr };
+                }
+            }
+
+            console.log(`[ProfileSkillsSave]\nuserId=${userId}\nselectedCount=${selectedSkills.length}\naddedCount=${addedCount}\nremovedCount=${removedCount}\nresult=SUCCESS\nerrorCode=NONE\nerrorMessage=NONE`);
+            return { data: { success: true, skills: selectedSkills } };
 
         } catch (err) {
-            console.error(`[ProfileSkillsSave] userId=${userId} selectedCount=${selectedSkills.length} addedCount=0 removedCount=0 result=ERROR errorCode=EXCEPTION errorMessage=${err.message || String(err)}`);
+            console.error(`[ProfileSkillsSave]\nuserId=${userId}\nselectedCount=${selectedSkills.length}\naddedCount=0\nremovedCount=0\nresult=ERROR\nerrorCode=${err.code || 'EXCEPTION'}\nerrorMessage=${err.message || String(err)}`);
             return { error: { message: err.message || String(err) } };
         }
     },

@@ -2743,7 +2743,7 @@ safeDomReady(() => {
 
         // Build Skills ("Je peux aider pour")
         let servicesHTML = '';
-        const allSkills = (userServices && userServices.length > 0) ? userServices.map(s => s.title || s) : (pData.skills || []);
+        const allSkills = (userServices && userServices.length > 0) ? userServices.map(s => typeof s === 'string' ? s : (s.title || s.name || '')) : (Array.isArray(pData.skills) && pData.skills.length > 0 ? pData.skills : (Array.isArray(pData.intervention_zone) ? pData.intervention_zone : []));
         if (allSkills.length > 0) {
             servicesHTML = `
                 <div class="lyann-profile-section">
@@ -3437,25 +3437,286 @@ safeDomReady(() => {
         });
     }
 
-    // --- GESTION DU TOGGLE DE FACTURATION (MENSUEL / ANNUEL -20%) ---
-    const billingToggleInput = document.getElementById('billingToggleInput');
-    const monthlyBillingLabel = document.getElementById('monthlyBillingLabel');
-    const yearlyBillingLabel = document.getElementById('yearlyBillingLabel');
-    const priceElements = document.querySelectorAll('.price-val[data-monthly]');
+    // ==========================================================================
+    // GESTION CANONIQUE DES CARTES TARIFAIRES & ABONNEMENTS (4 FORMULES LYANN)
+    // ==========================================================================
+    window.openSubscriptionDetailModal = function(planCode, period) {
+        try {
+            const normalizedPlan = String(planCode || 'FREE').toUpperCase();
+            const isYearly = String(period).toUpperCase() === 'YEARLY';
 
-    if (billingToggleInput) {
-        billingToggleInput.addEventListener('change', () => {
-            const isYearly = billingToggleInput.checked;
+            let modal = document.getElementById('modalSubscriptionDetail');
+
+            // Dynamically create modal element if missing from DOM
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.className = 'modal-overlay active';
+                modal.id = 'modalSubscriptionDetail';
+                modal.style.cssText = 'display: flex; z-index: 99999; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; opacity: 1; visibility: visible;';
+                modal.innerHTML = `
+                    <div class="modal-card" style="max-width: 480px; width: 90%; padding: 28px; text-align: center; border-radius: 24px; position: relative; background: #FFFFFF; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
+                        <button type="button" class="modal-close-btn" id="closeSubDetailBtn" aria-label="Fermer" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #6B7280;"><i class="ph ph-x"></i></button>
+                        <div id="subDetailHeader" style="margin-bottom: 18px;"></div>
+                        <div id="subDetailPriceBox" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 18px; margin-bottom: 20px;"></div>
+                        <div id="subDetailFeatures" style="text-align: left; margin-bottom: 24px; font-size: 0.9rem; color: #334155; line-height: 1.6;"></div>
+                        <div style="background: rgba(231, 111, 81, 0.08); border: 1px solid rgba(231, 111, 81, 0.25); border-radius: 14px; padding: 14px; margin-bottom: 24px; text-align: left; display: flex; gap: 12px; align-items: flex-start;">
+                            <i class="ph ph-info" style="color: #E76F51; font-size: 1.3rem; flex-shrink: 0; margin-top: 2px;"></i>
+                            <span style="font-size: 0.84rem; color: #1E293B; line-height: 1.45;">
+                                <strong>Information LYANN :</strong> Les abonnements payants seront disponibles prochainement sur LYANN. Votre compte conserve la formule <strong>Lyanneur (Gratuit)</strong> sans aucun frais.
+                            </span>
+                        </div>
+                        <button type="button" class="btn btn-primary" id="btnSubDetailClose" style="width: 100%; justify-content: center; font-weight: 800; padding: 14px; font-size: 1rem; border-radius: 14px;">Compris</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                modal.querySelector('#closeSubDetailBtn')?.addEventListener('click', window.closeSubscriptionDetailModal);
+                modal.querySelector('#btnSubDetailClose')?.addEventListener('click', window.closeSubscriptionDetailModal);
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) window.closeSubscriptionDetailModal();
+                });
+            }
+
+            const header = modal.querySelector('#subDetailHeader');
+            const priceBox = modal.querySelector('#subDetailPriceBox');
+            const features = modal.querySelector('#subDetailFeatures');
+
+            if (normalizedPlan === 'FREE' || normalizedPlan === 'LYANNEUR') {
+                if (header) {
+                    header.innerHTML = `
+                        <span class="plan-badge badge-lyanneur" style="background: #A8C9B0; color: #1E2822; font-weight: 800; padding: 4px 12px; border-radius: 8px; font-size: 0.8rem; display: inline-block;">LYANNEUR</span>
+                        <h3 style="font-size: 1.5rem; font-weight: 800; color: #1F3827; margin-top: 10px; margin-bottom: 4px;">Offre Lyanneur (Gratuit)</h3>
+                    `;
+                }
+                if (priceBox) {
+                    priceBox.innerHTML = `
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #1F3827;">Gratuit</div>
+                        <div style="font-size: 0.85rem; color: #64748B; margin-top: 4px;">0 € pour toujours</div>
+                    `;
+                }
+                if (features) {
+                    features.innerHTML = `
+                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                            <li><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i> Profil public complet</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i> 5 photos maxi de vos réalisations</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i> Recommandations et avis certifiés</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i> Réponses limitées aux besoins</li>
+                        </ul>
+                    `;
+                }
+            } else if (normalizedPlan === 'PLUS') {
+                if (header) {
+                    header.innerHTML = `
+                        <span class="plan-badge badge-plus" style="background: #62B9C7; color: white; font-weight: 800; padding: 4px 12px; border-radius: 8px; font-size: 0.8rem; display: inline-block;">LYANNEUR +</span>
+                        <h3 style="font-size: 1.5rem; font-weight: 800; color: #1F3827; margin-top: 10px; margin-bottom: 4px;">Formule Lyanneur Plus</h3>
+                    `;
+                }
+                if (priceBox) {
+                    priceBox.innerHTML = `
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #1F3827;">${isYearly ? '99 €' : '9,90 €'}</div>
+                        <div style="font-size: 0.85rem; color: #64748B; margin-top: 4px;">Facturation ${isYearly ? 'annuelle (99 €/an)' : 'mensuelle (9,90 €/mois)'}</div>
+                    `;
+                }
+                if (features) {
+                    features.innerHTML = `
+                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> <strong>Réponses illimitées aux demandes</strong></li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Galerie jusqu'à 20 photos</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Plusieurs catégories d'activités</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Profil référencé en priorité</li>
+                        </ul>
+                    `;
+                }
+            } else if (normalizedPlan === 'ULTIME') {
+                if (header) {
+                    header.innerHTML = `
+                        <span class="plan-badge badge-ultime" style="background: #E8B83F; color: white; font-weight: 800; padding: 4px 12px; border-radius: 8px; font-size: 0.8rem; display: inline-block;">LYANNEUR ULTIME</span>
+                        <h3 style="font-size: 1.5rem; font-weight: 800; color: #1F3827; margin-top: 10px; margin-bottom: 4px;">Formule Lyanneur Ultime ⭐</h3>
+                    `;
+                }
+                if (priceBox) {
+                    priceBox.innerHTML = `
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #1F3827;">${isYearly ? '299 €' : '29,90 €'}</div>
+                        <div style="font-size: 0.85rem; color: #64748B; margin-top: 4px;">Facturation ${isYearly ? 'annuelle (299 €/an)' : 'mensuelle (29,90 €/mois)'}</div>
+                    `;
+                }
+                if (features) {
+                    features.innerHTML = `
+                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                            <li><i class="ph-fill ph-star" style="color: #E8B83F;"></i> <strong>Mise en avant sponsorisée</strong></li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Portfolio illimité de réalisations</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Réception prioritaire des demandes directes</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Mini-page pro personnalisée</li>
+                        </ul>
+                    `;
+                }
+            } else if (normalizedPlan === 'PRO') {
+                if (header) {
+                    header.innerHTML = `
+                        <span class="plan-badge" style="background: #173F36; color: white; font-weight: 800; padding: 4px 12px; border-radius: 8px; font-size: 0.8rem; display: inline-block;">LYANNEUR PRO</span>
+                        <h3 style="font-size: 1.5rem; font-weight: 800; color: #1F3827; margin-top: 10px; margin-bottom: 4px;">Formule Lyanneur PRO</h3>
+                    `;
+                }
+                if (priceBox) {
+                    priceBox.innerHTML = `
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #1F3827;">${isYearly ? '599 €' : '59,90 €'}</div>
+                        <div style="font-size: 0.85rem; color: #64748B; margin-top: 4px;">Facturation ${isYearly ? 'annuelle (599 €/an)' : 'mensuelle (59,90 €/mois)'}</div>
+                    `;
+                }
+                if (features) {
+                    features.innerHTML = `
+                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                            <li><i class="ph-fill ph-shield-check" style="color: #173F36;"></i> <strong>Équipes, multi-membres & collaborateurs</strong></li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Multi-zones géographiques d'intervention</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Dashboard entreprise & export CSV</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Support client prioritaire 7j/7</li>
+                        </ul>
+                    `;
+                }
+            }
+
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            const computed = window.getComputedStyle(modal);
+            console.log(`[PricingModal] elementFound=true contentUpdated=true openFunctionCalled=true activeClassApplied=${modal.classList.contains('active')} computedDisplay=${computed.display} computedVisibility=${computed.visibility} computedOpacity=${computed.opacity} computedZIndex=${computed.zIndex}`);
+
+        } catch (err) {
+            console.error('[PricingModalError] name=' + err.name + ' message=' + err.message + ' stackLine=' + (err.stack ? err.stack.split('\n')[1] : ''));
+        }
+    };
+
+    window.closeSubscriptionDetailModal = function() {
+        const modal = document.getElementById('modalSubscriptionDetail');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    };
+
+    // Canonical Shared Event Delegation for Pricing Cards and CTAs (Web + Mobile)
+    function handlePricingAction(e) {
+        const cta = e.target.closest('[data-plan-cta], .btn-plan-lyanneur, .btn-plan-plus, .btn-plan-ultime, .btn-plan-pro');
+        const card = e.target.closest('.pricing-card');
+
+        if (!cta && !card) return;
+
+        let rawPlan = null;
+        if (cta) {
+            rawPlan = cta.getAttribute('data-plan-cta') || cta.getAttribute('data-plan');
+        }
+        if (!rawPlan && card) {
+            rawPlan = card.getAttribute('data-plan');
+        }
+
+        let planCode = String(rawPlan || '').toUpperCase();
+        if (!planCode || planCode === 'NULL' || planCode === 'UNDEFINED') {
+            const targetEl = cta || card;
+            if (targetEl.classList.contains('plan-plus') || targetEl.classList.contains('btn-plan-plus')) planCode = 'PLUS';
+            else if (targetEl.classList.contains('plan-ultime') || targetEl.classList.contains('btn-plan-ultime')) planCode = 'ULTIME';
+            else if (targetEl.classList.contains('plan-pro') || targetEl.classList.contains('btn-plan-pro')) planCode = 'PRO';
+            else if (targetEl.classList.contains('plan-lyanneur') || targetEl.classList.contains('btn-plan-lyanneur')) planCode = 'FREE';
+        }
+
+        if (!planCode) return;
+
+        e.preventDefault();
+        if (cta) e.stopPropagation();
+
+        const billingInput = document.getElementById('billingToggleInput');
+        const period = (billingInput && billingInput.checked) ? 'YEARLY' : 'MONTHLY';
+        console.log(`[REAL_WEB_PRICING_CLICK] target=${e.target.tagName} plan=${planCode} period=${period}`);
+        window.openSubscriptionDetailModal(planCode, period);
+    }
+
+    document.addEventListener('click', handlePricingAction, false);
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const target = e.target.closest('[data-plan-cta], .pricing-card[data-plan], .btn-plan-lyanneur, .btn-plan-plus, .btn-plan-ultime, .btn-plan-pro');
+        if (!target) return;
+        e.preventDefault();
+        const cta = e.target.closest('[data-plan-cta], .btn-plan-lyanneur, .btn-plan-plus, .btn-plan-ultime, .btn-plan-pro');
+        const card = e.target.closest('.pricing-card');
+        const element = cta || card;
+        let planCode = String(element.getAttribute('data-plan-cta') || element.getAttribute('data-plan') || '').toUpperCase();
+        if (!planCode) {
+            if (element.classList.contains('plan-plus') || element.classList.contains('btn-plan-plus')) planCode = 'PLUS';
+            else if (element.classList.contains('plan-ultime') || element.classList.contains('btn-plan-ultime')) planCode = 'ULTIME';
+            else if (element.classList.contains('plan-pro') || element.classList.contains('btn-plan-pro')) planCode = 'PRO';
+            else planCode = 'FREE';
+        }
+        const billingInput = document.getElementById('billingToggleInput');
+        const period = (billingInput && billingInput.checked) ? 'YEARLY' : 'MONTHLY';
+        console.log(`[PricingKeyboard] plan=${planCode} period=${period} key=${e.key}`);
+        window.openSubscriptionDetailModal(planCode, period);
+    }, false);
+
+    function initPricingPageLogic() {
+        window.__LYANN_PRICING_INIT = true;
+        const billingToggleInput = document.getElementById('billingToggleInput');
+        const monthlyBillingLabel = document.getElementById('monthlyBillingLabel');
+        const yearlyBillingLabel = document.getElementById('yearlyBillingLabel');
+        const cards = document.querySelectorAll('.pricing-card[data-plan]');
+        const closeBtn = document.getElementById('closeSubDetailBtn');
+        const closeBtnBottom = document.getElementById('btnSubDetailClose');
+        const modal = document.getElementById('modalSubscriptionDetail');
+
+        if (closeBtn) closeBtn.addEventListener('click', window.closeSubscriptionDetailModal);
+        if (closeBtnBottom) closeBtnBottom.addEventListener('click', window.closeSubscriptionDetailModal);
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) window.closeSubscriptionDetailModal();
+            });
+        }
+
+        if (!cards || cards.length === 0) return;
+
+        function getSelectedBillingPeriod() {
+            return (billingToggleInput && billingToggleInput.checked) ? 'YEARLY' : 'MONTHLY';
+        }
+
+        function updatePricingDisplay() {
+            const isYearly = getSelectedBillingPeriod() === 'YEARLY';
 
             if (monthlyBillingLabel) monthlyBillingLabel.classList.toggle('active', !isYearly);
             if (yearlyBillingLabel) yearlyBillingLabel.classList.toggle('active', isYearly);
 
-            priceElements.forEach(el => {
-                const monthlyPrice = el.getAttribute('data-monthly');
-                const yearlyPrice = el.getAttribute('data-yearly');
-                el.textContent = isYearly ? yearlyPrice : monthlyPrice;
+            cards.forEach(card => {
+                const planCode = card.getAttribute('data-plan');
+                const priceValEl = card.querySelector('.price-val');
+                const pricePeriodEl = card.querySelector('.price-period');
+
+                if (!priceValEl || !pricePeriodEl) return;
+
+                if (planCode === 'FREE') {
+                    priceValEl.textContent = 'Gratuit';
+                    pricePeriodEl.textContent = '/ 0 € pour toujours';
+                } else if (planCode === 'PLUS') {
+                    priceValEl.textContent = isYearly ? '99 €' : '9,90 €';
+                    pricePeriodEl.textContent = isYearly ? '/ an' : '/ mois';
+                } else if (planCode === 'ULTIME') {
+                    priceValEl.textContent = isYearly ? '299 €' : '29,90 €';
+                    pricePeriodEl.textContent = isYearly ? '/ an' : '/ mois';
+                } else if (planCode === 'PRO') {
+                    priceValEl.textContent = isYearly ? '599 €' : '59,90 €';
+                    pricePeriodEl.textContent = isYearly ? '/ an' : '/ mois';
+                }
             });
-        });
+        }
+
+        if (billingToggleInput) {
+            billingToggleInput.addEventListener('change', updatePricingDisplay);
+        }
+        updatePricingDisplay();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPricingPageLogic);
+    } else {
+        initPricingPageLogic();
     }
 
     // ==========================================================================
@@ -4639,8 +4900,8 @@ safeDomReady(() => {
         const cityText = window.formatProfileLocation(member.commune || member.city || member.locationName, member.territory);
         const roleText = member.role || (member.is_pro ? 'Professionnel' : 'Membre LYANN');
         const badgeText = member.badge || (member.is_pro ? 'Artisan PRO' : (member.is_verified ? 'Profil Vérifié' : ''));
-        const bioText = member.bio || member.description || 'Membre actif de la communauté LYANN.';
-        const skillsList = Array.isArray(member.skills) ? member.skills : (typeof member.skills === 'string' ? member.skills.split(',') : []);
+        const rawSkills = Array.isArray(member.skills) && member.skills.length > 0 ? member.skills : (Array.isArray(member.intervention_zone) && member.intervention_zone.length > 0 ? member.intervention_zone : (typeof member.skills === 'string' ? member.skills.split(',') : []));
+        const skillsList = rawSkills.filter(Boolean);
 
         if (quickAvatarImg) quickAvatarImg.src = avatarSrc;
         if (quickProfileName) quickProfileName.textContent = displayName;

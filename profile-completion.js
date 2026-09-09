@@ -291,30 +291,84 @@
             }
         }
 
-        // Skill tag clicks
+        // Skill tag clicks & UI update
         const skillTags = document.querySelectorAll('.cp-skill-tag');
         skillTags.forEach(btn => {
             btn.addEventListener('click', () => {
                 const skill = btn.getAttribute('data-skill');
-                if (selectedSkills.has(skill)) {
-                    selectedSkills.delete(skill);
-                    btn.classList.remove('active');
+                if (!skill) return;
+                
+                // Find if already present (case-insensitive check)
+                let existingMatch = null;
+                for (const s of selectedSkills) {
+                    if (s.trim().toLowerCase() === skill.trim().toLowerCase()) {
+                        existingMatch = s;
+                        break;
+                    }
+                }
+
+                if (existingMatch) {
+                    selectedSkills.delete(existingMatch);
                 } else {
                     selectedSkills.add(skill);
-                    btn.classList.add('active');
                 }
+                updateSkillTagsUI();
             });
         });
 
         function updateSkillTagsUI() {
-            skillTags.forEach(btn => {
-                const skill = btn.getAttribute('data-skill');
-                if (selectedSkills.has(skill)) {
+            const staticBtns = document.querySelectorAll('.cp-skill-tag[data-skill]');
+            const matchedSkills = new Set();
+
+            staticBtns.forEach(btn => {
+                const skillAttr = btn.getAttribute('data-skill') || '';
+                let isSelected = false;
+                for (const s of selectedSkills) {
+                    if (s.trim().toLowerCase() === skillAttr.trim().toLowerCase()) {
+                        isSelected = true;
+                        matchedSkills.add(s);
+                        break;
+                    }
+                }
+                if (isSelected) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
                 }
             });
+
+            // Dynamically render custom skills pills (skills not matching static buttons)
+            let customContainer = document.getElementById('cpCustomSkillsPills');
+            if (!customContainer) {
+                customContainer = document.createElement('div');
+                customContainer.id = 'cpCustomSkillsPills';
+                customContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; margin-bottom: 14px;';
+                const customInput = document.getElementById('cpCustomSkill');
+                if (customInput && customInput.parentElement) {
+                    customInput.parentElement.insertBefore(customContainer, customInput);
+                }
+            }
+
+            const unmatchedCustom = Array.from(selectedSkills).filter(s => !matchedSkills.has(s));
+            if (customContainer) {
+                customContainer.innerHTML = unmatchedCustom.map(cs => `
+                    <span class="cp-custom-skill-pill" data-custom-skill="${window.escapeHtmlAttr ? window.escapeHtmlAttr(cs) : cs}" style="background: #4A7C59; color: white; border-radius: 20px; padding: 6px 14px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+                        <i class="ph ph-check" style="font-size: 0.8rem;"></i> ${window.escapeHtmlAttr ? window.escapeHtmlAttr(cs) : cs}
+                        <i class="ph ph-x remove-custom-skill" style="cursor: pointer; font-size: 0.85rem; margin-left: 4px;" data-custom-skill="${window.escapeHtmlAttr ? window.escapeHtmlAttr(cs) : cs}"></i>
+                    </span>
+                `).join('');
+
+                customContainer.querySelectorAll('.remove-custom-skill').forEach(icon => {
+                    icon.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const cs = icon.getAttribute('data-custom-skill');
+                        if (cs) {
+                            selectedSkills.delete(cs);
+                            updateSkillTagsUI();
+                        }
+                    });
+                });
+            }
         }
 
         // File upload avatar preview
