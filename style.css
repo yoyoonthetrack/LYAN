@@ -4904,9 +4904,15 @@ input:checked + .slider:before {
 }
 
 .feed-hero-section {
-    padding: 85px 0 16px;
+    padding: 100px 0 20px;
     background: #FFFFFF;
     border-bottom: 1.5px solid var(--border);
+}
+
+@media (max-width: 768px) {
+    .feed-hero-section {
+        padding: 85px 0 16px;
+    }
 }
 
 .feed-page-title {
