@@ -34,12 +34,32 @@ const PRODUCTION_FINANCIAL_ROUTES = new Set([
     '/v1/milestones/raise-dispute'
 ]);
 
-function normalizePath(req) {
-    const raw = (req.url || '').split('?')[0];
+function normalizePathValue(value) {
+    const raw = String(value || '').split('?')[0];
+    if (!raw) return '';
     if (raw.startsWith('/api/v1')) return raw.slice(4);
     if (raw.startsWith('/api/admin')) return '/v1' + raw.slice(4);
     if (raw.startsWith('/api/') && !raw.startsWith('/api/v1')) return '/v1' + raw.slice(4);
     return raw;
+}
+
+function getCandidatePaths(req) {
+    // Vercel rewrites may expose the original URL through different request
+    // properties/headers depending on runtime. Security checks therefore
+    // evaluate every available candidate rather than trusting a single field.
+    const candidates = [
+        req.url,
+        req.originalUrl,
+        req.headers['x-vercel-original-url'],
+        req.headers['x-forwarded-uri'],
+        req.headers['x-original-url']
+    ];
+
+    return [...new Set(candidates.map(normalizePathValue).filter(Boolean))];
+}
+
+function matchesAnyPath(paths, predicate) {
+    return paths.some(predicate);
 }
 
 function isDisabledProductionRoute(path) {
@@ -114,8 +134,12 @@ async function verifyAdminRequest(req) {
 }
 
 module.exports = async function lyannApiGateway(req, res) {
-    const path = normalizePath(req);
+    const paths = getCandidatePaths(req);
     const origin = req.headers.origin;
+    const hasDisabledRoute = matchesAnyPath(paths, isDisabledProductionRoute);
+    const hasFinancialRoute = matchesAnyPath(paths, isFinancialRoute);
+    const hasStripeWebhook = matchesAnyPath(paths, isStripeWebhook);
+    const hasAdminRoute = paths.some(path => path === '/v1/admin' || path.startsWith('/v1/admin/'));
 
     // Native Capacitor clients typically do not send a browser Origin header.
     // Browser requests in production must originate from a LYANN-owned origin.
@@ -130,18 +154,18 @@ module.exports = async function lyannApiGateway(req, res) {
     }
 
     // Historical mock/demo endpoints must never be callable in production.
-    if (IS_PRODUCTION && isDisabledProductionRoute(path)) {
+    if (IS_PRODUCTION && hasDisabledRoute) {
         return jsonError(res, 410, 'LEGACY_ENDPOINT_DISABLED', 'Cette route historique est désactivée.');
     }
 
     // Any production financial path must have the trusted database credential.
     // This prevents api/server.js from silently falling back to anon privileges.
-    if (IS_PRODUCTION && isFinancialRoute(path) && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (IS_PRODUCTION && hasFinancialRoute && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
         return jsonError(res, 503, 'FINANCIAL_DB_CONFIG_MISSING', 'Configuration financière indisponible.');
     }
 
     // Production must never use the historical mock Stripe branches.
-    if (IS_PRODUCTION && isFinancialRoute(path) && !process.env.STRIPE_SECRET_KEY) {
+    if (IS_PRODUCTION && hasFinancialRoute && !process.env.STRIPE_SECRET_KEY) {
         return jsonError(res, 503, 'STRIPE_CONFIG_MISSING', 'Configuration Stripe indisponible.');
     }
 
@@ -150,7 +174,7 @@ module.exports = async function lyannApiGateway(req, res) {
     // enabled in a future production gate.
     if (
         IS_PRODUCTION
-        && isFinancialRoute(path)
+        && hasFinancialRoute
         && String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_')
         && process.env.STRIPE_LIVE_ENABLED !== 'true'
     ) {
@@ -159,7 +183,7 @@ module.exports = async function lyannApiGateway(req, res) {
 
     // Webhooks are authoritative financial inputs. In production, accepting an
     // unsigned body because a secret is missing is forbidden: fail closed.
-    if (IS_PRODUCTION && isStripeWebhook(path)) {
+    if (IS_PRODUCTION && hasStripeWebhook) {
         if (!process.env.STRIPE_WEBHOOK_SECRET) {
             return jsonError(res, 503, 'STRIPE_WEBHOOK_CONFIG_MISSING', 'Configuration webhook Stripe incomplète.');
         }
@@ -170,7 +194,7 @@ module.exports = async function lyannApiGateway(req, res) {
 
     // Global admin boundary. Individual routes may require finer permissions,
     // but no /v1/admin route is allowed to rely solely on route-local hygiene.
-    if (IS_PRODUCTION && path.startsWith('/v1/admin/')) {
+    if (IS_PRODUCTION && hasAdminRoute) {
         const admin = await verifyAdminRequest(req);
         if (!admin.ok) {
             const messages = {
