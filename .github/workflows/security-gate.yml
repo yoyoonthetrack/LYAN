@@ -1,0 +1,55 @@
+name: Security Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [security/financial-rpc-hardening]
+
+permissions:
+  contents: read
+
+jobs:
+  static-security-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: JavaScript syntax check
+        run: |
+          node --check api/index.js
+          node --check api/server.js
+
+      - name: Financial RPC privilege assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="33_financial_rpc_server_only_hardening.sql"
+          test -f "$FILE"
+          grep -F "prepare_milestone_release_secure(uuid)" "$FILE"
+          grep -F "confirm_milestone_transfer_secure(uuid, text)" "$FILE"
+          grep -F "fail_milestone_transfer_secure(uuid, text)" "$FILE"
+          grep -F "confirm_refund_secure(" "$FILE"
+          grep -F "FROM PUBLIC, anon, authenticated" "$FILE"
+          grep -F "TO service_role" "$FILE"
+
+      - name: Stripe live remains opt-in
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "STRIPE_LIVE_ENABLED !== 'true'" api/index.js
+
+      - name: Production legacy endpoints are blocked by gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "'/v1/auth/login'" api/index.js
+          grep -F "'/v1/payments/create-intent'" api/index.js
+          grep -F "'/v1/payments/validate-and-transfer'" api/index.js
+          grep -F "LEGACY_ENDPOINT_DISABLED" api/index.js
