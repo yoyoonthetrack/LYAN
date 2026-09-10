@@ -25,6 +25,15 @@ const PRODUCTION_DISABLED_ROUTES = new Set([
     '/v1/payments/dispute'
 ]);
 
+const PRODUCTION_FINANCIAL_ROUTES = new Set([
+    '/v1/payments/create-milestone-intent',
+    '/v1/milestones/start-work',
+    '/v1/milestones/submit-completion',
+    '/v1/milestones/release-payment',
+    '/v1/milestones/claim-transfer',
+    '/v1/milestones/raise-dispute'
+]);
+
 function normalizePath(req) {
     const raw = (req.url || '').split('?')[0];
     if (raw.startsWith('/api/v1')) return raw.slice(4);
@@ -47,6 +56,10 @@ function isStripeWebhook(path) {
         || path === '/webhooks/stripe'
         || path === '/api/payments/webhook'
         || path === '/api/webhooks/stripe';
+}
+
+function isFinancialRoute(path) {
+    return PRODUCTION_FINANCIAL_ROUTES.has(path) || isStripeWebhook(path);
 }
 
 function jsonError(res, status, code, message) {
@@ -121,10 +134,33 @@ module.exports = async function lyannApiGateway(req, res) {
         return jsonError(res, 410, 'LEGACY_ENDPOINT_DISABLED', 'Cette route historique est désactivée.');
     }
 
+    // Any production financial path must have the trusted database credential.
+    // This prevents api/server.js from silently falling back to anon privileges.
+    if (IS_PRODUCTION && isFinancialRoute(path) && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return jsonError(res, 503, 'FINANCIAL_DB_CONFIG_MISSING', 'Configuration financière indisponible.');
+    }
+
+    // Production must never use the historical mock Stripe branches.
+    if (IS_PRODUCTION && isFinancialRoute(path) && !process.env.STRIPE_SECRET_KEY) {
+        return jsonError(res, 503, 'STRIPE_CONFIG_MISSING', 'Configuration Stripe indisponible.');
+    }
+
+    // Stripe Live remains explicitly OFF for LYANN. A live secret accidentally
+    // placed in Vercel is rejected unless a separate intentional release flag is
+    // enabled in a future production gate.
+    if (
+        IS_PRODUCTION
+        && isFinancialRoute(path)
+        && String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_')
+        && process.env.STRIPE_LIVE_ENABLED !== 'true'
+    ) {
+        return jsonError(res, 503, 'STRIPE_LIVE_DISABLED', 'Stripe Live est désactivé.');
+    }
+
     // Webhooks are authoritative financial inputs. In production, accepting an
     // unsigned body because a secret is missing is forbidden: fail closed.
     if (IS_PRODUCTION && isStripeWebhook(path)) {
-        if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+        if (!process.env.STRIPE_WEBHOOK_SECRET) {
             return jsonError(res, 503, 'STRIPE_WEBHOOK_CONFIG_MISSING', 'Configuration webhook Stripe incomplète.');
         }
         if (!req.headers['stripe-signature']) {
