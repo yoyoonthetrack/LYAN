@@ -1,6 +1,151 @@
 /**
  * Vercel Serverless Function Entrypoint for LYANN REST API
+ *
+ * This file is also the security gateway in front of the historical Express
+ * application. Keep security decisions here fail-closed so legacy routes in
+ * api/server.js cannot accidentally become reachable in production.
  */
+const { createClient } = require('@supabase/supabase-js');
 const app = require('./server.js');
 
-module.exports = app;
+const IS_PRODUCTION = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+
+const ALLOWED_WEB_ORIGINS = new Set([
+    'https://lyann.app',
+    'https://www.lyann.app',
+    'https://admin.lyann.app'
+]);
+
+const PRODUCTION_DISABLED_ROUTES = new Set([
+    '/v1/auth/login',
+    '/v1/members',
+    '/v1/deals/lyanner',
+    '/v1/payments/create-intent',
+    '/v1/payments/validate-and-transfer',
+    '/v1/payments/dispute'
+]);
+
+function normalizePath(req) {
+    const raw = (req.url || '').split('?')[0];
+    if (raw.startsWith('/api/v1')) return raw.slice(4);
+    if (raw.startsWith('/api/admin')) return '/v1' + raw.slice(4);
+    if (raw.startsWith('/api/') && !raw.startsWith('/api/v1')) return '/v1' + raw.slice(4);
+    return raw;
+}
+
+function isDisabledProductionRoute(path) {
+    if (PRODUCTION_DISABLED_ROUTES.has(path)) return true;
+    // Legacy member details endpoint, backed by static demo fixtures.
+    if (/^\/v1\/members\/[^/]+$/.test(path)) return true;
+    return false;
+}
+
+function isStripeWebhook(path) {
+    return path === '/v1/payments/webhook'
+        || path === '/v1/webhooks/stripe'
+        || path === '/payments/webhook'
+        || path === '/webhooks/stripe'
+        || path === '/api/payments/webhook'
+        || path === '/api/webhooks/stripe';
+}
+
+function jsonError(res, status, code, message) {
+    res.statusCode = status;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify({ success: false, code, error: message }));
+}
+
+let adminClient = null;
+function getAdminClient() {
+    if (adminClient) return adminClient;
+
+    const url = process.env.SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceRoleKey) return null;
+
+    adminClient = createClient(url, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    });
+    return adminClient;
+}
+
+async function verifyAdminRequest(req) {
+    const authHeader = req.headers.authorization || req.headers.Authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return { ok: false, status: 401, code: 'ADMIN_AUTH_REQUIRED' };
+    }
+
+    const client = getAdminClient();
+    if (!client) {
+        return { ok: false, status: 503, code: 'ADMIN_SECURITY_CONFIG_MISSING' };
+    }
+
+    const token = authHeader.slice('Bearer '.length).trim();
+    const { data: authData, error: authError } = await client.auth.getUser(token);
+    if (authError || !authData?.user?.id) {
+        return { ok: false, status: 401, code: 'ADMIN_TOKEN_INVALID' };
+    }
+
+    const { data: member, error: memberError } = await client
+        .from('admin_members')
+        .select('user_id,status')
+        .eq('user_id', authData.user.id)
+        .eq('status', 'ACTIVE')
+        .maybeSingle();
+
+    if (memberError || !member) {
+        return { ok: false, status: 403, code: 'ADMIN_ACCESS_DENIED' };
+    }
+
+    return { ok: true };
+}
+
+module.exports = async function lyannApiGateway(req, res) {
+    const path = normalizePath(req);
+    const origin = req.headers.origin;
+
+    // Native Capacitor clients typically do not send a browser Origin header.
+    // Browser requests in production must originate from a LYANN-owned origin.
+    if (IS_PRODUCTION && origin && !ALLOWED_WEB_ORIGINS.has(origin)) {
+        return jsonError(res, 403, 'ORIGIN_NOT_ALLOWED', 'Origine non autorisée.');
+    }
+
+    // Let legitimate browser preflights reach Express CORS only after the
+    // production origin allowlist above has accepted them.
+    if (req.method === 'OPTIONS') {
+        return app(req, res);
+    }
+
+    // Historical mock/demo endpoints must never be callable in production.
+    if (IS_PRODUCTION && isDisabledProductionRoute(path)) {
+        return jsonError(res, 410, 'LEGACY_ENDPOINT_DISABLED', 'Cette route historique est désactivée.');
+    }
+
+    // Webhooks are authoritative financial inputs. In production, accepting an
+    // unsigned body because a secret is missing is forbidden: fail closed.
+    if (IS_PRODUCTION && isStripeWebhook(path)) {
+        if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+            return jsonError(res, 503, 'STRIPE_WEBHOOK_CONFIG_MISSING', 'Configuration webhook Stripe incomplète.');
+        }
+        if (!req.headers['stripe-signature']) {
+            return jsonError(res, 400, 'STRIPE_SIGNATURE_REQUIRED', 'Signature Stripe requise.');
+        }
+    }
+
+    // Global admin boundary. Individual routes may require finer permissions,
+    // but no /v1/admin route is allowed to rely solely on route-local hygiene.
+    if (IS_PRODUCTION && path.startsWith('/v1/admin/')) {
+        const admin = await verifyAdminRequest(req);
+        if (!admin.ok) {
+            const messages = {
+                ADMIN_AUTH_REQUIRED: 'Authentification administrative requise.',
+                ADMIN_TOKEN_INVALID: 'Jeton administrateur invalide ou expiré.',
+                ADMIN_ACCESS_DENIED: 'Accès administrateur refusé.',
+                ADMIN_SECURITY_CONFIG_MISSING: 'Configuration de sécurité administrateur indisponible.'
+            };
+            return jsonError(res, admin.status, admin.code, messages[admin.code]);
+        }
+    }
+
+    return app(req, res);
+};
