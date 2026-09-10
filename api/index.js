@@ -4,6 +4,10 @@
  * This file is also the security gateway in front of the historical Express
  * application. Keep security decisions here fail-closed so legacy routes in
  * api/server.js cannot accidentally become reachable in production.
+ *
+ * IMPORTANT: This gateway is a containment layer, not a replacement for
+ * removing legacy/mock code from api/server.js. Dead legacy code should be
+ * deleted in a later cleanup after regression validation.
  */
 const { createClient } = require('@supabase/supabase-js');
 const app = require('./server.js');
