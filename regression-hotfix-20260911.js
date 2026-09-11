@@ -11,7 +11,6 @@
     const style = document.createElement('style');
     style.id = 'lyannRegressionHotfixStyle';
     style.textContent = `
-      /* Explicit message ownership layout. Do not depend on legacy theme rules. */
       #chatMessages .chat-message-row.sent {
         width: 100% !important;
         display: flex !important;
@@ -32,9 +31,20 @@
         margin-left: 0 !important;
         margin-right: auto !important;
       }
-      /* The standalone tracking control is not part of the chat composer/header. */
-      #chatModal .lyann-stray-project-tracking { display: none !important; }
-      .lyann-author-name { cursor: pointer !important; }
+      #chatModal .lyann-stray-project-tracking,
+      #chatModal [data-lyann-stray-tracking="true"] {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        pointer-events: none !important;
+      }
+      .lyann-author-name { cursor: pointer !important; pointer-events:auto!important; }
     `;
     document.head.appendChild(style);
   }
@@ -45,9 +55,7 @@
     try {
       const { data } = await client.auth.getSession();
       return data?.session?.user?.id || null;
-    } catch (_) {
-      return null;
-    }
+    } catch (_) { return null; }
   }
 
   async function repairMessageOwnership() {
@@ -55,18 +63,14 @@
     const state = window.__LYANN_SHARED_NAV_CHAT__;
     const box = $('#chatMessages');
     if (!client || !state?.conversationId || !box) return;
-
     const uid = await currentUserId();
     if (!uid) return;
-
     const rows = $$('[data-message-id]', box);
     const ids = rows.map(row => row.dataset.messageId).filter(Boolean);
     if (!ids.length) return;
-
     const { data, error } = await client.from('messages').select('id,sender_id').in('id', ids);
     if (error || !Array.isArray(data)) return;
     const senders = new Map(data.map(message => [String(message.id), String(message.sender_id || '')]));
-
     rows.forEach(row => {
       const senderId = senders.get(String(row.dataset.messageId));
       if (!senderId) return;
@@ -77,41 +81,63 @@
     });
   }
 
-  function removeStrayTrackingControl(root = document) {
+  function normalizedText(el) {
+    return (el?.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  function removeStrayTrackingControl() {
     const chat = $('#chatModal');
     if (!chat) return;
-    $$('button,a,[role="button"]', chat).forEach(control => {
-      const text = (control.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
-      if (text === 'suivi du chantier') {
-        control.classList.add('lyann-stray-project-tracking');
-        control.setAttribute('aria-hidden', 'true');
-        control.tabIndex = -1;
-      }
+    $$('*', chat).forEach(el => {
+      if (el.closest('#lyannSharedActionSheet')) return;
+      if (normalizedText(el) !== 'suivi du chantier') return;
+      const actionable = el.closest('button,a,[role="button"],[onclick]');
+      const target = actionable && chat.contains(actionable) ? actionable : el;
+      target.classList.add('lyann-stray-project-tracking');
+      target.dataset.lyannStrayTracking = 'true';
+      target.setAttribute('aria-hidden', 'true');
+      if ('tabIndex' in target) target.tabIndex = -1;
+      target.style.setProperty('display', 'none', 'important');
     });
   }
 
-  function profileTriggerForName(nameEl) {
-    const card = nameEl.closest('.flash-card,.feed-card,.bokantaj-card,article,[data-post-id],[data-request-id]');
-    if (!card) return null;
-    const direct = card.querySelector('.trigger-quick-profile,[data-member-id][role="button"],[data-member-id].clickable,img[data-member-id]');
-    if (direct && direct !== nameEl) return direct;
-    const authorBlock = nameEl.closest('.flash-author,.flash-author-row,.flash-author-info')?.parentElement || card;
-    const avatar = authorBlock.querySelector?.('.trigger-quick-profile,[data-member-id],img');
-    return avatar && avatar !== nameEl ? avatar : null;
+  function authorIdFromName(nameEl) {
+    return nameEl?.closest('[data-member-id]')?.dataset?.memberId
+      || nameEl?.closest('[data-user-id]')?.dataset?.userId
+      || nameEl?.closest('[data-profile-id]')?.dataset?.profileId
+      || nameEl?.closest('.flash-card,.feed-card,.bokantaj-card,article')?.dataset?.memberId
+      || null;
+  }
+
+  async function openAuthorProfile(nameEl) {
+    const memberId = authorIdFromName(nameEl);
+    if (!memberId) return false;
+    try {
+      if (typeof window.openQuickProfileModal === 'function') {
+        await window.openQuickProfileModal(memberId);
+        return true;
+      }
+      if (typeof window.openPublicMemberProfile === 'function') {
+        await window.openPublicMemberProfile(memberId);
+        return true;
+      }
+    } catch (error) {
+      console.error('[LYANN profile hotfix]', error);
+    }
+    return false;
   }
 
   function bindBokantajAuthorNames() {
     if (document.documentElement.dataset.lyannAuthorNameHotfixBound === 'true') return;
     document.documentElement.dataset.lyannAuthorNameHotfixBound = 'true';
-    document.addEventListener('click', event => {
+    document.addEventListener('click', async event => {
       const name = event.target.closest('.lyann-author-name');
       if (!name) return;
-      const trigger = profileTriggerForName(name);
-      if (trigger) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        trigger.click();
-      }
+      const card = name.closest('.flash-card,.feed-card,.bokantaj-card,article');
+      if (!card) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      await openAuthorProfile(name);
     }, true);
   }
 
@@ -122,24 +148,23 @@
       timer = setTimeout(() => {
         removeStrayTrackingControl();
         repairMessageOwnership();
-      }, 40);
+      }, 30);
     };
-
     const observer = new MutationObserver(schedule);
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     document.addEventListener('click', event => {
       if (event.target.closest('#chatModal,.btn-help-lyann,.btn-open-chat-direct')) {
-        setTimeout(schedule, 80);
+        setTimeout(schedule, 30);
+        setTimeout(schedule, 150);
         setTimeout(schedule, 500);
       }
     }, true);
-
     setInterval(() => {
       if ($('#chatModal')?.classList.contains('active')) {
         removeStrayTrackingControl();
         repairMessageOwnership();
       }
-    }, 1500);
+    }, 750);
   }
 
   function start() {
