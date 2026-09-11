@@ -49,6 +49,10 @@
     loadScriptOnce('shared-ux-fixes.js?v=20260911-2', 'data-lyann-shared-ux');
   }
 
+  function loadSharedNavigationMessagingFixes() {
+    loadScriptOnce('shared-navigation-messaging-fixes.js?v=20260911-1', 'data-lyann-shared-nav-chat');
+  }
+
   function removeKnownDemoSections(root = document) {
     root.querySelectorAll('.talents-section, .testimonials-section').forEach((section) => {
       const text = section.textContent || '';
@@ -124,6 +128,7 @@
     runHygiene(document);
     loadOwnerActions();
     loadSharedUxFixes();
+    loadSharedNavigationMessagingFixes();
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
