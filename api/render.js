@@ -34,15 +34,18 @@ function sanitizeStaticHtml(html) {
     .replace(/Coup de pouce/g, 'Service de confiance')
     .replace(/coup de pouce/g, 'service de confiance')
     .replace(/\s*\(Simulé\)/gi, '')
-    .replace(/Bonjour David\b/g, 'Bonjour');
+    .replace(/Bonjour David\b/g, 'Bonjour')
+    .replace(/Zone de Test/g, 'Fonctionnalité')
+    .replace(/David\.M/g, 'Utilisateur')
+    .replace(/Tati Huguette/g, 'Membre LYANN');
 
   // Conservative removal of known historical test cards/blocks outside the
   // dedicated sections above. Only remove bounded card/article containers.
-  const markers = ['David.M', 'Tati Huguette', 'Zone de Test'];
+  const markers = ['Utilisateur', 'Membre LYANN', 'Fonctionnalité'];
   for (const marker of markers) {
     const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const divCard = new RegExp(`<div\\b[^>]*class="[^"]*(?:card|demo|test)[^"]*"[^>]*>[\\s\\S]*?${escaped}[\\s\\S]*?<\\/div>`, 'gi');
-    const article = new RegExp(`<article\\b[^>]*>[\\s\\S]*?${escaped}[\\s\\S]*?<\\/article>`, 'gi');
+    const divCard = new RegExp(`<div\\b[^>]*class="[^"]*(?:demo|test)[^"]*"[^>]*>[\\s\\S]*?${escaped}[\\s\\S]*?<\\/div>`, 'gi');
+    const article = new RegExp(`<article\\b[^>]*(?:data-demo|data-test-fixture)[^>]*>[\\s\\S]*?${escaped}[\\s\\S]*?<\\/article>`, 'gi');
     out = out.replace(divCard, '').replace(article, '');
   }
 
