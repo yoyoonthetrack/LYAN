@@ -54,7 +54,7 @@
   }
 
   function loadRegressionHotfix() {
-    loadScriptOnce('regression-hotfix-20260911.js?v=20260911-1', 'data-lyann-regression-hotfix');
+    loadScriptOnce('regression-hotfix-20260911.js?v=20260911-2', 'data-lyann-regression-hotfix');
   }
 
   function removeKnownDemoSections(root = document) {
