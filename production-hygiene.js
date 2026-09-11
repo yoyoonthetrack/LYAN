@@ -32,6 +32,15 @@
     'article'
   ].join(',');
 
+  function loadOwnerActions() {
+    if (document.querySelector('script[data-lyann-owner-actions]')) return;
+    const script = document.createElement('script');
+    script.src = 'owner-actions.js?v=20260911-1';
+    script.defer = true;
+    script.dataset.lyannOwnerActions = 'true';
+    document.head.appendChild(script);
+  }
+
   function removeKnownDemoSections(root = document) {
     root.querySelectorAll('.talents-section, .testimonials-section').forEach((section) => {
       const text = section.textContent || '';
@@ -123,6 +132,7 @@
 
   function start() {
     runHygiene(document);
+    loadOwnerActions();
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
