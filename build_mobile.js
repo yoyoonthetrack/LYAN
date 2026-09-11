@@ -3,6 +3,20 @@ const path = require('path');
 
 const srcDir = __dirname;
 const destDir = path.join(__dirname, 'www');
+const hygieneScriptTag = '<script src="production-hygiene.js?v=20260911" defer></script>';
+
+function injectProductionHygiene(filePath) {
+    if (path.extname(filePath).toLowerCase() !== '.html' || !fs.existsSync(filePath)) return;
+
+    let html = fs.readFileSync(filePath, 'utf8');
+    if (html.includes('production-hygiene.js')) return;
+
+    html = html.includes('</body>')
+        ? html.replace('</body>', `    ${hygieneScriptTag}\n</body>`)
+        : `${html}\n${hygieneScriptTag}\n`;
+
+    fs.writeFileSync(filePath, html, 'utf8');
+}
 
 // Ensure destination exists and is clean
 if (fs.existsSync(destDir)) {
@@ -25,6 +39,7 @@ filesToCopy.forEach(file => {
     try {
         if (fs.statSync(srcPath).isFile()) {
             fs.copyFileSync(srcPath, destPath);
+            injectProductionHygiene(destPath);
             console.log(`Copied ${file} -> www/`);
         }
     } catch (e) {
@@ -44,9 +59,11 @@ const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'ass
         fs.mkdirSync(capDest, { recursive: true });
         filesToCopy.forEach(file => {
             const srcPath = path.join(srcDir, file);
+            const destPath = path.join(capDest, file);
             try {
                 if (fs.existsSync(srcPath) && fs.statSync(srcPath).isFile()) {
-                    fs.copyFileSync(srcPath, path.join(capDest, file));
+                    fs.copyFileSync(srcPath, destPath);
+                    injectProductionHygiene(destPath);
                 }
             } catch (e) {
                 console.warn(`Warning: Could not sync ${file} to ${capDest}:`, e.message);
@@ -56,6 +73,4 @@ const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'ass
     }
 });
 
-
-console.log('Mobile build assets prepared and synced successfully!');
-
+console.log('Mobile build assets prepared, production-hygiene injected, and synced successfully!');
