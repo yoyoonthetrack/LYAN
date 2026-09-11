@@ -1,0 +1,76 @@
+name: Production Hygiene Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  zero-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Syntax checks
+        run: |
+          node --check production-hygiene.js
+          node --check api/render.js
+          node --check build_mobile.js
+          node -e "JSON.parse(require('fs').readFileSync('vercel.json','utf8'))"
+
+      - name: Verify server-rendered homepage is zero-demo
+        run: |
+          node <<'NODE'
+          const handler = require('./api/render');
+          let body = '';
+          const headers = {};
+          const res = {
+            statusCode: 0,
+            setHeader(k, v) { headers[k] = v; },
+            end(chunk = '') { body += chunk; }
+          };
+          handler({ query: { file: 'index.html' } }, res);
+          if (res.statusCode !== 200) throw new Error(`render status ${res.statusCode}`);
+
+          const forbidden = [
+            'Jocelyn Cabort', 'Hugues Zami', 'Wilfrid Rapon',
+            'David.M', 'Tati Huguette', 'Zone de Test',
+            'Bonjour David', '(Simulé)', 'Coup de pouce', 'coup de pouce',
+            '48 artisans disponibles', '62 passionnés disponibles',
+            '35 électriciens vérifiés', '29 plombiers qualifiés',
+            '54 accompagnateurs'
+          ];
+          const found = forbidden.filter((value) => body.includes(value));
+          if (found.length) throw new Error(`forbidden production markers remain: ${found.join(', ')}`);
+          if (!body.includes('production-hygiene.js')) throw new Error('runtime hygiene guard missing');
+          if (!body.includes('Explorer cette activité')) throw new Error('neutral category copy missing');
+          console.log('Server-rendered homepage zero-demo PASS');
+          NODE
+
+      - name: Verify generated mobile homepage is zero-demo
+        run: |
+          node build_mobile.js
+          node <<'NODE'
+          const fs = require('fs');
+          const body = fs.readFileSync('www/index.html', 'utf8');
+          const forbidden = [
+            'Jocelyn Cabort', 'Hugues Zami', 'Wilfrid Rapon',
+            'David.M', 'Tati Huguette', 'Zone de Test',
+            'Bonjour David', '(Simulé)', 'Coup de pouce', 'coup de pouce',
+            '48 artisans disponibles', '62 passionnés disponibles',
+            '35 électriciens vérifiés', '29 plombiers qualifiés',
+            '54 accompagnateurs'
+          ];
+          const found = forbidden.filter((value) => body.includes(value));
+          if (found.length) throw new Error(`forbidden mobile markers remain: ${found.join(', ')}`);
+          if (!body.includes('production-hygiene.js')) throw new Error('mobile runtime hygiene guard missing');
+          console.log('Generated mobile homepage zero-demo PASS');
+          NODE
