@@ -3,7 +3,78 @@
   "name": "lyan-app",
   "cleanUrls": true,
   "trailingSlash": false,
+  "functions": {
+    "api/render.js": {
+      "includeFiles": [
+        "*.html"
+      ]
+    }
+  },
   "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/render?file=index.html"
+    },
+    {
+      "source": "/index.html",
+      "destination": "/api/render?file=index.html"
+    },
+    {
+      "source": "/feed",
+      "destination": "/api/render?file=feed.html"
+    },
+    {
+      "source": "/feed.html",
+      "destination": "/api/render?file=feed.html"
+    },
+    {
+      "source": "/results",
+      "destination": "/api/render?file=results.html"
+    },
+    {
+      "source": "/results.html",
+      "destination": "/api/render?file=results.html"
+    },
+    {
+      "source": "/payment-portal",
+      "destination": "/api/render?file=payment-portal.html"
+    },
+    {
+      "source": "/payment-portal.html",
+      "destination": "/api/render?file=payment-portal.html"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/api/render?file=pricing.html"
+    },
+    {
+      "source": "/pricing.html",
+      "destination": "/api/render?file=pricing.html"
+    },
+    {
+      "source": "/how-it-works",
+      "destination": "/api/render?file=how-it-works.html"
+    },
+    {
+      "source": "/how-it-works.html",
+      "destination": "/api/render?file=how-it-works.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/api/render?file=about.html"
+    },
+    {
+      "source": "/about.html",
+      "destination": "/api/render?file=about.html"
+    },
+    {
+      "source": "/confirm-signup",
+      "destination": "/api/render?file=confirm-signup.html"
+    },
+    {
+      "source": "/confirm-signup.html",
+      "destination": "/api/render?file=confirm-signup.html"
+    },
     {
       "source": "/v1/(.*)",
       "destination": "/api"
