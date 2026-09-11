@@ -22,6 +22,9 @@ jobs:
       - name: Syntax checks
         run: |
           node --check production-hygiene.js
+          node --check owner-actions.js
+          node --check shared-ux-fixes.js
+          node --check shared-navigation-messaging-fixes.js
           node --check api/render.js
           node --check build_mobile.js
           node -e "JSON.parse(require('fs').readFileSync('vercel.json','utf8'))"
