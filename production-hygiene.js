@@ -32,21 +32,27 @@
     'article'
   ].join(',');
 
-  function loadOwnerActions() {
-    if (document.querySelector('script[data-lyann-owner-actions]')) return;
+  function loadScriptOnce(src, dataAttr) {
+    if (document.querySelector(`script[${dataAttr}]`)) return;
     const script = document.createElement('script');
-    script.src = 'owner-actions.js?v=20260911-1';
+    script.src = src;
     script.defer = true;
-    script.dataset.lyannOwnerActions = 'true';
+    script.setAttribute(dataAttr, 'true');
     document.head.appendChild(script);
+  }
+
+  function loadOwnerActions() {
+    loadScriptOnce('owner-actions.js?v=20260911-1', 'data-lyann-owner-actions');
+  }
+
+  function loadSharedUxFixes() {
+    loadScriptOnce('shared-ux-fixes.js?v=20260911-2', 'data-lyann-shared-ux');
   }
 
   function removeKnownDemoSections(root = document) {
     root.querySelectorAll('.talents-section, .testimonials-section').forEach((section) => {
       const text = section.textContent || '';
-      if (DEMO_MARKERS.some((marker) => text.includes(marker))) {
-        section.remove();
-      }
+      if (DEMO_MARKERS.some((marker) => text.includes(marker))) section.remove();
     });
   }
 
@@ -56,15 +62,9 @@
       const alt = img.getAttribute('alt') || '';
       const isDemo = DEMO_IMAGE_PARTS.some((part) => src.includes(part)) || DEMO_MARKERS.some((marker) => alt.includes(marker));
       if (!isDemo) return;
-
       const card = img.closest(SAFE_CARD_SELECTORS);
-      if (card) {
-        card.remove();
-      } else {
-        img.remove();
-      }
+      if (card) card.remove(); else img.remove();
     });
-
     root.querySelectorAll('[data-member-id="200"], [data-member-id="201"], [data-member-id="212"]').forEach((el) => el.remove());
   }
 
@@ -81,20 +81,16 @@
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
-
     nodes.forEach((node) => {
       const parent = node.parentElement;
       if (!parent || parent.closest('script, style, noscript, textarea')) return;
-
       let value = node.nodeValue || '';
       const original = value;
-
       value = value
         .replace(/Coup de pouce/g, 'Service de confiance')
         .replace(/coup de pouce/g, 'service de confiance')
         .replace(/\s*\(Simul[ée]\)/gi, '')
         .replace(/Bonjour David\b/g, 'Bonjour');
-
       if (value !== original) node.nodeValue = value;
     });
   }
@@ -105,16 +101,10 @@
       if (el.children.length > 8) return;
       const text = (el.textContent || '').trim();
       if (!text) return;
-
       const marker = DEMO_MARKERS.find((m) => text.includes(m));
       if (!marker || marker === 'Bonjour David') return;
-
       const safeContainer = el.closest(SAFE_CARD_SELECTORS);
-      if (safeContainer) {
-        safeContainer.remove();
-        return;
-      }
-
+      if (safeContainer) { safeContainer.remove(); return; }
       if (marker === 'Zone de Test') {
         const block = el.closest('section, fieldset, details, [class*="test"], [class*="demo"]');
         if (block) block.remove();
@@ -133,6 +123,7 @@
   function start() {
     runHygiene(document);
     loadOwnerActions();
+    loadSharedUxFixes();
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
@@ -141,15 +132,10 @@
         });
       }
     });
-
     observer.observe(document.documentElement, { childList: true, subtree: true });
-
     window.addEventListener('load', () => runHygiene(document), { once: true });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start, { once: true });
-  } else {
-    start();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
 })();
