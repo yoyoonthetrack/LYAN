@@ -5,15 +5,47 @@ const srcDir = __dirname;
 const destDir = path.join(__dirname, 'www');
 const hygieneScriptTag = '<script src="production-hygiene.js?v=20260911" defer></script>';
 
-function injectProductionHygiene(filePath) {
+function sanitizeStaticHtml(html) {
+    let out = html;
+
+    out = out.replace(
+        /\n\s*<!-- ========== SECTION 5 : TALENTS DE NOS ÎLES ========== -->[\s\S]*?(?=\n\s*<!-- ========== SECTION 6 : TÉMOIGNAGES ========== -->)/,
+        '\n'
+    );
+    out = out.replace(
+        /\n\s*<!-- ========== SECTION 6 : TÉMOIGNAGES ========== -->[\s\S]*?(?=\n\s*<!-- ========== SECTION APERÇU : BOKANTAJ EN DIRECT ========== -->)/,
+        '\n'
+    );
+
+    out = out.replace(/<span class="photo-category-sub">\s*\d+\s+(?:artisans?|passionnés?|électriciens?|plombiers?|accompagnateurs?)[^<]*<\/span>/gi,
+        '<span class="photo-category-sub">Explorer cette activité</span>');
+
+    out = out
+        .replace(/Coup de pouce/g, 'Service de confiance')
+        .replace(/coup de pouce/g, 'service de confiance')
+        .replace(/\s*\(Simulé\)/gi, '')
+        .replace(/Bonjour David\b/g, 'Bonjour');
+
+    const markers = ['David.M', 'Tati Huguette', 'Zone de Test'];
+    for (const marker of markers) {
+        const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const divCard = new RegExp(`<div\\b[^>]*class="[^"]*(?:card|demo|test)[^"]*"[^>]*>[\\s\\S]*?${escaped}[\\s\\S]*?<\\/div>`, 'gi');
+        const article = new RegExp(`<article\\b[^>]*>[\\s\\S]*?${escaped}[\\s\\S]*?<\\/article>`, 'gi');
+        out = out.replace(divCard, '').replace(article, '');
+    }
+
+    return out;
+}
+
+function sanitizeAndInjectProductionHygiene(filePath) {
     if (path.extname(filePath).toLowerCase() !== '.html' || !fs.existsSync(filePath)) return;
 
-    let html = fs.readFileSync(filePath, 'utf8');
-    if (html.includes('production-hygiene.js')) return;
-
-    html = html.includes('</body>')
-        ? html.replace('</body>', `    ${hygieneScriptTag}\n</body>`)
-        : `${html}\n${hygieneScriptTag}\n`;
+    let html = sanitizeStaticHtml(fs.readFileSync(filePath, 'utf8'));
+    if (!html.includes('production-hygiene.js')) {
+        html = html.includes('</body>')
+            ? html.replace('</body>', `    ${hygieneScriptTag}\n</body>`)
+            : `${html}\n${hygieneScriptTag}\n`;
+    }
 
     fs.writeFileSync(filePath, html, 'utf8');
 }
@@ -39,7 +71,7 @@ filesToCopy.forEach(file => {
     try {
         if (fs.statSync(srcPath).isFile()) {
             fs.copyFileSync(srcPath, destPath);
-            injectProductionHygiene(destPath);
+            sanitizeAndInjectProductionHygiene(destPath);
             console.log(`Copied ${file} -> www/`);
         }
     } catch (e) {
@@ -63,7 +95,7 @@ const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'ass
             try {
                 if (fs.existsSync(srcPath) && fs.statSync(srcPath).isFile()) {
                     fs.copyFileSync(srcPath, destPath);
-                    injectProductionHygiene(destPath);
+                    sanitizeAndInjectProductionHygiene(destPath);
                 }
             } catch (e) {
                 console.warn(`Warning: Could not sync ${file} to ${capDest}:`, e.message);
@@ -73,4 +105,4 @@ const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'ass
     }
 });
 
-console.log('Mobile build assets prepared, production-hygiene injected, and synced successfully!');
+console.log('Mobile build assets prepared, static demo fixtures sanitized, production-hygiene injected, and synced successfully!');
