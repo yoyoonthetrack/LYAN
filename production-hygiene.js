@@ -53,6 +53,10 @@
     loadScriptOnce('shared-navigation-messaging-fixes.js?v=20260911-1', 'data-lyann-shared-nav-chat');
   }
 
+  function loadRegressionHotfix() {
+    loadScriptOnce('regression-hotfix-20260911.js?v=20260911-1', 'data-lyann-regression-hotfix');
+  }
+
   function removeKnownDemoSections(root = document) {
     root.querySelectorAll('.talents-section, .testimonials-section').forEach((section) => {
       const text = section.textContent || '';
@@ -129,6 +133,7 @@
     loadOwnerActions();
     loadSharedUxFixes();
     loadSharedNavigationMessagingFixes();
+    loadRegressionHotfix();
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
