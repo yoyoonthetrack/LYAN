@@ -61,6 +61,17 @@ const changes = [];
   }
 }
 
+// 3) Centralize session and short-lived profile cache before feature scripts.
+// This is a first migration step away from repeated independent Supabase boot
+// reads while keeping all existing public API methods compatible.
+if (!html.includes('<script src="session-store.js"></script>')) {
+  const apiScript = '    <script src="api-client.js?v=20260907-DOM-OBSERVER-FIX"></script>\n';
+  const replacement = `${apiScript}    <script src="session-store.js"></script>\n    <script src="data-cache.js"></script>\n`;
+  const result = replaceOnce(html, apiScript, replacement, 'install shared session and data cache');
+  html = result.source;
+  if (result.changed) changes.push(result.label);
+}
+
 if (!changes.length) {
   console.log('Architecture source fixes already applied; no changes.');
   process.exit(0);
