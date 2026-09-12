@@ -28,9 +28,6 @@ function extractDomain({ startMarker, endMarker, outputFile, banner }) {
   changes.push(`extract ${outputFile}`);
 }
 
-// First low-risk domain: platform/native helpers, avatar utilities and DOM commune data.
-// These APIs are global function declarations today; keeping them in a classic script
-// preserves the same window-visible runtime contract while reducing script.js ownership.
 extractDomain({
   startMarker: '// === LYANN SINGLE SOURCE OF TRUTH DEFAULT USER AVATAR ===',
   endMarker: '// === PENDING ACTIONS FINDER FOR MOBILE DASHBOARD ===',
@@ -38,8 +35,6 @@ extractDomain({
   banner: '/** LYANN platform core — extracted from legacy script.js without behavior changes. */'
 });
 
-// Second low-risk domain: notification presentation only. Data/notification engine stays
-// untouched; this file owns the badge, modal and relative-time rendering surface.
 extractDomain({
   startMarker: '// === NOTIFICATIONS MODAL & BADGE SYSTEM ===',
   endMarker: '// === APP WELCOME SCREEN (GUEST MODE / ONBOARDING / LOGIN) ===',
@@ -47,10 +42,6 @@ extractDomain({
   banner: '/** LYANN notifications UI — extracted from legacy script.js without behavior changes. */'
 });
 
-// Third domain: native/mobile application shell. This owns the guest welcome screen,
-// connected mobile dashboard, bottom navigation, central action sheet and message entry.
-// Keeping it as a classic script preserves all global contracts while separating route/
-// shell rendering from the legacy business-logic monolith.
 extractDomain({
   startMarker: '// === PENDING ACTIONS FINDER FOR MOBILE DASHBOARD ===',
   endMarker: '// === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===',
@@ -62,17 +53,26 @@ if (changes.length) {
   fs.writeFileSync(scriptPath, source, 'utf8');
 }
 
-// Preserve behavior across every web page that loads legacy script.js, not only feed.html.
-// Classic scripts are intentionally used during migration so existing globals keep working.
+// Remove historical placeholder avatar usage from the extracted shell. The shell now
+// uses the shared default-avatar contract until the authenticated profile is available.
+const appShellPath = path.join(root, 'app-shell.js');
+if (fs.existsSync(appShellPath)) {
+  let shell = fs.readFileSync(appShellPath, 'utf8');
+  const normalized = shell
+    .replace('src="david-34.png" alt="Mon Profil"', 'src="${window.getLyannDefaultAvatar ? window.getLyannDefaultAvatar() : \'\'}" alt="Mon Profil"')
+    .replace("openChatWithUser(contact, 'david-34.png');", "openChatWithUser(contact, window.getLyannDefaultAvatar ? window.getLyannDefaultAvatar() : '');");
+  if (normalized !== shell) {
+    fs.writeFileSync(appShellPath, normalized, 'utf8');
+    changes.push('normalize app shell avatar fallback');
+  }
+}
+
 const htmlFiles = fs.readdirSync(root).filter((name) => name.endsWith('.html'));
 for (const file of htmlFiles) {
   const filePath = path.join(root, file);
   let html = fs.readFileSync(filePath, 'utf8');
   if (!html.includes('<script src="script.js')) continue;
 
-  const scriptIndex = html.indexOf('<script src="script.js');
-  const lineStart = html.lastIndexOf('\n', scriptIndex) + 1;
-  const indent = html.slice(lineStart, scriptIndex);
   const requiredScripts = [
     'platform-core.js',
     'notifications-ui.js',
