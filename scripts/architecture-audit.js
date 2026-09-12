@@ -54,16 +54,15 @@ for (const file of productPages) {
     if (html.includes(token)) warn(`${file}: production-visible/demo token remains: ${token}`);
   }
 
-  // Every page still using the legacy app entry point must load the extracted
-  // domains first so the historical global function contract remains intact.
   if (html.includes('<script src="script.js')) {
     const platformCore = indexOfOrInfinity(html, '<script src="platform-core.js"></script>');
     const notificationsUi = indexOfOrInfinity(html, '<script src="notifications-ui.js"></script>');
+    const appShell = indexOfOrInfinity(html, '<script src="app-shell.js"></script>');
     const legacyScript = indexOfOrInfinity(html, '<script src="script.js');
-    if (!Number.isFinite(platformCore) || !Number.isFinite(notificationsUi)) {
-      fail(`${file}: extracted platform/notification domains are missing before script.js`);
-    } else if (!(platformCore < notificationsUi && notificationsUi < legacyScript)) {
-      fail(`${file}: extracted domain scripts must load before script.js`);
+    if (!Number.isFinite(platformCore) || !Number.isFinite(notificationsUi) || !Number.isFinite(appShell)) {
+      fail(`${file}: extracted platform/notification/app-shell domains are missing before script.js`);
+    } else if (!(platformCore < notificationsUi && notificationsUi < appShell && appShell < legacyScript)) {
+      fail(`${file}: extracted domain scripts must load in order before script.js`);
     }
   }
 }
@@ -107,8 +106,13 @@ if (fs.existsSync(path.join(root, 'feed.html'))) {
   if (eagerScripts.length >= 5) warn(`feed.html: ${eagerScripts.length} feature scripts remain on the Bokantaj critical path; continue modularization`);
 }
 
-for (const requiredModule of ['platform-core.js', 'notifications-ui.js']) {
+for (const requiredModule of ['platform-core.js', 'notifications-ui.js', 'app-shell.js']) {
   if (!fs.existsSync(path.join(root, requiredModule))) fail(`${requiredModule}: extracted domain file missing`);
+}
+
+if (fs.existsSync(path.join(root, 'app-shell.js'))) {
+  const shell = read('app-shell.js');
+  if (shell.includes('david-34.png')) fail('app-shell.js: historical placeholder avatar must not be used by the application shell');
 }
 
 if (fs.existsSync(path.join(root, 'script.js'))) {
@@ -122,6 +126,9 @@ if (fs.existsSync(path.join(root, 'script.js'))) {
   }
   if (source.includes('// === NOTIFICATIONS MODAL & BADGE SYSTEM ===')) {
     fail('script.js: notification UI domain was reintroduced into the monolith');
+  }
+  if (source.includes('// === PENDING ACTIONS FINDER FOR MOBILE DASHBOARD ===') || source.includes('// === INTERFACE INJECTION ENTRY POINT ===')) {
+    fail('script.js: mobile app shell domain was reintroduced into the monolith');
   }
   if (lineCount > 3000) warn(`script.js: monolithic file has ${lineCount} lines`);
   if (mutationObservers > 3) warn(`script.js: ${mutationObservers} MutationObserver instances; review lifecycle ownership`);
