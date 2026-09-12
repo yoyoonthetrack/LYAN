@@ -7082,7 +7082,7 @@ safeDomReady(() => {
         const selectedCategory = categorySelect ? categorySelect.value : 'all';
         const selectedSort = sortSelect ? sortSelect.value : 'recommended';
 
-        // 1. Fetch Candidates (Supabase DB profiles with DEV/DEMO isolation)
+        // 1. Fetch Candidates through centralized cached Explorer repository
         let candidatesList = [];
         let callingUserId = null;
         let searchHasError = false;
@@ -7095,102 +7095,58 @@ safeDomReady(() => {
             ))
         );
 
-        const isDevDebug = typeof window !== 'undefined' && (
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1' ||
-            window.location.protocol === 'file:' ||
-            (window.location && window.location.search && (
-                window.location.search.includes('debug=true') ||
-                window.location.search.includes('demo=true') ||
-                window.location.search.includes('dev=true')
-            ))
-        );
-
         try {
-            if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-                const currentUser = await window.LYANN_API_CLIENT.getCurrentUser().catch(() => null);
-                if (currentUser) callingUserId = currentUser.id;
+            if (!window.LYANN_EXPLORER_REPOSITORY) {
+                throw new Error('LYANN_EXPLORER_REPOSITORY unavailable');
+            }
 
-                const { data: dbProfiles, error } = await window.LYANN_API_CLIENT.supabase
-                    .from('profiles')
-                    .select('*')
-                    .neq('id', callingUserId || '00000000-0000-0000-0000-000000000000');
+            if (window.LYANN_AUTH_STATE && typeof window.LYANN_AUTH_STATE.getUserId === 'function') {
+                callingUserId = window.LYANN_AUTH_STATE.getUserId() || null;
+            }
 
-                if (error) {
-                    console.error("❌ [LYANN SEARCH] Supabase profiles fetch error:", error);
-                    searchHasError = true;
-                } else if (dbProfiles) {
-                    // Strict UUID Deduplication
-                    const seenIds = new Set();
-                    candidatesList = dbProfiles.filter(p => {
-                        if (!p.id || seenIds.has(p.id)) return false;
-                        seenIds.add(p.id);
-                        return true;
-                    }).map(p => ({
-                        id: p.id,
-                        user_id: p.id,
-                        name: window.formatPublicName ? window.formatPublicName(p, null, 'Lyanneur') : (p.first_name || 'Lyanneur'),
-                        avatar: window.getLyannAvatarUrl(p.avatar_url),
-                        role: p.headline || p.activity || p.role || 'Services & Entraide',
-                        category: p.category || p.activity || 'general',
-                        city: p.city || p.location || 'Guadeloupe',
-                        location: p.territory || p.location || 'guadeloupe',
-                        rating: p.rating || 5.0,
-                        reviewsCount: p.reviews_count || 0,
-                        completed_missions_count: p.completed_missions_count || 0,
-                        is_verified_pro: p.is_verified || p.account_type === 'pro',
-                        skills: p.skills || [],
-                        bio: p.bio || p.headline || '',
-                        subscription_plan: p.subscription_plan || 'FREE',
-                        source: 'SUPABASE'
-                    }));
-                }
+            // If cached results exist, use them immediately; repository refresh is deduped.
+            const cachedCandidates = window.LYANN_EXPLORER_REPOSITORY.peek();
+            if (Array.isArray(cachedCandidates)) {
+                candidatesList = cachedCandidates;
             } else {
-                if (!isExplicitDemoMode) searchHasError = true;
+                candidatesList = await window.LYANN_EXPLORER_REPOSITORY.load();
             }
         } catch (err) {
-            console.error("❌ [LYANN SEARCH] Supabase client exception:", err);
+            console.error('❌ [LYANN SEARCH] Explorer repository error:', err);
             searchHasError = true;
         }
 
-        // Error vs Mock Fixtures Handling
         if (searchHasError) {
             container.innerHTML = `
                 <div class="search-error-state" style="grid-column: 1/-1; padding: 40px 20px; text-align: center; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed #E2E8F0;">
                     <i class="ph ph-warning-circle" style="font-size: 2.5rem; color: #DC2626; margin-bottom: 10px;"></i>
                     <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1E293B;">Impossible de charger les Lyanneurs pour le moment.</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Veuillez vérifier votre connexion Supabase ou réessayer plus tard.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Veuillez réessayer dans quelques instants.</p>
                 </div>
             `;
             return;
         }
 
-        // DEMO mode ONLY: populate mock fixtures if explicitly requested AND candidatesList is empty
+        // Demo fixtures remain available only when explicitly requested.
         if (isExplicitDemoMode && candidatesList.length === 0 && window.LYANN_MEMBERS && Array.isArray(window.LYANN_MEMBERS)) {
-            const seenIds = new Set();
-            window.LYANN_MEMBERS.forEach(m => {
-                const memberId = String(m.id || m.user_id || m.name);
-                if (seenIds.has(memberId)) return;
-                seenIds.add(memberId);
-                candidatesList.push({
-                    id: memberId,
-                    user_id: memberId,
-                    name: m.name,
-                    avatar: m.avatar || 'david-34.png',
-                    role: m.role || 'Services & Entraide',
-                    category: m.category || 'general',
-                    city: m.city || 'Baie-Mahault',
-                    location: m.location || 'guadeloupe',
-                    rating: m.rating || 4.9,
-                    reviewsCount: m.reviewsCount || 12,
-                    completed_missions_count: m.completedMissions || 15,
-                    is_verified_pro: m.badge === 'Artisan Vérifié' || m.isVerified === true,
-                    skills: m.skills || m.keywords || [],
-                    bio: m.bio || '',
-                    subscription_plan: m.subscription_plan || 'FREE',
-                    source: 'DEMO'
-                });
-            });
+            candidatesList = window.LYANN_MEMBERS.map(m => ({
+                id: String(m.id || m.user_id || m.name),
+                user_id: String(m.id || m.user_id || m.name),
+                name: m.name,
+                avatar: m.avatar || '/default-avatar.svg',
+                role: m.role || 'Services & Entraide',
+                category: m.category || 'general',
+                city: m.city || 'Guadeloupe',
+                location: m.location || 'guadeloupe',
+                rating: m.rating || 0,
+                reviewsCount: m.reviewsCount || 0,
+                completed_missions_count: m.completedMissions || 0,
+                is_verified_pro: m.badge === 'Artisan Vérifié' || m.isVerified === true,
+                skills: m.skills || m.keywords || [],
+                bio: m.bio || '',
+                subscription_plan: m.subscription_plan || 'FREE',
+                source: 'DEMO'
+            }));
         }
 
         // 2. Invoke LyannSearchEngine.performUniversalSearch
