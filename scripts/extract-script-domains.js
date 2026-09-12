@@ -47,6 +47,17 @@ extractDomain({
   banner: '/** LYANN notifications UI — extracted from legacy script.js without behavior changes. */'
 });
 
+// Third domain: native/mobile application shell. This owns the guest welcome screen,
+// connected mobile dashboard, bottom navigation, central action sheet and message entry.
+// Keeping it as a classic script preserves all global contracts while separating route/
+// shell rendering from the legacy business-logic monolith.
+extractDomain({
+  startMarker: '// === PENDING ACTIONS FINDER FOR MOBILE DASHBOARD ===',
+  endMarker: '// === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===',
+  outputFile: 'app-shell.js',
+  banner: '/** LYANN application shell — extracted from legacy script.js without behavior changes. */'
+});
+
 if (changes.length) {
   fs.writeFileSync(scriptPath, source, 'utf8');
 }
@@ -62,17 +73,22 @@ for (const file of htmlFiles) {
   const scriptIndex = html.indexOf('<script src="script.js');
   const lineStart = html.lastIndexOf('\n', scriptIndex) + 1;
   const indent = html.slice(lineStart, scriptIndex);
-  const insertion = [
-    `${indent}<script src="platform-core.js"></script>`,
-    `${indent}<script src="notifications-ui.js"></script>`,
-    ''
-  ].join('\n');
+  const requiredScripts = [
+    'platform-core.js',
+    'notifications-ui.js',
+    'app-shell.js'
+  ];
 
-  if (!html.includes('<script src="platform-core.js"></script>')) {
-    html = html.slice(0, lineStart) + insertion + html.slice(lineStart);
-    fs.writeFileSync(filePath, html, 'utf8');
-    changes.push(`wire extracted domains into ${file}`);
+  for (const src of requiredScripts) {
+    if (html.includes(`<script src="${src}"></script>`)) continue;
+    const currentScriptIndex = html.indexOf('<script src="script.js');
+    const currentLineStart = html.lastIndexOf('\n', currentScriptIndex) + 1;
+    const currentIndent = html.slice(currentLineStart, currentScriptIndex);
+    html = html.slice(0, currentLineStart) + `${currentIndent}<script src="${src}"></script>\n` + html.slice(currentLineStart);
+    changes.push(`wire ${src} into ${file}`);
   }
+
+  fs.writeFileSync(filePath, html, 'utf8');
 }
 
 if (!changes.length) {
