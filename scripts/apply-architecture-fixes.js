@@ -72,6 +72,19 @@ if (!html.includes('<script src="session-store.js"></script>')) {
   if (result.changed) changes.push(result.label);
 }
 
+// 4) Stripe.js is not used by the current Bokantaj boot path. Loading the
+// third-party SDK eagerly makes a social/feed interaction wait on payment
+// infrastructure. Keep payment-script.js for compatibility, but defer the
+// Stripe browser SDK until the future Elements/checkout surface actually asks
+// for it.
+{
+  const stripeTag = '    <script src="https://js.stripe.com/v3/"></script>\n';
+  if (html.includes(stripeTag)) {
+    html = html.replace(stripeTag, '');
+    changes.push('remove eager Stripe SDK from Bokantaj boot');
+  }
+}
+
 if (!changes.length) {
   console.log('Architecture source fixes already applied; no changes.');
   process.exit(0);
