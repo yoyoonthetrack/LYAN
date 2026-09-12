@@ -136,3 +136,125 @@
 
     window.LYANN_NOTIFICATIONS = NotifService;
 })();
+
+// Production UI repair shared by Web and Capacitor bundles.
+(function installLyannProductionRuntimeRepair() {
+    if (window.__LYANN_PRODUCTION_RUNTIME_REPAIR__) return;
+    window.__LYANN_PRODUCTION_RUNTIME_REPAIR__ = true;
+
+    // 1) Bokantaj: use delegated events so dynamically rendered author names always open the profile.
+    document.addEventListener('click', function(event) {
+        const authorName = event.target && event.target.closest ? event.target.closest('.lyann-author-name') : null;
+        if (!authorName) return;
+
+        const authorBlock = authorName.closest('.trigger-quick-profile, [data-member-id]');
+        const memberId = authorBlock && authorBlock.dataset ? authorBlock.dataset.memberId : null;
+        if (!memberId || typeof window.openQuickProfileModal !== 'function') return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        window.openQuickProfileModal(memberId);
+    }, true);
+
+    // 2) Chat: remove the obsolete floating/inline "Suivi du chantier" buttons.
+    function hideObsoleteTrackingButtons(root) {
+        const scope = root && root.querySelectorAll ? root : document;
+        ['#chatTrackingBtn', '#btnCtxViewMissionDetails'].forEach(function(selector) {
+            scope.querySelectorAll(selector).forEach(function(button) {
+                button.style.setProperty('display', 'none', 'important');
+                button.setAttribute('aria-hidden', 'true');
+                button.tabIndex = -1;
+            });
+        });
+    }
+
+    hideObsoleteTrackingButtons(document);
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node && node.nodeType === 1) {
+                    if (node.matches && (node.matches('#chatTrackingBtn') || node.matches('#btnCtxViewMissionDetails'))) {
+                        node.style.setProperty('display', 'none', 'important');
+                        node.setAttribute('aria-hidden', 'true');
+                        node.tabIndex = -1;
+                    }
+                    hideObsoleteTrackingButtons(node);
+                }
+            });
+        });
+    });
+    if (document.documentElement) observer.observe(document.documentElement, { childList: true, subtree: true });
+
+    // 3) Chat ownership: make the current Supabase user ID reliable before message rendering.
+    let cachedUserId = null;
+
+    function idFromStoredSession() {
+        try {
+            const keys = Object.keys(window.localStorage || {});
+            for (const key of keys) {
+                if (!key.startsWith('sb-') || !key.endsWith('-auth-token')) continue;
+                const raw = window.localStorage.getItem(key);
+                if (!raw) continue;
+                const parsed = JSON.parse(raw);
+                const candidates = [
+                    parsed,
+                    parsed && parsed.session,
+                    parsed && parsed.currentSession,
+                    parsed && parsed.data && parsed.data.session
+                ];
+                for (const candidate of candidates) {
+                    if (candidate && candidate.user && candidate.user.id) return candidate.user.id;
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function installIdentityOverride() {
+        const previousGetMyId = typeof window.getMyId === 'function' ? window.getMyId : null;
+        window.getMyId = function() {
+            const globalId =
+                (window.LYANN_CURRENT_USER && window.LYANN_CURRENT_USER.id) ||
+                (window.currentUser && window.currentUser.id) ||
+                cachedUserId ||
+                idFromStoredSession();
+            if (globalId) {
+                cachedUserId = globalId;
+                return globalId;
+            }
+            if (previousGetMyId) {
+                const previousId = previousGetMyId();
+                if (previousId && previousId !== 'me') return previousId;
+            }
+            return 'me';
+        };
+
+        const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+        if (supabase && supabase.auth) {
+            if (typeof supabase.auth.getSession === 'function') {
+                supabase.auth.getSession().then(function(result) {
+                    const session = result && result.data ? result.data.session : null;
+                    if (session && session.user && session.user.id) {
+                        cachedUserId = session.user.id;
+                        if (typeof window.refreshChatUI === 'function') window.refreshChatUI();
+                    }
+                }).catch(function() {});
+            }
+            if (typeof supabase.auth.onAuthStateChange === 'function') {
+                supabase.auth.onAuthStateChange(function(_event, session) {
+                    cachedUserId = session && session.user ? session.user.id : null;
+                });
+            }
+        }
+    }
+
+    // Run after all classic scripts have had a chance to define chat globals.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(installIdentityOverride, 0);
+            hideObsoleteTrackingButtons(document);
+        }, { once: true });
+    } else {
+        setTimeout(installIdentityOverride, 0);
+    }
+})();
