@@ -5,6 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "audit:architecture": "node scripts/architecture-audit.js",
+    "test": "npm run audit:architecture",
     "build:mobile": "node build_mobile.js",
     "cap:sync": "npx cap sync",
     "ios": "npx cap open ios",
