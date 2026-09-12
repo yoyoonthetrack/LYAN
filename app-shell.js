@@ -207,20 +207,45 @@ async function initMobileHomeDashboard() {
 
 // === INTERFACE INJECTION ENTRY POINT ===
 // Global messaging modal opener
-window.openLyannMessagesModal = function() {
+window.openLyannMessagesModal = async function() {
     try { triggerHaptic('light'); } catch(e) {}
+
+    // One canonical chat implementation: resume the last real conversation with
+    // the same openChatWithUser() path used by “Je peux aider”.
+    try {
+        const raw = localStorage.getItem('lyann_last_active_contact');
+        const last = raw ? JSON.parse(raw) : null;
+        if (last && last.id && typeof window.openChatWithUser === 'function') {
+            return await window.openChatWithUser(
+                last.name || 'Membre LYANN',
+                last.avatar || (window.getLyannDefaultAvatar ? window.getLyannDefaultAvatar() : ''),
+                last.id,
+                null
+            );
+        }
+    } catch (e) {
+        console.warn('[MESSAGES ENTRY] Unable to restore last conversation', e);
+    }
+
     const modal = document.getElementById('chatModal');
     if (modal) {
+        document.body.classList.add('hide-bottom-nav');
+        document.body.classList.add('in-chat-active');
         modal.removeAttribute('style');
         modal.style.display = 'flex';
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
-        document.body.classList.add('hide-bottom-nav');
-        if (typeof window.renderMessages === 'function') {
-            try { window.renderMessages(); } catch(e) {}
-        }
+
+        // With no previous contact, deliberately show the conversation list, but
+        // keep the exact same modal/layout implementation.
+        document.querySelectorAll('.chat-modal-layout').forEach(layout => {
+            layout.classList.remove('mobile-conversation-active');
+        });
+
         if (typeof window.renderContactsList === 'function') {
-            try { window.renderContactsList(); } catch(e) {}
+            try { await window.renderContactsList(); } catch(e) {}
+        } else if (typeof window.renderChatContacts === 'function') {
+            try { await window.renderChatContacts(); } catch(e) {}
         }
     } else {
         window.location.href = 'feed.html?action=openchat';

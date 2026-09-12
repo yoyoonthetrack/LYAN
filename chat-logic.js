@@ -645,6 +645,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         const overlay = document.getElementById('chatDirectPriceForm');
         if (overlay) {
             overlay.style.display = 'flex';
+            setChatContextCoveredByOverlay(true);
             const titleEl = overlay.querySelector('.mobile-form-title');
             if (titleEl) titleEl.textContent = "Discuter du prix";
         }
@@ -1551,7 +1552,10 @@ document.addEventListener('touchstart', (e) => {
     if (chatProposeBtn) {
         chatProposeBtn.addEventListener('click', () => {
             closeAllOverlays();
-            if (chatActionChoicesOverlay) chatActionChoicesOverlay.style.display = 'flex';
+            if (chatActionChoicesOverlay) {
+                chatActionChoicesOverlay.style.display = 'flex';
+                setChatContextCoveredByOverlay(true);
+            }
         });
     }
 
