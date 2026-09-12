@@ -1,0 +1,4 @@
+LYANN production chain check
+2026-09-12T15:04+02:00
+source=main
+purpose=verify-main-to-vercel-production-to-lyann.app
