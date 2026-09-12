@@ -19,7 +19,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: JavaScript syntax check
         run: |
@@ -61,3 +61,31 @@ jobs:
           grep -F "x-vercel-original-url" api/index.js
           grep -F "x-forwarded-uri" api/index.js
           grep -F "getCandidatePaths" api/index.js
+
+      - name: Direct historical function is not callable
+        run: |
+          node <<'NODE'
+          const historical = require('./api/server');
+          let body = '';
+          const headers = {};
+          const res = {
+            statusCode: 0,
+            setHeader(k, v) { headers[k] = v; },
+            end(chunk = '') { body += chunk; }
+          };
+          historical({ headers: {}, method: 'GET', url: '/api/server' }, res);
+          if (res.statusCode !== 404) throw new Error(`direct function returned ${res.statusCode}`);
+          if (headers['Cache-Control'] !== 'private, no-store') throw new Error('direct function cache is unsafe');
+          if (!body.includes('NOT_FOUND')) throw new Error('direct function did not fail closed');
+          NODE
+
+      - name: Webhook implementation fails closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "STRIPE_WEBHOOK_CONFIG_MISSING" api/server.js
+          grep -F "STRIPE_SIGNATURE_REQUIRED" api/server.js
+          if grep -F "let event = req.body" api/server.js; then
+            echo "Unsigned webhook fallback is forbidden"
+            exit 1
+          fi

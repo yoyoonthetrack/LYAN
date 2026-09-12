@@ -17,7 +17,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Syntax checks
         run: |
@@ -28,6 +28,7 @@ jobs:
           node --check api/render.js
           node --check build_mobile.js
           node -e "JSON.parse(require('fs').readFileSync('vercel.json','utf8'))"
+          test -f package-lock.json
 
       - name: Verify server-rendered homepage is zero-demo
         run: |
@@ -61,6 +62,7 @@ jobs:
       - name: Verify generated mobile homepage is zero-demo
         run: |
           node build_mobile.js
+          test ! -f www/package-lock.json
           node <<'NODE'
           const fs = require('fs');
           const body = fs.readFileSync('www/index.html', 'utf8');
