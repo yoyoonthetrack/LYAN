@@ -152,55 +152,22 @@ function isUUID(str) {
     return uuidRegex.test(str);
 }
 
-async function getChatMessages(contactId) {
+async function getChatMessages(contactId, options = {}) {
     const userId = getMyId();
     if (userId === "me" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
         return getLocalChatMessages(contactId);
     }
 
+    if (!window.LYANN_MESSAGING_REPOSITORY) {
+        console.warn('Messaging repository unavailable; returning no remote messages.');
+        return [];
+    }
+
     try {
-        let { data: convs } = await window.LYANN_API_CLIENT.supabase
-            .from('conversation_participants')
-            .select('conversation_id')
-            .eq('user_id', getMyId());
-
-        let sharedConvId = null;
-        if (convs && convs.length > 0) {
-            const convIds = convs.map(c => c.conversation_id);
-            const { data: shared } = await window.LYANN_API_CLIENT.supabase
-                .from('conversation_participants')
-                .select('conversation_id')
-                .eq('user_id', contactId)
-                .in('conversation_id', convIds);
-
-            if (shared && shared.length > 0) {
-                sharedConvId = shared[0].conversation_id;
-            }
-        }
-
-        if (!sharedConvId) return [];
-
-        const { data: msgs, error } = await window.LYANN_API_CLIENT.supabase
-            .from('messages')
-            .select('*')
-            .eq('conversation_id', sharedConvId)
-            .order('created_at', { ascending: true });
-
-        if (error) throw error;
-
-        return msgs.map(m => ({
-            id: m.id,
-            text: m.content,
-            sender: m.sender_id === getMyId() ? 'me' : 'them',
-            timestamp: new Date(m.created_at).getTime(),
-            type: m.content.startsWith('{') ? 'transactional' : 'text',
-            txData: m.content.startsWith('{') ? JSON.parse(m.content) : null,
-            status: 'read'
-        }));
+        return await window.LYANN_MESSAGING_REPOSITORY.getMessages(userId, contactId, options);
     } catch(e) {
         console.warn("Supabase chat query failed:", e);
-        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) return [];
-        return getLocalChatMessages(contactId);
+        return [];
     }
 }
 
@@ -262,7 +229,7 @@ async function addMessageToContact(contactId, msgObj) {
     if (userId === "me" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
         saveLocalChatMessage(contactId, normalizedMsg);
         if (currentChatContact && currentChatContact.id === contactId) {
-            await renderMessages();
+            await renderMessages(null);
         }
         return;
     }
@@ -277,6 +244,10 @@ async function addMessageToContact(contactId, msgObj) {
         const contentToSave = normalizedMsg.type === 'transactional' ? JSON.stringify(normalizedMsg.txData) : normalizedMsg.text;
         const { error: sendErr } = await window.LYANN_API_CLIENT.sendMessage(sharedConvId, userId, contentToSave);
         if (sendErr) throw sendErr;
+
+        if (window.LYANN_MESSAGING_REPOSITORY) {
+            window.LYANN_MESSAGING_REPOSITORY.invalidateMessages(sharedConvId);
+        }
 
         if (currentChatContact && currentChatContact.id === contactId) {
             await renderMessages();
@@ -919,6 +890,13 @@ async function renderMessages(passedMessages = null) {
             console.warn("Erreur chargement devis réels Supabase:", err);
         }
     }
+
+    // Ignore stale async renders. A newer refresh already owns the DOM.
+    if (renderGeneration !== chatRenderGeneration) return;
+
+    // Commit the fully prepared conversation in one DOM swap. Until this point, the old
+    // messages (including an optimistic outgoing message) stay visible.
+    container.innerHTML = '';
 
     // Ignore stale async renders. A newer refresh already owns the DOM.
     if (renderGeneration !== chatRenderGeneration) return;
