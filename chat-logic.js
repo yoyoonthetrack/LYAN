@@ -1713,6 +1713,79 @@ document.addEventListener('touchstart', (e) => {
         });
     }
 
+    // Milestone allocation: percentage <-> amount, always reconciled to total.
+    function initMilestoneAllocationSync() {
+        const totalInput = document.getElementById('mdTotalAmount');
+        if (!totalInput || totalInput.dataset.allocationSyncBound === 'true') return;
+        totalInput.dataset.allocationSyncBound = 'true';
+
+        const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
+        const roundPercent = (value) => Math.round((Number(value) || 0) * 100) / 100;
+        const getTotal = () => Math.max(0, parseFloat(totalInput.value) || 0);
+
+        const updateSummary = () => {
+            const total = getTotal();
+            let amountSum = 0;
+            let percentSum = 0;
+            for (let i = 1; i <= 3; i++) {
+                amountSum += Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Amount')?.value) || 0);
+                percentSum += Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Percent')?.value) || 0);
+            }
+            amountSum = roundMoney(amountSum);
+            percentSum = roundPercent(percentSum);
+            const remaining = roundMoney(total - amountSum);
+            const pctEl = document.getElementById('mdAllocationPercentTotal');
+            const amtEl = document.getElementById('mdAllocationAmountTotal');
+            const remEl = document.getElementById('mdAllocationRemaining');
+            if (pctEl) pctEl.textContent = percentSum.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
+            if (amtEl) amtEl.textContent = amountSum.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+            if (remEl) {
+                remEl.textContent = remaining.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+                remEl.style.color = Math.abs(remaining) <= 0.01 ? 'var(--primary)' : (remaining < 0 ? '#B91C1C' : '#475569');
+            }
+        };
+
+        const syncFromPercent = (index) => {
+            const total = getTotal();
+            const pct = Math.min(100, Math.max(0, parseFloat(document.getElementById('mdJ' + index + 'Percent')?.value) || 0));
+            const amountInput = document.getElementById('mdJ' + index + 'Amount');
+            if (amountInput) amountInput.value = total > 0 ? roundMoney(total * pct / 100).toFixed(2) : '';
+            updateSummary();
+        };
+
+        const syncFromAmount = (index) => {
+            const total = getTotal();
+            const amount = Math.max(0, parseFloat(document.getElementById('mdJ' + index + 'Amount')?.value) || 0);
+            const pctInput = document.getElementById('mdJ' + index + 'Percent');
+            if (pctInput) pctInput.value = total > 0 ? String(roundPercent(amount / total * 100)) : '';
+            updateSummary();
+        };
+
+        for (let i = 1; i <= 3; i++) {
+            const pctInput = document.getElementById('mdJ' + i + 'Percent');
+            const amountInput = document.getElementById('mdJ' + i + 'Amount');
+            if (pctInput) {
+                pctInput.step = '0.01';
+                pctInput.min = '0';
+                pctInput.max = '100';
+                pctInput.removeAttribute('required');
+                pctInput.addEventListener('input', () => syncFromPercent(i));
+            }
+            if (amountInput) amountInput.addEventListener('input', () => syncFromAmount(i));
+        }
+
+        totalInput.addEventListener('input', () => {
+            for (let i = 1; i <= 3; i++) {
+                const pctInput = document.getElementById('mdJ' + i + 'Percent');
+                if (pctInput && pctInput.value !== '') syncFromPercent(i);
+            }
+            updateSummary();
+        });
+        updateSummary();
+    }
+
+    initMilestoneAllocationSync();
+
     // SUBMIT MILESTONE DEVIS
     const milestoneDevisForm = document.getElementById('milestoneDevisForm');
     if (milestoneDevisForm) {
@@ -1724,9 +1797,14 @@ document.addEventListener('touchstart', (e) => {
                 const title = titleInput ? titleInput.value.trim() : '';
                 const total = totalInput ? parseFloat(totalInput.value) : 0;
 
-                const p1 = parseInt(document.getElementById('mdJ1Percent')?.value) || 0;
-                const p2 = parseInt(document.getElementById('mdJ2Percent')?.value) || 0;
-                const p3 = parseInt(document.getElementById('mdJ3Percent')?.value) || 0;
+                const rawAmounts = [1, 2, 3].map(i => Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Amount')?.value) || 0));
+                const rawPercents = [1, 2, 3].map(i => Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Percent')?.value) || 0));
+                const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
+                const roundPercent = (value) => Math.round((Number(value) || 0) * 100) / 100;
+
+                const amounts = rawAmounts.map((amount, idx) => amount > 0 ? roundMoney(amount) : roundMoney(total * rawPercents[idx] / 100));
+                const percents = amounts.map(amount => total > 0 ? roundPercent(amount / total * 100) : 0);
+                const [p1, p2, p3] = percents;
 
                 if (!currentChatContact) {
                     throw new Error("Aucun contact sélectionné pour la discussion.");
@@ -1745,10 +1823,15 @@ document.addEventListener('touchstart', (e) => {
                     return;
                 }
 
-                // Calcul atomique des montants de jalons
-                const m1 = Math.round(total * (p1 / 100) * 100) / 100;
-                const m2 = Math.round(total * (p2 / 100) * 100) / 100;
-                const m3 = Math.round((total - m1 - m2) * 100) / 100;
+                // Montants et pourcentages restent synchronisés quelle que soit l'unité saisie.
+                const [m1, m2, m3] = amounts;
+                const allocatedTotal = roundMoney(m1 + m2 + m3);
+                if (Math.abs(allocatedTotal - total) > 0.01) {
+                    const msg = 'La somme des jalons doit correspondre au montant total (' + total.toFixed(2) + ' €). Montant actuellement réparti : ' + allocatedTotal.toFixed(2) + ' €.';
+                    if (window.lyannAlert) window.lyannAlert(msg);
+                    else alert(msg);
+                    return;
+                }
 
                 const j1Title = document.getElementById('mdJ1Title')?.value.trim() || "Jalon 1 - Préparation";
                 const j2Title = document.getElementById('mdJ2Title')?.value.trim() || "Jalon 2 - Intervention";
