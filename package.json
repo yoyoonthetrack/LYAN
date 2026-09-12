@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "audit:architecture": "node scripts/architecture-audit.js && node scripts/profile-architecture-audit.js && node scripts/bokantaj-architecture-audit.js && node scripts/responsive-interactions-audit.js && node scripts/favorites-interaction-audit.js && node scripts/immediate-surfaces-audit.js && node scripts/explorer-architecture-audit.js",
+    "audit:architecture": "node scripts/architecture-audit.js && node scripts/profile-architecture-audit.js && node scripts/bokantaj-architecture-audit.js && node scripts/responsive-interactions-audit.js && node scripts/favorites-interaction-audit.js && node scripts/immediate-surfaces-audit.js && node scripts/explorer-architecture-audit.js && node scripts/messaging-responsiveness-audit.js",
     "test": "npm run audit:architecture",
     "build:mobile": "node build_mobile.js",
     "cap:sync": "npx cap sync",
