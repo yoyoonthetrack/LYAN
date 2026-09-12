@@ -4,7 +4,8 @@
     const registry = {
         safety: 'safety-disputes-engine.js',
         subscriptions: 'subscriptions-engine.js',
-        proVerification: 'pro-verification-engine.js'
+        proVerification: 'pro-verification-engine.js',
+        chatSurface: 'chat-surface-stack.js'
     };
 
     const loads = new Map();
@@ -66,6 +67,9 @@
         loadScript,
         registry: Object.freeze({ ...registry })
     });
+
+    // Chat layering is a shared core interaction, not a deferred optional feature.
+    ensure('chatSurface').catch((error) => console.warn('[LYANN] chat surface stack unavailable', error));
 
     if (document.readyState === 'complete') {
         warmNonCriticalFeatures();
