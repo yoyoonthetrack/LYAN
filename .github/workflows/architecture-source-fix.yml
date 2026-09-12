@@ -37,6 +37,7 @@ jobs:
           node scripts/normalize-immediate-surfaces.js
           node scripts/normalize-explorer-loader.js
           node scripts/normalize-messaging-responsiveness.js
+          node scripts/normalize-optimistic-chat-send.js
 
       - name: Commit normalized source when changed
         run: |
@@ -47,5 +48,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "perf: make messaging open and render immediately"
+          git commit -m "perf: make chat sending optimistic"
           git push origin HEAD:architecture-stabilization
