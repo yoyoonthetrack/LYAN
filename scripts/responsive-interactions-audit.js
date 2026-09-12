@@ -31,6 +31,15 @@ if (start === -1 || end === -1) {
   if (!block.includes('matchingPost.user_has_liked = nextLiked')) {
     fail('script.js: optimistic like state must update the in-memory Bokantaj model');
   }
+  if (!block.includes('paintLikeState(res.liked, serverCount);')) {
+    fail('script.js: optimistic like handler must reconcile with the server response');
+  }
+  if (!block.includes('LYANN_BOKANTAJ_REPOSITORY.invalidate()')) {
+    fail('script.js: confirmed likes must invalidate the cached Bokantaj feed');
+  }
+  if (!block.includes('delete btn.dataset.likePending;')) {
+    fail('script.js: pending interaction guard must always be released');
+  }
 }
 
 if (failures.length) {
