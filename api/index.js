@@ -154,7 +154,7 @@ module.exports = async function lyannApiGateway(req, res) {
     // Let legitimate browser preflights reach Express CORS only after the
     // production origin allowlist above has accepted them.
     if (req.method === 'OPTIONS') {
-        return app(req, res);
+        return app(req, res, app.GATEWAY_TOKEN);
     }
 
     // Historical mock/demo endpoints must never be callable in production.
@@ -211,5 +211,5 @@ module.exports = async function lyannApiGateway(req, res) {
         }
     }
 
-    return app(req, res);
+    return app(req, res, app.GATEWAY_TOKEN);
 };
