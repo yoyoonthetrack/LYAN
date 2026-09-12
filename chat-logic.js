@@ -273,6 +273,19 @@ window.openChatWithUser = async function (name, avatar, contactId = name, initia
     let displayName = name;
     let displayAvatar = avatar;
 
+    // IMMEDIATE CHAT SHELL: show the conversation before any profile/network lookup.
+    const initialHeaderName = document.getElementById('chatHeaderName');
+    const initialHeaderAvatar = document.getElementById('chatHeaderAvatar');
+    if (initialHeaderName) initialHeaderName.textContent = displayName || 'Membre LYANN';
+    if (initialHeaderAvatar && displayAvatar) initialHeaderAvatar.src = displayAvatar;
+    if (modal) {
+        modal.removeAttribute('style');
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+    document.body.style.overflow = 'hidden';
+    document.querySelectorAll('.chat-modal-layout').forEach(l => l.classList.add('mobile-conversation-active'));
+
     if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function' && contactId && isUUID(contactId)) {
         try {
             const prof = await window.LYANN_API_CLIENT.getUserProfile(contactId);
@@ -358,6 +371,9 @@ window.refreshChatUI = async function () {
     if (typeof window.updateChatFavHeaderUI === 'function') {
         window.updateChatFavHeaderUI();
     }
+
+    // Start message rendering immediately; mission/request context can resolve in parallel.
+    const messagesPromise = renderMessages();
 
     const myUserId = getMyId();
     let sharedConvId = currentChatContact.conversationId;
@@ -482,7 +498,7 @@ window.refreshChatUI = async function () {
         actionContainer.style.display = 'none';
     }
 
-    await renderMessages();
+    await messagesPromise;
 }
 
 window.handleAcceptQuote = async function(quoteId) {
@@ -854,7 +870,7 @@ async function renderMessages(passedMessages = null) {
         if (msg.cardType === 'PRICE_PROPOSAL' && realQuotes.length > 0) return;
 
         const wrapper = document.createElement('div');
-        const isMe = msg.sender === getMyId();
+        const isMe = msg.sender === 'me' || msg.sender === getMyId();
         const msgId = msg.id || ('msg_' + Math.random().toString(36).substr(2, 9));
         msg.id = msgId;
 
