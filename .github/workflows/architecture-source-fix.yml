@@ -43,6 +43,7 @@ jobs:
           node scripts/normalize-chat-quote-context.js
           node scripts/normalize-chat-proposal-overlay.js
           node scripts/normalize-chat-layering.js
+          node scripts/normalize-chat-entry-unification.js
 
       - name: Commit normalized source when changed
         run: |
@@ -53,5 +54,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "fix: enforce chat layering contract"
+          git commit -m "fix: unify chat entry and proposal layering"
           git push origin HEAD:architecture-stabilization
