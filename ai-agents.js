@@ -226,3 +226,236 @@ const LYANN_AI_ECOSYSTEM = {
 };
 
 window.LYANN_AI_ECOSYSTEM = LYANN_AI_ECOSYSTEM;
+
+// ============================================================================
+// LYANN STARTUP DIAGNOSTICS + CRITICAL UI BOOTSTRAP
+// This file is intentionally the first local script on Bokantaj, before Stripe
+// and Supabase CDNs. Keep only dependency-free UI boot code here.
+// ============================================================================
+(function installLyannStartupDiagnosticsAndCriticalUI() {
+    if (window.__LYANN_STARTUP_BOOTSTRAP__) return;
+    window.__LYANN_STARTUP_BOOTSTRAP__ = true;
+
+    const perf = window.performance;
+    const startedAt = perf && typeof perf.now === 'function' ? perf.now() : 0;
+    const enabledByQuery = /(?:\?|&)diag=1(?:&|$)/.test(window.location.search || '');
+    let enabledByStorage = false;
+    try { enabledByStorage = window.localStorage.getItem('lyann_diag') === '1'; } catch (_) {}
+    const diagEnabled = enabledByQuery || enabledByStorage;
+
+    const diag = window.__LYANN_STARTUP_DIAG__ = window.__LYANN_STARTUP_DIAG__ || {
+        enabled: diagEnabled,
+        bootstrapStartedMs: Math.round(startedAt),
+        marks: [],
+        clicks: [],
+        longTasks: [],
+        resources: []
+    };
+
+    function nowMs() {
+        return perf && typeof perf.now === 'function' ? perf.now() : Date.now();
+    }
+
+    function mark(name, detail) {
+        const entry = { name, ms: Math.round(nowMs()), detail: detail || null };
+        diag.marks.push(entry);
+        try { console.log('[LYANN_STARTUP]', name, entry.ms + 'ms', detail || ''); } catch (_) {}
+        renderPanel();
+        return entry;
+    }
+
+    function fmt(ms) {
+        if (ms === null || ms === undefined || Number.isNaN(Number(ms))) return '—';
+        return (Number(ms) / 1000).toFixed(Number(ms) >= 10000 ? 1 : 2) + ' s';
+    }
+
+    function getNavigationTiming() {
+        try {
+            const nav = performance.getEntriesByType('navigation')[0];
+            if (!nav) return null;
+            return {
+                responseStart: Math.round(nav.responseStart || 0),
+                domInteractive: Math.round(nav.domInteractive || 0),
+                domContentLoaded: Math.round(nav.domContentLoadedEventEnd || 0),
+                load: Math.round(nav.loadEventEnd || 0)
+            };
+        } catch (_) { return null; }
+    }
+
+    function collectSlowResources() {
+        try {
+            diag.resources = performance.getEntriesByType('resource')
+                .map(r => ({
+                    name: (r.name || '').replace(window.location.origin, ''),
+                    duration: Math.round(r.duration || 0),
+                    start: Math.round(r.startTime || 0),
+                    initiatorType: r.initiatorType || ''
+                }))
+                .sort((a, b) => b.duration - a.duration)
+                .slice(0, 8);
+        } catch (_) {}
+    }
+
+    function ensurePanel() {
+        if (!diagEnabled || document.getElementById('lyannStartupDiagPanel')) return;
+        const panel = document.createElement('aside');
+        panel.id = 'lyannStartupDiagPanel';
+        panel.setAttribute('aria-live', 'polite');
+        panel.style.cssText = [
+            'position:fixed','left:10px','right:10px','bottom:10px','z-index:2147483647',
+            'max-height:48vh','overflow:auto','background:rgba(15,23,42,.96)','color:#fff',
+            'border:1px solid rgba(255,255,255,.16)','border-radius:14px','padding:10px 12px',
+            'font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace','box-shadow:0 8px 30px rgba(0,0,0,.28)'
+        ].join(';');
+        document.body.appendChild(panel);
+    }
+
+    function renderPanel() {
+        if (!diagEnabled || !document.body) return;
+        ensurePanel();
+        const panel = document.getElementById('lyannStartupDiagPanel');
+        if (!panel) return;
+
+        collectSlowResources();
+        const nav = getNavigationTiming();
+        const filterReady = !!window.__LYANN_CRITICAL_FILTER_READY__;
+        const apiReady = !!window.LYANN_API_CLIENT;
+        const supabaseReady = !!window.supabase || !!(window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase);
+        const appDiag = window.__LYANN_RUNTIME_DIAG__;
+        const scriptReady = !!appDiag;
+        const lastClick = diag.clicks[diag.clicks.length - 1];
+        const longestTask = diag.longTasks.reduce((m, x) => Math.max(m, x.duration || 0), 0);
+
+        const status = (ok) => ok ? '✅' : '⏳';
+        const navRows = nav ? `
+            <div>Réponse HTML&nbsp;&nbsp;&nbsp;&nbsp; ${fmt(nav.responseStart)}</div>
+            <div>DOM interactif&nbsp;&nbsp; ${fmt(nav.domInteractive)}</div>
+            <div>DOMContentLoaded ${nav.domContentLoaded ? fmt(nav.domContentLoaded) : '⏳'}</div>
+            <div>window.load&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${nav.load ? fmt(nav.load) : '⏳'}</div>` : '';
+        const resourceRows = diag.resources.slice(0, 4).map(r => `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${fmt(r.duration)} · ${r.name}</div>`).join('');
+        const recentMarks = diag.marks.slice(-5).map(m => `<div>${fmt(m.ms)} · ${m.name}</div>`).join('');
+
+        panel.innerHTML = `
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px">
+                <strong>LYANN · DIAGNOSTIC DÉMARRAGE</strong>
+                <button type="button" id="lyannDiagClose" style="border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:4px 8px;cursor:pointer">×</button>
+            </div>
+            ${navRows}
+            <div>${status(filterReady)} UI critique / Filtres : ${filterReady ? fmt(window.__LYANN_CRITICAL_FILTER_READY_MS__) : 'en attente'}</div>
+            <div>${status(scriptReady)} script.js : ${scriptReady ? 'chargé' : 'en attente'}</div>
+            <div>${status(supabaseReady)} Supabase : ${supabaseReady ? 'disponible' : 'en attente'}</div>
+            <div>${status(apiReady)} API client : ${apiReady ? 'disponible' : 'en attente'}</div>
+            <div>Long task max&nbsp;&nbsp;&nbsp; ${fmt(longestTask)}</div>
+            ${lastClick ? `<div>Dernier clic&nbsp;&nbsp;&nbsp;&nbsp; ${lastClick.target} à ${fmt(lastClick.ms)}${lastClick.resultMs != null ? ` → réaction ${fmt(lastClick.resultMs)}` : ''}</div>` : ''}
+            <hr style="border:0;border-top:1px solid rgba(255,255,255,.16);margin:7px 0">
+            <div style="font-weight:700;margin-bottom:3px">Étapes récentes</div>${recentMarks || '<div>—</div>'}
+            <div style="font-weight:700;margin:7px 0 3px">Ressources les plus lentes</div>${resourceRows || '<div>—</div>'}
+        `;
+        const close = document.getElementById('lyannDiagClose');
+        if (close) close.onclick = () => panel.remove();
+    }
+
+    // Critical local-only UI: must work before Stripe/Supabase/network dependencies.
+    function bindCriticalBokantajFilter() {
+        const button = document.getElementById('btnOpenBokantajFilterSheet');
+        const modal = document.getElementById('bokantajFilterSheetModal');
+        if (!button || !modal) return false;
+        if (button.dataset.criticalUiBound === '1') return true;
+        button.dataset.criticalUiBound = '1';
+        button.addEventListener('click', function(e) {
+            const clickStart = nowMs();
+            e.preventDefault();
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+            document.body.classList.add('sheet-open');
+            window.__LYANN_LAST_FILTER_OPEN_LATENCY_MS__ = Math.round(nowMs() - clickStart);
+            mark('filter_open_visible', { latencyMs: window.__LYANN_LAST_FILTER_OPEN_LATENCY_MS__ });
+        }, true);
+        window.__LYANN_CRITICAL_FILTER_READY__ = true;
+        window.__LYANN_CRITICAL_FILTER_READY_MS__ = Math.round(nowMs());
+        mark('critical_filter_bound');
+        return true;
+    }
+
+    // The button and sheet are already before this script on feed.html, so this normally binds immediately.
+    if (!bindCriticalBokantajFilter()) {
+        const mo = new MutationObserver(function() {
+            if (bindCriticalBokantajFilter()) mo.disconnect();
+        });
+        mo.observe(document.documentElement, { childList: true, subtree: true });
+    }
+
+    // Click diagnostics: records whether visible state changes happen quickly after a click.
+    if (diagEnabled) {
+        document.addEventListener('click', function(e) {
+            const el = e.target && e.target.closest ? e.target.closest('button,a,[role="button"]') : null;
+            if (!el) return;
+            const click = {
+                ms: Math.round(nowMs()),
+                target: '#' + (el.id || el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 42),
+                resultMs: null
+            };
+            diag.clicks.push(click);
+            const before = document.body ? document.body.innerHTML.length : 0;
+            setTimeout(function() {
+                const after = document.body ? document.body.innerHTML.length : before;
+                if (after !== before || el.id === 'btnOpenBokantajFilterSheet') click.resultMs = Math.round(nowMs() - click.ms);
+                renderPanel();
+            }, 120);
+            renderPanel();
+        }, true);
+
+        try {
+            if ('PerformanceObserver' in window) {
+                const longTaskObserver = new PerformanceObserver(function(list) {
+                    list.getEntries().forEach(function(entry) {
+                        diag.longTasks.push({ start: Math.round(entry.startTime), duration: Math.round(entry.duration) });
+                    });
+                    renderPanel();
+                });
+                longTaskObserver.observe({ entryTypes: ['longtask'] });
+            }
+        } catch (_) {}
+    }
+
+    mark('first_local_script_ready');
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { mark('DOMContentLoaded'); renderPanel(); }, { once: true });
+    } else {
+        mark('DOMContentLoaded_already_reached');
+    }
+    window.addEventListener('load', function() { mark('window_load'); renderPanel(); }, { once: true });
+
+    // Watch delayed dependencies and mark the exact moment they become available.
+    const readinessStarted = nowMs();
+    let sawSupabase = false, sawApi = false, sawScript = false;
+    const readinessTimer = setInterval(function() {
+        const supabaseReady = !!window.supabase || !!(window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase);
+        const apiReady = !!window.LYANN_API_CLIENT;
+        const scriptReady = !!window.__LYANN_RUNTIME_DIAG__;
+        if (supabaseReady && !sawSupabase) { sawSupabase = true; mark('supabase_ready'); }
+        if (apiReady && !sawApi) { sawApi = true; mark('api_client_ready'); }
+        if (scriptReady && !sawScript) { sawScript = true; mark('script_js_ready'); }
+        if ((sawSupabase && sawApi && sawScript) || nowMs() - readinessStarted > 60000) {
+            clearInterval(readinessTimer);
+            mark('startup_watch_complete');
+        }
+        renderPanel();
+    }, 250);
+
+    // Public helper for console / later diagnostics.
+    window.LYANN_STARTUP_DIAG = {
+        mark,
+        render: renderPanel,
+        enable: function() {
+            try { localStorage.setItem('lyann_diag', '1'); } catch (_) {}
+            window.location.reload();
+        },
+        disable: function() {
+            try { localStorage.removeItem('lyann_diag'); } catch (_) {}
+            const panel = document.getElementById('lyannStartupDiagPanel');
+            if (panel) panel.remove();
+        }
+    };
+})();
