@@ -117,20 +117,9 @@ function closeAllOverlays() {
 }
 
 function setChatContextCoveredByOverlay(isCovered) {
-    const banner = document.getElementById('chatMissionContextBar') || document.getElementById('chatMissionContext');
-    if (!banner) return;
-    if (isCovered) {
-        if (!banner.dataset.overlayPreviousDisplay) {
-            banner.dataset.overlayPreviousDisplay = banner.style.display || '';
-        }
-        banner.style.display = 'none';
-    } else {
-        const previous = banner.dataset.overlayPreviousDisplay;
-        if (previous !== undefined) {
-            banner.style.display = previous;
-            delete banner.dataset.overlayPreviousDisplay;
-        }
-    }
+    const mainArea = document.querySelector('.chat-main-area');
+    if (!mainArea) return;
+    mainArea.classList.toggle('chat-child-surface-active', !!isCovered);
 }
 
 function getLocalChatMessages(contactId) {
@@ -487,7 +476,12 @@ window.refreshChatUI = async function () {
                 btnView.onclick = (e) => {
                     e.stopPropagation();
                     if (typeof window.openLyannDetailModal === 'function') {
+                        document.body.classList.add('chat-child-modal-open');
                         window.openLyannDetailModal(requestContext.requestId);
+                        requestAnimationFrame(() => {
+                            const detail = document.getElementById('lyannDetailModal');
+                            if (detail) detail.classList.add('opened-from-chat');
+                        });
                     }
                 };
             }

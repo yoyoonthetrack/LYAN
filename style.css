@@ -15562,3 +15562,26 @@ body.is-native-app .navbar .nav-auth-btn {
 
 
 
+
+/* LYANN CHAT LAYERING CONTRACT v2 */
+.chat-main-area.chat-child-surface-active #chatMissionContextBar,
+.chat-main-area.chat-child-surface-active #chatMissionContext,
+.chat-main-area.chat-child-surface-active #chatContextualActionsBar,
+.chat-main-area.chat-child-surface-active #chatViewMissionBtn {
+    display: none !important;
+}
+
+.chat-main-area.chat-child-surface-active .chat-overlay-pane {
+    top: 73px !important;
+    z-index: 250 !important;
+}
+
+body.chat-child-modal-open #lyannDetailModal.opened-from-chat,
+body.chat-child-modal-open #publicMemberProfileModal,
+body.chat-child-modal-open #quickProfileModal {
+    z-index: 20050 !important;
+}
+
+body.chat-child-modal-open #chatModal {
+    z-index: 20000 !important;
+}
