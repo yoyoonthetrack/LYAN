@@ -113,6 +113,24 @@ function closeAllOverlays() {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
+    setChatContextCoveredByOverlay(false);
+}
+
+function setChatContextCoveredByOverlay(isCovered) {
+    const banner = document.getElementById('chatMissionContextBar') || document.getElementById('chatMissionContext');
+    if (!banner) return;
+    if (isCovered) {
+        if (!banner.dataset.overlayPreviousDisplay) {
+            banner.dataset.overlayPreviousDisplay = banner.style.display || '';
+        }
+        banner.style.display = 'none';
+    } else {
+        const previous = banner.dataset.overlayPreviousDisplay;
+        if (previous !== undefined) {
+            banner.style.display = previous;
+            delete banner.dataset.overlayPreviousDisplay;
+        }
+    }
 }
 
 function getLocalChatMessages(contactId) {
@@ -591,6 +609,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         const chatActionChoicesOverlay = document.getElementById('chatActionChoicesOverlay');
         if (chatActionChoicesOverlay) {
             chatActionChoicesOverlay.style.display = 'flex';
+            setChatContextCoveredByOverlay(true);
         } else {
             const amount = await window.lyannPrompt("Quel montant proposez-vous (en €) ?");
             if (!amount) return;
@@ -1546,7 +1565,12 @@ document.addEventListener('touchstart', (e) => {
     if (btnChooseDirectPrice) {
         btnChooseDirectPrice.addEventListener('click', () => {
             closeAllOverlays();
-            if (chatDirectPriceForm) chatDirectPriceForm.style.display = 'flex';
+            if (chatDirectPriceForm) {
+                chatDirectPriceForm.style.display = 'flex';
+                setChatContextCoveredByOverlay(true);
+                const firstRequired = chatDirectPriceForm.querySelector('[required]');
+                if (firstRequired) requestAnimationFrame(() => firstRequired.focus());
+            }
         });
     }
 
@@ -1554,7 +1578,12 @@ document.addEventListener('touchstart', (e) => {
     if (btnChooseMilestoneDevis) {
         btnChooseMilestoneDevis.addEventListener('click', () => {
             closeAllOverlays();
-            if (chatMilestoneDevisForm) chatMilestoneDevisForm.style.display = 'flex';
+            if (chatMilestoneDevisForm) {
+                chatMilestoneDevisForm.style.display = 'flex';
+                setChatContextCoveredByOverlay(true);
+                const firstRequired = chatMilestoneDevisForm.querySelector('[required]');
+                if (firstRequired) requestAnimationFrame(() => firstRequired.focus());
+            }
         });
     }
 
