@@ -16,18 +16,9 @@ const productPages = [
 const failures = [];
 const warnings = [];
 
-function fail(message) {
-  failures.push(message);
-}
-
-function warn(message) {
-  warnings.push(message);
-}
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), 'utf8');
-}
-
+function fail(message) { failures.push(message); }
+function warn(message) { warnings.push(message); }
+function read(file) { return fs.readFileSync(path.join(root, file), 'utf8'); }
 function indexOfOrInfinity(source, needle) {
   const i = source.indexOf(needle);
   return i === -1 ? Number.POSITIVE_INFINITY : i;
@@ -62,6 +53,19 @@ for (const file of productPages) {
   for (const token of demoTokens) {
     if (html.includes(token)) warn(`${file}: production-visible/demo token remains: ${token}`);
   }
+
+  // Every page still using the legacy app entry point must load the extracted
+  // domains first so the historical global function contract remains intact.
+  if (html.includes('<script src="script.js')) {
+    const platformCore = indexOfOrInfinity(html, '<script src="platform-core.js"></script>');
+    const notificationsUi = indexOfOrInfinity(html, '<script src="notifications-ui.js"></script>');
+    const legacyScript = indexOfOrInfinity(html, '<script src="script.js');
+    if (!Number.isFinite(platformCore) || !Number.isFinite(notificationsUi)) {
+      fail(`${file}: extracted platform/notification domains are missing before script.js`);
+    } else if (!(platformCore < notificationsUi && notificationsUi < legacyScript)) {
+      fail(`${file}: extracted domain scripts must load before script.js`);
+    }
+  }
 }
 
 if (fs.existsSync(path.join(root, 'feed.html'))) {
@@ -80,49 +84,31 @@ if (fs.existsSync(path.join(root, 'feed.html'))) {
 
   const scriptJs = indexOfOrInfinity(html, '<script src="script.js');
   const completeProfile = indexOfOrInfinity(html, 'id="modalCompleteProfile"');
-  if (scriptJs < completeProfile) {
-    fail('feed.html: script.js loads before later UI DOM (modalCompleteProfile)');
-  }
+  if (scriptJs < completeProfile) fail('feed.html: script.js loads before later UI DOM (modalCompleteProfile)');
 
   const apiClient = indexOfOrInfinity(html, '<script src="api-client.js');
   const sessionStore = indexOfOrInfinity(html, '<script src="session-store.js');
   const dataCache = indexOfOrInfinity(html, '<script src="data-cache.js');
   const featureLoader = indexOfOrInfinity(html, '<script src="feature-loader.js');
-  if (!Number.isFinite(sessionStore) || !Number.isFinite(dataCache)) {
-    fail('feed.html: shared session/data cache boot layer is missing');
-  }
-  if (!Number.isFinite(featureLoader)) {
-    fail('feed.html: deferred feature loader is missing');
-  }
+  if (!Number.isFinite(sessionStore) || !Number.isFinite(dataCache)) fail('feed.html: shared session/data cache boot layer is missing');
+  if (!Number.isFinite(featureLoader)) fail('feed.html: deferred feature loader is missing');
   if (!(apiClient < sessionStore && sessionStore < dataCache && dataCache < featureLoader && featureLoader < scriptJs)) {
     fail('feed.html: core boot order must be api-client -> session-store -> data-cache -> feature-loader -> script.js');
   }
 
-  if (html.includes('https://js.stripe.com/v3/')) {
-    fail('feed.html: Stripe SDK must not be eager-loaded on the Bokantaj critical path');
+  if (html.includes('https://js.stripe.com/v3/')) fail('feed.html: Stripe SDK must not be eager-loaded on the Bokantaj critical path');
+
+  for (const src of ['safety-disputes-engine.js', 'subscriptions-engine.js', 'pro-verification-engine.js']) {
+    if (html.includes(`<script src="${src}"></script>`)) fail(`feed.html: ${src} must be deferred through feature-loader.js`);
   }
 
-  const forbiddenEagerEngines = [
-    'safety-disputes-engine.js',
-    'subscriptions-engine.js',
-    'pro-verification-engine.js'
-  ];
-  for (const src of forbiddenEagerEngines) {
-    if (html.includes(`<script src="${src}"></script>`)) {
-      fail(`feed.html: ${src} must be deferred through feature-loader.js`);
-    }
-  }
+  const eagerScripts = ['payment-script.js', 'chat-logic.js', 'search-engine.js', 'matching-engine.js', 'ai-classifier.js']
+    .filter((src) => html.includes(src));
+  if (eagerScripts.length >= 5) warn(`feed.html: ${eagerScripts.length} feature scripts remain on the Bokantaj critical path; continue modularization`);
+}
 
-  const eagerScripts = [
-    'payment-script.js',
-    'chat-logic.js',
-    'search-engine.js',
-    'matching-engine.js',
-    'ai-classifier.js'
-  ].filter((src) => html.includes(src));
-  if (eagerScripts.length >= 5) {
-    warn(`feed.html: ${eagerScripts.length} feature scripts remain on the Bokantaj critical path; continue modularization`);
-  }
+for (const requiredModule of ['platform-core.js', 'notifications-ui.js']) {
+  if (!fs.existsSync(path.join(root, requiredModule))) fail(`${requiredModule}: extracted domain file missing`);
 }
 
 if (fs.existsSync(path.join(root, 'script.js'))) {
@@ -131,6 +117,12 @@ if (fs.existsSync(path.join(root, 'script.js'))) {
   const mutationObservers = (source.match(/new\s+MutationObserver\s*\(/g) || []).length;
   const setTimeouts = (source.match(/\bsetTimeout\s*\(/g) || []).length;
 
+  if (source.includes('// === LYANN SINGLE SOURCE OF TRUTH DEFAULT USER AVATAR ===')) {
+    fail('script.js: platform/avatar domain was reintroduced into the monolith');
+  }
+  if (source.includes('// === NOTIFICATIONS MODAL & BADGE SYSTEM ===')) {
+    fail('script.js: notification UI domain was reintroduced into the monolith');
+  }
   if (lineCount > 3000) warn(`script.js: monolithic file has ${lineCount} lines`);
   if (mutationObservers > 3) warn(`script.js: ${mutationObservers} MutationObserver instances; review lifecycle ownership`);
   if (setTimeouts > 20) warn(`script.js: ${setTimeouts} setTimeout calls; review timing-based UI synchronization`);
@@ -138,16 +130,13 @@ if (fs.existsSync(path.join(root, 'script.js'))) {
 
 console.log('LYANN architecture audit');
 console.log(`Pages checked: ${productPages.length}`);
-
 if (warnings.length) {
   console.log('\nWarnings:');
   warnings.forEach((message) => console.log(`  ⚠ ${message}`));
 }
-
 if (failures.length) {
   console.error('\nFailures:');
   failures.forEach((message) => console.error(`  ✖ ${message}`));
   process.exit(1);
 }
-
 console.log('\n✓ Structural architecture gate passed');
