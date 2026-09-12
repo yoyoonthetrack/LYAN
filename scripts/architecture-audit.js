@@ -60,9 +60,9 @@ for (const file of productPages) {
     const appShell = indexOfOrInfinity(html, '<script src="app-shell.js"></script>');
     const legacyScript = indexOfOrInfinity(html, '<script src="script.js');
     if (!Number.isFinite(platformCore) || !Number.isFinite(notificationsUi) || !Number.isFinite(appShell)) {
-      fail(`${file}: extracted platform/notification/app-shell domains are missing before script.js`);
+      fail(`${file}: extracted platform/notification/app shell domains are missing before script.js`);
     } else if (!(platformCore < notificationsUi && notificationsUi < appShell && appShell < legacyScript)) {
-      fail(`${file}: extracted domain scripts must load in order before script.js`);
+      fail(`${file}: extracted domain scripts must load platform-core -> notifications-ui -> app-shell -> script.js`);
     }
   }
 }
@@ -112,7 +112,15 @@ for (const requiredModule of ['platform-core.js', 'notifications-ui.js', 'app-sh
 
 if (fs.existsSync(path.join(root, 'app-shell.js'))) {
   const shell = read('app-shell.js');
-  if (shell.includes('david-34.png')) fail('app-shell.js: historical placeholder avatar must not be used by the application shell');
+  if (!shell.includes('// === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===')) {
+    fail('app-shell.js: connected home renderer is missing');
+  }
+  if (!shell.includes('// === HEADER NATIVE DÉTERMINISTE (APP MOBILE) ===')) {
+    fail('app-shell.js: native header renderer is missing');
+  }
+  if (shell.includes('david-34.png')) {
+    fail('app-shell.js: fake dashboard/chat avatar must not be used');
+  }
 }
 
 if (fs.existsSync(path.join(root, 'script.js'))) {
@@ -121,15 +129,12 @@ if (fs.existsSync(path.join(root, 'script.js'))) {
   const mutationObservers = (source.match(/new\s+MutationObserver\s*\(/g) || []).length;
   const setTimeouts = (source.match(/\bsetTimeout\s*\(/g) || []).length;
 
-  if (source.includes('// === LYANN SINGLE SOURCE OF TRUTH DEFAULT USER AVATAR ===')) {
-    fail('script.js: platform/avatar domain was reintroduced into the monolith');
-  }
-  if (source.includes('// === NOTIFICATIONS MODAL & BADGE SYSTEM ===')) {
-    fail('script.js: notification UI domain was reintroduced into the monolith');
-  }
-  if (source.includes('// === PENDING ACTIONS FINDER FOR MOBILE DASHBOARD ===') || source.includes('// === INTERFACE INJECTION ENTRY POINT ===')) {
-    fail('script.js: mobile app shell domain was reintroduced into the monolith');
-  }
+  if (source.includes('// === LYANN SINGLE SOURCE OF TRUTH DEFAULT USER AVATAR ===')) fail('script.js: platform/avatar domain was reintroduced into the monolith');
+  if (source.includes('// === NOTIFICATIONS MODAL & BADGE SYSTEM ===')) fail('script.js: notification UI domain was reintroduced into the monolith');
+  if (source.includes('// === APP WELCOME SCREEN (GUEST MODE / ONBOARDING / LOGIN) ===')) fail('script.js: app shell domain was reintroduced into the monolith');
+  if (source.includes('// === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===')) fail('script.js: connected home renderer was reintroduced into the monolith');
+  if (source.includes('// === HEADER NATIVE DÉTERMINISTE (APP MOBILE) ===')) fail('script.js: native header renderer was reintroduced into the monolith');
+  if (source.includes("let activeContactAvatar = 'david-34.png';")) fail('script.js: fake chat avatar default remains');
   if (lineCount > 3000) warn(`script.js: monolithic file has ${lineCount} lines`);
   if (mutationObservers > 3) warn(`script.js: ${mutationObservers} MutationObserver instances; review lifecycle ownership`);
   if (setTimeouts > 20) warn(`script.js: ${setTimeouts} setTimeout calls; review timing-based UI synchronization`);
