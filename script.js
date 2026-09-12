@@ -1242,7 +1242,46 @@ safeDomReady(() => {
             throw new Error('LYANN_PROFILE_REPOSITORY is not available');
         }
 
-        const profileBundle = await window.LYANN_PROFILE_REPOSITORY.load(memberId);
+        // PROFILE INTERACTION: open shell before data round-trip.
+        const profileLoadingHost = publicMemberProfileModal
+            ? (publicMemberProfileModal.querySelector('.modal-card') || publicMemberProfileModal)
+            : null;
+        let profileLoadingOverlay = null;
+
+        if (publicMemberProfileModal) {
+            if (searchResultsModal) searchResultsModal.classList.remove('active');
+            publicMemberProfileModal.classList.add('active');
+            publicMemberProfileModal.setAttribute('aria-busy', 'true');
+            document.body.style.overflow = 'hidden';
+
+            if (profileLoadingHost) {
+                if (window.getComputedStyle && window.getComputedStyle(profileLoadingHost).position === 'static') {
+                    profileLoadingHost.style.position = 'relative';
+                }
+                profileLoadingOverlay = profileLoadingHost.querySelector('.lyann-profile-loading-overlay');
+                if (!profileLoadingOverlay) {
+                    profileLoadingOverlay = document.createElement('div');
+                    profileLoadingOverlay.className = 'lyann-profile-loading-overlay';
+                    profileLoadingOverlay.setAttribute('role', 'status');
+                    profileLoadingOverlay.setAttribute('aria-live', 'polite');
+                    profileLoadingOverlay.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; min-height:220px; padding:32px;"><i class="ph ph-circle-notch spin" style="font-size:1.7rem; color:#4A7C59;"></i><span style="font-size:0.9rem; font-weight:700; color:#475569;">Chargement du profil…</span></div>';
+                    profileLoadingOverlay.style.cssText = 'position:absolute;inset:0;z-index:60;background:#fff;border-radius:inherit;display:flex;align-items:center;justify-content:center;';
+                    profileLoadingHost.appendChild(profileLoadingOverlay);
+                }
+            }
+        }
+
+        let profileBundle;
+        try {
+            profileBundle = await window.LYANN_PROFILE_REPOSITORY.load(memberId);
+        } catch (error) {
+            if (profileLoadingOverlay) profileLoadingOverlay.remove();
+            if (publicMemberProfileModal) publicMemberProfileModal.setAttribute('aria-busy', 'false');
+            throw error;
+        }
+
+        if (profileLoadingOverlay) profileLoadingOverlay.remove();
+        if (publicMemberProfileModal) publicMemberProfileModal.setAttribute('aria-busy', 'false');
         memberId = profileBundle.memberId;
         const activeUserId = profileBundle.activeUserId;
         const isSelf = profileBundle.isSelf;
@@ -3430,12 +3469,33 @@ safeDomReady(() => {
     const sheetNearbyToggle = document.getElementById('sheetNearbyToggle');
 
     // 1. Open Filter Sheet
-    if (btnOpenFilterSheet && filterSheetModal) {
-        btnOpenFilterSheet.addEventListener('click', (e) => {
+    const openBokantajFilterSheetNow = (e) => {
+        if (e) {
             e.preventDefault();
-            filterSheetModal.classList.add('active');
-            filterSheetModal.style.display = 'flex';
-            document.body.classList.add('sheet-open');
+            e.stopPropagation();
+        }
+        filterSheetModal.style.display = 'flex';
+        filterSheetModal.classList.add('active');
+        filterSheetModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('sheet-open');
+    };
+
+    // FILTER INTERACTION: pointer-up opens the sheet without waiting for click synthesis.
+    if (btnOpenFilterSheet && filterSheetModal) {
+        let lastFilterPointerOpen = 0;
+        btnOpenFilterSheet.addEventListener('pointerup', (e) => {
+            lastFilterPointerOpen = Date.now();
+            openBokantajFilterSheetNow(e);
+        }, { passive: false });
+
+        // Keyboard / older browser fallback. Pointer-triggered clicks are de-duplicated.
+        btnOpenFilterSheet.addEventListener('click', (e) => {
+            if (Date.now() - lastFilterPointerOpen < 500) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            openBokantajFilterSheetNow(e);
         });
     }
 
