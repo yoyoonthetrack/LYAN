@@ -10,8 +10,8 @@ const getBlock = getStart >= 0 && getEnd > getStart ? chat.slice(getStart, getEn
 
 const checks = [
   ['repository exists', repo.includes('window.LYANN_MESSAGING_REPOSITORY')],
-  ['conversation lookup is cached', repo.includes("dedupe('chat-conversation'"))],
-  ['messages are cached', repo.includes("dedupe('chat-messages'"))],
+  ['conversation lookup is cached', repo.includes("dedupe('chat-conversation'")],
+  ['messages are cached', repo.includes("dedupe('chat-messages'")],
   ['repository maps sender direction', repo.includes("row.sender_id === userId ? 'me' : 'them'")],
   ['feed wires repository before chat logic', feed.indexOf('messaging-repository.js') >= 0 && feed.indexOf('messaging-repository.js') < feed.indexOf('chat-logic.js')],
   ['chat reads through repository', getBlock.includes('LYANN_MESSAGING_REPOSITORY.getMessages')],
