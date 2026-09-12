@@ -99,6 +99,9 @@ function showAppWelcomeScreen() {
 
 // === MOBILE APP ACCUEIL HOME DASHBOARD ===
 async function initMobileHomeDashboard() {
+    if (window.LYANN_AUTH_STATE) {
+        try { await window.LYANN_AUTH_STATE.ready(); } catch (e) {}
+    }
     const isLoggedIn = document.body.classList.contains('user-is-logged-in');
 
     if (!isLoggedIn) {
@@ -224,7 +227,10 @@ window.openLyannMessagesModal = function() {
     }
 };
 
-function injectMobileInterface() {
+async function injectMobileInterface() {
+    if (window.LYANN_AUTH_STATE) {
+        try { await window.LYANN_AUTH_STATE.ready(); } catch (e) {}
+    }
     console.log("⚡ [BOOT 05] injectMobileInterface entered");
     if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.injectMobileInterfaceEntered = true;
     logLyannTrace("injectMobileInterface_entered");
@@ -245,7 +251,7 @@ function injectMobileInterface() {
     const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
     const isExplorer = path.includes('results.html');
     const isBokantaj = path.includes('feed.html');
-    const isLoggedIn = document.body.classList.contains('user-is-logged-in') || localStorage.getItem('lyan_user_logged_in') === 'true';
+    const isLoggedIn = window.LYANN_AUTH_STATE ? window.LYANN_AUTH_STATE.isAuthenticated() : document.body.classList.contains('user-is-logged-in');
 
     // DEEP LINK CHECK: Deep links bypass Accueil App and route directly
     const hasDeepLink = window.location.search && (
