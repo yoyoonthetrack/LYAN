@@ -874,22 +874,22 @@ async function renderMessages(passedMessages = null) {
     console.log('[CHAT FINAL ARRAY]', msgs);
     console.trace('[CHAT RENDER CALL]');
 
-    // Fetch real quotes from Supabase for this conversation / invitation if authenticated
+    // Quote context is prepared by the shared messaging repository in one cached batch.
     let realQuotes = [];
-    if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && isUUID(currentChatContact.id)) {
+    if (window.LYANN_MESSAGING_REPOSITORY && isUUID(currentChatContact.id)) {
         try {
-            const activeInv = await window.LYANN_API_CLIENT.getActiveInvitationBetween(getMyId(), currentChatContact.id);
-            if (activeInv) {
-                const fetchedQuotes = await window.LYANN_API_CLIENT.getQuotesForInvitation(activeInv.id);
-                for (let q of fetchedQuotes) {
-                    q.milestones = await window.LYANN_API_CLIENT.getMilestonesForQuote(q.id);
-                    realQuotes.push(q);
-                }
-            }
+            realQuotes = await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), currentChatContact.id);
         } catch(err) {
-            console.warn("Erreur chargement devis réels Supabase:", err);
+            console.warn("Erreur chargement contexte devis:", err);
         }
     }
+
+    // Ignore stale async renders. A newer refresh already owns the DOM.
+    if (renderGeneration !== chatRenderGeneration) return;
+
+    // Commit the fully prepared conversation in one DOM swap. Until this point, the old
+    // messages (including an optimistic outgoing message) stay visible.
+    container.innerHTML = '';
 
     // Ignore stale async renders. A newer refresh already owns the DOM.
     if (renderGeneration !== chatRenderGeneration) return;
