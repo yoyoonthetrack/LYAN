@@ -152,7 +152,7 @@ async function initMobileHomeDashboard() {
                     <h2>Bonjour ${firstName} 👋</h2>
                     <p>Réseau d'entraide local & sécurisé</p>
                 </div>
-                <img src="david-34.png" alt="Mon Profil" class="dashboard-welcome-avatar" id="btnDashboardAvatar">
+                <img src="${window.getLyannDefaultAvatar ? window.getLyannDefaultAvatar() : ''}" alt="Mon Profil" class="dashboard-welcome-avatar" id="btnDashboardAvatar">
             </div>
 
             ${alertsHtml}
@@ -183,7 +183,7 @@ async function initMobileHomeDashboard() {
                 triggerHaptic('light');
                 const contact = btn.getAttribute('data-contact');
                 if (typeof openChatWithUser === 'function') {
-                    openChatWithUser(contact, 'david-34.png');
+                    openChatWithUser(contact, window.getLyannDefaultAvatar ? window.getLyannDefaultAvatar() : '');
                 }
             });
         });
