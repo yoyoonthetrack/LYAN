@@ -38,6 +38,7 @@ jobs:
           node scripts/normalize-explorer-loader.js
           node scripts/normalize-messaging-responsiveness.js
           node scripts/normalize-optimistic-chat-send.js
+          node scripts/normalize-chat-atomic-render.js
 
       - name: Commit normalized source when changed
         run: |
@@ -48,5 +49,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "perf: make chat sending optimistic"
+          git commit -m "fix: render chat atomically without flicker"
           git push origin HEAD:architecture-stabilization
