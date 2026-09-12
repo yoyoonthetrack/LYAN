@@ -204,10 +204,63 @@ async function getChatMessages(contactId) {
     }
 }
 
+function renderOptimisticChatMessage(msgObj) {
+    const container = document.getElementById('chatMessagesContainer');
+    if (!container || !msgObj || msgObj.type !== 'text' || !currentChatContact) return null;
+
+    const empty = container.querySelector('.chat-empty-state');
+    if (empty) empty.remove();
+
+    if (!container.querySelector('.chat-date-separator')) {
+        const dateSep = document.createElement('div');
+        dateSep.className = 'chat-date-separator';
+        const span = document.createElement('span');
+        span.textContent = "Aujourd'hui";
+        dateSep.appendChild(span);
+        container.appendChild(dateSep);
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chat-msg-bubble-wrap sent';
+    wrapper.dataset.optimisticMessageId = msgObj.id || '';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-msg-bubble sent';
+
+    const textNode = document.createElement('div');
+    textNode.className = 'chat-msg-text';
+    textNode.textContent = msgObj.text || '';
+    bubble.appendChild(textNode);
+
+    const meta = document.createElement('div');
+    meta.className = 'chat-msg-time';
+    const time = typeof msgObj.timestamp === 'number'
+        ? new Date(msgObj.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : (msgObj.timestamp || '');
+    meta.textContent = time + ' · Envoi…';
+    meta.dataset.optimisticStatus = 'sending';
+    bubble.appendChild(meta);
+
+    wrapper.appendChild(bubble);
+    container.appendChild(wrapper);
+    container.scrollTop = container.scrollHeight;
+    return wrapper;
+}
+
 async function addMessageToContact(contactId, msgObj) {
     const userId = getMyId();
+    const normalizedMsg = {
+        ...msgObj,
+        id: msgObj && msgObj.id ? msgObj.id : ('optimistic_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+        sender: (msgObj && msgObj.sender) || 'me',
+        timestamp: (msgObj && msgObj.timestamp) || Date.now()
+    };
+
+    // Immediate local response: never make the user wait for Supabase before seeing their text.
+    const optimisticNode = normalizedMsg.type === 'text' ? renderOptimisticChatMessage(normalizedMsg) : null;
+
     if (userId === "me" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
-        saveLocalChatMessage(contactId, msgObj);
+        saveLocalChatMessage(contactId, normalizedMsg);
         if (currentChatContact && currentChatContact.id === contactId) {
             await renderMessages();
         }
@@ -215,23 +268,32 @@ async function addMessageToContact(contactId, msgObj) {
     }
 
     try {
-        const { data: convRes } = await window.LYANN_API_CLIENT.getOrCreateConversation(getMyId(), contactId);
+        const { data: convRes } = await window.LYANN_API_CLIENT.getOrCreateConversation(userId, contactId);
         if (!convRes || !convRes.id) {
             throw new Error("Impossible d'initialiser la conversation.");
         }
 
         const sharedConvId = convRes.id;
-        const contentToSave = msgObj.type === 'transactional' ? JSON.stringify(msgObj.txData) : msgObj.text;
-
-        const { error: sendErr } = await window.LYANN_API_CLIENT.sendMessage(sharedConvId, getMyId(), contentToSave);
+        const contentToSave = normalizedMsg.type === 'transactional' ? JSON.stringify(normalizedMsg.txData) : normalizedMsg.text;
+        const { error: sendErr } = await window.LYANN_API_CLIENT.sendMessage(sharedConvId, userId, contentToSave);
         if (sendErr) throw sendErr;
-    } catch(e) {
-        console.warn("Supabase message send failed, saving locally:", e);
-        saveLocalChatMessage(contactId, msgObj);
-    }
 
-    if (currentChatContact && currentChatContact.id === contactId) {
-        await renderMessages();
+        if (currentChatContact && currentChatContact.id === contactId) {
+            await renderMessages();
+        }
+    } catch(e) {
+        console.warn("Supabase message send failed:", e);
+        if (optimisticNode && optimisticNode.isConnected) {
+            const status = optimisticNode.querySelector('[data-optimistic-status]');
+            if (status) {
+                const time = typeof normalizedMsg.timestamp === 'number'
+                    ? new Date(normalizedMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : (normalizedMsg.timestamp || '');
+                status.textContent = time + ' · Non envoyé';
+                status.dataset.optimisticStatus = 'failed';
+            }
+            optimisticNode.classList.add('chat-message-send-failed');
+        }
     }
 }
 window.addMessageToContact = addMessageToContact;
