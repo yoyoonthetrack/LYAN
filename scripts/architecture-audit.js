@@ -44,11 +44,14 @@ for (const file of productPages) {
     fail(`${file}: </body> appears after </html>`);
   }
 
-  const blockingExternalScripts = [...html.matchAll(/<script\s+[^>]*src=["']https?:\/\/[^"']+["'][^>]*><\/script>/gi)]
+  // Only scripts in <head> can block HTML parsing. Body-end scripts are
+  // handled separately as part of the app boot budget below.
+  const head = html.includes('</head>') ? html.slice(0, html.indexOf('</head>')) : html;
+  const blockingExternalScripts = [...head.matchAll(/<script\s+[^>]*src=["']https?:\/\/[^"']+["'][^>]*><\/script>/gi)]
     .map((m) => m[0])
     .filter((tag) => !/\bdefer\b|\basync\b/i.test(tag));
   if (blockingExternalScripts.length) {
-    warn(`${file}: ${blockingExternalScripts.length} blocking external script(s) without defer/async`);
+    warn(`${file}: ${blockingExternalScripts.length} head-blocking external script(s) without defer/async`);
   }
 
   const demoTokens = [
@@ -80,11 +83,24 @@ if (fs.existsSync(path.join(root, 'feed.html'))) {
   const scriptJs = indexOfOrInfinity(html, '<script src="script.js');
   const completeProfile = indexOfOrInfinity(html, 'id="modalCompleteProfile"');
   if (scriptJs < completeProfile) {
-    warn('feed.html: script.js loads before later UI DOM (modalCompleteProfile), creating lifecycle/order coupling');
+    fail('feed.html: script.js loads before later UI DOM (modalCompleteProfile)');
+  }
+
+  const apiClient = indexOfOrInfinity(html, '<script src="api-client.js');
+  const sessionStore = indexOfOrInfinity(html, '<script src="session-store.js');
+  const dataCache = indexOfOrInfinity(html, '<script src="data-cache.js');
+  if (!Number.isFinite(sessionStore) || !Number.isFinite(dataCache)) {
+    fail('feed.html: shared session/data cache boot layer is missing');
+  }
+  if (!(apiClient < sessionStore && sessionStore < dataCache && dataCache < scriptJs)) {
+    fail('feed.html: shared session/data cache must load after api-client and before feature scripts');
+  }
+
+  if (html.includes('https://js.stripe.com/v3/')) {
+    fail('feed.html: Stripe SDK must not be eager-loaded on the Bokantaj critical path');
   }
 
   const eagerScripts = [
-    'https://js.stripe.com/v3/',
     'payment-script.js',
     'safety-disputes-engine.js',
     'subscriptions-engine.js',
@@ -92,7 +108,7 @@ if (fs.existsSync(path.join(root, 'feed.html'))) {
     'chat-logic.js'
   ].filter((src) => html.includes(src));
   if (eagerScripts.length >= 4) {
-    warn(`feed.html: ${eagerScripts.length} heavy/feature scripts are eagerly loaded on Bokantaj`);
+    warn(`feed.html: ${eagerScripts.length} heavy/feature scripts are still eagerly loaded on Bokantaj`);
   }
 }
 
