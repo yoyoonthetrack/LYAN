@@ -2607,10 +2607,11 @@ safeDomReady(() => {
         }
     };
 
-    window.loadBokantajFeedFromSupabase = async function() {
+    window.loadBokantajFeedFromSupabase = async function(options = {}) {
         console.log("[BOKANTAJ] init start");
         bokantajFeedState = 'LOADING';
-        
+        renderFlashFeed();
+
         const isExplicitDemoMode = typeof window !== 'undefined' && (
             window.LYANN_FORCE_DEMO_DATA === true ||
             (window.location && window.location.search && (
@@ -2619,72 +2620,26 @@ safeDomReady(() => {
             ))
         );
 
-        let client = window.LYANN_API_CLIENT;
-        if (client && !client.supabase && window.supabase) {
-            const _sp = client.supabase;
-        }
-
-        if (client && client.supabase) {
-            console.log("[BOKANTAJ] supabase ready");
-        } else {
-            console.warn("[BOKANTAJ] supabase client NOT ready");
-        }
-
-        console.log("[BOKANTAJ] load start");
-        renderFlashFeed();
-
         try {
-            if (!client || !client.supabase) {
-                if (!isExplicitDemoMode) {
-                    console.warn("[BOKANTAJ] Supabase client not ready -> ERROR state");
-                    bokantajFeedState = 'ERROR';
-                    currentFlashPosts = [];
-                    return;
-                }
-                currentFlashPosts = [...INITIAL_FLASH_POSTS];
-                bokantajFeedState = 'READY';
-                return;
+            if (!window.LYANN_BOKANTAJ_REPOSITORY) {
+                throw new Error('LYANN_BOKANTAJ_REPOSITORY is not available');
             }
 
-            const { data, error } = await client.getFeed();
-            console.log("[BOKANTAJ] getFeed resolved", { error, count: data ? data.length : 0 });
-            console.log("[BOKANTAJ] item count", data ? data.length : 0);
-
-            if (error || !data) {
-                console.warn("[Bokantaj Feed] Supabase fetch error:", error);
-                if (!isExplicitDemoMode) {
-                    bokantajFeedState = 'ERROR';
-                    currentFlashPosts = [];
-                } else {
-                    currentFlashPosts = [...INITIAL_FLASH_POSTS];
-                    bokantajFeedState = 'READY';
-                }
-            } else {
-                currentFlashPosts = data;
-                bokantajFeedState = (data.length === 0) ? 'EMPTY' : 'READY';
-
-                // DEV Logger
-                if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || (window.location.search && window.location.search.includes('dev=true')))) {
-                    console.log(`[BOKANTAJ FEED DEV LOG] Loaded ${data.length} unified items from SUPABASE:`);
-                    data.forEach(item => {
-                        console.log(`  - [${item.item_type}] id=${item.id} | source=SUPABASE | location="${item.location}" | territoryKey="${item.territoryKey}" | created_at=${item.created_at}`);
-                    });
-                }
-            }
+            const data = await window.LYANN_BOKANTAJ_REPOSITORY.load({ force: options.force === true });
+            currentFlashPosts = Array.isArray(data) ? data : [];
+            bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
         } catch (err) {
             console.error("[BOKANTAJ] Error during load:", err);
-            if (!isExplicitDemoMode) {
-                bokantajFeedState = 'ERROR';
-                currentFlashPosts = [];
-            } else {
+            if (isExplicitDemoMode) {
                 currentFlashPosts = [...INITIAL_FLASH_POSTS];
-                bokantajFeedState = 'READY';
+                bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
+            } else {
+                currentFlashPosts = [];
+                bokantajFeedState = 'ERROR';
             }
         } finally {
-            console.log("[BOKANTAJ] render start");
             renderFlashFeed();
             window.renderTalentsSidebar(isExplicitDemoMode);
-            console.log("[BOKANTAJ] loading removed");
         }
     };
 
