@@ -122,6 +122,46 @@ function setChatContextCoveredByOverlay(isCovered) {
     mainArea.classList.toggle('chat-child-surface-active', !!isCovered);
 }
 
+// LYANN CHAT CHILD SURFACE AUTO-SYNC v1
+const CHAT_CHILD_SURFACE_IDS = [
+    'chatActionChoicesOverlay',
+    'chatDirectPriceForm',
+    'chatMilestoneDevisForm',
+    'chatCheckoutOverlay',
+    'chatTrackingOverlay',
+    'chatSubmitProofOverlay',
+    'chatProposeDateForm',
+    'chatLeaveReviewForm'
+];
+
+function syncChatChildSurfaceState() {
+    const anyOpen = CHAT_CHILD_SURFACE_IDS.some(id => {
+        const el = document.getElementById(id);
+        if (!el) return false;
+        return window.getComputedStyle(el).display !== 'none';
+    });
+    setChatContextCoveredByOverlay(anyOpen);
+}
+
+function installChatChildSurfaceStateSync() {
+    const surfaces = CHAT_CHILD_SURFACE_IDS
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+
+    if (!surfaces.length) return;
+
+    const observer = new MutationObserver(() => syncChatChildSurfaceState());
+    surfaces.forEach(surface => observer.observe(surface, { attributes: true, attributeFilter: ['style', 'class'] }));
+    syncChatChildSurfaceState();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installChatChildSurfaceStateSync, { once: true });
+} else {
+    installChatChildSurfaceStateSync();
+}
+
+
 function getLocalChatMessages(contactId) {
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         return []; // Zero mock messages allowed when Supabase is active
