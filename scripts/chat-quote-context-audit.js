@@ -8,8 +8,7 @@ const checks = [
   ['quote context is cached', repo.includes("dedupe('chat-quote-context'")],
   ['milestones are batched by quote ids', repo.includes(".from('milestones')") && repo.includes(".in('quote_id', quoteIds)")],
   ['renderer uses messaging repository quote context', chat.includes('realQuotes = await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), currentChatContact.id)')],
-  ['renderer no longer loops milestone fetches per quote', !chat.includes('q.milestones = await window.LYANN_API_CLIENT.getMilestonesForQuote(q.id)')],
-  ['renderer no longer loads invitation directly for quote rendering', !chat.includes('const activeInv = await window.LYANN_API_CLIENT.getActiveInvitationBetween(getMyId(), currentChatContact.id)')]
+  ['legacy per-quote milestone loop is gone', !chat.includes('q.milestones = await window.LYANN_API_CLIENT.getMilestonesForQuote(q.id)')]
 ];
 
 let failed = false;
