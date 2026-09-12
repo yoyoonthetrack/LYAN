@@ -49,8 +49,6 @@ const changes = [];
     const bodyClose = html.lastIndexOf('</body>');
     if (bodyClose === -1) throw new Error('feed.html missing </body>');
 
-    // Only move when the block is still before modalCompleteProfile. This
-    // makes the codemod idempotent after the first successful application.
     const profileModal = html.indexOf('id="modalCompleteProfile"');
     if (profileModal !== -1 && start < profileModal) {
       html = html.slice(0, start) + html.slice(end);
@@ -62,8 +60,6 @@ const changes = [];
 }
 
 // 3) Centralize session and short-lived profile cache before feature scripts.
-// This is a first migration step away from repeated independent Supabase boot
-// reads while keeping all existing public API methods compatible.
 if (!html.includes('<script src="session-store.js"></script>')) {
   const apiScript = '    <script src="api-client.js?v=20260907-DOM-OBSERVER-FIX"></script>\n';
   const replacement = `${apiScript}    <script src="session-store.js"></script>\n    <script src="data-cache.js"></script>\n`;
@@ -72,17 +68,46 @@ if (!html.includes('<script src="session-store.js"></script>')) {
   if (result.changed) changes.push(result.label);
 }
 
-// 4) Stripe.js is not used by the current Bokantaj boot path. Loading the
-// third-party SDK eagerly makes a social/feed interaction wait on payment
-// infrastructure. Keep payment-script.js for compatibility, but defer the
-// Stripe browser SDK until the future Elements/checkout surface actually asks
-// for it.
+// 4) Stripe.js is not part of Bokantaj's critical rendering path.
 {
   const stripeTag = '    <script src="https://js.stripe.com/v3/"></script>\n';
   if (html.includes(stripeTag)) {
     html = html.replace(stripeTag, '');
     changes.push('remove eager Stripe SDK from Bokantaj boot');
   }
+}
+
+// 5) Safety, subscriptions and PRO verification are deep feature engines, not
+// prerequisites for first paint, filter interactions, profile rendering or the
+// Bokantaj feed. Route them through the shared loader and warm them only once
+// the browser is idle. This preserves availability without blocking startup.
+{
+  const optionalTags = [
+    '    <script src="safety-disputes-engine.js"></script>\n',
+    '    <script src="subscriptions-engine.js"></script>\n',
+    '    <script src="pro-verification-engine.js"></script>\n'
+  ];
+  let removed = false;
+  for (const tag of optionalTags) {
+    if (html.includes(tag)) {
+      html = html.replace(tag, '');
+      removed = true;
+    }
+  }
+
+  if (!html.includes('<script src="feature-loader.js"></script>')) {
+    const cacheTag = '    <script src="data-cache.js"></script>\n';
+    const result = replaceOnce(
+      html,
+      cacheTag,
+      `${cacheTag}    <script src="feature-loader.js"></script>\n`,
+      'install deferred feature loader'
+    );
+    html = result.source;
+    if (result.changed) changes.push(result.label);
+  }
+
+  if (removed) changes.push('defer non-critical safety/subscription/pro engines');
 }
 
 if (!changes.length) {
