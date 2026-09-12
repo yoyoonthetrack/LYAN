@@ -1,0 +1,1 @@
+LYANN production stabilization reset to validated baseline 7eed3d64df47f5ee234e23097513fa208e271b7c on 2026-09-12.
