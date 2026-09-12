@@ -879,14 +879,18 @@ function renderEmptyConversationState(container) {
     `;
 }
 
+let chatRenderGeneration = 0;
+
 async function renderMessages(passedMessages = null) {
     const container = document.getElementById('chatMessagesContainer');
     if (!container) return;
 
-    // MANDATORY CONTRACT: ALWAYS CLEAR CONTAINER FIRST BEFORE ANY CHECK OR ASYNC FETCH
-    container.innerHTML = '';
+    // ATOMIC CHAT RENDER: keep the current conversation visible while fresh data is loading.
+    // Only the newest render is allowed to commit, preventing overlapping refreshes from flickering.
+    const renderGeneration = ++chatRenderGeneration;
 
     if (!currentChatContact) {
+        container.innerHTML = '';
         renderEmptyConversationState(container);
         return;
     }
@@ -915,6 +919,13 @@ async function renderMessages(passedMessages = null) {
             console.warn("Erreur chargement devis réels Supabase:", err);
         }
     }
+
+    // Ignore stale async renders. A newer refresh already owns the DOM.
+    if (renderGeneration !== chatRenderGeneration) return;
+
+    // Commit the fully prepared conversation in one DOM swap. Until this point, the old
+    // messages (including an optimistic outgoing message) stay visible.
+    container.innerHTML = '';
 
     if (!Array.isArray(msgs) || (msgs.length === 0 && realQuotes.length === 0)) {
         renderEmptyConversationState(container);
