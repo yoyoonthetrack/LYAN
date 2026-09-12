@@ -934,6 +934,13 @@ async function renderMessages(passedMessages = null) {
     // messages (including an optimistic outgoing message) stay visible.
     container.innerHTML = '';
 
+    // Ignore stale async renders. A newer refresh already owns the DOM.
+    if (renderGeneration !== chatRenderGeneration) return;
+
+    // Commit the fully prepared conversation in one DOM swap. Until this point, the old
+    // messages (including an optimistic outgoing message) stay visible.
+    container.innerHTML = '';
+
     if (!Array.isArray(msgs) || (msgs.length === 0 && realQuotes.length === 0)) {
         renderEmptyConversationState(container);
         return;
