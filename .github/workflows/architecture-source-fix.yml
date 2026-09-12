@@ -29,6 +29,7 @@ jobs:
           node scripts/apply-architecture-fixes.js
           node scripts/extract-script-domains.js
           node scripts/extract-app-shell-header.js
+          node scripts/normalize-auth-state.js
 
       - name: Commit normalized source when changed
         run: |
@@ -39,5 +40,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "refactor: move connected home and native header into app shell"
+          git commit -m "refactor: centralize authenticated UI state"
           git push origin HEAD:architecture-stabilization
