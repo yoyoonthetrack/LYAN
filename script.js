@@ -5503,8 +5503,25 @@ safeDomReady(() => {
                 return;
             }
 
-            favBtn.style.opacity = '0.5';
-            favBtn.disabled = true;
+            if (favBtn.dataset.favoritePending === 'true') return;
+
+            const previousFavorite = favBtn.classList.contains('is-favorite');
+            const nextFavorite = !previousFavorite;
+
+            const paintFavoriteState = (isFavorite) => {
+                favBtn.classList.toggle('is-favorite', isFavorite);
+                favBtn.style.color = isFavorite ? '#4A7C59' : '#94A3B8';
+                favBtn.innerHTML = isFavorite
+                    ? '<i class="ph-fill ph-bookmark-simple"></i>'
+                    : '<i class="ph ph-bookmark-simple"></i>';
+                favBtn.setAttribute('aria-label', isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris');
+                favBtn.setAttribute('title', isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris');
+                favBtn.setAttribute('aria-pressed', isFavorite ? 'true' : 'false');
+            };
+
+            // OPTIMISTIC FAVORITE UI: paint before network round-trip.
+            paintFavoriteState(nextFavorite);
+            favBtn.dataset.favoritePending = 'true';
 
             try {
                 const res = await window.LyannFavoritesService.toggleFavorite(type, id);
@@ -5512,6 +5529,7 @@ safeDomReady(() => {
                 console.log(`[FavoriteMutation] operation=${res.operation || 'UNKNOWN'} table=user_favorites userId=${currentUserId || 'UNKNOWN'} entityType=${type} entityId=${id} result=${res.success ? 'SUCCESS' : 'ERROR'} errorCode=${res.errorCode || 'NONE'} errorMessage=${res.error || 'NONE'} insertedRowId=${res.data?.id || 'NONE'}`);
 
                 if (!res.success) {
+                    paintFavoriteState(previousFavorite);
                     if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
                         window.NotificationService.showToast('warning', res.error || "Impossible de modifier vos favoris.");
                     } else if (typeof window.lyannAlert === 'function') {
@@ -5520,24 +5538,11 @@ safeDomReady(() => {
                     return;
                 }
 
-                if (res.operation === 'ADD') {
-                    favBtn.classList.add('is-favorite');
-                    favBtn.style.color = '#4A7C59';
-                    favBtn.innerHTML = '<i class="ph-fill ph-bookmark-simple"></i>';
-                    favBtn.setAttribute('aria-label', 'Retirer des favoris');
-                    favBtn.setAttribute('title', 'Retirer des favoris');
-                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                        window.NotificationService.showToast('success', 'Ajouté à vos favoris.');
-                    }
-                } else {
-                    favBtn.classList.remove('is-favorite');
-                    favBtn.style.color = '#94A3B8';
-                    favBtn.innerHTML = '<i class="ph ph-bookmark-simple"></i>';
-                    favBtn.setAttribute('aria-label', 'Ajouter aux favoris');
-                    favBtn.setAttribute('title', 'Ajouter aux favoris');
-                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                        window.NotificationService.showToast('info', 'Retiré de vos favoris.');
-                    }
+                const serverFavorite = res.operation === 'ADD';
+                paintFavoriteState(serverFavorite);
+
+                if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                    window.NotificationService.showToast(serverFavorite ? 'success' : 'info', serverFavorite ? 'Ajouté à vos favoris.' : 'Retiré de vos favoris.');
                 }
 
                 if (document.getElementById('favSubViewContainer')) {
@@ -5546,9 +5551,9 @@ safeDomReady(() => {
                 }
             } catch (err) {
                 console.error('[FavoriteTap] Toggle error:', err);
+                paintFavoriteState(previousFavorite);
             } finally {
-                favBtn.style.opacity = '1';
-                favBtn.disabled = false;
+                delete favBtn.dataset.favoritePending;
             }
         }
 
