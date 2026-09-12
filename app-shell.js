@@ -456,3 +456,182 @@ function injectMobileInterface() {
     }
 }
 window.injectMobileInterface = injectMobileInterface;
+
+// === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===
+window.renderAppHomeConnectedView = function() {
+    console.log('[AUTH_REAL] App Home mounted = true');
+    if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.appHomeMounted = true;
+
+    const mainHero = document.querySelector('.hero');
+    if (!mainHero) return;
+
+    // Remove legacy appHomeView element if present to avoid duplicate action cards
+    document.getElementById('appHomeView')?.remove();
+
+    // Ensure hero section remains visible
+    mainHero.style.display = '';
+
+    // Hide the hero visual illustration (SVG) on native — it takes too much space
+    const heroVisual = mainHero.querySelector('.hero-visual');
+    if (heroVisual) heroVisual.style.display = 'none';
+
+    // Hide web-only marketing sections on native app connected home
+    document.querySelectorAll('.trust-section, .how-section, .categories-section, .testimonials-section, .final-cta, .lyann-footer, .cta-section').forEach(sec => {
+        if (sec) sec.style.display = 'none';
+    });
+    document.querySelectorAll('#about, #how-it-works').forEach(sec => {
+        if (sec && (sec.classList.contains('trust-section') || sec.classList.contains('how-section'))) {
+            sec.style.display = 'none';
+        }
+    });
+
+    // Populate and display personalized greeting badge inside hero
+    const greetingBadge = document.getElementById('heroGreetingBadge');
+    const firstNameEl = document.getElementById('heroUserFirstName');
+
+    if (greetingBadge) {
+        greetingBadge.style.display = 'inline-flex';
+    }
+
+    try {
+        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+            window.LYANN_API_CLIENT.getCurrentUser().then(user => {
+                if (user) {
+                    let firstName = user.user_metadata?.first_name || '';
+                    if (!firstName) {
+                        window.LYANN_API_CLIENT.supabase.from('profiles').select('first_name').eq('id', user.id).single()
+                            .then(({ data }) => {
+                                if (data && data.first_name && firstNameEl) {
+                                    firstNameEl.textContent = ' ' + data.first_name;
+                                }
+                            }).catch(() => {});
+                    } else if (firstNameEl) {
+                        firstNameEl.textContent = ' ' + firstName;
+                    }
+                }
+            }).catch(() => {});
+        }
+    } catch(e) {}
+
+    // Header Natif Déterministe Mobile
+    if (typeof window.ensureDeterministicAppHeader === 'function') {
+        window.ensureDeterministicAppHeader();
+    }
+};
+
+// === HEADER NATIVE DÉTERMINISTE (APP MOBILE) ===
+window.ensureDeterministicAppHeader = function(overrideViewType) {
+    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.ensureDeterministicAppHeaderEntered = true;
+    logLyannTrace("ensureDeterministicAppHeader_entered");
+
+    if (!isNativePlatform()) {
+        logLyannTrace("ensureDeterministicAppHeader_early_return", { reason: "isNativePlatform false" });
+        return;
+    }
+
+    const path = window.location.pathname;
+    let viewType = overrideViewType;
+    
+    if (!viewType) {
+        if (path.includes('feed.html')) viewType = 'BOKANTAJ';
+        else if (path.includes('results.html')) viewType = 'EXPLORER';
+        else if (path.includes('pricing.html')) viewType = 'PRICING';
+        else if (path.includes('about.html')) viewType = 'ABOUT';
+        else if (path.includes('how-it-works.html')) viewType = 'HOW_IT_WORKS';
+        else if (path.includes('payment-portal.html')) viewType = 'PAYMENT';
+        else viewType = 'ACCUEIL';
+    }
+
+    const navbar = document.querySelector('.navbar');
+    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.publicHeaderFound = !!navbar;
+    logLyannTrace("public_header_check", { found: !!navbar });
+
+    if (!navbar) return;
+    
+    // STABILIZATION V1: Sentinel — skip re-render ONLY if header is set AND native header row is present
+    if (navbar.getAttribute('data-native-header-active') === viewType && navbar.querySelector('.native-header-row')) {
+        return;
+    }
+    const container = navbar.querySelector('.nav-container') || navbar;
+
+    const isHomeOrBokantaj = (viewType === 'ACCUEIL' || viewType === 'BOKANTAJ');
+
+    if (isHomeOrBokantaj) {
+        container.innerHTML = `
+            <div class="native-header-row" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 14px; box-sizing: border-box; height: 44px;">
+                <span class="native-header-logo" style="font-weight: 900; font-size: 1.2rem; color: var(--primary-dark); display: flex; align-items: center; gap: 8px;">
+                    <img src="logo-app.png" style="width: 28px; height: 28px; border-radius: 6px; object-fit: cover;">
+                    LYANN
+                </span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" class="nav-msg-btn" id="btnHeaderChat" aria-label="Messagerie" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
+                        <i class="ph ph-chat-circle-dots"></i>
+                    </button>
+                    <button type="button" class="nav-msg-btn" id="btnHeaderNotif" aria-label="Notifications" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; position: relative;">
+                        <i class="ph ph-bell"></i>
+                    </button>
+                    <button type="button" class="hamburger-menu-btn" id="btnHeaderHamburger" aria-label="Menu Principal" style="background: rgba(74, 124, 89, 0.12); border: 1.5px solid rgba(74, 124, 89, 0.25); border-radius: 12px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--primary-dark); cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        <i class="ph ph-list"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    } else {
+        let pageTitle = "LYANN";
+        if (viewType === 'EXPLORER') pageTitle = "Explorer";
+        else if (viewType === 'ABOUT') pageTitle = "Notre Histoire";
+        else if (viewType === 'PRICING') pageTitle = "Abonnements";
+        else if (viewType === 'HOW_IT_WORKS') pageTitle = "Comment ça marche";
+        else if (viewType === 'PROFIL') pageTitle = "Mon Compte";
+        else if (viewType === 'MESSAGES') pageTitle = "Messagerie";
+
+        container.innerHTML = `
+            <div class="native-header-row" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 12px; height: 44px; box-sizing: border-box;">
+                <button type="button" id="btnNativeBack" style="background: none; border: none; font-size: 1.35rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
+                    <i class="ph ph-caret-left" style="font-weight: bold;"></i>
+                </button>
+                <div style="font-weight: 800; font-size: 1rem; color: var(--text); flex: 1; text-align: center;">${pageTitle}</div>
+                <button type="button" class="hamburger-menu-btn" id="btnHeaderHamburger" aria-label="Menu Principal" style="background: rgba(74, 124, 89, 0.12); border: 1.5px solid rgba(74, 124, 89, 0.25); border-radius: 12px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--primary-dark); cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    <i class="ph ph-list"></i>
+                </button>
+            </div>
+        `;
+
+        document.getElementById('btnNativeBack')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            triggerHaptic('light');
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    }
+
+    container.querySelector('#btnHeaderChat')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.openLyannMessagesModal();
+    });
+
+    container.querySelector('#btnHeaderNotif')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        triggerHaptic('light');
+        if (typeof openNotificationsModal === 'function') openNotificationsModal();
+    });
+
+    container.querySelector('#btnHeaderHamburger')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        triggerHaptic('light');
+        if (typeof window.openLyannHamburgerDrawer === 'function') {
+            window.openLyannHamburgerDrawer();
+        }
+    });
+    
+    // STABILIZATION V1: Set sentinel marker after successful header injection
+    navbar.setAttribute('data-native-header-active', viewType);
+    navbar.style.display = '';
+    navbar.style.visibility = 'visible';
+    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.nativeHeaderRowCreated = !!document.querySelector('.native-header-row');
+    logLyannTrace("nativeHeaderRow_created", { created: !!document.querySelector('.native-header-row') });
+    console.log("⚡ [BOOT 07] native header mounted for viewType:", viewType);
+};
