@@ -1,7 +1,8 @@
 (function () {
     'use strict';
 
-    const CACHE_KEY = 'explorer:profiles';
+    const CACHE_NAMESPACE = 'explorer';
+    const CACHE_ID = 'profiles';
     const TTL_MS = 30000;
 
     function getClient() {
@@ -64,23 +65,27 @@
 
     async function load(options) {
         const force = !!(options && options.force);
-        if (window.LYANN_DATA_CACHE && typeof window.LYANN_DATA_CACHE.getOrLoad === 'function') {
-            return window.LYANN_DATA_CACHE.getOrLoad(CACHE_KEY, fetchProfiles, {
-                ttlMs: TTL_MS,
-                force
-            });
+        const cache = window.LYANN_DATA_CACHE;
+        if (cache && force && typeof cache.invalidate === 'function') {
+            cache.invalidate(CACHE_NAMESPACE, CACHE_ID);
+        }
+        if (cache && typeof cache.dedupe === 'function') {
+            return cache.dedupe(CACHE_NAMESPACE, CACHE_ID, fetchProfiles, TTL_MS);
         }
         return fetchProfiles();
     }
 
     function peek() {
-        if (!window.LYANN_DATA_CACHE || typeof window.LYANN_DATA_CACHE.peek !== 'function') return null;
-        return window.LYANN_DATA_CACHE.peek(CACHE_KEY);
+        const cache = window.LYANN_DATA_CACHE;
+        return cache && typeof cache.get === 'function'
+            ? cache.get(CACHE_NAMESPACE, CACHE_ID)
+            : undefined;
     }
 
     function invalidate() {
-        if (window.LYANN_DATA_CACHE && typeof window.LYANN_DATA_CACHE.invalidate === 'function') {
-            window.LYANN_DATA_CACHE.invalidate(CACHE_KEY);
+        const cache = window.LYANN_DATA_CACHE;
+        if (cache && typeof cache.invalidate === 'function') {
+            cache.invalidate(CACHE_NAMESPACE, CACHE_ID);
         }
     }
 
