@@ -213,8 +213,12 @@ window.openLyannMessagesModal = async function() {
     // One canonical chat implementation: resume the last real conversation with
     // the same openChatWithUser() path used by “Je peux aider”.
     try {
+        const liveContact = window.LYANN_ACTIVE_CHAT_CONTACT && window.LYANN_ACTIVE_CHAT_CONTACT.id
+            ? window.LYANN_ACTIVE_CHAT_CONTACT
+            : null;
         const raw = localStorage.getItem('lyann_last_active_contact');
-        const last = raw ? JSON.parse(raw) : null;
+        const storedContact = raw ? JSON.parse(raw) : null;
+        const last = liveContact || storedContact;
         if (last && last.id && typeof window.openChatWithUser === 'function') {
             return await window.openChatWithUser(
                 last.name || 'Membre LYANN',
@@ -359,10 +363,12 @@ async function injectMobileInterface() {
         // Messages tab click -> Open Chat Modal
         const tabMessages = document.getElementById('tab-messages');
         if (tabMessages) {
-            tabMessages.addEventListener('click', (e) => {
+            tabMessages.addEventListener('click', async (e) => {
                 e.preventDefault();
-                window.openLyannMessagesModal();
-            });
+                e.stopPropagation();
+                if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+                await window.openLyannMessagesModal();
+            }, true);
         }
 
         // Moi tab click

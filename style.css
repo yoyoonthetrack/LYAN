@@ -15585,3 +15585,28 @@ body.chat-child-modal-open #quickProfileModal {
 body.chat-child-modal-open #chatModal {
     z-index: 20000 !important;
 }
+
+/* LYANN CHAT CHILD SURFACE ROUTING CONTRACT v1 */
+body:has(#chatActionChoicesOverlay[style*="display: flex"]) #chatMissionContextBar,
+body:has(#chatDirectPriceForm[style*="display: flex"]) #chatMissionContextBar,
+body:has(#chatMilestoneDevisForm[style*="display: flex"]) #chatMissionContextBar,
+body:has(#chatCheckoutOverlay[style*="display: flex"]) #chatMissionContextBar,
+body:has(#chatTrackingOverlay[style*="display: flex"]) #chatMissionContextBar,
+body:has(#chatSubmitProofOverlay[style*="display: flex"]) #chatMissionContextBar,
+body:has(#chatProposeDateForm[style*="display: flex"]) #chatMissionContextBar,
+body:has(#chatLeaveReviewForm[style*="display: flex"]) #chatMissionContextBar,
+body:has(#chatActionChoicesOverlay[style*="display:flex"]) #chatMissionContextBar,
+body:has(#chatDirectPriceForm[style*="display:flex"]) #chatMissionContextBar,
+body:has(#chatMilestoneDevisForm[style*="display:flex"]) #chatMissionContextBar,
+body:has(#chatCheckoutOverlay[style*="display:flex"]) #chatMissionContextBar,
+body:has(#chatTrackingOverlay[style*="display:flex"]) #chatMissionContextBar,
+body:has(#chatSubmitProofOverlay[style*="display:flex"]) #chatMissionContextBar,
+body:has(#chatProposeDateForm[style*="display:flex"]) #chatMissionContextBar,
+body:has(#chatLeaveReviewForm[style*="display:flex"]) #chatMissionContextBar {
+    display: none !important;
+}
+
+body:has(#chatTrackingOverlay[style*="display: flex"]) #chatTrackingOverlay,
+body:has(#chatTrackingOverlay[style*="display:flex"]) #chatTrackingOverlay {
+    z-index: 400 !important;
+}

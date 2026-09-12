@@ -381,6 +381,7 @@ window.openChatWithUser = async function (name, avatar, contactId = name, initia
     }
 
     currentChatContact = { id: contactId, name: displayName, avatar: displayAvatar };
+    window.LYANN_ACTIVE_CHAT_CONTACT = { ...currentChatContact };
     
     try {
         localStorage.setItem('lyann_last_active_contact', JSON.stringify({ id: contactId, name: displayName, avatar: displayAvatar }));
