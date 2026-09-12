@@ -113,7 +113,54 @@ function closeAllOverlays() {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
+    setChatContextCoveredByOverlay(false);
 }
+
+function setChatContextCoveredByOverlay(isCovered) {
+    const mainArea = document.querySelector('.chat-main-area');
+    if (!mainArea) return;
+    mainArea.classList.toggle('chat-child-surface-active', !!isCovered);
+}
+
+// LYANN CHAT CHILD SURFACE AUTO-SYNC v1
+const CHAT_CHILD_SURFACE_IDS = [
+    'chatActionChoicesOverlay',
+    'chatDirectPriceForm',
+    'chatMilestoneDevisForm',
+    'chatCheckoutOverlay',
+    'chatTrackingOverlay',
+    'chatSubmitProofOverlay',
+    'chatProposeDateForm',
+    'chatLeaveReviewForm'
+];
+
+function syncChatChildSurfaceState() {
+    const anyOpen = CHAT_CHILD_SURFACE_IDS.some(id => {
+        const el = document.getElementById(id);
+        if (!el) return false;
+        return window.getComputedStyle(el).display !== 'none';
+    });
+    setChatContextCoveredByOverlay(anyOpen);
+}
+
+function installChatChildSurfaceStateSync() {
+    const surfaces = CHAT_CHILD_SURFACE_IDS
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+
+    if (!surfaces.length) return;
+
+    const observer = new MutationObserver(() => syncChatChildSurfaceState());
+    surfaces.forEach(surface => observer.observe(surface, { attributes: true, attributeFilter: ['style', 'class'] }));
+    syncChatChildSurfaceState();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installChatChildSurfaceStateSync, { once: true });
+} else {
+    installChatChildSurfaceStateSync();
+}
+
 
 function getLocalChatMessages(contactId) {
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
@@ -152,86 +199,119 @@ function isUUID(str) {
     return uuidRegex.test(str);
 }
 
-async function getChatMessages(contactId) {
+async function getChatMessages(contactId, options = {}) {
     const userId = getMyId();
     if (userId === "me" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
         return getLocalChatMessages(contactId);
     }
 
+    if (!window.LYANN_MESSAGING_REPOSITORY) {
+        console.warn('Messaging repository unavailable; returning no remote messages.');
+        return [];
+    }
+
     try {
-        let { data: convs } = await window.LYANN_API_CLIENT.supabase
-            .from('conversation_participants')
-            .select('conversation_id')
-            .eq('user_id', getMyId());
-
-        let sharedConvId = null;
-        if (convs && convs.length > 0) {
-            const convIds = convs.map(c => c.conversation_id);
-            const { data: shared } = await window.LYANN_API_CLIENT.supabase
-                .from('conversation_participants')
-                .select('conversation_id')
-                .eq('user_id', contactId)
-                .in('conversation_id', convIds);
-
-            if (shared && shared.length > 0) {
-                sharedConvId = shared[0].conversation_id;
-            }
-        }
-
-        if (!sharedConvId) return [];
-
-        const { data: msgs, error } = await window.LYANN_API_CLIENT.supabase
-            .from('messages')
-            .select('*')
-            .eq('conversation_id', sharedConvId)
-            .order('created_at', { ascending: true });
-
-        if (error) throw error;
-
-        return msgs.map(m => ({
-            id: m.id,
-            text: m.content,
-            sender: m.sender_id === getMyId() ? 'me' : 'them',
-            timestamp: new Date(m.created_at).getTime(),
-            type: m.content.startsWith('{') ? 'transactional' : 'text',
-            txData: m.content.startsWith('{') ? JSON.parse(m.content) : null,
-            status: 'read'
-        }));
+        return await window.LYANN_MESSAGING_REPOSITORY.getMessages(userId, contactId, options);
     } catch(e) {
         console.warn("Supabase chat query failed:", e);
-        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) return [];
-        return getLocalChatMessages(contactId);
+        return [];
     }
+}
+
+function renderOptimisticChatMessage(msgObj) {
+    const container = document.getElementById('chatMessagesContainer');
+    if (!container || !msgObj || msgObj.type !== 'text' || !currentChatContact) return null;
+
+    const empty = container.querySelector('.chat-empty-state');
+    if (empty) empty.remove();
+
+    if (!container.querySelector('.chat-date-separator')) {
+        const dateSep = document.createElement('div');
+        dateSep.className = 'chat-date-separator';
+        const span = document.createElement('span');
+        span.textContent = "Aujourd'hui";
+        dateSep.appendChild(span);
+        container.appendChild(dateSep);
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chat-msg-bubble-wrap sent';
+    wrapper.dataset.optimisticMessageId = msgObj.id || '';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-msg-bubble sent';
+
+    const textNode = document.createElement('div');
+    textNode.className = 'chat-msg-text';
+    textNode.textContent = msgObj.text || '';
+    bubble.appendChild(textNode);
+
+    const meta = document.createElement('div');
+    meta.className = 'chat-msg-time';
+    const time = typeof msgObj.timestamp === 'number'
+        ? new Date(msgObj.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : (msgObj.timestamp || '');
+    meta.textContent = time + ' · Envoi…';
+    meta.dataset.optimisticStatus = 'sending';
+    bubble.appendChild(meta);
+
+    wrapper.appendChild(bubble);
+    container.appendChild(wrapper);
+    container.scrollTop = container.scrollHeight;
+    return wrapper;
 }
 
 async function addMessageToContact(contactId, msgObj) {
     const userId = getMyId();
+    const normalizedMsg = {
+        ...msgObj,
+        id: msgObj && msgObj.id ? msgObj.id : ('optimistic_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+        sender: (msgObj && msgObj.sender) || 'me',
+        timestamp: (msgObj && msgObj.timestamp) || Date.now()
+    };
+
+    // Immediate local response: never make the user wait for Supabase before seeing their text.
+    const optimisticNode = normalizedMsg.type === 'text' ? renderOptimisticChatMessage(normalizedMsg) : null;
+
     if (userId === "me" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
-        saveLocalChatMessage(contactId, msgObj);
+        saveLocalChatMessage(contactId, normalizedMsg);
         if (currentChatContact && currentChatContact.id === contactId) {
-            await renderMessages();
+            await renderMessages(null);
         }
         return;
     }
 
     try {
-        const { data: convRes } = await window.LYANN_API_CLIENT.getOrCreateConversation(getMyId(), contactId);
+        const { data: convRes } = await window.LYANN_API_CLIENT.getOrCreateConversation(userId, contactId);
         if (!convRes || !convRes.id) {
             throw new Error("Impossible d'initialiser la conversation.");
         }
 
         const sharedConvId = convRes.id;
-        const contentToSave = msgObj.type === 'transactional' ? JSON.stringify(msgObj.txData) : msgObj.text;
-
-        const { error: sendErr } = await window.LYANN_API_CLIENT.sendMessage(sharedConvId, getMyId(), contentToSave);
+        const contentToSave = normalizedMsg.type === 'transactional' ? JSON.stringify(normalizedMsg.txData) : normalizedMsg.text;
+        const { error: sendErr } = await window.LYANN_API_CLIENT.sendMessage(sharedConvId, userId, contentToSave);
         if (sendErr) throw sendErr;
-    } catch(e) {
-        console.warn("Supabase message send failed, saving locally:", e);
-        saveLocalChatMessage(contactId, msgObj);
-    }
 
-    if (currentChatContact && currentChatContact.id === contactId) {
-        await renderMessages();
+        if (window.LYANN_MESSAGING_REPOSITORY) {
+            window.LYANN_MESSAGING_REPOSITORY.invalidateMessages(sharedConvId);
+        }
+
+        if (currentChatContact && currentChatContact.id === contactId) {
+            await renderMessages();
+        }
+    } catch(e) {
+        console.warn("Supabase message send failed:", e);
+        if (optimisticNode && optimisticNode.isConnected) {
+            const status = optimisticNode.querySelector('[data-optimistic-status]');
+            if (status) {
+                const time = typeof normalizedMsg.timestamp === 'number'
+                    ? new Date(normalizedMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : (normalizedMsg.timestamp || '');
+                status.textContent = time + ' · Non envoyé';
+                status.dataset.optimisticStatus = 'failed';
+            }
+            optimisticNode.classList.add('chat-message-send-failed');
+        }
     }
 }
 window.addMessageToContact = addMessageToContact;
@@ -272,6 +352,19 @@ window.openChatWithUser = async function (name, avatar, contactId = name, initia
 
     let displayName = name;
     let displayAvatar = avatar;
+
+    // IMMEDIATE CHAT SHELL: show the conversation before any profile/network lookup.
+    const initialHeaderName = document.getElementById('chatHeaderName');
+    const initialHeaderAvatar = document.getElementById('chatHeaderAvatar');
+    if (initialHeaderName) initialHeaderName.textContent = displayName || 'Membre LYANN';
+    if (initialHeaderAvatar && displayAvatar) initialHeaderAvatar.src = displayAvatar;
+    if (modal) {
+        modal.removeAttribute('style');
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+    document.body.style.overflow = 'hidden';
+    document.querySelectorAll('.chat-modal-layout').forEach(l => l.classList.add('mobile-conversation-active'));
 
     if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function' && contactId && isUUID(contactId)) {
         try {
@@ -359,6 +452,9 @@ window.refreshChatUI = async function () {
         window.updateChatFavHeaderUI();
     }
 
+    // Start message rendering immediately; mission/request context can resolve in parallel.
+    const messagesPromise = renderMessages();
+
     const myUserId = getMyId();
     let sharedConvId = currentChatContact.conversationId;
     if (!sharedConvId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getOrCreateConversation === 'function' && currentChatContact.id && currentChatContact.id !== 'me') {
@@ -420,7 +516,12 @@ window.refreshChatUI = async function () {
                 btnView.onclick = (e) => {
                     e.stopPropagation();
                     if (typeof window.openLyannDetailModal === 'function') {
+                        document.body.classList.add('chat-child-modal-open');
                         window.openLyannDetailModal(requestContext.requestId);
+                        requestAnimationFrame(() => {
+                            const detail = document.getElementById('lyannDetailModal');
+                            if (detail) detail.classList.add('opened-from-chat');
+                        });
                     }
                 };
             }
@@ -482,7 +583,7 @@ window.refreshChatUI = async function () {
         actionContainer.style.display = 'none';
     }
 
-    await renderMessages();
+    await messagesPromise;
 }
 
 window.handleAcceptQuote = async function(quoteId) {
@@ -542,6 +643,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         const chatActionChoicesOverlay = document.getElementById('chatActionChoicesOverlay');
         if (chatActionChoicesOverlay) {
             chatActionChoicesOverlay.style.display = 'flex';
+            setChatContextCoveredByOverlay(true);
         } else {
             const amount = await window.lyannPrompt("Quel montant proposez-vous (en €) ?");
             if (!amount) return;
@@ -583,6 +685,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         const overlay = document.getElementById('chatDirectPriceForm');
         if (overlay) {
             overlay.style.display = 'flex';
+            setChatContextCoveredByOverlay(true);
             const titleEl = overlay.querySelector('.mobile-form-title');
             if (titleEl) titleEl.textContent = "Discuter du prix";
         }
@@ -801,14 +904,18 @@ function renderEmptyConversationState(container) {
     `;
 }
 
+let chatRenderGeneration = 0;
+
 async function renderMessages(passedMessages = null) {
     const container = document.getElementById('chatMessagesContainer');
     if (!container) return;
 
-    // MANDATORY CONTRACT: ALWAYS CLEAR CONTAINER FIRST BEFORE ANY CHECK OR ASYNC FETCH
-    container.innerHTML = '';
+    // ATOMIC CHAT RENDER: keep the current conversation visible while fresh data is loading.
+    // Only the newest render is allowed to commit, preventing overlapping refreshes from flickering.
+    const renderGeneration = ++chatRenderGeneration;
 
     if (!currentChatContact) {
+        container.innerHTML = '';
         renderEmptyConversationState(container);
         return;
     }
@@ -821,22 +928,22 @@ async function renderMessages(passedMessages = null) {
     console.log('[CHAT FINAL ARRAY]', msgs);
     console.trace('[CHAT RENDER CALL]');
 
-    // Fetch real quotes from Supabase for this conversation / invitation if authenticated
+    // Quote context is prepared by the shared messaging repository in one cached batch.
     let realQuotes = [];
-    if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && isUUID(currentChatContact.id)) {
+    if (window.LYANN_MESSAGING_REPOSITORY && isUUID(currentChatContact.id)) {
         try {
-            const activeInv = await window.LYANN_API_CLIENT.getActiveInvitationBetween(getMyId(), currentChatContact.id);
-            if (activeInv) {
-                const fetchedQuotes = await window.LYANN_API_CLIENT.getQuotesForInvitation(activeInv.id);
-                for (let q of fetchedQuotes) {
-                    q.milestones = await window.LYANN_API_CLIENT.getMilestonesForQuote(q.id);
-                    realQuotes.push(q);
-                }
-            }
+            realQuotes = await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), currentChatContact.id);
         } catch(err) {
-            console.warn("Erreur chargement devis réels Supabase:", err);
+            console.warn("Erreur chargement contexte devis:", err);
         }
     }
+
+    // Ignore stale async renders. A newer refresh already owns the DOM.
+    if (renderGeneration !== chatRenderGeneration) return;
+
+    // Commit the fully prepared conversation in one DOM swap. Until this point, the old
+    // messages (including an optimistic outgoing message) stay visible.
+    container.innerHTML = '';
 
     if (!Array.isArray(msgs) || (msgs.length === 0 && realQuotes.length === 0)) {
         renderEmptyConversationState(container);
@@ -854,7 +961,7 @@ async function renderMessages(passedMessages = null) {
         if (msg.cardType === 'PRICE_PROPOSAL' && realQuotes.length > 0) return;
 
         const wrapper = document.createElement('div');
-        const isMe = msg.sender === getMyId();
+        const isMe = msg.sender === 'me' || msg.sender === getMyId();
         const msgId = msg.id || ('msg_' + Math.random().toString(36).substr(2, 9));
         msg.id = msgId;
 
@@ -1485,7 +1592,10 @@ document.addEventListener('touchstart', (e) => {
     if (chatProposeBtn) {
         chatProposeBtn.addEventListener('click', () => {
             closeAllOverlays();
-            if (chatActionChoicesOverlay) chatActionChoicesOverlay.style.display = 'flex';
+            if (chatActionChoicesOverlay) {
+                chatActionChoicesOverlay.style.display = 'flex';
+                setChatContextCoveredByOverlay(true);
+            }
         });
     }
 
@@ -1493,7 +1603,12 @@ document.addEventListener('touchstart', (e) => {
     if (btnChooseDirectPrice) {
         btnChooseDirectPrice.addEventListener('click', () => {
             closeAllOverlays();
-            if (chatDirectPriceForm) chatDirectPriceForm.style.display = 'flex';
+            if (chatDirectPriceForm) {
+                chatDirectPriceForm.style.display = 'flex';
+                setChatContextCoveredByOverlay(true);
+                const firstRequired = chatDirectPriceForm.querySelector('[required]');
+                if (firstRequired) requestAnimationFrame(() => firstRequired.focus());
+            }
         });
     }
 
@@ -1501,7 +1616,12 @@ document.addEventListener('touchstart', (e) => {
     if (btnChooseMilestoneDevis) {
         btnChooseMilestoneDevis.addEventListener('click', () => {
             closeAllOverlays();
-            if (chatMilestoneDevisForm) chatMilestoneDevisForm.style.display = 'flex';
+            if (chatMilestoneDevisForm) {
+                chatMilestoneDevisForm.style.display = 'flex';
+                setChatContextCoveredByOverlay(true);
+                const firstRequired = chatMilestoneDevisForm.querySelector('[required]');
+                if (firstRequired) requestAnimationFrame(() => firstRequired.focus());
+            }
         });
     }
 
@@ -1633,6 +1753,79 @@ document.addEventListener('touchstart', (e) => {
         });
     }
 
+    // Milestone allocation: percentage <-> amount, always reconciled to total.
+    function initMilestoneAllocationSync() {
+        const totalInput = document.getElementById('mdTotalAmount');
+        if (!totalInput || totalInput.dataset.allocationSyncBound === 'true') return;
+        totalInput.dataset.allocationSyncBound = 'true';
+
+        const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
+        const roundPercent = (value) => Math.round((Number(value) || 0) * 100) / 100;
+        const getTotal = () => Math.max(0, parseFloat(totalInput.value) || 0);
+
+        const updateSummary = () => {
+            const total = getTotal();
+            let amountSum = 0;
+            let percentSum = 0;
+            for (let i = 1; i <= 3; i++) {
+                amountSum += Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Amount')?.value) || 0);
+                percentSum += Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Percent')?.value) || 0);
+            }
+            amountSum = roundMoney(amountSum);
+            percentSum = roundPercent(percentSum);
+            const remaining = roundMoney(total - amountSum);
+            const pctEl = document.getElementById('mdAllocationPercentTotal');
+            const amtEl = document.getElementById('mdAllocationAmountTotal');
+            const remEl = document.getElementById('mdAllocationRemaining');
+            if (pctEl) pctEl.textContent = percentSum.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
+            if (amtEl) amtEl.textContent = amountSum.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+            if (remEl) {
+                remEl.textContent = remaining.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+                remEl.style.color = Math.abs(remaining) <= 0.01 ? 'var(--primary)' : (remaining < 0 ? '#B91C1C' : '#475569');
+            }
+        };
+
+        const syncFromPercent = (index) => {
+            const total = getTotal();
+            const pct = Math.min(100, Math.max(0, parseFloat(document.getElementById('mdJ' + index + 'Percent')?.value) || 0));
+            const amountInput = document.getElementById('mdJ' + index + 'Amount');
+            if (amountInput) amountInput.value = total > 0 ? roundMoney(total * pct / 100).toFixed(2) : '';
+            updateSummary();
+        };
+
+        const syncFromAmount = (index) => {
+            const total = getTotal();
+            const amount = Math.max(0, parseFloat(document.getElementById('mdJ' + index + 'Amount')?.value) || 0);
+            const pctInput = document.getElementById('mdJ' + index + 'Percent');
+            if (pctInput) pctInput.value = total > 0 ? String(roundPercent(amount / total * 100)) : '';
+            updateSummary();
+        };
+
+        for (let i = 1; i <= 3; i++) {
+            const pctInput = document.getElementById('mdJ' + i + 'Percent');
+            const amountInput = document.getElementById('mdJ' + i + 'Amount');
+            if (pctInput) {
+                pctInput.step = '0.01';
+                pctInput.min = '0';
+                pctInput.max = '100';
+                pctInput.removeAttribute('required');
+                pctInput.addEventListener('input', () => syncFromPercent(i));
+            }
+            if (amountInput) amountInput.addEventListener('input', () => syncFromAmount(i));
+        }
+
+        totalInput.addEventListener('input', () => {
+            for (let i = 1; i <= 3; i++) {
+                const pctInput = document.getElementById('mdJ' + i + 'Percent');
+                if (pctInput && pctInput.value !== '') syncFromPercent(i);
+            }
+            updateSummary();
+        });
+        updateSummary();
+    }
+
+    initMilestoneAllocationSync();
+
     // SUBMIT MILESTONE DEVIS
     const milestoneDevisForm = document.getElementById('milestoneDevisForm');
     if (milestoneDevisForm) {
@@ -1644,9 +1837,14 @@ document.addEventListener('touchstart', (e) => {
                 const title = titleInput ? titleInput.value.trim() : '';
                 const total = totalInput ? parseFloat(totalInput.value) : 0;
 
-                const p1 = parseInt(document.getElementById('mdJ1Percent')?.value) || 0;
-                const p2 = parseInt(document.getElementById('mdJ2Percent')?.value) || 0;
-                const p3 = parseInt(document.getElementById('mdJ3Percent')?.value) || 0;
+                const rawAmounts = [1, 2, 3].map(i => Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Amount')?.value) || 0));
+                const rawPercents = [1, 2, 3].map(i => Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Percent')?.value) || 0));
+                const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
+                const roundPercent = (value) => Math.round((Number(value) || 0) * 100) / 100;
+
+                const amounts = rawAmounts.map((amount, idx) => amount > 0 ? roundMoney(amount) : roundMoney(total * rawPercents[idx] / 100));
+                const percents = amounts.map(amount => total > 0 ? roundPercent(amount / total * 100) : 0);
+                const [p1, p2, p3] = percents;
 
                 if (!currentChatContact) {
                     throw new Error("Aucun contact sélectionné pour la discussion.");
@@ -1665,10 +1863,15 @@ document.addEventListener('touchstart', (e) => {
                     return;
                 }
 
-                // Calcul atomique des montants de jalons
-                const m1 = Math.round(total * (p1 / 100) * 100) / 100;
-                const m2 = Math.round(total * (p2 / 100) * 100) / 100;
-                const m3 = Math.round((total - m1 - m2) * 100) / 100;
+                // Montants et pourcentages restent synchronisés quelle que soit l'unité saisie.
+                const [m1, m2, m3] = amounts;
+                const allocatedTotal = roundMoney(m1 + m2 + m3);
+                if (Math.abs(allocatedTotal - total) > 0.01) {
+                    const msg = 'La somme des jalons doit correspondre au montant total (' + total.toFixed(2) + ' €). Montant actuellement réparti : ' + allocatedTotal.toFixed(2) + ' €.';
+                    if (window.lyannAlert) window.lyannAlert(msg);
+                    else alert(msg);
+                    return;
+                }
 
                 const j1Title = document.getElementById('mdJ1Title')?.value.trim() || "Jalon 1 - Préparation";
                 const j2Title = document.getElementById('mdJ2Title')?.value.trim() || "Jalon 2 - Intervention";

@@ -1,0 +1,60 @@
+name: Architecture Source Fix
+
+on:
+  push:
+    branches:
+      - architecture-stabilization
+
+permissions:
+  contents: write
+
+jobs:
+  normalize-source:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: architecture-stabilization
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Apply deterministic source fixes
+        run: |
+          node scripts/apply-architecture-fixes.js
+          node scripts/extract-script-domains.js
+          node scripts/extract-app-shell-header.js
+          node scripts/normalize-auth-state.js
+          node scripts/normalize-profile-loader.js
+          node scripts/normalize-bokantaj-loader.js
+          node scripts/normalize-responsive-actions.js
+          node scripts/normalize-favorite-actions.js
+          node scripts/normalize-immediate-surfaces.js
+          node scripts/normalize-explorer-loader.js
+          node scripts/normalize-messaging-responsiveness.js
+          node scripts/normalize-optimistic-chat-send.js
+          node scripts/normalize-chat-atomic-render.js
+          node scripts/normalize-messaging-repository.js
+          node scripts/normalize-chat-quote-context.js
+          node scripts/normalize-chat-proposal-overlay.js
+          node scripts/normalize-chat-layering.js
+          node scripts/normalize-chat-entry-unification.js
+          node scripts/normalize-milestone-allocation.js
+          node scripts/normalize-milestone-layout.js
+
+      - name: Commit normalized source when changed
+        run: |
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "No source normalization required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: center milestone allocation fields"
+          git push origin HEAD:architecture-stabilization

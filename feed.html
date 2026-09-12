@@ -769,7 +769,7 @@
 
                     <!-- OVERLAY: DETAILED DEVIS FORM -->
                     <div id="chatMilestoneDevisForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;">
+                        <form id="milestoneDevisForm" style="width:100%; max-width:560px; margin:0 auto; padding:20px 24px 24px; box-sizing:border-box; display:flex; flex-direction:column; gap:10px; max-height:420px; overflow-y:auto;">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Créer un Devis détaillé</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Libellé général du chantier</label>
@@ -782,27 +782,95 @@
                             
                             <!-- Fixed Milestones Structure for Simple/Aesthetic UX -->
                             <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 8px; color: var(--primary-dark);">Jalons de paiement (Répartition en %)</label>
-                                
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 1:</span>
-                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
+                                <div class="milestone-allocation-section" style="width:100%; max-width:520px; margin:0 auto; display:flex; flex-direction:column; gap:10px; box-sizing:border-box;">
+                                <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px;">
+                                    <div>
+                                        <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
+                                        <span style="font-size:0.7rem; color:var(--text-muted);">Saisissez le pourcentage ou le montant : l’autre valeur se calcule automatiquement.</span>
+                                    </div>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 2:</span>
-                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
+
+                                <div class="milestone-allocation-card" style="width:100%; box-sizing:border-box; padding:12px; border:1px solid #E6E1D9; border-radius:14px; background:#FFFFFF; display:flex; flex-direction:column; gap:10px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                        <strong style="font-size:0.78rem; color:var(--primary-dark);">Jalon 1</strong>
+                                        <span style="font-size:0.7rem; color:var(--text-muted);">% ↔ €</span>
+                                    </div>
+                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="width:100%; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr); align-items:end; gap:8px; width:100%;">
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Pourcentage
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="0" max="100" step="0.01" inputmode="decimal" aria-label="Pourcentage du jalon 1" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">%</span>
+                                            </div>
+                                        </label>
+                                        <span aria-hidden="true" style="height:38px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-weight:800;">↔</span>
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Montant
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ1Amount" class="modal-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" aria-label="Montant du jalon 1" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">€</span>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 3:</span>
-                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
+
+                                <div class="milestone-allocation-card" style="width:100%; box-sizing:border-box; padding:12px; border:1px solid #E6E1D9; border-radius:14px; background:#FFFFFF; display:flex; flex-direction:column; gap:10px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                        <strong style="font-size:0.78rem; color:var(--primary-dark);">Jalon 2</strong>
+                                        <span style="font-size:0.7rem; color:var(--text-muted);">% ↔ €</span>
+                                    </div>
+                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="width:100%; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr); align-items:end; gap:8px; width:100%;">
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Pourcentage
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="0" max="100" step="0.01" inputmode="decimal" aria-label="Pourcentage du jalon 2" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">%</span>
+                                            </div>
+                                        </label>
+                                        <span aria-hidden="true" style="height:38px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-weight:800;">↔</span>
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Montant
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ2Amount" class="modal-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" aria-label="Montant du jalon 2" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">€</span>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
-                                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des jalons doit faire 100%.</p>
+
+                                <div class="milestone-allocation-card" style="width:100%; box-sizing:border-box; padding:12px; border:1px solid #E6E1D9; border-radius:14px; background:#FFFFFF; display:flex; flex-direction:column; gap:10px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                        <strong style="font-size:0.78rem; color:var(--primary-dark);">Jalon 3</strong>
+                                        <span style="font-size:0.7rem; color:var(--text-muted);">% ↔ €</span>
+                                    </div>
+                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="width:100%; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr); align-items:end; gap:8px; width:100%;">
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Pourcentage
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="0" max="100" step="0.01" inputmode="decimal" aria-label="Pourcentage du jalon 3" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">%</span>
+                                            </div>
+                                        </label>
+                                        <span aria-hidden="true" style="height:38px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-weight:800;">↔</span>
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Montant
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ3Amount" class="modal-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" aria-label="Montant du jalon 3" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">€</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="mdAllocationSummary" style="width:100%; box-sizing:border-box; margin-top:2px; padding:10px 12px; border-radius:12px; background:#F8FAFC; border:1px solid #E2E8F0; font-size:0.76rem; color:#475569; line-height:1.45;">
+                                    <div style="display:flex; justify-content:space-between; gap:12px;"><span>Répartition</span><strong id="mdAllocationPercentTotal">0 %</strong></div>
+                                    <div style="display:flex; justify-content:space-between; gap:12px;"><span>Montant réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
+                                    <div style="display:flex; justify-content:space-between; gap:12px;"><span>Reste à répartir</span><strong id="mdAllocationRemaining">—</strong></div>
+                                </div>
+                                <p style="font-size:0.72rem; color:var(--text-muted); margin:0;"><i class="ph ph-info"></i> La répartition doit correspondre à 100 % du montant total.</p>
+                            </div>
                             </div>
 
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -1424,24 +1492,6 @@
         </div>
     </div>
 
-    <script src="ai-agents.js"></script>
-    <script src="https://js.stripe.com/v3/"></script>
-    <script src="payment-script.js"></script>
-    <script src="notifications-service.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="safety-disputes-engine.js"></script>
-    <script src="subscriptions-engine.js"></script>
-    <script src="pro-verification-engine.js"></script>
-    <script src="search-engine.js"></script>
-    <script src="matching-engine.js"></script>
-    <script src="api-client.js?v=20260907-DOM-OBSERVER-FIX"></script>
-    <script src="dialog.js"></script>
-    <script src="chat-logic.js?v=20260907-DOM-OBSERVER-FIX"></script>
-    <script src="ai-simulator.js?v=20260907-DOM-OBSERVER-FIX"></script>
-    <script src="ai-classifier.js"></script>
-    <script src="script.js?v=20260907-DOM-OBSERVER-FIX"></script>
-    <script src="onboarding.js"></script>
-    <script src="profile-completion.js"></script>
 
     <!-- ========== MODAL PARCOURS COMPLÉTION DE PROFIL (#modalCompleteProfile) ========== -->
     <div class="modal-overlay" id="modalCompleteProfile" style="display: none; z-index: 99999;">
@@ -1633,6 +1683,8 @@
                 <!-- Dynamically populated by script.js -->
             </div>
         </div>
+    </div>
+
     <!-- ========== BOTTOM SHEET FILTRES BOKANTAJ ========== -->
     <div class="modal-overlay mobile-bottom-sheet" id="bokantajFilterSheetModal" style="display: none;">
         <div class="mobile-bottom-sheet-card">
@@ -1684,6 +1736,33 @@
             </div>
         </div>
     </div>
+
+
+    <script src="ai-agents.js"></script>
+    <script src="payment-script.js"></script>
+    <script src="notifications-service.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="search-engine.js"></script>
+    <script src="matching-engine.js"></script>
+    <script src="api-client.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="session-store.js"></script>
+    <script src="auth-state.js"></script>
+    <script src="data-cache.js"></script>
+    <script src="profile-repository.js"></script>
+    <script src="bokantaj-repository.js"></script>
+    <script src="explorer-repository.js"></script>
+    <script src="feature-loader.js"></script>
+    <script src="dialog.js"></script>
+        <script src="messaging-repository.js"></script>
+<script src="chat-logic.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="ai-simulator.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="ai-classifier.js"></script>
+    <script src="platform-core.js"></script>
+    <script src="notifications-ui.js"></script>
+    <script src="app-shell.js"></script>
+    <script src="script.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="onboarding.js"></script>
+    <script src="profile-completion.js"></script>
 
 </body>
 </html>

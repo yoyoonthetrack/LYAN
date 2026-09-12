@@ -114,1094 +114,6 @@ function isNativePlatform() {
 }
 window.isNativePlatform = isNativePlatform;
 
-// === LYANN SINGLE SOURCE OF TRUTH DEFAULT USER AVATAR ===
-if (!window.getLyannDefaultAvatar) {
-    (function() {
-        const rawSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="50" fill="#FAF7F2"/><circle cx="50" cy="50" r="48" fill="#EBF2ED" stroke="rgba(74,124,89,0.25)" stroke-width="2"/><circle cx="50" cy="38" r="16" fill="#4A7C59"/><path d="M 22 84 C 22 66, 34 58, 50 58 C 66 58, 78 66, 78 84 Z" fill="#4A7C59"/></svg>`;
-        window.LYANN_DEFAULT_AVATAR_SVG = 'data:image/svg+xml,' + encodeURIComponent(rawSvg);
-        window.LYANN_DEFAULT_AVATAR_PATH = window.LYANN_DEFAULT_AVATAR_SVG;
-    })();
-
-    window.getLyannDefaultAvatar = function() {
-        return window.LYANN_DEFAULT_AVATAR_SVG;
-    };
-
-    window.escapeHtmlAttr = function(str) {
-        if (str === null || str === undefined) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    };
-
-    window.resolveLyannAvatarSrc = function(input) {
-        if (!input) return window.getLyannDefaultAvatar();
-
-        let raw = input;
-        if (typeof input === 'object') {
-            raw = input.avatar_url || input.author_avatar || input.authorAvatar || input.avatar || input.profile_photo || '';
-        }
-
-        if (typeof raw !== 'string') return window.getLyannDefaultAvatar();
-
-        let clean = raw.trim();
-        if (!clean) return window.getLyannDefaultAvatar();
-
-        // Extract URL if caller passed raw <img> tag
-        if (clean.includes('<') || clean.includes('>')) {
-            const match = clean.match(/src=["']([^"']+)["']/i);
-            if (match && match[1]) {
-                clean = match[1].trim();
-            } else {
-                return window.getLyannDefaultAvatar();
-            }
-        }
-
-        if (clean === 'null' || clean === 'undefined' || 
-            clean.includes('dicebear.com') || clean.includes('bottts') || 
-            clean.includes('avataaars') || clean.includes('avatar_01.png') || 
-            clean.includes('david-34.png') || clean === 'default-avatar.svg') {
-            return window.getLyannDefaultAvatar();
-        }
-
-        return clean;
-    };
-
-    window.getLyannAvatarUrl = window.resolveLyannAvatarSrc;
-
-    window.handleAvatarError = function(imgEl) {
-        if (imgEl && !imgEl.dataset.fallbackDone) {
-            imgEl.dataset.fallbackDone = 'true';
-            imgEl.onerror = null;
-            imgEl.src = window.LYANN_DEFAULT_AVATAR_SVG;
-        }
-    };
-}
-
-
-// === LYANN OFFICIAL DOM COMMUNES DICTIONARY ===
-window.LYANN_DOM_COMMUNES = {
-    'Guadeloupe (971)': [
-        'Baie-Mahault (97122)', 'Les Abymes (97139)', 'Pointe-à-Pitre (97110)', 'Le Gosier (97190)', 
-        'Sainte-Anne (97180)', 'Saint-François (97118)', 'Sainte-Rose (97115)', 'Le Moule (97160)', 
-        'Petit-Bourg (97170)', 'Capesterre-Belle-Eau (97130)', 'Morne-à-l\'Eau (97111)', 'Lamentin (97129)', 
-        'Saint-Claude (97120)', 'Basse-Terre (97100)', 'Trois-Rivières (97114)', 'Gourbeyre (97113)', 
-        'Goyave (97128)', 'Anse-Bertrand (97121)', 'Port-Louis (97131)', 'Deshaies (97126)', 
-        'Pointe-Noire (97116)', 'Bouillante (97125)', 'Vieux-Habitants (97125)', 'Terre-de-Haut (97137)', 
-        'Terre-de-Bas (97136)', 'Grand-Bourg (Marie-Galante) (97112)', 'Capesterre-de-Marie-Galante (97140)', 
-        'Saint-Louis (Marie-Galante) (97134)', 'Désirade (97127)'
-    ],
-    'Martinique (972)': [
-        'Fort-de-France (97200)', 'Le Lamentin (97232)', 'Le Robert (97231)', 'Schoelcher (97233)', 
-        'Le François (97240)', 'Sainte-Marie (97230)', 'Saint-Joseph (97212)', 'Ducos (97224)', 
-        'La Trinité (97220)', 'Rivière-Pilote (97211)', 'Rivière-Salée (97215)', 'Gros-Morne (97213)', 
-        'Sainte-Luce (97228)', 'Saint-Esprit (97270)', 'Les Anses-d\'Arlet (97217)', 'Le Marin (97290)', 
-        'Le Vauclin (97280)', 'Trois-Îlets (97229)', 'Case-Pilote (97222)', 'Saint-Pierre (97250)', 
-        'Le Carbet (97221)', 'Basse-Pointe (97218)', 'Le Lorrain (97214)'
-    ],
-    'Guyane (973)': [
-        'Cayenne (97300)', 'Matoury (97351)', 'Saint-Laurent-du-Maroni (97320)', 'Kourou (97310)', 
-        'Remire-Montjoly (97354)', 'Mana (97360)', 'Macouria (97355)', 'Apatou (97317)', 
-        'Maripasoula (97370)', 'Grand-Santi (97340)', 'Saint-Georges (97313)', 'Sinnamary (97315)'
-    ],
-    'La Réunion (974)': [
-        'Saint-Denis (97400)', 'Saint-Paul (97460)', 'Saint-Pierre (97410)', 'Le Tampon (97430)', 
-        'Saint-André (97440)', 'Saint-Louis (97450)', 'Le Port (97420)', 'Saint-Joseph (97480)', 
-        'Saint-Benoît (97470)', 'Sainte-Marie (97438)', 'Saint-Leu (97416)', 'La Possession (97419)', 
-        'Sainte-Suzanne (97441)', 'Petite-Île (97429)', 'Salazie (97433)'
-    ],
-    'France Métropolitaine': [
-        'Paris (75000)', 'Marseille (13000)', 'Lyon (69000)', 'Toulouse (31000)', 
-        'Nice (06000)', 'Nantes (44000)', 'Montpellier (34000)', 'Strasbourg (67000)', 
-        'Bordeaux (33000)', 'Lille (59000)', 'Rennes (35000)'
-    ]
-};
-
-// Global helper to bind datalist to all commune inputs
-function initLyannCommunesAutocomplete() {
-    let datalist = document.getElementById('lyannCommunesDatalist');
-    if (!datalist) {
-        datalist = document.createElement('datalist');
-        datalist.id = 'lyannCommunesDatalist';
-        document.body.appendChild(datalist);
-    }
-
-    let allCommunes = [];
-    Object.values(window.LYANN_DOM_COMMUNES).forEach(list => {
-        allCommunes = allCommunes.concat(list);
-    });
-
-    datalist.innerHTML = allCommunes.map(c => `<option value="${c}"></option>`).join('');
-
-    const cityInputs = document.querySelectorAll('#cpCityInput, #obCityInput, #needCityInput, #filterCityInput, input[placeholder*="Commune"], input[placeholder*="Ville"]');
-    cityInputs.forEach(input => {
-        if (input) input.setAttribute('list', 'lyannCommunesDatalist');
-    });
-}
-window.initLyannCommunesAutocomplete = initLyannCommunesAutocomplete;
-
-function getNativePlugin(name) {
-    if (isNativePlatform() && window.Capacitor.Plugins) {
-        return window.Capacitor.Plugins[name];
-    }
-    return null;
-}
-
-// 📷 Appareil Photo & Galerie
-async function getPhotoNative() {
-    const cameraPlugin = getNativePlugin('Camera');
-    if (cameraPlugin) {
-        try {
-            const image = await cameraPlugin.getPhoto({
-                quality: 80,
-                allowEditing: false,
-                resultType: 'dataUrl', // base64 data url
-                source: 'PROMPT' // Camera or Gallery prompt
-            });
-            return image.dataUrl;
-        } catch (e) {
-            console.warn("Camera cancelled or failed:", e);
-            return null;
-        }
-    }
-    return null;
-}
-
-// 📍 Géolocalisation & Reverse Geocoding
-async function getNativeCoordinates() {
-    const geo = getNativePlugin('Geolocation');
-    if (geo) {
-        try {
-            const position = await geo.getCurrentPosition({
-                enableHighAccuracy: true,
-                timeout: 6000
-            });
-            return position.coords;
-        } catch (e) {
-            console.warn("Failed to get coordinates:", e);
-            return null;
-        }
-    }
-    return null;
-}
-
-async function getCityNameFromCoords(lat, lon) {
-    try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`);
-        const data = await response.json();
-        if (data && data.address) {
-            return data.address.city || data.address.town || data.address.village || data.address.suburb || data.address.county || "Guadeloupe";
-        }
-    } catch (e) {
-        console.warn("Reverse geocoding failed:", e);
-    }
-    return null;
-}
-
-// 🔗 Partage Natif
-async function shareNative(title, text, url) {
-    const sharePlugin = getNativePlugin('Share');
-    if (sharePlugin) {
-        try {
-            await sharePlugin.share({
-                title: title,
-                text: text,
-                url: url,
-                dialogTitle: 'Partager avec la communauté'
-            });
-            return true;
-        } catch (e) {
-            console.warn("Share cancelled or failed:", e);
-            return false;
-        }
-    }
-    return false;
-}
-
-// 📲 initialisation des plugins et gestion Android Back Button / Status Bar
-function initializeNativeFeatures() {
-    console.log("⚡ Initializing native features...");
-    document.body.classList.add('is-native-app');
-    
-    // Status Bar Style
-    const statusBar = getNativePlugin('StatusBar');
-    if (statusBar) {
-        statusBar.setStyle({ style: 'DARK' }).catch(() => {});
-        statusBar.setBackgroundColor({ color: '#4A7C59' }).catch(() => {});
-    }
-
-    // Android Back Button listener
-    const appPlugin = getNativePlugin('App');
-    if (appPlugin) {
-        appPlugin.addListener('backButton', (data) => {
-            const activeModal = document.querySelector('.modal-overlay.active');
-            if (activeModal) {
-                if (activeModal.id === 'chatModal' && typeof window.closeLyannChatModal === 'function') {
-                    window.closeLyannChatModal();
-                } else {
-                    activeModal.classList.remove('active');
-                    activeModal.style.display = 'none';
-                    document.body.style.overflow = '';
-                }
-            } else {
-                appPlugin.exitApp();
-            }
-        });
-    }
-
-    // Keyboard Accessory Bar
-    const keyboard = getNativePlugin('Keyboard');
-    if (keyboard) {
-        keyboard.setAccessoryBarVisible({ visible: true }).catch(() => {});
-    }
-    
-    // Request initial push permissions
-    setupNativePushNotifications();
-}
-
-async function setupNativePushNotifications() {
-    const push = getNativePlugin('PushNotifications');
-    if (push) {
-        try {
-            let perm = await push.checkPermissions();
-            if (perm.receive !== 'granted') {
-                perm = await push.requestPermissions();
-            }
-            if (perm.receive === 'granted') {
-                await push.register();
-                
-                push.addListener('registration', (token) => {
-                    console.log('📲 Device Token registered:', token.value);
-                });
-                
-                push.addListener('registrationError', (err) => {
-                    console.error('📲 Device Token registration error:', err);
-                });
-                
-                push.addListener('pushNotificationReceived', (notification) => {
-                    console.log('📲 Notification received:', notification);
-                    if (window.lyannAlert) {
-                        window.lyannAlert(`🔔 ${notification.title}: ${notification.body}`);
-                    }
-                });
-            }
-        } catch(e) {
-            console.warn("Push setup failed or not supported in simulator/browser:", e);
-        }
-    }
-}
-
-// === HAPTIC VIBRATION UTILITY ===
-async function triggerHaptic(type = 'light') {
-    const haptics = getNativePlugin('Haptics');
-    if (haptics) {
-        try {
-            if (type === 'success') {
-                await haptics.notification({ type: 'SUCCESS' });
-            } else if (type === 'warning') {
-                await haptics.notification({ type: 'WARNING' });
-            } else if (type === 'error') {
-                await haptics.notification({ type: 'ERROR' });
-            } else {
-                await haptics.impact({ style: 'LIGHT' });
-            }
-        } catch(e) {
-            console.warn("Haptics trigger failed:", e);
-        }
-    }
-}
-
-// === PENDING ACTIONS FINDER FOR MOBILE DASHBOARD ===
-function getPendingActions() {
-    const actions = [];
-    const msgsKey = 'lyann_mock_chat_msgs';
-    try {
-        const stored = localStorage.getItem(msgsKey);
-        if (stored) {
-            const data = JSON.parse(stored);
-            Object.keys(data).forEach(contactName => {
-                const msgs = data[contactName];
-                if (msgs && msgs.length > 0) {
-                    const lastMsg = msgs[msgs.length - 1];
-                    if (lastMsg.type === 'system_card') {
-                        if (lastMsg.cardType === 'PRICE_PROPOSAL' && lastMsg.sender !== getMyId()) {
-                            actions.push({
-                                type: 'proposal',
-                                contactName: contactName,
-                                message: `${contactName} vous propose ${lastMsg.amount}€.`
-                            });
-                        } else if (lastMsg.cardType === 'WORK_DONE' && lastMsg.sender !== getMyId()) {
-                            actions.push({
-                                type: 'work_done',
-                                contactName: contactName,
-                                message: `${contactName} indique avoir terminé la mission.`
-                            });
-                        }
-                    }
-                }
-            });
-        }
-    } catch(e) {}
-    return actions;
-}
-
-// === NOTIFICATIONS MODAL & BADGE SYSTEM ===
-function updateHeaderNotificationBadge() {
-    const currentUserId = window.LYANN_CURRENT_USER?.id || 'demo_user';
-    const badge = document.querySelector('.notif-badge-count');
-    if (!badge) return;
-
-    if (window.LyannNotificationEngine) {
-        const unreadCount = window.LyannNotificationEngine.getUnreadCount(currentUserId, currentUserId);
-        if (unreadCount > 0) {
-            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-            badge.style.display = 'inline-flex';
-        } else {
-            badge.style.display = 'none';
-        }
-    }
-}
-
-function openNotificationsModal() {
-    const currentUserId = window.LYANN_CURRENT_USER?.id || 'demo_user';
-    let modal = document.getElementById('notificationsModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.id = 'notificationsModal';
-        document.body.appendChild(modal);
-    }
-
-    const notifs = window.LyannNotificationEngine 
-        ? window.LyannNotificationEngine.getUserNotifications(currentUserId, currentUserId) 
-        : [];
-    const unreadCount = notifs.filter(n => !n.read).length;
-
-    modal.innerHTML = `
-        <div class="modal-card modal-card-notifications" style="max-width: 520px; width: 92%; border-radius: var(--radius-xl); padding: 20px; background: #FFFFFF; margin: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3); position: relative;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border-light); padding-bottom: 12px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0; color: var(--text);">Notifications 🔔</h3>
-                    ${unreadCount > 0 ? `<span style="background: var(--primary); color: #FFF; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">${unreadCount} non lue(s)</span>` : ''}
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    ${unreadCount > 0 ? `<button type="button" id="btnMarkAllNotifsRead" style="background: none; border: none; font-size: 0.8rem; color: var(--primary); font-weight: 700; cursor: pointer;">Tout marquer lu</button>` : ''}
-                    <button type="button" id="closeNotificationsModalBtn" class="modal-close-btn" aria-label="Fermer" style="position: static; opacity: 1;"><i class="ph ph-x"></i></button>
-                </div>
-            </div>
-            <div class="notifications-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 55vh; overflow-y: auto;">
-                ${notifs.length === 0 ? `
-                    <div style="text-align: center; padding: 32px 16px; color: var(--text-muted);">
-                        <i class="ph ph-bell-slash" style="font-size: 2.5rem; opacity: 0.5; margin-bottom: 8px;"></i>
-                        <p style="margin: 0; font-weight: 600;">Rien de nouveau pour le moment.</p>
-                        <span style="font-size: 0.8rem;">Vos opportunités et messages apparaîtront ici.</span>
-                    </div>
-                ` : notifs.map(n => {
-                    const icon = n.type === 'OPPORTUNITY' ? '🤝' 
-                        : (n.type === 'NEW_MESSAGE' ? '💬' 
-                        : (n.type.startsWith('MISSION') ? '🎯' 
-                        : (n.type.startsWith('PAYMENT') ? '💳' : '🔔')));
-                    
-                    const timeAgo = formatRelativeTime(n.created_at);
-                    const isUnread = !n.read;
-                    
-                    return `
-                        <div class="notif-item-card" data-notif-id="${n.id}" data-entity-type="${n.entity_type || ''}" data-entity-id="${n.entity_id || ''}" style="display: flex; gap: 12px; padding: 12px 14px; background: ${isUnread ? 'rgba(74, 124, 89, 0.06)' : 'var(--bg-alt)'}; border-radius: var(--radius-lg); border-left: 4px solid ${isUnread ? 'var(--primary)' : 'transparent'}; cursor: pointer; transition: all 0.2s ease;">
-                            <span style="font-size: 1.4rem;">${icon}</span>
-                            <div style="flex: 1;">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px;">
-                                    <strong style="font-size: 0.88rem; color: var(--text); font-weight: 700;">${n.title}</strong>
-                                    <span style="font-size: 0.72rem; color: var(--text-muted); white-space: nowrap;">${timeAgo}</span>
-                                </div>
-                                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 6px 0; line-height: 1.3;">${n.body}</p>
-                                ${n.cta ? `<span style="font-size: 0.76rem; font-weight: 700; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;">${n.cta.label} &rarr;</span>` : ''}
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        </div>
-    `;
-
-    const closeBtn = document.getElementById('closeNotificationsModalBtn');
-    const closeModal = () => {
-        modal.classList.remove('active');
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-        updateHeaderNotificationBadge();
-    };
-
-    closeBtn?.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-
-    document.getElementById('btnMarkAllNotifsRead')?.addEventListener('click', () => {
-        if (window.LyannNotificationEngine) {
-            window.LyannNotificationEngine.markAllAsRead(currentUserId);
-            openNotificationsModal();
-            updateHeaderNotificationBadge();
-        }
-    });
-
-    // Deep link action handler for item clicks
-    modal.querySelectorAll('.notif-item-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const notifId = card.getAttribute('data-notif-id');
-            const entityType = card.getAttribute('data-entity-type');
-            const entityId = card.getAttribute('data-entity-id');
-
-            if (window.LyannNotificationEngine && notifId) {
-                window.LyannNotificationEngine.markAsRead(notifId, currentUserId);
-            }
-
-            closeModal();
-
-            // Closed Opportunity Handling Check (TEST G)
-            if (entityType === 'request' && entityId && window.LyannNotificationEngine) {
-                const oppState = window.LyannNotificationEngine.getOpportunityState(entityId, card.getAttribute('data-request-status') || 'ACTIVE');
-                if (!oppState.available) {
-                    if (typeof window.showLyanToast === 'function') {
-                        window.showLyanToast(oppState.human_message, 'ℹ️');
-                    } else {
-                        alert(oppState.human_message);
-                    }
-                    return;
-                }
-            }
-
-            // Deep link actions (TEST F)
-            if (entityType === 'conversation' && entityId) {
-                if (typeof window.openConversation === 'function') window.openConversation(entityId);
-            } else if (entityType === 'request' && entityId) {
-                if (typeof window.openRequestDetails === 'function') window.openRequestDetails(entityId);
-            } else if (entityType === 'mission' && entityId) {
-                if (typeof window.openMissionDetails === 'function') window.openMissionDetails(entityId);
-            }
-        });
-    });
-
-    modal.classList.add('active');
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function formatRelativeTime(isoString) {
-    if (!isoString) return 'Récemment';
-    const date = new Date(isoString);
-    const now = new Date();
-    const diffMin = Math.floor((now - date) / 60000);
-    if (diffMin < 1) return 'À l\'instant';
-    if (diffMin < 60) return `Il y a ${diffMin} min`;
-    const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `Il y a ${diffHours}h`;
-    return date.toLocaleDateString('fr-FR');
-}
-
-// === APP WELCOME SCREEN (GUEST MODE / ONBOARDING / LOGIN) ===
-function showAppWelcomeScreen() {
-    console.log('[AUTH_REAL] welcome/login screen mounted = true');
-    if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.loginScreenMounted = true;
-
-    if (document.querySelector('.app-welcome-screen')) return;
-
-    const screen = document.createElement('div');
-    screen.className = 'app-welcome-screen';
-    screen.innerHTML = `
-        <div class="welcome-logo-container">
-            <img src="logo-app.png" style="width: 90px; height: 90px; border-radius: 20px; box-shadow: 0 10px 25px rgba(74, 124, 89, 0.15); object-fit: cover;">
-            <h1 class="welcome-title">Bienvenue sur<br>LYANN</h1>
-            <p class="welcome-subtitle">Le réseau d'entraide locale et de confiance. Sé Lyann a lot.</p>
-        </div>
-
-        <div class="welcome-actions">
-            <button class="btn btn-primary btn-lg" id="btnWelcomeRegister" style="justify-content: center;">Créer un compte</button>
-            <button class="btn btn-outline btn-lg" id="btnWelcomeLogin" style="justify-content: center; background: white;">Se connecter</button>
-
-            <div style="display: flex; align-items: center; gap: 8px; margin: 2px 0;">
-                <div style="flex: 1; height: 1px; background: rgba(0, 0, 0, 0.12);"></div>
-                <span style="font-size: 0.78rem; color: #64748B; font-weight: 500;">ou</span>
-                <div style="flex: 1; height: 1px; background: rgba(0, 0, 0, 0.12);"></div>
-            </div>
-
-            <button type="button" class="btn btn-google btn-google-auth btn-lg" id="btnWelcomeGoogle" style="justify-content: center; background: #FFFFFF; border: 1px solid #CBD5E1; color: #1E293B; font-weight: 600; min-height: 48px; border-radius: 12px; gap: 10px;">
-                <svg width="20" height="20" viewBox="0 0 48 48" class="google-svg-icon">
-                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.66 0 6.6 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.6 42.62 14.66 48 24 48z"/>
-                </svg>
-                Continuer avec Google
-            </button>
-
-            <button class="btn btn-outline btn-lg" id="btnWelcomeGuest" style="justify-content: center; border: none; font-size: 0.85rem; padding: 6px; color: #64748B;">Découvrir en mode invité</button>
-        </div>
-    `;
-
-    document.body.appendChild(screen);
-
-    // Bindings
-    document.getElementById('btnWelcomeRegister')?.addEventListener('click', () => {
-        triggerHaptic('light');
-        if (typeof window.openOnboarding === 'function') {
-            window.openOnboarding();
-        }
-    });
-
-    document.getElementById('btnWelcomeLogin')?.addEventListener('click', () => {
-        triggerHaptic('light');
-        document.querySelector('.open-login-trigger')?.click();
-    });
-
-    document.getElementById('btnWelcomeGuest')?.addEventListener('click', () => {
-        triggerHaptic('light');
-        console.log('[AUTH_REAL] welcome/login screen mounted = false');
-        if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.loginScreenMounted = false;
-        screen.remove(); // Dismiss welcome view
-    });
-}
-
-// === MOBILE APP ACCUEIL HOME DASHBOARD ===
-async function initMobileHomeDashboard() {
-    const isLoggedIn = document.body.classList.contains('user-is-logged-in');
-
-    if (!isLoggedIn) {
-        console.log('[AUTH_REAL] App Home mounted = false');
-        if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.appHomeMounted = false;
-        showAppWelcomeScreen();
-        return;
-    }
-
-    // Hide marketing blocks
-    const elementsToHide = [
-        document.querySelector('.hero'),
-        document.getElementById('about'),
-        document.getElementById('how-it-works'),
-        document.getElementById('testimonials'),
-        document.getElementById('join')
-    ];
-    elementsToHide.forEach(el => {
-        if (el) el.style.display = 'none';
-    });
-
-    // Inject Dashboard
-    if (!document.getElementById('mobileDashboard')) {
-        let firstName = "Lyanneur";
-        if (window.CURRENT_USER_ID && window.LYANN_API_CLIENT) {
-            try {
-                const { data } = await window.LYANN_API_CLIENT.getProfile(window.CURRENT_USER_ID);
-                if (data && data.first_name) {
-                    firstName = data.first_name;
-                }
-            } catch(e) {}
-        }
-
-        const dashboard = document.createElement('div');
-        dashboard.id = 'mobileDashboard';
-        
-        let alertsHtml = '';
-        const pendingActions = getPendingActions();
-        pendingActions.forEach(act => {
-            alertsHtml += `
-                <div class="dashboard-alert-card">
-                    <span class="dashboard-alert-card-text">🔔 ${act.message}</span>
-                    <button class="dashboard-alert-card-btn" data-contact="${act.contactName}">Voir</button>
-                </div>
-            `;
-        });
-
-        dashboard.innerHTML = `
-            <div class="dashboard-welcome">
-                <div>
-                    <h2>Bonjour ${firstName} 👋</h2>
-                    <p>Réseau d'entraide local & sécurisé</p>
-                </div>
-                <img src="david-34.png" alt="Mon Profil" class="dashboard-welcome-avatar" id="btnDashboardAvatar">
-            </div>
-
-            ${alertsHtml}
-
-            <div class="dashboard-search-bar">
-                <i class="ph ph-magnifying-glass"></i>
-                <input type="text" id="dbSearchInput" placeholder="Plombier, clim, jardinage, peintre...">
-            </div>
-
-            <div class="dashboard-quick-actions">
-                <a href="results.html?category=plomberie" class="action-pill"><i class="ph ph-drop"></i> Plomberie</a>
-                <a href="results.html?category=menage" class="action-pill"><i class="ph ph-wind"></i> Ménage</a>
-                <a href="results.html?category=jardinage" class="action-pill"><i class="ph ph-leaf"></i> Jardinage</a>
-                <a href="results.html?category=electricite" class="action-pill"><i class="ph ph-lightning"></i> Électricité</a>
-            </div>
-        `;
-
-        document.body.insertBefore(dashboard, document.body.firstChild);
-
-        // Bindings
-        document.getElementById('btnDashboardAvatar')?.addEventListener('click', () => {
-            triggerHaptic('light');
-            document.querySelector('.open-account-modal-trigger')?.click();
-        });
-
-        dashboard.querySelectorAll('.dashboard-alert-card-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                triggerHaptic('light');
-                const contact = btn.getAttribute('data-contact');
-                if (typeof openChatWithUser === 'function') {
-                    openChatWithUser(contact, 'david-34.png');
-                }
-            });
-        });
-
-        const dbSearchInput = document.getElementById('dbSearchInput');
-        if (dbSearchInput) {
-            dbSearchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    const val = dbSearchInput.value.trim();
-                    if (val) {
-                        window.location.href = `results.html?query=${encodeURIComponent(val)}`;
-                    }
-                }
-            });
-        }
-    }
-}
-
-// === INTERFACE INJECTION ENTRY POINT ===
-// Global messaging modal opener
-window.openLyannMessagesModal = function() {
-    try { triggerHaptic('light'); } catch(e) {}
-    const modal = document.getElementById('chatModal');
-    if (modal) {
-        modal.removeAttribute('style');
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        document.body.classList.add('hide-bottom-nav');
-        if (typeof window.renderMessages === 'function') {
-            try { window.renderMessages(); } catch(e) {}
-        }
-        if (typeof window.renderContactsList === 'function') {
-            try { window.renderContactsList(); } catch(e) {}
-        }
-    } else {
-        window.location.href = 'feed.html?action=openchat';
-    }
-};
-
-function injectMobileInterface() {
-    console.log("⚡ [BOOT 05] injectMobileInterface entered");
-    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.injectMobileInterfaceEntered = true;
-    logLyannTrace("injectMobileInterface_entered");
-
-    const nativeActive = isNativePlatform();
-    if (!nativeActive) {
-        if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.injectMobileInterfaceEarlyReturn = true;
-        logLyannTrace("injectMobileInterface_early_return", { reason: "isNativePlatform false" });
-        return;
-    }
-    console.log("⚡ [BOOT 06] native detected: true");
-    logLyannTrace("injectMobileInterface_native_detected");
-
-    document.body.classList.add('is-native-app');
-    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.bodyIsNativeAppApplied = document.body.classList.contains('is-native-app');
-
-    const path = window.location.pathname;
-    const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
-    const isExplorer = path.includes('results.html');
-    const isBokantaj = path.includes('feed.html');
-    const isLoggedIn = document.body.classList.contains('user-is-logged-in') || localStorage.getItem('lyan_user_logged_in') === 'true';
-
-    // DEEP LINK CHECK: Deep links bypass Accueil App and route directly
-    const hasDeepLink = window.location.search && (
-        window.location.search.includes('view=') ||
-        window.location.search.includes('action=') ||
-        window.location.search.includes('post_id=') ||
-        window.location.search.includes('chat=')
-    );
-
-    // Ensure deterministic native app header is applied immediately for ALL native routes
-    if (typeof window.ensureDeterministicAppHeader === 'function') {
-        window.ensureDeterministicAppHeader();
-    }
-
-    // NATIVE APP CONNECTED HOMEPAGE: Render App Home View on index.html when logged in
-    if (isHome && isLoggedIn && !hasDeepLink) {
-        document.querySelector('.app-welcome-screen')?.remove();
-        if (typeof window.renderAppHomeConnectedView === 'function') {
-            window.renderAppHomeConnectedView();
-        }
-    } else if (isHome && !isLoggedIn && !hasDeepLink && typeof authInitializationComplete !== 'undefined' && authInitializationComplete) {
-        if (typeof showAppWelcomeScreen === 'function') {
-            showAppWelcomeScreen();
-        }
-    }
-
-    // 1. Mobile Bottom Navigation à 5 Onglets (Accueil | Explorer | + | Bokantaj | Messages)
-    if (!document.querySelector('.mobile-bottom-nav')) {
-        const bottomNav = document.createElement('div');
-        bottomNav.className = 'mobile-bottom-nav';
-
-        bottomNav.innerHTML = `
-            <a href="index.html" class="nav-tab ${isHome ? 'active' : ''}" id="tab-home">
-                <i class="ph ph-house"></i>
-                <span>Accueil</span>
-            </a>
-            <a href="results.html" class="nav-tab ${isExplorer ? 'active' : ''}" id="tab-explorer">
-                <i class="ph ph-magnifying-glass"></i>
-                <span>Explorer</span>
-            </a>
-            <div class="nav-tab nav-tab-central-item" id="tab-create-item">
-                <button type="button" class="btn-central-action" id="tab-create" aria-label="Publier">
-                    <i class="ph ph-plus"></i>
-                </button>
-                <span class="central-tab-label">Publier</span>
-            </div>
-            <a href="feed.html" class="nav-tab ${isBokantaj ? 'active' : ''}" id="tab-bokantaj">
-                <i class="ph ph-broadcast"></i>
-                <span>Bokantaj</span>
-            </a>
-            <button type="button" class="nav-tab" id="tab-messages" aria-label="Messages">
-                <i class="ph ph-chat-circle-dots"></i>
-                <span>Messages</span>
-            </button>
-        `;
-        document.body.appendChild(bottomNav);
-        if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.bottomNavCreated = true;
-        logLyannTrace("bottomNav_created");
-        console.log("⚡ [BOOT 10] bottom nav listeners attached");
-
-        bottomNav.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                try { if (typeof triggerHaptic === 'function') triggerHaptic('light'); } catch(e) {}
-            });
-        });
-
-        // Tab "+" (Publier) click
-        const tabCreate = document.getElementById('tab-create');
-        if (tabCreate) {
-            tabCreate.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (typeof window.openLyannWizard === 'function') {
-                    window.openLyannWizard();
-                } else if (typeof window.openCentralActionSheet === 'function') {
-                    window.openCentralActionSheet();
-                }
-            });
-        }
-
-        // Messages tab click -> Open Chat Modal
-        const tabMessages = document.getElementById('tab-messages');
-        if (tabMessages) {
-            tabMessages.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.openLyannMessagesModal();
-            });
-        }
-
-        // Moi tab click
-        const tabMoi = document.getElementById('tab-moi');
-        if (tabMoi) {
-            tabMoi.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (typeof window.openAccountModalSubView === 'function') {
-                    window.openAccountModalSubView('account');
-                }
-            });
-        }
-    }
-
-    // 2. Central Action Bottom Sheet (3 grandes actions)
-    if (!document.getElementById('centralActionSheet')) {
-        const backdrop = document.createElement('div');
-        backdrop.className = 'sheet-backdrop';
-        backdrop.id = 'sheetBackdrop';
-        document.body.appendChild(backdrop);
-
-        const sheet = document.createElement('div');
-        sheet.className = 'mobile-bottom-sheet';
-        sheet.id = 'centralActionSheet';
-        sheet.innerHTML = `
-            <div class="sheet-handle"></div>
-            <h3 class="sheet-title">Que souhaitez-vous faire ?</h3>
-            <div class="sheet-options-grid">
-                <button type="button" class="sheet-option-btn" id="btnSheetNeedHelp">
-                    <span class="sheet-option-icon"><i class="ph ph-magnifying-glass"></i></span>
-                    <div class="sheet-option-info">
-                        <h4>Publier un besoin</h4>
-                        <p>Publiez ce dont vous avez besoin.</p>
-                    </div>
-                </button>
-                <button type="button" class="sheet-option-btn" id="btnSheetOfferHelp">
-                    <span class="sheet-option-icon"><i class="ph ph-hand-heart"></i></span>
-                    <div class="sheet-option-info">
-                        <h4>Proposer quelque chose</h4>
-                        <p>Partagez un service, une compétence ou une disponibilité.</p>
-                    </div>
-                </button>
-                <button type="button" class="sheet-option-btn" id="btnSheetBokantaj">
-                    <span class="sheet-option-icon"><i class="ph ph-broadcast"></i></span>
-                    <div class="sheet-option-info">
-                        <h4>Publier sur Bokantaj</h4>
-                        <p>Partagez quelque chose avec la communauté.</p>
-                    </div>
-                </button>
-            </div>
-            <button type="button" class="btn btn-outline" id="btnCloseSheet" style="margin-top: 15px; width: 100%; justify-content: center;">Fermer</button>
-        `;
-        document.body.appendChild(sheet);
-
-        const tabCreate = document.getElementById('tab-create');
-        if (tabCreate) {
-            tabCreate.addEventListener('click', (e) => {
-                e.preventDefault();
-                backdrop.classList.add('active');
-                sheet.classList.add('active');
-            });
-        }
-
-        const closeSheet = () => {
-            backdrop.classList.remove('active');
-            sheet.classList.remove('active');
-        };
-
-        backdrop.addEventListener('click', closeSheet);
-        document.getElementById('btnCloseSheet')?.addEventListener('click', closeSheet);
-
-        // Action 1: Besoin d'un coup de main → ouvre le Wizard IA
-        document.getElementById('btnSheetNeedHelp')?.addEventListener('click', () => {
-            closeSheet();
-            triggerHaptic('light');
-            if (typeof window.openLyannWizard === 'function') {
-                window.openLyannWizard();
-            } else {
-                const wizardModal = document.getElementById('modal-request-help');
-                if (wizardModal) {
-                    wizardModal.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    window.location.href = 'feed.html?openWizard=true';
-                }
-            }
-        });
-
-        // Action 2: Proposer
-        document.getElementById('btnSheetOfferHelp')?.addEventListener('click', () => {
-            closeSheet();
-            triggerHaptic('light');
-            if (document.body.classList.contains('user-is-logged-in')) {
-                const addServiceBtn = document.querySelector('.btn-add-service') || document.getElementById('btnAddService');
-                if (addServiceBtn) {
-                    addServiceBtn.click();
-                } else if (typeof window.openAddServiceModal === 'function') {
-                    window.openAddServiceModal();
-                } else {
-                    window.location.href = 'index.html?action=add-service';
-                }
-            } else {
-                window.lyannAlert("🔑 Veuillez vous connecter pour proposer vos services.");
-                document.querySelector('.open-login-trigger')?.click();
-            }
-        });
-
-        // Action 3: Bokantaj
-        document.getElementById('btnSheetBokantaj')?.addEventListener('click', () => {
-            closeSheet();
-            triggerHaptic('light');
-            if (window.location.pathname.includes('feed.html')) {
-                const textInput = document.getElementById('flashContentInput');
-                if (textInput) {
-                    textInput.focus();
-                    textInput.scrollIntoView({ behavior: 'smooth' });
-                }
-            } else {
-                window.location.href = 'feed.html?action=new-post';
-            }
-        });
-    }
-}
-window.injectMobileInterface = injectMobileInterface;
-
-// === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===
-window.renderAppHomeConnectedView = function() {
-    console.log('[AUTH_REAL] App Home mounted = true');
-    if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.appHomeMounted = true;
-
-    const mainHero = document.querySelector('.hero');
-    if (!mainHero) return;
-
-    // Remove legacy appHomeView element if present to avoid duplicate action cards
-    document.getElementById('appHomeView')?.remove();
-
-    // Ensure hero section remains visible
-    mainHero.style.display = '';
-
-    // Hide the hero visual illustration (SVG) on native — it takes too much space
-    const heroVisual = mainHero.querySelector('.hero-visual');
-    if (heroVisual) heroVisual.style.display = 'none';
-
-    // Hide web-only marketing sections on native app connected home
-    document.querySelectorAll('.trust-section, .how-section, .categories-section, .testimonials-section, .final-cta, .lyann-footer, .cta-section').forEach(sec => {
-        if (sec) sec.style.display = 'none';
-    });
-    document.querySelectorAll('#about, #how-it-works').forEach(sec => {
-        if (sec && (sec.classList.contains('trust-section') || sec.classList.contains('how-section'))) {
-            sec.style.display = 'none';
-        }
-    });
-
-    // Populate and display personalized greeting badge inside hero
-    const greetingBadge = document.getElementById('heroGreetingBadge');
-    const firstNameEl = document.getElementById('heroUserFirstName');
-
-    if (greetingBadge) {
-        greetingBadge.style.display = 'inline-flex';
-    }
-
-    try {
-        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-            window.LYANN_API_CLIENT.getCurrentUser().then(user => {
-                if (user) {
-                    let firstName = user.user_metadata?.first_name || '';
-                    if (!firstName) {
-                        window.LYANN_API_CLIENT.supabase.from('profiles').select('first_name').eq('id', user.id).single()
-                            .then(({ data }) => {
-                                if (data && data.first_name && firstNameEl) {
-                                    firstNameEl.textContent = ' ' + data.first_name;
-                                }
-                            }).catch(() => {});
-                    } else if (firstNameEl) {
-                        firstNameEl.textContent = ' ' + firstName;
-                    }
-                }
-            }).catch(() => {});
-        }
-    } catch(e) {}
-
-    // Header Natif Déterministe Mobile
-    if (typeof window.ensureDeterministicAppHeader === 'function') {
-        window.ensureDeterministicAppHeader();
-    }
-};
-
-// === HEADER NATIVE DÉTERMINISTE (APP MOBILE) ===
-window.ensureDeterministicAppHeader = function(overrideViewType) {
-    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.ensureDeterministicAppHeaderEntered = true;
-    logLyannTrace("ensureDeterministicAppHeader_entered");
-
-    if (!isNativePlatform()) {
-        logLyannTrace("ensureDeterministicAppHeader_early_return", { reason: "isNativePlatform false" });
-        return;
-    }
-
-    const path = window.location.pathname;
-    let viewType = overrideViewType;
-    
-    if (!viewType) {
-        if (path.includes('feed.html')) viewType = 'BOKANTAJ';
-        else if (path.includes('results.html')) viewType = 'EXPLORER';
-        else if (path.includes('pricing.html')) viewType = 'PRICING';
-        else if (path.includes('about.html')) viewType = 'ABOUT';
-        else if (path.includes('how-it-works.html')) viewType = 'HOW_IT_WORKS';
-        else if (path.includes('payment-portal.html')) viewType = 'PAYMENT';
-        else viewType = 'ACCUEIL';
-    }
-
-    const navbar = document.querySelector('.navbar');
-    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.publicHeaderFound = !!navbar;
-    logLyannTrace("public_header_check", { found: !!navbar });
-
-    if (!navbar) return;
-    
-    // STABILIZATION V1: Sentinel — skip re-render ONLY if header is set AND native header row is present
-    if (navbar.getAttribute('data-native-header-active') === viewType && navbar.querySelector('.native-header-row')) {
-        return;
-    }
-    const container = navbar.querySelector('.nav-container') || navbar;
-
-    const isHomeOrBokantaj = (viewType === 'ACCUEIL' || viewType === 'BOKANTAJ');
-
-    if (isHomeOrBokantaj) {
-        container.innerHTML = `
-            <div class="native-header-row" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 14px; box-sizing: border-box; height: 44px;">
-                <span class="native-header-logo" style="font-weight: 900; font-size: 1.2rem; color: var(--primary-dark); display: flex; align-items: center; gap: 8px;">
-                    <img src="logo-app.png" style="width: 28px; height: 28px; border-radius: 6px; object-fit: cover;">
-                    LYANN
-                </span>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <button type="button" class="nav-msg-btn" id="btnHeaderChat" aria-label="Messagerie" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
-                        <i class="ph ph-chat-circle-dots"></i>
-                    </button>
-                    <button type="button" class="nav-msg-btn" id="btnHeaderNotif" aria-label="Notifications" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; position: relative;">
-                        <i class="ph ph-bell"></i>
-                    </button>
-                    <button type="button" class="hamburger-menu-btn" id="btnHeaderHamburger" aria-label="Menu Principal" style="background: rgba(74, 124, 89, 0.12); border: 1.5px solid rgba(74, 124, 89, 0.25); border-radius: 12px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--primary-dark); cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                        <i class="ph ph-list"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    } else {
-        let pageTitle = "LYANN";
-        if (viewType === 'EXPLORER') pageTitle = "Explorer";
-        else if (viewType === 'ABOUT') pageTitle = "Notre Histoire";
-        else if (viewType === 'PRICING') pageTitle = "Abonnements";
-        else if (viewType === 'HOW_IT_WORKS') pageTitle = "Comment ça marche";
-        else if (viewType === 'PROFIL') pageTitle = "Mon Compte";
-        else if (viewType === 'MESSAGES') pageTitle = "Messagerie";
-
-        container.innerHTML = `
-            <div class="native-header-row" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 12px; height: 44px; box-sizing: border-box;">
-                <button type="button" id="btnNativeBack" style="background: none; border: none; font-size: 1.35rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
-                    <i class="ph ph-caret-left" style="font-weight: bold;"></i>
-                </button>
-                <div style="font-weight: 800; font-size: 1rem; color: var(--text); flex: 1; text-align: center;">${pageTitle}</div>
-                <button type="button" class="hamburger-menu-btn" id="btnHeaderHamburger" aria-label="Menu Principal" style="background: rgba(74, 124, 89, 0.12); border: 1.5px solid rgba(74, 124, 89, 0.25); border-radius: 12px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--primary-dark); cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                    <i class="ph ph-list"></i>
-                </button>
-            </div>
-        `;
-
-        document.getElementById('btnNativeBack')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            triggerHaptic('light');
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.href = 'index.html';
-            }
-        });
-    }
-
-    container.querySelector('#btnHeaderChat')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        window.openLyannMessagesModal();
-    });
-
-    container.querySelector('#btnHeaderNotif')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        triggerHaptic('light');
-        if (typeof openNotificationsModal === 'function') openNotificationsModal();
-    });
-
-    container.querySelector('#btnHeaderHamburger')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        triggerHaptic('light');
-        if (typeof window.openLyannHamburgerDrawer === 'function') {
-            window.openLyannHamburgerDrawer();
-        }
-    });
-    
-    // STABILIZATION V1: Set sentinel marker after successful header injection
-    navbar.setAttribute('data-native-header-active', viewType);
-    navbar.style.display = '';
-    navbar.style.visibility = 'visible';
-    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.nativeHeaderRowCreated = !!document.querySelector('.native-header-row');
-    logLyannTrace("nativeHeaderRow_created", { created: !!document.querySelector('.native-header-row') });
-    console.log("⚡ [BOOT 07] native header mounted for viewType:", viewType);
-};
-
     window.isExplicitDemoMode = function() {
         if (typeof window === 'undefined' || !window.location) return false;
         const host = window.location.hostname;
@@ -2111,7 +1023,7 @@ safeDomReady(() => {
     }
 
     let activeContactName = 'Prestataire LYANN';
-    let activeContactAvatar = 'david-34.png';
+    let activeContactAvatar = window.getLyannDefaultAvatar ? window.getLyannDefaultAvatar() : '';
 
     // === SCROLL REVEAL ANIMATION (IntersectionObserver) ===
     const revealElements = document.querySelectorAll('.reveal');
@@ -2326,197 +1238,58 @@ safeDomReady(() => {
         const client = window.LYANN_API_CLIENT || window.apiClient;
         console.log('[PROFILE_ID_TRACE] openPublicMemberProfile memberId =', memberId);
 
-        let activeUserId = null;
-        if (client && client.getSession) {
-            try {
-                const s = await client.getSession();
-                activeUserId = s?.data?.session?.user?.id || null;
-            } catch (e) {}
-        }
-        
-        if (!memberId && activeUserId) {
-            memberId = activeUserId;
+        if (!window.LYANN_PROFILE_REPOSITORY) {
+            throw new Error('LYANN_PROFILE_REPOSITORY is not available');
         }
 
-        const isSelf = !!(activeUserId && String(activeUserId) === String(memberId));
-
-        // 1. Initial neutral profile template (NO fallback to Jocelyn / LYANN_MEMBERS[0])
-        let profileData = {
-            id: memberId,
-            first_name: '',
-            last_name: '',
-            last_name_initial: '',
-            display_name: 'Lyanneur',
-            city: 'Guadeloupe',
-            territory: 'Guadeloupe (971)',
-            bio: '',
-            avatar_url: null,
-            is_verified: false,
-            is_pro_verified: false,
-            completion_pct: 20,
-            member_since: null,
-            skills: [],
-            metrics: {
-                average_rating: null,
-                reviews_count: 0,
-                completed_missions: 0,
-                response_rate_percent: null,
-                avg_response_time_label: '—',
-                repeat_users_count: 0
-            }
-        };
-
-        // Check if memberId matches a legacy static member explicitly (numeric ID only)
-        const matchLegacyMember = (window.LYANN_MEMBERS && Array.isArray(window.LYANN_MEMBERS))
-            ? window.LYANN_MEMBERS.find(m => String(m.id) === String(memberId))
+        // PROFILE INTERACTION: open shell before data round-trip.
+        const profileLoadingHost = publicMemberProfileModal
+            ? (publicMemberProfileModal.querySelector('.modal-card') || publicMemberProfileModal)
             : null;
+        let profileLoadingOverlay = null;
 
-        if (matchLegacyMember) {
-            currentVisitingMember = matchLegacyMember;
-            profileData = {
-                id: memberId,
-                display_name: matchLegacyMember.name,
-                first_name: matchLegacyMember.name ? matchLegacyMember.name.split(' ')[0] : 'Membre',
-                last_name_initial: matchLegacyMember.name && matchLegacyMember.name.split(' ')[1] ? matchLegacyMember.name.split(' ')[1].substring(0, 1) + '.' : '',
-                city: matchLegacyMember.city || 'Guadeloupe',
-                territory: matchLegacyMember.locationName || 'Guadeloupe (971)',
-                bio: matchLegacyMember.bio || '',
-                avatar_url: matchLegacyMember.avatar,
-                is_verified: !!matchLegacyMember.badge,
-                is_pro_verified: !!matchLegacyMember.isPro,
-                completion_pct: 75,
-                member_since: '2026',
-                skills: matchLegacyMember.skills || [],
-                metrics: {
-                    average_rating: matchLegacyMember.rating || null,
-                    reviews_count: matchLegacyMember.reviewsCount || 0,
-                    completed_missions: 0,
-                    response_rate_percent: null,
-                    avg_response_time_label: '—',
-                    repeat_users_count: 0
-                }
-            };
-        }
+        if (publicMemberProfileModal) {
+            if (searchResultsModal) searchResultsModal.classList.remove('active');
+            publicMemberProfileModal.classList.add('active');
+            publicMemberProfileModal.setAttribute('aria-busy', 'true');
+            document.body.style.overflow = 'hidden';
 
-        // 2. Query real Supabase Profile if valid memberId / UUID
-        let dbProfileFound = false;
-        if (client && client.getProfile && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
-            console.log('[PROFILE_ID_TRACE] Supabase profile query id =', memberId);
-            try {
-                const profRes = await client.getProfile(memberId);
-                if (profRes && profRes.data) {
-                    const p = profRes.data;
-                    dbProfileFound = true;
-                    profileData.id = p.id || memberId;
-                    profileData.first_name = (p.first_name || '').trim();
-                    profileData.last_name = (p.last_name || '').trim();
-                    profileData.last_name_initial = profileData.last_name ? (profileData.last_name.charAt(0).toUpperCase() + '.') : '';
-                    profileData.display_name = window.formatPublicName(profileData, null, 'Lyanneur');
-                    profileData.city = (p.city && p.city.trim().toLowerCase() !== 'guadeloupe') ? p.city.trim() : null;
-                    profileData.territory = p.territory || 'Guadeloupe (971)';
-                    profileData.bio = p.bio || '';
-                    profileData.avatar_url = p.avatar_url || null;
-                    profileData.is_verified = !!p.is_verified;
-                    profileData.is_pro_verified = !!(p.is_pro && p.kyc_verified);
-                    if (p.created_at) {
-                        profileData.member_since = new Date(p.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-                    }
+            if (profileLoadingHost) {
+                if (window.getComputedStyle && window.getComputedStyle(profileLoadingHost).position === 'static') {
+                    profileLoadingHost.style.position = 'relative';
                 }
-            } catch (err) {
-                console.warn('[PROFILE V2] getProfile query notice:', err);
+                profileLoadingOverlay = profileLoadingHost.querySelector('.lyann-profile-loading-overlay');
+                if (!profileLoadingOverlay) {
+                    profileLoadingOverlay = document.createElement('div');
+                    profileLoadingOverlay.className = 'lyann-profile-loading-overlay';
+                    profileLoadingOverlay.setAttribute('role', 'status');
+                    profileLoadingOverlay.setAttribute('aria-live', 'polite');
+                    profileLoadingOverlay.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; min-height:220px; padding:32px;"><i class="ph ph-circle-notch spin" style="font-size:1.7rem; color:#4A7C59;"></i><span style="font-size:0.9rem; font-weight:700; color:#475569;">Chargement du profil…</span></div>';
+                    profileLoadingOverlay.style.cssText = 'position:absolute;inset:0;z-index:60;background:#fff;border-radius:inherit;display:flex;align-items:center;justify-content:center;';
+                    profileLoadingHost.appendChild(profileLoadingOverlay);
+                }
             }
         }
 
-        console.log('[PROFILE_ID_TRACE] returned profile.id =', profileData.id);
-        console.log('[PROFILE_ID_TRACE] returned profile name =', profileData.display_name);
-
-        // 3. Query real Trust & Reputation Engine (RPC)
-        if (client && client.getUserTrustAndReputation && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
-            console.log('[PROFILE_ID_TRACE] trust/reputation profile id =', memberId);
-            try {
-                const trustRes = await client.getUserTrustAndReputation(memberId);
-                if (trustRes && trustRes.data && !trustRes.data.error) {
-                    const t = trustRes.data;
-                    if (t.first_name) profileData.first_name = t.first_name;
-                    if (t.last_name_initial) profileData.last_name_initial = t.last_name_initial;
-                    if (t.display_name) profileData.display_name = t.display_name;
-                    if (t.city) profileData.city = t.city;
-                    if (t.territory) profileData.territory = t.territory;
-                    if (t.bio !== undefined && t.bio !== null) profileData.bio = t.bio;
-                    if (t.avatar_url !== undefined && t.avatar_url !== null) profileData.avatar_url = t.avatar_url;
-                    profileData.is_verified = !!t.is_verified;
-                    profileData.is_pro_verified = !!t.is_pro_verified;
-                    if (t.completion_pct) profileData.completion_pct = t.completion_pct;
-                    if (t.member_since) profileData.member_since = t.member_since;
-                    if (Array.isArray(t.skills) && t.skills.length > 0) profileData.skills = t.skills;
-                    
-                    if (t.metrics) {
-                        profileData.metrics = {
-                            average_rating: t.metrics.average_rating ?? null,
-                            reviews_count: t.metrics.reviews_count ?? 0,
-                            completed_missions: t.metrics.completed_missions ?? 0,
-                            response_rate_percent: t.metrics.response_rate_percent ?? null,
-                            avg_response_time_label: t.metrics.avg_response_time_label || '—',
-                            repeat_users_count: t.metrics.repeat_users_count ?? 0
-                        };
-                    }
-                }
-            } catch (err) {
-                console.warn('[PROFILE V2] Trust Engine query notice:', err);
-            }
+        let profileBundle;
+        try {
+            profileBundle = await window.LYANN_PROFILE_REPOSITORY.load(memberId);
+        } catch (error) {
+            if (profileLoadingOverlay) profileLoadingOverlay.remove();
+            if (publicMemberProfileModal) publicMemberProfileModal.setAttribute('aria-busy', 'false');
+            throw error;
         }
 
-        // 4. Query real portfolio
-        let portfolioItems = [];
-        if (client && client.getUserPortfolio && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
-            console.log('[PROFILE_ID_TRACE] portfolio profile id =', memberId);
-            try {
-                const portRes = await client.getUserPortfolio(memberId, isSelf);
-                if (portRes && portRes.data) portfolioItems = portRes.data;
-            } catch (e) {}
-        }
-
-        // 5. Query real services
-        let userServices = [];
-        if (client && client.getUserServices && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
-            console.log('[PROFILE_ID_TRACE] services profile id =', memberId);
-            try {
-                const servRes = await client.getUserServices(memberId);
-                if (servRes && servRes.data) userServices = servRes.data;
-            } catch (e) {}
-        }
-
-        // 6. Query real reviews
-        let reviewsList = [];
-        if (client && client.supabase && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
-            console.log('[PROFILE_ID_TRACE] reviews profile id =', memberId);
-            try {
-                const { data: dbReviews } = await client.supabase
-                    .from('reviews')
-                    .select('*, author:profiles!author_id(first_name, last_name, avatar_url, city)')
-                    .eq('target_id', memberId)
-                    .order('created_at', { ascending: false });
-
-                if (dbReviews) {
-                    reviewsList = dbReviews.map(r => ({
-                        name: window.formatPublicName(r.author, null, 'Membre'),
-                        city: r.author?.city || 'Guadeloupe',
-                        date: new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-                        rating: Number(r.rating).toFixed(1),
-                        comment: r.comment || 'Coup de main réalisé avec succès.'
-                    }));
-                }
-            } catch (e) {}
-        }
-
-        // 7. Ensure reviews count and metrics consistency
-        const actualReviewsCount = reviewsList.length;
-        if (profileData.metrics) {
-            profileData.metrics.reviews_count = actualReviewsCount;
-            if (actualReviewsCount === 0) {
-                profileData.metrics.average_rating = null;
-            }
-        }
+        if (profileLoadingOverlay) profileLoadingOverlay.remove();
+        if (publicMemberProfileModal) publicMemberProfileModal.setAttribute('aria-busy', 'false');
+        memberId = profileBundle.memberId;
+        const activeUserId = profileBundle.activeUserId;
+        const isSelf = profileBundle.isSelf;
+        const profileData = profileBundle.profileData;
+        const portfolioItems = profileBundle.portfolioItems;
+        const userServices = profileBundle.userServices;
+        const reviewsList = profileBundle.reviewsList;
+        const dbProfileFound = profileBundle.dbProfileFound;
 
         console.log('[PROFILE_RECOVERY] authUserId:', activeUserId);
         console.log('[PROFILE_RECOVERY] targetProfileId:', memberId);
@@ -3873,10 +2646,11 @@ safeDomReady(() => {
         }
     };
 
-    window.loadBokantajFeedFromSupabase = async function() {
+    window.loadBokantajFeedFromSupabase = async function(options = {}) {
         console.log("[BOKANTAJ] init start");
         bokantajFeedState = 'LOADING';
-        
+        renderFlashFeed();
+
         const isExplicitDemoMode = typeof window !== 'undefined' && (
             window.LYANN_FORCE_DEMO_DATA === true ||
             (window.location && window.location.search && (
@@ -3885,72 +2659,26 @@ safeDomReady(() => {
             ))
         );
 
-        let client = window.LYANN_API_CLIENT;
-        if (client && !client.supabase && window.supabase) {
-            const _sp = client.supabase;
-        }
-
-        if (client && client.supabase) {
-            console.log("[BOKANTAJ] supabase ready");
-        } else {
-            console.warn("[BOKANTAJ] supabase client NOT ready");
-        }
-
-        console.log("[BOKANTAJ] load start");
-        renderFlashFeed();
-
         try {
-            if (!client || !client.supabase) {
-                if (!isExplicitDemoMode) {
-                    console.warn("[BOKANTAJ] Supabase client not ready -> ERROR state");
-                    bokantajFeedState = 'ERROR';
-                    currentFlashPosts = [];
-                    return;
-                }
-                currentFlashPosts = [...INITIAL_FLASH_POSTS];
-                bokantajFeedState = 'READY';
-                return;
+            if (!window.LYANN_BOKANTAJ_REPOSITORY) {
+                throw new Error('LYANN_BOKANTAJ_REPOSITORY is not available');
             }
 
-            const { data, error } = await client.getFeed();
-            console.log("[BOKANTAJ] getFeed resolved", { error, count: data ? data.length : 0 });
-            console.log("[BOKANTAJ] item count", data ? data.length : 0);
-
-            if (error || !data) {
-                console.warn("[Bokantaj Feed] Supabase fetch error:", error);
-                if (!isExplicitDemoMode) {
-                    bokantajFeedState = 'ERROR';
-                    currentFlashPosts = [];
-                } else {
-                    currentFlashPosts = [...INITIAL_FLASH_POSTS];
-                    bokantajFeedState = 'READY';
-                }
-            } else {
-                currentFlashPosts = data;
-                bokantajFeedState = (data.length === 0) ? 'EMPTY' : 'READY';
-
-                // DEV Logger
-                if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || (window.location.search && window.location.search.includes('dev=true')))) {
-                    console.log(`[BOKANTAJ FEED DEV LOG] Loaded ${data.length} unified items from SUPABASE:`);
-                    data.forEach(item => {
-                        console.log(`  - [${item.item_type}] id=${item.id} | source=SUPABASE | location="${item.location}" | territoryKey="${item.territoryKey}" | created_at=${item.created_at}`);
-                    });
-                }
-            }
+            const data = await window.LYANN_BOKANTAJ_REPOSITORY.load({ force: options.force === true });
+            currentFlashPosts = Array.isArray(data) ? data : [];
+            bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
         } catch (err) {
             console.error("[BOKANTAJ] Error during load:", err);
-            if (!isExplicitDemoMode) {
-                bokantajFeedState = 'ERROR';
-                currentFlashPosts = [];
-            } else {
+            if (isExplicitDemoMode) {
                 currentFlashPosts = [...INITIAL_FLASH_POSTS];
-                bokantajFeedState = 'READY';
+                bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
+            } else {
+                currentFlashPosts = [];
+                bokantajFeedState = 'ERROR';
             }
         } finally {
-            console.log("[BOKANTAJ] render start");
             renderFlashFeed();
             window.renderTalentsSidebar(isExplicitDemoMode);
-            console.log("[BOKANTAJ] loading removed");
         }
     };
 
@@ -4314,24 +3042,64 @@ safeDomReady(() => {
         document.querySelectorAll('.btn-like-flash').forEach(btn => {
             if (btn.dataset.listenersBound === 'true') return;
             btn.dataset.listenersBound = 'true';
+            btn.setAttribute('aria-pressed', btn.classList.contains('liked') ? 'true' : 'false');
+
             btn.addEventListener('click', async () => {
                 const targetId = btn.dataset.targetId;
                 const targetType = btn.dataset.targetType || 'POST';
-                if (!targetId || !window.LYANN_API_CLIENT) return;
+                if (!targetId || !window.LYANN_API_CLIENT || btn.dataset.likePending === 'true') return;
 
-                const res = await window.LYANN_API_CLIENT.toggleLike(targetId, targetType);
                 const countSpan = btn.querySelector('.like-count');
-                if (countSpan) countSpan.textContent = res.likesCount;
-                if (res.liked) {
-                    btn.classList.add('liked');
-                    btn.style.background = 'rgba(231, 111, 81, 0.12)';
-                    btn.style.borderColor = '#E76F51';
-                    btn.style.color = '#E76F51';
-                } else {
-                    btn.classList.remove('liked');
-                    btn.style.background = '#FFF';
-                    btn.style.borderColor = '#E2E8F0';
-                    btn.style.color = '#475569';
+                const heart = btn.querySelector('.ph-heart');
+                const previousLiked = btn.classList.contains('liked');
+                const previousCount = Math.max(0, parseInt((countSpan?.textContent || '0').replace(/[^0-9]/g, ''), 10) || 0);
+                const nextLiked = !previousLiked;
+                const optimisticCount = Math.max(0, previousCount + (nextLiked ? 1 : -1));
+
+                const paintLikeState = (liked, count) => {
+                    btn.classList.toggle('liked', liked);
+                    btn.setAttribute('aria-pressed', liked ? 'true' : 'false');
+                    btn.style.color = liked ? '#E76F51' : '#64748B';
+                    btn.style.background = 'none';
+                    btn.style.border = 'none';
+                    if (heart) heart.style.color = liked ? '#E76F51' : '#94A3B8';
+                    if (countSpan) countSpan.textContent = String(Math.max(0, Number(count) || 0)) + " J'aime";
+                };
+
+                const matchingPost = currentFlashPosts.find(post => {
+                    if (!post) return false;
+                    return [post.id, post.post_id, post.request_id].some(id => id && String(id) === String(targetId));
+                });
+
+                // OPTIMISTIC UI: paint before network round-trip.
+                paintLikeState(nextLiked, optimisticCount);
+                if (matchingPost) {
+                    matchingPost.user_has_liked = nextLiked;
+                    matchingPost.likes = optimisticCount;
+                }
+                btn.dataset.likePending = 'true';
+
+                try {
+                    const res = await window.LYANN_API_CLIENT.toggleLike(targetId, targetType);
+                    if (!res || typeof res.liked !== 'boolean') throw new Error('Invalid like response');
+                    const serverCount = Number.isFinite(Number(res.likesCount)) ? Number(res.likesCount) : optimisticCount;
+                    paintLikeState(res.liked, serverCount);
+                    if (matchingPost) {
+                        matchingPost.user_has_liked = res.liked;
+                        matchingPost.likes = serverCount;
+                    }
+                    if (window.LYANN_BOKANTAJ_REPOSITORY && typeof window.LYANN_BOKANTAJ_REPOSITORY.invalidate === 'function') {
+                        window.LYANN_BOKANTAJ_REPOSITORY.invalidate();
+                    }
+                } catch (error) {
+                    console.warn('[BOKANTAJ] Like sync failed; reverting optimistic state.', error);
+                    paintLikeState(previousLiked, previousCount);
+                    if (matchingPost) {
+                        matchingPost.user_has_liked = previousLiked;
+                        matchingPost.likes = previousCount;
+                    }
+                } finally {
+                    delete btn.dataset.likePending;
                 }
             });
         });
@@ -4701,12 +3469,33 @@ safeDomReady(() => {
     const sheetNearbyToggle = document.getElementById('sheetNearbyToggle');
 
     // 1. Open Filter Sheet
-    if (btnOpenFilterSheet && filterSheetModal) {
-        btnOpenFilterSheet.addEventListener('click', (e) => {
+    const openBokantajFilterSheetNow = (e) => {
+        if (e) {
             e.preventDefault();
-            filterSheetModal.classList.add('active');
-            filterSheetModal.style.display = 'flex';
-            document.body.classList.add('sheet-open');
+            e.stopPropagation();
+        }
+        filterSheetModal.style.display = 'flex';
+        filterSheetModal.classList.add('active');
+        filterSheetModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('sheet-open');
+    };
+
+    // FILTER INTERACTION: pointer-up opens the sheet without waiting for click synthesis.
+    if (btnOpenFilterSheet && filterSheetModal) {
+        let lastFilterPointerOpen = 0;
+        btnOpenFilterSheet.addEventListener('pointerup', (e) => {
+            lastFilterPointerOpen = Date.now();
+            openBokantajFilterSheetNow(e);
+        }, { passive: false });
+
+        // Keyboard / older browser fallback. Pointer-triggered clicks are de-duplicated.
+        btnOpenFilterSheet.addEventListener('click', (e) => {
+            if (Date.now() - lastFilterPointerOpen < 500) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            openBokantajFilterSheetNow(e);
         });
     }
 
@@ -6774,8 +5563,25 @@ safeDomReady(() => {
                 return;
             }
 
-            favBtn.style.opacity = '0.5';
-            favBtn.disabled = true;
+            if (favBtn.dataset.favoritePending === 'true') return;
+
+            const previousFavorite = favBtn.classList.contains('is-favorite');
+            const nextFavorite = !previousFavorite;
+
+            const paintFavoriteState = (isFavorite) => {
+                favBtn.classList.toggle('is-favorite', isFavorite);
+                favBtn.style.color = isFavorite ? '#4A7C59' : '#94A3B8';
+                favBtn.innerHTML = isFavorite
+                    ? '<i class="ph-fill ph-bookmark-simple"></i>'
+                    : '<i class="ph ph-bookmark-simple"></i>';
+                favBtn.setAttribute('aria-label', isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris');
+                favBtn.setAttribute('title', isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris');
+                favBtn.setAttribute('aria-pressed', isFavorite ? 'true' : 'false');
+            };
+
+            // OPTIMISTIC FAVORITE UI: paint before network round-trip.
+            paintFavoriteState(nextFavorite);
+            favBtn.dataset.favoritePending = 'true';
 
             try {
                 const res = await window.LyannFavoritesService.toggleFavorite(type, id);
@@ -6783,6 +5589,7 @@ safeDomReady(() => {
                 console.log(`[FavoriteMutation] operation=${res.operation || 'UNKNOWN'} table=user_favorites userId=${currentUserId || 'UNKNOWN'} entityType=${type} entityId=${id} result=${res.success ? 'SUCCESS' : 'ERROR'} errorCode=${res.errorCode || 'NONE'} errorMessage=${res.error || 'NONE'} insertedRowId=${res.data?.id || 'NONE'}`);
 
                 if (!res.success) {
+                    paintFavoriteState(previousFavorite);
                     if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
                         window.NotificationService.showToast('warning', res.error || "Impossible de modifier vos favoris.");
                     } else if (typeof window.lyannAlert === 'function') {
@@ -6791,24 +5598,11 @@ safeDomReady(() => {
                     return;
                 }
 
-                if (res.operation === 'ADD') {
-                    favBtn.classList.add('is-favorite');
-                    favBtn.style.color = '#4A7C59';
-                    favBtn.innerHTML = '<i class="ph-fill ph-bookmark-simple"></i>';
-                    favBtn.setAttribute('aria-label', 'Retirer des favoris');
-                    favBtn.setAttribute('title', 'Retirer des favoris');
-                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                        window.NotificationService.showToast('success', 'Ajouté à vos favoris.');
-                    }
-                } else {
-                    favBtn.classList.remove('is-favorite');
-                    favBtn.style.color = '#94A3B8';
-                    favBtn.innerHTML = '<i class="ph ph-bookmark-simple"></i>';
-                    favBtn.setAttribute('aria-label', 'Ajouter aux favoris');
-                    favBtn.setAttribute('title', 'Ajouter aux favoris');
-                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                        window.NotificationService.showToast('info', 'Retiré de vos favoris.');
-                    }
+                const serverFavorite = res.operation === 'ADD';
+                paintFavoriteState(serverFavorite);
+
+                if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                    window.NotificationService.showToast(serverFavorite ? 'success' : 'info', serverFavorite ? 'Ajouté à vos favoris.' : 'Retiré de vos favoris.');
                 }
 
                 if (document.getElementById('favSubViewContainer')) {
@@ -6817,9 +5611,9 @@ safeDomReady(() => {
                 }
             } catch (err) {
                 console.error('[FavoriteTap] Toggle error:', err);
+                paintFavoriteState(previousFavorite);
             } finally {
-                favBtn.style.opacity = '1';
-                favBtn.disabled = false;
+                delete favBtn.dataset.favoritePending;
             }
         }
 
@@ -8288,7 +7082,7 @@ safeDomReady(() => {
         const selectedCategory = categorySelect ? categorySelect.value : 'all';
         const selectedSort = sortSelect ? sortSelect.value : 'recommended';
 
-        // 1. Fetch Candidates (Supabase DB profiles with DEV/DEMO isolation)
+        // 1. Fetch Candidates through centralized cached Explorer repository
         let candidatesList = [];
         let callingUserId = null;
         let searchHasError = false;
@@ -8301,102 +7095,58 @@ safeDomReady(() => {
             ))
         );
 
-        const isDevDebug = typeof window !== 'undefined' && (
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1' ||
-            window.location.protocol === 'file:' ||
-            (window.location && window.location.search && (
-                window.location.search.includes('debug=true') ||
-                window.location.search.includes('demo=true') ||
-                window.location.search.includes('dev=true')
-            ))
-        );
-
         try {
-            if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-                const currentUser = await window.LYANN_API_CLIENT.getCurrentUser().catch(() => null);
-                if (currentUser) callingUserId = currentUser.id;
+            if (!window.LYANN_EXPLORER_REPOSITORY) {
+                throw new Error('LYANN_EXPLORER_REPOSITORY unavailable');
+            }
 
-                const { data: dbProfiles, error } = await window.LYANN_API_CLIENT.supabase
-                    .from('profiles')
-                    .select('*')
-                    .neq('id', callingUserId || '00000000-0000-0000-0000-000000000000');
+            if (window.LYANN_AUTH_STATE && typeof window.LYANN_AUTH_STATE.getUserId === 'function') {
+                callingUserId = window.LYANN_AUTH_STATE.getUserId() || null;
+            }
 
-                if (error) {
-                    console.error("❌ [LYANN SEARCH] Supabase profiles fetch error:", error);
-                    searchHasError = true;
-                } else if (dbProfiles) {
-                    // Strict UUID Deduplication
-                    const seenIds = new Set();
-                    candidatesList = dbProfiles.filter(p => {
-                        if (!p.id || seenIds.has(p.id)) return false;
-                        seenIds.add(p.id);
-                        return true;
-                    }).map(p => ({
-                        id: p.id,
-                        user_id: p.id,
-                        name: window.formatPublicName ? window.formatPublicName(p, null, 'Lyanneur') : (p.first_name || 'Lyanneur'),
-                        avatar: window.getLyannAvatarUrl(p.avatar_url),
-                        role: p.headline || p.activity || p.role || 'Services & Entraide',
-                        category: p.category || p.activity || 'general',
-                        city: p.city || p.location || 'Guadeloupe',
-                        location: p.territory || p.location || 'guadeloupe',
-                        rating: p.rating || 5.0,
-                        reviewsCount: p.reviews_count || 0,
-                        completed_missions_count: p.completed_missions_count || 0,
-                        is_verified_pro: p.is_verified || p.account_type === 'pro',
-                        skills: p.skills || [],
-                        bio: p.bio || p.headline || '',
-                        subscription_plan: p.subscription_plan || 'FREE',
-                        source: 'SUPABASE'
-                    }));
-                }
+            // If cached results exist, use them immediately; repository refresh is deduped.
+            const cachedCandidates = window.LYANN_EXPLORER_REPOSITORY.peek();
+            if (Array.isArray(cachedCandidates)) {
+                candidatesList = cachedCandidates;
             } else {
-                if (!isExplicitDemoMode) searchHasError = true;
+                candidatesList = await window.LYANN_EXPLORER_REPOSITORY.load();
             }
         } catch (err) {
-            console.error("❌ [LYANN SEARCH] Supabase client exception:", err);
+            console.error('❌ [LYANN SEARCH] Explorer repository error:', err);
             searchHasError = true;
         }
 
-        // Error vs Mock Fixtures Handling
         if (searchHasError) {
             container.innerHTML = `
                 <div class="search-error-state" style="grid-column: 1/-1; padding: 40px 20px; text-align: center; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed #E2E8F0;">
                     <i class="ph ph-warning-circle" style="font-size: 2.5rem; color: #DC2626; margin-bottom: 10px;"></i>
                     <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1E293B;">Impossible de charger les Lyanneurs pour le moment.</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Veuillez vérifier votre connexion Supabase ou réessayer plus tard.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Veuillez réessayer dans quelques instants.</p>
                 </div>
             `;
             return;
         }
 
-        // DEMO mode ONLY: populate mock fixtures if explicitly requested AND candidatesList is empty
+        // Demo fixtures remain available only when explicitly requested.
         if (isExplicitDemoMode && candidatesList.length === 0 && window.LYANN_MEMBERS && Array.isArray(window.LYANN_MEMBERS)) {
-            const seenIds = new Set();
-            window.LYANN_MEMBERS.forEach(m => {
-                const memberId = String(m.id || m.user_id || m.name);
-                if (seenIds.has(memberId)) return;
-                seenIds.add(memberId);
-                candidatesList.push({
-                    id: memberId,
-                    user_id: memberId,
-                    name: m.name,
-                    avatar: m.avatar || 'david-34.png',
-                    role: m.role || 'Services & Entraide',
-                    category: m.category || 'general',
-                    city: m.city || 'Baie-Mahault',
-                    location: m.location || 'guadeloupe',
-                    rating: m.rating || 4.9,
-                    reviewsCount: m.reviewsCount || 12,
-                    completed_missions_count: m.completedMissions || 15,
-                    is_verified_pro: m.badge === 'Artisan Vérifié' || m.isVerified === true,
-                    skills: m.skills || m.keywords || [],
-                    bio: m.bio || '',
-                    subscription_plan: m.subscription_plan || 'FREE',
-                    source: 'DEMO'
-                });
-            });
+            candidatesList = window.LYANN_MEMBERS.map(m => ({
+                id: String(m.id || m.user_id || m.name),
+                user_id: String(m.id || m.user_id || m.name),
+                name: m.name,
+                avatar: m.avatar || '/default-avatar.svg',
+                role: m.role || 'Services & Entraide',
+                category: m.category || 'general',
+                city: m.city || 'Guadeloupe',
+                location: m.location || 'guadeloupe',
+                rating: m.rating || 0,
+                reviewsCount: m.reviewsCount || 0,
+                completed_missions_count: m.completedMissions || 0,
+                is_verified_pro: m.badge === 'Artisan Vérifié' || m.isVerified === true,
+                skills: m.skills || m.keywords || [],
+                bio: m.bio || '',
+                subscription_plan: m.subscription_plan || 'FREE',
+                source: 'DEMO'
+            }));
         }
 
         // 2. Invoke LyannSearchEngine.performUniversalSearch
