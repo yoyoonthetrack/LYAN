@@ -87,12 +87,15 @@ if (fs.existsSync(path.join(root, 'feed.html'))) {
 
   const apiClient = indexOfOrInfinity(html, '<script src="api-client.js');
   const sessionStore = indexOfOrInfinity(html, '<script src="session-store.js');
+  const authState = indexOfOrInfinity(html, '<script src="auth-state.js"></script>');
   const dataCache = indexOfOrInfinity(html, '<script src="data-cache.js');
   const featureLoader = indexOfOrInfinity(html, '<script src="feature-loader.js');
-  if (!Number.isFinite(sessionStore) || !Number.isFinite(dataCache)) fail('feed.html: shared session/data cache boot layer is missing');
+  if (!Number.isFinite(sessionStore) || !Number.isFinite(authState) || !Number.isFinite(dataCache)) {
+    fail('feed.html: shared session/auth/data boot layer is missing');
+  }
   if (!Number.isFinite(featureLoader)) fail('feed.html: deferred feature loader is missing');
-  if (!(apiClient < sessionStore && sessionStore < dataCache && dataCache < featureLoader && featureLoader < scriptJs)) {
-    fail('feed.html: core boot order must be api-client -> session-store -> data-cache -> feature-loader -> script.js');
+  if (!(apiClient < sessionStore && sessionStore < authState && authState < dataCache && dataCache < featureLoader && featureLoader < scriptJs)) {
+    fail('feed.html: core boot order must be api-client -> session-store -> auth-state -> data-cache -> feature-loader -> script.js');
   }
 
   if (html.includes('https://js.stripe.com/v3/')) fail('feed.html: Stripe SDK must not be eager-loaded on the Bokantaj critical path');
@@ -106,21 +109,24 @@ if (fs.existsSync(path.join(root, 'feed.html'))) {
   if (eagerScripts.length >= 5) warn(`feed.html: ${eagerScripts.length} feature scripts remain on the Bokantaj critical path; continue modularization`);
 }
 
-for (const requiredModule of ['platform-core.js', 'notifications-ui.js', 'app-shell.js']) {
-  if (!fs.existsSync(path.join(root, requiredModule))) fail(`${requiredModule}: extracted domain file missing`);
+for (const requiredModule of ['platform-core.js', 'notifications-ui.js', 'app-shell.js', 'session-store.js', 'auth-state.js', 'data-cache.js']) {
+  if (!fs.existsSync(path.join(root, requiredModule))) fail(`${requiredModule}: extracted/shared domain file missing`);
+}
+
+if (fs.existsSync(path.join(root, 'auth-state.js'))) {
+  const authState = read('auth-state.js');
+  if (!authState.includes('window.LYANN_SESSION.subscribe')) fail('auth-state.js: must subscribe to the shared session store');
+  if (!authState.includes("classList.toggle('user-is-logged-in'")) fail('auth-state.js: must own authenticated body state');
+  if (!authState.includes('window.CURRENT_USER_ID')) fail('auth-state.js: legacy user id bridge is missing');
 }
 
 if (fs.existsSync(path.join(root, 'app-shell.js'))) {
   const shell = read('app-shell.js');
-  if (!shell.includes('// === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===')) {
-    fail('app-shell.js: connected home renderer is missing');
-  }
-  if (!shell.includes('// === HEADER NATIVE DÉTERMINISTE (APP MOBILE) ===')) {
-    fail('app-shell.js: native header renderer is missing');
-  }
-  if (shell.includes('david-34.png')) {
-    fail('app-shell.js: fake dashboard/chat avatar must not be used');
-  }
+  if (!shell.includes('// === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===')) fail('app-shell.js: connected home renderer is missing');
+  if (!shell.includes('// === HEADER NATIVE DÉTERMINISTE (APP MOBILE) ===')) fail('app-shell.js: native header renderer is missing');
+  if (shell.includes('david-34.png')) fail('app-shell.js: fake dashboard/chat avatar must not be used');
+  if (shell.includes("localStorage.getItem('lyan_user_logged_in') === 'true'")) fail('app-shell.js: localStorage must not be an authentication source of truth');
+  if (!shell.includes('window.LYANN_AUTH_STATE.ready()')) fail('app-shell.js: native shell must wait for centralized auth resolution');
 }
 
 if (fs.existsSync(path.join(root, 'script.js'))) {
