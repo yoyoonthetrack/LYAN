@@ -5,6 +5,7 @@
 
   const CONVERSATION_TTL_MS = 30_000;
   const MESSAGES_TTL_MS = 5_000;
+  const QUOTE_CONTEXT_TTL_MS = 10_000;
 
   function api() {
     return window.LYANN_API_CLIENT || window.apiClient || null;
@@ -101,10 +102,74 @@
       : loader();
   }
 
+  async function getQuoteContext(userId, contactId, options = {}) {
+    const client = api();
+    if (!client || !client.supabase || !userId || !contactId) return [];
+
+    const c = cache();
+    const key = pairKey(userId, contactId);
+    if (options.fresh && c) c.invalidate('chat-quote-context', key);
+
+    const loader = async () => {
+      const invitation = typeof client.getActiveInvitationBetween === 'function'
+        ? await client.getActiveInvitationBetween(userId, contactId)
+        : null;
+      if (!invitation || !invitation.id) return [];
+
+      const { data: quotes, error: quoteError } = await client.supabase
+        .from('quotes')
+        .select('*')
+        .eq('request_invitation_id', invitation.id)
+        .order('created_at', { ascending: false });
+      if (quoteError) throw quoteError;
+      if (!quotes || quotes.length === 0) return [];
+
+      const quoteIds = quotes.map((quote) => quote.id).filter(Boolean);
+      let milestones = [];
+      if (quoteIds.length > 0) {
+        const { data: milestoneRows, error: milestoneError } = await client.supabase
+          .from('milestones')
+          .select('*')
+          .in('quote_id', quoteIds)
+          .order('position', { ascending: true });
+        if (milestoneError) {
+          const fallback = await client.supabase
+            .from('milestones')
+            .select('*')
+            .in('quote_id', quoteIds)
+            .order('created_at', { ascending: true });
+          if (fallback.error) throw fallback.error;
+          milestones = fallback.data || [];
+        } else {
+          milestones = milestoneRows || [];
+        }
+      }
+
+      const byQuote = new Map();
+      for (const milestone of milestones) {
+        if (!byQuote.has(milestone.quote_id)) byQuote.set(milestone.quote_id, []);
+        byQuote.get(milestone.quote_id).push(milestone);
+      }
+
+      return quotes.map((quote) => ({
+        ...quote,
+        milestones: byQuote.get(quote.id) || []
+      }));
+    };
+
+    return c
+      ? c.dedupe('chat-quote-context', key, loader, QUOTE_CONTEXT_TTL_MS)
+      : loader();
+  }
+
   function invalidateConversation(userId, contactId, conversationId) {
     const c = cache();
     if (!c) return;
-    if (userId && contactId) c.invalidate('chat-conversation', pairKey(userId, contactId));
+    if (userId && contactId) {
+      const key = pairKey(userId, contactId);
+      c.invalidate('chat-conversation', key);
+      c.invalidate('chat-quote-context', key);
+    }
     if (conversationId) c.invalidate('chat-messages', conversationId);
   }
 
@@ -113,10 +178,17 @@
     if (c && conversationId) c.invalidate('chat-messages', conversationId);
   }
 
+  function invalidateQuoteContext(userId, contactId) {
+    const c = cache();
+    if (c && userId && contactId) c.invalidate('chat-quote-context', pairKey(userId, contactId));
+  }
+
   window.LYANN_MESSAGING_REPOSITORY = {
     findConversationId,
     getMessages,
+    getQuoteContext,
     invalidateConversation,
-    invalidateMessages
+    invalidateMessages,
+    invalidateQuoteContext
   };
 })();
