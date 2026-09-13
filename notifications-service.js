@@ -136,3 +136,45 @@
 
     window.LYANN_NOTIFICATIONS = NotifService;
 })();
+
+// Runtime repair loaded directly by Web HTML and copied into the Capacitor bundle.
+// This deliberately avoids touching message rendering: the existing chat-logic remains authoritative.
+(function () {
+    'use strict';
+
+    function hideLegacyTrackingControl(root) {
+        const scope = root || document;
+        const btn = scope.querySelector && scope.querySelector('#chatTrackingBtn');
+        if (btn) {
+            btn.style.setProperty('display', 'none', 'important');
+            btn.setAttribute('aria-hidden', 'true');
+            btn.tabIndex = -1;
+        }
+    }
+
+    function openBokantajAuthorProfile(event) {
+        const name = event.target.closest && event.target.closest('.lyann-author-name');
+        if (!name) return;
+        const authorBlock = name.closest('.flash-author-block.trigger-quick-profile');
+        const memberId = authorBlock && authorBlock.getAttribute('data-member-id');
+        if (!memberId || typeof window.openQuickProfileModal !== 'function') return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        window.openQuickProfileModal(memberId);
+    }
+
+    function startRuntimeRepair() {
+        document.addEventListener('click', openBokantajAuthorProfile, true);
+        hideLegacyTrackingControl(document);
+
+        const observer = new MutationObserver(() => hideLegacyTrackingControl(document));
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startRuntimeRepair, { once: true });
+    } else {
+        startRuntimeRepair();
+    }
+})();

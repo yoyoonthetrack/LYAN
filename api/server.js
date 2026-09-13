@@ -2831,16 +2831,28 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    let event = req.body;
+    if (!webhookSecret || !process.env.STRIPE_SECRET_KEY) {
+        return res.status(503).json({
+            success: false,
+            code: 'STRIPE_WEBHOOK_CONFIG_MISSING',
+            error: 'Configuration webhook Stripe incomplète.'
+        });
+    }
+    if (!sig) {
+        return res.status(400).json({
+            success: false,
+            code: 'STRIPE_SIGNATURE_REQUIRED',
+            error: 'Signature Stripe requise.'
+        });
+    }
 
-    if (webhookSecret && process.env.STRIPE_SECRET_KEY) {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-        try {
-            event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-        } catch (err) {
-            console.error(`⚠️ Signature Webhook Stripe invalide:`, err.message);
-            return res.status(400).send(`Webhook Error: ${err.message}`);
-        }
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    let event;
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+        console.error(`⚠️ Signature Webhook Stripe invalide:`, err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     if (event && event.id) {
@@ -2964,4 +2976,19 @@ if (require.main === module) {
     });
 }
 
-module.exports = app;
+// Vercel publishes every JavaScript file under api/ as an addressable function.
+// Keep this historical implementation callable only through api/index.js so
+// /api/server can never bypass the production gateway.
+const GATEWAY_TOKEN = Symbol('LYANN_INTERNAL_API_GATEWAY');
+function gatewayOnlyApp(req, res, token) {
+    if (token !== GATEWAY_TOKEN) {
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Cache-Control', 'private, no-store');
+        return res.end(JSON.stringify({ success: false, code: 'NOT_FOUND' }));
+    }
+    return app(req, res);
+}
+gatewayOnlyApp.GATEWAY_TOKEN = GATEWAY_TOKEN;
+
+module.exports = gatewayOnlyApp;

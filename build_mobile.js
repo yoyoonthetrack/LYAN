@@ -4,6 +4,7 @@ const path = require('path');
 const srcDir = __dirname;
 const destDir = path.join(__dirname, 'www');
 const hygieneScriptTag = '<script src="production-hygiene.js?v=20260911" defer></script>';
+const excludedMobileFiles = new Set(['package-lock.json']);
 
 function sanitizeStaticHtml(html) {
     let out = html;
@@ -64,6 +65,7 @@ if (fs.mkdirSync) {
 // Find all HTML, JS, CSS, JSON, PNG, JPG files in root
 const filesInRoot = fs.readdirSync(srcDir);
 const filesToCopy = filesInRoot.filter(file => {
+    if (excludedMobileFiles.has(file)) return false;
     const ext = path.extname(file).toLowerCase();
     return ['.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.webp'].includes(ext);
 });
