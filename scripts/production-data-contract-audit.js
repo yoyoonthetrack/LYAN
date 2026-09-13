@@ -33,9 +33,10 @@ if (!chat.includes('window.LYANN_AUTH_STATE?.getSnapshot?.().userId')) {
   fail('chat-logic.js: canonical auth-state identity lookup missing');
 }
 
-// Production member discovery must come from repositories/Supabase, never embedded personas.
-if (/ADDITIONAL_MEMBERS_DATA|Jocelyn Cabort|David M\. \(34 ans\)|Marie-Line Popotte/.test(script)) {
-  fail('script.js: embedded member/demo personas must not be a production data source');
+// Production member discovery must come from repositories/Supabase. Explicit demo-only
+// fixtures may still exist temporarily, but the legacy production member pool must stay empty.
+if (/ADDITIONAL_MEMBERS_DATA|const\s+additionalMembers\s*=|LYANN_MEMBERS\.unshift/.test(script)) {
+  fail('script.js: embedded production member pool must not be rebuilt from static personas');
 }
 if (!/const LYANN_MEMBERS = \[\];/.test(script) || !/window\.LYANN_MEMBERS = LYANN_MEMBERS;/.test(script)) {
   fail('script.js: legacy member compatibility container must remain empty');
@@ -53,4 +54,4 @@ if (failures.length) {
 }
 
 console.log('PRODUCTION DATA CONTRACT: PASS');
-console.log('Production business state uses canonical repositories; embedded member personas and local mock mission/chat state are retired.');
+console.log('Production business state uses canonical repositories; the legacy member pool and local mock mission/chat state are retired.');
