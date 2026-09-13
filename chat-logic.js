@@ -1842,386 +1842,26 @@ document.addEventListener('touchstart', (e) => {
         });
     }
 
-    // CHAT PRODUCTION HYGIENE: Idempotent cleanup of legacy demo contacts from localStorage
-    function cleanupLegacyDemoChatData() {
-        const demoSignatures = [
-            "Prestataire LYANN",
-            "David Jean-Baptiste",
-            "David M.",
-            "David M. (34 ans)",
-            "David",
-            "1",
-            "Tati Huguette Cazeau",
-            "Sarah Manicon",
-            "Marc (Plombier)",
-            "contact 1",
-            "contact 6",
-            "contact 9"
-        ];
-        try {
-            const isRealSupabase = (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && !(typeof window.LYANN_DEMO_MODE !== 'undefined' && window.LYANN_DEMO_MODE === true));
-            const stored = localStorage.getItem(CHAT_MSG_KEY);
-            if (stored) {
-                let data = JSON.parse(stored);
-                let changed = false;
-                Object.keys(data).forEach(k => {
-                    if (demoSignatures.includes(k) || (isRealSupabase && !isUUID(k))) {
-                        delete data[k];
-                        changed = true;
-                    }
-                });
-                if (changed) {
-                    localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
-                    console.log("🧹 [Chat Hygiene] Purged legacy demo contacts from localStorage.");
-                }
-            }
-            const lastActive = localStorage.getItem('lyann_last_active_contact');
-            if (lastActive) {
-                const parsed = JSON.parse(lastActive);
-                if (parsed && (demoSignatures.includes(parsed.id) || (isRealSupabase && !isUUID(parsed.id)))) {
-                    localStorage.removeItem('lyann_last_active_contact');
-                }
-            }
-        } catch(e) {}
-    }
-
-    // Initialize & render chat contacts sidebar dynamically
-    function initializeChatContacts() {
-        cleanupLegacyDemoChatData();
-
-        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-            return; // Zero mock contacts when Supabase is active
-        }
-        let data = {};
-        try {
-            const stored = localStorage.getItem(CHAT_MSG_KEY);
-            if (stored) data = JSON.parse(stored);
-        } catch(e) {}
-        
-        // Ensure default contacts exist ONLY when explicit demo mode is set
-        const isDemoMode = (typeof window.LYANN_DEMO_MODE !== 'undefined' && window.LYANN_DEMO_MODE === true);
-        if (isDemoMode) {
-            if (!data["Prestataire LYANN"]) {
-                data["Prestataire LYANN"] = [
-                    { id: "m1", text: "Bonjour ! Je suis dispo cet après-midi pour votre problème électrique.", sender: "them", timestamp: "14:32", type: "text" }
-                ];
-            }
-            if (!data["Tati Huguette Cazeau"]) {
-                data["Tati Huguette Cazeau"] = [
-                    { id: "m2", text: "Merci beaucoup pour votre aide ! Le portail fonctionne parfaitement.", sender: "them", timestamp: "Hier", type: "text" }
-                ];
-            }
-            if (!data["Sarah Manicon"]) {
-                data["Sarah Manicon"] = [
-                    { id: "m3", text: "À très bientôt pour la rénovation de la cuisine !", sender: "them", timestamp: "Lundi", type: "text" }
-                ];
-            }
-            localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
-        }
-    }
-
-    window.deleteConversation = function(contactId) {
-        if (!contactId) return;
-        
-        let deletedConvs = [];
-        try {
-            deletedConvs = JSON.parse(localStorage.getItem('lyann_deleted_conversations') || '[]');
-        } catch(e) {}
-        if (!deletedConvs.includes(contactId)) {
-            deletedConvs.push(contactId);
-            localStorage.setItem('lyann_deleted_conversations', JSON.stringify(deletedConvs));
-        }
-        
-        try {
-            const stored = localStorage.getItem(CHAT_MSG_KEY);
-            if (stored) {
-                let data = JSON.parse(stored);
-                delete data[contactId];
-                localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
-            }
-        } catch(e) {}
-
-        if (currentChatContact && currentChatContact.id === contactId) {
-            currentChatContact = null;
-            const msgContainer = document.getElementById('chatMessagesContainer');
-            if (msgContainer) {
-                msgContainer.innerHTML = `
-                    <div class="chat-empty-state">
-                        <i class="ph ph-chat-circle-dots"></i>
-                        <h3>Discussion supprimée</h3>
-                        <p>Sélectionnez une autre conversation dans la liste.</p>
-                    </div>
-                `;
-            }
-        }
-
-        renderChatContacts();
-
-        if (window.NotificationService && window.NotificationService.showToast) {
-            window.NotificationService.showToast('info', 'Discussion supprimée.');
-        } else if (window.lyannAlert) {
-            window.lyannAlert('Discussion supprimée.');
+    // Conversation-list ownership moved to LYANN_MESSAGING + messaging-repository.js.
+    // Keep only a compatibility bridge for old internal call sites during migration.
+    window.renderChatContacts = async function renderChatContactsCompatibility() {
+        if (window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.renderConversationList === 'function') {
+            return window.LYANN_MESSAGING.renderConversationList();
         }
     };
 
-    async function renderChatContacts() {
-        const listContainer = document.getElementById('chatContactsList');
-        if (!listContainer) return;
-        
-        cleanupLegacyDemoChatData();
-
-        const isDemoMode = (typeof window.LYANN_DEMO_MODE !== 'undefined' && window.LYANN_DEMO_MODE === true);
-        const isRealSupabase = (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && !isDemoMode);
-
-        let allContacts = [];
-        let storedMsgs = {};
-        try {
-            const stored = localStorage.getItem(CHAT_MSG_KEY);
-            if (stored) storedMsgs = JSON.parse(stored);
-        } catch(e) {}
-
-        let deletedConvs = [];
-        try {
-            deletedConvs = JSON.parse(localStorage.getItem('lyann_deleted_conversations') || '[]');
-        } catch(e) {}
-
-        if (isRealSupabase) {
-            const myUserId = getMyId();
-            if (myUserId && isUUID(myUserId)) {
-                try {
-                    const { data: convParts } = await window.LYANN_API_CLIENT.getUserConversations(myUserId);
-                    if (convParts && Array.isArray(convParts) && convParts.length > 0) {
-                        const convIds = convParts.map(cp => cp.conversation_id).filter(Boolean);
-                        const { data: allParts } = await window.LYANN_API_CLIENT.supabase
-                            .from('conversation_participants')
-                            .select('conversation_id, user_id')
-                            .in('conversation_id', convIds)
-                            .neq('user_id', myUserId);
-                        
-                        const partnerMap = {};
-                        if (allParts) {
-                            allParts.forEach(p => { partnerMap[p.conversation_id] = p.user_id; });
-                        }
-
-                        window.LYANN_PROFILES_CACHE = window.LYANN_PROFILES_CACHE || {};
-
-                        for (const convId of convIds) {
-                            const partnerId = partnerMap[convId];
-                            if (!partnerId) continue;
-
-                            let partnerProfile = window.LYANN_PROFILES_CACHE[partnerId];
-                            if (!partnerProfile) {
-                                const { data: pData } = await window.LYANN_API_CLIENT.supabase
-                                    .from('public_profiles')
-                                    .select('id, first_name, last_name, avatar_url')
-                                    .eq('id', partnerId)
-                                    .maybeSingle();
-                                if (pData) {
-                                    partnerProfile = {
-                                        displayName: window.formatPublicName ? window.formatPublicName(pData, null, 'Membre LYANN') : (pData.first_name || 'Membre LYANN'),
-                                        avatar: window.getLyannAvatarUrl(pData.avatar_url)
-                                    };
-                                    window.LYANN_PROFILES_CACHE[partnerId] = partnerProfile;
-                                }
-                            }
-
-                            const { data: msgs } = await window.LYANN_API_CLIENT.supabase
-                                .from('messages')
-                                .select('content, sender_id, created_at')
-                                .eq('conversation_id', convId)
-                                .order('created_at', { ascending: false })
-                                .limit(1);
-
-                            const lastMsg = (msgs && msgs.length > 0) ? msgs[0] : null;
-                            const preview = lastMsg
-                                ? (lastMsg.sender_id === myUserId ? 'Vous : ' + lastMsg.content : lastMsg.content)
-                                : 'Nouvelle conversation';
-
-                            allContacts.push({
-                                id: partnerId,
-                                conversationId: convId,
-                                name: partnerProfile ? partnerProfile.displayName : 'Membre LYANN',
-                                avatar: partnerProfile ? partnerProfile.avatar : 'avatar-male-blue.png',
-                                preview: preview
-                            });
-                        }
-                    }
-                } catch(err) {
-                    console.warn('[Real Chat Contacts Error]', err);
-                }
-            }
-        } else {
-            const defaultContacts = isDemoMode ? [
-                { id: "Prestataire LYANN", name: "Prestataire LYANN", avatar: "david-34.png", preview: "Bonjour ! Je suis dispo cet ap..." },
-                { id: "Tati Huguette Cazeau", name: "Tati Huguette Cazeau", avatar: "huguette-68.png", preview: "Merci beaucoup pour votre aide !" },
-                { id: "Sarah Manicon", name: "Sarah Manicon", avatar: "sarah-29.png", preview: "À très bientôt pour la rénovation !" }
-            ] : [];
-
-            allContacts = [...defaultContacts];
-            Object.keys(storedMsgs).forEach(contactId => {
-                if (!allContacts.some(c => c.id === contactId)) {
-                    let avatar = 'avatar-male-blue.png';
-                    if (window.LYANN_MEMBERS) {
-                        const member = window.LYANN_MEMBERS.find(m => m.name === contactId || `${m.name} (${m.age} ans)` === contactId);
-                        if (member) avatar = member.avatar;
-                    }
-                    
-                    const msgs = storedMsgs[contactId] || [];
-                    const lastMsg = msgs[msgs.length - 1];
-                    const preview = lastMsg ? (lastMsg.sender === 'me' ? 'Vous : ' + lastMsg.text : lastMsg.text) : 'Nouvelle conversation';
-
-                    allContacts.push({
-                        id: contactId,
-                        name: contactId,
-                        avatar: avatar,
-                        preview: preview
-                    });
-                }
-            });
+    window.deleteConversation = async function deleteConversationCompatibility() {
+        if (window.NotificationService?.showToast) {
+            window.NotificationService.showToast('info', 'La suppression de conversation sera réactivée avec le stockage serveur.');
         }
-
-        const activeContacts = allContacts.filter(c => !deletedConvs.includes(c.id));
-
-        const searchInput = document.getElementById('chatSearchInput');
-        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-        const contactsToRender = query
-            ? activeContacts.filter(c => c.name.toLowerCase().includes(query) || (c.preview && c.preview.toLowerCase().includes(query)))
-            : activeContacts;
-
-        if (contactsToRender.length === 0) {
-            listContainer.innerHTML = `
-                <div class="chat-empty-state" style="padding: 40px 16px; text-align: center; color: var(--text-muted, #64748B); font-size: 0.88rem;">
-                    <i class="ph ph-chat-circle-dots" style="font-size: 2.2rem; color: #CBD5E1; margin-bottom: 10px; display: block;"></i>
-                    <p style="margin: 0 0 6px 0; font-weight: 700; color: #334155; font-size: 0.95rem;">Aucune conversation pour le moment.</p>
-                    <p style="margin: 0 0 16px 0; font-size: 0.82rem; color: #64748B;">Vos échanges avec la communauté et les Lyanneurs apparaîtront ici.</p>
-                    <button type="button" class="btn btn-outline btn-sm" onclick="if (typeof window.closeLyannChatModal === 'function') window.closeLyannChatModal(); window.location.href='#explorer';" style="border-radius: 20px; padding: 6px 14px; font-size: 0.8rem; font-weight: 700;"><i class="ph ph-compass"></i> Explorer les Lyanns</button>
-                </div>
-            `;
-            return;
-        }
-
-        listContainer.innerHTML = contactsToRender.map(c => {
-            const isActive = currentChatContact && currentChatContact.id === c.id;
-            const lastMsgs = storedMsgs[c.id] || [];
-            const lastMsg = lastMsgs[lastMsgs.length - 1];
-            const previewText = lastMsg ? (lastMsg.sender === 'me' ? 'Vous : ' + lastMsg.text : lastMsg.text) : c.preview;
-            const escapedId = c.id.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-
-            let displayName = c.name;
-            let displayAvatar = c.avatar;
-            if (typeof isUUID === 'function' && isUUID(c.id)) {
-                if (window.LYANN_PROFILES_CACHE[c.id]) {
-                    displayName = window.LYANN_PROFILES_CACHE[c.id].displayName;
-                    displayAvatar = window.LYANN_PROFILES_CACHE[c.id].avatar;
-                } else if (displayName === c.id || displayName === 'Lyanneur') {
-                    displayName = "Membre LYANN";
-                }
-            }
-
-            let subContextHTML = '';
-            if (displayName === "Membre LYANN" && c.requestTitle) {
-                subContextHTML = `<div class="chat-contact-subcontext" style="font-size: 0.72rem; color: #4A7C59; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-hand-heart"></i> ${escapeSearchHtml(c.requestTitle)}</div>`;
-            }
-
-            return `
-                <div class="chat-contact-swipe-wrapper" data-chat-member-id="${c.id}">
-                    <div class="chat-contact-item ${isActive ? 'active' : ''}" data-chat-member-id="${c.id}">
-                        <div class="chat-contact-avatar-wrap">
-                            <img src="${window.resolveLyannAvatarSrc(displayAvatar)}" alt="${displayName}" class="chat-contact-avatar" onerror="window.handleAvatarError(this)">
-                        </div>
-                        <div class="chat-contact-info">
-                            <div class="chat-contact-name">${displayName}</div>
-                            ${subContextHTML}
-                            <div class="chat-contact-preview">${previewText}</div>
-                        </div>
-                        <button type="button" class="btn-delete-conv-desktop" onclick="event.stopPropagation(); window.deleteConversation('${escapedId}');" title="Supprimer la conversation">
-                            <i class="ph ph-trash"></i>
-                        </button>
-                    </div>
-                    <button type="button" class="btn-delete-conv-mobile" onclick="event.stopPropagation(); window.deleteConversation('${escapedId}');">
-                        <i class="ph ph-trash"></i>
-                        <span>Supprimer</span>
-                    </button>
-                </div>
-            `;
-        }).join('');
-
-        // Re-bind touch swipe & click events
-        listContainer.querySelectorAll('.chat-contact-swipe-wrapper').forEach(wrapper => {
-            let startX = 0;
-            let currentX = 0;
-            const item = wrapper.querySelector('.chat-contact-item');
-            
-            wrapper.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].clientX;
-            }, { passive: true });
-            
-            wrapper.addEventListener('touchmove', (e) => {
-                currentX = e.touches[0].clientX;
-                const diffX = currentX - startX;
-                if (diffX < 0 && diffX > -120) {
-                    item.style.transform = `translateX(${diffX}px)`;
-                }
-            }, { passive: true });
-            
-            wrapper.addEventListener('touchend', () => {
-                const diffX = currentX - startX;
-                if (diffX < -40) {
-                    item.style.transform = 'translateX(-80px)';
-                } else {
-                    item.style.transform = 'translateX(0)';
-                }
-                startX = 0;
-                currentX = 0;
-            });
-
-            if (item) {
-                item.addEventListener('click', (e) => {
-                    if (e.target.closest('.btn-delete-conv-desktop') || e.target.closest('.btn-delete-conv-mobile')) return;
-                    const contactId = item.getAttribute('data-chat-member-id');
-                    const contact = activeContacts.find(c => c.id === contactId);
-                    if (contact) {
-                        openChatWithUser(contact.name, contact.avatar, contact.id);
-                    }
-                });
-            }
-        });
-
-        // Search input live filtering listener
-        if (searchInput && !searchInput.dataset.searchBound) {
-            searchInput.dataset.searchBound = 'true';
-            searchInput.addEventListener('input', () => {
-                renderChatContacts();
-            });
-        }
-    }
-
-    window.renderChatContacts = renderChatContacts;
-
-    window.openLyannChatModal = function() {
-        document.body.classList.add('hide-bottom-nav');
-        document.body.classList.add('in-chat-active');
-        const modal = document.getElementById('chatModal');
-        if (modal) {
-            modal.removeAttribute('style');
-            modal.style.display = 'flex';
-            modal.classList.add('active');
-        }
-        document.body.style.overflow = 'hidden';
-        const chatLayout = document.querySelector('.chat-modal-layout');
-        if (chatLayout) {
-            chatLayout.classList.remove('mobile-conversation-active');
-        }
-        if (typeof window.renderChatContacts === 'function') {
-            window.renderChatContacts();
-        }
-        if (typeof initChatCloseBtn === 'function') {
-            initChatCloseBtn();
-        }
+        return false;
     };
 
-    initializeChatContacts();
-    renderChatContacts();
+    window.openLyannChatModal = function openLyannChatModalCompatibility() {
+        if (window.LYANN_ROUTER) return window.LYANN_ROUTER.go('messages');
+        if (window.LYANN_MESSAGING) return window.LYANN_MESSAGING.openList();
+        return false;
+    };
 }
 
 window.toggleChatAttachMenu = function(e) {
@@ -2249,29 +1889,10 @@ document.addEventListener('click', (e) => {
 });
 
 window.closeLyannChatModal = function (e) {
-    if (e) {
-        if (typeof e.preventDefault === 'function') e.preventDefault();
-        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    if (window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.close === 'function') {
+        return window.LYANN_MESSAGING.close(e);
     }
-    if (typeof triggerHaptic === 'function') {
-        try { triggerHaptic('light'); } catch(err) {}
-    }
-
-    document.body.classList.remove('hide-bottom-nav', 'in-chat-active');
-    document.body.style.overflow = '';
-    document.body.style.position = '';
-
-    const modal = document.getElementById('chatModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.display = 'none';
-        modal.removeAttribute('style');
-    }
-
-    const chatLayout = document.querySelector('.chat-modal-layout');
-    if (chatLayout) {
-        chatLayout.classList.remove('mobile-conversation-active');
-    }
+    return false;
 };
 
 function initChatCloseBtn() {
@@ -2296,7 +1917,7 @@ document.addEventListener('click', function(e) {
         const nameEl = contactItem.querySelector('.chat-contact-name');
         const imgEl = contactItem.querySelector('.chat-contact-avatar');
         const name = nameEl ? nameEl.textContent.trim() : (contactId || 'Lyanneur');
-        const avatar = imgEl ? imgEl.src : 'david-34.png';
+        const avatar = imgEl ? imgEl.src : 'lyann-avatar-placeholder.svg';
         
         if (typeof window.openChatWithUser === 'function') {
             window.openChatWithUser(name, avatar, contactId || name);
@@ -2326,31 +1947,15 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener('scroll', handleVisualViewportResize);
 }
 
-function attachChatContainerMutationObserver() {
-    const container = document.getElementById('chatMessagesContainer');
-    if (!container || container.dataset.observerBound === 'true') return;
-    container.dataset.observerBound = 'true';
-    new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-            for (const node of mutation.addedNodes) {
-                console.error('[CHAT DOM NODE ADDED]', node);
-                console.trace('[CHAT DOM MUTATION TRACE]');
-            }
-        }
-    }).observe(container, { childList: true, subtree: true });
-}
-
-// Safe startup execution
+// Safe startup execution. No chat DOM MutationObserver is allowed.
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         initChatSubmitAndContacts();
         initChatCloseBtn();
-        attachChatContainerMutationObserver();
-    });
+    }, { once: true });
 } else {
     initChatSubmitAndContacts();
     initChatCloseBtn();
-    attachChatContainerMutationObserver();
 }
 
 // === FAVORITES MANAGEMENT FOR CHAT CONTACTS & MEMBERS ===
@@ -2389,7 +1994,7 @@ window.toggleContactFavorite = async function(contactId, contactName) {
 
 window.updateChatFavHeaderUI = function() {
     if (!currentChatContact) return;
-    const isFav = window.isContactFavorite(currentChatContact.name);
+    const isFav = window.isContactFavorite(currentChatContact.id);
     const favIcon = document.getElementById('chatFavHeaderIcon');
     const dropAddFavBtn = document.getElementById('chatDropAddFavorite');
     
@@ -2415,7 +2020,7 @@ document.addEventListener('click', (e) => {
     if (favBtn && currentChatContact) {
         e.preventDefault();
         e.stopPropagation();
-        window.toggleContactFavorite(currentChatContact.name, currentChatContact.avatar);
+        window.toggleContactFavorite(currentChatContact.id, currentChatContact.name);
     }
 });
 
@@ -2451,8 +2056,9 @@ function setupRealtime() {
         .subscribe();
 }
 
-// Call setup when script loads
-setTimeout(setupRealtime, 1000); // Wait for API client to be ready
+// Realtime starts only after canonical auth resolution.
+if (window.LYANN_AUTH_STATE?.getSnapshot?.().status === 'ready') setupRealtime();
+else window.addEventListener('lyann:auth-ready', setupRealtime, { once: true });
 
 // =============================================================================
 // LYANN STEP 19 — ESPACE MISSION UI & JALONS CONTROLLER
