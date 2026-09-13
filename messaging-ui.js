@@ -37,7 +37,7 @@
             el.classList.add('active');
             document.body.style.overflow = 'hidden';
         } else {
-            document.body.classList.remove('hide-bottom-nav', 'in-chat-active', 'lyann-messaging-open', 'lyann-messaging-child-open');
+            document.body.classList.remove('hide-bottom-nav', 'in-chat-active', 'lyann-messaging-open', 'lyann-messaging-child-open', 'lyann-messaging-transition');
             el.classList.remove('active');
             el.style.display = 'none';
             document.body.style.removeProperty('overflow');
@@ -81,6 +81,7 @@
     }
 
     async function openList() {
+        document.body.classList.remove('lyann-messaging-transition');
         if (!setShellVisible(true)) {
             window.location.href = 'feed.html?action=messages';
             return;
@@ -105,13 +106,26 @@
         }
 
         hideAllChildSurfaces();
-        await legacyOpenConversation(name, avatar, contactId, options.initialNeed || null);
-        setShellVisible(true);
-        const l = layout();
-        if (l) l.classList.add('mobile-conversation-active');
-        const active = { id: contactId, name, avatar, requestId: options.requestId || options.initialNeed?.requestId || null };
-        window.LYANN_ACTIVE_CHAT_CONTACT = active;
-        try { localStorage.setItem('lyann_last_active_contact', JSON.stringify(active)); } catch (e) {}
+
+        // The historical core still owns data hydration/rendering for now, but it
+        // must never become a visible UI phase. Keep its DOM work hidden until the
+        // canonical controller has the definitive conversation ready.
+        document.body.classList.add('lyann-messaging-transition');
+        const main = mainArea();
+        if (main) main.setAttribute('aria-busy', 'true');
+
+        try {
+            await legacyOpenConversation(name, avatar, contactId, options.initialNeed || null);
+            const l = layout();
+            if (l) l.classList.add('mobile-conversation-active');
+            const active = { id: contactId, name, avatar, requestId: options.requestId || options.initialNeed?.requestId || null };
+            window.LYANN_ACTIVE_CHAT_CONTACT = active;
+            try { localStorage.setItem('lyann_last_active_contact', JSON.stringify(active)); } catch (e) {}
+        } finally {
+            if (main) main.removeAttribute('aria-busy');
+            document.body.classList.remove('lyann-messaging-transition');
+            setShellVisible(true);
+        }
     }
 
     async function open(options = {}) {
