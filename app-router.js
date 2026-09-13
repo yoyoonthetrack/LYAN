@@ -22,24 +22,35 @@
     return true;
   }
 
+  function closeDrawer() {
+    if (typeof window.closeLyannHamburgerDrawer === 'function') {
+      window.closeLyannHamburgerDrawer();
+    }
+  }
+
+  function openAccountSection(section = 'account') {
+    closeDrawer();
+    if (typeof window.openAccountModalSubView === 'function') {
+      window.openAccountModalSubView(section);
+      return true;
+    }
+    if (typeof window.openUserAccountModal === 'function') {
+      window.openUserAccountModal();
+      return true;
+    }
+    const modal = document.getElementById('userAccountModal');
+    if (modal && window.LYANN_SURFACES) {
+      window.LYANN_SURFACES.register('account', { element: modal, mode: 'major', hideBottomNav: true, lockBody: true });
+      window.LYANN_SURFACES.open('account');
+      return true;
+    }
+    return false;
+  }
+
   function register(name, handler) {
     if (!name || typeof handler !== 'function') throw new Error('LYANN route requires name and handler');
     routes.set(name, handler);
     return api;
-  }
-
-  async function go(name, payload = {}) {
-    const handler = routes.get(name);
-    if (!handler) {
-      console.warn('[ROUTER] unknown route', name);
-      return false;
-    }
-    try {
-      return await handler(payload);
-    } catch (error) {
-      console.error('[ROUTER] route failed', name, error);
-      return false;
-    }
   }
 
   register('home', () => hardNavigate('index.html'));
@@ -54,9 +65,7 @@
   register('messages', (payload = {}) => {
     const messaging = window.LYANN_MESSAGING;
     if (messaging) {
-      if (payload.contactId || payload.id || payload.memberId) {
-        return messaging.openConversation(payload);
-      }
+      if (payload.contactId || payload.id || payload.memberId) return messaging.openConversation(payload);
       return messaging.openList();
     }
     const params = new URLSearchParams({ action: 'messages' });
@@ -77,6 +86,22 @@
     }
     return false;
   });
+  register('profile', () => {
+    closeDrawer();
+    if (typeof window.openPublicProfileModal === 'function') {
+      window.openPublicProfileModal();
+      return true;
+    }
+    return openAccountSection('account');
+  });
+  register('account', () => openAccountSection('account'));
+  register('activity', () => openAccountSection('activity'));
+  register('favorites', () => openAccountSection('favorites'));
+  register('finances', () => openAccountSection('finances'));
+  register('pricing', () => hardNavigate('pricing.html'));
+  register('payment', () => hardNavigate('payment-portal.html'));
+  register('help', () => hardNavigate('how-it-works.html'));
+  register('about', () => hardNavigate('about.html'));
 
   const selectorRouteMap = [
     ['#tab-home', 'home'],
@@ -124,10 +149,7 @@
     const action = params.get('action');
     if (action === 'messages' || action === 'openchat') {
       const contactId = params.get('contact') || params.get('member') || params.get('chat');
-      go('messages', {
-        contactId,
-        name: params.get('name') || undefined
-      });
+      go('messages', { contactId, name: params.get('name') || undefined });
     } else if (action === 'publish') {
       go('publish');
     }
