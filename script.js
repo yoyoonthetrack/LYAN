@@ -7756,12 +7756,23 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             </div>
         `;
         document.body.appendChild(modal);
+        if (window.LYANN_SURFACES) {
+            window.LYANN_SURFACES.register('lyann-detail', {
+                element: modal,
+                mode: 'child',
+                hideBottomNav: true,
+                lockBody: true
+            });
+        }
 
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                modal.style.display = 'none';
-                modal.classList.remove('active');
-                document.body.style.overflow = '';
+                if (window.LYANN_SURFACES?.isOpen?.('lyann-detail')) window.LYANN_SURFACES.close('lyann-detail', { reason: 'backdrop' });
+                else {
+                    modal.style.display = 'none';
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
             }
         });
     }
@@ -7781,18 +7792,26 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         `;
     }
 
-    modal.style.display = 'flex';
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    if (window.LYANN_SURFACES) {
+        window.LYANN_SURFACES.register('lyann-detail', { element: modal, mode: 'child', hideBottomNav: true, lockBody: true });
+        window.LYANN_SURFACES.open('lyann-detail', { requestId });
+    } else {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
 
     // Close button handler
     const closeBtn = document.getElementById('closeLyannDetailModalBtn');
     if (closeBtn && !closeBtn.dataset.bound) {
         closeBtn.dataset.bound = 'true';
         closeBtn.onclick = () => {
-            modal.style.display = 'none';
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
+            if (window.LYANN_SURFACES?.isOpen?.('lyann-detail')) window.LYANN_SURFACES.close('lyann-detail', { reason: 'close-button' });
+            else {
+                modal.style.display = 'none';
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
         };
     }
 
