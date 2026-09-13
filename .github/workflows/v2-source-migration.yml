@@ -1,44 +1,15 @@
-name: V2 Source Migration
+name: V2 Source Migration (retired)
 
 on:
-  push:
-    branches:
-      - architecture-stabilization
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  migrate:
-    if: github.actor != 'github-actions[bot]'
+  retired:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout stabilization branch
-        uses: actions/checkout@v4
-        with:
-          ref: architecture-stabilization
-          fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Apply explicit V2 migration
-        run: |
-          node scripts/apply-v2-source-migration.js
-          node --check api-client.js
-          node --check chat-logic.js
-          node --check app-shell.js
-
-      - name: Commit migrated sources when changed
-        run: |
-          if git diff --quiet; then
-            echo "V2 source migration already applied."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add api-client.js chat-logic.js app-shell.js '*.html'
-          git commit -m "refactor: remove legacy local mock business state"
-          git push origin HEAD:architecture-stabilization
+      - run: |
+          echo "V2 source migration completed on architecture-stabilization."
+          echo "The migration runner is intentionally retired to prevent repeated source rewrites."
