@@ -53,6 +53,20 @@
     return api;
   }
 
+  async function go(name, payload = {}) {
+    const handler = routes.get(name);
+    if (!handler) {
+      console.warn('[ROUTER] unknown route', name);
+      return false;
+    }
+    try {
+      return await handler(payload);
+    } catch (error) {
+      console.error('[ROUTER] route failed', name, error);
+      return false;
+    }
+  }
+
   register('home', () => hardNavigate('index.html'));
   register('explorer', (payload = {}) => {
     const params = new URLSearchParams();
@@ -98,6 +112,7 @@
   register('activity', () => openAccountSection('activity'));
   register('favorites', () => openAccountSection('favorites'));
   register('finances', () => openAccountSection('finances'));
+  register('settings', () => openAccountSection('settings'));
   register('pricing', () => hardNavigate('pricing.html'));
   register('payment', () => hardNavigate('payment-portal.html'));
   register('help', () => hardNavigate('how-it-works.html'));
