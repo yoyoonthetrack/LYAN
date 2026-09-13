@@ -1,63 +1,25 @@
-name: Architecture Source Fix
+name: Legacy Source Normalizers (manual only)
 
+# The stabilization branch is now moving to explicit canonical owners.
+# Historical normalizers remain available only for forensic/manual recovery;
+# they must never mutate the branch automatically after a developer push.
 on:
-  push:
-    branches:
-      - architecture-stabilization
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  normalize-source:
-    if: github.actor != 'github-actions[bot]'
+  legacy-normalizer-inventory:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4
         with:
           ref: architecture-stabilization
-          fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Apply deterministic source fixes
+      - name: Explain retirement
         run: |
-          node scripts/apply-architecture-fixes.js
-          node scripts/extract-script-domains.js
-          node scripts/extract-app-shell-header.js
-          node scripts/normalize-auth-state.js
-          node scripts/normalize-profile-loader.js
-          node scripts/normalize-bokantaj-loader.js
-          node scripts/normalize-responsive-actions.js
-          node scripts/normalize-favorite-actions.js
-          node scripts/normalize-immediate-surfaces.js
-          node scripts/normalize-explorer-loader.js
-          node scripts/normalize-messaging-responsiveness.js
-          node scripts/normalize-optimistic-chat-send.js
-          node scripts/normalize-chat-atomic-render.js
-          node scripts/normalize-messaging-repository.js
-          node scripts/normalize-chat-quote-context.js
-          node scripts/normalize-chat-proposal-overlay.js
-          node scripts/normalize-chat-layering.js
-          node scripts/normalize-chat-entry-unification.js
-          node scripts/normalize-milestone-allocation.js
-          node scripts/normalize-milestone-layout.js
-          node scripts/normalize-chat-surface-routing.js
-          node scripts/normalize-canonical-messaging.js
-          node scripts/normalize-single-messaging-owner.js
-
-      - name: Commit normalized source when changed
-        run: |
-          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
-            echo "No source normalization required."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "refactor: make canonical messaging controller sole owner"
-          git push origin HEAD:architecture-stabilization
+          echo "Automatic source normalization is retired."
+          echo "Canonical modules and explicit migrations now own source changes."
+          echo "Historical scripts under scripts/normalize-* are retained temporarily for audit/recovery only."
