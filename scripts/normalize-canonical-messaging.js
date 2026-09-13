@@ -37,9 +37,139 @@ for (const file of productPages) {
 
 const cssPath = 'style.css';
 let css = fs.readFileSync(cssPath, 'utf8');
-const marker = '/* LYANN CANONICAL MESSAGING SHELL v1 */';
-if (!css.includes(marker)) {
-  css += `\n${marker}\n/* Parent conversation content can never bleed through a child workflow. */\n#chatModal .chat-main-area.lyann-child-surface-open #chatMissionContextBar,\n#chatModal .chat-main-area.lyann-child-surface-open #chatMissionContext,\n#chatModal .chat-main-area.lyann-child-surface-open #chatContextualActionsBar,\n#chatModal .chat-main-area.lyann-child-surface-open #chatViewMissionBtn,\n#chatModal .chat-main-area.lyann-child-surface-open #chatMessagesContainer,\n#chatModal .chat-main-area.lyann-child-surface-open #chatReplyBar,\n#chatModal .chat-main-area.lyann-child-surface-open .chat-input-area {\n  display: none !important;\n}\n\n#chatModal .chat-main-area.lyann-child-surface-open .chat-overlay-pane {\n  z-index: 1000 !important;\n}\n\n#chatModal .chat-main-area.lyann-child-surface-open .chat-overlay-pane:not([style*="display: none"]):not([style*="display:none"]) {\n  display: flex !important;\n}\n\n/* Mobile has one state machine: list -> conversation -> child surface. */\n@media (max-width: 768px) {\n  body.lyann-messaging-open #chatModal {\n    position: fixed !important;\n    inset: 0 !important;\n    width: 100vw !important;\n    height: 100dvh !important;\n    max-width: none !important;\n    max-height: none !important;\n    margin: 0 !important;\n    z-index: 20000 !important;\n  }\n\n  body.lyann-messaging-open #chatModal > .modal-card,\n  body.lyann-messaging-open #chatModal .modal-card-chat,\n  body.lyann-messaging-open #chatModal .chat-modal-layout {\n    width: 100% !important;\n    height: 100% !important;\n    max-width: none !important;\n    max-height: none !important;\n    margin: 0 !important;\n    border-radius: 0 !important;\n  }\n\n  #chatModal .chat-modal-layout:not(.mobile-conversation-active) .chat-contacts-sidebar {\n    display: flex !important;\n    width: 100% !important;\n  }\n\n  #chatModal .chat-modal-layout:not(.mobile-conversation-active) .chat-main-area {\n    display: none !important;\n  }\n\n  #chatModal .chat-modal-layout.mobile-conversation-active .chat-contacts-sidebar {\n    display: none !important;\n  }\n\n  #chatModal .chat-modal-layout.mobile-conversation-active .chat-main-area {\n    display: flex !important;\n    width: 100% !important;\n  }\n}\n`;
+const v1 = '/* LYANN CANONICAL MESSAGING SHELL v1 */';
+const v2 = '/* LYANN CANONICAL MESSAGING SHELL v2 */';
+const canonicalCss = `${v2}
+/* Parent conversation content can never bleed through a child workflow. */
+#chatModal .chat-main-area.lyann-child-surface-open #chatMissionContextBar,
+#chatModal .chat-main-area.lyann-child-surface-open #chatMissionContext,
+#chatModal .chat-main-area.lyann-child-surface-open #chatContextualActionsBar,
+#chatModal .chat-main-area.lyann-child-surface-open #chatViewMissionBtn,
+#chatModal .chat-main-area.lyann-child-surface-open #chatMessagesContainer,
+#chatModal .chat-main-area.lyann-child-surface-open #chatReplyBar,
+#chatModal .chat-main-area.lyann-child-surface-open .chat-input-area {
+  display: none !important;
+}
+
+#chatModal .chat-main-area.lyann-child-surface-open .chat-overlay-pane {
+  z-index: 1000 !important;
+}
+
+#chatModal .chat-main-area.lyann-child-surface-open .chat-overlay-pane:not([style*="display: none"]):not([style*="display:none"]) {
+  display: flex !important;
+}
+
+/* The historical renderer may hydrate the DOM, but it is never allowed to
+   become a visible intermediate messaging screen. */
+body.lyann-messaging-transition #chatModal {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Mobile has one state machine: list -> conversation -> child surface.
+   It must live strictly inside the OS safe area rather than 100dvh. */
+@media (max-width: 768px) {
+  body.lyann-messaging-open #chatModal {
+    position: fixed !important;
+    top: env(safe-area-inset-top, 0px) !important;
+    right: 0 !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    left: 0 !important;
+    inset: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) 0 !important;
+    width: 100vw !important;
+    height: auto !important;
+    max-width: 100vw !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    box-sizing: border-box !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    z-index: 20000 !important;
+  }
+
+  body.lyann-messaging-open #chatModal > .modal-card,
+  body.lyann-messaging-open #chatModal .modal-card-chat {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+  }
+
+  body.lyann-messaging-open #chatModal .chat-modal-layout {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    border-radius: inherit !important;
+    overflow: hidden !important;
+  }
+
+  body.lyann-messaging-open #chatModal .chat-sidebar-header,
+  body.lyann-messaging-open #chatModal .chat-header-bar {
+    min-height: 56px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  /* The chantier action was wrapping onto 3 lines and covering the contact
+     name on iPhone. Keep the same action but render it as a compact pill. */
+  body.lyann-messaging-open #chatModal #chatTrackingBtn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: 92px !important;
+    min-height: 38px !important;
+    padding: 6px 10px !important;
+    font-size: 0 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    border-radius: 999px !important;
+  }
+
+  body.lyann-messaging-open #chatModal #chatTrackingBtn::after {
+    content: "🛠️ Suivi";
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+  }
+
+  body.lyann-messaging-open #chatModal .chat-input-area,
+  body.lyann-messaging-open #chatModal #chatReplyBar {
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  #chatModal .chat-modal-layout:not(.mobile-conversation-active) .chat-contacts-sidebar {
+    display: flex !important;
+    width: 100% !important;
+  }
+
+  #chatModal .chat-modal-layout:not(.mobile-conversation-active) .chat-main-area {
+    display: none !important;
+  }
+
+  #chatModal .chat-modal-layout.mobile-conversation-active .chat-contacts-sidebar {
+    display: none !important;
+  }
+
+  #chatModal .chat-modal-layout.mobile-conversation-active .chat-main-area {
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+`;
+
+if (css.includes(v1)) {
+  // v1 was appended at the end when introduced. Replace that entire canonical
+  // block instead of layering yet another override on top of it.
+  css = css.slice(0, css.indexOf(v1)).trimEnd() + '\n\n' + canonicalCss + '\n';
+  fs.writeFileSync(cssPath, css);
+} else if (!css.includes(v2)) {
+  css += `\n${canonicalCss}\n`;
   fs.writeFileSync(cssPath, css);
 }
 
