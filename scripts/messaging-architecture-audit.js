@@ -10,16 +10,36 @@ function count(source, needle) { return source.split(needle).length - 1; }
 function countMatches(source, regex) { return (source.match(regex) || []).length; }
 
 if (!fs.existsSync('messaging-ui.js')) fail('messaging-ui.js is missing');
+if (!fs.existsSync('app-router.js')) fail('app-router.js is missing');
 else {
+  const router = read('app-router.js');
+  if (!router.includes("register('messages'")) fail('app-router.js must own the public messages route');
+  if (!router.includes("['#tab-messages, [data-lyann-messages], .open-chat-trigger', 'messages']")) {
+    fail('app-router.js must own generic messaging entry points');
+  }
+}
+
+if (fs.existsSync('messaging-ui.js')) {
   const controller = read('messaging-ui.js');
   for (const required of [
     'window.LYANN_MESSAGING = api',
-    'window.openLyannMessagesModal = () => api.openList()',
+    'window.openLyannMessagesModal = () => window.LYANN_ROUTER',
     'window.openChatWithUser =',
     'window.backToChatContacts =',
-    'lyann-child-surface-open'
+    'lyann-child-surface-open',
+    "window.LYANN_AUTH_STATE",
+    "registerSurfaces()"
   ]) {
     if (!controller.includes(required)) fail(`messaging-ui.js missing canonical contract: ${required}`);
+  }
+  if (controller.includes('installCanonicalEntryInterception')) {
+    fail('messaging-ui.js must not own generic application navigation interception');
+  }
+  if (controller.includes('new MutationObserver')) {
+    fail('messaging-ui.js must not use MutationObserver to synchronize surface ownership');
+  }
+  if (/supabase\?\.auth|supabase\.auth\.getSession/.test(controller)) {
+    fail('messaging-ui.js must resolve identity through canonical auth/session state');
   }
 }
 
@@ -45,12 +65,15 @@ const shell = read('app-shell.js');
 const chat = read('chat-logic.js');
 const shellOpenerDefinitions = countMatches(shell, /window\.openLyannMessagesModal\s*=\s*(?:async\s+)?function\s*\(/g);
 const conversationOpenerDefinitions = countMatches(chat, /window\.openChatWithUser\s*=\s*(?:async\s+)?function\s*\(/g);
-if (shellOpenerDefinitions > 1) fail(`app-shell.js contains ${shellOpenerDefinitions} messaging opener definitions`);
-if (conversationOpenerDefinitions > 1) fail(`chat-logic.js contains ${conversationOpenerDefinitions} conversation opener definitions`);
+if (shellOpenerDefinitions > 0) fail(`app-shell.js contains a competing messaging opener definition`);
+if (conversationOpenerDefinitions > 0) fail(`chat-logic.js contains a competing public conversation opener definition`);
+if (/window\.openLyannChatModal\s*=\s*function[\s\S]*?modal\.style\.display\s*=\s*['"]flex['"]/.test(chat)) {
+  fail('chat-logic.js legacy opener must not reveal chatModal directly');
+}
 
 if (failures.length) {
   console.error('LYANN canonical messaging audit FAILED');
   failures.forEach((message) => console.error(`  ✖ ${message}`));
   process.exit(1);
 }
-console.log('✓ LYANN canonical messaging architecture gate passed');
+console.log('✓ LYANN router-owned canonical messaging architecture gate passed');
