@@ -1,6 +1,10 @@
 const fs = require('fs');
 
-const HYGIENE_SCRIPT_TAG = '<script src="/production-hygiene.js?v=20260911" defer></script>';
+const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260914" defer></script>';
+const SHARED_RUNTIME_TAGS = [
+  '<script src="surface-manager.js?v=20260914" defer></script>',
+  '<script src="app-router.js?v=20260914" defer></script>'
+];
 
 function sanitizeStaticHtml(html) {
   let out = String(html || '');
@@ -39,16 +43,30 @@ function sanitizeStaticHtml(html) {
   return out;
 }
 
-function injectProductionHygiene(html) {
+function injectScriptOnce(html, tag, needle) {
   let out = String(html || '');
-  if (out.includes('production-hygiene.js')) return out;
+  if (out.includes(needle)) return out;
   return out.includes('</body>')
-    ? out.replace('</body>', `  ${HYGIENE_SCRIPT_TAG}\n</body>`)
-    : `${out}\n${HYGIENE_SCRIPT_TAG}\n`;
+    ? out.replace('</body>', `  ${tag}\n</body>`)
+    : `${out}\n${tag}\n`;
+}
+
+function injectSharedRuntime(html) {
+  let out = String(html || '');
+  for (const tag of SHARED_RUNTIME_TAGS) {
+    const match = tag.match(/src="([^"]+)"/);
+    const needle = match ? match[1].split('?')[0] : tag;
+    out = injectScriptOnce(out, tag, needle);
+  }
+  return out;
+}
+
+function injectProductionHygiene(html) {
+  return injectScriptOnce(html, HYGIENE_SCRIPT_TAG, 'production-hygiene.js');
 }
 
 function buildHtml(html) {
-  return injectProductionHygiene(sanitizeStaticHtml(html));
+  return injectProductionHygiene(injectSharedRuntime(sanitizeStaticHtml(html)));
 }
 
 function buildHtmlFile(sourcePath, destinationPath = sourcePath) {
@@ -59,7 +77,9 @@ function buildHtmlFile(sourcePath, destinationPath = sourcePath) {
 
 module.exports = {
   HYGIENE_SCRIPT_TAG,
+  SHARED_RUNTIME_TAGS,
   sanitizeStaticHtml,
+  injectSharedRuntime,
   injectProductionHygiene,
   buildHtml,
   buildHtmlFile
