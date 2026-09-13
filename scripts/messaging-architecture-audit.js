@@ -67,8 +67,14 @@ const shellOpenerDefinitions = countMatches(shell, /window\.openLyannMessagesMod
 const conversationOpenerDefinitions = countMatches(chat, /window\.openChatWithUser\s*=\s*(?:async\s+)?function\s*\(/g);
 if (shellOpenerDefinitions > 0) fail(`app-shell.js contains a competing messaging opener definition`);
 if (conversationOpenerDefinitions > 0) fail(`chat-logic.js contains a competing public conversation opener definition`);
-if (/window\.openLyannChatModal\s*=\s*function[\s\S]*?modal\.style\.display\s*=\s*['"]flex['"]/.test(chat)) {
-  fail('chat-logic.js legacy opener must not reveal chatModal directly');
+
+const legacyOpenerStart = chat.indexOf('window.openLyannChatModal = function');
+if (legacyOpenerStart !== -1) {
+  const nextTopLevel = chat.indexOf('\nwindow.', legacyOpenerStart + 1);
+  const legacyOpenerBody = chat.slice(legacyOpenerStart, nextTopLevel > legacyOpenerStart ? nextTopLevel : chat.length);
+  if (/modal\.style\.display\s*=\s*['"]flex['"]/.test(legacyOpenerBody) || /modal\.classList\.add\(['"]active['"]\)/.test(legacyOpenerBody)) {
+    fail('chat-logic.js legacy opener must not reveal chatModal directly');
+  }
 }
 
 if (failures.length) {
