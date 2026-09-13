@@ -16,7 +16,12 @@ expect(chat.includes('await messagesPromise;'), 'Chat refresh must await the alr
 // V2 rule: the legacy chat core is an internal hydrator only. It must prepare
 // content while hidden, then the canonical messaging controller reveals the shell.
 expect(chat.includes('Hydrate header immediately, but do not reveal the shell.'), 'Legacy chat core must hydrate without revealing the shell.');
-expect(!/window\.__LYANN_CHAT_CORE_OPEN[\s\S]*?modal\.style\.display = ['"]flex['"]/.test(chat), 'Legacy chat core must not reveal chatModal directly.');
+const coreStart = chat.indexOf('window.__LYANN_CHAT_CORE_OPEN = async function');
+const coreEnd = chat.indexOf('window.refreshChatUI = async function', coreStart);
+const coreBody = coreStart !== -1 && coreEnd > coreStart ? chat.slice(coreStart, coreEnd) : '';
+expect(coreBody.length > 0, 'Legacy chat hydrator body must be discoverable.');
+expect(!/modal\.style\.display\s*=\s*['"]flex['"]/.test(coreBody), 'Legacy chat core must not reveal chatModal directly.');
+expect(!/modal\.classList\.add\(['"]active['"]\)/.test(coreBody), 'Legacy chat core must not activate chatModal directly.');
 expect(messaging.includes("shell.classList.add('lyann-canonical-hydrating')"), 'Canonical controller must guard hydration from visual flashes.');
 expect(messaging.includes('await legacyOpenConversation('), 'Canonical controller must await chat hydration.');
 expect(messaging.includes('setShellVisible(true);'), 'Canonical controller must reveal the prepared shell.');
