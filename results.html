@@ -860,12 +860,12 @@
                             <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;">
                                 <div>
                                     <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Numéro de carte</label>
-                                    <input type="text" class="modal-input" placeholder="4242 4242 4242 4242" required style="width: 100%; box-sizing: border-box;" placeholder="Numéro de carte">
+                                    <input type="text" class="modal-input" autocomplete="cc-number" inputmode="numeric" required style="width: 100%; box-sizing: border-box;" placeholder="Numéro de carte">
                                 </div>
                                 <div style="display: flex; gap: 10px;">
                                     <div style="flex: 1;">
                                         <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Date d'expiration</label>
-                                        <input type="text" class="modal-input" placeholder="MM/AA" required style="width: 100%; box-sizing: border-box;" placeholder="MM/AA">
+                                        <input type="text" class="modal-input" autocomplete="cc-exp" inputmode="numeric" required style="width: 100%; box-sizing: border-box;" placeholder="MM/AA">
                                     </div>
                                     <div style="flex: 1;">
                                         <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">CVC</label>
