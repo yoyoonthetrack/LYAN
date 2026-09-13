@@ -55,37 +55,22 @@ window.unblockUser = function(contactId) {
 window.openReportModal = function(targetName = null) {
     const reportModal = document.getElementById('reportModal');
     const nameToReport = targetName || (currentChatContact ? currentChatContact.name : 'ce membre');
-    
-    if (reportModal) {
-        reportModal.setAttribute('data-target-user', nameToReport);
-        const modalTitle = reportModal.querySelector('.step-title');
-        if (modalTitle) modalTitle.textContent = `Signaler ${nameToReport}`;
+    if (!reportModal) {
+        console.error('[REPORT] report surface unavailable; no local fallback is permitted');
+        if (window.lyannAlert) window.lyannAlert('Le signalement est momentanément indisponible. Réessayez plus tard.');
+        return false;
+    }
+    reportModal.setAttribute('data-target-user', nameToReport);
+    const modalTitle = reportModal.querySelector('.step-title');
+    if (modalTitle) modalTitle.textContent = `Signaler ${nameToReport}`;
+    if (window.LYANN_SURFACES) {
+        window.LYANN_SURFACES.register('report', { element: 'reportModal', mode: 'major', hideBottomNav: true, lockBody: true });
+        window.LYANN_SURFACES.open('report');
+    } else {
         reportModal.classList.add('active');
         reportModal.style.display = 'flex';
-    } else {
-        if (window.lyannPrompt) {
-            window.lyannPrompt(`Quel est le motif du signalement concernant ${nameToReport} ?`).then(reason => {
-                if (!reason) return;
-                const newReport = {
-                    id: 'REP-' + Math.floor(100000 + Math.random() * 900000),
-                    reporterName: 'Utilisateur Connecté',
-                    targetName: nameToReport,
-                    reason: 'signalement',
-                    reasonLabel: 'Problème de comportement / litige',
-                    details: reason,
-                    timestamp: new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    status: 'En cours'
-                };
-                try {
-                    const existing = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]');
-                    existing.unshift(newReport);
-                    localStorage.setItem('LYANN_REPORTS', JSON.stringify(existing));
-                } catch(e) {}
-                if (window.lyannAlert) window.lyannAlert(`🛡️ Signalement concernant ${nameToReport} transmis à l'équipe de modération.`);
-                window.dispatchEvent(new CustomEvent('lyann_report_added', { detail: newReport }));
-            });
-        }
     }
+    return true;
 };
 let currentChatContact = null;
 function getMyId() {
@@ -94,9 +79,14 @@ function getMyId() {
 }
 
 function closeAllOverlays() {
+    if (window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.hideAllChildSurfaces === 'function') {
+        window.LYANN_MESSAGING.hideAllChildSurfaces();
+        setChatContextCoveredByOverlay(false);
+        return;
+    }
     const ids = [
-        'chatActionChoicesOverlay', 'chatDirectPriceForm', 'chatMilestoneDevisForm', 
-        'chatCheckoutOverlay', 'chatTrackingOverlay', 'chatSubmitProofOverlay', 
+        'chatActionChoicesOverlay', 'chatDirectPriceForm', 'chatMilestoneDevisForm',
+        'chatCheckoutOverlay', 'chatTrackingOverlay', 'chatSubmitProofOverlay',
         'chatProposeDateForm', 'chatLeaveReviewForm'
     ];
     ids.forEach(id => {
@@ -104,6 +94,18 @@ function closeAllOverlays() {
         if (el) el.style.display = 'none';
     });
     setChatContextCoveredByOverlay(false);
+}
+
+function openChatChildSurface(id) {
+    if (!id) return false;
+    if (window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.openChildSurface === 'function') {
+        return window.LYANN_MESSAGING.openChildSurface(id);
+    }
+    const el = document.getElementById(id);
+    if (!el) return false;
+    el.style.display = 'flex';
+    setChatContextCoveredByOverlay(true);
+    return true;
 }
 
 function setChatContextCoveredByOverlay(isCovered) {
@@ -241,30 +243,21 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
         return;
     }
 
-    document.body.classList.add('hide-bottom-nav');
-    document.body.classList.add('in-chat-active');
     const modal = document.getElementById('chatModal');
     if (!modal) {
-        window.location.href = `index.html?action=openchat&name=${encodeURIComponent(name)}`;
-        return;
+        console.error('[MESSAGING] chat shell unavailable');
+        return false;
     }
-    
 
-    let displayName = name;
+let displayName = name;
     let displayAvatar = avatar;
 
-    // IMMEDIATE CHAT SHELL: show the conversation before any profile/network lookup.
+    // Hydrate header immediately, but do not reveal the shell. The canonical
+    // messaging controller owns when the fully prepared surface becomes visible.
     const initialHeaderName = document.getElementById('chatHeaderName');
     const initialHeaderAvatar = document.getElementById('chatHeaderAvatar');
     if (initialHeaderName) initialHeaderName.textContent = displayName || 'Membre LYANN';
     if (initialHeaderAvatar && displayAvatar) initialHeaderAvatar.src = displayAvatar;
-    if (modal) {
-        modal.removeAttribute('style');
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-    }
-    document.body.style.overflow = 'hidden';
-    document.querySelectorAll('.chat-modal-layout').forEach(l => l.classList.add('mobile-conversation-active'));
 
     if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function' && contactId && isUUID(contactId)) {
         try {
@@ -318,13 +311,6 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
             item.classList.remove('active');
         }
     });
-
-    if (modal) {
-        modal.removeAttribute('style');
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-    }
-    document.body.style.overflow = 'hidden';
 
     document.querySelectorAll('.chat-modal-layout').forEach(l => {
         l.classList.add('mobile-conversation-active');
@@ -416,14 +402,8 @@ window.refreshChatUI = async function () {
             if (btnView) {
                 btnView.onclick = (e) => {
                     e.stopPropagation();
-                    if (typeof window.openLyannDetailModal === 'function') {
-                        document.body.classList.add('chat-child-modal-open');
-                        window.openLyannDetailModal(requestContext.requestId);
-                        requestAnimationFrame(() => {
-                            const detail = document.getElementById('lyannDetailModal');
-                            if (detail) detail.classList.add('opened-from-chat');
-                        });
-                    }
+                    if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('mission', { requestId: requestContext.requestId });
+                    else if (window.LYANN_MESSAGING) window.LYANN_MESSAGING.openMissionFromChat(e, btnView);
                 };
             }
             const btnPropose = document.getElementById('btnCtxPropose');
@@ -543,7 +523,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         closeAllOverlays();
         const chatActionChoicesOverlay = document.getElementById('chatActionChoicesOverlay');
         if (chatActionChoicesOverlay) {
-            chatActionChoicesOverlay.style.display = 'flex';
+            openChatChildSurface('chatActionChoicesOverlay');
             setChatContextCoveredByOverlay(true);
         } else {
             const amount = await window.lyannPrompt("Quel montant proposez-vous (en €) ?");
@@ -585,7 +565,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         closeAllOverlays();
         const overlay = document.getElementById('chatDirectPriceForm');
         if (overlay) {
-            overlay.style.display = 'flex';
+            openChatChildSurface(overlay.id);
             setChatContextCoveredByOverlay(true);
             const titleEl = overlay.querySelector('.mobile-form-title');
             if (titleEl) titleEl.textContent = "Discuter du prix";
@@ -665,7 +645,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         closeAllOverlays();
         const chatCheckoutOverlay = document.getElementById('chatCheckoutOverlay');
         if (chatCheckoutOverlay) {
-            chatCheckoutOverlay.style.display = 'flex';
+            openChatChildSurface('chatCheckoutOverlay');
         } else {
             if (mission && window.LYANN_API_CLIENT) window.LYANN_API_CLIENT.mockPayMission(mission.id);
             addMessageToContact(contactId, {
@@ -1314,7 +1294,7 @@ function initChatSubmitAndContacts() {
             if (bottomSheet) bottomSheet.style.display = 'none';
             closeAllOverlays();
             const overlay = document.getElementById('chatProposeDateForm');
-            if (overlay) overlay.style.display = 'flex';
+            if (overlay) openChatChildSurface('chatProposeDateForm');
         });
     }
     if (bsActionDevis) {
@@ -1322,7 +1302,7 @@ function initChatSubmitAndContacts() {
             if (bottomSheet) bottomSheet.style.display = 'none';
             closeAllOverlays();
             const overlay = document.getElementById('chatMilestoneDevisForm');
-            if (overlay) overlay.style.display = 'flex';
+            if (overlay) openChatChildSurface('chatMilestoneDevisForm');
         });
     }
     if (bsActionDocument) {
