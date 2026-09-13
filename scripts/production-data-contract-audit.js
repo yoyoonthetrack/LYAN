@@ -8,6 +8,8 @@ const fail = (message) => failures.push(message);
 const api = read('api-client.js');
 const chat = read('chat-logic.js');
 const shell = read('app-shell.js');
+const script = read('script.js');
+const router = read('app-router.js');
 
 for (const [name, source] of [['api-client.js', api], ['chat-logic.js', chat], ['app-shell.js', shell]]) {
   if (/lyann_mock_(?:missions|chat|services)/i.test(source)) {
@@ -31,6 +33,19 @@ if (!chat.includes('window.LYANN_AUTH_STATE?.getSnapshot?.().userId')) {
   fail('chat-logic.js: canonical auth-state identity lookup missing');
 }
 
+// Production member discovery must come from repositories/Supabase, never embedded personas.
+if (/ADDITIONAL_MEMBERS_DATA|Jocelyn Cabort|David M\. \(34 ans\)|Marie-Line Popotte/.test(script)) {
+  fail('script.js: embedded member/demo personas must not be a production data source');
+}
+if (!/const LYANN_MEMBERS = \[\];/.test(script) || !/window\.LYANN_MEMBERS = LYANN_MEMBERS;/.test(script)) {
+  fail('script.js: legacy member compatibility container must remain empty');
+}
+
+// Canonical router owns global account/support navigation as well as primary tabs.
+for (const route of ['profile', 'account', 'activity', 'favorites', 'finances', 'pricing', 'payment', 'help', 'about']) {
+  if (!router.includes(`register('${route}'`)) fail(`app-router.js: missing canonical ${route} route`);
+}
+
 if (failures.length) {
   console.error('PRODUCTION DATA CONTRACT: FAIL');
   failures.forEach((message) => console.error(`  ✖ ${message}`));
@@ -38,4 +53,4 @@ if (failures.length) {
 }
 
 console.log('PRODUCTION DATA CONTRACT: PASS');
-console.log('Chat, missions and services no longer depend on local mock business state.');
+console.log('Production business state uses canonical repositories; embedded member personas and local mock mission/chat state are retired.');
