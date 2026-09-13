@@ -16,8 +16,8 @@
         'chatLeaveReviewForm'
     ];
 
-    const legacyOpenConversation = typeof window.openChatWithUser === 'function'
-        ? window.openChatWithUser.bind(window)
+    const legacyOpenConversation = typeof window.__LYANN_CHAT_CORE_OPEN === 'function'
+        ? window.__LYANN_CHAT_CORE_OPEN.bind(window)
         : null;
 
     function modal() { return document.getElementById('chatModal'); }

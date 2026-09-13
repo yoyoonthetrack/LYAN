@@ -325,7 +325,7 @@ window.openPhotoLightbox = function (url) {
     }
 };
 
-window.openChatWithUser = async function (name, avatar, contactId = name, initialNeed = null) {
+window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, initialNeed = null) {
     const myId = getMyId();
     if (contactId && myId && contactId === myId && contactId !== "me") {
         if (window.lyannAlert) window.lyannAlert("⚠️ Vous ne pouvez pas démarrer une mise en relation avec vous-même.");

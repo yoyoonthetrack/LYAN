@@ -207,53 +207,10 @@ async function initMobileHomeDashboard() {
 
 // === INTERFACE INJECTION ENTRY POINT ===
 // Global messaging modal opener
-window.openLyannMessagesModal = async function() {
-    try { triggerHaptic('light'); } catch(e) {}
-
-    // One canonical chat implementation: resume the last real conversation with
-    // the same openChatWithUser() path used by “Je peux aider”.
-    try {
-        const liveContact = window.LYANN_ACTIVE_CHAT_CONTACT && window.LYANN_ACTIVE_CHAT_CONTACT.id
-            ? window.LYANN_ACTIVE_CHAT_CONTACT
-            : null;
-        const raw = localStorage.getItem('lyann_last_active_contact');
-        const storedContact = raw ? JSON.parse(raw) : null;
-        const last = liveContact || storedContact;
-        if (last && last.id && typeof window.openChatWithUser === 'function') {
-            return await window.openChatWithUser(
-                last.name || 'Membre LYANN',
-                last.avatar || (window.getLyannDefaultAvatar ? window.getLyannDefaultAvatar() : ''),
-                last.id,
-                null
-            );
-        }
-    } catch (e) {
-        console.warn('[MESSAGES ENTRY] Unable to restore last conversation', e);
-    }
-
-    const modal = document.getElementById('chatModal');
-    if (modal) {
-        document.body.classList.add('hide-bottom-nav');
-        document.body.classList.add('in-chat-active');
-        modal.removeAttribute('style');
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-
-        // With no previous contact, deliberately show the conversation list, but
-        // keep the exact same modal/layout implementation.
-        document.querySelectorAll('.chat-modal-layout').forEach(layout => {
-            layout.classList.remove('mobile-conversation-active');
-        });
-
-        if (typeof window.renderContactsList === 'function') {
-            try { await window.renderContactsList(); } catch(e) {}
-        } else if (typeof window.renderChatContacts === 'function') {
-            try { await window.renderChatContacts(); } catch(e) {}
-        }
-    } else {
-        window.location.href = 'feed.html?action=openchat';
-    }
+window.openLyannMessagesModal = function() {
+    if (window.LYANN_MESSAGING) return window.LYANN_MESSAGING.openList();
+    console.warn('[MESSAGING] canonical controller not ready yet');
+    return Promise.resolve();
 };
 
 async function injectMobileInterface() {
