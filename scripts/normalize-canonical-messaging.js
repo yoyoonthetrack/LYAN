@@ -25,9 +25,10 @@ let css = fs.readFileSync(cssPath, 'utf8');
 const markers = [
   '/* LYANN CANONICAL MESSAGING SHELL v1 */',
   '/* LYANN CANONICAL MESSAGING SHELL v2 */',
-  '/* LYANN CANONICAL MESSAGING SHELL v3 */'
+  '/* LYANN CANONICAL MESSAGING SHELL v3 */',
+  '/* LYANN CANONICAL MESSAGING SHELL v4 */'
 ];
-const marker = '/* LYANN CANONICAL MESSAGING SHELL v3 */';
+const marker = '/* LYANN CANONICAL MESSAGING SHELL v4 */';
 const canonicalCss = `${marker}
 /* Parent conversation content can never bleed through a child workflow. */
 #chatModal .chat-main-area.lyann-child-surface-open #chatMissionContextBar,
@@ -47,62 +48,70 @@ const canonicalCss = `${marker}
 body.lyann-messaging-transition #chatModal { visibility: hidden !important; pointer-events: none !important; }
 
 @media (max-width: 768px) {
-  /* Messaging is a top-level screen. Never keep the app tab bar underneath it. */
-  body.lyann-messaging-open .mobile-bottom-nav { display: none !important; }
+  /* Messaging is a top-level app screen, never a modal sitting above another screen. */
+  body.lyann-messaging-open .mobile-bottom-nav,
+  body.lyann-messaging-open .speed-dial-wrapper,
+  body.lyann-messaging-open #backToTopBtn {
+    display: none !important;
+  }
 
   body.lyann-messaging-open #chatModal {
     position: fixed !important;
-    top: env(safe-area-inset-top, 0px) !important;
-    right: 0 !important;
-    bottom: env(safe-area-inset-bottom, 0px) !important;
-    left: 0 !important;
+    inset: 0 !important;
     width: 100vw !important;
-    height: auto !important;
+    height: 100dvh !important;
     max-width: 100vw !important;
-    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    max-height: 100dvh !important;
     margin: 0 !important;
-    padding: 8px !important;
+    padding: 0 !important;
     box-sizing: border-box !important;
     align-items: stretch !important;
     justify-content: stretch !important;
+    background: #FFFFFF !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
     z-index: 20000 !important;
   }
 
-  /* Capacitor/WKWebView can report a zero CSS safe-area inset even while the
-     native status bar overlays the web view. Reserve a real iPhone header zone. */
+  /* Native iOS: reserve the system-status/Dynamic-Island zone at the top, but
+     keep the messaging surface itself full-width and flush to the bottom. */
   body.is-native-app.lyann-messaging-open #chatModal {
     top: max(env(safe-area-inset-top, 0px), 54px) !important;
-    bottom: max(env(safe-area-inset-bottom, 0px), 12px) !important;
-    max-height: calc(100dvh - max(env(safe-area-inset-top, 0px), 54px) - max(env(safe-area-inset-bottom, 0px), 12px)) !important;
-    padding: 0 8px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: calc(100dvh - max(env(safe-area-inset-top, 0px), 54px)) !important;
+    max-height: calc(100dvh - max(env(safe-area-inset-top, 0px), 54px)) !important;
+    padding: 0 !important;
+    background: #FFFFFF !important;
   }
 
   body.lyann-messaging-open #chatModal > .modal-card,
-  body.lyann-messaging-open #chatModal .modal-card-chat {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    margin: 0 !important;
-    border-radius: 24px !important;
-    overflow: hidden !important;
-  }
-
+  body.lyann-messaging-open #chatModal .modal-card-chat,
   body.lyann-messaging-open #chatModal .chat-modal-layout {
     width: 100% !important;
     height: 100% !important;
     max-width: 100% !important;
     max-height: 100% !important;
+    min-height: 0 !important;
     margin: 0 !important;
-    border-radius: inherit !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
     overflow: hidden !important;
+    background: #FFFFFF !important;
   }
 
   body.lyann-messaging-open #chatModal .chat-sidebar-header,
   body.lyann-messaging-open #chatModal .chat-header-bar {
-    min-height: 56px !important;
+    min-height: 64px !important;
     padding-top: 8px !important;
     padding-bottom: 8px !important;
+    background: #FFFFFF !important;
   }
 
   body.lyann-messaging-open #chatModal #chatTrackingBtn {
@@ -123,9 +132,11 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
     line-height: 1 !important;
   }
 
-  body.lyann-messaging-open #chatModal .chat-input-area,
-  body.lyann-messaging-open #chatModal #chatReplyBar {
-    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;
+  /* Keep the composer above the iPhone home indicator without exposing the
+     underlying page behind the messaging route. */
+  body.is-native-app.lyann-messaging-open #chatModal .chat-input-area,
+  body.is-native-app.lyann-messaging-open #chatModal #chatReplyBar {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
   }
 
   #chatModal .chat-modal-layout:not(.mobile-conversation-active) .chat-contacts-sidebar { display: flex !important; width: 100% !important; }
