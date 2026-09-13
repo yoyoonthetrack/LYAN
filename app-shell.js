@@ -170,7 +170,7 @@ async function initMobileHomeDashboard() {
                 if (e.key === 'Enter') {
                     const val = dbSearchInput.value.trim();
                     if (val) {
-                        window.location.href = `results.html?query=${encodeURIComponent(val)}`;
+                        if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('explorer', { query: val }); else window.location.href = `results.html?query=${encodeURIComponent(val)}`;
                     }
                 }
             });
@@ -179,12 +179,8 @@ async function initMobileHomeDashboard() {
 }
 
 // === INTERFACE INJECTION ENTRY POINT ===
-// Global messaging modal opener
-window.openLyannMessagesModal = function() {
-    if (window.LYANN_MESSAGING) return window.LYANN_MESSAGING.openList();
-    console.warn('[MESSAGING] canonical controller not ready yet');
-    return Promise.resolve();
-};
+// Public navigation is owned by app-router.js. The messaging controller installs
+// compatibility aliases after its own initialization; app-shell defines none.
 
 async function injectMobileInterface() {
     if (window.LYANN_AUTH_STATE) {
@@ -277,40 +273,9 @@ async function injectMobileInterface() {
             });
         });
 
-        // Tab "+" (Publier) click
-        const tabCreate = document.getElementById('tab-create');
-        if (tabCreate) {
-            tabCreate.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (typeof window.openLyannWizard === 'function') {
-                    window.openLyannWizard();
-                } else if (typeof window.openCentralActionSheet === 'function') {
-                    window.openCentralActionSheet();
-                }
-            });
-        }
-
-        // Messages tab click -> Open Chat Modal
-        const tabMessages = document.getElementById('tab-messages');
-        if (tabMessages) {
-            tabMessages.addEventListener('click', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
-                await window.openLyannMessagesModal();
-            }, true);
-        }
-
-        // Moi tab click
-        const tabMoi = document.getElementById('tab-moi');
-        if (tabMoi) {
-            tabMoi.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (typeof window.openAccountModalSubView === 'function') {
-                    window.openAccountModalSubView('account');
-                }
-            });
-        }
+        // Navigation handlers are intentionally not bound here. app-router.js
+        // owns Accueil / Explorer / Publier / Bokantaj / Messages consistently
+        // on Web and Capacitor. app-shell only renders the native navigation UI.
     }
 
     // 2. Central Action Bottom Sheet (3 grandes actions)
