@@ -1,5 +1,3 @@
-console.log("[LYANN_NATIVE_BUILD] 9c9ec8f-PROBE-1502");
-window.__LYANN_NATIVE_BUILD__ = "9c9ec8f-PROBE-1502";
 console.log("⚡ [BOOT 01] script.js loaded");
 console.log("[AUTH_REAL] app boot");
 window.__LYANN_AUTH_REAL__ = window.__LYANN_AUTH_REAL__ || {
@@ -10,42 +8,8 @@ window.__LYANN_AUTH_REAL__ = window.__LYANN_AUTH_REAL__ || {
     appHomeMounted: false
 };
 
-// === LYANN TEMPORARY RUNTIME DIAGNOSTICS & TRACE ENGINE ===
-window.__LYANN_RUNTIME_DIAG__ = window.__LYANN_RUNTIME_DIAG__ || {
-    href: typeof window !== 'undefined' && window.location ? window.location.href : null,
-    protocol: typeof window !== 'undefined' && window.location ? window.location.protocol : null,
-    capacitorPresent: typeof window !== 'undefined' && !!window.Capacitor,
-    capacitorPlatform: typeof window !== 'undefined' && window.Capacitor && typeof window.Capacitor.getPlatform === 'function' ? window.Capacitor.getPlatform() : null,
-    capacitorIsNative: typeof window !== 'undefined' && window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' ? window.Capacitor.isNativePlatform() : null,
-    webkitPresent: typeof window !== 'undefined' && !!window.webkit,
-    isNativePlatformResult: null,
-    domContentLoadedReached: false,
-    injectMobileInterfaceEntered: false,
-    injectMobileInterfaceEarlyReturn: false,
-    bodyIsNativeAppApplied: false,
-    ensureDeterministicAppHeaderEntered: false,
-    nativeHeaderRowCreated: false,
-    publicHeaderFound: false,
-    bottomNavCreated: false,
-    traces: []
-};
-
-function logLyannTrace(tag, info) {
-    const msg = "[LYANN_TRACE] [" + tag + "] " + (info !== undefined ? (typeof info === 'object' ? JSON.stringify(info) : info) : "");
-    console.log(msg);
-    if (window.__LYANN_RUNTIME_DIAG__ && Array.isArray(window.__LYANN_RUNTIME_DIAG__.traces)) {
-        window.__LYANN_RUNTIME_DIAG__.traces.push(msg);
-    }
-}
-
-logLyannTrace("BOOT_ENV", {
-    href: window.__LYANN_RUNTIME_DIAG__.href,
-    protocol: window.__LYANN_RUNTIME_DIAG__.protocol,
-    capacitorPresent: window.__LYANN_RUNTIME_DIAG__.capacitorPresent,
-    capacitorPlatform: window.__LYANN_RUNTIME_DIAG__.capacitorPlatform,
-    capacitorIsNative: window.__LYANN_RUNTIME_DIAG__.capacitorIsNative,
-    webkitPresent: window.__LYANN_RUNTIME_DIAG__.webkitPresent
-});
+// Runtime tracing retired after architecture stabilization.
+function logLyannTrace() {}
 
 // === CAPACITOR MOBILE DETECTOR & DYNAMIC BRIDGE INJECTION ===
 (function() {
@@ -104,10 +68,6 @@ function isNativePlatform() {
         result = true;
     } else if (window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.bridge || window.webkit.messageHandlers.capacitor)) {
         result = true;
-    }
-
-    if (window.__LYANN_RUNTIME_DIAG__) {
-        window.__LYANN_RUNTIME_DIAG__.isNativePlatformResult = result;
     }
     logLyannTrace("isNativePlatform", { result: result, href: window.location.href, capacitorPresent: !!window.Capacitor });
     return result;
