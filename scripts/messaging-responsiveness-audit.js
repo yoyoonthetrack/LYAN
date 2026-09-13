@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const chat = fs.readFileSync(path.join(process.cwd(), 'chat-logic.js'), 'utf8');
+const messaging = fs.readFileSync(path.join(process.cwd(), 'messaging-ui.js'), 'utf8');
 const errors = [];
 
 function expect(condition, message) {
@@ -9,13 +10,20 @@ function expect(condition, message) {
 }
 
 expect(chat.includes("const isMe = msg.sender === 'me' || msg.sender === getMyId();"), 'Message ownership must accept normalized me/them sender values.');
-expect(chat.includes('IMMEDIATE CHAT SHELL: show the conversation before any profile/network lookup.'), 'Chat shell must open before profile/network lookup.');
 expect(chat.includes('const messagesPromise = renderMessages();'), 'Messages must start rendering before request/mission context finishes.');
 expect(chat.includes('await messagesPromise;'), 'Chat refresh must await the already-started message render.');
 
-const shellIndex = chat.indexOf('IMMEDIATE CHAT SHELL:');
-const profileAwaitIndex = chat.indexOf("const prof = await window.LYANN_API_CLIENT.getUserProfile(contactId);");
-expect(shellIndex !== -1 && profileAwaitIndex !== -1 && shellIndex < profileAwaitIndex, 'Immediate chat shell must precede awaited profile lookup.');
+// V2 rule: the legacy chat core is an internal hydrator only. It must prepare
+// content while hidden, then the canonical messaging controller reveals the shell.
+expect(chat.includes('Hydrate header immediately, but do not reveal the shell.'), 'Legacy chat core must hydrate without revealing the shell.');
+expect(!/window\.__LYANN_CHAT_CORE_OPEN[\s\S]*?modal\.style\.display = ['"]flex['"]/.test(chat), 'Legacy chat core must not reveal chatModal directly.');
+expect(messaging.includes("shell.classList.add('lyann-canonical-hydrating')"), 'Canonical controller must guard hydration from visual flashes.');
+expect(messaging.includes('await legacyOpenConversation('), 'Canonical controller must await chat hydration.');
+expect(messaging.includes('setShellVisible(true);'), 'Canonical controller must reveal the prepared shell.');
+
+const hydrateIndex = messaging.indexOf('await legacyOpenConversation(');
+const revealIndex = messaging.indexOf('setShellVisible(true);', hydrateIndex);
+expect(hydrateIndex !== -1 && revealIndex > hydrateIndex, 'Shell reveal must happen after awaited hydration.');
 
 if (errors.length) {
   console.error('Messaging responsiveness audit failed:');
