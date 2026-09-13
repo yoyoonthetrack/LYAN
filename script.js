@@ -91,6 +91,8 @@ window.isNativePlatform = isNativePlatform;
 
     // Production source of truth: members come from Supabase repositories.
     // Static personas were removed to prevent stale/fake profiles from becoming a competing data source.
+    // Production source of truth: members come from Supabase repositories.
+    // Static personas were removed to prevent stale/fake profiles from becoming a competing data source.
     const LYANN_MEMBERS = [];
     window.LYANN_MEMBERS = LYANN_MEMBERS;
 
