@@ -15610,3 +15610,66 @@ body:has(#chatTrackingOverlay[style*="display: flex"]) #chatTrackingOverlay,
 body:has(#chatTrackingOverlay[style*="display:flex"]) #chatTrackingOverlay {
     z-index: 400 !important;
 }
+
+/* LYANN CANONICAL MESSAGING SHELL v1 */
+/* Parent conversation content can never bleed through a child workflow. */
+#chatModal .chat-main-area.lyann-child-surface-open #chatMissionContextBar,
+#chatModal .chat-main-area.lyann-child-surface-open #chatMissionContext,
+#chatModal .chat-main-area.lyann-child-surface-open #chatContextualActionsBar,
+#chatModal .chat-main-area.lyann-child-surface-open #chatViewMissionBtn,
+#chatModal .chat-main-area.lyann-child-surface-open #chatMessagesContainer,
+#chatModal .chat-main-area.lyann-child-surface-open #chatReplyBar,
+#chatModal .chat-main-area.lyann-child-surface-open .chat-input-area {
+  display: none !important;
+}
+
+#chatModal .chat-main-area.lyann-child-surface-open .chat-overlay-pane {
+  z-index: 1000 !important;
+}
+
+#chatModal .chat-main-area.lyann-child-surface-open .chat-overlay-pane:not([style*="display: none"]):not([style*="display:none"]) {
+  display: flex !important;
+}
+
+/* Mobile has one state machine: list -> conversation -> child surface. */
+@media (max-width: 768px) {
+  body.lyann-messaging-open #chatModal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    z-index: 20000 !important;
+  }
+
+  body.lyann-messaging-open #chatModal > .modal-card,
+  body.lyann-messaging-open #chatModal .modal-card-chat,
+  body.lyann-messaging-open #chatModal .chat-modal-layout {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  #chatModal .chat-modal-layout:not(.mobile-conversation-active) .chat-contacts-sidebar {
+    display: flex !important;
+    width: 100% !important;
+  }
+
+  #chatModal .chat-modal-layout:not(.mobile-conversation-active) .chat-main-area {
+    display: none !important;
+  }
+
+  #chatModal .chat-modal-layout.mobile-conversation-active .chat-contacts-sidebar {
+    display: none !important;
+  }
+
+  #chatModal .chat-modal-layout.mobile-conversation-active .chat-main-area {
+    display: flex !important;
+    width: 100% !important;
+  }
+}
