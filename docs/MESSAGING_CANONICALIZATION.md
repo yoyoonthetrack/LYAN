@@ -10,4 +10,4 @@ The only supported UI state sequence is:
 2. selected conversation
 3. optional child workflow (proposal, milestone, tracking, payment, proof, date, review)
 
-Legacy entry functions remain only as compatibility aliases and must forward to the canonical controller. Child workflows replace the conversation body and must never visually overlap mission context or the composer.
+Legacy entry functions remain only as compatibility aliases and must forward to the canonical controller. The previous public conversation opener has been demoted to a private chat-core implementation, and `app-shell.js` no longer owns an independent messaging state machine. Child workflows replace the conversation body and must never visually overlap mission context or the composer.
