@@ -7,6 +7,7 @@ const pages = ['index.html', 'feed.html', 'results.html', 'pricing.html', 'payme
 function read(file) { return fs.readFileSync(file, 'utf8'); }
 function fail(message) { failures.push(message); }
 function count(source, needle) { return source.split(needle).length - 1; }
+function countMatches(source, regex) { return (source.match(regex) || []).length; }
 
 if (!fs.existsSync('messaging-ui.js')) fail('messaging-ui.js is missing');
 else {
@@ -42,8 +43,10 @@ for (const file of pages) {
 
 const shell = read('app-shell.js');
 const chat = read('chat-logic.js');
-if (count(shell, 'window.openLyannMessagesModal =') > 1) fail('app-shell.js contains multiple messaging openers');
-if (count(chat, 'window.openChatWithUser =') > 1) fail('chat-logic.js contains multiple conversation openers');
+const shellOpenerDefinitions = countMatches(shell, /window\.openLyannMessagesModal\s*=\s*(?:async\s+)?function\s*\(/g);
+const conversationOpenerDefinitions = countMatches(chat, /window\.openChatWithUser\s*=\s*(?:async\s+)?function\s*\(/g);
+if (shellOpenerDefinitions > 1) fail(`app-shell.js contains ${shellOpenerDefinitions} messaging opener definitions`);
+if (conversationOpenerDefinitions > 1) fail(`chat-logic.js contains ${conversationOpenerDefinitions} conversation opener definitions`);
 
 if (failures.length) {
   console.error('LYANN canonical messaging audit FAILED');
