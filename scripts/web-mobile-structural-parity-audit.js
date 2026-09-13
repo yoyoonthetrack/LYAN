@@ -23,6 +23,7 @@ function fail(message) {
 const messaging = read('messaging-ui.js');
 const style = read('style.css');
 const mobileBuild = read('build_mobile.js');
+const webRender = read('api/render.js');
 
 if (!messaging.includes('window.LYANN_MESSAGING = api')) {
   fail('messaging-ui.js: canonical public messaging owner is missing');
@@ -56,12 +57,21 @@ if (!style.includes('body.is-native-app.lyann-messaging-open #chatModal')) {
   fail('style.css: native safe-area specialization missing');
 }
 
-// Mobile bundles must be copies of the same root functional sources used by Web.
-if (!mobileBuild.includes("fs.copyFileSync(srcPath, destPath)")) {
-  fail('build_mobile.js: mobile assets must copy from shared root sources');
+// Web and Capacitor must use the same HTML build transformation.
+if (!webRender.includes("require('../shared-html-build')")) {
+  fail('api/render.js: Web must use shared-html-build.js');
 }
-if (!mobileBuild.includes("const srcDir = __dirname")) {
-  fail('build_mobile.js: mobile source directory must remain the shared repository root');
+if (!mobileBuild.includes("require('./shared-html-build')")) {
+  fail('build_mobile.js: Capacitor must use shared-html-build.js');
+}
+if (!mobileBuild.includes('copyDirectoryExact(sharedDist, iosPublic)')) {
+  fail('build_mobile.js: iOS must consume the generated shared www artifact');
+}
+if (!mobileBuild.includes('assertExactArtifact(sharedDist, iosPublic')) {
+  fail('build_mobile.js: iOS parity assertion missing');
+}
+if (!mobileBuild.includes('const srcDir = __dirname')) {
+  fail('build_mobile.js: shared source directory must remain the repository root');
 }
 
 if (failures.length) {
@@ -71,4 +81,4 @@ if (failures.length) {
 }
 
 console.log('WEB/MOBILE STRUCTURAL PARITY: PASS');
-console.log(`Canonical messaging verified on ${pages.length} Web product pages and the shared Capacitor build path.`);
+console.log(`Canonical messaging verified on ${pages.length} Web product pages and the shared Web/Capacitor artifact path.`);
