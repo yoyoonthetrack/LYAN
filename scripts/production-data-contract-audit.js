@@ -43,8 +43,18 @@ if (!/const LYANN_MEMBERS = \[\];/.test(script) || !/window\.LYANN_MEMBERS = LYA
 }
 
 // Canonical router owns global account/support navigation as well as primary tabs.
-for (const route of ['profile', 'account', 'activity', 'favorites', 'finances', 'pricing', 'payment', 'help', 'about']) {
+for (const route of ['profile', 'account', 'activity', 'favorites', 'finances', 'settings', 'pricing', 'payment', 'help', 'about']) {
   if (!router.includes(`register('${route}'`)) fail(`app-router.js: missing canonical ${route} route`);
+}
+
+// The hamburger drawer must route through data-lyann-route, never call account/profile owners inline.
+if (/drawer-(?:profile-link|direct-link)[^>]+onclick="[^"]*(?:openPublicProfileModal|openAccountModalSubView)/.test(script)) {
+  fail('script.js: hamburger drawer still bypasses canonical router with inline navigation');
+}
+for (const route of ['profile', 'account', 'activity', 'favorites', 'finances', 'settings']) {
+  if (!script.includes(`data-lyann-route="${route}"`)) {
+    fail(`script.js: hamburger drawer missing canonical ${route} route binding`);
+  }
 }
 
 if (failures.length) {
@@ -54,4 +64,4 @@ if (failures.length) {
 }
 
 console.log('PRODUCTION DATA CONTRACT: PASS');
-console.log('Production business state uses canonical repositories; the legacy member pool and local mock mission/chat state are retired.');
+console.log('Production business state uses canonical repositories; drawer navigation is router-owned; legacy member and local mock mission/chat state are retired.');
