@@ -1,20 +1,22 @@
 // LYANN canonical messaging controller.
-// Every Web and Capacitor messaging entry point must go through this module.
+// One shared messaging owner for Web and Capacitor.
 (function () {
     'use strict';
 
     if (window.LYANN_MESSAGING && window.LYANN_MESSAGING.__canonical) return;
 
+    const CHAT_SURFACE = 'messaging';
     const CHILD_SURFACES = [
-        'chatActionChoicesOverlay',
-        'chatDirectPriceForm',
-        'chatMilestoneDevisForm',
-        'chatCheckoutOverlay',
-        'chatTrackingOverlay',
-        'chatSubmitProofOverlay',
-        'chatProposeDateForm',
-        'chatLeaveReviewForm'
+        ['chat-actions', 'chatActionChoicesOverlay'],
+        ['chat-direct-price', 'chatDirectPriceForm'],
+        ['chat-milestone-quote', 'chatMilestoneDevisForm'],
+        ['chat-checkout', 'chatCheckoutOverlay'],
+        ['chat-tracking', 'chatTrackingOverlay'],
+        ['chat-proof', 'chatSubmitProofOverlay'],
+        ['chat-date', 'chatProposeDateForm'],
+        ['chat-review', 'chatLeaveReviewForm']
     ];
+
     const legacyOpenConversation = typeof window.__LYANN_CHAT_CORE_OPEN === 'function'
         ? window.__LYANN_CHAT_CORE_OPEN.bind(window)
         : null;
@@ -22,6 +24,8 @@
     function modal() { return document.getElementById('chatModal'); }
     function layout() { return modal()?.querySelector('.chat-modal-layout') || null; }
     function mainArea() { return modal()?.querySelector('.chat-main-area') || null; }
+    function surfaces() { return window.LYANN_SURFACES || null; }
+
     function withTimeout(promise, ms, label) {
         let timer;
         return Promise.race([
@@ -38,60 +42,133 @@
         document.head.appendChild(style);
     }
 
+    function registerSurfaces() {
+        const manager = surfaces();
+        if (!manager) return false;
+
+        manager.register(CHAT_SURFACE, {
+            element: 'chatModal',
+            mode: 'major',
+            hideBottomNav: true,
+            lockBody: true,
+            onOpen() {
+                document.body.classList.add('in-chat-active', 'lyann-messaging-open');
+            },
+            onClose() {
+                document.body.classList.remove('in-chat-active', 'lyann-messaging-open', 'lyann-messaging-child-open', 'lyann-messaging-transition');
+            }
+        });
+
+        CHILD_SURFACES.forEach(([name, id]) => {
+            manager.register(name, {
+                element: id,
+                mode: 'child',
+                hideBottomNav: true,
+                lockBody: true,
+                onOpen() { syncChildSurfaceState(); },
+                onClose() { syncChildSurfaceState(); }
+            });
+        });
+        return true;
+    }
+
     function defaultAvatar() {
-        return typeof window.getLyannDefaultAvatar === 'function' ? window.getLyannDefaultAvatar() : '';
+        return typeof window.getLyannDefaultAvatar === 'function' ? window.getLyannDefaultAvatar() : 'lyann-avatar-placeholder.svg';
     }
 
     async function resolveCurrentUserId() {
-        try {
-            const client = window.LYANN_API_CLIENT || window.apiClient;
-            const auth = client?.supabase?.auth;
-            if (auth && typeof auth.getSession === 'function') {
-                const { data } = await withTimeout(auth.getSession(), 4000, 'session');
-                if (data?.session?.user?.id) return data.session.user.id;
+        const authState = window.LYANN_AUTH_STATE;
+        if (authState) {
+            try {
+                await withTimeout(authState.ready(), 4000, 'auth state');
+                return authState.getSnapshot?.().userId || null;
+            } catch (error) {
+                console.warn('[MESSAGING] auth-state resolution failed', error);
             }
-        } catch (e) {
-            console.warn('[MESSAGING] session resolution failed', e);
+        }
+
+        const session = window.LYANN_SESSION;
+        if (session) {
+            try {
+                const user = await withTimeout(session.getUser(), 4000, 'session');
+                return user?.id || null;
+            } catch (error) {
+                console.warn('[MESSAGING] session resolution failed', error);
+            }
         }
         return window.CURRENT_USER_ID || null;
     }
 
     function setShellVisible(visible) {
+        const manager = surfaces();
+        if (manager) {
+            if (!manager.getElement(CHAT_SURFACE)) registerSurfaces();
+            if (visible) {
+                document.body.classList.add('in-chat-active', 'lyann-messaging-open');
+                manager.open(CHAT_SURFACE);
+            } else {
+                manager.close(CHAT_SURFACE);
+                document.body.classList.remove('in-chat-active', 'lyann-messaging-open', 'lyann-messaging-child-open', 'lyann-messaging-transition');
+            }
+            return true;
+        }
+
+        // Bootstrap fallback only. Surface manager is injected into every shared build.
         const el = modal();
         if (!el) return false;
-        if (visible) {
-            document.body.classList.add('hide-bottom-nav', 'in-chat-active', 'lyann-messaging-open');
-            el.style.display = 'flex';
-            el.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.classList.remove('hide-bottom-nav', 'in-chat-active', 'lyann-messaging-open', 'lyann-messaging-child-open', 'lyann-messaging-transition');
-            el.classList.remove('active');
-            el.style.display = 'none';
-            document.body.style.removeProperty('overflow');
-        }
+        el.style.display = visible ? 'flex' : 'none';
+        el.classList.toggle('active', visible);
+        document.body.classList.toggle('hide-bottom-nav', visible);
+        document.body.classList.toggle('in-chat-active', visible);
+        document.body.classList.toggle('lyann-messaging-open', visible);
+        document.body.style.overflow = visible ? 'hidden' : '';
         return true;
     }
 
+    function childSurfaceNameForElement(el) {
+        const found = CHILD_SURFACES.find(([, id]) => id === el?.id);
+        return found?.[0] || null;
+    }
+
     function hideAllChildSurfaces() {
-        CHILD_SURFACES.forEach((id) => {
-            const el = document.getElementById(id);
-            if (el) el.style.setProperty('display', 'none', 'important');
-        });
+        const manager = surfaces();
+        if (manager) {
+            CHILD_SURFACES.forEach(([name]) => manager.close(name));
+        } else {
+            CHILD_SURFACES.forEach(([, id]) => {
+                const el = document.getElementById(id);
+                if (el) el.style.setProperty('display', 'none', 'important');
+            });
+        }
         syncChildSurfaceState();
     }
 
-    function isVisible(el) { return !!el && getComputedStyle(el).display !== 'none'; }
+    function openChildSurface(id) {
+        const el = document.getElementById(id);
+        if (!el) return false;
+        const name = childSurfaceNameForElement(el);
+        const manager = surfaces();
+        if (manager && name) manager.open(name);
+        else el.style.display = 'flex';
+        syncChildSurfaceState();
+        return true;
+    }
 
     function syncChildSurfaceState() {
+        const manager = surfaces();
+        const openName = CHILD_SURFACES.find(([name, id]) => manager?.isOpen(name) || isElementVisible(document.getElementById(id)))?.[0] || '';
+        const active = !!openName;
         const main = mainArea();
-        const openSurface = CHILD_SURFACES.map((id) => document.getElementById(id)).find(isVisible);
-        const active = !!openSurface;
         if (main) {
             main.classList.toggle('lyann-child-surface-open', active);
-            main.dataset.lyannChildSurface = openSurface?.id || '';
+            main.dataset.lyannChildSurface = openName;
         }
         document.body.classList.toggle('lyann-messaging-child-open', active);
+    }
+
+    function isElementVisible(el) {
+        if (!el) return false;
+        return getComputedStyle(el).display !== 'none';
     }
 
     function setListEmptyState(listContainer) {
@@ -154,34 +231,36 @@
         if (!listContainer) return;
 
         listContainer.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;">Chargement des conversations…</div>';
-        if (repo && typeof repo.listConversations === 'function' && userId) {
-            try {
-                const conversations = await withTimeout(repo.listConversations(userId, { fresh: true }), 8000, 'conversation list');
-                if (conversations.length) {
-                    renderConversationRows(listContainer, conversations);
-                    return;
-                }
-            } catch (e) {
-                console.warn('[MESSAGING] canonical conversation list failed', e);
-            }
-        }
-
-        const recent = lastActiveFallback();
-        if (recent) {
-            renderConversationRows(listContainer, [{
-                contactId: recent.id,
-                name: recent.name || 'Membre LYANN',
-                avatar: recent.avatar || defaultAvatar(),
-                preview: 'Conversation récente',
-                requestId: recent.requestId || null
-            }]);
+        if (!repo || typeof repo.listConversations !== 'function' || !userId) {
+            setListEmptyState(listContainer);
             return;
         }
-        setListEmptyState(listContainer);
+
+        try {
+            const conversations = await withTimeout(repo.listConversations(userId, { fresh: true }), 8000, 'conversation list');
+            if (conversations.length) renderConversationRows(listContainer, conversations);
+            else setListEmptyState(listContainer); // authoritative empty state
+        } catch (error) {
+            console.warn('[MESSAGING] canonical conversation list failed', error);
+            // Navigation memory is only a degraded-network fallback, never a second data source.
+            const recent = lastActiveFallback();
+            if (recent) {
+                renderConversationRows(listContainer, [{
+                    contactId: recent.id,
+                    name: recent.name || 'Membre LYANN',
+                    avatar: recent.avatar || defaultAvatar(),
+                    preview: 'Conversation récente',
+                    requestId: recent.requestId || null
+                }]);
+            } else {
+                listContainer.innerHTML = '<div class="chat-empty-state" style="padding:48px 20px;text-align:center;"><strong>Impossible de charger les conversations.</strong><p>Vérifiez votre connexion puis réessayez.</p></div>';
+            }
+        }
     }
 
     async function openList() {
         document.body.classList.remove('lyann-messaging-transition');
+        registerSurfaces();
         if (!setShellVisible(true)) {
             window.location.href = 'feed.html?action=messages';
             return;
@@ -209,11 +288,11 @@
         if (!contactId) return openList();
 
         if (!legacyOpenConversation) {
-            const params = new URLSearchParams({ action: 'messages', contact: String(contactId), name: String(name) });
-            window.location.href = `feed.html?${params.toString()}`;
-            return;
+            console.error('[MESSAGING] conversation hydrator unavailable');
+            return false;
         }
 
+        registerSurfaces();
         hideAllChildSurfaces();
         ensureHydrationGuardStyle();
         const shell = modal();
@@ -223,6 +302,7 @@
         if (main) main.setAttribute('aria-busy', 'true');
 
         try {
+            // Legacy core is now an internal hydrator only; it must not own shell visibility.
             await legacyOpenConversation(name, avatar, contactId, options.initialNeed || null);
             const l = layout();
             if (l) l.classList.add('mobile-conversation-active');
@@ -237,10 +317,11 @@
             try { localStorage.setItem('lyann_last_active_contact', JSON.stringify(active)); } catch (_) {}
         } finally {
             if (main) main.removeAttribute('aria-busy');
-            if (shell) shell.classList.remove('lyann-canonical-hydrating');
             document.body.classList.remove('lyann-messaging-transition');
             setShellVisible(true);
+            if (shell) shell.classList.remove('lyann-canonical-hydrating');
         }
+        return true;
     }
 
     async function open(options = {}) {
@@ -258,7 +339,7 @@
         event?.preventDefault?.();
         event?.stopPropagation?.();
         hideAllChildSurfaces();
-        setShellVisible(false);
+        return setShellVisible(false);
     }
 
     function openMissionFromChat(event, source) {
@@ -267,49 +348,22 @@
         const requestId = source?.dataset?.requestId || resolveRequestId();
         if (!requestId) {
             console.warn('[MESSAGING] no request id available for mission detail');
-            return;
+            return false;
         }
+        if (window.LYANN_ROUTER) return window.LYANN_ROUTER.go('mission', { requestId });
         if (typeof window.openLyannDetailModal === 'function') {
-            document.body.classList.add('chat-child-modal-open');
             window.openLyannDetailModal(requestId);
-            requestAnimationFrame(() => {
-                const detail = document.getElementById('lyannDetailModal');
-                if (detail) detail.classList.add('opened-from-chat');
-            });
+            return true;
         }
+        return false;
     }
 
-    function routeFromUrl() {
-        const params = new URLSearchParams(window.location.search);
-        const action = params.get('action');
-        if (action !== 'messages' && action !== 'openchat') return;
-        const contactId = params.get('contact') || params.get('member') || params.get('chat');
-        if (contactId) openConversation({ contactId, name: params.get('name') || 'Membre LYANN' });
-        else openList();
-    }
-
-    function installChildSurfaceObserver() {
-        const nodes = CHILD_SURFACES.map((id) => document.getElementById(id)).filter(Boolean);
-        if (!nodes.length) return;
-        const observer = new MutationObserver(syncChildSurfaceState);
-        nodes.forEach((node) => observer.observe(node, { attributes: true, attributeFilter: ['style', 'class'] }));
-        syncChildSurfaceState();
-    }
-
-    function installCanonicalEntryInterception() {
+    function installFeatureInternalInterception() {
         document.addEventListener('click', (event) => {
             const mission = event.target.closest('#chatViewMissionBtn, #btnViewLyannFromChat, #chatDropViewMission');
-            if (mission) {
-                event.stopImmediatePropagation?.();
-                openMissionFromChat(event, mission);
-                return;
-            }
-            const generic = event.target.closest('.open-chat-trigger, #tab-messages, #btnHeaderChat, [data-lyann-messages]');
-            if (!generic) return;
-            event.preventDefault();
-            event.stopPropagation();
+            if (!mission) return;
             event.stopImmediatePropagation?.();
-            openList();
+            openMissionFromChat(event, mission);
         }, true);
     }
 
@@ -322,12 +376,14 @@
         close,
         syncChildSurfaceState,
         hideAllChildSurfaces,
+        openChildSurface,
         renderConversationList,
         openMissionFromChat
     };
     window.LYANN_MESSAGING = api;
 
-    window.openLyannMessagesModal = () => api.openList();
+    // Compatibility aliases only. All public navigation should enter through LYANN_ROUTER.
+    window.openLyannMessagesModal = () => window.LYANN_ROUTER ? window.LYANN_ROUTER.go('messages') : api.openList();
     window.openChatWithUser = (name, avatar, contactId = name, initialNeed = null) => api.openConversation({
         name, avatar, contactId, initialNeed, requestId: initialNeed?.requestId || null
     });
@@ -336,9 +392,8 @@
 
     function boot() {
         ensureHydrationGuardStyle();
-        installChildSurfaceObserver();
-        installCanonicalEntryInterception();
-        routeFromUrl();
+        registerSurfaces();
+        installFeatureInternalInterception();
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
