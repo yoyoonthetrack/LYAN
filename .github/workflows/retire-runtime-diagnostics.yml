@@ -1,0 +1,35 @@
+name: Retire Runtime Diagnostics
+
+on:
+  push:
+    branches:
+      - architecture-stabilization
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: architecture-stabilization
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Retire temporary runtime diagnostics
+        run: node scripts/retire-runtime-diagnostics.js
+      - name: Commit source cleanup when changed
+        run: |
+          if git diff --quiet; then
+            echo "Runtime diagnostics already retired."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add script.js
+          git commit -m "refactor: retire temporary runtime diagnostics"
+          git push origin HEAD:architecture-stabilization
