@@ -24,8 +24,30 @@
     function layout() { return modal()?.querySelector('.chat-modal-layout') || null; }
     function mainArea() { return modal()?.querySelector('.chat-main-area') || null; }
 
+    function ensureHydrationGuardStyle() {
+        if (document.getElementById('lyannMessagingHydrationGuard')) return;
+        const style = document.createElement('style');
+        style.id = 'lyannMessagingHydrationGuard';
+        style.textContent = '#chatModal.lyann-canonical-hydrating{visibility:hidden!important;opacity:0!important;pointer-events:none!important;}';
+        document.head.appendChild(style);
+    }
+
     function defaultAvatar() {
         return typeof window.getLyannDefaultAvatar === 'function' ? window.getLyannDefaultAvatar() : '';
+    }
+
+    async function resolveCurrentUserId() {
+        try {
+            const client = window.LYANN_API_CLIENT || window.apiClient;
+            const auth = client?.supabase?.auth;
+            if (auth && typeof auth.getSession === 'function') {
+                const { data } = await auth.getSession();
+                if (data?.session?.user?.id) return data.session.user.id;
+            }
+        } catch (e) {
+            console.warn('[MESSAGING] session resolution failed', e);
+        }
+        return window.CURRENT_USER_ID || null;
     }
 
     function setShellVisible(visible) {
@@ -71,12 +93,78 @@
         document.body.classList.toggle('lyann-messaging-child-open', active);
     }
 
+    function setListEmptyState(listContainer) {
+        if (!listContainer) return;
+        listContainer.innerHTML = `
+            <div class="chat-empty-state" style="padding:48px 20px;text-align:center;">
+                <i class="ph ph-chat-circle-dots" style="font-size:2.4rem;color:#cbd5e1;"></i>
+                <h4 style="font-weight:800;margin:12px 0 6px;">Aucune conversation pour le moment.</h4>
+                <p style="color:#64748b;margin:0;">Vos échanges avec la communauté et les Lyanneurs apparaîtront ici.</p>
+            </div>
+        `;
+    }
+
     async function renderConversationList() {
-        if (typeof window.renderContactsList === 'function') {
-            try { await window.renderContactsList(); return; } catch (e) { console.warn('[MESSAGING] renderContactsList failed', e); }
+        const listContainer = document.getElementById('chatContactsList');
+        const repo = window.LYANN_MESSAGING_REPOSITORY;
+        const userId = await resolveCurrentUserId();
+
+        if (listContainer && repo && typeof repo.listConversations === 'function' && userId) {
+            listContainer.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;">Chargement des conversations…</div>';
+            try {
+                const conversations = await repo.listConversations(userId, { fresh: true });
+                if (!conversations.length) {
+                    setListEmptyState(listContainer);
+                    return;
+                }
+
+                listContainer.innerHTML = '';
+                conversations.forEach((conversation) => {
+                    const row = document.createElement('button');
+                    row.type = 'button';
+                    row.className = 'chat-contact-item';
+                    row.style.width = '100%';
+                    row.style.border = '0';
+                    row.style.background = 'transparent';
+                    row.style.textAlign = 'left';
+
+                    const avatarWrap = document.createElement('div');
+                    avatarWrap.className = 'chat-contact-avatar-wrap';
+                    const img = document.createElement('img');
+                    img.className = 'chat-contact-avatar';
+                    img.alt = conversation.name || 'Contact';
+                    img.src = conversation.avatar || defaultAvatar();
+                    avatarWrap.appendChild(img);
+
+                    const info = document.createElement('div');
+                    info.className = 'chat-contact-info';
+                    const name = document.createElement('div');
+                    name.className = 'chat-contact-name';
+                    name.textContent = conversation.name || 'Membre LYANN';
+                    const preview = document.createElement('div');
+                    preview.className = 'chat-contact-preview';
+                    preview.textContent = conversation.preview || 'Conversation LYANN';
+                    info.append(name, preview);
+
+                    row.append(avatarWrap, info);
+                    row.addEventListener('click', () => openConversation({
+                        contactId: conversation.contactId,
+                        name: conversation.name,
+                        avatar: conversation.avatar
+                    }));
+                    listContainer.appendChild(row);
+                });
+                return;
+            } catch (e) {
+                console.warn('[MESSAGING] canonical conversation list failed', e);
+            }
         }
+
+        // Compatibility fallback only when the shared repository is unavailable.
         if (typeof window.renderChatContacts === 'function') {
-            try { await window.renderChatContacts(); } catch (e) { console.warn('[MESSAGING] renderChatContacts failed', e); }
+            try { await window.renderChatContacts(); } catch (e) { console.warn('[MESSAGING] legacy list fallback failed', e); }
+        } else if (listContainer) {
+            setListEmptyState(listContainer);
         }
     }
 
@@ -106,10 +194,13 @@
         }
 
         hideAllChildSurfaces();
+        ensureHydrationGuardStyle();
 
-        // The historical core still owns data hydration/rendering for now, but it
-        // must never become a visible UI phase. Keep its DOM work hidden until the
-        // canonical controller has the definitive conversation ready.
+        // The legacy engine may still hydrate message/devis DOM, but it is never
+        // allowed to become a visible intermediate screen. This class is owned by
+        // the canonical controller and legacy code does not remove it.
+        const shell = modal();
+        if (shell) shell.classList.add('lyann-canonical-hydrating');
         document.body.classList.add('lyann-messaging-transition');
         const main = mainArea();
         if (main) main.setAttribute('aria-busy', 'true');
@@ -123,6 +214,7 @@
             try { localStorage.setItem('lyann_last_active_contact', JSON.stringify(active)); } catch (e) {}
         } finally {
             if (main) main.removeAttribute('aria-busy');
+            if (shell) shell.classList.remove('lyann-canonical-hydrating');
             document.body.classList.remove('lyann-messaging-transition');
             setShellVisible(true);
         }
@@ -189,12 +281,13 @@
         backToList,
         close,
         syncChildSurfaceState,
-        hideAllChildSurfaces
+        hideAllChildSurfaces,
+        renderConversationList
     };
     window.LYANN_MESSAGING = api;
 
     // Compatibility aliases: legacy code may still call these names, but they now
-    // terminate in the single controller above.
+    // terminate in the single controller above on Web and Capacitor.
     window.openLyannMessagesModal = () => api.openList();
     window.openChatWithUser = (name, avatar, contactId = name, initialNeed = null) => api.openConversation({
         name,
@@ -207,6 +300,7 @@
     window.closeLyannChatModal = (event) => api.close(event);
 
     function boot() {
+        ensureHydrationGuardStyle();
         installChildSurfaceObserver();
         installCanonicalEntryInterception();
         routeFromUrl();
