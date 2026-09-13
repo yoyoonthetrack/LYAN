@@ -2,36 +2,9 @@
 
 // === PENDING ACTIONS FINDER FOR MOBILE DASHBOARD ===
 function getPendingActions() {
-    const actions = [];
-    const msgsKey = 'lyann_mock_chat_msgs';
-    try {
-        const stored = localStorage.getItem(msgsKey);
-        if (stored) {
-            const data = JSON.parse(stored);
-            Object.keys(data).forEach(contactName => {
-                const msgs = data[contactName];
-                if (msgs && msgs.length > 0) {
-                    const lastMsg = msgs[msgs.length - 1];
-                    if (lastMsg.type === 'system_card') {
-                        if (lastMsg.cardType === 'PRICE_PROPOSAL' && lastMsg.sender !== getMyId()) {
-                            actions.push({
-                                type: 'proposal',
-                                contactName: contactName,
-                                message: `${contactName} vous propose ${lastMsg.amount}€.`
-                            });
-                        } else if (lastMsg.cardType === 'WORK_DONE' && lastMsg.sender !== getMyId()) {
-                            actions.push({
-                                type: 'work_done',
-                                contactName: contactName,
-                                message: `${contactName} indique avoir terminé la mission.`
-                            });
-                        }
-                    }
-                }
-            });
-        }
-    } catch(e) {}
-    return actions;
+    // Synthetic localStorage chat alerts were retired. A future notification
+    // repository may populate this surface from authoritative backend data.
+    return [];
 }
 
 // === APP WELCOME SCREEN (GUEST MODE / ONBOARDING / LOGIN) ===

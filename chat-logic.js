@@ -2,7 +2,6 @@
 // CHAT LOGIC (NO ROLES)
 // ---------------------------------------------------------
 
-const CHAT_MSG_KEY = 'lyann_mock_chat_msgs';
 const BLOCKED_USERS_KEY = 'LYANN_BLOCKED_USERS';
 
 window.getBlockedUsers = function() {
@@ -90,17 +89,8 @@ window.openReportModal = function(targetName = null) {
 };
 let currentChatContact = null;
 function getMyId() {
-    try {
-        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-            // Synchronous check via cached session (supabase-js v2 stores it)
-            const storageKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
-            if (storageKey) {
-                const session = JSON.parse(localStorage.getItem(storageKey));
-                if (session && session.user && session.user.id) return session.user.id;
-            }
-        }
-    } catch(e) {}
-    return "me";
+    const authId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId;
+    return authId || window.CURRENT_USER_ID || null;
 }
 
 function closeAllOverlays() {
@@ -122,98 +112,16 @@ function setChatContextCoveredByOverlay(isCovered) {
     mainArea.classList.toggle('chat-child-surface-active', !!isCovered);
 }
 
-// LYANN CHAT CHILD SURFACE AUTO-SYNC v1
-const CHAT_CHILD_SURFACE_IDS = [
-    'chatActionChoicesOverlay',
-    'chatDirectPriceForm',
-    'chatMilestoneDevisForm',
-    'chatCheckoutOverlay',
-    'chatTrackingOverlay',
-    'chatSubmitProofOverlay',
-    'chatProposeDateForm',
-    'chatLeaveReviewForm'
-];
-
-function syncChatChildSurfaceState() {
-    const anyOpen = CHAT_CHILD_SURFACE_IDS.some(id => {
-        const el = document.getElementById(id);
-        if (!el) return false;
-        return window.getComputedStyle(el).display !== 'none';
-    });
-    setChatContextCoveredByOverlay(anyOpen);
-}
-
-function installChatChildSurfaceStateSync() {
-    const surfaces = CHAT_CHILD_SURFACE_IDS
-        .map(id => document.getElementById(id))
-        .filter(Boolean);
-
-    if (!surfaces.length) return;
-
-    const observer = new MutationObserver(() => syncChatChildSurfaceState());
-    surfaces.forEach(surface => observer.observe(surface, { attributes: true, attributeFilter: ['style', 'class'] }));
-    syncChatChildSurfaceState();
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', installChatChildSurfaceStateSync, { once: true });
-} else {
-    installChatChildSurfaceStateSync();
-}
-
-
-function getLocalChatMessages(contactId) {
-    if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-        return []; // Zero mock messages allowed when Supabase is active
-    }
-    let data = {};
-    try {
-        const stored = localStorage.getItem(CHAT_MSG_KEY);
-        if (stored) data = JSON.parse(stored);
-    } catch(e) {
-        console.error(e);
-    }
-    
-    if (!data[contactId]) {
-        data[contactId] = [];
-    }
-    return data[contactId];
-}
-
-function saveLocalChatMessage(contactId, msgObj) {
-    let data = {};
-    try {
-        const stored = localStorage.getItem(CHAT_MSG_KEY);
-        if (stored) data = JSON.parse(stored);
-    } catch(e) {
-        console.error(e);
-    }
-    if (!data[contactId]) data[contactId] = [];
-    data[contactId].push(msgObj);
-    localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(data));
-}
-
-function isUUID(str) {
-    if (typeof str !== 'string') return false;
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
-}
+// Chat child-surface state is owned by messaging-ui.js / LYANN_MESSAGING.
+// Legacy MutationObserver synchronization has been retired.
 
 async function getChatMessages(contactId, options = {}) {
     const userId = getMyId();
-    if (userId === "me" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
-        return getLocalChatMessages(contactId);
-    }
-
-    if (!window.LYANN_MESSAGING_REPOSITORY) {
-        console.warn('Messaging repository unavailable; returning no remote messages.');
-        return [];
-    }
-
+    if (!userId || !isUUID(userId) || !isUUID(contactId) || !window.LYANN_MESSAGING_REPOSITORY) return [];
     try {
         return await window.LYANN_MESSAGING_REPOSITORY.getMessages(userId, contactId, options);
-    } catch(e) {
-        console.warn("Supabase chat query failed:", e);
+    } catch (error) {
+        console.warn('[MESSAGING] canonical message query failed', error);
         return [];
     }
 }
@@ -273,10 +181,11 @@ async function addMessageToContact(contactId, msgObj) {
     // Immediate local response: never make the user wait for Supabase before seeing their text.
     const optimisticNode = normalizedMsg.type === 'text' ? renderOptimisticChatMessage(normalizedMsg) : null;
 
-    if (userId === "me" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
-        saveLocalChatMessage(contactId, normalizedMsg);
-        if (currentChatContact && currentChatContact.id === contactId) {
-            await renderMessages(null);
+    if (!userId || !isUUID(userId) || !isUUID(contactId) || !window.LYANN_API_CLIENT?.supabase) {
+        if (optimisticNode && optimisticNode.isConnected) {
+            const status = optimisticNode.querySelector('[data-optimistic-status]');
+            if (status) status.textContent = 'Non envoyé · connexion requise';
+            optimisticNode.classList.add('chat-message-send-failed');
         }
         return;
     }
@@ -340,15 +249,6 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
         return;
     }
     
-    let storedMsgs = {};
-    try {
-        const stored = localStorage.getItem(CHAT_MSG_KEY);
-        if (stored) storedMsgs = JSON.parse(stored);
-    } catch(e) {}
-    if (!storedMsgs[contactId]) {
-        storedMsgs[contactId] = [];
-        localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(storedMsgs));
-    }
 
     let displayName = name;
     let displayAvatar = avatar;
