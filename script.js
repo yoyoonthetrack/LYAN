@@ -109,7 +109,7 @@ function ensureMobileHamburgerDrawer() {
                 
                 <!-- EN-TÊTE PROFIL -->
                 <div class="drawer-profile-header">
-                    <a href="#" class="drawer-profile-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openPublicProfileModal();">
+                    <a href="#" class="drawer-profile-link" data-lyann-route="profile">
                         <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" alt="Profil Utilisateur" class="drawer-avatar" id="drawerUserAvatar" onerror="window.handleAvatarError(this)">
                         <div class="drawer-user-info">
                             <span class="drawer-user-name" id="drawerUserName">Mon Compte</span>
@@ -125,7 +125,7 @@ function ensureMobileHamburgerDrawer() {
                     
                     <!-- 1. MON COMPTE -->
                     <div class="drawer-menu-group">
-                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('account');">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="account">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-user-circle"></i>
                                 <span>Mon compte</span>
@@ -136,7 +136,7 @@ function ensureMobileHamburgerDrawer() {
 
                     <!-- 2. MON ACTIVITÉ -->
                     <div class="drawer-menu-group">
-                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('activity');">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="activity">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-clock-counter-clockwise"></i>
                                 <span>Mon activité</span>
@@ -147,7 +147,7 @@ function ensureMobileHamburgerDrawer() {
 
                     <!-- 3. FAVORIS -->
                     <div class="drawer-menu-group">
-                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('favorites');">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="favorites">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-heart" style="color: var(--primary);"></i>
                                 <span>Favoris</span>
@@ -158,7 +158,7 @@ function ensureMobileHamburgerDrawer() {
 
                     <!-- 4. FINANCES -->
                     <div class="drawer-menu-group">
-                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('finances');">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="finances">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-credit-card"></i>
                                 <span>Finances</span>
@@ -177,16 +177,16 @@ function ensureMobileHamburgerDrawer() {
                             <i class="ph ph-caret-right drawer-chevron"></i>
                         </button>
                         <div class="drawer-submenu" id="submenuHelp">
-                            <a href="how-it-works.html" class="drawer-sub-link"><i class="ph ph-book-open"></i> Comment ça marche</a>
+                            <a href="#" class="drawer-sub-link" data-lyann-route="help"><i class="ph ph-book-open"></i> Comment ça marche</a>
                             <a href="about.html#support" class="drawer-sub-link"><i class="ph ph-headset"></i> Aide & support</a>
                             <a href="#" class="drawer-sub-link open-signup-trigger"><i class="ph ph-user-plus"></i> Inviter quelqu'un</a>
-                            <a href="about.html" class="drawer-sub-link"><i class="ph ph-info"></i> À propos de LYANN</a>
+                            <a href="#" class="drawer-sub-link" data-lyann-route="about"><i class="ph ph-info"></i> À propos de LYANN</a>
                         </div>
                     </div>
 
                     <!-- 6. RÉGLAGES -->
                     <div class="drawer-menu-group">
-                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('settings');">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="settings">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-gear"></i>
                                 <span>Réglages</span>
