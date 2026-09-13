@@ -24,18 +24,29 @@ const messaging = read('messaging-ui.js');
 const style = read('style.css');
 const mobileBuild = read('build_mobile.js');
 const webRender = read('api/render.js');
+const router = read('app-router.js');
+const surfaces = read('surface-manager.js');
 
 if (!messaging.includes('window.LYANN_MESSAGING = api')) {
   fail('messaging-ui.js: canonical public messaging owner is missing');
 }
-if (!messaging.includes('window.openLyannMessagesModal = () => api.openList()')) {
-  fail('messaging-ui.js: generic messaging compatibility entry must forward to canonical openList');
+if (!messaging.includes("window.openLyannMessagesModal = () => window.LYANN_ROUTER ? window.LYANN_ROUTER.go('messages') : api.openList();")) {
+  fail('messaging-ui.js: generic messaging compatibility entry must route through LYANN_ROUTER');
 }
 if (!messaging.includes('window.openChatWithUser =')) {
   fail('messaging-ui.js: direct conversation compatibility entry must forward to canonical controller');
 }
-if (!messaging.includes("document.body.classList.add('hide-bottom-nav', 'in-chat-active', 'lyann-messaging-open')")) {
-  fail('messaging-ui.js: shared messaging-open state must be owned by canonical controller');
+if (!messaging.includes("manager.register(CHAT_SURFACE")) {
+  fail('messaging-ui.js: messaging shell must be registered with shared surface manager');
+}
+if (!messaging.includes("document.body.classList.add('in-chat-active', 'lyann-messaging-open')")) {
+  fail('messaging-ui.js: messaging-open state must be applied by canonical controller');
+}
+if (!router.includes("register('messages'")) {
+  fail('app-router.js: shared messages route missing');
+}
+if (!surfaces.includes('window.LYANN_SURFACES')) {
+  fail('surface-manager.js: shared surface manager public contract missing');
 }
 
 for (const page of pages) {
