@@ -20,3 +20,14 @@ jobs:
 
       - name: Run architecture audit
         run: npm test
+
+      - name: Build shared Web + Capacitor artifact
+        run: npm run build:mobile
+
+      - name: Verify generated iOS bundle core syntax
+        run: |
+          node --check ios/App/App/public/app-router.js
+          node --check ios/App/App/public/surface-manager.js
+          node --check ios/App/App/public/messaging-ui.js
+          node --check ios/App/App/public/chat-logic.js
+          node --check ios/App/App/public/api-client.js
