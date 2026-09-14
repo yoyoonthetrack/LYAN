@@ -29,23 +29,71 @@
     }
   }
 
+  function openLoginPrompt() {
+    closeDrawer();
+    if (typeof window.openLoginModal === 'function') {
+      window.openLoginModal();
+      return true;
+    }
+    if (typeof window.openLogin === 'function') {
+      window.openLogin();
+      return true;
+    }
+    const trigger = document.querySelector?.('.open-login-trigger, a[href="#login"], .open-login-modal');
+    if (trigger && typeof trigger.click === 'function') {
+      trigger.click();
+      return true;
+    }
+    const modal = document.getElementById?.('loginModal');
+    if (modal) {
+      modal.classList.add('active');
+      if (document.body) document.body.style.overflow = 'hidden';
+      return true;
+    }
+    return hardNavigate('index.html#login');
+  }
+
+  function knownLoggedOut() {
+    try {
+      if (window.LYANN_AUTH_STATE && typeof window.LYANN_AUTH_STATE.isAuthenticated === 'function') {
+        return !window.LYANN_AUTH_STATE.isAuthenticated();
+      }
+      if (document.body?.classList) {
+        return !document.body.classList.contains('user-is-logged-in');
+      }
+    } catch (_) {}
+    return false;
+  }
+
   function openAccountSection(section = 'account') {
     closeDrawer();
+
+    if (knownLoggedOut()) return openLoginPrompt();
+
     if (typeof window.openAccountModalSubView === 'function') {
-      window.openAccountModalSubView(section);
+      const result = window.openAccountModalSubView(section);
+      if (result && typeof result.then === 'function') {
+        result.then(() => {
+          const modal = document.getElementById?.('userAccountModal');
+          if (!modal?.classList?.contains('active') && knownLoggedOut()) openLoginPrompt();
+        }).catch((error) => {
+          console.error('[ROUTER] account route failed', section, error);
+          openLoginPrompt();
+        });
+      }
       return true;
     }
     if (typeof window.openUserAccountModal === 'function') {
       window.openUserAccountModal();
       return true;
     }
-    const modal = document.getElementById('userAccountModal');
+    const modal = document.getElementById?.('userAccountModal');
     if (modal && window.LYANN_SURFACES) {
       window.LYANN_SURFACES.register('account', { element: modal, mode: 'major', hideBottomNav: true, lockBody: true });
       window.LYANN_SURFACES.open('account');
       return true;
     }
-    return false;
+    return openLoginPrompt();
   }
 
   function register(name, handler) {
@@ -89,6 +137,8 @@
   });
   register('bokantaj', () => hardNavigate('feed.html'));
   register('messages', (payload = {}) => {
+    if (knownLoggedOut()) return openLoginPrompt();
+
     const messaging = window.LYANN_MESSAGING;
     if (messaging) {
       if (payload.contactId || payload.id || payload.memberId) return messaging.openConversation(payload);
@@ -114,6 +164,7 @@
   });
   register('profile', () => {
     closeDrawer();
+    if (knownLoggedOut()) return openLoginPrompt();
     if (typeof window.openPublicProfileModal === 'function') {
       window.openPublicProfileModal();
       return true;
@@ -135,7 +186,9 @@
     ['#tab-explorer', 'explorer'],
     ['#tab-bokantaj', 'bokantaj'],
     ['#tab-messages, [data-lyann-messages], .open-chat-trigger', 'messages'],
-    ['#tab-create, [data-lyann-publish]', 'publish']
+    ['#tab-create, [data-lyann-publish]', 'publish'],
+    ['.open-account-modal-trigger, .nav-profile-btn', 'account'],
+    ['#btnDashboardAvatar', 'profile']
   ];
 
   function installCaptureNavigation() {
@@ -157,6 +210,7 @@
           id: explicit.getAttribute('data-id') || undefined,
           requestId: explicit.getAttribute('data-request-id') || undefined,
           contactId: explicit.getAttribute('data-contact-id') || undefined,
+          memberId: explicit.getAttribute('data-member-id') || undefined,
           name: explicit.getAttribute('data-contact-name') || undefined,
           title: explicit.getAttribute('data-title') || undefined,
           query: explicit.getAttribute('data-query') || undefined,
@@ -186,6 +240,8 @@
       go('messages', { contactId, name: params.get('name') || undefined });
     } else if (action === 'publish') {
       go('publish');
+    } else if (['account', 'activity', 'favorites', 'finances', 'settings', 'profile'].includes(action)) {
+      go(action);
     }
   }
 
