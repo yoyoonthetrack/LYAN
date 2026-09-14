@@ -2,10 +2,15 @@ const fs = require('fs');
 
 const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260914" defer></script>';
 const SHARED_RUNTIME_TAGS = [
-  '<script src="surface-manager.js?v=20260914" defer></script>',
-  '<script src="app-router.js?v=20260914" defer></script>',
-  '<script src="safety-repository.js?v=20260914" defer></script>',
-  '<script src="legacy-compat.js?v=20260914" defer></script>'
+  '<script src="surface-manager.js?v=20260914"></script>',
+  '<script src="app-router.js?v=20260914"></script>',
+  '<script src="safety-repository.js?v=20260914"></script>',
+  '<script src="legacy-compat.js?v=20260914"></script>'
+];
+const SHARED_RUNTIME_ANCHORS = [
+  '<script src="app-shell.js"',
+  '<script src="messaging-ui.js"',
+  '<script src="script.js'
 ];
 
 function sanitizeStaticHtml(html) {
@@ -54,13 +59,28 @@ function injectScriptOnce(html, tag, needle) {
 }
 
 function injectSharedRuntime(html) {
-  let out = String(html || '');
-  for (const tag of SHARED_RUNTIME_TAGS) {
+  const out = String(html || '');
+  const missingTags = SHARED_RUNTIME_TAGS.filter((tag) => {
     const match = tag.match(/src="([^"]+)"/);
     const needle = match ? match[1].split('?')[0] : tag;
-    out = injectScriptOnce(out, tag, needle);
+    return !out.includes(needle);
+  });
+
+  if (!missingTags.length) return out;
+
+  const block = `${missingTags.map((tag) => `    ${tag}`).join('\n')}\n`;
+  const anchorPositions = SHARED_RUNTIME_ANCHORS
+    .map((anchor) => out.indexOf(anchor))
+    .filter((position) => position >= 0);
+
+  if (anchorPositions.length) {
+    const insertAt = Math.min(...anchorPositions);
+    return `${out.slice(0, insertAt)}${block}${out.slice(insertAt)}`;
   }
-  return out;
+
+  return out.includes('</body>')
+    ? out.replace('</body>', `${block}</body>`)
+    : `${out}\n${block}`;
 }
 
 function injectProductionHygiene(html) {
@@ -80,6 +100,7 @@ function buildHtmlFile(sourcePath, destinationPath = sourcePath) {
 module.exports = {
   HYGIENE_SCRIPT_TAG,
   SHARED_RUNTIME_TAGS,
+  SHARED_RUNTIME_ANCHORS,
   sanitizeStaticHtml,
   injectSharedRuntime,
   injectProductionHygiene,
