@@ -330,11 +330,7 @@ document.addEventListener('click', (e) => {
 
         if (drawerLink.classList.contains('open-chat-trigger')) {
             e.preventDefault();
-            if (typeof window.openLyannChatModal === 'function') {
-                window.openLyannChatModal();
-            } else {
-                window.location.href = 'index.html?action=openchat';
-            }
+            window.LYANN_ROUTER?.go?.('messages');
             return;
         }
 
@@ -1022,7 +1018,7 @@ safeDomReady(() => {
             const chatAvatarSrc = avatarSrc.replace(/'/g, "\\'");
             ctaHTML = `
                 <div class="lyann-profile-cta-group" style="display: flex; align-items: center; gap: 8px;">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="window.openChatWithUser('${chatContactName}', '${chatAvatarSrc}', '${chatContactId}')"><i class="ph ph-chat-circle"></i> Contacter</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-lyann-route="messages" data-contact-id="${chatContactId}" data-contact-name="${chatContactName}"><i class="ph ph-chat-circle"></i> Contacter</button>
                     <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="PROFILE" data-favorite-id="${pData.id}" data-fav-type="PROFILE" data-fav-id="${pData.id}" data-surface="profile-modal" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: 1px solid #CBD5E1; border-radius: 50%; padding: 8px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #64748B; cursor: pointer; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                         <i class="ph ph-bookmark-simple"></i>
                     </button>
@@ -1484,7 +1480,10 @@ safeDomReady(() => {
         publicContactBtn.addEventListener('click', () => {
             if (currentVisitingMember) {
                 if (publicMemberProfileModal) publicMemberProfileModal.classList.remove('active');
-                openChatWithUser(currentVisitingMember.name, currentVisitingMember.avatar);
+                window.LYANN_ROUTER?.go?.('messages', {
+                    contactId: currentVisitingMember.id || currentVisitingMember.user_id,
+                    name: currentVisitingMember.name
+                });
             }
         });
     }
@@ -2801,8 +2800,13 @@ safeDomReady(() => {
                 const myId = currentAuthUserId;
                 const initialNeed = { requestId: reqId, requesterId, helperId: myId, title };
 
-                if (typeof window.openChatWithUser === 'function') {
-                    window.openChatWithUser(requesterName, requesterAvatar, requesterId, initialNeed);
+                if (requesterId) {
+                    window.LYANN_ROUTER?.go?.('messages', {
+                        contactId: requesterId,
+                        name: requesterName,
+                        requestId: reqId,
+                        initialNeed
+                    });
                 }
             });
         });
@@ -2822,7 +2826,11 @@ safeDomReady(() => {
                 } else if (postType === 'dispo') {
                     initialNeed = { requesterId: getMyId(), helperId: name, title: postTitle || "Proposition de service" };
                 }
-                openChatWithUser(name, avatar, name, initialNeed);
+                window.LYANN_ROUTER?.go?.('messages', {
+                    contactId: name,
+                    name,
+                    initialNeed
+                });
             });
         });
 
@@ -3232,13 +3240,20 @@ safeDomReady(() => {
             if (currentQuickMember) {
                 const needTitle = await window.lyannPrompt(`De quoi avez-vous besoin avec ${currentQuickMember.name} ?`);
                 if (needTitle) {
-                    openChatWithUser(currentQuickMember.name, currentQuickMember.avatar, currentQuickMember.name, {
-                        requesterId: getMyId(),
-                        helperId: currentQuickMember.name,
-                        title: needTitle
+                    window.LYANN_ROUTER?.go?.('messages', {
+                        contactId: currentQuickMember.id || currentQuickMember.user_id || currentQuickMember.name,
+                        name: currentQuickMember.name,
+                        initialNeed: {
+                            requesterId: getMyId(),
+                            helperId: currentQuickMember.id || currentQuickMember.user_id || currentQuickMember.name,
+                            title: needTitle
+                        }
                     });
                 } else {
-                    openChatWithUser(currentQuickMember.name, currentQuickMember.avatar);
+                    window.LYANN_ROUTER?.go?.('messages', {
+                        contactId: currentQuickMember.id || currentQuickMember.user_id || currentQuickMember.name,
+                        name: currentQuickMember.name
+                    });
                 }
             }
         });
@@ -3364,8 +3379,13 @@ safeDomReady(() => {
                         const p = JSON.parse(pendingHelpStr);
                         const myId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id || window.LYANN_API_CLIENT?.getCurrentUserId?.();
                         const initialNeed = { requestId: p.reqId, requesterId: p.requesterId, helperId: myId, title: p.title };
-                        if (typeof window.openChatWithUser === 'function') {
-                            window.openChatWithUser(p.requesterName, p.requesterAvatar, p.requesterId, initialNeed);
+                        if (p.requesterId) {
+                            window.LYANN_ROUTER?.go?.('messages', {
+                                contactId: p.requesterId,
+                                name: p.requesterName,
+                                requestId: p.reqId,
+                                initialNeed
+                            });
                         }
                     }
                 } catch(e) {}
@@ -7911,8 +7931,13 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                 }
                 const myId = currentAuthUserId;
                 const initialNeed = { requestId: requestData.id, requesterId: requestData.requester_id, helperId: myId, title: requestData.title };
-                if (typeof window.openChatWithUser === 'function') {
-                    window.openChatWithUser(authorName, authorAvatar, requestData.requester_id, initialNeed);
+                if (requestData.requester_id) {
+                    window.LYANN_ROUTER?.go?.('messages', {
+                        contactId: requestData.requester_id,
+                        name: authorName,
+                        requestId: requestData.id,
+                        initialNeed
+                    });
                 }
             });
         }
