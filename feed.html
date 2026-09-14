@@ -91,7 +91,7 @@
                 </div>
                 <nav class="mobile-nav-list">
                     <a href="#" class="open-account-modal-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin: 6px 0;">
-                        <img src="david-34.png" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
+                        <img src="lyann-avatar-placeholder.svg" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
                         MON PROFIL & RÉGLAGES
                         <i class="ph ph-caret-right" style="margin-left: auto;"></i>
                     </a>
@@ -520,19 +520,19 @@
             <div class="profile-header-banner public-header-banner">
                 <div class="profile-user-summary">
                     <div class="profile-photo-container">
-                        <img src="david-34.png" alt="Avatar" id="publicMemberAvatar" class="profile-avatar-large">
+                        <img src="lyann-avatar-placeholder.svg" alt="Avatar" id="publicMemberAvatar" class="profile-avatar-large">
                         <span class="online-dot-lg" title="Membre en ligne"></span>
                     </div>
                     <div>
                         <h2 class="profile-user-name" id="publicMemberName">Membre LYANN</h2>
-                        <span class="profile-role-badge" id="publicMemberRoleBadge">🛠️ Artisan Plombier</span>
-                        <div class="profile-location-text" id="publicMemberLocationText"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
+                        <span class="profile-role-badge" id="publicMemberRoleBadge">Profil LYANN</span>
+                        <div class="profile-location-text" id="publicMemberLocationText"><i class="ph ph-map-pin"></i> Localisation</div>
                     </div>
                 </div>
 
                 <div class="social-action-bar">
                     <button type="button" class="btn-social btn-recommend" id="recommendMemberBtn">
-                        <i class="ph-fill ph-thumbs-up"></i> Recommander <span id="recommendCountBadge">142</span>
+                        <i class="ph-fill ph-thumbs-up"></i> Recommander <span id="recommendCountBadge">—</span>
                     </button>
                     <button type="button" class="btn-social btn-contact-direct" id="publicContactBtn">
                         <i class="ph-fill ph-chat-circle-dots"></i> Contacter
@@ -546,21 +546,21 @@
             <div class="profile-tabs">
                 <button class="public-tab-btn active" data-public-tab="pubtab-about"><i class="ph ph-user"></i> À propos & Tarifs</button>
                 <button class="public-tab-btn" data-public-tab="pubtab-realizations"><i class="ph ph-image"></i> Réalisations & Travaux</button>
-                <button class="public-tab-btn" data-public-tab="pubtab-reviews"><i class="ph ph-star"></i> Avis des Voisins (<span id="publicReviewsCount">48</span>)</button>
+                <button class="public-tab-btn" data-public-tab="pubtab-reviews"><i class="ph ph-star"></i> Avis des Voisins (<span id="publicReviewsCount">—</span>)</button>
             </div>
 
             <div class="modal-body profile-modal-body">
                 <div class="public-tab-content active" id="pubtab-about">
                     <h4 class="tab-section-title">Présentation & Compétences</h4>
-                    <p class="profile-bio-text" id="publicMemberBioText">Spécialiste de la plomberie résidentielle et du dépannage d'urgence sur Baie-Mahault et Grande-Terre.</p>
+                    <p class="profile-bio-text" id="publicMemberBioText">Chargement du profil…</p>
                     <div class="about-info-grid">
                         <div class="info-block">
                             <span class="info-label">Tarif Indicatif</span>
-                            <strong class="info-val" id="publicMemberRate">À partir de 35€/h</strong>
+                            <strong class="info-val" id="publicMemberRate">—</strong>
                         </div>
                         <div class="info-block">
                             <span class="info-label">Badges & Confiance</span>
-                            <strong class="info-val" id="publicMemberBadge">✔ Artisan Vérifié</strong>
+                            <strong class="info-val" id="publicMemberBadge">—</strong>
                         </div>
                     </div>
                     <h5 style="font-weight: 800; margin: 18px 0 10px;">Compétences clés</h5>
@@ -584,26 +584,24 @@
             <button class="modal-close-btn" id="closeQuickProfileModalBtn" aria-label="Fermer" style="top: 14px; right: 14px; color: #FFFFFF;"><i class="ph ph-x"></i></button>
 
             <div class="quick-profile-header">
-                <img src="david-34.png" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
+                <img src="lyann-avatar-placeholder.svg" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
                 <h3 id="quickProfileName" style="font-size: 1.3rem; margin-bottom: 2px;">Membre LYANN</h3>
-                <div id="quickProfileRole" style="font-size: 0.88rem; opacity: 0.9;">Plomberie & Clim Inverter</div>
-                <div id="quickProfileCity" style="font-size: 0.8rem; opacity: 0.85; margin-top: 4px;"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
+                <div id="quickProfileRole" style="font-size: 0.88rem; opacity: 0.9;">Profil LYANN</div>
+                <div id="quickProfileCity" style="font-size: 0.8rem; opacity: 0.85; margin-top: 4px;"><i class="ph ph-map-pin"></i> Localisation</div>
             </div>
 
             <div class="quick-profile-body">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                    <span id="quickProfileBadge" class="pill-badge pill-green" style="font-size: 0.78rem;">Artisan Vérifié</span>
-                    <span id="quickProfileRating" style="font-weight: 800; color: #E8B83F;">⭐ 4.9 (48 avis)</span>
+                    <span id="quickProfileBadge" class="pill-badge pill-green" style="font-size: 0.78rem;">Profil LYANN</span>
+                    <span id="quickProfileRating" style="font-weight: 800; color: #E8B83F;">—</span>
                 </div>
 
                 <p id="quickProfileBio" style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 12px;">
-                    Plombier et technicien clim passionné à Baie-Mahault. Dépannage rapide de fuites d'eau, entretien clim et chauffe-eau.
+                    Chargement du profil…
                 </p>
 
                 <div class="quick-skills-list" id="quickProfileSkills">
-                    <span class="quick-skill-pill">Entretien Clim Inverter</span>
-                    <span class="quick-skill-pill">Détection de fuite</span>
-                    <span class="quick-skill-pill">Chauffe-eau</span>
+                    
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 18px;">
@@ -678,7 +676,7 @@
                         <div class="chat-header-user">
                             <button type="button" class="chat-back-to-contacts-btn" aria-label="Retour" onclick="window.backToChatContacts(event)"><i class="ph ph-arrow-left"></i></button>
                             <div class="chat-header-avatar-wrap">
-                                <img src="david-34.png" alt="Avatar" id="chatHeaderAvatar" class="chat-header-avatar">
+                                <img src="lyann-avatar-placeholder.svg" alt="Avatar" id="chatHeaderAvatar" class="chat-header-avatar">
                             </div>
                             <div class="chat-header-info">
                                 <div class="chat-header-name-row">
@@ -769,7 +767,7 @@
 
                     <!-- OVERLAY: DETAILED DEVIS FORM -->
                     <div id="chatMilestoneDevisForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;">
+                        <form id="milestoneDevisForm" style="width:100%; max-width:560px; margin:0 auto; padding:20px 24px 24px; box-sizing:border-box; display:flex; flex-direction:column; gap:10px; max-height:420px; overflow-y:auto;">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Créer un Devis détaillé</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Libellé général du chantier</label>
@@ -782,27 +780,95 @@
                             
                             <!-- Fixed Milestones Structure for Simple/Aesthetic UX -->
                             <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 8px; color: var(--primary-dark);">Jalons de paiement (Répartition en %)</label>
-                                
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 1:</span>
-                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
+                                <div class="milestone-allocation-section" style="width:100%; max-width:520px; margin:0 auto; display:flex; flex-direction:column; gap:10px; box-sizing:border-box;">
+                                <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px;">
+                                    <div>
+                                        <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
+                                        <span style="font-size:0.7rem; color:var(--text-muted);">Saisissez le pourcentage ou le montant : l’autre valeur se calcule automatiquement.</span>
+                                    </div>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 2:</span>
-                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
+
+                                <div class="milestone-allocation-card" style="width:100%; box-sizing:border-box; padding:12px; border:1px solid #E6E1D9; border-radius:14px; background:#FFFFFF; display:flex; flex-direction:column; gap:10px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                        <strong style="font-size:0.78rem; color:var(--primary-dark);">Jalon 1</strong>
+                                        <span style="font-size:0.7rem; color:var(--text-muted);">% ↔ €</span>
+                                    </div>
+                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="width:100%; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr); align-items:end; gap:8px; width:100%;">
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Pourcentage
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="0" max="100" step="0.01" inputmode="decimal" aria-label="Pourcentage du jalon 1" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">%</span>
+                                            </div>
+                                        </label>
+                                        <span aria-hidden="true" style="height:38px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-weight:800;">↔</span>
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Montant
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ1Amount" class="modal-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" aria-label="Montant du jalon 1" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">€</span>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 3:</span>
-                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
+
+                                <div class="milestone-allocation-card" style="width:100%; box-sizing:border-box; padding:12px; border:1px solid #E6E1D9; border-radius:14px; background:#FFFFFF; display:flex; flex-direction:column; gap:10px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                        <strong style="font-size:0.78rem; color:var(--primary-dark);">Jalon 2</strong>
+                                        <span style="font-size:0.7rem; color:var(--text-muted);">% ↔ €</span>
+                                    </div>
+                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="width:100%; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr); align-items:end; gap:8px; width:100%;">
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Pourcentage
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="0" max="100" step="0.01" inputmode="decimal" aria-label="Pourcentage du jalon 2" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">%</span>
+                                            </div>
+                                        </label>
+                                        <span aria-hidden="true" style="height:38px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-weight:800;">↔</span>
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Montant
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ2Amount" class="modal-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" aria-label="Montant du jalon 2" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">€</span>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
-                                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des jalons doit faire 100%.</p>
+
+                                <div class="milestone-allocation-card" style="width:100%; box-sizing:border-box; padding:12px; border:1px solid #E6E1D9; border-radius:14px; background:#FFFFFF; display:flex; flex-direction:column; gap:10px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                        <strong style="font-size:0.78rem; color:var(--primary-dark);">Jalon 3</strong>
+                                        <span style="font-size:0.7rem; color:var(--text-muted);">% ↔ €</span>
+                                    </div>
+                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="width:100%; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr); align-items:end; gap:8px; width:100%;">
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Pourcentage
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="0" max="100" step="0.01" inputmode="decimal" aria-label="Pourcentage du jalon 3" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">%</span>
+                                            </div>
+                                        </label>
+                                        <span aria-hidden="true" style="height:38px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-weight:800;">↔</span>
+                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
+                                            Montant
+                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                                <input type="number" id="mdJ3Amount" class="modal-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" aria-label="Montant du jalon 3" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">€</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="mdAllocationSummary" style="width:100%; box-sizing:border-box; margin-top:2px; padding:10px 12px; border-radius:12px; background:#F8FAFC; border:1px solid #E2E8F0; font-size:0.76rem; color:#475569; line-height:1.45;">
+                                    <div style="display:flex; justify-content:space-between; gap:12px;"><span>Répartition</span><strong id="mdAllocationPercentTotal">0 %</strong></div>
+                                    <div style="display:flex; justify-content:space-between; gap:12px;"><span>Montant réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
+                                    <div style="display:flex; justify-content:space-between; gap:12px;"><span>Reste à répartir</span><strong id="mdAllocationRemaining">—</strong></div>
+                                </div>
+                                <p style="font-size:0.72rem; color:var(--text-muted); margin:0;"><i class="ph ph-info"></i> La répartition doit correspondre à 100 % du montant total.</p>
+                            </div>
                             </div>
 
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -845,16 +911,16 @@
                             <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;">
                                 <div>
                                     <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Numéro de carte</label>
-                                    <input type="text" class="modal-input" placeholder="4242 4242 4242 4242" required style="width: 100%; box-sizing: border-box;" value="4242 4242 4242 4242">
+                                    <input type="text" class="modal-input" autocomplete="cc-number" inputmode="numeric" required style="width: 100%; box-sizing: border-box;" placeholder="Numéro de carte">
                                 </div>
                                 <div style="display: flex; gap: 10px;">
                                     <div style="flex: 1;">
                                         <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Date d'expiration</label>
-                                        <input type="text" class="modal-input" placeholder="MM/AA" required style="width: 100%; box-sizing: border-box;" value="12/29">
+                                        <input type="text" class="modal-input" autocomplete="cc-exp" inputmode="numeric" required style="width: 100%; box-sizing: border-box;" placeholder="MM/AA">
                                     </div>
                                     <div style="flex: 1;">
                                         <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">CVC</label>
-                                        <input type="text" class="modal-input" placeholder="123" required style="width: 100%; box-sizing: border-box;" value="123">
+                                        <input type="text" class="modal-input" placeholder="123" required style="width: 100%; box-sizing: border-box;" placeholder="CVC">
                                     </div>
                                 </div>
                                 <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
@@ -889,7 +955,7 @@
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
                             </div>
                             <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve (Simulé)</label>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve</label>
                                 <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
                                     <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
                                     <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>
@@ -1221,11 +1287,11 @@
                     <span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 800; color: var(--primary); letter-spacing: 0.5px;">Accès Directs Débloqués</span>
                     
                     <div class="shortcut-action-btns">
-                        <a href="https://wa.me/590690001122?text=Bonjour%20!%20Nous%20sommes%20Lyann%C3%A9s%20sur%20LYANN%20DOM." target="_blank" rel="noopener" class="btn-shortcut-call" id="whatsappShortcutBtn">
+                        <a href="#" target="_blank" rel="noopener" class="btn-shortcut-call" id="whatsappShortcutBtn">
                             <i class="ph-bold ph-whatsapp-logo" style="font-size: 1.3rem;"></i> WhatsApp
                         </a>
 
-                        <a href="tel:+590690001122" class="btn-shortcut-phone" id="phoneShortcutBtn">
+                        <a href="#" class="btn-shortcut-phone" id="phoneShortcutBtn">
                             <i class="ph-fill ph-phone-call" style="font-size: 1.3rem;"></i> Appeler
                         </a>
                     </div>
@@ -1424,24 +1490,6 @@
         </div>
     </div>
 
-    <script src="ai-agents.js"></script>
-    <script src="https://js.stripe.com/v3/"></script>
-    <script src="payment-script.js"></script>
-    <script src="notifications-service.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="safety-disputes-engine.js"></script>
-    <script src="subscriptions-engine.js"></script>
-    <script src="pro-verification-engine.js"></script>
-    <script src="search-engine.js"></script>
-    <script src="matching-engine.js"></script>
-    <script src="api-client.js?v=20260907-DOM-OBSERVER-FIX"></script>
-    <script src="dialog.js"></script>
-    <script src="chat-logic.js?v=20260907-DOM-OBSERVER-FIX"></script>
-    <script src="ai-simulator.js?v=20260907-DOM-OBSERVER-FIX"></script>
-    <script src="ai-classifier.js"></script>
-    <script src="script.js?v=20260907-DOM-OBSERVER-FIX"></script>
-    <script src="onboarding.js"></script>
-    <script src="profile-completion.js"></script>
 
     <!-- ========== MODAL PARCOURS COMPLÉTION DE PROFIL (#modalCompleteProfile) ========== -->
     <div class="modal-overlay" id="modalCompleteProfile" style="display: none; z-index: 99999;">
@@ -1633,6 +1681,8 @@
                 <!-- Dynamically populated by script.js -->
             </div>
         </div>
+    </div>
+
     <!-- ========== BOTTOM SHEET FILTRES BOKANTAJ ========== -->
     <div class="modal-overlay mobile-bottom-sheet" id="bokantajFilterSheetModal" style="display: none;">
         <div class="mobile-bottom-sheet-card">
@@ -1684,6 +1734,34 @@
             </div>
         </div>
     </div>
+
+
+    <script src="ai-agents.js"></script>
+    <script src="payment-script.js"></script>
+    <script src="notifications-service.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="search-engine.js"></script>
+    <script src="matching-engine.js"></script>
+    <script src="api-client.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="session-store.js"></script>
+    <script src="auth-state.js"></script>
+    <script src="data-cache.js"></script>
+    <script src="profile-repository.js"></script>
+    <script src="bokantaj-repository.js"></script>
+    <script src="explorer-repository.js"></script>
+    <script src="feature-loader.js"></script>
+    <script src="dialog.js"></script>
+        <script src="messaging-repository.js"></script>
+<script src="chat-logic.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="ai-simulator.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="ai-classifier.js"></script>
+    <script src="platform-core.js"></script>
+    <script src="notifications-ui.js"></script>
+    <script src="app-shell.js"></script>
+    <script src="messaging-ui.js"></script>
+    <script src="script.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="onboarding.js"></script>
+    <script src="profile-completion.js"></script>
 
 </body>
 </html>

@@ -1,0 +1,24 @@
+const fs = require('fs');
+
+const file = 'chat-logic.js';
+let source = fs.readFileSync(file, 'utf8');
+
+const marker = 'function renderOptimisticChatMessage(msgObj) {';
+if (!source.includes(marker)) {
+  const anchor = 'async function addMessageToContact(contactId, msgObj) {';
+  if (!source.includes(anchor)) throw new Error('addMessageToContact anchor not found');
+
+  const helper = `function renderOptimisticChatMessage(msgObj) {\n    const container = document.getElementById('chatMessagesContainer');\n    if (!container || !msgObj || msgObj.type !== 'text' || !currentChatContact) return null;\n\n    const empty = container.querySelector('.chat-empty-state');\n    if (empty) empty.remove();\n\n    if (!container.querySelector('.chat-date-separator')) {\n        const dateSep = document.createElement('div');\n        dateSep.className = 'chat-date-separator';\n        const span = document.createElement('span');\n        span.textContent = \"Aujourd'hui\";\n        dateSep.appendChild(span);\n        container.appendChild(dateSep);\n    }\n\n    const wrapper = document.createElement('div');\n    wrapper.className = 'chat-msg-bubble-wrap sent';\n    wrapper.dataset.optimisticMessageId = msgObj.id || '';\n\n    const bubble = document.createElement('div');\n    bubble.className = 'chat-msg-bubble sent';\n\n    const textNode = document.createElement('div');\n    textNode.className = 'chat-msg-text';\n    textNode.textContent = msgObj.text || '';\n    bubble.appendChild(textNode);\n\n    const meta = document.createElement('div');\n    meta.className = 'chat-msg-time';\n    const time = typeof msgObj.timestamp === 'number'\n        ? new Date(msgObj.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })\n        : (msgObj.timestamp || '');\n    meta.textContent = time + ' · Envoi…';\n    meta.dataset.optimisticStatus = 'sending';\n    bubble.appendChild(meta);\n\n    wrapper.appendChild(bubble);\n    container.appendChild(wrapper);\n    container.scrollTop = container.scrollHeight;\n    return wrapper;\n}\n\n`;
+  source = source.replace(anchor, helper + anchor);
+}
+
+const start = source.indexOf('async function addMessageToContact(contactId, msgObj) {');
+if (start < 0) throw new Error('addMessageToContact not found');
+const end = source.indexOf('\n}\nwindow.addMessageToContact = addMessageToContact;', start);
+if (end < 0) throw new Error('addMessageToContact end not found');
+
+const replacement = `async function addMessageToContact(contactId, msgObj) {\n    const userId = getMyId();\n    const normalizedMsg = {\n        ...msgObj,\n        id: msgObj && msgObj.id ? msgObj.id : ('optimistic_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),\n        sender: (msgObj && msgObj.sender) || 'me',\n        timestamp: (msgObj && msgObj.timestamp) || Date.now()\n    };\n\n    // Immediate local response: never make the user wait for Supabase before seeing their text.\n    const optimisticNode = normalizedMsg.type === 'text' ? renderOptimisticChatMessage(normalizedMsg) : null;\n\n    if (userId === \"me\" || !isUUID(contactId) || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {\n        saveLocalChatMessage(contactId, normalizedMsg);\n        if (currentChatContact && currentChatContact.id === contactId) {\n            await renderMessages();\n        }\n        return;\n    }\n\n    try {\n        const { data: convRes } = await window.LYANN_API_CLIENT.getOrCreateConversation(userId, contactId);\n        if (!convRes || !convRes.id) {\n            throw new Error(\"Impossible d'initialiser la conversation.\");\n        }\n\n        const sharedConvId = convRes.id;\n        const contentToSave = normalizedMsg.type === 'transactional' ? JSON.stringify(normalizedMsg.txData) : normalizedMsg.text;\n        const { error: sendErr } = await window.LYANN_API_CLIENT.sendMessage(sharedConvId, userId, contentToSave);\n        if (sendErr) throw sendErr;\n\n        if (currentChatContact && currentChatContact.id === contactId) {\n            await renderMessages();\n        }\n    } catch(e) {\n        console.warn(\"Supabase message send failed:\", e);\n        if (optimisticNode && optimisticNode.isConnected) {\n            const status = optimisticNode.querySelector('[data-optimistic-status]');\n            if (status) {\n                const time = typeof normalizedMsg.timestamp === 'number'\n                    ? new Date(normalizedMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })\n                    : (normalizedMsg.timestamp || '');\n                status.textContent = time + ' · Non envoyé';\n                status.dataset.optimisticStatus = 'failed';\n            }\n            optimisticNode.classList.add('chat-message-send-failed');\n        }\n    }\n}`;
+
+source = source.slice(0, start) + replacement + source.slice(end + 2);
+fs.writeFileSync(file, source);
+console.log('Optimistic chat send normalized.');

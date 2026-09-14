@@ -1,111 +1,84 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const { buildHtml } = require('./shared-html-build');
 
 const srcDir = __dirname;
-const destDir = path.join(__dirname, 'www');
-const hygieneScriptTag = '<script src="production-hygiene.js?v=20260911" defer></script>';
-
-function sanitizeStaticHtml(html) {
-    let out = html;
-
-    out = out.replace(
-        /\n\s*<!-- ========== SECTION 5 : TALENTS DE NOS ÎLES ========== -->[\s\S]*?(?=\n\s*<!-- ========== SECTION 6 : TÉMOIGNAGES ========== -->)/,
-        '\n'
-    );
-    out = out.replace(
-        /\n\s*<!-- ========== SECTION 6 : TÉMOIGNAGES ========== -->[\s\S]*?(?=\n\s*<!-- ========== SECTION APERÇU : BOKANTAJ EN DIRECT ========== -->)/,
-        '\n'
-    );
-
-    out = out.replace(/<span class="photo-category-sub">\s*\d+\s+(?:artisans?|passionnés?|électriciens?|plombiers?|accompagnateurs?)[^<]*<\/span>/gi,
-        '<span class="photo-category-sub">Explorer cette activité</span>');
-
-    out = out
-        .replace(/Coup de pouce/g, 'Service de confiance')
-        .replace(/coup de pouce/g, 'service de confiance')
-        .replace(/\s*\(Simulé\)/gi, '')
-        .replace(/Bonjour David\b/g, 'Bonjour')
-        .replace(/Zone de Test/g, 'Fonctionnalité')
-        .replace(/David\.M/g, 'Utilisateur')
-        .replace(/Tati Huguette/g, 'Membre LYANN');
-
-    const markers = ['Utilisateur', 'Membre LYANN', 'Fonctionnalité'];
-    for (const marker of markers) {
-        const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const divCard = new RegExp(`<div\\b[^>]*class="[^"]*(?:demo|test)[^"]*"[^>]*>[\\s\\S]*?${escaped}[\\s\\S]*?<\\/div>`, 'gi');
-        const article = new RegExp(`<article\\b[^>]*(?:data-demo|data-test-fixture)[^>]*>[\\s\\S]*?${escaped}[\\s\\S]*?<\\/article>`, 'gi');
-        out = out.replace(divCard, '').replace(article, '');
-    }
-
-    return out;
-}
-
-function sanitizeAndInjectProductionHygiene(filePath) {
-    if (path.extname(filePath).toLowerCase() !== '.html' || !fs.existsSync(filePath)) return;
-
-    let html = sanitizeStaticHtml(fs.readFileSync(filePath, 'utf8'));
-    if (!html.includes('production-hygiene.js')) {
-        html = html.includes('</body>')
-            ? html.replace('</body>', `    ${hygieneScriptTag}\n</body>`)
-            : `${html}\n${hygieneScriptTag}\n`;
-    }
-
-    fs.writeFileSync(filePath, html, 'utf8');
-}
-
-// Ensure destination exists and is clean
-if (fs.existsSync(destDir)) {
-    fs.rmSync(destDir, { recursive: true, force: true });
-}
-if (fs.mkdirSync) {
-    fs.mkdirSync(destDir, { recursive: true });
-}
-
-// Find all HTML, JS, CSS, JSON, PNG, JPG files in root
-const filesInRoot = fs.readdirSync(srcDir);
-const filesToCopy = filesInRoot.filter(file => {
-    const ext = path.extname(file).toLowerCase();
-    return ['.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.webp'].includes(ext);
-});
-
-filesToCopy.forEach(file => {
-    const srcPath = path.join(srcDir, file);
-    const destPath = path.join(destDir, file);
-    try {
-        if (fs.statSync(srcPath).isFile()) {
-            fs.copyFileSync(srcPath, destPath);
-            sanitizeAndInjectProductionHygiene(destPath);
-            console.log(`Copied ${file} -> www/`);
-        }
-    } catch (e) {
-        console.warn(`Warning: Could not copy ${file}:`, e.message);
-    }
-});
-
-// Also copy to Capacitor public folders if they exist
+const sharedDist = path.join(__dirname, 'www');
 const iosPublic = path.join(__dirname, 'ios', 'App', 'App', 'public');
 const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'assets', 'public');
 
-[iosPublic, androidPublic].forEach(capDest => {
-    if (fs.existsSync(path.dirname(capDest))) {
-        if (fs.existsSync(capDest)) {
-            fs.rmSync(capDest, { recursive: true, force: true });
-        }
-        fs.mkdirSync(capDest, { recursive: true });
-        filesToCopy.forEach(file => {
-            const srcPath = path.join(srcDir, file);
-            const destPath = path.join(capDest, file);
-            try {
-                if (fs.existsSync(srcPath) && fs.statSync(srcPath).isFile()) {
-                    fs.copyFileSync(srcPath, destPath);
-                    sanitizeAndInjectProductionHygiene(destPath);
-                }
-            } catch (e) {
-                console.warn(`Warning: Could not sync ${file} to ${capDest}:`, e.message);
-            }
-        });
-        console.log(`Synced to ${capDest}`);
-    }
-});
+const ROOT_EXTENSIONS = new Set(['.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.webp']);
+const EXCLUDED_ROOT_FILES = new Set(['shared-html-build.js']);
 
-console.log('Mobile build assets prepared, static demo fixtures sanitized, production-hygiene injected, and synced successfully!');
+function resetDir(dir) {
+  if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+function copyFileBuilt(sourcePath, destinationPath) {
+  const ext = path.extname(sourcePath).toLowerCase();
+  if (ext === '.html') {
+    const html = buildHtml(fs.readFileSync(sourcePath, 'utf8'));
+    fs.writeFileSync(destinationPath, html, 'utf8');
+  } else {
+    fs.copyFileSync(sourcePath, destinationPath);
+  }
+}
+
+function copyDirectoryExact(sourceDir, destinationDir) {
+  resetDir(destinationDir);
+  fs.cpSync(sourceDir, destinationDir, { recursive: true, force: true });
+}
+
+function hashFile(filePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+function listFilesRecursive(dir, base = dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    return entry.isDirectory() ? listFilesRecursive(full, base) : [path.relative(base, full)];
+  }).sort();
+}
+
+function assertExactArtifact(sourceDir, destinationDir, label) {
+  const sourceFiles = listFilesRecursive(sourceDir);
+  const destinationFiles = listFilesRecursive(destinationDir);
+  if (JSON.stringify(sourceFiles) !== JSON.stringify(destinationFiles)) {
+    throw new Error(`${label} artifact file list differs from shared www artifact`);
+  }
+  for (const relative of sourceFiles) {
+    const sourceHash = hashFile(path.join(sourceDir, relative));
+    const destinationHash = hashFile(path.join(destinationDir, relative));
+    if (sourceHash !== destinationHash) {
+      throw new Error(`${label} artifact differs from shared www artifact: ${relative}`);
+    }
+  }
+}
+
+resetDir(sharedDist);
+
+const rootFiles = fs.readdirSync(srcDir)
+  .filter((file) => !EXCLUDED_ROOT_FILES.has(file))
+  .filter((file) => ROOT_EXTENSIONS.has(path.extname(file).toLowerCase()))
+  .filter((file) => fs.statSync(path.join(srcDir, file)).isFile());
+
+for (const file of rootFiles) {
+  copyFileBuilt(path.join(srcDir, file), path.join(sharedDist, file));
+}
+
+// Capacitor consumes the exact shared artifact. No iOS/Android-specific HTML or JS mutation is allowed here.
+if (fs.existsSync(path.dirname(iosPublic))) {
+  copyDirectoryExact(sharedDist, iosPublic);
+  assertExactArtifact(sharedDist, iosPublic, 'iOS');
+}
+
+if (fs.existsSync(path.dirname(androidPublic))) {
+  copyDirectoryExact(sharedDist, androidPublic);
+  assertExactArtifact(sharedDist, androidPublic, 'Android');
+}
+
+console.log(`Shared frontend artifact built: ${rootFiles.length} root assets -> www/`);
+console.log('Capacitor bundles are byte-identical to the shared www artifact.');

@@ -1,5 +1,3 @@
-console.log("[LYANN_NATIVE_BUILD] 9c9ec8f-PROBE-1502");
-window.__LYANN_NATIVE_BUILD__ = "9c9ec8f-PROBE-1502";
 console.log("⚡ [BOOT 01] script.js loaded");
 console.log("[AUTH_REAL] app boot");
 window.__LYANN_AUTH_REAL__ = window.__LYANN_AUTH_REAL__ || {
@@ -10,42 +8,8 @@ window.__LYANN_AUTH_REAL__ = window.__LYANN_AUTH_REAL__ || {
     appHomeMounted: false
 };
 
-// === LYANN TEMPORARY RUNTIME DIAGNOSTICS & TRACE ENGINE ===
-window.__LYANN_RUNTIME_DIAG__ = window.__LYANN_RUNTIME_DIAG__ || {
-    href: typeof window !== 'undefined' && window.location ? window.location.href : null,
-    protocol: typeof window !== 'undefined' && window.location ? window.location.protocol : null,
-    capacitorPresent: typeof window !== 'undefined' && !!window.Capacitor,
-    capacitorPlatform: typeof window !== 'undefined' && window.Capacitor && typeof window.Capacitor.getPlatform === 'function' ? window.Capacitor.getPlatform() : null,
-    capacitorIsNative: typeof window !== 'undefined' && window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' ? window.Capacitor.isNativePlatform() : null,
-    webkitPresent: typeof window !== 'undefined' && !!window.webkit,
-    isNativePlatformResult: null,
-    domContentLoadedReached: false,
-    injectMobileInterfaceEntered: false,
-    injectMobileInterfaceEarlyReturn: false,
-    bodyIsNativeAppApplied: false,
-    ensureDeterministicAppHeaderEntered: false,
-    nativeHeaderRowCreated: false,
-    publicHeaderFound: false,
-    bottomNavCreated: false,
-    traces: []
-};
-
-function logLyannTrace(tag, info) {
-    const msg = "[LYANN_TRACE] [" + tag + "] " + (info !== undefined ? (typeof info === 'object' ? JSON.stringify(info) : info) : "");
-    console.log(msg);
-    if (window.__LYANN_RUNTIME_DIAG__ && Array.isArray(window.__LYANN_RUNTIME_DIAG__.traces)) {
-        window.__LYANN_RUNTIME_DIAG__.traces.push(msg);
-    }
-}
-
-logLyannTrace("BOOT_ENV", {
-    href: window.__LYANN_RUNTIME_DIAG__.href,
-    protocol: window.__LYANN_RUNTIME_DIAG__.protocol,
-    capacitorPresent: window.__LYANN_RUNTIME_DIAG__.capacitorPresent,
-    capacitorPlatform: window.__LYANN_RUNTIME_DIAG__.capacitorPlatform,
-    capacitorIsNative: window.__LYANN_RUNTIME_DIAG__.capacitorIsNative,
-    webkitPresent: window.__LYANN_RUNTIME_DIAG__.webkitPresent
-});
+// Runtime tracing retired after architecture stabilization.
+function logLyannTrace() {}
 
 // === CAPACITOR MOBILE DETECTOR & DYNAMIC BRIDGE INJECTION ===
 (function() {
@@ -105,1102 +69,10 @@ function isNativePlatform() {
     } else if (window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.bridge || window.webkit.messageHandlers.capacitor)) {
         result = true;
     }
-
-    if (window.__LYANN_RUNTIME_DIAG__) {
-        window.__LYANN_RUNTIME_DIAG__.isNativePlatformResult = result;
-    }
     logLyannTrace("isNativePlatform", { result: result, href: window.location.href, capacitorPresent: !!window.Capacitor });
     return result;
 }
 window.isNativePlatform = isNativePlatform;
-
-// === LYANN SINGLE SOURCE OF TRUTH DEFAULT USER AVATAR ===
-if (!window.getLyannDefaultAvatar) {
-    (function() {
-        const rawSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="50" fill="#FAF7F2"/><circle cx="50" cy="50" r="48" fill="#EBF2ED" stroke="rgba(74,124,89,0.25)" stroke-width="2"/><circle cx="50" cy="38" r="16" fill="#4A7C59"/><path d="M 22 84 C 22 66, 34 58, 50 58 C 66 58, 78 66, 78 84 Z" fill="#4A7C59"/></svg>`;
-        window.LYANN_DEFAULT_AVATAR_SVG = 'data:image/svg+xml,' + encodeURIComponent(rawSvg);
-        window.LYANN_DEFAULT_AVATAR_PATH = window.LYANN_DEFAULT_AVATAR_SVG;
-    })();
-
-    window.getLyannDefaultAvatar = function() {
-        return window.LYANN_DEFAULT_AVATAR_SVG;
-    };
-
-    window.escapeHtmlAttr = function(str) {
-        if (str === null || str === undefined) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    };
-
-    window.resolveLyannAvatarSrc = function(input) {
-        if (!input) return window.getLyannDefaultAvatar();
-
-        let raw = input;
-        if (typeof input === 'object') {
-            raw = input.avatar_url || input.author_avatar || input.authorAvatar || input.avatar || input.profile_photo || '';
-        }
-
-        if (typeof raw !== 'string') return window.getLyannDefaultAvatar();
-
-        let clean = raw.trim();
-        if (!clean) return window.getLyannDefaultAvatar();
-
-        // Extract URL if caller passed raw <img> tag
-        if (clean.includes('<') || clean.includes('>')) {
-            const match = clean.match(/src=["']([^"']+)["']/i);
-            if (match && match[1]) {
-                clean = match[1].trim();
-            } else {
-                return window.getLyannDefaultAvatar();
-            }
-        }
-
-        if (clean === 'null' || clean === 'undefined' || 
-            clean.includes('dicebear.com') || clean.includes('bottts') || 
-            clean.includes('avataaars') || clean.includes('avatar_01.png') || 
-            clean.includes('david-34.png') || clean === 'default-avatar.svg') {
-            return window.getLyannDefaultAvatar();
-        }
-
-        return clean;
-    };
-
-    window.getLyannAvatarUrl = window.resolveLyannAvatarSrc;
-
-    window.handleAvatarError = function(imgEl) {
-        if (imgEl && !imgEl.dataset.fallbackDone) {
-            imgEl.dataset.fallbackDone = 'true';
-            imgEl.onerror = null;
-            imgEl.src = window.LYANN_DEFAULT_AVATAR_SVG;
-        }
-    };
-}
-
-
-// === LYANN OFFICIAL DOM COMMUNES DICTIONARY ===
-window.LYANN_DOM_COMMUNES = {
-    'Guadeloupe (971)': [
-        'Baie-Mahault (97122)', 'Les Abymes (97139)', 'Pointe-à-Pitre (97110)', 'Le Gosier (97190)', 
-        'Sainte-Anne (97180)', 'Saint-François (97118)', 'Sainte-Rose (97115)', 'Le Moule (97160)', 
-        'Petit-Bourg (97170)', 'Capesterre-Belle-Eau (97130)', 'Morne-à-l\'Eau (97111)', 'Lamentin (97129)', 
-        'Saint-Claude (97120)', 'Basse-Terre (97100)', 'Trois-Rivières (97114)', 'Gourbeyre (97113)', 
-        'Goyave (97128)', 'Anse-Bertrand (97121)', 'Port-Louis (97131)', 'Deshaies (97126)', 
-        'Pointe-Noire (97116)', 'Bouillante (97125)', 'Vieux-Habitants (97125)', 'Terre-de-Haut (97137)', 
-        'Terre-de-Bas (97136)', 'Grand-Bourg (Marie-Galante) (97112)', 'Capesterre-de-Marie-Galante (97140)', 
-        'Saint-Louis (Marie-Galante) (97134)', 'Désirade (97127)'
-    ],
-    'Martinique (972)': [
-        'Fort-de-France (97200)', 'Le Lamentin (97232)', 'Le Robert (97231)', 'Schoelcher (97233)', 
-        'Le François (97240)', 'Sainte-Marie (97230)', 'Saint-Joseph (97212)', 'Ducos (97224)', 
-        'La Trinité (97220)', 'Rivière-Pilote (97211)', 'Rivière-Salée (97215)', 'Gros-Morne (97213)', 
-        'Sainte-Luce (97228)', 'Saint-Esprit (97270)', 'Les Anses-d\'Arlet (97217)', 'Le Marin (97290)', 
-        'Le Vauclin (97280)', 'Trois-Îlets (97229)', 'Case-Pilote (97222)', 'Saint-Pierre (97250)', 
-        'Le Carbet (97221)', 'Basse-Pointe (97218)', 'Le Lorrain (97214)'
-    ],
-    'Guyane (973)': [
-        'Cayenne (97300)', 'Matoury (97351)', 'Saint-Laurent-du-Maroni (97320)', 'Kourou (97310)', 
-        'Remire-Montjoly (97354)', 'Mana (97360)', 'Macouria (97355)', 'Apatou (97317)', 
-        'Maripasoula (97370)', 'Grand-Santi (97340)', 'Saint-Georges (97313)', 'Sinnamary (97315)'
-    ],
-    'La Réunion (974)': [
-        'Saint-Denis (97400)', 'Saint-Paul (97460)', 'Saint-Pierre (97410)', 'Le Tampon (97430)', 
-        'Saint-André (97440)', 'Saint-Louis (97450)', 'Le Port (97420)', 'Saint-Joseph (97480)', 
-        'Saint-Benoît (97470)', 'Sainte-Marie (97438)', 'Saint-Leu (97416)', 'La Possession (97419)', 
-        'Sainte-Suzanne (97441)', 'Petite-Île (97429)', 'Salazie (97433)'
-    ],
-    'France Métropolitaine': [
-        'Paris (75000)', 'Marseille (13000)', 'Lyon (69000)', 'Toulouse (31000)', 
-        'Nice (06000)', 'Nantes (44000)', 'Montpellier (34000)', 'Strasbourg (67000)', 
-        'Bordeaux (33000)', 'Lille (59000)', 'Rennes (35000)'
-    ]
-};
-
-// Global helper to bind datalist to all commune inputs
-function initLyannCommunesAutocomplete() {
-    let datalist = document.getElementById('lyannCommunesDatalist');
-    if (!datalist) {
-        datalist = document.createElement('datalist');
-        datalist.id = 'lyannCommunesDatalist';
-        document.body.appendChild(datalist);
-    }
-
-    let allCommunes = [];
-    Object.values(window.LYANN_DOM_COMMUNES).forEach(list => {
-        allCommunes = allCommunes.concat(list);
-    });
-
-    datalist.innerHTML = allCommunes.map(c => `<option value="${c}"></option>`).join('');
-
-    const cityInputs = document.querySelectorAll('#cpCityInput, #obCityInput, #needCityInput, #filterCityInput, input[placeholder*="Commune"], input[placeholder*="Ville"]');
-    cityInputs.forEach(input => {
-        if (input) input.setAttribute('list', 'lyannCommunesDatalist');
-    });
-}
-window.initLyannCommunesAutocomplete = initLyannCommunesAutocomplete;
-
-function getNativePlugin(name) {
-    if (isNativePlatform() && window.Capacitor.Plugins) {
-        return window.Capacitor.Plugins[name];
-    }
-    return null;
-}
-
-// 📷 Appareil Photo & Galerie
-async function getPhotoNative() {
-    const cameraPlugin = getNativePlugin('Camera');
-    if (cameraPlugin) {
-        try {
-            const image = await cameraPlugin.getPhoto({
-                quality: 80,
-                allowEditing: false,
-                resultType: 'dataUrl', // base64 data url
-                source: 'PROMPT' // Camera or Gallery prompt
-            });
-            return image.dataUrl;
-        } catch (e) {
-            console.warn("Camera cancelled or failed:", e);
-            return null;
-        }
-    }
-    return null;
-}
-
-// 📍 Géolocalisation & Reverse Geocoding
-async function getNativeCoordinates() {
-    const geo = getNativePlugin('Geolocation');
-    if (geo) {
-        try {
-            const position = await geo.getCurrentPosition({
-                enableHighAccuracy: true,
-                timeout: 6000
-            });
-            return position.coords;
-        } catch (e) {
-            console.warn("Failed to get coordinates:", e);
-            return null;
-        }
-    }
-    return null;
-}
-
-async function getCityNameFromCoords(lat, lon) {
-    try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`);
-        const data = await response.json();
-        if (data && data.address) {
-            return data.address.city || data.address.town || data.address.village || data.address.suburb || data.address.county || "Guadeloupe";
-        }
-    } catch (e) {
-        console.warn("Reverse geocoding failed:", e);
-    }
-    return null;
-}
-
-// 🔗 Partage Natif
-async function shareNative(title, text, url) {
-    const sharePlugin = getNativePlugin('Share');
-    if (sharePlugin) {
-        try {
-            await sharePlugin.share({
-                title: title,
-                text: text,
-                url: url,
-                dialogTitle: 'Partager avec la communauté'
-            });
-            return true;
-        } catch (e) {
-            console.warn("Share cancelled or failed:", e);
-            return false;
-        }
-    }
-    return false;
-}
-
-// 📲 initialisation des plugins et gestion Android Back Button / Status Bar
-function initializeNativeFeatures() {
-    console.log("⚡ Initializing native features...");
-    document.body.classList.add('is-native-app');
-    
-    // Status Bar Style
-    const statusBar = getNativePlugin('StatusBar');
-    if (statusBar) {
-        statusBar.setStyle({ style: 'DARK' }).catch(() => {});
-        statusBar.setBackgroundColor({ color: '#4A7C59' }).catch(() => {});
-    }
-
-    // Android Back Button listener
-    const appPlugin = getNativePlugin('App');
-    if (appPlugin) {
-        appPlugin.addListener('backButton', (data) => {
-            const activeModal = document.querySelector('.modal-overlay.active');
-            if (activeModal) {
-                if (activeModal.id === 'chatModal' && typeof window.closeLyannChatModal === 'function') {
-                    window.closeLyannChatModal();
-                } else {
-                    activeModal.classList.remove('active');
-                    activeModal.style.display = 'none';
-                    document.body.style.overflow = '';
-                }
-            } else {
-                appPlugin.exitApp();
-            }
-        });
-    }
-
-    // Keyboard Accessory Bar
-    const keyboard = getNativePlugin('Keyboard');
-    if (keyboard) {
-        keyboard.setAccessoryBarVisible({ visible: true }).catch(() => {});
-    }
-    
-    // Request initial push permissions
-    setupNativePushNotifications();
-}
-
-async function setupNativePushNotifications() {
-    const push = getNativePlugin('PushNotifications');
-    if (push) {
-        try {
-            let perm = await push.checkPermissions();
-            if (perm.receive !== 'granted') {
-                perm = await push.requestPermissions();
-            }
-            if (perm.receive === 'granted') {
-                await push.register();
-                
-                push.addListener('registration', (token) => {
-                    console.log('📲 Device Token registered:', token.value);
-                });
-                
-                push.addListener('registrationError', (err) => {
-                    console.error('📲 Device Token registration error:', err);
-                });
-                
-                push.addListener('pushNotificationReceived', (notification) => {
-                    console.log('📲 Notification received:', notification);
-                    if (window.lyannAlert) {
-                        window.lyannAlert(`🔔 ${notification.title}: ${notification.body}`);
-                    }
-                });
-            }
-        } catch(e) {
-            console.warn("Push setup failed or not supported in simulator/browser:", e);
-        }
-    }
-}
-
-// === HAPTIC VIBRATION UTILITY ===
-async function triggerHaptic(type = 'light') {
-    const haptics = getNativePlugin('Haptics');
-    if (haptics) {
-        try {
-            if (type === 'success') {
-                await haptics.notification({ type: 'SUCCESS' });
-            } else if (type === 'warning') {
-                await haptics.notification({ type: 'WARNING' });
-            } else if (type === 'error') {
-                await haptics.notification({ type: 'ERROR' });
-            } else {
-                await haptics.impact({ style: 'LIGHT' });
-            }
-        } catch(e) {
-            console.warn("Haptics trigger failed:", e);
-        }
-    }
-}
-
-// === PENDING ACTIONS FINDER FOR MOBILE DASHBOARD ===
-function getPendingActions() {
-    const actions = [];
-    const msgsKey = 'lyann_mock_chat_msgs';
-    try {
-        const stored = localStorage.getItem(msgsKey);
-        if (stored) {
-            const data = JSON.parse(stored);
-            Object.keys(data).forEach(contactName => {
-                const msgs = data[contactName];
-                if (msgs && msgs.length > 0) {
-                    const lastMsg = msgs[msgs.length - 1];
-                    if (lastMsg.type === 'system_card') {
-                        if (lastMsg.cardType === 'PRICE_PROPOSAL' && lastMsg.sender !== getMyId()) {
-                            actions.push({
-                                type: 'proposal',
-                                contactName: contactName,
-                                message: `${contactName} vous propose ${lastMsg.amount}€.`
-                            });
-                        } else if (lastMsg.cardType === 'WORK_DONE' && lastMsg.sender !== getMyId()) {
-                            actions.push({
-                                type: 'work_done',
-                                contactName: contactName,
-                                message: `${contactName} indique avoir terminé la mission.`
-                            });
-                        }
-                    }
-                }
-            });
-        }
-    } catch(e) {}
-    return actions;
-}
-
-// === NOTIFICATIONS MODAL & BADGE SYSTEM ===
-function updateHeaderNotificationBadge() {
-    const currentUserId = window.LYANN_CURRENT_USER?.id || 'demo_user';
-    const badge = document.querySelector('.notif-badge-count');
-    if (!badge) return;
-
-    if (window.LyannNotificationEngine) {
-        const unreadCount = window.LyannNotificationEngine.getUnreadCount(currentUserId, currentUserId);
-        if (unreadCount > 0) {
-            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-            badge.style.display = 'inline-flex';
-        } else {
-            badge.style.display = 'none';
-        }
-    }
-}
-
-function openNotificationsModal() {
-    const currentUserId = window.LYANN_CURRENT_USER?.id || 'demo_user';
-    let modal = document.getElementById('notificationsModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.id = 'notificationsModal';
-        document.body.appendChild(modal);
-    }
-
-    const notifs = window.LyannNotificationEngine 
-        ? window.LyannNotificationEngine.getUserNotifications(currentUserId, currentUserId) 
-        : [];
-    const unreadCount = notifs.filter(n => !n.read).length;
-
-    modal.innerHTML = `
-        <div class="modal-card modal-card-notifications" style="max-width: 520px; width: 92%; border-radius: var(--radius-xl); padding: 20px; background: #FFFFFF; margin: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3); position: relative;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border-light); padding-bottom: 12px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0; color: var(--text);">Notifications 🔔</h3>
-                    ${unreadCount > 0 ? `<span style="background: var(--primary); color: #FFF; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">${unreadCount} non lue(s)</span>` : ''}
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    ${unreadCount > 0 ? `<button type="button" id="btnMarkAllNotifsRead" style="background: none; border: none; font-size: 0.8rem; color: var(--primary); font-weight: 700; cursor: pointer;">Tout marquer lu</button>` : ''}
-                    <button type="button" id="closeNotificationsModalBtn" class="modal-close-btn" aria-label="Fermer" style="position: static; opacity: 1;"><i class="ph ph-x"></i></button>
-                </div>
-            </div>
-            <div class="notifications-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 55vh; overflow-y: auto;">
-                ${notifs.length === 0 ? `
-                    <div style="text-align: center; padding: 32px 16px; color: var(--text-muted);">
-                        <i class="ph ph-bell-slash" style="font-size: 2.5rem; opacity: 0.5; margin-bottom: 8px;"></i>
-                        <p style="margin: 0; font-weight: 600;">Rien de nouveau pour le moment.</p>
-                        <span style="font-size: 0.8rem;">Vos opportunités et messages apparaîtront ici.</span>
-                    </div>
-                ` : notifs.map(n => {
-                    const icon = n.type === 'OPPORTUNITY' ? '🤝' 
-                        : (n.type === 'NEW_MESSAGE' ? '💬' 
-                        : (n.type.startsWith('MISSION') ? '🎯' 
-                        : (n.type.startsWith('PAYMENT') ? '💳' : '🔔')));
-                    
-                    const timeAgo = formatRelativeTime(n.created_at);
-                    const isUnread = !n.read;
-                    
-                    return `
-                        <div class="notif-item-card" data-notif-id="${n.id}" data-entity-type="${n.entity_type || ''}" data-entity-id="${n.entity_id || ''}" style="display: flex; gap: 12px; padding: 12px 14px; background: ${isUnread ? 'rgba(74, 124, 89, 0.06)' : 'var(--bg-alt)'}; border-radius: var(--radius-lg); border-left: 4px solid ${isUnread ? 'var(--primary)' : 'transparent'}; cursor: pointer; transition: all 0.2s ease;">
-                            <span style="font-size: 1.4rem;">${icon}</span>
-                            <div style="flex: 1;">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px;">
-                                    <strong style="font-size: 0.88rem; color: var(--text); font-weight: 700;">${n.title}</strong>
-                                    <span style="font-size: 0.72rem; color: var(--text-muted); white-space: nowrap;">${timeAgo}</span>
-                                </div>
-                                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 6px 0; line-height: 1.3;">${n.body}</p>
-                                ${n.cta ? `<span style="font-size: 0.76rem; font-weight: 700; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;">${n.cta.label} &rarr;</span>` : ''}
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        </div>
-    `;
-
-    const closeBtn = document.getElementById('closeNotificationsModalBtn');
-    const closeModal = () => {
-        modal.classList.remove('active');
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-        updateHeaderNotificationBadge();
-    };
-
-    closeBtn?.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-
-    document.getElementById('btnMarkAllNotifsRead')?.addEventListener('click', () => {
-        if (window.LyannNotificationEngine) {
-            window.LyannNotificationEngine.markAllAsRead(currentUserId);
-            openNotificationsModal();
-            updateHeaderNotificationBadge();
-        }
-    });
-
-    // Deep link action handler for item clicks
-    modal.querySelectorAll('.notif-item-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const notifId = card.getAttribute('data-notif-id');
-            const entityType = card.getAttribute('data-entity-type');
-            const entityId = card.getAttribute('data-entity-id');
-
-            if (window.LyannNotificationEngine && notifId) {
-                window.LyannNotificationEngine.markAsRead(notifId, currentUserId);
-            }
-
-            closeModal();
-
-            // Closed Opportunity Handling Check (TEST G)
-            if (entityType === 'request' && entityId && window.LyannNotificationEngine) {
-                const oppState = window.LyannNotificationEngine.getOpportunityState(entityId, card.getAttribute('data-request-status') || 'ACTIVE');
-                if (!oppState.available) {
-                    if (typeof window.showLyanToast === 'function') {
-                        window.showLyanToast(oppState.human_message, 'ℹ️');
-                    } else {
-                        alert(oppState.human_message);
-                    }
-                    return;
-                }
-            }
-
-            // Deep link actions (TEST F)
-            if (entityType === 'conversation' && entityId) {
-                if (typeof window.openConversation === 'function') window.openConversation(entityId);
-            } else if (entityType === 'request' && entityId) {
-                if (typeof window.openRequestDetails === 'function') window.openRequestDetails(entityId);
-            } else if (entityType === 'mission' && entityId) {
-                if (typeof window.openMissionDetails === 'function') window.openMissionDetails(entityId);
-            }
-        });
-    });
-
-    modal.classList.add('active');
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function formatRelativeTime(isoString) {
-    if (!isoString) return 'Récemment';
-    const date = new Date(isoString);
-    const now = new Date();
-    const diffMin = Math.floor((now - date) / 60000);
-    if (diffMin < 1) return 'À l\'instant';
-    if (diffMin < 60) return `Il y a ${diffMin} min`;
-    const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `Il y a ${diffHours}h`;
-    return date.toLocaleDateString('fr-FR');
-}
-
-// === APP WELCOME SCREEN (GUEST MODE / ONBOARDING / LOGIN) ===
-function showAppWelcomeScreen() {
-    console.log('[AUTH_REAL] welcome/login screen mounted = true');
-    if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.loginScreenMounted = true;
-
-    if (document.querySelector('.app-welcome-screen')) return;
-
-    const screen = document.createElement('div');
-    screen.className = 'app-welcome-screen';
-    screen.innerHTML = `
-        <div class="welcome-logo-container">
-            <img src="logo-app.png" style="width: 90px; height: 90px; border-radius: 20px; box-shadow: 0 10px 25px rgba(74, 124, 89, 0.15); object-fit: cover;">
-            <h1 class="welcome-title">Bienvenue sur<br>LYANN</h1>
-            <p class="welcome-subtitle">Le réseau d'entraide locale et de confiance. Sé Lyann a lot.</p>
-        </div>
-
-        <div class="welcome-actions">
-            <button class="btn btn-primary btn-lg" id="btnWelcomeRegister" style="justify-content: center;">Créer un compte</button>
-            <button class="btn btn-outline btn-lg" id="btnWelcomeLogin" style="justify-content: center; background: white;">Se connecter</button>
-
-            <div style="display: flex; align-items: center; gap: 8px; margin: 2px 0;">
-                <div style="flex: 1; height: 1px; background: rgba(0, 0, 0, 0.12);"></div>
-                <span style="font-size: 0.78rem; color: #64748B; font-weight: 500;">ou</span>
-                <div style="flex: 1; height: 1px; background: rgba(0, 0, 0, 0.12);"></div>
-            </div>
-
-            <button type="button" class="btn btn-google btn-google-auth btn-lg" id="btnWelcomeGoogle" style="justify-content: center; background: #FFFFFF; border: 1px solid #CBD5E1; color: #1E293B; font-weight: 600; min-height: 48px; border-radius: 12px; gap: 10px;">
-                <svg width="20" height="20" viewBox="0 0 48 48" class="google-svg-icon">
-                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.66 0 6.6 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.6 42.62 14.66 48 24 48z"/>
-                </svg>
-                Continuer avec Google
-            </button>
-
-            <button class="btn btn-outline btn-lg" id="btnWelcomeGuest" style="justify-content: center; border: none; font-size: 0.85rem; padding: 6px; color: #64748B;">Découvrir en mode invité</button>
-        </div>
-    `;
-
-    document.body.appendChild(screen);
-
-    // Bindings
-    document.getElementById('btnWelcomeRegister')?.addEventListener('click', () => {
-        triggerHaptic('light');
-        if (typeof window.openOnboarding === 'function') {
-            window.openOnboarding();
-        }
-    });
-
-    document.getElementById('btnWelcomeLogin')?.addEventListener('click', () => {
-        triggerHaptic('light');
-        document.querySelector('.open-login-trigger')?.click();
-    });
-
-    document.getElementById('btnWelcomeGuest')?.addEventListener('click', () => {
-        triggerHaptic('light');
-        console.log('[AUTH_REAL] welcome/login screen mounted = false');
-        if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.loginScreenMounted = false;
-        screen.remove(); // Dismiss welcome view
-    });
-}
-
-// === MOBILE APP ACCUEIL HOME DASHBOARD ===
-async function initMobileHomeDashboard() {
-    const isLoggedIn = document.body.classList.contains('user-is-logged-in');
-
-    if (!isLoggedIn) {
-        console.log('[AUTH_REAL] App Home mounted = false');
-        if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.appHomeMounted = false;
-        showAppWelcomeScreen();
-        return;
-    }
-
-    // Hide marketing blocks
-    const elementsToHide = [
-        document.querySelector('.hero'),
-        document.getElementById('about'),
-        document.getElementById('how-it-works'),
-        document.getElementById('testimonials'),
-        document.getElementById('join')
-    ];
-    elementsToHide.forEach(el => {
-        if (el) el.style.display = 'none';
-    });
-
-    // Inject Dashboard
-    if (!document.getElementById('mobileDashboard')) {
-        let firstName = "Lyanneur";
-        if (window.CURRENT_USER_ID && window.LYANN_API_CLIENT) {
-            try {
-                const { data } = await window.LYANN_API_CLIENT.getProfile(window.CURRENT_USER_ID);
-                if (data && data.first_name) {
-                    firstName = data.first_name;
-                }
-            } catch(e) {}
-        }
-
-        const dashboard = document.createElement('div');
-        dashboard.id = 'mobileDashboard';
-        
-        let alertsHtml = '';
-        const pendingActions = getPendingActions();
-        pendingActions.forEach(act => {
-            alertsHtml += `
-                <div class="dashboard-alert-card">
-                    <span class="dashboard-alert-card-text">🔔 ${act.message}</span>
-                    <button class="dashboard-alert-card-btn" data-contact="${act.contactName}">Voir</button>
-                </div>
-            `;
-        });
-
-        dashboard.innerHTML = `
-            <div class="dashboard-welcome">
-                <div>
-                    <h2>Bonjour ${firstName} 👋</h2>
-                    <p>Réseau d'entraide local & sécurisé</p>
-                </div>
-                <img src="david-34.png" alt="Mon Profil" class="dashboard-welcome-avatar" id="btnDashboardAvatar">
-            </div>
-
-            ${alertsHtml}
-
-            <div class="dashboard-search-bar">
-                <i class="ph ph-magnifying-glass"></i>
-                <input type="text" id="dbSearchInput" placeholder="Plombier, clim, jardinage, peintre...">
-            </div>
-
-            <div class="dashboard-quick-actions">
-                <a href="results.html?category=plomberie" class="action-pill"><i class="ph ph-drop"></i> Plomberie</a>
-                <a href="results.html?category=menage" class="action-pill"><i class="ph ph-wind"></i> Ménage</a>
-                <a href="results.html?category=jardinage" class="action-pill"><i class="ph ph-leaf"></i> Jardinage</a>
-                <a href="results.html?category=electricite" class="action-pill"><i class="ph ph-lightning"></i> Électricité</a>
-            </div>
-        `;
-
-        document.body.insertBefore(dashboard, document.body.firstChild);
-
-        // Bindings
-        document.getElementById('btnDashboardAvatar')?.addEventListener('click', () => {
-            triggerHaptic('light');
-            document.querySelector('.open-account-modal-trigger')?.click();
-        });
-
-        dashboard.querySelectorAll('.dashboard-alert-card-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                triggerHaptic('light');
-                const contact = btn.getAttribute('data-contact');
-                if (typeof openChatWithUser === 'function') {
-                    openChatWithUser(contact, 'david-34.png');
-                }
-            });
-        });
-
-        const dbSearchInput = document.getElementById('dbSearchInput');
-        if (dbSearchInput) {
-            dbSearchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    const val = dbSearchInput.value.trim();
-                    if (val) {
-                        window.location.href = `results.html?query=${encodeURIComponent(val)}`;
-                    }
-                }
-            });
-        }
-    }
-}
-
-// === INTERFACE INJECTION ENTRY POINT ===
-// Global messaging modal opener
-window.openLyannMessagesModal = function() {
-    try { triggerHaptic('light'); } catch(e) {}
-    const modal = document.getElementById('chatModal');
-    if (modal) {
-        modal.removeAttribute('style');
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        document.body.classList.add('hide-bottom-nav');
-        if (typeof window.renderMessages === 'function') {
-            try { window.renderMessages(); } catch(e) {}
-        }
-        if (typeof window.renderContactsList === 'function') {
-            try { window.renderContactsList(); } catch(e) {}
-        }
-    } else {
-        window.location.href = 'feed.html?action=openchat';
-    }
-};
-
-function injectMobileInterface() {
-    console.log("⚡ [BOOT 05] injectMobileInterface entered");
-    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.injectMobileInterfaceEntered = true;
-    logLyannTrace("injectMobileInterface_entered");
-
-    const nativeActive = isNativePlatform();
-    if (!nativeActive) {
-        if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.injectMobileInterfaceEarlyReturn = true;
-        logLyannTrace("injectMobileInterface_early_return", { reason: "isNativePlatform false" });
-        return;
-    }
-    console.log("⚡ [BOOT 06] native detected: true");
-    logLyannTrace("injectMobileInterface_native_detected");
-
-    document.body.classList.add('is-native-app');
-    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.bodyIsNativeAppApplied = document.body.classList.contains('is-native-app');
-
-    const path = window.location.pathname;
-    const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
-    const isExplorer = path.includes('results.html');
-    const isBokantaj = path.includes('feed.html');
-    const isLoggedIn = document.body.classList.contains('user-is-logged-in') || localStorage.getItem('lyan_user_logged_in') === 'true';
-
-    // DEEP LINK CHECK: Deep links bypass Accueil App and route directly
-    const hasDeepLink = window.location.search && (
-        window.location.search.includes('view=') ||
-        window.location.search.includes('action=') ||
-        window.location.search.includes('post_id=') ||
-        window.location.search.includes('chat=')
-    );
-
-    // Ensure deterministic native app header is applied immediately for ALL native routes
-    if (typeof window.ensureDeterministicAppHeader === 'function') {
-        window.ensureDeterministicAppHeader();
-    }
-
-    // NATIVE APP CONNECTED HOMEPAGE: Render App Home View on index.html when logged in
-    if (isHome && isLoggedIn && !hasDeepLink) {
-        document.querySelector('.app-welcome-screen')?.remove();
-        if (typeof window.renderAppHomeConnectedView === 'function') {
-            window.renderAppHomeConnectedView();
-        }
-    } else if (isHome && !isLoggedIn && !hasDeepLink && typeof authInitializationComplete !== 'undefined' && authInitializationComplete) {
-        if (typeof showAppWelcomeScreen === 'function') {
-            showAppWelcomeScreen();
-        }
-    }
-
-    // 1. Mobile Bottom Navigation à 5 Onglets (Accueil | Explorer | + | Bokantaj | Messages)
-    if (!document.querySelector('.mobile-bottom-nav')) {
-        const bottomNav = document.createElement('div');
-        bottomNav.className = 'mobile-bottom-nav';
-
-        bottomNav.innerHTML = `
-            <a href="index.html" class="nav-tab ${isHome ? 'active' : ''}" id="tab-home">
-                <i class="ph ph-house"></i>
-                <span>Accueil</span>
-            </a>
-            <a href="results.html" class="nav-tab ${isExplorer ? 'active' : ''}" id="tab-explorer">
-                <i class="ph ph-magnifying-glass"></i>
-                <span>Explorer</span>
-            </a>
-            <div class="nav-tab nav-tab-central-item" id="tab-create-item">
-                <button type="button" class="btn-central-action" id="tab-create" aria-label="Publier">
-                    <i class="ph ph-plus"></i>
-                </button>
-                <span class="central-tab-label">Publier</span>
-            </div>
-            <a href="feed.html" class="nav-tab ${isBokantaj ? 'active' : ''}" id="tab-bokantaj">
-                <i class="ph ph-broadcast"></i>
-                <span>Bokantaj</span>
-            </a>
-            <button type="button" class="nav-tab" id="tab-messages" aria-label="Messages">
-                <i class="ph ph-chat-circle-dots"></i>
-                <span>Messages</span>
-            </button>
-        `;
-        document.body.appendChild(bottomNav);
-        if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.bottomNavCreated = true;
-        logLyannTrace("bottomNav_created");
-        console.log("⚡ [BOOT 10] bottom nav listeners attached");
-
-        bottomNav.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                try { if (typeof triggerHaptic === 'function') triggerHaptic('light'); } catch(e) {}
-            });
-        });
-
-        // Tab "+" (Publier) click
-        const tabCreate = document.getElementById('tab-create');
-        if (tabCreate) {
-            tabCreate.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (typeof window.openLyannWizard === 'function') {
-                    window.openLyannWizard();
-                } else if (typeof window.openCentralActionSheet === 'function') {
-                    window.openCentralActionSheet();
-                }
-            });
-        }
-
-        // Messages tab click -> Open Chat Modal
-        const tabMessages = document.getElementById('tab-messages');
-        if (tabMessages) {
-            tabMessages.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.openLyannMessagesModal();
-            });
-        }
-
-        // Moi tab click
-        const tabMoi = document.getElementById('tab-moi');
-        if (tabMoi) {
-            tabMoi.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (typeof window.openAccountModalSubView === 'function') {
-                    window.openAccountModalSubView('account');
-                }
-            });
-        }
-    }
-
-    // 2. Central Action Bottom Sheet (3 grandes actions)
-    if (!document.getElementById('centralActionSheet')) {
-        const backdrop = document.createElement('div');
-        backdrop.className = 'sheet-backdrop';
-        backdrop.id = 'sheetBackdrop';
-        document.body.appendChild(backdrop);
-
-        const sheet = document.createElement('div');
-        sheet.className = 'mobile-bottom-sheet';
-        sheet.id = 'centralActionSheet';
-        sheet.innerHTML = `
-            <div class="sheet-handle"></div>
-            <h3 class="sheet-title">Que souhaitez-vous faire ?</h3>
-            <div class="sheet-options-grid">
-                <button type="button" class="sheet-option-btn" id="btnSheetNeedHelp">
-                    <span class="sheet-option-icon"><i class="ph ph-magnifying-glass"></i></span>
-                    <div class="sheet-option-info">
-                        <h4>Publier un besoin</h4>
-                        <p>Publiez ce dont vous avez besoin.</p>
-                    </div>
-                </button>
-                <button type="button" class="sheet-option-btn" id="btnSheetOfferHelp">
-                    <span class="sheet-option-icon"><i class="ph ph-hand-heart"></i></span>
-                    <div class="sheet-option-info">
-                        <h4>Proposer quelque chose</h4>
-                        <p>Partagez un service, une compétence ou une disponibilité.</p>
-                    </div>
-                </button>
-                <button type="button" class="sheet-option-btn" id="btnSheetBokantaj">
-                    <span class="sheet-option-icon"><i class="ph ph-broadcast"></i></span>
-                    <div class="sheet-option-info">
-                        <h4>Publier sur Bokantaj</h4>
-                        <p>Partagez quelque chose avec la communauté.</p>
-                    </div>
-                </button>
-            </div>
-            <button type="button" class="btn btn-outline" id="btnCloseSheet" style="margin-top: 15px; width: 100%; justify-content: center;">Fermer</button>
-        `;
-        document.body.appendChild(sheet);
-
-        const tabCreate = document.getElementById('tab-create');
-        if (tabCreate) {
-            tabCreate.addEventListener('click', (e) => {
-                e.preventDefault();
-                backdrop.classList.add('active');
-                sheet.classList.add('active');
-            });
-        }
-
-        const closeSheet = () => {
-            backdrop.classList.remove('active');
-            sheet.classList.remove('active');
-        };
-
-        backdrop.addEventListener('click', closeSheet);
-        document.getElementById('btnCloseSheet')?.addEventListener('click', closeSheet);
-
-        // Action 1: Besoin d'un coup de main → ouvre le Wizard IA
-        document.getElementById('btnSheetNeedHelp')?.addEventListener('click', () => {
-            closeSheet();
-            triggerHaptic('light');
-            if (typeof window.openLyannWizard === 'function') {
-                window.openLyannWizard();
-            } else {
-                const wizardModal = document.getElementById('modal-request-help');
-                if (wizardModal) {
-                    wizardModal.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    window.location.href = 'feed.html?openWizard=true';
-                }
-            }
-        });
-
-        // Action 2: Proposer
-        document.getElementById('btnSheetOfferHelp')?.addEventListener('click', () => {
-            closeSheet();
-            triggerHaptic('light');
-            if (document.body.classList.contains('user-is-logged-in')) {
-                const addServiceBtn = document.querySelector('.btn-add-service') || document.getElementById('btnAddService');
-                if (addServiceBtn) {
-                    addServiceBtn.click();
-                } else if (typeof window.openAddServiceModal === 'function') {
-                    window.openAddServiceModal();
-                } else {
-                    window.location.href = 'index.html?action=add-service';
-                }
-            } else {
-                window.lyannAlert("🔑 Veuillez vous connecter pour proposer vos services.");
-                document.querySelector('.open-login-trigger')?.click();
-            }
-        });
-
-        // Action 3: Bokantaj
-        document.getElementById('btnSheetBokantaj')?.addEventListener('click', () => {
-            closeSheet();
-            triggerHaptic('light');
-            if (window.location.pathname.includes('feed.html')) {
-                const textInput = document.getElementById('flashContentInput');
-                if (textInput) {
-                    textInput.focus();
-                    textInput.scrollIntoView({ behavior: 'smooth' });
-                }
-            } else {
-                window.location.href = 'feed.html?action=new-post';
-            }
-        });
-    }
-}
-window.injectMobileInterface = injectMobileInterface;
-
-// === APP HOME V1 CONNECTED VIEW RENDERER (APP NATIVE ONLY) ===
-window.renderAppHomeConnectedView = function() {
-    console.log('[AUTH_REAL] App Home mounted = true');
-    if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.appHomeMounted = true;
-
-    const mainHero = document.querySelector('.hero');
-    if (!mainHero) return;
-
-    // Remove legacy appHomeView element if present to avoid duplicate action cards
-    document.getElementById('appHomeView')?.remove();
-
-    // Ensure hero section remains visible
-    mainHero.style.display = '';
-
-    // Hide the hero visual illustration (SVG) on native — it takes too much space
-    const heroVisual = mainHero.querySelector('.hero-visual');
-    if (heroVisual) heroVisual.style.display = 'none';
-
-    // Hide web-only marketing sections on native app connected home
-    document.querySelectorAll('.trust-section, .how-section, .categories-section, .testimonials-section, .final-cta, .lyann-footer, .cta-section').forEach(sec => {
-        if (sec) sec.style.display = 'none';
-    });
-    document.querySelectorAll('#about, #how-it-works').forEach(sec => {
-        if (sec && (sec.classList.contains('trust-section') || sec.classList.contains('how-section'))) {
-            sec.style.display = 'none';
-        }
-    });
-
-    // Populate and display personalized greeting badge inside hero
-    const greetingBadge = document.getElementById('heroGreetingBadge');
-    const firstNameEl = document.getElementById('heroUserFirstName');
-
-    if (greetingBadge) {
-        greetingBadge.style.display = 'inline-flex';
-    }
-
-    try {
-        if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-            window.LYANN_API_CLIENT.getCurrentUser().then(user => {
-                if (user) {
-                    let firstName = user.user_metadata?.first_name || '';
-                    if (!firstName) {
-                        window.LYANN_API_CLIENT.supabase.from('profiles').select('first_name').eq('id', user.id).single()
-                            .then(({ data }) => {
-                                if (data && data.first_name && firstNameEl) {
-                                    firstNameEl.textContent = ' ' + data.first_name;
-                                }
-                            }).catch(() => {});
-                    } else if (firstNameEl) {
-                        firstNameEl.textContent = ' ' + firstName;
-                    }
-                }
-            }).catch(() => {});
-        }
-    } catch(e) {}
-
-    // Header Natif Déterministe Mobile
-    if (typeof window.ensureDeterministicAppHeader === 'function') {
-        window.ensureDeterministicAppHeader();
-    }
-};
-
-// === HEADER NATIVE DÉTERMINISTE (APP MOBILE) ===
-window.ensureDeterministicAppHeader = function(overrideViewType) {
-    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.ensureDeterministicAppHeaderEntered = true;
-    logLyannTrace("ensureDeterministicAppHeader_entered");
-
-    if (!isNativePlatform()) {
-        logLyannTrace("ensureDeterministicAppHeader_early_return", { reason: "isNativePlatform false" });
-        return;
-    }
-
-    const path = window.location.pathname;
-    let viewType = overrideViewType;
-    
-    if (!viewType) {
-        if (path.includes('feed.html')) viewType = 'BOKANTAJ';
-        else if (path.includes('results.html')) viewType = 'EXPLORER';
-        else if (path.includes('pricing.html')) viewType = 'PRICING';
-        else if (path.includes('about.html')) viewType = 'ABOUT';
-        else if (path.includes('how-it-works.html')) viewType = 'HOW_IT_WORKS';
-        else if (path.includes('payment-portal.html')) viewType = 'PAYMENT';
-        else viewType = 'ACCUEIL';
-    }
-
-    const navbar = document.querySelector('.navbar');
-    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.publicHeaderFound = !!navbar;
-    logLyannTrace("public_header_check", { found: !!navbar });
-
-    if (!navbar) return;
-    
-    // STABILIZATION V1: Sentinel — skip re-render ONLY if header is set AND native header row is present
-    if (navbar.getAttribute('data-native-header-active') === viewType && navbar.querySelector('.native-header-row')) {
-        return;
-    }
-    const container = navbar.querySelector('.nav-container') || navbar;
-
-    const isHomeOrBokantaj = (viewType === 'ACCUEIL' || viewType === 'BOKANTAJ');
-
-    if (isHomeOrBokantaj) {
-        container.innerHTML = `
-            <div class="native-header-row" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 14px; box-sizing: border-box; height: 44px;">
-                <span class="native-header-logo" style="font-weight: 900; font-size: 1.2rem; color: var(--primary-dark); display: flex; align-items: center; gap: 8px;">
-                    <img src="logo-app.png" style="width: 28px; height: 28px; border-radius: 6px; object-fit: cover;">
-                    LYANN
-                </span>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <button type="button" class="nav-msg-btn" id="btnHeaderChat" aria-label="Messagerie" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
-                        <i class="ph ph-chat-circle-dots"></i>
-                    </button>
-                    <button type="button" class="nav-msg-btn" id="btnHeaderNotif" aria-label="Notifications" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; position: relative;">
-                        <i class="ph ph-bell"></i>
-                    </button>
-                    <button type="button" class="hamburger-menu-btn" id="btnHeaderHamburger" aria-label="Menu Principal" style="background: rgba(74, 124, 89, 0.12); border: 1.5px solid rgba(74, 124, 89, 0.25); border-radius: 12px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--primary-dark); cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                        <i class="ph ph-list"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    } else {
-        let pageTitle = "LYANN";
-        if (viewType === 'EXPLORER') pageTitle = "Explorer";
-        else if (viewType === 'ABOUT') pageTitle = "Notre Histoire";
-        else if (viewType === 'PRICING') pageTitle = "Abonnements";
-        else if (viewType === 'HOW_IT_WORKS') pageTitle = "Comment ça marche";
-        else if (viewType === 'PROFIL') pageTitle = "Mon Compte";
-        else if (viewType === 'MESSAGES') pageTitle = "Messagerie";
-
-        container.innerHTML = `
-            <div class="native-header-row" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 12px; height: 44px; box-sizing: border-box;">
-                <button type="button" id="btnNativeBack" style="background: none; border: none; font-size: 1.35rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
-                    <i class="ph ph-caret-left" style="font-weight: bold;"></i>
-                </button>
-                <div style="font-weight: 800; font-size: 1rem; color: var(--text); flex: 1; text-align: center;">${pageTitle}</div>
-                <button type="button" class="hamburger-menu-btn" id="btnHeaderHamburger" aria-label="Menu Principal" style="background: rgba(74, 124, 89, 0.12); border: 1.5px solid rgba(74, 124, 89, 0.25); border-radius: 12px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--primary-dark); cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                    <i class="ph ph-list"></i>
-                </button>
-            </div>
-        `;
-
-        document.getElementById('btnNativeBack')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            triggerHaptic('light');
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.href = 'index.html';
-            }
-        });
-    }
-
-    container.querySelector('#btnHeaderChat')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        window.openLyannMessagesModal();
-    });
-
-    container.querySelector('#btnHeaderNotif')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        triggerHaptic('light');
-        if (typeof openNotificationsModal === 'function') openNotificationsModal();
-    });
-
-    container.querySelector('#btnHeaderHamburger')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        triggerHaptic('light');
-        if (typeof window.openLyannHamburgerDrawer === 'function') {
-            window.openLyannHamburgerDrawer();
-        }
-    });
-    
-    // STABILIZATION V1: Set sentinel marker after successful header injection
-    navbar.setAttribute('data-native-header-active', viewType);
-    navbar.style.display = '';
-    navbar.style.visibility = 'visible';
-    if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.nativeHeaderRowCreated = !!document.querySelector('.native-header-row');
-    logLyannTrace("nativeHeaderRow_created", { created: !!document.querySelector('.native-header-row') });
-    console.log("⚡ [BOOT 07] native header mounted for viewType:", viewType);
-};
 
     window.isExplicitDemoMode = function() {
         if (typeof window === 'undefined' || !window.location) return false;
@@ -1217,436 +89,14 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
         return false;
     };
 
-    const LYANN_MEMBERS = [
-        // GUADELOUPE (971) - MEMBRE RÉFÉRENT
-        {
-            id: 100,
-            name: "Jocelyn Cabort (52 ans)",
-            role: "Plomberie & Fuites d'eau PRO",
-            category: "plomberie",
-            keywords: ["plomberie", "plombier", "fuite", "eau", "sanitaire", "jocelyn", "cabort", "dépannage", "chauffe-eau"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Baie-Mahault",
-            rating: 5.0,
-            reviewsCount: 64,
-            avatar: "jocelyn-cabort.png",
-            bio: "Plombier chevronné et membre référent à Baie-Mahault. Dépannage rapide de fuites d'eau, débouchage et installation sanitaire.",
-            skills: ["Détection de fuite", "Pose robinet", "Sanitaires", "Dépannage 24/7"],
-            badge: "Artisan Vérifié",
-            hourlyRate: "À partir de 30€/h"
-        },
-        {
-            id: 1,
-            name: "David M. (34 ans)",
-            role: "Plomberie & Clim Inverter",
-            category: "plomberie",
-            keywords: ["plomberie", "plombier", "fuite", "eau", "sanitaire", "robinet", "tuyau", "dépannage", "chauffe-eau", "clim"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Baie-Mahault",
-            rating: 4.9,
-            reviewsCount: 48,
-            avatar: "avatar-male-blue.png",
-            bio: "Plombier et technicien clim passionné à Baie-Mahault. Dépannage rapide de fuites d'eau, entretien clim et chauffe-eau.",
-            skills: ["Détection de fuite", "Entretien Clim Inverter", "Remplacement chauffe-eau", "Débouchage express"],
-            badge: "Artisan Vérifié",
-            hourlyRate: "À partir de 35€/h"
-        },
-        {
-            id: 2,
-            name: "Marie-Line Popotte (39 ans)",
-            role: "Peinture Intérieure & Rénovation",
-            category: "peinture",
-            keywords: ["peinture", "peintre", "mural", "rénovation", "décoration", "enduit", "plâtre"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Les Abymes",
-            rating: 5.0,
-            reviewsCount: 36,
-            avatar: "avatar-female-pink.png",
-            bio: "Peintre d'intérieur minutieuse aux Abymes. Je redonne des couleurs et de la fraîcheur tropicale à vos pièces de vie.",
-            skills: ["Peinture mur & plafond", "Enduit lissage", "Protection anti-humidité", "Conseil couleurs"],
-            badge: "Voisine Recommandée",
-            hourlyRate: "À partir de 30€/h"
-        },
-        {
-            id: 3,
-            name: "Jean-Michel Télèphe (45 ans)",
-            role: "Électricité & Rénovation Moteurs",
-            category: "electricite",
-            keywords: ["électricité", "électricien", "panne", "tableau", "prise", "lumière", "câblage", "réparer"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Le Gosier",
-            rating: 4.8,
-            reviewsCount: 31,
-            avatar: "avatar-male-blue.png",
-            bio: "Mise aux normes, rénovation électrique globale et dépannage rapide sur Le Gosier et environs.",
-            skills: ["Tableau électrique", "Dépannage d'urgence", "Éclairage LED", "Mise aux normes"],
-            badge: "Électricien Vérifié",
-            hourlyRate: "À partir de 40€/h"
-        },
-        {
-            id: 4,
-            name: "Man Saint-Louis (72 ans)",
-            role: "Jardinier & Plantes Créoles",
-            category: "jardin",
-            keywords: ["jardin", "jardinier", "élagage", "pelouse", "tonte", "haie", "entretien", "plantes", "palmier"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Sainte-Anne",
-            rating: 4.9,
-            reviewsCount: 25,
-            avatar: "avatar-male-blue.png",
-            bio: "Sage du jardin et passionné de botanique créole à Sainte-Anne. Entretien doux, taille de palmiers et conseils de terre.",
-            skills: ["Taille de haies", "Élagage palmiers", "Jardin médicinal créole", "Arrosage"],
-            badge: "Membre Doyen Réputé",
-            hourlyRate: "À partir de 25€/h"
-        },
-        {
-            id: 5,
-            name: "Élodie Rutil (27 ans)",
-            role: "Ménage & Entretien Maison",
-            category: "menage",
-            keywords: ["ménage", "nettoyage", "maison", "propreté", "entretien", "vitres", "repassage"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Le Moule",
-            rating: 5.0,
-            reviewsCount: 22,
-            avatar: "avatar-female-pink.png",
-            bio: "Ménage à domicile et entretien méticuleux de votre intérieur au Moule. Ponctuelle et de confiance.",
-            skills: ["Ménage régulier", "Lavage de vitres", "Repassage", "Désinfection"],
-            badge: "Membre Recommandé",
-            hourlyRate: "À partir de 20€/h"
-        },
-        {
-            id: 15,
-            name: "Clarisse Vatin (31 ans)",
-            role: "Baby-sitting & Garde d'enfants",
-            category: "babysitting",
-            keywords: ["baby-sitting", "babysitting", "garde d'enfants", "enfant", "bébé", "sortie d'école", "aide aux devoirs"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Baie-Mahault",
-            rating: 5.0,
-            reviewsCount: 32,
-            avatar: "avatar-female-pink.png",
-            bio: "Diplômée de la petite enfance. Garde bienveillante, activités créatives et aide aux devoirs.",
-            skills: ["Garde périscolaire", "Bébés & Enfants", "Secourisme PSC1", "Aide aux devoirs"],
-            badge: "Nounou Vérifiée",
-            hourlyRate: "À partir de 15€/h"
-        },
-        {
-            id: 16,
-            name: "Tati Rosalie Théophile (63 ans)",
-            role: "Aide à la personne & Seniors",
-            category: "aide-personne",
-            keywords: ["aide à la personne", "aide aux seniors", "compagnie", "courses", "repas", "autonomie", "auxiliaire"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Le Gosier",
-            rating: 4.9,
-            reviewsCount: 28,
-            avatar: "avatar-female-pink.png",
-            bio: "Accompagnement bienveillant pour personnes âgées ou en perte d'autonomie. Présence chaleureuse et aide au quotidien.",
-            skills: ["Aide aux repas créoles", "Accompagnement courses", "Lecture & Compagnie", "Stimulation douce"],
-            badge: "Auxiliaire Recommandée",
-            hourlyRate: "À partir de 18€/h"
-        },
-        {
-            id: 6,
-            name: "Sarah Manicon (29 ans)",
-            role: "Coiffure & Rénovation",
-            category: "peinture",
-            keywords: ["peinture", "peintre", "mural", "rénovation", "décoration", "coup de neuf", "coiffure"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Les Abymes",
-            rating: 5.0,
-            reviewsCount: 29,
-            avatar: "avatar-female-pink.png",
-            bio: "Artisan passionnée par la beauté et la rénovation des intérieurs aux Abymes. Garantie satisfaction !",
-            skills: ["Peinture acrylique", "Coiffure & Tresses", "Ravalement", "Décoration"],
-            badge: "Artisan Vérifié",
-            hourlyRate: "Devis gratuit"
-        },
-        {
-            id: 17,
-            name: "Aurélie Bellerose (26 ans)",
-            role: "Baby-sitting & Sortie d'école",
-            category: "babysitting",
-            keywords: ["baby-sitting", "babysitting", "garde d'enfants", "enfant", "sortie d'école", "nounou"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Baie-Mahault",
-            rating: 5.0,
-            reviewsCount: 21,
-            avatar: "avatar-female-pink.png",
-            bio: "Garde d'enfants à Baie-Mahault en soirée et les week-ends. Jeux d'éveil, goûters et sérénité pour les parents.",
-            skills: ["Soirées & Week-ends", "Jeux ludiques", "Garde à domicile", "Préparation repas"],
-            badge: "Baby-sitter Vérifiée",
-            hourlyRate: "À partir de 14€/h"
-        },
-        {
-            id: 7,
-            name: "Nicolas Bellerose (36 ans)",
-            role: "Bricolage & Multi-services",
-            category: "bricolage",
-            keywords: ["bricolage", "bricoleur", "monter un meuble", "meuble", "étagère", "fixation", "ikea", "petit travail"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Pointe-à-Pitre",
-            rating: 4.9,
-            reviewsCount: 35,
-            avatar: "avatar-male-blue.png",
-            bio: "Polyvalent et minutieux à Pointe-à-Pitre pour tous vos petits travaux de maison et montages de meubles en kit.",
-            skills: ["Montage meuble", "Fixation TV mural", "Pose de rideaux", "Petits dépannages"],
-            badge: "Super Bricoleur",
-            hourlyRate: "À partir de 25€/h"
-        },
-        {
-            id: 8,
-            name: "Christophe Vatin (42 ans)",
-            role: "Climatisation & Frigoriste",
-            category: "climatisation",
-            keywords: ["climatisation", "clim", "froid", "frigoriste", "entretien clim", "dépannage clim", "nettoyage clim"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Petit-Bourg",
-            rating: 4.9,
-            reviewsCount: 42,
-            avatar: "avatar-male-blue.png",
-            bio: "Pose, entretien et désinfection complète de climatiseurs Split sur Petit-Bourg pour particuliers et pros.",
-            skills: ["Nettoyage antibactérien", "Recharge gaz", "Dépannage fuite", "Installation neuve"],
-            badge: "Climaticien Agréé",
-            hourlyRate: "À partir de 45€/h"
-        },
-        {
-            id: 9,
-            name: "Tati Huguette Cazeau (68 ans)",
-            role: "Jardinage & Cuisine Créole",
-            category: "jardin",
-            keywords: ["jardin", "jardinier", "plantes", "entretien", "fleurs", "cour", "cuisine"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Morne-à-l'Eau",
-            rating: 5.0,
-            reviewsCount: 19,
-            avatar: "avatar-female-pink.png",
-            bio: "Transmission et passion des vergers et jardins créoles à Morne-à-l'Eau. Entretien doux, recettes traditionnelles et partage.",
-            skills: ["Plantes tropicales", "Taille arbres fruitiers", "Conseils botaniques", "Cuisine créole"],
-            badge: "Membre Senior Réputé",
-            hourlyRate: "À partir de 20€/h"
-        },
-        {
-            id: 10,
-            name: "Kevin Bellerose (41 ans)",
-            role: "Électricité Pro & Dépannage",
-            category: "electricite",
-            keywords: ["déménagement", "déménager", "transport", "camion", "carton", "portage", "manutention", "électricité"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Les Abymes",
-            rating: 4.9,
-            reviewsCount: 27,
-            avatar: "avatar-male-blue.png",
-            bio: "Électricien professionnel et technicien généraliste aux Abymes. Dépannage de tableaux, éclairage et moteurs en sécurité.",
-            skills: ["Habilitation électrique", "Rénovation atelier", "Dépannage d'urgence", "Objets lourds"],
-            badge: "Technicien PRO Vérifié",
-            hourlyRate: "À partir de 38€/h"
-        },
-        {
-            id: 11,
-            name: "Corinne Narcisse (33 ans)",
-            role: "Menuiserie & Aménagement Bois",
-            category: "menuiserie",
-            keywords: ["menuiserie", "menuisier", "bois", "porte", "fenêtre", "placard", "terrasse", "sur mesure"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Basse-Terre",
-            rating: 5.0,
-            reviewsCount: 20,
-            avatar: "avatar-female-pink.png",
-            bio: "Création et rénovation d'ouvrages en bois, terrasses créoles et agencements d'intérieur à Basse-Terre.",
-            skills: ["Terrasse bois", "Pose portes/fenêtres", "Dressing sur mesure", "Réparation meuble"],
-            badge: "Artisan Bois Vérifié",
-            hourlyRate: "Devis sous 24h"
-        },
-        {
-            id: 12,
-            name: "Cédric Flavien (38 ans)",
-            role: "Bricolage & Multi-services",
-            category: "bricolage",
-            keywords: ["bricolage", "bricoleur", "monter un meuble", "réparer", "étagère", "électricité", "plomberie"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Sainte-Rose",
-            rating: 5.0,
-            reviewsCount: 38,
-            avatar: "avatar-male-blue.png",
-            bio: "Montage de meubles, étagères, fixation, petits dépannages à Sainte-Rose... Toujours avec le sourire et le soin !",
-            skills: ["Montage meuble", "Fixation lourde", "Petite électricité", "Peinture retouches"],
-            badge: "Talent Recommandé",
-            hourlyRate: "À partir de 28€/h"
-        },
-        {
-            id: 13,
-            name: "Romain Payet (35 ans)",
-            role: "Entretien Jardin & Paysage",
-            category: "jardin",
-            keywords: ["jardin", "jardinier", "élagage", "gazon", "taille", "entretien", "plantes", "cour"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Capesterre-Belle-Eau",
-            rating: 4.9,
-            reviewsCount: 45,
-            avatar: "avatar-male-blue.png",
-            bio: "Entretien régulier ou ponctuel de vos jardins, débroussaillage et taille à Capesterre-Belle-Eau.",
-            skills: ["Débroussaillage", "Taille de haies", "Création massif fleurs", "Nettoyage terrasse"],
-            badge: "Jardinier Pro",
-            hourlyRate: "À partir de 26€/h"
-        },
-        {
-            id: 14,
-            name: "Guillaume Saint-Martin (44 ans)",
-            role: "Climatisation & Électricité Villa",
-            category: "climatisation",
-            keywords: ["climatisation", "clim", "électricité", "panne", "maintenance", "villa"],
-            location: "guadeloupe",
-            locationName: "Guadeloupe (971)",
-            city: "Saint-François",
-            rating: 5.0,
-            reviewsCount: 12,
-            avatar: "avatar-male-blue.png",
-            bio: "Maintenance haute qualité de climatiseurs et réseaux électriques pour villas et habitations à Saint-François.",
-            skills: ["Clim Inverter", "Maintenance préventive", "Dépannage express", "Tableau électrique"],
-            badge: "Expert Vérifié",
-            hourlyRate: "À partir de 50€/h"
-        }
-    ];
+    // Production source of truth: members come from Supabase repositories.
+    // Static personas were removed to prevent stale/fake profiles from becoming a competing data source.
+    // Production source of truth: members come from Supabase repositories.
+    // Static personas were removed to prevent stale/fake profiles from becoming a competing data source.
+    // Production source of truth: members come from Supabase repositories.
+    // Static personas were removed to prevent stale/fake profiles from becoming a competing data source.
+    const LYANN_MEMBERS = [];
     window.LYANN_MEMBERS = LYANN_MEMBERS;
-
-    // ==========================================================================
-    // BASE COMPLÈTE MEMBRES / PROFILERS EN GUADELOUPE (971) - PAR DENSITÉ
-    // ==========================================================================
-    const ADDITIONAL_MEMBERS_DATA = [
-        { name: "Jocelyn Cabort", age: 52, role: "Plomberie & Fuites d'eau", cat: "plomberie", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "jocelyn-cabort.png", bio: "Plombier chevronné à Baie-Mahault. Dépannage rapide de fuites d'eau, débouchage et installation sanitaire.", skills: ["Détection de fuite", "Pose robinet", "Sanitaires"] },
-        { name: "Hugues Zami", age: 45, role: "Climatisation & Électricité", cat: "climatisation", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "40€/h", img: "hugues-zami.png", bio: "Technicien froid et électricité aux Abymes. Pose, entretien et dépannage clim.", skills: ["Clim Inverter", "Câblage", "Dépannage"] },
-        { name: "Murielle Placide", age: 38, role: "Ménage & Repassage", cat: "menage", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "murielle-placide.png", bio: "Ménage soigné à domicile sur Le Gosier. Repassage et entretien régulier.", skills: ["Ménage", "Repassage", "Lavage vitres"] },
-        { name: "Clotilde Belair", age: 61, role: "Aide aux repas & Seniors", cat: "aide-personne", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "20€/h", img: "clotilde-belair.png", bio: "Auxiliaire de vie bienveillante. Aide au quotidien pour seniors à Sainte-Anne.", skills: ["Aide repas", "Compagnie", "Courses"] },
-        { name: "Marius Placide", age: 29, role: "Bricolage & Montage meuble", cat: "bricolage", city: "Petit-Bourg", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "marius-placide.png", bio: "Bricoleur minutieux. Montage de meubles, pose d'étagères et petits dépannages.", skills: ["Montage meuble", "Fixation", "Peinture"] },
-        { name: "Thierry Vindex", age: 34, role: "Peinture & Rénovation", cat: "peinture", city: "Le Moule", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "28€/h", img: "thierry-vindex.png", bio: "Peintre d'intérieur appliqué. Rénovation de pièces, murs et plafonds au Moule.", skills: ["Peinture", "Enduit", "Lissage"] },
-        { name: "Chantal Gendrey", age: 47, role: "Baby-sitting & Sorties d'école", cat: "babysitting", city: "Sainte-Rose", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "15€/h", img: "chantal-gendrey.png", bio: "Garde d'enfants bienveillante à Sainte-Rose. Sorties d'école et garde ponctuelle.", skills: ["Baby-sitting", "Jeux", "Goûter"] },
-        { name: "Ludovic Clamy", age: 25, role: "Jardinage & Débroussaillage", cat: "jardin", city: "Lamentin", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "ludovic-clamy.png", bio: "Entretien de jardins, tonte de pelouse et désherbage régulier sur Lamentin.", skills: ["Tonte", "Taille de haie", "Débroussaillage"] },
-        { name: "Mireille Sapotille", age: 54, role: "Habitante active", cat: "citoyen", city: "Saint-François", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "mireille-sapotille.png", bio: "Citoyenne engagée à Saint-François. Disponible pour donner un coup de main ponctuel aux voisins.", skills: ["Bokantaj", "Entraide", "Discussion"] },
-        { name: "Rodrigue Marie-Joseph", age: 31, role: "Menuiserie & Pose", cat: "menuiserie", city: "Capesterre-Belle-Eau", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "rodrigue-marie-joseph.png", bio: "Menuisier bois et alu. Réparation de portes, fenêtres et aménagements intérieurs.", skills: ["Menuiserie", "Pose de porte", "Aménagement"] },
-
-        { name: "Fabrice Létang", age: 40, role: "Électricité générale", cat: "electricite", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "fabrice-letang.png", bio: "Électricien professionnel aux Abymes. Tableau électrique, prises et mise en conformité.", skills: ["Tableau", "Câblage", "Dépannage"] },
-        { name: "Ghislaine Rosalie", age: 50, role: "Aide à domicile & Compagnie", cat: "aide-personne", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "ghislaine-rosalie.png", bio: "Accompagnement quotidien des personnes âgées à Baie-Mahault. Présence et écoute attentive.", skills: ["Compagnie", "Courses", "Loisirs"] },
-        { name: "Wilfrid Rapon", age: 37, role: "Jardinier paysagiste", cat: "jardin", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "wilfrid-rapon.png", bio: "Paysagiste passionné. Création de massifs, entretien général de jardin au Gosier.", skills: ["Taille", "Plantation", "Décoration"] },
-        { name: "Christiane Fostin", age: 58, role: "Citoyenne engagée", cat: "citoyen", city: "Petit-Bourg", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "christiane-fostin.png", bio: "Résidente à Petit-Bourg. Toujours partante pour discuter d'initiatives solidaires locales.", skills: ["Partage", "Voisinage", "Rencontres"] },
-        { name: "Lucien Cabort", age: 48, role: "Bricolage & Multi-services", cat: "bricolage", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "lucien-cabort.png", bio: "Homme à tout faire à Sainte-Anne. Dépannages divers et montages en tous genres.", skills: ["Réparations", "Montage", "Pose rideaux"] },
-        { name: "Roselyne Dacosta", age: 32, role: "Voisine de confiance", cat: "citoyen", city: "Le Moule", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "roselyne-dacosta.png", bio: "Citoyenne active au Moule. Passionnée d'environnement et de troc de plantes dans le quartier.", skills: ["Plantes", "Discussion", "Troc"] },
-        { name: "Albert Lise", age: 65, role: "Cuisine & Repas créoles", cat: "divers", city: "Sainte-Rose", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "20€/h", img: "albert-lise.png", bio: "Retraité de la restauration à Sainte-Rose. Préparation de plats traditionnels et pâtisseries locales.", skills: ["Colombo", "Accras", "Pâtisserie"] },
-        { name: "Yveline Rosalie", age: 23, role: "Baby-sitting & Devoirs", cat: "babysitting", city: "Capesterre-Belle-Eau", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "14€/h", img: "yveline-rosalie.png", bio: "Étudiante en éducation à Capesterre-Belle-Eau. Aide aux devoirs et garde d'enfants après l'école.", skills: ["Devoirs", "Baby-sitting", "Jeux éducatifs"] },
-        { name: "Gérard Zami", age: 55, role: "Plombier dépannage", cat: "plomberie", city: "Pointe-à-Pitre", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "gerard-zami.png", bio: "Plombier à Pointe-à-Pitre. Installation et réparation de réseaux d'eau, réparation robinets.", skills: ["Plomberie", "Sanitaire", "Chauffe-eau"] },
-        { name: "Francine Moutoussamy", age: 44, role: "Repassage & Couture", cat: "menage", city: "Lamentin", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "francine-moutoussamy.png", bio: "Couturière et repasseuse au Lamentin. Soin apporté au linge et petites retouches.", skills: ["Repassage", "Couture", "Ourlets"] },
-
-        { name: "Guy-Albert Gace", age: 39, role: "Électricien dépannage", cat: "electricite", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "guy-albert-gace.png", bio: "Dépannage d'urgence aux Abymes. Électricité de maison, branchements et disjoncteurs.", skills: ["Dépannage", "Tableaux", "Mise aux normes"] },
-        { name: "Solange Silvestre", age: 28, role: "Ménage & Nettoyage vitres", cat: "menage", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "solange-silvestre.png", bio: "Nettoyage en profondeur à Baie-Mahault. Sérieuse, rapide, organisée et de confiance.", skills: ["Nettoyage", "Vitres", "Linge"] },
-        { name: "Firmin Monlouis", age: 51, role: "Jardinage & Élagage", cat: "jardin", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "firmin-monlouis.png", bio: "Jardinier sur Le Gosier. Taille de haies, tonte et élagage des petits arbres du jardin.", skills: ["Jardin", "Élagage", "Tondeuse"] },
-        { name: "Monique Carpin", age: 59, role: "Voisine solidaire", cat: "citoyen", city: "Saint-Claude", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "monique-carpin.png", bio: "Voisine solidaire à Saint-Claude. Disposée à aider pour récupérer des colis ou garder un animal.", skills: ["Entraide", "Garde chien", "Services"] },
-        { name: "Martial Tinaut", age: 33, role: "Montage de meubles", cat: "bricolage", city: "Trois-Rivières", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "martial-tinaut.png", bio: "Super bricoleur à Trois-Rivières. Assemblage de meubles en kit et fixations murales diverses.", skills: ["Montage meuble", "Fixation TV", "Petits travaux"] },
-        { name: "Ginette Tacite", age: 64, role: "Aide aux repas & Seniors", cat: "aide-personne", city: "Goyave", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "ginette-tacite.png", bio: "Accompagnatrice sociale retraitée. Aide à la personne et compagnie bienveillante à Goyave.", skills: ["Seniors", "Compagnie", "Aide administrative"] },
-        { name: "Aimé Zéphir", age: 46, role: "Peintre d'intérieur", cat: "peinture", city: "Bouillante", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "aime-zephir.png", bio: "Peintre d'expérience à Bouillante. Travail propre et soigné pour vos murs et boiseries.", skills: ["Peinture", "Enduit", "Rénovation"] },
-        { name: "Josiane Périac", age: 24, role: "Baby-sitting soirées", cat: "babysitting", city: "Pointe-Noire", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "14€/h", img: "josiane-periac.png", bio: "Garde d'enfants de confiance à Pointe-Noire. Jeux, dîner et accompagnement au coucher.", skills: ["Baby-sitting", "Éveil", "Sûreté"] },
-        { name: "Pascal Agathe", age: 43, role: "Plomberie sanitaire", cat: "plomberie", city: "Port-Louis", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "28€/h", img: "pascal-agathe.png", bio: "Dépannage plomberie à Port-Louis. Réparations robinetterie, fuites et siphons.", skills: ["Plomberie", "Robinets", "Canalisations"] },
-        { name: "Sylviane Lurel", age: 53, role: "Habitante engagée", cat: "citoyen", city: "Deshaies", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "sylviane-lurel.png", bio: "Habitante de Deshaies. Intéressée par les actions d'entraide et d'animation solidaire.", skills: ["Discussions", "Solidarité", "Projets"] },
-
-        { name: "Max Hoarau", age: 42, role: "Climatisation & Froid", cat: "climatisation", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "35€/h", img: "max-hoarau.png", bio: "Expert climatisation aux Abymes. Entretien, désinfection et installation neuve de clim.", skills: ["Entretien", "Pose", "Climatiseur"] },
-        { name: "Eliane Hoarau", age: 49, role: "Aide à domicile & Repas", cat: "aide-personne", city: "Baie-Mahault", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "eliane-hoarau.png", bio: "Aide quotidienne à Baie-Mahault. Préparation de caris et repas typiques créoles.", skills: ["Cuisine", "Ménage", "Compagnie"] },
-        { name: "Jean-René Payet", age: 47, role: "Jardinage & Entretien kour", cat: "jardin", city: "Anse-Bertrand", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "jean-rene-payet.png", bio: "Jardinier motivé sur Anse-Bertrand. Débroussaillage, tonte et entretien complet de cour.", skills: ["Tonte", "Taille de haie", "Entretien kour"] },
-        { name: "Bernadette Grondin", age: 57, role: "Voisine chaleureuse", cat: "citoyen", city: "Grand-Bourg", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "bernadette-grondin.png", bio: "Lyanneuse passionnée à Grand-Bourg. Partage de conseils, jardinage et entraide amicale.", skills: ["Jardinage", "Troc", "Voisinage"] },
-        { name: "Cédric Rivière", age: 48, role: "Bricolage & Réparations", cat: "bricolage", city: "Gourbeyre", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "22€/h", img: "cedric-riviere.png", bio: "Bricoleur à Gourbeyre. Réparations diverses, montage meuble et fixations murales.", skills: ["Bricolage", "Fixation", "Réparations"] },
-        { name: "Marie-Thérèse Fontaine", age: 33, role: "Garde d'enfants", cat: "babysitting", city: "Vieux-Habitants", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "14€/h", img: "marie-therese-fontaine.png", bio: "Garde d'enfants à Vieux-Habitants. Organisation d'activités manuelles et éveil.", skills: ["Garde", "Activités", "Sûreté"] },
-        { name: "Yolande Payet", age: 45, role: "Voisine active", cat: "citoyen", city: "Sainte-Anne", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "N/A", img: "yolande-payet.png", bio: "Voisine chaleureuse à Sainte-Anne. Toujours prête pour un coup de main amical.", skills: ["Entraide", "Covoiturage", "Café"] },
-        { name: "Stéphane Bégue", age: 38, role: "Peinture & Finitions", cat: "peinture", city: "Pointe-à-Pitre", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "25€/h", img: "stephane-begue.png", bio: "Artisan peintre à Pointe-à-Pitre. Rénovation de murs, façades et retouches.", skills: ["Peinture", "Finitions", "Rénovation"] },
-        { name: "Chantal Dijoux", age: 44, role: "Repassage & Entretien linge", cat: "menage", city: "Le Gosier", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "18€/h", img: "chantal-dijoux.png", bio: "Repassage soigné et entretien du linge sur Le Gosier.", skills: ["Repassage", "Linge", "Soin"] },
-        { name: "Guillaume Morel", age: 35, role: "Dépannage informatique", cat: "divers", city: "Les Abymes", loc: "guadeloupe", locName: "Guadeloupe (971)", rate: "30€/h", img: "guillaume-morel.png", bio: "Technicien informatique aux Abymes. Configuration PC/Smartphone, Wifi et cours.", skills: ["Informatique", "Dépannage", "Wifi"] }
-    ];
-
-    const memberOverrides = [
-        { name: "Jocelyn Cabort", age: 52, avatar: "jocelyn-cabort.png" },
-        { name: "Hugues Zami", age: 45, avatar: "hugues-zami.png" },
-        { name: "Murielle Placide", age: 38, avatar: "murielle-placide.png" },
-        { name: "Clotilde Belair", age: 61, avatar: "clotilde-belair.png" },
-        { name: "Marius Placide", age: 29, avatar: "marius-placide.png" },
-        { name: "Thierry Vindex", age: 34, avatar: "thierry-vindex.png" },
-        { name: "Chantal Gendrey", age: 47, avatar: "chantal-gendrey.png" },
-        { name: "Ludovic Clamy", age: 25, avatar: "ludovic-clamy.png" },
-        { name: "Mireille Sapotille", age: 54, avatar: "mireille-sapotille.png" },
-        { name: "Rodrigue Marie-Joseph", age: 31, avatar: "rodrigue-marie-joseph.png" },
-
-        { name: "Fabrice Létang", age: 40, avatar: "fabrice-letang.png" },
-        { name: "Ghislaine Rosalie", age: 50, avatar: "ghislaine-rosalie.png" },
-        { name: "Wilfrid Rapon", age: 37, avatar: "wilfrid-rapon.png" },
-        { name: "Christiane Fostin", age: 58, avatar: "christiane-fostin.png" },
-        { name: "Lucien Cabort", age: 48, avatar: "lucien-cabort.png" },
-        { name: "Roselyne Dacosta", age: 32, avatar: "roselyne-dacosta.png" },
-        { name: "Albert Lise", age: 65, avatar: "albert-lise.png" },
-        { name: "Yveline Rosalie", age: 23, avatar: "yveline-rosalie.png" },
-        { name: "Gérard Zami", age: 55, avatar: "gerard-zami.png" },
-        { name: "Francine Moutoussamy", age: 44, avatar: "francine-moutoussamy.png" },
-
-        { name: "Guy-Albert Gace", age: 39, avatar: "guy-albert-gace.png" },
-        { name: "Solange Silvestre", age: 28, avatar: "solange-silvestre.png" },
-        { name: "Firmin Monlouis", age: 51, avatar: "firmin-monlouis.png" },
-        { name: "Monique Carpin", age: 59, avatar: "monique-carpin.png" },
-        { name: "Martial Tinaut", age: 33, avatar: "martial-tinaut.png" },
-        { name: "Ginette Tacite", age: 64, avatar: "ginette-tacite.png" },
-        { name: "Aimé Zéphir", age: 46, avatar: "aime-zephir.png" },
-        { name: "Josiane Périac", age: 24, avatar: "josiane-periac.png" },
-        { name: "Pascal Agathe", age: 43, avatar: "pascal-agathe.png" },
-        { name: "Sylviane Lurel", age: 53, avatar: "sylviane-lurel.png" },
-
-        { name: "Max Hoarau", age: 42, avatar: "max-hoarau.png" },
-        { name: "Eliane Hoarau", age: 49, avatar: "eliane-hoarau.png" },
-        { name: "Jean-René Payet", age: 47, avatar: "jean-rene-payet.png" },
-        { name: "Bernadette Grondin", age: 57, avatar: "bernadette-grondin.png" },
-        { name: "Cédric Rivière", age: 48, avatar: "cedric-riviere.png" },
-        { name: "Marie-Thérèse Fontaine", age: 33, avatar: "marie-therese-fontaine.png" },
-        { name: "Yolande Payet", age: 45, avatar: "yolande-payet.png" },
-        { name: "Stéphane Bégue", age: 38, avatar: "stephane-begue.png" },
-        { name: "Chantal Dijoux", age: 44, avatar: "chantal-dijoux.png" },
-        { name: "Guillaume Morel", age: 35, avatar: "guillaume-morel.png" }
-    ];
-
-    const additionalMembers = ADDITIONAL_MEMBERS_DATA.map((m, index) => {
-        const override = memberOverrides[index % memberOverrides.length];
-
-        return {
-            id: 200 + index,
-            name: `${override.name} (${override.age} ans)`,
-            role: m.role,
-            category: m.cat,
-            keywords: [m.cat, m.role.toLowerCase(), m.city.toLowerCase(), override.name.toLowerCase(), ...m.skills.map(s => s.toLowerCase())],
-            location: m.loc,
-            locationName: m.locName,
-            city: m.city,
-            rating: +(4.5 + Math.random() * 0.5).toFixed(1),
-            reviewsCount: Math.floor(5 + Math.random() * 45),
-            avatar: override.avatar,
-            bio: m.bio,
-            skills: m.skills,
-            badge: m.cat === 'citoyen' ? "Voisin Solidaire" : "Lyanneur Vérifié",
-            hourlyRate: m.rate === 'N/A' ? "Entraide gratuite" : `À partir de ${m.rate}`
-        };
-    });
-
-    LYANN_MEMBERS.unshift(...additionalMembers);
-    window.LYANN_MEMBERS = window.isExplicitDemoMode() ? LYANN_MEMBERS : [];
 
 function ensureMobileHamburgerDrawer() {
     let overlay = document.getElementById('mobileHamburgerDrawerOverlay');
@@ -1659,7 +109,7 @@ function ensureMobileHamburgerDrawer() {
                 
                 <!-- EN-TÊTE PROFIL -->
                 <div class="drawer-profile-header">
-                    <a href="#" class="drawer-profile-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openPublicProfileModal();">
+                    <a href="#" class="drawer-profile-link" data-lyann-route="profile">
                         <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" alt="Profil Utilisateur" class="drawer-avatar" id="drawerUserAvatar" onerror="window.handleAvatarError(this)">
                         <div class="drawer-user-info">
                             <span class="drawer-user-name" id="drawerUserName">Mon Compte</span>
@@ -1675,7 +125,7 @@ function ensureMobileHamburgerDrawer() {
                     
                     <!-- 1. MON COMPTE -->
                     <div class="drawer-menu-group">
-                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('account');">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="account">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-user-circle"></i>
                                 <span>Mon compte</span>
@@ -1686,7 +136,7 @@ function ensureMobileHamburgerDrawer() {
 
                     <!-- 2. MON ACTIVITÉ -->
                     <div class="drawer-menu-group">
-                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('activity');">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="activity">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-clock-counter-clockwise"></i>
                                 <span>Mon activité</span>
@@ -1697,7 +147,7 @@ function ensureMobileHamburgerDrawer() {
 
                     <!-- 3. FAVORIS -->
                     <div class="drawer-menu-group">
-                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('favorites');">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="favorites">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-heart" style="color: var(--primary);"></i>
                                 <span>Favoris</span>
@@ -1708,7 +158,7 @@ function ensureMobileHamburgerDrawer() {
 
                     <!-- 4. FINANCES -->
                     <div class="drawer-menu-group">
-                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('finances');">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="finances">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-credit-card"></i>
                                 <span>Finances</span>
@@ -1727,16 +177,16 @@ function ensureMobileHamburgerDrawer() {
                             <i class="ph ph-caret-right drawer-chevron"></i>
                         </button>
                         <div class="drawer-submenu" id="submenuHelp">
-                            <a href="how-it-works.html" class="drawer-sub-link"><i class="ph ph-book-open"></i> Comment ça marche</a>
+                            <a href="#" class="drawer-sub-link" data-lyann-route="help"><i class="ph ph-book-open"></i> Comment ça marche</a>
                             <a href="about.html#support" class="drawer-sub-link"><i class="ph ph-headset"></i> Aide & support</a>
                             <a href="#" class="drawer-sub-link open-signup-trigger"><i class="ph ph-user-plus"></i> Inviter quelqu'un</a>
-                            <a href="about.html" class="drawer-sub-link"><i class="ph ph-info"></i> À propos de LYANN</a>
+                            <a href="#" class="drawer-sub-link" data-lyann-route="about"><i class="ph ph-info"></i> À propos de LYANN</a>
                         </div>
                     </div>
 
                     <!-- 6. RÉGLAGES -->
                     <div class="drawer-menu-group">
-                        <a href="#" class="drawer-direct-link" onclick="event.preventDefault(); window.closeLyannHamburgerDrawer(); window.openAccountModalSubView('settings');">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="settings">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-gear"></i>
                                 <span>Réglages</span>
@@ -1880,11 +330,7 @@ document.addEventListener('click', (e) => {
 
         if (drawerLink.classList.contains('open-chat-trigger')) {
             e.preventDefault();
-            if (typeof window.openLyannChatModal === 'function') {
-                window.openLyannChatModal();
-            } else {
-                window.location.href = 'index.html?action=openchat';
-            }
+            window.LYANN_ROUTER?.go?.('messages');
             return;
         }
 
@@ -2111,7 +557,7 @@ safeDomReady(() => {
     }
 
     let activeContactName = 'Prestataire LYANN';
-    let activeContactAvatar = 'david-34.png';
+    let activeContactAvatar = window.getLyannDefaultAvatar ? window.getLyannDefaultAvatar() : '';
 
     // === SCROLL REVEAL ANIMATION (IntersectionObserver) ===
     const revealElements = document.querySelectorAll('.reveal');
@@ -2326,197 +772,58 @@ safeDomReady(() => {
         const client = window.LYANN_API_CLIENT || window.apiClient;
         console.log('[PROFILE_ID_TRACE] openPublicMemberProfile memberId =', memberId);
 
-        let activeUserId = null;
-        if (client && client.getSession) {
-            try {
-                const s = await client.getSession();
-                activeUserId = s?.data?.session?.user?.id || null;
-            } catch (e) {}
-        }
-        
-        if (!memberId && activeUserId) {
-            memberId = activeUserId;
+        if (!window.LYANN_PROFILE_REPOSITORY) {
+            throw new Error('LYANN_PROFILE_REPOSITORY is not available');
         }
 
-        const isSelf = !!(activeUserId && String(activeUserId) === String(memberId));
-
-        // 1. Initial neutral profile template (NO fallback to Jocelyn / LYANN_MEMBERS[0])
-        let profileData = {
-            id: memberId,
-            first_name: '',
-            last_name: '',
-            last_name_initial: '',
-            display_name: 'Lyanneur',
-            city: 'Guadeloupe',
-            territory: 'Guadeloupe (971)',
-            bio: '',
-            avatar_url: null,
-            is_verified: false,
-            is_pro_verified: false,
-            completion_pct: 20,
-            member_since: null,
-            skills: [],
-            metrics: {
-                average_rating: null,
-                reviews_count: 0,
-                completed_missions: 0,
-                response_rate_percent: null,
-                avg_response_time_label: '—',
-                repeat_users_count: 0
-            }
-        };
-
-        // Check if memberId matches a legacy static member explicitly (numeric ID only)
-        const matchLegacyMember = (window.LYANN_MEMBERS && Array.isArray(window.LYANN_MEMBERS))
-            ? window.LYANN_MEMBERS.find(m => String(m.id) === String(memberId))
+        // PROFILE INTERACTION: open shell before data round-trip.
+        const profileLoadingHost = publicMemberProfileModal
+            ? (publicMemberProfileModal.querySelector('.modal-card') || publicMemberProfileModal)
             : null;
+        let profileLoadingOverlay = null;
 
-        if (matchLegacyMember) {
-            currentVisitingMember = matchLegacyMember;
-            profileData = {
-                id: memberId,
-                display_name: matchLegacyMember.name,
-                first_name: matchLegacyMember.name ? matchLegacyMember.name.split(' ')[0] : 'Membre',
-                last_name_initial: matchLegacyMember.name && matchLegacyMember.name.split(' ')[1] ? matchLegacyMember.name.split(' ')[1].substring(0, 1) + '.' : '',
-                city: matchLegacyMember.city || 'Guadeloupe',
-                territory: matchLegacyMember.locationName || 'Guadeloupe (971)',
-                bio: matchLegacyMember.bio || '',
-                avatar_url: matchLegacyMember.avatar,
-                is_verified: !!matchLegacyMember.badge,
-                is_pro_verified: !!matchLegacyMember.isPro,
-                completion_pct: 75,
-                member_since: '2026',
-                skills: matchLegacyMember.skills || [],
-                metrics: {
-                    average_rating: matchLegacyMember.rating || null,
-                    reviews_count: matchLegacyMember.reviewsCount || 0,
-                    completed_missions: 0,
-                    response_rate_percent: null,
-                    avg_response_time_label: '—',
-                    repeat_users_count: 0
-                }
-            };
-        }
+        if (publicMemberProfileModal) {
+            if (searchResultsModal) searchResultsModal.classList.remove('active');
+            publicMemberProfileModal.classList.add('active');
+            publicMemberProfileModal.setAttribute('aria-busy', 'true');
+            document.body.style.overflow = 'hidden';
 
-        // 2. Query real Supabase Profile if valid memberId / UUID
-        let dbProfileFound = false;
-        if (client && client.getProfile && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
-            console.log('[PROFILE_ID_TRACE] Supabase profile query id =', memberId);
-            try {
-                const profRes = await client.getProfile(memberId);
-                if (profRes && profRes.data) {
-                    const p = profRes.data;
-                    dbProfileFound = true;
-                    profileData.id = p.id || memberId;
-                    profileData.first_name = (p.first_name || '').trim();
-                    profileData.last_name = (p.last_name || '').trim();
-                    profileData.last_name_initial = profileData.last_name ? (profileData.last_name.charAt(0).toUpperCase() + '.') : '';
-                    profileData.display_name = window.formatPublicName(profileData, null, 'Lyanneur');
-                    profileData.city = (p.city && p.city.trim().toLowerCase() !== 'guadeloupe') ? p.city.trim() : null;
-                    profileData.territory = p.territory || 'Guadeloupe (971)';
-                    profileData.bio = p.bio || '';
-                    profileData.avatar_url = p.avatar_url || null;
-                    profileData.is_verified = !!p.is_verified;
-                    profileData.is_pro_verified = !!(p.is_pro && p.kyc_verified);
-                    if (p.created_at) {
-                        profileData.member_since = new Date(p.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-                    }
+            if (profileLoadingHost) {
+                if (window.getComputedStyle && window.getComputedStyle(profileLoadingHost).position === 'static') {
+                    profileLoadingHost.style.position = 'relative';
                 }
-            } catch (err) {
-                console.warn('[PROFILE V2] getProfile query notice:', err);
+                profileLoadingOverlay = profileLoadingHost.querySelector('.lyann-profile-loading-overlay');
+                if (!profileLoadingOverlay) {
+                    profileLoadingOverlay = document.createElement('div');
+                    profileLoadingOverlay.className = 'lyann-profile-loading-overlay';
+                    profileLoadingOverlay.setAttribute('role', 'status');
+                    profileLoadingOverlay.setAttribute('aria-live', 'polite');
+                    profileLoadingOverlay.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; min-height:220px; padding:32px;"><i class="ph ph-circle-notch spin" style="font-size:1.7rem; color:#4A7C59;"></i><span style="font-size:0.9rem; font-weight:700; color:#475569;">Chargement du profil…</span></div>';
+                    profileLoadingOverlay.style.cssText = 'position:absolute;inset:0;z-index:60;background:#fff;border-radius:inherit;display:flex;align-items:center;justify-content:center;';
+                    profileLoadingHost.appendChild(profileLoadingOverlay);
+                }
             }
         }
 
-        console.log('[PROFILE_ID_TRACE] returned profile.id =', profileData.id);
-        console.log('[PROFILE_ID_TRACE] returned profile name =', profileData.display_name);
-
-        // 3. Query real Trust & Reputation Engine (RPC)
-        if (client && client.getUserTrustAndReputation && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
-            console.log('[PROFILE_ID_TRACE] trust/reputation profile id =', memberId);
-            try {
-                const trustRes = await client.getUserTrustAndReputation(memberId);
-                if (trustRes && trustRes.data && !trustRes.data.error) {
-                    const t = trustRes.data;
-                    if (t.first_name) profileData.first_name = t.first_name;
-                    if (t.last_name_initial) profileData.last_name_initial = t.last_name_initial;
-                    if (t.display_name) profileData.display_name = t.display_name;
-                    if (t.city) profileData.city = t.city;
-                    if (t.territory) profileData.territory = t.territory;
-                    if (t.bio !== undefined && t.bio !== null) profileData.bio = t.bio;
-                    if (t.avatar_url !== undefined && t.avatar_url !== null) profileData.avatar_url = t.avatar_url;
-                    profileData.is_verified = !!t.is_verified;
-                    profileData.is_pro_verified = !!t.is_pro_verified;
-                    if (t.completion_pct) profileData.completion_pct = t.completion_pct;
-                    if (t.member_since) profileData.member_since = t.member_since;
-                    if (Array.isArray(t.skills) && t.skills.length > 0) profileData.skills = t.skills;
-                    
-                    if (t.metrics) {
-                        profileData.metrics = {
-                            average_rating: t.metrics.average_rating ?? null,
-                            reviews_count: t.metrics.reviews_count ?? 0,
-                            completed_missions: t.metrics.completed_missions ?? 0,
-                            response_rate_percent: t.metrics.response_rate_percent ?? null,
-                            avg_response_time_label: t.metrics.avg_response_time_label || '—',
-                            repeat_users_count: t.metrics.repeat_users_count ?? 0
-                        };
-                    }
-                }
-            } catch (err) {
-                console.warn('[PROFILE V2] Trust Engine query notice:', err);
-            }
+        let profileBundle;
+        try {
+            profileBundle = await window.LYANN_PROFILE_REPOSITORY.load(memberId);
+        } catch (error) {
+            if (profileLoadingOverlay) profileLoadingOverlay.remove();
+            if (publicMemberProfileModal) publicMemberProfileModal.setAttribute('aria-busy', 'false');
+            throw error;
         }
 
-        // 4. Query real portfolio
-        let portfolioItems = [];
-        if (client && client.getUserPortfolio && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
-            console.log('[PROFILE_ID_TRACE] portfolio profile id =', memberId);
-            try {
-                const portRes = await client.getUserPortfolio(memberId, isSelf);
-                if (portRes && portRes.data) portfolioItems = portRes.data;
-            } catch (e) {}
-        }
-
-        // 5. Query real services
-        let userServices = [];
-        if (client && client.getUserServices && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
-            console.log('[PROFILE_ID_TRACE] services profile id =', memberId);
-            try {
-                const servRes = await client.getUserServices(memberId);
-                if (servRes && servRes.data) userServices = servRes.data;
-            } catch (e) {}
-        }
-
-        // 6. Query real reviews
-        let reviewsList = [];
-        if (client && client.supabase && memberId && (String(memberId).includes('-') || (typeof isUUID === 'function' && isUUID(memberId)))) {
-            console.log('[PROFILE_ID_TRACE] reviews profile id =', memberId);
-            try {
-                const { data: dbReviews } = await client.supabase
-                    .from('reviews')
-                    .select('*, author:profiles!author_id(first_name, last_name, avatar_url, city)')
-                    .eq('target_id', memberId)
-                    .order('created_at', { ascending: false });
-
-                if (dbReviews) {
-                    reviewsList = dbReviews.map(r => ({
-                        name: window.formatPublicName(r.author, null, 'Membre'),
-                        city: r.author?.city || 'Guadeloupe',
-                        date: new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-                        rating: Number(r.rating).toFixed(1),
-                        comment: r.comment || 'Coup de main réalisé avec succès.'
-                    }));
-                }
-            } catch (e) {}
-        }
-
-        // 7. Ensure reviews count and metrics consistency
-        const actualReviewsCount = reviewsList.length;
-        if (profileData.metrics) {
-            profileData.metrics.reviews_count = actualReviewsCount;
-            if (actualReviewsCount === 0) {
-                profileData.metrics.average_rating = null;
-            }
-        }
+        if (profileLoadingOverlay) profileLoadingOverlay.remove();
+        if (publicMemberProfileModal) publicMemberProfileModal.setAttribute('aria-busy', 'false');
+        memberId = profileBundle.memberId;
+        const activeUserId = profileBundle.activeUserId;
+        const isSelf = profileBundle.isSelf;
+        const profileData = profileBundle.profileData;
+        const portfolioItems = profileBundle.portfolioItems;
+        const userServices = profileBundle.userServices;
+        const reviewsList = profileBundle.reviewsList;
+        const dbProfileFound = profileBundle.dbProfileFound;
 
         console.log('[PROFILE_RECOVERY] authUserId:', activeUserId);
         console.log('[PROFILE_RECOVERY] targetProfileId:', memberId);
@@ -2711,7 +1018,7 @@ safeDomReady(() => {
             const chatAvatarSrc = avatarSrc.replace(/'/g, "\\'");
             ctaHTML = `
                 <div class="lyann-profile-cta-group" style="display: flex; align-items: center; gap: 8px;">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="window.openChatWithUser('${chatContactName}', '${chatAvatarSrc}', '${chatContactId}')"><i class="ph ph-chat-circle"></i> Contacter</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-lyann-route="messages" data-contact-id="${chatContactId}" data-contact-name="${chatContactName}"><i class="ph ph-chat-circle"></i> Contacter</button>
                     <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="PROFILE" data-favorite-id="${pData.id}" data-fav-type="PROFILE" data-fav-id="${pData.id}" data-surface="profile-modal" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: 1px solid #CBD5E1; border-radius: 50%; padding: 8px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #64748B; cursor: pointer; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                         <i class="ph ph-bookmark-simple"></i>
                     </button>
@@ -3173,7 +1480,10 @@ safeDomReady(() => {
         publicContactBtn.addEventListener('click', () => {
             if (currentVisitingMember) {
                 if (publicMemberProfileModal) publicMemberProfileModal.classList.remove('active');
-                openChatWithUser(currentVisitingMember.name, currentVisitingMember.avatar);
+                window.LYANN_ROUTER?.go?.('messages', {
+                    contactId: currentVisitingMember.id || currentVisitingMember.user_id,
+                    name: currentVisitingMember.name
+                });
             }
         });
     }
@@ -3725,44 +2035,7 @@ safeDomReady(() => {
     // ==========================================================================
     // MOTEUR EN DIRECT DU BOKANTAJ (POSTER UN LYANN & ÉCHOS DU QUARTIER)
     // ==========================================================================
-    let INITIAL_FLASH_POSTS = [
-        {
-            id: 'flash-1',
-            item_type: 'POST',
-            author_id: 'mock-1',
-            authorName: 'Jocelyn Cabort',
-            authorRole: 'Plomberie & Fuites d\'eau',
-            authorAvatar: 'jocelyn-cabort.png',
-            badge: '⚡ Disponibilité',
-            type: 'dispo',
-            location: 'Guadeloupe',
-            territoryKey: 'guadeloupe',
-            timeAgo: 'Il y a 14 min',
-            content: 'Disponible aujourd\'hui pour dépannages de plomberie d\'urgence et recherche de fuite sur Baie-Mahault et environs ! 💧🔧',
-            images: [],
-            likes: 18,
-            repliesCount: 4,
-            memberId: 200
-        },
-        {
-            id: 'flash-2',
-            item_type: 'POST',
-            author_id: 'mock-2',
-            authorName: 'Hugues Zami',
-            authorRole: 'Climatisation & Électricité',
-            authorAvatar: 'hugues-zami.png',
-            badge: '⭐ Recommandation',
-            type: 'reco',
-            location: 'Guadeloupe',
-            territoryKey: 'guadeloupe',
-            timeAgo: 'Il y a 45 min',
-            content: 'Entretien préventif clim Inverter et contrôle électrique avant les fortes chaleurs. Devis gratuit sur Les Abymes.',
-            images: [],
-            likes: 24,
-            repliesCount: 6,
-            memberId: 201
-        }
-    ];
+    const INITIAL_FLASH_POSTS = [];
 
     let currentFlashPosts = [];
     let activeFeedTypeFilter = 'all';
@@ -3873,10 +2146,11 @@ safeDomReady(() => {
         }
     };
 
-    window.loadBokantajFeedFromSupabase = async function() {
+    window.loadBokantajFeedFromSupabase = async function(options = {}) {
         console.log("[BOKANTAJ] init start");
         bokantajFeedState = 'LOADING';
-        
+        renderFlashFeed();
+
         const isExplicitDemoMode = typeof window !== 'undefined' && (
             window.LYANN_FORCE_DEMO_DATA === true ||
             (window.location && window.location.search && (
@@ -3885,72 +2159,26 @@ safeDomReady(() => {
             ))
         );
 
-        let client = window.LYANN_API_CLIENT;
-        if (client && !client.supabase && window.supabase) {
-            const _sp = client.supabase;
-        }
-
-        if (client && client.supabase) {
-            console.log("[BOKANTAJ] supabase ready");
-        } else {
-            console.warn("[BOKANTAJ] supabase client NOT ready");
-        }
-
-        console.log("[BOKANTAJ] load start");
-        renderFlashFeed();
-
         try {
-            if (!client || !client.supabase) {
-                if (!isExplicitDemoMode) {
-                    console.warn("[BOKANTAJ] Supabase client not ready -> ERROR state");
-                    bokantajFeedState = 'ERROR';
-                    currentFlashPosts = [];
-                    return;
-                }
-                currentFlashPosts = [...INITIAL_FLASH_POSTS];
-                bokantajFeedState = 'READY';
-                return;
+            if (!window.LYANN_BOKANTAJ_REPOSITORY) {
+                throw new Error('LYANN_BOKANTAJ_REPOSITORY is not available');
             }
 
-            const { data, error } = await client.getFeed();
-            console.log("[BOKANTAJ] getFeed resolved", { error, count: data ? data.length : 0 });
-            console.log("[BOKANTAJ] item count", data ? data.length : 0);
-
-            if (error || !data) {
-                console.warn("[Bokantaj Feed] Supabase fetch error:", error);
-                if (!isExplicitDemoMode) {
-                    bokantajFeedState = 'ERROR';
-                    currentFlashPosts = [];
-                } else {
-                    currentFlashPosts = [...INITIAL_FLASH_POSTS];
-                    bokantajFeedState = 'READY';
-                }
-            } else {
-                currentFlashPosts = data;
-                bokantajFeedState = (data.length === 0) ? 'EMPTY' : 'READY';
-
-                // DEV Logger
-                if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || (window.location.search && window.location.search.includes('dev=true')))) {
-                    console.log(`[BOKANTAJ FEED DEV LOG] Loaded ${data.length} unified items from SUPABASE:`);
-                    data.forEach(item => {
-                        console.log(`  - [${item.item_type}] id=${item.id} | source=SUPABASE | location="${item.location}" | territoryKey="${item.territoryKey}" | created_at=${item.created_at}`);
-                    });
-                }
-            }
+            const data = await window.LYANN_BOKANTAJ_REPOSITORY.load({ force: options.force === true });
+            currentFlashPosts = Array.isArray(data) ? data : [];
+            bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
         } catch (err) {
             console.error("[BOKANTAJ] Error during load:", err);
-            if (!isExplicitDemoMode) {
-                bokantajFeedState = 'ERROR';
-                currentFlashPosts = [];
-            } else {
+            if (isExplicitDemoMode) {
                 currentFlashPosts = [...INITIAL_FLASH_POSTS];
-                bokantajFeedState = 'READY';
+                bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
+            } else {
+                currentFlashPosts = [];
+                bokantajFeedState = 'ERROR';
             }
         } finally {
-            console.log("[BOKANTAJ] render start");
             renderFlashFeed();
             window.renderTalentsSidebar(isExplicitDemoMode);
-            console.log("[BOKANTAJ] loading removed");
         }
     };
 
@@ -4314,24 +2542,64 @@ safeDomReady(() => {
         document.querySelectorAll('.btn-like-flash').forEach(btn => {
             if (btn.dataset.listenersBound === 'true') return;
             btn.dataset.listenersBound = 'true';
+            btn.setAttribute('aria-pressed', btn.classList.contains('liked') ? 'true' : 'false');
+
             btn.addEventListener('click', async () => {
                 const targetId = btn.dataset.targetId;
                 const targetType = btn.dataset.targetType || 'POST';
-                if (!targetId || !window.LYANN_API_CLIENT) return;
+                if (!targetId || !window.LYANN_API_CLIENT || btn.dataset.likePending === 'true') return;
 
-                const res = await window.LYANN_API_CLIENT.toggleLike(targetId, targetType);
                 const countSpan = btn.querySelector('.like-count');
-                if (countSpan) countSpan.textContent = res.likesCount;
-                if (res.liked) {
-                    btn.classList.add('liked');
-                    btn.style.background = 'rgba(231, 111, 81, 0.12)';
-                    btn.style.borderColor = '#E76F51';
-                    btn.style.color = '#E76F51';
-                } else {
-                    btn.classList.remove('liked');
-                    btn.style.background = '#FFF';
-                    btn.style.borderColor = '#E2E8F0';
-                    btn.style.color = '#475569';
+                const heart = btn.querySelector('.ph-heart');
+                const previousLiked = btn.classList.contains('liked');
+                const previousCount = Math.max(0, parseInt((countSpan?.textContent || '0').replace(/[^0-9]/g, ''), 10) || 0);
+                const nextLiked = !previousLiked;
+                const optimisticCount = Math.max(0, previousCount + (nextLiked ? 1 : -1));
+
+                const paintLikeState = (liked, count) => {
+                    btn.classList.toggle('liked', liked);
+                    btn.setAttribute('aria-pressed', liked ? 'true' : 'false');
+                    btn.style.color = liked ? '#E76F51' : '#64748B';
+                    btn.style.background = 'none';
+                    btn.style.border = 'none';
+                    if (heart) heart.style.color = liked ? '#E76F51' : '#94A3B8';
+                    if (countSpan) countSpan.textContent = String(Math.max(0, Number(count) || 0)) + " J'aime";
+                };
+
+                const matchingPost = currentFlashPosts.find(post => {
+                    if (!post) return false;
+                    return [post.id, post.post_id, post.request_id].some(id => id && String(id) === String(targetId));
+                });
+
+                // OPTIMISTIC UI: paint before network round-trip.
+                paintLikeState(nextLiked, optimisticCount);
+                if (matchingPost) {
+                    matchingPost.user_has_liked = nextLiked;
+                    matchingPost.likes = optimisticCount;
+                }
+                btn.dataset.likePending = 'true';
+
+                try {
+                    const res = await window.LYANN_API_CLIENT.toggleLike(targetId, targetType);
+                    if (!res || typeof res.liked !== 'boolean') throw new Error('Invalid like response');
+                    const serverCount = Number.isFinite(Number(res.likesCount)) ? Number(res.likesCount) : optimisticCount;
+                    paintLikeState(res.liked, serverCount);
+                    if (matchingPost) {
+                        matchingPost.user_has_liked = res.liked;
+                        matchingPost.likes = serverCount;
+                    }
+                    if (window.LYANN_BOKANTAJ_REPOSITORY && typeof window.LYANN_BOKANTAJ_REPOSITORY.invalidate === 'function') {
+                        window.LYANN_BOKANTAJ_REPOSITORY.invalidate();
+                    }
+                } catch (error) {
+                    console.warn('[BOKANTAJ] Like sync failed; reverting optimistic state.', error);
+                    paintLikeState(previousLiked, previousCount);
+                    if (matchingPost) {
+                        matchingPost.user_has_liked = previousLiked;
+                        matchingPost.likes = previousCount;
+                    }
+                } finally {
+                    delete btn.dataset.likePending;
                 }
             });
         });
@@ -4516,7 +2784,7 @@ safeDomReady(() => {
                 const reqId = btn.dataset.requestId;
                 const requesterId = btn.dataset.requesterId;
                 const requesterName = btn.dataset.requesterName || 'Lyanneur';
-                const requesterAvatar = btn.dataset.requesterAvatar || 'david-34.png';
+                const requesterAvatar = btn.dataset.requesterAvatar || '/default-avatar.svg';
                 const title = btn.dataset.title || 'Lyann d\'entraide';
 
                 const currentAuthUserId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id || window.LYANN_API_CLIENT?.getCurrentUserId?.();
@@ -4532,8 +2800,13 @@ safeDomReady(() => {
                 const myId = currentAuthUserId;
                 const initialNeed = { requestId: reqId, requesterId, helperId: myId, title };
 
-                if (typeof window.openChatWithUser === 'function') {
-                    window.openChatWithUser(requesterName, requesterAvatar, requesterId, initialNeed);
+                if (requesterId) {
+                    window.LYANN_ROUTER?.go?.('messages', {
+                        contactId: requesterId,
+                        name: requesterName,
+                        requestId: reqId,
+                        initialNeed
+                    });
                 }
             });
         });
@@ -4543,7 +2816,7 @@ safeDomReady(() => {
             btn.dataset.listenersBound = 'true';
             btn.addEventListener('click', () => {
                 const name = btn.dataset.memberName || 'Lyanneur';
-                const avatar = btn.dataset.memberAvatar || 'david-34.png';
+                const avatar = btn.dataset.memberAvatar || '/default-avatar.svg';
                 const postType = btn.dataset.postType;
                 const postTitle = btn.dataset.postTitle;
 
@@ -4553,7 +2826,11 @@ safeDomReady(() => {
                 } else if (postType === 'dispo') {
                     initialNeed = { requesterId: getMyId(), helperId: name, title: postTitle || "Proposition de service" };
                 }
-                openChatWithUser(name, avatar, name, initialNeed);
+                window.LYANN_ROUTER?.go?.('messages', {
+                    contactId: name,
+                    name,
+                    initialNeed
+                });
             });
         });
 
@@ -4701,12 +2978,33 @@ safeDomReady(() => {
     const sheetNearbyToggle = document.getElementById('sheetNearbyToggle');
 
     // 1. Open Filter Sheet
-    if (btnOpenFilterSheet && filterSheetModal) {
-        btnOpenFilterSheet.addEventListener('click', (e) => {
+    const openBokantajFilterSheetNow = (e) => {
+        if (e) {
             e.preventDefault();
-            filterSheetModal.classList.add('active');
-            filterSheetModal.style.display = 'flex';
-            document.body.classList.add('sheet-open');
+            e.stopPropagation();
+        }
+        filterSheetModal.style.display = 'flex';
+        filterSheetModal.classList.add('active');
+        filterSheetModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('sheet-open');
+    };
+
+    // FILTER INTERACTION: pointer-up opens the sheet without waiting for click synthesis.
+    if (btnOpenFilterSheet && filterSheetModal) {
+        let lastFilterPointerOpen = 0;
+        btnOpenFilterSheet.addEventListener('pointerup', (e) => {
+            lastFilterPointerOpen = Date.now();
+            openBokantajFilterSheetNow(e);
+        }, { passive: false });
+
+        // Keyboard / older browser fallback. Pointer-triggered clicks are de-duplicated.
+        btnOpenFilterSheet.addEventListener('click', (e) => {
+            if (Date.now() - lastFilterPointerOpen < 500) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            openBokantajFilterSheetNow(e);
         });
     }
 
@@ -4942,13 +3240,20 @@ safeDomReady(() => {
             if (currentQuickMember) {
                 const needTitle = await window.lyannPrompt(`De quoi avez-vous besoin avec ${currentQuickMember.name} ?`);
                 if (needTitle) {
-                    openChatWithUser(currentQuickMember.name, currentQuickMember.avatar, currentQuickMember.name, {
-                        requesterId: getMyId(),
-                        helperId: currentQuickMember.name,
-                        title: needTitle
+                    window.LYANN_ROUTER?.go?.('messages', {
+                        contactId: currentQuickMember.id || currentQuickMember.user_id || currentQuickMember.name,
+                        name: currentQuickMember.name,
+                        initialNeed: {
+                            requesterId: getMyId(),
+                            helperId: currentQuickMember.id || currentQuickMember.user_id || currentQuickMember.name,
+                            title: needTitle
+                        }
                     });
                 } else {
-                    openChatWithUser(currentQuickMember.name, currentQuickMember.avatar);
+                    window.LYANN_ROUTER?.go?.('messages', {
+                        contactId: currentQuickMember.id || currentQuickMember.user_id || currentQuickMember.name,
+                        name: currentQuickMember.name
+                    });
                 }
             }
         });
@@ -5074,8 +3379,13 @@ safeDomReady(() => {
                         const p = JSON.parse(pendingHelpStr);
                         const myId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id || window.LYANN_API_CLIENT?.getCurrentUserId?.();
                         const initialNeed = { requestId: p.reqId, requesterId: p.requesterId, helperId: myId, title: p.title };
-                        if (typeof window.openChatWithUser === 'function') {
-                            window.openChatWithUser(p.requesterName, p.requesterAvatar, p.requesterId, initialNeed);
+                        if (p.requesterId) {
+                            window.LYANN_ROUTER?.go?.('messages', {
+                                contactId: p.requesterId,
+                                name: p.requesterName,
+                                requestId: p.reqId,
+                                initialNeed
+                            });
                         }
                     }
                 } catch(e) {}
@@ -6178,13 +4488,13 @@ safeDomReady(() => {
                             targetAvatar = parsed.avatar;
                         }
                     } catch(e) {}
-                    if (targetName && typeof window.openChatWithUser === 'function') {
-                        window.openChatWithUser(targetName, targetAvatar, targetName);
-                    } else if (typeof window.openLyannChatModal === 'function') {
-                        window.openLyannChatModal();
+                    if (targetName) {
+                        window.LYANN_ROUTER?.go?.('messages', { contactId: targetName, name: targetName });
+                    } else {
+                        window.LYANN_ROUTER?.go?.('messages');
                     }
                 } else {
-                    window.location.href = 'feed.html?action=openchat';
+                    window.LYANN_ROUTER?.go?.('messages');
                 }
             });
         }
@@ -6299,7 +4609,7 @@ safeDomReady(() => {
             return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
         }
 
-        const avatarUrl = (profileData && profileData.avatar_url && !profileData.avatar_url.includes('david-34.png'))
+        const avatarUrl = (profileData && profileData.avatar_url && !profileData.avatar_url.includes('/default-avatar.svg'))
             ? profileData.avatar_url
             : getInitialsAvatarSvg(displayName);
 
@@ -6774,8 +5084,25 @@ safeDomReady(() => {
                 return;
             }
 
-            favBtn.style.opacity = '0.5';
-            favBtn.disabled = true;
+            if (favBtn.dataset.favoritePending === 'true') return;
+
+            const previousFavorite = favBtn.classList.contains('is-favorite');
+            const nextFavorite = !previousFavorite;
+
+            const paintFavoriteState = (isFavorite) => {
+                favBtn.classList.toggle('is-favorite', isFavorite);
+                favBtn.style.color = isFavorite ? '#4A7C59' : '#94A3B8';
+                favBtn.innerHTML = isFavorite
+                    ? '<i class="ph-fill ph-bookmark-simple"></i>'
+                    : '<i class="ph ph-bookmark-simple"></i>';
+                favBtn.setAttribute('aria-label', isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris');
+                favBtn.setAttribute('title', isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris');
+                favBtn.setAttribute('aria-pressed', isFavorite ? 'true' : 'false');
+            };
+
+            // OPTIMISTIC FAVORITE UI: paint before network round-trip.
+            paintFavoriteState(nextFavorite);
+            favBtn.dataset.favoritePending = 'true';
 
             try {
                 const res = await window.LyannFavoritesService.toggleFavorite(type, id);
@@ -6783,6 +5110,7 @@ safeDomReady(() => {
                 console.log(`[FavoriteMutation] operation=${res.operation || 'UNKNOWN'} table=user_favorites userId=${currentUserId || 'UNKNOWN'} entityType=${type} entityId=${id} result=${res.success ? 'SUCCESS' : 'ERROR'} errorCode=${res.errorCode || 'NONE'} errorMessage=${res.error || 'NONE'} insertedRowId=${res.data?.id || 'NONE'}`);
 
                 if (!res.success) {
+                    paintFavoriteState(previousFavorite);
                     if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
                         window.NotificationService.showToast('warning', res.error || "Impossible de modifier vos favoris.");
                     } else if (typeof window.lyannAlert === 'function') {
@@ -6791,24 +5119,11 @@ safeDomReady(() => {
                     return;
                 }
 
-                if (res.operation === 'ADD') {
-                    favBtn.classList.add('is-favorite');
-                    favBtn.style.color = '#4A7C59';
-                    favBtn.innerHTML = '<i class="ph-fill ph-bookmark-simple"></i>';
-                    favBtn.setAttribute('aria-label', 'Retirer des favoris');
-                    favBtn.setAttribute('title', 'Retirer des favoris');
-                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                        window.NotificationService.showToast('success', 'Ajouté à vos favoris.');
-                    }
-                } else {
-                    favBtn.classList.remove('is-favorite');
-                    favBtn.style.color = '#94A3B8';
-                    favBtn.innerHTML = '<i class="ph ph-bookmark-simple"></i>';
-                    favBtn.setAttribute('aria-label', 'Ajouter aux favoris');
-                    favBtn.setAttribute('title', 'Ajouter aux favoris');
-                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                        window.NotificationService.showToast('info', 'Retiré de vos favoris.');
-                    }
+                const serverFavorite = res.operation === 'ADD';
+                paintFavoriteState(serverFavorite);
+
+                if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                    window.NotificationService.showToast(serverFavorite ? 'success' : 'info', serverFavorite ? 'Ajouté à vos favoris.' : 'Retiré de vos favoris.');
                 }
 
                 if (document.getElementById('favSubViewContainer')) {
@@ -6817,9 +5132,9 @@ safeDomReady(() => {
                 }
             } catch (err) {
                 console.error('[FavoriteTap] Toggle error:', err);
+                paintFavoriteState(previousFavorite);
             } finally {
-                favBtn.style.opacity = '1';
-                favBtn.disabled = false;
+                delete favBtn.dataset.favoritePending;
             }
         }
 
@@ -7469,45 +5784,22 @@ safeDomReady(() => {
                     targetAvatar = parsed.avatar;
                 }
             } catch(e) {}
-            if (targetName && typeof window.openChatWithUser === 'function') {
-                window.openChatWithUser(targetName, targetAvatar, targetName);
-            } else if (typeof window.openLyannChatModal === 'function') {
-                window.openLyannChatModal();
+            if (targetName) {
+                window.LYANN_ROUTER?.go?.('messages', { contactId: targetName, name: targetName });
+            } else {
+                window.LYANN_ROUTER?.go?.('messages');
             }
             const notif = document.getElementById('floatingChatNotif');
             if (notif) notif.classList.remove('active');
         } else {
-            window.location.href = 'feed.html?action=openchat';
+            window.LYANN_ROUTER?.go?.('messages');
         }
     });
 
-    // Auto-ouvrir la discussion si le paramètre URL est présent
+    // Account/auth deep links remain local; chat deep links are owned by LYANN_ROUTER.
     const urlParams = new URLSearchParams(window.location.search);
     const chatActionParam = urlParams.get('action');
-    if (chatActionParam === 'openchat') {
-        const nameParam = urlParams.get('name');
-        setTimeout(() => {
-            if (nameParam) {
-                openChatWithUser(decodeURIComponent(nameParam), "david-34.png");
-            } else {
-                let targetName = null;
-                let targetAvatar = null;
-                try {
-                    const stored = localStorage.getItem('lyann_last_active_contact');
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        targetName = parsed.name;
-                        targetAvatar = parsed.avatar;
-                    }
-                } catch(e) {}
-                if (targetName && typeof window.openChatWithUser === 'function') {
-                    window.openChatWithUser(targetName, targetAvatar, targetName);
-                } else if (typeof window.openLyannChatModal === 'function') {
-                    window.openLyannChatModal();
-                }
-            }
-        }, 500);
-    } else if (chatActionParam === 'email_confirmed' || urlParams.has('confirmed')) {
+    if (chatActionParam === 'email_confirmed' || urlParams.has('confirmed')) {
         setTimeout(() => {
             window.lyannAlert('✅ Adresse email confirmée avec succès ! Vous pouvez maintenant vous connecter à votre compte LYANN.');
             const loginModal = document.getElementById('loginModal');
@@ -7668,12 +5960,12 @@ safeDomReady(() => {
                 const chatModal = document.getElementById('chatModal');
                 if (chatModal) {
                     if (log.recipientName) {
-                        openChatWithUser(log.recipientName, "david-34.png");
-                    } else if (typeof window.openLyannChatModal === 'function') {
-                        window.openLyannChatModal();
+                        window.LYANN_ROUTER?.go?.('messages', { name: log.recipientName });
+                    } else {
+                        window.LYANN_ROUTER?.go?.('messages');
                     }
                 } else {
-                    window.location.href = log.recipientName ? `feed.html?action=openchat&name=${encodeURIComponent(log.recipientName)}` : 'feed.html?action=openchat';
+                    window.LYANN_ROUTER?.go?.('messages', log.recipientName ? { name: log.recipientName } : {});
                 }
                 if (navNotifDropdown) navNotifDropdown.style.display = 'none';
             });
@@ -8202,7 +6494,7 @@ safeDomReady(() => {
     function renderTalentCard(c) {
         const candId = c.id || c.user_id;
         const name = escapeSearchHtml(c.display_name || (c.name ? c.name.split(' (')[0] : 'Lyanneur'));
-        const avatar = escapeSearchHtml(c.avatar || c.avatar_url || 'david-34.png');
+        const avatar = escapeSearchHtml(c.avatar || c.avatar_url || '/default-avatar.svg');
         const role = escapeSearchHtml(c.role || c.category || 'Services & Entraide');
         const city = escapeSearchHtml(c.city || c.public_location || 'Guadeloupe');
         const rating = (c.rating || 5.0).toFixed(1);
@@ -8288,7 +6580,7 @@ safeDomReady(() => {
         const selectedCategory = categorySelect ? categorySelect.value : 'all';
         const selectedSort = sortSelect ? sortSelect.value : 'recommended';
 
-        // 1. Fetch Candidates (Supabase DB profiles with DEV/DEMO isolation)
+        // 1. Fetch Candidates through centralized cached Explorer repository
         let candidatesList = [];
         let callingUserId = null;
         let searchHasError = false;
@@ -8301,102 +6593,58 @@ safeDomReady(() => {
             ))
         );
 
-        const isDevDebug = typeof window !== 'undefined' && (
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1' ||
-            window.location.protocol === 'file:' ||
-            (window.location && window.location.search && (
-                window.location.search.includes('debug=true') ||
-                window.location.search.includes('demo=true') ||
-                window.location.search.includes('dev=true')
-            ))
-        );
-
         try {
-            if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-                const currentUser = await window.LYANN_API_CLIENT.getCurrentUser().catch(() => null);
-                if (currentUser) callingUserId = currentUser.id;
+            if (!window.LYANN_EXPLORER_REPOSITORY) {
+                throw new Error('LYANN_EXPLORER_REPOSITORY unavailable');
+            }
 
-                const { data: dbProfiles, error } = await window.LYANN_API_CLIENT.supabase
-                    .from('profiles')
-                    .select('*')
-                    .neq('id', callingUserId || '00000000-0000-0000-0000-000000000000');
+            if (window.LYANN_AUTH_STATE && typeof window.LYANN_AUTH_STATE.getUserId === 'function') {
+                callingUserId = window.LYANN_AUTH_STATE.getUserId() || null;
+            }
 
-                if (error) {
-                    console.error("❌ [LYANN SEARCH] Supabase profiles fetch error:", error);
-                    searchHasError = true;
-                } else if (dbProfiles) {
-                    // Strict UUID Deduplication
-                    const seenIds = new Set();
-                    candidatesList = dbProfiles.filter(p => {
-                        if (!p.id || seenIds.has(p.id)) return false;
-                        seenIds.add(p.id);
-                        return true;
-                    }).map(p => ({
-                        id: p.id,
-                        user_id: p.id,
-                        name: window.formatPublicName ? window.formatPublicName(p, null, 'Lyanneur') : (p.first_name || 'Lyanneur'),
-                        avatar: window.getLyannAvatarUrl(p.avatar_url),
-                        role: p.headline || p.activity || p.role || 'Services & Entraide',
-                        category: p.category || p.activity || 'general',
-                        city: p.city || p.location || 'Guadeloupe',
-                        location: p.territory || p.location || 'guadeloupe',
-                        rating: p.rating || 5.0,
-                        reviewsCount: p.reviews_count || 0,
-                        completed_missions_count: p.completed_missions_count || 0,
-                        is_verified_pro: p.is_verified || p.account_type === 'pro',
-                        skills: p.skills || [],
-                        bio: p.bio || p.headline || '',
-                        subscription_plan: p.subscription_plan || 'FREE',
-                        source: 'SUPABASE'
-                    }));
-                }
+            // If cached results exist, use them immediately; repository refresh is deduped.
+            const cachedCandidates = window.LYANN_EXPLORER_REPOSITORY.peek();
+            if (Array.isArray(cachedCandidates)) {
+                candidatesList = cachedCandidates;
             } else {
-                if (!isExplicitDemoMode) searchHasError = true;
+                candidatesList = await window.LYANN_EXPLORER_REPOSITORY.load();
             }
         } catch (err) {
-            console.error("❌ [LYANN SEARCH] Supabase client exception:", err);
+            console.error('❌ [LYANN SEARCH] Explorer repository error:', err);
             searchHasError = true;
         }
 
-        // Error vs Mock Fixtures Handling
         if (searchHasError) {
             container.innerHTML = `
                 <div class="search-error-state" style="grid-column: 1/-1; padding: 40px 20px; text-align: center; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed #E2E8F0;">
                     <i class="ph ph-warning-circle" style="font-size: 2.5rem; color: #DC2626; margin-bottom: 10px;"></i>
                     <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1E293B;">Impossible de charger les Lyanneurs pour le moment.</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Veuillez vérifier votre connexion Supabase ou réessayer plus tard.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Veuillez réessayer dans quelques instants.</p>
                 </div>
             `;
             return;
         }
 
-        // DEMO mode ONLY: populate mock fixtures if explicitly requested AND candidatesList is empty
+        // Demo fixtures remain available only when explicitly requested.
         if (isExplicitDemoMode && candidatesList.length === 0 && window.LYANN_MEMBERS && Array.isArray(window.LYANN_MEMBERS)) {
-            const seenIds = new Set();
-            window.LYANN_MEMBERS.forEach(m => {
-                const memberId = String(m.id || m.user_id || m.name);
-                if (seenIds.has(memberId)) return;
-                seenIds.add(memberId);
-                candidatesList.push({
-                    id: memberId,
-                    user_id: memberId,
-                    name: m.name,
-                    avatar: m.avatar || 'david-34.png',
-                    role: m.role || 'Services & Entraide',
-                    category: m.category || 'general',
-                    city: m.city || 'Baie-Mahault',
-                    location: m.location || 'guadeloupe',
-                    rating: m.rating || 4.9,
-                    reviewsCount: m.reviewsCount || 12,
-                    completed_missions_count: m.completedMissions || 15,
-                    is_verified_pro: m.badge === 'Artisan Vérifié' || m.isVerified === true,
-                    skills: m.skills || m.keywords || [],
-                    bio: m.bio || '',
-                    subscription_plan: m.subscription_plan || 'FREE',
-                    source: 'DEMO'
-                });
-            });
+            candidatesList = window.LYANN_MEMBERS.map(m => ({
+                id: String(m.id || m.user_id || m.name),
+                user_id: String(m.id || m.user_id || m.name),
+                name: m.name,
+                avatar: m.avatar || '/default-avatar.svg',
+                role: m.role || 'Services & Entraide',
+                category: m.category || 'general',
+                city: m.city || 'Guadeloupe',
+                location: m.location || 'guadeloupe',
+                rating: m.rating || 0,
+                reviewsCount: m.reviewsCount || 0,
+                completed_missions_count: m.completedMissions || 0,
+                is_verified_pro: m.badge === 'Artisan Vérifié' || m.isVerified === true,
+                skills: m.skills || m.keywords || [],
+                bio: m.bio || '',
+                subscription_plan: m.subscription_plan || 'FREE',
+                source: 'DEMO'
+            }));
         }
 
         // 2. Invoke LyannSearchEngine.performUniversalSearch
@@ -9082,14 +7330,6 @@ safeDomReady(() => {
                     if (domainSelect) console.log('[STEP17 OPTIONS DOMAIN]', Array.from(domainSelect.options).map(o => [o.value, o.selected]));
                     if (catSelect) console.log('[STEP17 OPTIONS CATEGORY]', Array.from(catSelect.options).map(o => [o.value, o.selected]));
                     if (subCatSelect) console.log('[STEP17 OPTIONS SUBCAT]', Array.from(subCatSelect.options).map(o => [o.value, o.selected]));
-
-                    setTimeout(() => {
-                        console.log('FINAL +500ms :', (domainSelect ? domainSelect.value : ''), '/', (catSelect ? catSelect.value : ''), '/', (subCatSelect ? subCatSelect.value : ''));
-                    }, 500);
-
-                    setTimeout(() => {
-                        console.log('FINAL +1500ms :', (domainSelect ? domainSelect.value : ''), '/', (catSelect ? catSelect.value : ''), '/', (subCatSelect ? subCatSelect.value : ''));
-                    }, 1500);
                 } catch (e) {
                     console.error("AI Error:", e);
                     btnNext.innerHTML = originalText;
@@ -9468,12 +7708,23 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             </div>
         `;
         document.body.appendChild(modal);
+        if (window.LYANN_SURFACES) {
+            window.LYANN_SURFACES.register('lyann-detail', {
+                element: modal,
+                mode: 'child',
+                hideBottomNav: true,
+                lockBody: true
+            });
+        }
 
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                modal.style.display = 'none';
-                modal.classList.remove('active');
-                document.body.style.overflow = '';
+                if (window.LYANN_SURFACES?.isOpen?.('lyann-detail')) window.LYANN_SURFACES.close('lyann-detail', { reason: 'backdrop' });
+                else {
+                    modal.style.display = 'none';
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
             }
         });
     }
@@ -9493,18 +7744,26 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         `;
     }
 
-    modal.style.display = 'flex';
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    if (window.LYANN_SURFACES) {
+        window.LYANN_SURFACES.register('lyann-detail', { element: modal, mode: 'child', hideBottomNav: true, lockBody: true });
+        window.LYANN_SURFACES.open('lyann-detail', { requestId });
+    } else {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
 
     // Close button handler
     const closeBtn = document.getElementById('closeLyannDetailModalBtn');
     if (closeBtn && !closeBtn.dataset.bound) {
         closeBtn.dataset.bound = 'true';
         closeBtn.onclick = () => {
-            modal.style.display = 'none';
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
+            if (window.LYANN_SURFACES?.isOpen?.('lyann-detail')) window.LYANN_SURFACES.close('lyann-detail', { reason: 'close-button' });
+            else {
+                modal.style.display = 'none';
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
         };
     }
 
@@ -9672,8 +7931,13 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                 }
                 const myId = currentAuthUserId;
                 const initialNeed = { requestId: requestData.id, requesterId: requestData.requester_id, helperId: myId, title: requestData.title };
-                if (typeof window.openChatWithUser === 'function') {
-                    window.openChatWithUser(authorName, authorAvatar, requestData.requester_id, initialNeed);
+                if (requestData.requester_id) {
+                    window.LYANN_ROUTER?.go?.('messages', {
+                        contactId: requestData.requester_id,
+                        name: authorName,
+                        requestId: requestData.id,
+                        initialNeed
+                    });
                 }
             });
         }
@@ -9841,9 +8105,13 @@ window.loadUserReceivedInvitationsUI = async function() {
 
                     await window.loadUserReceivedInvitationsUI();
 
-                    // Open chat with user
-                    if (typeof window.openChatWithUser === 'function') {
-                        await window.openChatWithUser(requesterName, 'david-34.png', requesterId, { title: reqTitle });
+                    // Open the single canonical conversation surface.
+                    if (requesterId) {
+                        await window.LYANN_ROUTER?.go?.('messages', {
+                            contactId: requesterId,
+                            name: requesterName,
+                            title: reqTitle
+                        });
                     }
 
                 } catch (err) {
@@ -9883,8 +8151,11 @@ window.loadUserReceivedInvitationsUI = async function() {
             btn.addEventListener('click', async () => {
                 const requesterName = btn.getAttribute('data-requester-name');
                 const requesterId = btn.getAttribute('data-requester-id');
-                if (typeof window.openChatWithUser === 'function') {
-                    await window.openChatWithUser(requesterName, 'david-34.png', requesterId);
+                if (requesterId) {
+                    await window.LYANN_ROUTER?.go?.('messages', {
+                        contactId: requesterId,
+                        name: requesterName
+                    });
                 }
             });
         });
@@ -9905,161 +8176,6 @@ document.addEventListener('click', (e) => {
 });
 
 
-
-/* ==========================================================================
-   SIMULATED TRANSACTION CHAT (BOKANTAJ JOB FLOW)
-   ========================================================================== */
-window.triggerSimulatedTransactionChat = function() {
-    const chatModal = document.getElementById('chatModal');
-    if(chatModal) {
-        // Open the chat modal
-        if (typeof window.openLyannMessagesModal === 'function') {
-            window.openLyannMessagesModal();
-        } else {
-            chatModal.classList.add('active');
-            chatModal.style.display = 'flex';
-        }
-        
-        // Open conversation with Marc
-        if(typeof window.openChatWithUser === 'function') {
-            window.openChatWithUser('Marc (Plombier)', 'david-34.png'); // using existing avatar for mockup
-        }
-        
-        // Inject the simulated flow into the message area
-        const chatMessages = document.getElementById('chatMessages');
-        if(!chatMessages) return;
-        
-        // Clear previous messages for this demo
-        chatMessages.innerHTML = `
-            <div class="chat-message-row received">
-                <div class="chat-message-bubble">
-                    Bonjour ! Je viens de voir votre annonce pour la fuite sous l'évier. Je suis artisan plombier dans le quartier (Didier). Je peux intervenir cet après-midi vers 16h.
-                    <div class="chat-message-time">10:42</div>
-                </div>
-            </div>
-        `;
-        
-        // Delay 1: He sends an offer
-        setTimeout(() => {
-            chatMessages.insertAdjacentHTML('beforeend', `
-                <div class="chat-message-row received">
-                    <div class="chat-message-bubble">
-                        <div class="chat-tx-card offer">
-                            <div class="chat-tx-header">
-                                <i class="ph-fill ph-file-text"></i> Proposition de service
-                            </div>
-                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0;">Réparation de fuite évier + changement de joint</p>
-                            <div class="chat-tx-price">60 €</div>
-                            <div class="chat-tx-actions">
-                                <button class="btn btn-primary chat-tx-btn" onclick="acceptOffer(this)">Accepter</button>
-                                <button class="btn btn-outline chat-tx-btn">Négocier</button>
-                            </div>
-                        </div>
-                        <div class="chat-message-time">10:44</div>
-                    </div>
-                </div>
-            `);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }, 1500);
-    }
-};
-
-window.acceptOffer = function(btn) {
-    const chatMessages = document.getElementById('chatMessages');
-    const card = btn.closest('.chat-tx-card');
-    
-    // Morph the card to accepted
-    card.innerHTML = `
-        <div class="chat-tx-header" style="color: var(--primary);">
-            <i class="ph-fill ph-check-circle"></i> Offre acceptée
-        </div>
-        <div class="chat-tx-price">60 €</div>
-        <p style="font-size: 0.85rem; color: var(--text-muted);">En attente du paiement sécurisé pour bloquer la mission.</p>
-    `;
-    
-    // Inject payment request
-    setTimeout(() => {
-        chatMessages.insertAdjacentHTML('beforeend', `
-            <div class="chat-message-row system" style="justify-content: center;">
-                <div class="chat-message-bubble" style="background: transparent; box-shadow: none; padding: 0;">
-                    <div class="chat-tx-card payment" style="max-width: 320px; text-align: center; margin: 16px auto;">
-                        <i class="ph-fill ph-lock-key" style="font-size: 2rem; color: var(--sand-yellow); margin-bottom: 8px;"></i>
-                        <div style="font-weight: 800; margin-bottom: 8px;">Paiement sécurisé LYANN</div>
-                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Les fonds seront bloqués jusqu'à la fin de la mission.</p>
-                        <button class="btn btn-primary" style="width: 100%; background: var(--sand-yellow); color: #fff; border-color: var(--sand-yellow);" onclick="payMission(this)">Payer 60€</button>
-                    </div>
-                </div>
-            </div>
-        `);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }, 1000);
-};
-
-window.payMission = function(btn) {
-    const chatMessages = document.getElementById('chatMessages');
-    const card = btn.closest('.chat-tx-card');
-    
-    card.innerHTML = `
-        <i class="ph-fill ph-check-circle" style="font-size: 2rem; color: #4CAF50; margin-bottom: 8px;"></i>
-        <div style="font-weight: 800; margin-bottom: 8px; color: #4CAF50;">Paiement bloqué</div>
-        <p style="font-size: 0.8rem; color: var(--text-muted);">La mission est confirmée.</p>
-        <button class="btn btn-outline" style="width: 100%; margin-top: 12px;" onclick="validateMission(this)">Valider la fin de mission</button>
-    `;
-    
-    chatMessages.insertAdjacentHTML('beforeend', `
-        <div class="chat-message-row received">
-            <div class="chat-message-bubble">
-                Super, j'ai reçu la notification de paiement ! J'arrive tout de suite.
-                <div class="chat-message-time">10:50</div>
-            </div>
-        </div>
-    `);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-};
-
-window.validateMission = function(btn) {
-    const chatMessages = document.getElementById('chatMessages');
-    const card = btn.closest('.chat-tx-card');
-    
-    card.innerHTML = `
-        <div class="chat-tx-header" style="color: #4CAF50;">
-            <i class="ph-fill ph-flag-checkered"></i> Mission terminée
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-muted);">Les fonds (60€) ont été versés à l'artisan.</p>
-    `;
-    
-    setTimeout(() => {
-        chatMessages.insertAdjacentHTML('beforeend', `
-            <div class="chat-message-row system" style="justify-content: center;">
-                <div class="chat-message-bubble" style="background: transparent; box-shadow: none; padding: 0;">
-                    <div class="chat-tx-card success" style="max-width: 320px; text-align: center; margin: 16px auto;">
-                        <img src="david-34.png" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin-bottom: 8px;">
-                        <div style="font-weight: 800;">Laissez un avis à Marc</div>
-                        <div class="star-rating">
-                            <i class="ph-fill ph-star" onclick="rateStar(this)"></i>
-                            <i class="ph-fill ph-star" onclick="rateStar(this)"></i>
-                            <i class="ph-fill ph-star" onclick="rateStar(this)"></i>
-                            <i class="ph-fill ph-star" onclick="rateStar(this)"></i>
-                            <i class="ph-fill ph-star" onclick="rateStar(this)"></i>
-                        </div>
-                        <textarea class="modal-input" placeholder="Écrire un mot..." style="margin-bottom: 12px; font-size: 0.85rem; height: 60px;"></textarea>
-                        <button class="btn btn-primary" style="width: 100%;" onclick="this.closest('.chat-tx-card').innerHTML='<div style=\\'font-weight:800; color: #4CAF50;\\'><i class=\\'ph-fill ph-check-circle\\'></i> Merci pour votre avis !</div>'">Envoyer</button>
-                    </div>
-                </div>
-            </div>
-        `);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }, 1000);
-};
-
-window.rateStar = function(star) {
-    const stars = Array.from(star.parentElement.children);
-    const index = stars.indexOf(star);
-    stars.forEach((s, i) => {
-        if(i <= index) s.classList.add('active');
-        else s.classList.remove('active');
-    });
-};
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {

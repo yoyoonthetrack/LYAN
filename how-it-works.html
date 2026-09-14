@@ -69,7 +69,7 @@
                 </a>
                 <button class="nav-profile-btn open-account-modal-trigger logged-in-only" title="Mon Espace">
                     <div class="nav-profile-avatar-wrap">
-                        <img src="david-34.png" alt="Mon Profil" class="nav-profile-avatar">
+                        <img src="lyann-avatar-placeholder.svg" alt="Mon Profil" class="nav-profile-avatar">
                         <span class="nav-profile-status-dot"></span>
                     </div>
                 </button>
@@ -91,7 +91,7 @@
                 </div>
                 <nav class="mobile-nav-list">
                     <a href="#" class="open-account-modal-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin: 6px 0;">
-                        <img src="david-34.png" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
+                        <img src="lyann-avatar-placeholder.svg" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
                         MON PROFIL & RÉGLAGES
                         <i class="ph ph-caret-right" style="margin-left: auto;"></i>
                     </a>
@@ -634,9 +634,15 @@
     <script src="matching-engine.js"></script>
     <script src="api-client.js"></script>
     <script src="dialog.js"></script>
-    <script src="chat-logic.js"></script>
+        <script src="messaging-repository.js"></script>
+<script src="chat-logic.js"></script>
     <script src="ai-simulator.js"></script>
     <script src="ai-classifier.js"></script>
+    <script src="platform-core.js"></script>
+    <script src="notifications-ui.js"></script>
+    <script src="app-shell.js"></script>
+    <script src="messaging-ui.js"></script>
+    <script src="profile-repository.js"></script>
     <script src="script.js?v=20260907-1"></script>
     <script>
         // Logique spécifique du commutateur de rôle sur la page Comment ça marche
@@ -1135,7 +1141,7 @@
             <button class="modal-close-btn" id="closeQuickProfileModalBtn" aria-label="Fermer" style="top: 14px; right: 14px; color: #FFFFFF;"><i class="ph ph-x"></i></button>
 
             <div class="quick-profile-header">
-                <img src="david-34.png" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
+                <img src="lyann-avatar-placeholder.svg" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
                 <h3 id="quickProfileName" style="font-size: 1.3rem; margin-bottom: 2px;">Membre LYANN</h3>
                 <div id="quickProfileRole" style="font-size: 0.88rem; opacity: 0.9;">Plomberie & Clim Inverter</div>
                 <div id="quickProfileCity" style="font-size: 0.8rem; opacity: 0.85; margin-top: 4px;"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
@@ -1195,7 +1201,7 @@
                         <div class="chat-header-user">
                             <button type="button" class="chat-back-to-contacts-btn" aria-label="Retour" onclick="window.backToChatContacts(event)"><i class="ph ph-arrow-left"></i></button>
                             <div class="chat-header-avatar-wrap" style="position: relative;">
-                                <img src="david-34.png" alt="Avatar" id="chatHeaderAvatar" class="chat-header-avatar">
+                                <img src="lyann-avatar-placeholder.svg" alt="Avatar" id="chatHeaderAvatar" class="chat-header-avatar">
                                 <span class="online-dot" style="bottom: 0; right: 0;"></span>
                             </div>
                             <div class="chat-header-info">
@@ -1483,7 +1489,7 @@
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
                             </div>
                             <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve (Simulé)</label>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve</label>
                                 <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
                                     <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
                                     <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>

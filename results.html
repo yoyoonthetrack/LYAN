@@ -523,20 +523,20 @@
             <div class="profile-header-banner public-header-banner">
                 <div class="profile-user-summary">
                     <div class="profile-photo-container">
-                        <img src="david-34.png" alt="Avatar" id="publicMemberAvatar" class="profile-avatar-large">
+                        <img src="lyann-avatar-placeholder.svg" alt="Avatar" id="publicMemberAvatar" class="profile-avatar-large">
                         <span class="online-dot-lg" title="Membre en ligne"></span>
                     </div>
                     <div>
                         <h2 class="profile-user-name" id="publicMemberName">Membre LYANN</h2>
-                        <span class="profile-role-badge" id="publicMemberRoleBadge">🛠️ Artisan Plombier</span>
-                        <div class="profile-location-text" id="publicMemberLocationText"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
+                        <span class="profile-role-badge" id="publicMemberRoleBadge">Profil LYANN</span>
+                        <div class="profile-location-text" id="publicMemberLocationText"><i class="ph ph-map-pin"></i> Localisation</div>
                     </div>
                 </div>
 
                 <!-- Social Action Bar -->
                 <div class="social-action-bar">
                     <button type="button" class="btn-social btn-recommend" id="recommendMemberBtn">
-                        <i class="ph-fill ph-thumbs-up"></i> Recommander <span id="recommendCountBadge">142</span>
+                        <i class="ph-fill ph-thumbs-up"></i> Recommander <span id="recommendCountBadge">—</span>
                     </button>
                     <button type="button" class="btn-social btn-contact-direct" id="publicContactBtn">
                         <i class="ph-fill ph-chat-circle-dots"></i> Contacter
@@ -551,7 +551,7 @@
             <div class="profile-tabs">
                 <button class="public-tab-btn active" data-public-tab="pubtab-about"><i class="ph ph-user"></i> À propos & Tarifs</button>
                 <button class="public-tab-btn" data-public-tab="pubtab-realizations"><i class="ph ph-image"></i> Réalisations & Travaux</button>
-                <button class="public-tab-btn" data-public-tab="pubtab-reviews"><i class="ph ph-star"></i> Avis des Voisins (<span id="publicReviewsCount">48</span>)</button>
+                <button class="public-tab-btn" data-public-tab="pubtab-reviews"><i class="ph ph-star"></i> Avis des Voisins (<span id="publicReviewsCount">—</span>)</button>
             </div>
 
             <!-- Public Body Content -->
@@ -559,16 +559,16 @@
                 <!-- PUB TAB 1 : À PROPOS -->
                 <div class="public-tab-content active" id="pubtab-about">
                     <h4 class="tab-section-title">Présentation & Compétences</h4>
-                    <p class="profile-bio-text" id="publicMemberBioText">Spécialiste de la plomberie résidentielle et du dépannage d'urgence sur Baie-Mahault et Grande-Terre.</p>
+                    <p class="profile-bio-text" id="publicMemberBioText">Chargement du profil…</p>
                     
                     <div class="about-info-grid">
                         <div class="info-block">
                             <span class="info-label">Tarif Indicatif</span>
-                            <strong class="info-val" id="publicMemberRate">À partir de 35€/h</strong>
+                            <strong class="info-val" id="publicMemberRate">—</strong>
                         </div>
                         <div class="info-block">
                             <span class="info-label">Badges & Confiance</span>
-                            <strong class="info-val" id="publicMemberBadge">✔ Artisan Vérifié</strong>
+                            <strong class="info-val" id="publicMemberBadge">—</strong>
                         </div>
                     </div>
 
@@ -597,26 +597,24 @@
             <button class="modal-close-btn" id="closeQuickProfileModalBtn" aria-label="Fermer" style="top: 14px; right: 14px; color: #FFFFFF;"><i class="ph ph-x"></i></button>
 
             <div class="quick-profile-header">
-                <img src="david-34.png" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
+                <img src="lyann-avatar-placeholder.svg" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
                 <h3 id="quickProfileName" style="font-size: 1.3rem; margin-bottom: 2px;">Membre LYANN</h3>
-                <div id="quickProfileRole" style="font-size: 0.88rem; opacity: 0.9;">Plomberie & Clim Inverter</div>
-                <div id="quickProfileCity" style="font-size: 0.8rem; opacity: 0.85; margin-top: 4px;"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
+                <div id="quickProfileRole" style="font-size: 0.88rem; opacity: 0.9;">Profil LYANN</div>
+                <div id="quickProfileCity" style="font-size: 0.8rem; opacity: 0.85; margin-top: 4px;"><i class="ph ph-map-pin"></i> Localisation</div>
             </div>
 
             <div class="quick-profile-body">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                    <span id="quickProfileBadge" class="pill-badge pill-green" style="font-size: 0.78rem;">Artisan Vérifié</span>
-                    <span id="quickProfileRating" style="font-weight: 800; color: #E8B83F;">⭐ 4.9 (48 avis)</span>
+                    <span id="quickProfileBadge" class="pill-badge pill-green" style="font-size: 0.78rem;">Profil LYANN</span>
+                    <span id="quickProfileRating" style="font-weight: 800; color: #E8B83F;">—</span>
                 </div>
 
                 <p id="quickProfileBio" style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 12px;">
-                    Plombier et technicien clim passionné à Baie-Mahault. Dépannage rapide de fuites d'eau, entretien clim et chauffe-eau.
+                    Chargement du profil…
                 </p>
 
                 <div class="quick-skills-list" id="quickProfileSkills">
-                    <span class="quick-skill-pill">Entretien Clim Inverter</span>
-                    <span class="quick-skill-pill">Détection de fuite</span>
-                    <span class="quick-skill-pill">Chauffe-eau</span>
+                    
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 18px;">
@@ -689,7 +687,7 @@
                         <div class="chat-header-user">
                             <button type="button" class="chat-back-to-contacts-btn" aria-label="Retour" onclick="window.backToChatContacts(event)"><i class="ph ph-arrow-left"></i></button>
                             <div class="chat-header-avatar-wrap" style="position: relative;">
-                                <img src="david-34.png" alt="Avatar" id="chatHeaderAvatar" class="chat-header-avatar">
+                                <img src="lyann-avatar-placeholder.svg" alt="Avatar" id="chatHeaderAvatar" class="chat-header-avatar">
                                 <span class="online-dot" style="bottom: 0; right: 0;"></span>
                             </div>
                             <div class="chat-header-info">
@@ -860,16 +858,16 @@
                             <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;">
                                 <div>
                                     <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Numéro de carte</label>
-                                    <input type="text" class="modal-input" placeholder="4242 4242 4242 4242" required style="width: 100%; box-sizing: border-box;" value="4242 4242 4242 4242">
+                                    <input type="text" class="modal-input" autocomplete="cc-number" inputmode="numeric" required style="width: 100%; box-sizing: border-box;" placeholder="Numéro de carte">
                                 </div>
                                 <div style="display: flex; gap: 10px;">
                                     <div style="flex: 1;">
                                         <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Date d'expiration</label>
-                                        <input type="text" class="modal-input" placeholder="MM/AA" required style="width: 100%; box-sizing: border-box;" value="12/29">
+                                        <input type="text" class="modal-input" autocomplete="cc-exp" inputmode="numeric" required style="width: 100%; box-sizing: border-box;" placeholder="MM/AA">
                                     </div>
                                     <div style="flex: 1;">
                                         <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">CVC</label>
-                                        <input type="text" class="modal-input" placeholder="123" required style="width: 100%; box-sizing: border-box;" value="123">
+                                        <input type="text" class="modal-input" placeholder="123" required style="width: 100%; box-sizing: border-box;" placeholder="CVC">
                                     </div>
                                 </div>
                                 <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
@@ -904,7 +902,7 @@
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
                             </div>
                             <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve (Simulé)</label>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve</label>
                                 <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
                                     <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
                                     <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>
@@ -1225,11 +1223,11 @@
                     <span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 800; color: var(--primary); letter-spacing: 0.5px;">Accès Directs Débloqués</span>
                     
                     <div class="shortcut-action-btns">
-                        <a href="https://wa.me/590690001122?text=Bonjour%20!%20Nous%20sommes%20Lyann%C3%A9s%20sur%20LYANN%20DOM." target="_blank" rel="noopener" class="btn-shortcut-call" id="whatsappShortcutBtn">
+                        <a href="#" target="_blank" rel="noopener" class="btn-shortcut-call" id="whatsappShortcutBtn">
                             <i class="ph-bold ph-whatsapp-logo" style="font-size: 1.3rem;"></i> WhatsApp
                         </a>
 
-                        <a href="tel:+590690001122" class="btn-shortcut-phone" id="phoneShortcutBtn">
+                        <a href="#" class="btn-shortcut-phone" id="phoneShortcutBtn">
                             <i class="ph-fill ph-phone-call" style="font-size: 1.3rem;"></i> Appeler
                         </a>
                     </div>
@@ -1254,9 +1252,15 @@
     <script src="matching-engine.js"></script>
     <script src="api-client.js"></script>
     <script src="dialog.js"></script>
-    <script src="chat-logic.js"></script>
+        <script src="messaging-repository.js"></script>
+<script src="chat-logic.js"></script>
     <script src="ai-simulator.js"></script>
     <script src="ai-classifier.js"></script>
+    <script src="platform-core.js"></script>
+    <script src="notifications-ui.js"></script>
+    <script src="app-shell.js"></script>
+    <script src="messaging-ui.js"></script>
+    <script src="profile-repository.js"></script>
     <script src="script.js?v=20260907-TRACE"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->

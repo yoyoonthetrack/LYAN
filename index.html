@@ -620,7 +620,7 @@
                 <div class="flash-card">
                     <div class="flash-card-header">
                         <div class="flash-author-block">
-                            <img src="david-34.png" alt="David.M" class="flash-avatar">
+                            <img src="lyann-avatar-placeholder.svg" alt="David.M" class="flash-avatar">
                             <div class="flash-author-info">
                                 <strong>David.M <i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></strong>
                                 <span>Artisan Clim & Froid • 📍 Baie-Mahault (Guadeloupe)</span>
@@ -1634,7 +1634,7 @@
                         <div class="chat-header-user">
                             <button type="button" class="chat-back-to-contacts-btn" aria-label="Retour" onclick="window.backToChatContacts(event)"><i class="ph ph-arrow-left"></i></button>
                             <div class="chat-header-avatar-wrap" style="position: relative;">
-                                <img src="david-34.png" alt="Avatar" id="chatHeaderAvatar" class="chat-header-avatar">
+                                <img src="lyann-avatar-placeholder.svg" alt="Avatar" id="chatHeaderAvatar" class="chat-header-avatar">
                                 <span class="online-dot" style="bottom: 0; right: 0;"></span>
                             </div>
                             <div class="chat-header-info">
@@ -1926,7 +1926,7 @@
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
                             </div>
                             <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve (Simulé)</label>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve</label>
                                 <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
                                     <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
                                     <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>
@@ -2006,7 +2006,7 @@
             <button class="modal-close-btn" id="closeQuickProfileModalBtn" aria-label="Fermer" style="top: 14px; right: 14px; color: #FFFFFF;"><i class="ph ph-x"></i></button>
 
             <div class="quick-profile-header">
-                <img src="david-34.png" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
+                <img src="lyann-avatar-placeholder.svg" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
                 <h3 id="quickProfileName" style="font-size: 1.3rem; margin-bottom: 2px;">Membre LYANN</h3>
                 <div id="quickProfileRole" style="font-size: 0.88rem; opacity: 0.9;">Plomberie & Clim Inverter</div>
                 <div id="quickProfileCity" style="font-size: 0.8rem; opacity: 0.85; margin-top: 4px;"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
@@ -2538,9 +2538,15 @@
     <script src="matching-engine.js"></script>
     <script src="api-client.js"></script>
     <script src="dialog.js"></script>
-    <script src="chat-logic.js"></script>
+        <script src="messaging-repository.js"></script>
+<script src="chat-logic.js"></script>
     <script src="ai-simulator.js"></script>
     <script src="ai-classifier.js"></script>
+    <script src="platform-core.js"></script>
+    <script src="notifications-ui.js"></script>
+    <script src="app-shell.js"></script>
+    <script src="messaging-ui.js"></script>
+    <script src="profile-repository.js"></script>
     <script src="script.js?v=20260907-3"></script>
     <script src="profile-completion.js"></script>
 

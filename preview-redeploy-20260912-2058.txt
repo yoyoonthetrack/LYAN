@@ -1,0 +1,2 @@
+Preview redeploy trigger for architecture-stabilization after centered milestone layout normalization.
+Timestamp: 2026-09-12T20:58:00+02:00
