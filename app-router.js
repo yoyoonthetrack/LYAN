@@ -68,6 +68,17 @@
     }
   }
 
+  // Define the public API before registering routes. register() returns this object,
+  // so creating it later would trigger a temporal-dead-zone crash during bootstrap.
+  const api = {
+    __canonical: true,
+    register,
+    go,
+    has: (name) => routes.has(name),
+    sameDocumentPath,
+    routes: () => [...routes.keys()]
+  };
+
   register('home', () => hardNavigate('index.html'));
   register('explorer', (payload = {}) => {
     const params = new URLSearchParams();
@@ -177,15 +188,6 @@
       go('publish');
     }
   }
-
-  const api = {
-    __canonical: true,
-    register,
-    go,
-    has: (name) => routes.has(name),
-    sameDocumentPath,
-    routes: () => [...routes.keys()]
-  };
 
   window.LYANN_ROUTER = api;
   window.navigateLyann = (route, payload) => api.go(route, payload);
