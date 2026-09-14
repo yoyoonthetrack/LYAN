@@ -2784,7 +2784,7 @@ safeDomReady(() => {
                 const reqId = btn.dataset.requestId;
                 const requesterId = btn.dataset.requesterId;
                 const requesterName = btn.dataset.requesterName || 'Lyanneur';
-                const requesterAvatar = btn.dataset.requesterAvatar || 'david-34.png';
+                const requesterAvatar = btn.dataset.requesterAvatar || '/default-avatar.svg';
                 const title = btn.dataset.title || 'Lyann d\'entraide';
 
                 const currentAuthUserId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id || window.LYANN_API_CLIENT?.getCurrentUserId?.();
@@ -2816,7 +2816,7 @@ safeDomReady(() => {
             btn.dataset.listenersBound = 'true';
             btn.addEventListener('click', () => {
                 const name = btn.dataset.memberName || 'Lyanneur';
-                const avatar = btn.dataset.memberAvatar || 'david-34.png';
+                const avatar = btn.dataset.memberAvatar || '/default-avatar.svg';
                 const postType = btn.dataset.postType;
                 const postTitle = btn.dataset.postTitle;
 
@@ -4609,7 +4609,7 @@ safeDomReady(() => {
             return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
         }
 
-        const avatarUrl = (profileData && profileData.avatar_url && !profileData.avatar_url.includes('david-34.png'))
+        const avatarUrl = (profileData && profileData.avatar_url && !profileData.avatar_url.includes('/default-avatar.svg'))
             ? profileData.avatar_url
             : getInitialsAvatarSvg(displayName);
 
@@ -6494,7 +6494,7 @@ safeDomReady(() => {
     function renderTalentCard(c) {
         const candId = c.id || c.user_id;
         const name = escapeSearchHtml(c.display_name || (c.name ? c.name.split(' (')[0] : 'Lyanneur'));
-        const avatar = escapeSearchHtml(c.avatar || c.avatar_url || 'david-34.png');
+        const avatar = escapeSearchHtml(c.avatar || c.avatar_url || '/default-avatar.svg');
         const role = escapeSearchHtml(c.role || c.category || 'Services & Entraide');
         const city = escapeSearchHtml(c.city || c.public_location || 'Guadeloupe');
         const rating = (c.rating || 5.0).toFixed(1);
