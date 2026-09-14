@@ -3,39 +3,24 @@ const file = 'script.js';
 let source = fs.readFileSync(file, 'utf8');
 const before = source;
 
-function removeBetween(startMarker, endMarker, replacement = '') {
-  const start = source.indexOf(startMarker);
-  if (start === -1) return false;
+const startMarker = '/* ==========================================================================\n   SIMULATED TRANSACTION CHAT (BOKANTAJ JOB FLOW)';
+const start = source.indexOf(startMarker);
+if (start !== -1) {
+  const endMarker = "if (document.readyState === 'loading') {";
   const end = source.indexOf(endMarker, start);
-  if (end === -1 || end <= start) throw new Error(`Missing end marker for ${startMarker}`);
-  source = source.slice(0, start) + replacement + source.slice(end);
-  return true;
+  if (end === -1 || end <= start) throw new Error('Unable to bound simulated transaction chat section');
+  source = source.slice(0, start) + source.slice(end);
 }
 
-// Diagnostic-only observer: safe to remove as one complete block.
-removeBetween(
-  '(function setupWizardDomObserver() {',
-  '    async function syncWizardTaxonomyDropdowns(result) {',
-  '    async function syncWizardTaxonomyDropdowns(result) {'
-);
-
-// Remove only self-contained delayed debug logs; do not rewrite surrounding control flow.
+// Remove delayed taxonomy debug logs only; they are observational and not product behavior.
 source = source.replace(
   /\n\s*setTimeout\(\(\) => \{\n\s*console\.log\('FINAL \+500ms :'[\s\S]*?\n\s*\}, 500\);\n\n\s*setTimeout\(\(\) => \{\n\s*console\.log\('FINAL \+1500ms :'[\s\S]*?\n\s*\}, 1500\);/g,
   ''
 );
 
-// Retire the entire self-contained fake transaction/chat demo engine. Real transaction
-// state is owned by Supabase repositories and the canonical messaging controller.
-removeBetween(
-  '/* ==========================================================================\n   SIMULATED TRANSACTION CHAT (BOKANTAJ JOB FLOW)',
-  "if (document.readyState === 'loading') {",
-  ''
-);
-
 if (source === before) {
-  console.log('Legacy runtime flows already retired.');
+  console.log('Simulated runtime flow already retired.');
   process.exit(0);
 }
 fs.writeFileSync(file, source, 'utf8');
-console.log('Retired temporary wizard observer and simulated transaction/chat engine.');
+console.log('Retired simulated transaction/chat engine and delayed taxonomy traces.');
