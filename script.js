@@ -2036,44 +2036,7 @@ safeDomReady(() => {
     // ==========================================================================
     // MOTEUR EN DIRECT DU BOKANTAJ (POSTER UN LYANN & ÉCHOS DU QUARTIER)
     // ==========================================================================
-    let INITIAL_FLASH_POSTS = [
-        {
-            id: 'flash-1',
-            item_type: 'POST',
-            author_id: 'mock-1',
-            authorName: 'Jocelyn Cabort',
-            authorRole: 'Plomberie & Fuites d\'eau',
-            authorAvatar: 'jocelyn-cabort.png',
-            badge: '⚡ Disponibilité',
-            type: 'dispo',
-            location: 'Guadeloupe',
-            territoryKey: 'guadeloupe',
-            timeAgo: 'Il y a 14 min',
-            content: 'Disponible aujourd\'hui pour dépannages de plomberie d\'urgence et recherche de fuite sur Baie-Mahault et environs ! 💧🔧',
-            images: [],
-            likes: 18,
-            repliesCount: 4,
-            memberId: 200
-        },
-        {
-            id: 'flash-2',
-            item_type: 'POST',
-            author_id: 'mock-2',
-            authorName: 'Hugues Zami',
-            authorRole: 'Climatisation & Électricité',
-            authorAvatar: 'hugues-zami.png',
-            badge: '⭐ Recommandation',
-            type: 'reco',
-            location: 'Guadeloupe',
-            territoryKey: 'guadeloupe',
-            timeAgo: 'Il y a 45 min',
-            content: 'Entretien préventif clim Inverter et contrôle électrique avant les fortes chaleurs. Devis gratuit sur Les Abymes.',
-            images: [],
-            likes: 24,
-            repliesCount: 6,
-            memberId: 201
-        }
-    ];
+    const INITIAL_FLASH_POSTS = [];
 
     let currentFlashPosts = [];
     let activeFeedTypeFilter = 'all';
@@ -5813,33 +5776,10 @@ safeDomReady(() => {
         }
     });
 
-    // Auto-ouvrir la discussion si le paramètre URL est présent
+    // Account/auth deep links remain local; chat deep links are owned by LYANN_ROUTER.
     const urlParams = new URLSearchParams(window.location.search);
     const chatActionParam = urlParams.get('action');
-    if (chatActionParam === 'openchat') {
-        const nameParam = urlParams.get('name');
-        setTimeout(() => {
-            if (nameParam) {
-                openChatWithUser(decodeURIComponent(nameParam), "david-34.png");
-            } else {
-                let targetName = null;
-                let targetAvatar = null;
-                try {
-                    const stored = localStorage.getItem('lyann_last_active_contact');
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        targetName = parsed.name;
-                        targetAvatar = parsed.avatar;
-                    }
-                } catch(e) {}
-                if (targetName && typeof window.openChatWithUser === 'function') {
-                    window.openChatWithUser(targetName, targetAvatar, targetName);
-                } else if (typeof window.openLyannChatModal === 'function') {
-                    window.openLyannChatModal();
-                }
-            }
-        }, 500);
-    } else if (chatActionParam === 'email_confirmed' || urlParams.has('confirmed')) {
+    if (chatActionParam === 'email_confirmed' || urlParams.has('confirmed')) {
         setTimeout(() => {
             window.lyannAlert('✅ Adresse email confirmée avec succès ! Vous pouvez maintenant vous connecter à votre compte LYANN.');
             const loginModal = document.getElementById('loginModal');
@@ -8140,9 +8080,13 @@ window.loadUserReceivedInvitationsUI = async function() {
 
                     await window.loadUserReceivedInvitationsUI();
 
-                    // Open chat with user
-                    if (typeof window.openChatWithUser === 'function') {
-                        await window.openChatWithUser(requesterName, 'david-34.png', requesterId, { title: reqTitle });
+                    // Open the single canonical conversation surface.
+                    if (requesterId) {
+                        await window.LYANN_ROUTER?.go?.('messages', {
+                            contactId: requesterId,
+                            name: requesterName,
+                            title: reqTitle
+                        });
                     }
 
                 } catch (err) {
@@ -8182,8 +8126,11 @@ window.loadUserReceivedInvitationsUI = async function() {
             btn.addEventListener('click', async () => {
                 const requesterName = btn.getAttribute('data-requester-name');
                 const requesterId = btn.getAttribute('data-requester-id');
-                if (typeof window.openChatWithUser === 'function') {
-                    await window.openChatWithUser(requesterName, 'david-34.png', requesterId);
+                if (requesterId) {
+                    await window.LYANN_ROUTER?.go?.('messages', {
+                        contactId: requesterId,
+                        name: requesterName
+                    });
                 }
             });
         });
