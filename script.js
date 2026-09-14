@@ -4488,13 +4488,13 @@ safeDomReady(() => {
                             targetAvatar = parsed.avatar;
                         }
                     } catch(e) {}
-                    if (targetName && typeof window.openChatWithUser === 'function') {
-                        window.openChatWithUser(targetName, targetAvatar, targetName);
-                    } else if (typeof window.openLyannChatModal === 'function') {
-                        window.openLyannChatModal();
+                    if (targetName) {
+                        window.LYANN_ROUTER?.go?.('messages', { contactId: targetName, name: targetName });
+                    } else {
+                        window.LYANN_ROUTER?.go?.('messages');
                     }
                 } else {
-                    window.location.href = 'feed.html?action=openchat';
+                    window.LYANN_ROUTER?.go?.('messages');
                 }
             });
         }
@@ -5784,15 +5784,15 @@ safeDomReady(() => {
                     targetAvatar = parsed.avatar;
                 }
             } catch(e) {}
-            if (targetName && typeof window.openChatWithUser === 'function') {
-                window.openChatWithUser(targetName, targetAvatar, targetName);
-            } else if (typeof window.openLyannChatModal === 'function') {
-                window.openLyannChatModal();
+            if (targetName) {
+                window.LYANN_ROUTER?.go?.('messages', { contactId: targetName, name: targetName });
+            } else {
+                window.LYANN_ROUTER?.go?.('messages');
             }
             const notif = document.getElementById('floatingChatNotif');
             if (notif) notif.classList.remove('active');
         } else {
-            window.location.href = 'feed.html?action=openchat';
+            window.LYANN_ROUTER?.go?.('messages');
         }
     });
 
@@ -5960,12 +5960,12 @@ safeDomReady(() => {
                 const chatModal = document.getElementById('chatModal');
                 if (chatModal) {
                     if (log.recipientName) {
-                        openChatWithUser(log.recipientName, "david-34.png");
-                    } else if (typeof window.openLyannChatModal === 'function') {
-                        window.openLyannChatModal();
+                        window.LYANN_ROUTER?.go?.('messages', { name: log.recipientName });
+                    } else {
+                        window.LYANN_ROUTER?.go?.('messages');
                     }
                 } else {
-                    window.location.href = log.recipientName ? `feed.html?action=openchat&name=${encodeURIComponent(log.recipientName)}` : 'feed.html?action=openchat';
+                    window.LYANN_ROUTER?.go?.('messages', log.recipientName ? { name: log.recipientName } : {});
                 }
                 if (navNotifDropdown) navNotifDropdown.style.display = 'none';
             });
