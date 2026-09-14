@@ -16,16 +16,23 @@ const calls = {
   account: [],
   messagesList: 0,
   conversations: [],
-  drawerClosed: 0
+  drawerClosed: 0,
+  login: 0
+};
+
+const bodyClassList = {
+  contains(name) { return name === 'user-is-logged-in'; }
 };
 
 const document = {
   readyState: 'loading',
+  body: { classList: bodyClassList, style: {} },
   addEventListener(type, handler) {
     if (!listeners.has(type)) listeners.set(type, []);
     listeners.get(type).push(handler);
   },
-  getElementById() { return null; }
+  getElementById() { return null; },
+  querySelector() { return null; }
 };
 
 const window = {
@@ -36,6 +43,7 @@ const window = {
     assign(target) { navigations.push(target); }
   },
   closeLyannHamburgerDrawer() { calls.drawerClosed += 1; },
+  openLoginModal() { calls.login += 1; },
   openAccountModalSubView(section) { calls.account.push(section); },
   LYANN_MESSAGING: {
     openList() { calls.messagesList += 1; return true; },
@@ -108,6 +116,10 @@ assert(
   'drawer account/activity/settings/favorites/finances routes must dispatch to their account sections'
 );
 
+const legacyAccountSelector = '.open-account-modal-trigger, .nav-profile-btn';
+click({ selector: legacyAccountSelector });
+assert(calls.account[calls.account.length - 1] === 'account', 'real Web account/profile triggers must route to account');
+
 const messageSelector = '#tab-messages, [data-lyann-messages], .open-chat-trigger';
 click({ selector: messageSelector });
 click({ selector: messageSelector });
@@ -126,6 +138,12 @@ assert(calls.conversations[0]?.contactId === 'contact-123', 'message CTA must fo
 click({ selector: '#tab-explorer' });
 assert(navigations.includes('results.html'), 'Explorer must remain routable through the canonical router');
 
+// Verify a logged-out protected route produces a visible login action instead of a silent no-op.
+document.body.classList.contains = () => false;
+click({ explicit: fakeElement({ 'data-lyann-route': 'settings' }) });
+click({ selector: messageSelector });
+assert(calls.login >= 2, 'protected Web routes must open login when the preview/session is unauthenticated');
+
 const builtHtml = buildHtml(sourceHtml);
 const positions = {
   surfaces: builtHtml.indexOf('surface-manager.js?v=20260914'),
@@ -141,6 +159,8 @@ assert(positions.surfaces < positions.router, 'surface manager must load before 
 assert(positions.router < positions.appShell, 'application router must load before app-shell.js');
 assert(positions.router < positions.messagingUi, 'application router must load before messaging-ui.js');
 assert(positions.router < positions.legacyScript, 'application router must load before legacy script.js');
+assert(sourceHtml.includes('open-account-modal-trigger'), 'source HTML must expose the real legacy account trigger covered by the router smoke test');
+assert(sourceHtml.includes('open-chat-trigger'), 'source HTML must expose the real Web messaging trigger covered by the router smoke test');
 
 const runtimeBlock = builtHtml.slice(positions.surfaces, positions.appShell);
 assert(!runtimeBlock.includes('defer'), 'critical shared runtime scripts must execute deterministically, without defer');
@@ -157,4 +177,4 @@ if (failures.length) {
 }
 
 console.log('NAVIGATION RUNTIME SMOKE: PASS');
-console.log('Critical drawer, messaging, contact and Explorer navigation contracts are wired before the native shell becomes interactive.');
+console.log('Real Web account/profile triggers, protected-route auth fallback, drawer, messaging, contact and Explorer navigation are covered.');
