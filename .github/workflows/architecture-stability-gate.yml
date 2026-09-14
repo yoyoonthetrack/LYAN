@@ -7,41 +7,19 @@ on:
       - architecture-stabilization
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   architecture-audit:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout stabilization head
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: architecture-stabilization
-          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-
-      - name: Apply pending one-shot architecture migration
-        run: |
-          if [ -f scripts/retire-legacy-runtime-flows.js ]; then
-            node scripts/retire-legacy-runtime-flows.js
-            node --check script.js
-          fi
-
-      - name: Commit one-shot migration if needed
-        run: |
-          if git diff --quiet; then
-            echo "No pending one-shot source migration."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add script.js
-            git commit -m "refactor: retire legacy simulated runtime flows"
-            git push origin HEAD:architecture-stabilization
-          fi
 
       - name: Run architecture audit
         run: npm test
