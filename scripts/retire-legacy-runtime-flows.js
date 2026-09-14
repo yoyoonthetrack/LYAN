@@ -25,11 +25,11 @@ source = source.replace(
   ''
 );
 
-// Retire the entire self-contained fake transaction/chat demo engine. This is bounded by
-// its section marker and the next explicit DOM-ready bootstrap marker.
+// Retire the entire self-contained fake transaction/chat demo engine. Real transaction
+// state is owned by Supabase repositories and the canonical messaging controller.
 removeBetween(
   '/* ==========================================================================\n   SIMULATED TRANSACTION CHAT (BOKANTAJ JOB FLOW)',
-  "// --- DOM READY : deep-link chat bootstrap ---",
+  "if (document.readyState === 'loading') {",
   ''
 );
 
