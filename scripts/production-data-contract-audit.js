@@ -33,8 +33,7 @@ if (!chat.includes('window.LYANN_AUTH_STATE?.getSnapshot?.().userId')) {
   fail('chat-logic.js: canonical auth-state identity lookup missing');
 }
 
-// Production member discovery must come from repositories/Supabase. Explicit demo-only
-// fixtures may still exist temporarily, but the legacy production member pool must stay empty.
+// Production member discovery must come from repositories/Supabase.
 if (/ADDITIONAL_MEMBERS_DATA|const\s+additionalMembers\s*=|LYANN_MEMBERS\.unshift/.test(script)) {
   fail('script.js: embedded production member pool must not be rebuilt from static personas');
 }
@@ -42,9 +41,34 @@ if (!/const LYANN_MEMBERS = \[\];/.test(script) || !/window\.LYANN_MEMBERS = LYA
   fail('script.js: legacy member compatibility container must remain empty');
 }
 
+// No embedded fake feed or fake transaction engines may be executable in production runtime.
+if (/SIMULATED TRANSACTION CHAT|triggerSimulatedTransactionChat|window\.acceptOffer\s*=|window\.payMission\s*=|window\.validateMission\s*=/.test(script)) {
+  fail('script.js: simulated transaction/chat engine must be retired');
+}
+if (!/const INITIAL_FLASH_POSTS = \[\];/.test(script)) {
+  fail('script.js: embedded Bokantaj flash fallback must remain empty');
+}
+
+// Canonical messaging/router own every public chat entry point in script.js.
+if (/openChatWithUser\s*\(/.test(script)) {
+  fail('script.js: public flow still calls legacy openChatWithUser directly');
+}
+if (/openLyannChatModal\s*\(/.test(script)) {
+  fail('script.js: public flow still calls legacy openLyannChatModal directly');
+}
+if (/feed\.html\?action=openchat|chatActionParam === ['"]openchat['"]/.test(script)) {
+  fail('script.js: duplicate legacy chat deep-link routing remains');
+}
+if (!script.includes("LYANN_ROUTER?.go?.('messages'")) {
+  fail('script.js: canonical messaging route is not used by shared runtime');
+}
+
 // Canonical router owns global account/support navigation as well as primary tabs.
-for (const route of ['profile', 'account', 'activity', 'favorites', 'finances', 'settings', 'pricing', 'payment', 'help', 'about']) {
+for (const route of ['home', 'explorer', 'bokantaj', 'messages', 'publish', 'mission', 'profile', 'account', 'activity', 'favorites', 'finances', 'settings', 'pricing', 'payment', 'help', 'about']) {
   if (!router.includes(`register('${route}'`)) fail(`app-router.js: missing canonical ${route} route`);
+}
+if (!/openLyannDetailModal\(requestId, payload\.initialData \|\| null\)/.test(router)) {
+  fail('app-router.js: mission route must preserve initialData for deterministic post-publish/detail rendering');
 }
 
 // The hamburger drawer must route through data-lyann-route, never call account/profile owners inline.
@@ -64,4 +88,4 @@ if (failures.length) {
 }
 
 console.log('PRODUCTION DATA CONTRACT: PASS');
-console.log('Production business state uses canonical repositories; drawer navigation is router-owned; legacy member and local mock mission/chat state are retired.');
+console.log('Production business state is repository-backed; navigation and messaging have canonical owners; embedded member/feed/transaction mocks are retired.');
