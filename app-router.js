@@ -95,7 +95,7 @@
   register('mission', (payload = {}) => {
     const requestId = payload.requestId || payload.id;
     if (requestId && typeof window.openLyannDetailModal === 'function') {
-      window.openLyannDetailModal(requestId);
+      window.openLyannDetailModal(requestId, payload.initialData || null);
       return true;
     }
     return false;
@@ -140,6 +140,7 @@
           requestId: explicit.getAttribute('data-request-id') || undefined,
           contactId: explicit.getAttribute('data-contact-id') || undefined,
           name: explicit.getAttribute('data-contact-name') || undefined,
+          title: explicit.getAttribute('data-title') || undefined,
           query: explicit.getAttribute('data-query') || undefined,
           category: explicit.getAttribute('data-category') || undefined
         };
