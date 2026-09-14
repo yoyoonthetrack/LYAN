@@ -6,17 +6,42 @@ on:
     branches:
       - architecture-stabilization
 
+permissions:
+  contents: write
+
 jobs:
   architecture-audit:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout stabilization head
         uses: actions/checkout@v4
+        with:
+          ref: architecture-stabilization
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
+
+      - name: Apply pending one-shot architecture migration
+        run: |
+          if [ -f scripts/retire-legacy-runtime-flows.js ]; then
+            node scripts/retire-legacy-runtime-flows.js
+            node --check script.js
+          fi
+
+      - name: Commit one-shot migration if needed
+        run: |
+          if git diff --quiet; then
+            echo "No pending one-shot source migration."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add script.js
+            git commit -m "refactor: retire legacy simulated runtime flows"
+            git push origin HEAD:architecture-stabilization
+          fi
 
       - name: Run architecture audit
         run: npm test
@@ -31,3 +56,4 @@ jobs:
           node --check ios/App/App/public/messaging-ui.js
           node --check ios/App/App/public/chat-logic.js
           node --check ios/App/App/public/api-client.js
+          node --check ios/App/App/public/script.js
