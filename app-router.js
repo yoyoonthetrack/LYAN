@@ -6,6 +6,7 @@
   if (window.LYANN_ROUTER && window.LYANN_ROUTER.__canonical) return;
 
   const routes = new Map();
+  let captureNavigationInstalled = false;
 
   function sameDocumentPath(target) {
     try {
@@ -127,8 +128,14 @@
   ];
 
   function installCaptureNavigation() {
+    if (captureNavigationInstalled) return;
+    captureNavigationInstalled = true;
+
     document.addEventListener('click', (event) => {
-      const explicit = event.target.closest('[data-lyann-route]');
+      const target = event.target;
+      if (!target || typeof target.closest !== 'function') return;
+
+      const explicit = target.closest('[data-lyann-route]');
       if (explicit) {
         const route = explicit.getAttribute('data-lyann-route');
         if (!route) return;
@@ -149,7 +156,7 @@
       }
 
       for (const [selector, route] of selectorRouteMap) {
-        const trigger = event.target.closest(selector);
+        const trigger = target.closest(selector);
         if (!trigger) continue;
         event.preventDefault();
         event.stopPropagation();
@@ -183,11 +190,15 @@
   window.LYANN_ROUTER = api;
   window.navigateLyann = (route, payload) => api.go(route, payload);
 
-  function boot() {
-    installCaptureNavigation();
+  // Install public click ownership immediately. Waiting for DOMContentLoaded here
+  // leaves a race window in Capacitor where dynamically-rendered controls can be tapped
+  // before the router owns navigation.
+  installCaptureNavigation();
+
+  function bootLocationRoute() {
     routeFromLocation();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
-  else boot();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootLocationRoute, { once: true });
+  else bootLocationRoute();
 })();
