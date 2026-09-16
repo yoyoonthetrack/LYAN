@@ -9,11 +9,11 @@ const SHARED_RUNTIME_TAGS = [
   '<script src="legacy-compat.js?v=20260916-5"></script>'
 ];
 const SHARED_RUNTIME_ANCHORS = [
-  '<script src="sentry-init.js"',
-  '<script src="api-client.js"',
-  '<script src="app-shell.js"',
-  '<script src="messaging-ui.js"',
-  '<script src="script.js'
+  'sentry-init.js',
+  'api-client.js',
+  'app-shell.js',
+  'messaging-ui.js',
+  'script.js'
 ];
 
 function sanitizeStaticHtml(html) {
@@ -79,7 +79,11 @@ function injectSharedRuntime(html) {
 
   const block = `${dsnTag}${missingTags.map((tag) => `    ${tag}`).join('\n')}\n`;
   const anchorPositions = SHARED_RUNTIME_ANCHORS
-    .map((anchor) => out.indexOf(anchor))
+    .map((anchor) => {
+      const idx = out.indexOf(anchor);
+      if (idx < 0) return -1;
+      return out.lastIndexOf('<script', idx);
+    })
     .filter((position) => position >= 0);
 
   if (anchorPositions.length) {
@@ -109,8 +113,18 @@ function injectSharedStylesheet(html) {
   return out;
 }
 
+function enforceScriptCacheBusting(html) {
+  const version = '20260916-7';
+  return String(html || '').replace(/src="([^"]+\.js)(?:\?v=[^"]*)?"/gi, (match, scriptPath) => {
+    if (scriptPath.startsWith('http://') || scriptPath.startsWith('https://') || scriptPath.startsWith('//')) {
+      return match;
+    }
+    return `src="${scriptPath}?v=${version}"`;
+  });
+}
+
 function buildHtml(html) {
-  return injectSharedStylesheet(injectProductionHygiene(injectSharedRuntime(sanitizeStaticHtml(html))));
+  return enforceScriptCacheBusting(injectSharedStylesheet(injectProductionHygiene(injectSharedRuntime(sanitizeStaticHtml(html)))));
 }
 
 function buildHtmlFile(sourcePath, destinationPath = sourcePath) {

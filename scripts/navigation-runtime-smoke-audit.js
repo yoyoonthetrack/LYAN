@@ -146,11 +146,11 @@ assert(calls.login >= 2, 'protected Web routes must open login when the preview/
 
 const builtHtml = buildHtml(sourceHtml);
 const positions = {
-  surfaces: builtHtml.indexOf('surface-manager.js?v=20260914'),
-  router: builtHtml.indexOf('app-router.js?v=20260914'),
-  appShell: builtHtml.indexOf('<script src="app-shell.js"'),
-  messagingUi: builtHtml.indexOf('<script src="messaging-ui.js"'),
-  legacyScript: builtHtml.indexOf('<script src="script.js')
+  surfaces: builtHtml.indexOf('src="surface-manager.js'),
+  router: builtHtml.indexOf('src="app-router.js'),
+  appShell: builtHtml.indexOf('src="app-shell.js'),
+  messagingUi: builtHtml.indexOf('src="messaging-ui.js'),
+  legacyScript: builtHtml.indexOf('src="script.js')
 };
 
 assert(positions.surfaces >= 0, 'built HTML must include surface-manager.js');
