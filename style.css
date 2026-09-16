@@ -15696,23 +15696,8 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
     background: #FFFFFF !important;
   }
 
-  body.lyann-messaging-open #chatModal #chatTrackingBtn {
-    flex: 0 0 auto !important;
-    width: auto !important;
-    max-width: 92px !important;
-    min-height: 38px !important;
-    padding: 6px 10px !important;
-    font-size: 0 !important;
-    line-height: 1 !important;
-    white-space: nowrap !important;
-    border-radius: 999px !important;
-  }
-  body.lyann-messaging-open #chatModal #chatTrackingBtn::after {
-    content: "🛠️ Suivi";
-    font-size: 13px !important;
-    font-weight: 800 !important;
-    line-height: 1 !important;
-  }
+  
+  
 
   /* Keep the composer above the iPhone home indicator without exposing the
      underlying page behind the messaging route. */
