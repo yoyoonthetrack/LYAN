@@ -244,9 +244,6 @@
         go(route, payload);
         return;
       }
-        go(route, payload);
-        return;
-      }
 
       for (const [selector, route] of selectorRouteMap) {
         const trigger = target.closest(selector);

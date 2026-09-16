@@ -96,8 +96,21 @@ function injectProductionHygiene(html) {
   return injectScriptOnce(html, HYGIENE_SCRIPT_TAG, 'production-hygiene.js');
 }
 
+function injectSharedStylesheet(html) {
+  let out = String(html || '');
+  // Ignore admin pages which use admin-style.css
+  if (out.includes('admin-style.css')) return out;
+  if (!out.includes('style.css')) {
+    const stylesheetTag = '    <link rel="stylesheet" href="style.css?v=20260916">';
+    return out.includes('</head>')
+      ? out.replace('</head>', `${stylesheetTag}\n</head>`)
+      : `${stylesheetTag}\n${out}`;
+  }
+  return out;
+}
+
 function buildHtml(html) {
-  return injectProductionHygiene(injectSharedRuntime(sanitizeStaticHtml(html)));
+  return injectSharedStylesheet(injectProductionHygiene(injectSharedRuntime(sanitizeStaticHtml(html))));
 }
 
 function buildHtmlFile(sourcePath, destinationPath = sourcePath) {
