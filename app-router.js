@@ -194,14 +194,16 @@
 
   function extractPayload(element) {
     if (!element || typeof element.getAttribute !== 'function') return {};
-    const contactId = element.getAttribute('data-contact-id')
-      || element.getAttribute('data-requester-id')
+    const requesterId = element.getAttribute('data-requester-id')
+      || element.getAttribute('data-contact-id')
       || element.getAttribute('data-member-id')
       || element.getAttribute('data-user-id')
+      || element.getAttribute('data-author-id')
       || undefined;
     const requestId = element.getAttribute('data-request-id')
       || element.getAttribute('data-id')
       || undefined;
+    const contactId = requesterId || (element?.classList?.contains?.('btn-help-lyann') ? undefined : requestId);
     const name = element.getAttribute('data-contact-name')
       || element.getAttribute('data-requester-name')
       || element.getAttribute('data-member-name')
@@ -218,7 +220,7 @@
     const query = element.getAttribute('data-query') || undefined;
     const category = element.getAttribute('data-category') || undefined;
 
-    const payload = { id: requestId || contactId, requestId, contactId, name, avatar, title, query, category };
+    const payload = { id: contactId || requestId, requestId, contactId, name, avatar, title, query, category };
     if (element?.classList?.contains?.('btn-help-lyann') && requestId) {
       payload.initialNeed = { requestId, requesterId: contactId, title };
     }

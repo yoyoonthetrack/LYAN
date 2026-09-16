@@ -2363,7 +2363,7 @@ safeDomReady(() => {
                     const isLyann = post.item_type === 'LYANN' || post.type === 'lyann';
                     const targetType = isLyann ? 'LYANN' : 'POST';
                     const targetId = post.request_id || post.id || '';
-                    const authorId = post.author_id || post.memberId || '';
+                    const authorId = post.requester_id || post.user_id || post.author_id || post.memberId || post.created_by || '';
                     const isOwnLyann = isLyann && currentAuthUserId && (authorId === currentAuthUserId);
                     
                     let mediaHTML = '';

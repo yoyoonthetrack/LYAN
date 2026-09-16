@@ -291,9 +291,31 @@
     }
 
     async function openConversation(options = {}) {
-        const contactId = options.contactId || options.id || options.memberId || options.name;
-        const name = options.name || 'Membre LYANN';
-        const avatar = options.avatar || defaultAvatar();
+        let contactId = options.contactId || options.requesterId || options.initialNeed?.requesterId || options.memberId || options.name;
+        let name = options.name || 'Membre LYANN';
+        let avatar = options.avatar || defaultAvatar();
+
+        // Safety gate: If contactId matches a request ID or is missing, try to resolve requester_id from Supabase
+        if (contactId && typeof isUUID === 'function' && isUUID(contactId) && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+            try {
+                const { data: isReq } = await window.LYANN_API_CLIENT.supabase
+                    .from('requests')
+                    .select('id, requester_id, title')
+                    .eq('id', contactId)
+                    .maybeSingle();
+                if (isReq && isReq.requester_id) {
+                    options.requestId = isReq.id;
+                    if (!options.initialNeed) options.initialNeed = { requestId: isReq.id, requesterId: isReq.requester_id, title: isReq.title };
+                    contactId = isReq.requester_id;
+                    options.contactId = contactId;
+                }
+            } catch(e) {}
+        }
+
+        if (!contactId && options.initialNeed?.requesterId) {
+            contactId = options.initialNeed.requesterId;
+        }
+
         if (!contactId) return openList();
 
         const legacyOpenConversation = getLegacyHydrator();
