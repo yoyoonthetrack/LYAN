@@ -1,0 +1,11 @@
+fileType: momentic/test/v2
+id: 08-search-filters-chips
+description: Exploratory QA - Category hashtag chips, territory location select, city filters
+defaultEnv: local
+steps:
+  - click: "#Plomberie hashtag chip"
+  - assert: "Verify search query or results update for Plomberie"
+  - act: "Select 972 - Martinique in territory location dropdown"
+  - assert: "Verify city dropdown updates with Martinique communes"
+  - act: "Select 971 - Guadeloupe in territory location dropdown"
+  - assert: "Verify city dropdown resets to Guadeloupe communes"

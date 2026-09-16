@@ -1,0 +1,9 @@
+fileType: momentic/test/v2
+id: 06-profile-auth-surfaces
+description: Exploratory QA - Profile surfaces, login triggers, modal overlays
+defaultEnv: local
+steps:
+  - act: "Click on Connexion or profile login trigger"
+  - assert: "Verify login modal or auth surface appears"
+  - act: "Close the login modal or overlay"
+  - assert: "Verify modal closes cleanly"

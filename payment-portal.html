@@ -500,9 +500,14 @@
                     <h4 style="font-weight: 800; color: var(--primary-dark); font-size: 1rem; margin-bottom: 2px;">Interface de Simulation Financière & Connect</h4>
                     <p style="font-size: 0.78rem; color: var(--text-muted);">Basculez de rôle pour simuler le parcours client/prestataire en temps réel.</p>
                 </div>
+            <div class="role-switch-container">
+                <button class="role-switch-btn active" id="btnToggleClient">
+                    <i class="ph ph-user"></i> Mode Client (Habitant)
+                </button>
+                <button class="role-switch-btn" id="btnToggleProvider">
+                    <i class="ph ph-briefcase"></i> Mode Prestataire (Lyanneur)
+                </button>
             </div>
-
-            
         </div>
 
         <!-- PORTAL GRID LAYOUT -->
@@ -542,6 +547,7 @@
     </div>
 
     <!-- Script imports -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="notifications-service.js"></script>
     <script src="payment-script.js"></script>
     <script>
@@ -551,8 +557,25 @@
             let selectedTransactionId = null;
 
             // DOM References
-            , 4000);
+            const btnToggleClient = document.getElementById('btnToggleClient');
+            const btnToggleProvider = document.getElementById('btnToggleProvider');
+            const portalMenuContainer = document.getElementById('portalMenuContainer');
+            const portalCardWorkspace = document.getElementById('portalCardWorkspace');
+
+            function showToast(msg, type) {
+                const toast = document.getElementById('portalToast');
+                const text = document.getElementById('portalToastText');
+                if (toast && text) {
+                    text.textContent = msg;
+                    toast.style.display = 'flex';
+                    toast.classList.add('active');
+                    setTimeout(() => {
+                        toast.classList.remove('active');
+                        toast.style.display = 'none';
+                    }, 3000);
+                }
             }
+            window.showToast = showToast;
 
             function setRole(role) {
                 currentRole = role;
@@ -652,7 +675,7 @@
                     <div class="portal-card-header">
                         <div class="portal-card-title"><i class="ph ph-plus-circle"></i> Créer une demande de service</div>
                     </div>
-                    <form id="newRequestForm">
+                    <form id="newRequestForm" onsubmit="event.preventDefault();">
                         <div class="form-group">
                             <label for="reqTitle">Intitulé du service désiré</label>
                             <input type="text" id="reqTitle" class="form-input" placeholder="Ex: Réfection plomberie cuisine, Pose clim..." required>
@@ -1225,7 +1248,7 @@
                         </div>
 
                         <!-- Devis Form -->
-                        <form class="quote-form-submit" data-tx-id="${tx.id}">
+                        <form class="quote-form-submit" data-tx-id="${tx.id}" onsubmit="event.preventDefault();">
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                                 <div>
                                     <label style="font-size:0.75rem; font-weight:700;">👨‍🔧 Main d'œuvre (€)</label>
@@ -1491,7 +1514,7 @@
                                 ⚠️ Reversements impossibles : Votre dossier d'identité KYC est en cours de validation ou incomplet. Veuillez compléter votre compte Stripe Connect.
                             </div>
                         ` : `
-                            <form id="payoutForm">
+                            <form id="payoutForm" onsubmit="event.preventDefault();">
                                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 12px;">
                                     <div>
                                         <label style="font-size: 0.8rem;">Montant à retirer (€)</label>
@@ -1807,7 +1830,7 @@
                     <span>ou avec votre email</span>
                 </div>
 
-                <form id="loginForm">
+                <form id="loginForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="loginEmail">Adresse email ou téléphone</label>
                         <div class="input-with-icon">
@@ -1986,7 +2009,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="bookingForm">
+                <form id="bookingForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="bookingServiceType">Domaine d'intervention</label>
                         <select id="bookingServiceType" class="modal-input" required>
@@ -2107,7 +2130,7 @@
                     <!-- Section Profil Public -->
                     <div class="profile-section-card">
                         <h4 class="profile-section-title">👤 Profil Public & Présentation</h4>
-                        <form id="publicProfileForm">
+                        <form id="publicProfileForm" onsubmit="event.preventDefault();">
                             <div class="form-group" style="margin-bottom: 14px;">
                                 <label>Bio / Présentation</label>
                                 <textarea class="modal-input" style="height: 75px;" placeholder="Présentez-vous à la communauté..."></textarea>
@@ -2234,7 +2257,7 @@
 
                     <div class="profile-section-card">
                         <h4 class="profile-section-title">🔑 Sécurité du Compte</h4>
-                        <form id="accountSecurityFormHub">
+                        <form id="accountSecurityFormHub" onsubmit="event.preventDefault();">
                             <div class="form-group" style="margin-bottom: 10px;">
                                 <label>Mot de passe actuel</label>
                                 <input type="password" class="modal-input" placeholder="••••••••">
@@ -2407,7 +2430,7 @@
 
                     <!-- OVERLAY: DIRECT PRICE FORM -->
                     <div id="chatDirectPriceForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="directPriceForm" class="mobile-form-container" style="width: 100%;">
+                        <form id="directPriceForm" class="mobile-form-container" style="width: 100%;" onsubmit="event.preventDefault();">
                             <h3 class="mobile-form-title">Proposer un prix</h3>
                             <p class="mobile-form-subtitle">Envoyez une proposition claire à votre interlocuteur.</p>
                             
@@ -2433,7 +2456,7 @@
 
                     <!-- OVERLAY: PROPOSE DATE FORM -->
                     <div id="chatProposeDateForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="proposeDateForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <form id="proposeDateForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer une date d'intervention 📅</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Date souhaitée</label>
@@ -2461,7 +2484,7 @@
 
                     <!-- OVERLAY: LEAVE REVIEW FORM -->
                     <div id="chatLeaveReviewForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="leaveReviewForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <form id="leaveReviewForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Laisser un avis ⭐</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Note (sur 5 étoiles)</label>
@@ -2486,7 +2509,7 @@
 
                     <!-- OVERLAY: DETAILED DEVIS FORM -->
                     <div id="chatMilestoneDevisForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;">
+                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Créer un Devis détaillé</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Libellé général du chantier</label>
@@ -2558,7 +2581,7 @@
                                 </div>
                             </div>
 
-                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;">
+                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;" onsubmit="event.preventDefault();">
                                 <div>
                                     <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Numéro de carte</label>
                                     <input type="text" class="modal-input" placeholder="Numéro de carte" required style="width: 100%; box-sizing: border-box;" autocomplete="cc-number">
@@ -2597,7 +2620,7 @@
 
                     <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
                     <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
-                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
                             <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
                             <div>
@@ -2621,7 +2644,7 @@
 
                     <!-- INPUT AREA (COMPOSER MOBILE) -->
                     <div class="chat-input-area">
-                        <form id="chatInputForm" style="display: flex; gap: 8px; align-items: flex-end; width: 100%; margin: 0;">
+                        <form id="chatInputForm" style="display: flex; gap: 8px; align-items: flex-end; width: 100%; margin: 0;" onsubmit="event.preventDefault();">
                             <button type="button" class="btn-chat-attach" id="chatAttachBtn" title="Ajouter une pièce jointe"><i class="ph ph-plus"></i></button>
                             <textarea id="chatInputField" class="modal-input chat-input-field-mobile" placeholder="Écrivez un message..." rows="1"></textarea>
                             <button type="submit" class="btn btn-primary chat-send-btn-mobile" title="Envoyer"><i class="ph-fill ph-paper-plane-right"></i></button>

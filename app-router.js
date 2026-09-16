@@ -138,14 +138,14 @@
   register('bokantaj', () => hardNavigate('feed.html'));
   register('messages', (payload = {}) => {
     if (knownLoggedOut()) return openLoginPrompt();
-
+    const contactId = payload.contactId || payload.id || payload.memberId;
     const messaging = window.LYANN_MESSAGING;
     if (messaging) {
-      if (payload.contactId || payload.id || payload.memberId) return messaging.openConversation(payload);
+      if (contactId) return messaging.openConversation({ ...payload, contactId });
       return messaging.openList();
     }
     const params = new URLSearchParams({ action: 'messages' });
-    if (payload.contactId) params.set('contact', payload.contactId);
+    if (contactId) params.set('contact', contactId);
     if (payload.name) params.set('name', payload.name);
     return hardNavigate(`feed.html?${params.toString()}`);
   });
@@ -186,10 +186,44 @@
     ['#tab-explorer', 'explorer'],
     ['#tab-bokantaj', 'bokantaj'],
     ['#tab-messages, [data-lyann-messages], .open-chat-trigger', 'messages'],
+    ['.nav-msg-btn, .btn-open-chat-direct, .btn-contact-member, .btn-help-lyann, a[href*="action=messages"], a[href*="action=openchat"]', 'messages'],
     ['#tab-create, [data-lyann-publish]', 'publish'],
     ['.open-account-modal-trigger, .nav-profile-btn', 'account'],
     ['#btnDashboardAvatar', 'profile']
   ];
+
+  function extractPayload(element) {
+    if (!element || typeof element.getAttribute !== 'function') return {};
+    const contactId = element.getAttribute('data-contact-id')
+      || element.getAttribute('data-requester-id')
+      || element.getAttribute('data-member-id')
+      || element.getAttribute('data-user-id')
+      || undefined;
+    const requestId = element.getAttribute('data-request-id')
+      || element.getAttribute('data-id')
+      || undefined;
+    const name = element.getAttribute('data-contact-name')
+      || element.getAttribute('data-requester-name')
+      || element.getAttribute('data-member-name')
+      || element.getAttribute('data-author-name')
+      || undefined;
+    const avatar = element.getAttribute('data-contact-avatar')
+      || element.getAttribute('data-requester-avatar')
+      || element.getAttribute('data-member-avatar')
+      || element.getAttribute('data-author-avatar')
+      || undefined;
+    const title = element.getAttribute('data-title')
+      || element.getAttribute('data-post-title')
+      || undefined;
+    const query = element.getAttribute('data-query') || undefined;
+    const category = element.getAttribute('data-category') || undefined;
+
+    const payload = { id: requestId || contactId, requestId, contactId, name, avatar, title, query, category };
+    if (element?.classList?.contains?.('btn-help-lyann') && requestId) {
+      payload.initialNeed = { requestId, requesterId: contactId, title };
+    }
+    return payload;
+  }
 
   function installCaptureNavigation() {
     if (captureNavigationInstalled) return;
@@ -206,16 +240,10 @@
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation?.();
-        const payload = {
-          id: explicit.getAttribute('data-id') || undefined,
-          requestId: explicit.getAttribute('data-request-id') || undefined,
-          contactId: explicit.getAttribute('data-contact-id') || undefined,
-          memberId: explicit.getAttribute('data-member-id') || undefined,
-          name: explicit.getAttribute('data-contact-name') || undefined,
-          title: explicit.getAttribute('data-title') || undefined,
-          query: explicit.getAttribute('data-query') || undefined,
-          category: explicit.getAttribute('data-category') || undefined
-        };
+        const payload = extractPayload(explicit);
+        go(route, payload);
+        return;
+      }
         go(route, payload);
         return;
       }
@@ -226,7 +254,8 @@
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation?.();
-        go(route);
+        const payload = extractPayload(trigger);
+        go(route, payload);
         return;
       }
     }, true);

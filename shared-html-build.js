@@ -2,12 +2,15 @@ const fs = require('fs');
 
 const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260914" defer></script>';
 const SHARED_RUNTIME_TAGS = [
+  '<script src="sentry-init.js?v=20260916"></script>',
   '<script src="surface-manager.js?v=20260914"></script>',
   '<script src="app-router.js?v=20260914"></script>',
   '<script src="safety-repository.js?v=20260914"></script>',
   '<script src="legacy-compat.js?v=20260914"></script>'
 ];
 const SHARED_RUNTIME_ANCHORS = [
+  '<script src="sentry-init.js"',
+  '<script src="api-client.js"',
   '<script src="app-shell.js"',
   '<script src="messaging-ui.js"',
   '<script src="script.js'
@@ -66,9 +69,15 @@ function injectSharedRuntime(html) {
     return !out.includes(needle);
   });
 
-  if (!missingTags.length) return out;
+  const dsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN || '';
+  let dsnTag = '';
+  if (dsn && !out.includes('window.LYANN_SENTRY_DSN')) {
+    dsnTag = `    <script>window.LYANN_SENTRY_DSN=${JSON.stringify(dsn)};</script>\n`;
+  }
 
-  const block = `${missingTags.map((tag) => `    ${tag}`).join('\n')}\n`;
+  if (!missingTags.length) return dsnTag ? out.replace('</head>', `${dsnTag}</head>`) : out;
+
+  const block = `${dsnTag}${missingTags.map((tag) => `    ${tag}`).join('\n')}\n`;
   const anchorPositions = SHARED_RUNTIME_ANCHORS
     .map((anchor) => out.indexOf(anchor))
     .filter((position) => position >= 0);

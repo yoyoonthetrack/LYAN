@@ -198,7 +198,7 @@
 
                 <!-- PARCOURS A: JE CHERCHE UN LYANNEUR -->
                 <div id="parcoursSearchPanel" class="parcours-panel active">
-                    <form class="hero-search" id="heroSearchForm">
+                    <form class="hero-search" id="heroSearchForm" onsubmit="event.preventDefault();">
                         <div class="hero-search-fields">
                             <div class="search-input-wrapper">
                                 <i class="ph ph-magnifying-glass"></i>
@@ -824,6 +824,9 @@
                             <input type="password" id="obPassword" class="modal-input" placeholder="Min. 8 caractères">
                         </div>
                     </div>
+                    <p class="auth-footer-text" style="text-align: center; margin-top: 14px; font-size: 0.88rem; color: #64748B;">
+                        Déjà inscrit ? <a href="#" id="switchToLoginBtn" class="open-login-trigger" style="color: var(--primary); font-weight: 700;">Se connecter</a>
+                    </p>
                 </div>
 
                 <!-- STEP 3 : LA PROMESSE LYANN -->
@@ -995,7 +998,7 @@
                     <span>ou avec votre email</span>
                 </div>
 
-                <form id="loginForm">
+                <form id="loginForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="loginEmail">Adresse email ou téléphone</label>
                         <div class="input-with-icon">
@@ -1039,7 +1042,7 @@
                 <div class="profile-user-summary">
                     <div class="profile-photo-container">
                         <img src="https://images.unsplash.com/photo-1507152832244-10d45c7eda57?auto=format&fit=crop&w=400&q=80" alt="Avatar" id="profileAvatarImg" class="profile-avatar-large">
-                        <button class="edit-photo-btn" title="Changer la photo"><i class="ph ph-camera"></i></button>
+                        <button class="edit-photo-btn" title="Changer la photo" onclick="const input = document.getElementById('avatarFileInput'); if (input) input.click(); else if (window.showToast) window.showToast('Modification de la photo de profil', 'info');"><i class="ph ph-camera"></i></button>
                     </div>
                     <div>
                         <h2 class="profile-user-name" id="profileUserName">David.M</h2>
@@ -1089,7 +1092,7 @@
                 <div class="profile-tab-content" id="tab-requests">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h4 class="tab-section-title" style="margin: 0;">Mes Besoins</h4>
-                        <button class="btn btn-primary" onclick="openPublishModal()" style="padding: 6px 12px; font-size: 0.85rem;"><i class="ph ph-plus"></i> Demander de l'aide</button>
+                        <button class="btn btn-primary" data-lyann-route="publish" style="padding: 6px 12px; font-size: 0.85rem;"><i class="ph ph-plus"></i> Demander de l'aide</button>
                     </div>
                     <div id="myRequestsList">
                         <div class="empty-state-message">Vous n'avez pas encore publié de demande.</div>
@@ -1264,7 +1267,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="addRealizationForm">
+                <form id="addRealizationForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="realizationTitle">Titre du chantier / projet</label>
                         <div class="input-with-icon">
@@ -1352,7 +1355,7 @@
                 <p class="step-desc" style="margin-bottom: 0;">Notre équipe basée aux Antilles et à La Réunion vous répond sous 24h.</p>
             </div>
             <div class="modal-body">
-                <form id="contactForm">
+                <form id="contactForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label>Votre nom complet</label>
                         <input type="text" class="modal-input" placeholder="Ex: Jean Dupont" required>
@@ -1459,7 +1462,7 @@
                         </div>
                     </div>
 
-                    <form id="proposeActivityForm">
+                    <form id="proposeActivityForm" onsubmit="event.preventDefault();">
                         <div class="propose-form-row">
                             <div class="form-group flex-2">
                                 <label for="proposeActivityName">Nom de l'activité ou métier proposé</label>
@@ -1501,7 +1504,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="bookingForm">
+                <form id="bookingForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="bookingServiceType">Domaine d'intervention</label>
                         <select id="bookingServiceType" class="modal-input" required>
@@ -1560,7 +1563,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="passwordResetForm">
+                <form id="passwordResetForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="resetEmailInput">Adresse email de votre compte</label>
                         <input type="email" id="resetEmailInput" class="modal-input" placeholder="votre.email@exemple.com" required>
@@ -1583,7 +1586,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="reportForm">
+                <form id="reportForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="reportReason">Motif du signalement</label>
                         <select id="reportReason" class="modal-input" required>
@@ -1728,7 +1731,7 @@
 
                     <!-- OVERLAY: DIRECT PRICE FORM -->
                     <div id="chatDirectPriceForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="directPriceForm" class="mobile-form-container" style="width: 100%;">
+                        <form id="directPriceForm" class="mobile-form-container" style="width: 100%;" onsubmit="event.preventDefault();">
                             <h3 class="mobile-form-title">Proposer un prix</h3>
                             <p class="mobile-form-subtitle">Envoyez une proposition claire à votre interlocuteur.</p>
                             
@@ -1754,7 +1757,7 @@
 
                     <!-- OVERLAY: PROPOSE DATE FORM -->
                     <div id="chatProposeDateForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="proposeDateForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <form id="proposeDateForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer une date d'intervention 📅</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Date souhaitée</label>
@@ -1782,7 +1785,7 @@
 
                     <!-- OVERLAY: LEAVE REVIEW FORM -->
                     <div id="chatLeaveReviewForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="leaveReviewForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <form id="leaveReviewForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Laisser un avis ⭐</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Note (sur 5 étoiles)</label>
@@ -1807,7 +1810,7 @@
 
                     <!-- OVERLAY: DETAILED DEVIS FORM -->
                     <div id="chatMilestoneDevisForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;">
+                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Créer un Devis détaillé</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Libellé général du chantier</label>
@@ -1879,7 +1882,7 @@
                                 </div>
                             </div>
 
-                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;">
+                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;" onsubmit="event.preventDefault();">
                                 <div>
                                     <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Numéro de carte</label>
                                     <input type="text" class="modal-input" placeholder="Numéro de carte" required style="width: 100%; box-sizing: border-box;" autocomplete="cc-number">
@@ -1918,7 +1921,7 @@
 
                     <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
                     <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
-                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
                             <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
                             <div>
@@ -1942,7 +1945,7 @@
 
                     <!-- INPUT AREA (COMPOSER MOBILE) -->
                     <div class="chat-input-area">
-                        <form id="chatInputForm" style="display: flex; gap: 8px; align-items: flex-end; width: 100%; margin: 0;">
+                        <form id="chatInputForm" style="display: flex; gap: 8px; align-items: flex-end; width: 100%; margin: 0;" onsubmit="event.preventDefault();">
                             <button type="button" class="btn-chat-attach" id="chatAttachBtn" title="Ajouter une pièce jointe"><i class="ph ph-plus"></i></button>
                             <textarea id="chatInputField" class="modal-input chat-input-field-mobile" placeholder="Écrivez un message..." rows="1"></textarea>
                             <button type="submit" class="btn btn-primary chat-send-btn-mobile" title="Envoyer"><i class="ph-fill ph-paper-plane-right"></i></button>
@@ -2118,7 +2121,7 @@
                     <!-- Section Profil Public -->
                     <div class="profile-section-card">
                         <h4 class="profile-section-title">👤 Profil Public & Présentation</h4>
-                        <form id="publicProfileForm">
+                        <form id="publicProfileForm" onsubmit="event.preventDefault();">
                             <div class="form-group" style="margin-bottom: 14px;">
                                 <label>Bio / Présentation</label>
                                 <textarea class="modal-input" style="height: 75px;" placeholder="Présentez-vous à la communauté..."></textarea>
@@ -2256,7 +2259,7 @@
 
                     <div class="profile-section-card">
                         <h4 class="profile-section-title">🔑 Sécurité du Compte</h4>
-                        <form id="accountSecurityFormHub">
+                        <form id="accountSecurityFormHub" onsubmit="event.preventDefault();">
                             <div class="form-group" style="margin-bottom: 10px;">
                                 <label>Mot de passe actuel</label>
                                 <input type="password" class="modal-input" placeholder="••••••••">
@@ -2536,6 +2539,9 @@
     <script src="notifications-service.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="matching-engine.js"></script>
+    <script src="sentry-init.js?v=20260916"></script>
+    <script src="surface-manager.js?v=20260914"></script>
+    <script src="app-router.js?v=20260914"></script>
     <script src="api-client.js"></script>
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>

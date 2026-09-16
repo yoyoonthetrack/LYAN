@@ -297,10 +297,18 @@ document.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         window.closeLyannHamburgerDrawer();
-        const signupModal = document.getElementById('onboardingModal') || document.getElementById('loginModal');
-        if (signupModal) {
-            signupModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
+        if (typeof window.openOnboarding === 'function') {
+            window.openOnboarding();
+        } else if (typeof window.setAuthModalMode === 'function') {
+            window.setAuthModalMode('signup');
+        } else {
+            const signupModal = document.getElementById('onboardingModal') || document.getElementById('loginModal');
+            const loginModalEl = document.getElementById('loginModal');
+            if (loginModalEl) loginModalEl.classList.remove('active');
+            if (signupModal) {
+                signupModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
         }
         return;
     }
@@ -2161,7 +2169,7 @@ safeDomReady(() => {
 
         try {
             if (!window.LYANN_BOKANTAJ_REPOSITORY) {
-                throw new Error('LYANN_BOKANTAJ_REPOSITORY is not available');
+                return;
             }
 
             const data = await window.LYANN_BOKANTAJ_REPOSITORY.load({ force: options.force === true });
@@ -3272,28 +3280,74 @@ safeDomReady(() => {
     }
 
     // ==========================================================================
-    // LOGIQUE DE LA MODALE DE CONNEXION (#loginModal)
+    // LOGIQUE DE LA MODALE DE CONNEXION (#loginModal) & CANONICAL AUTH MODAL MODE
     // ==========================================================================
     const loginModal = document.getElementById('loginModal');
     const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
     const loginTriggers = document.querySelectorAll('a[href="#login"], .open-login-trigger');
     const loginForm = document.getElementById('loginForm');
 
-    function openLoginModal() {
-        const onboardingModal = document.getElementById('onboardingModal');
-        if (onboardingModal) onboardingModal.classList.remove('active');
-        if (loginModal) {
-            loginModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
+    function setAuthModalMode(mode) {
+        const obModal = document.getElementById('onboardingModal');
+        const lgModal = document.getElementById('loginModal');
+        const pwResetModal = document.getElementById('passwordResetModal');
+
+        if (mode === 'signup') {
+            if (lgModal) {
+                lgModal.classList.remove('active');
+                lgModal.setAttribute('aria-hidden', 'true');
+            }
+            if (pwResetModal) {
+                pwResetModal.classList.remove('active');
+                pwResetModal.setAttribute('aria-hidden', 'true');
+            }
+            if (typeof window.openOnboarding === 'function') {
+                window.openOnboarding();
+            } else if (obModal) {
+                obModal.classList.add('active');
+                obModal.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+            }
+        } else {
+            if (obModal) {
+                obModal.classList.remove('active');
+                obModal.setAttribute('aria-hidden', 'true');
+            }
+            if (pwResetModal) {
+                pwResetModal.classList.remove('active');
+                pwResetModal.setAttribute('aria-hidden', 'true');
+            }
+            if (lgModal) {
+                lgModal.classList.add('active');
+                lgModal.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+            }
         }
+    }
+    window.setAuthModalMode = setAuthModalMode;
+
+    function openLoginModal() {
+        setAuthModalMode('login');
     }
     window.openLoginModal = openLoginModal;
 
     function closeLoginModal() {
-        if (loginModal) {
-            loginModal.classList.remove('active');
-            document.body.style.overflow = '';
+        const obModal = document.getElementById('onboardingModal');
+        const lgModal = document.getElementById('loginModal');
+        const pwResetModal = document.getElementById('passwordResetModal');
+        if (lgModal) {
+            lgModal.classList.remove('active');
+            lgModal.setAttribute('aria-hidden', 'true');
         }
+        if (obModal) {
+            obModal.classList.remove('active');
+            obModal.setAttribute('aria-hidden', 'true');
+        }
+        if (pwResetModal) {
+            pwResetModal.classList.remove('active');
+            pwResetModal.setAttribute('aria-hidden', 'true');
+        }
+        document.body.style.overflow = '';
     }
     window.closeLoginModal = closeLoginModal;
 
@@ -6595,7 +6649,7 @@ safeDomReady(() => {
 
         try {
             if (!window.LYANN_EXPLORER_REPOSITORY) {
-                throw new Error('LYANN_EXPLORER_REPOSITORY unavailable');
+                return;
             }
 
             if (window.LYANN_AUTH_STATE && typeof window.LYANN_AUTH_STATE.getUserId === 'function') {
@@ -6795,6 +6849,29 @@ safeDomReady(() => {
     if (heroSearchForm) {
         heroSearchForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput && !searchInput.value.trim()) {
+                const msg = 'Veuillez saisir un service ou un mot-clé (ex: Plombier, Jardinier...).';
+                if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                    window.NotificationService.showToast('warning', msg);
+                } else if (typeof window.showLyanToast === 'function') {
+                    window.showLyanToast(msg, '⚠️');
+                }
+                let errBanner = document.getElementById('heroSearchValidationError');
+                if (!errBanner && searchInput.parentElement && searchInput.parentElement.parentElement) {
+                    errBanner = document.createElement('div');
+                    errBanner.id = 'heroSearchValidationError';
+                    errBanner.className = 'search-validation-banner';
+                    errBanner.setAttribute('role', 'alert');
+                    errBanner.style.cssText = 'color: #DC2626; font-size: 0.85rem; font-weight: 700; margin-top: 6px; padding: 4px 8px; background: #FEF2F2; border-radius: 6px; border: 1px solid #FCA5A5; width: 100%; grid-column: 1 / -1;';
+                    errBanner.innerText = msg;
+                    searchInput.parentElement.parentElement.appendChild(errBanner);
+                }
+                searchInput.focus();
+                return;
+            }
+            const errBanner = document.getElementById('heroSearchValidationError');
+            if (errBanner) errBanner.remove();
             performSearch(true);
         });
     }
@@ -6805,6 +6882,28 @@ safeDomReady(() => {
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
+                if (!searchInput.value.trim()) {
+                    const msg = 'Veuillez saisir un service ou un mot-clé (ex: Plombier, Jardinier...).';
+                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                        window.NotificationService.showToast('warning', msg);
+                    } else if (typeof window.showLyanToast === 'function') {
+                        window.showLyanToast(msg, '⚠️');
+                    }
+                    let errBanner = document.getElementById('heroSearchValidationError');
+                    if (!errBanner && searchInput.parentElement && searchInput.parentElement.parentElement) {
+                        errBanner = document.createElement('div');
+                        errBanner.id = 'heroSearchValidationError';
+                        errBanner.className = 'search-validation-banner';
+                        errBanner.setAttribute('role', 'alert');
+                        errBanner.style.cssText = 'color: #DC2626; font-size: 0.85rem; font-weight: 700; margin-top: 6px; padding: 4px 8px; background: #FEF2F2; border-radius: 6px; border: 1px solid #FCA5A5; width: 100%; grid-column: 1 / -1;';
+                        errBanner.innerText = msg;
+                        searchInput.parentElement.parentElement.appendChild(errBanner);
+                    }
+                    searchInput.focus();
+                    return;
+                }
+                const errBanner = document.getElementById('heroSearchValidationError');
+                if (errBanner) errBanner.remove();
                 performSearch(true);
             }
         });

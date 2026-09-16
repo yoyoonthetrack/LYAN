@@ -20,8 +20,14 @@
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20260903-2">
+    <!-- Global early error handlers -->
+    <script>
+        window.handleAvatarError = function(imgEl) {
+            if (!imgEl) return;
+            imgEl.onerror = null;
+            imgEl.src = 'default-avatar.svg';
+        };
+    </script>
 </head>
 <body class="feed-page">
 
@@ -145,7 +151,7 @@
                             </div>
                         </div>
 
-                        <form id="createFlashForm">
+                        <form id="createFlashForm" onsubmit="event.preventDefault();">
                             <div class="composer-textarea-wrapper" style="margin-bottom: 10px;">
                                 <textarea id="flashContentInput" placeholder="Partagez une idée, une réalisation, une question ou une disponibilité…" maxlength="280" required style="width: 100%; border-radius: 14px; padding: 10px 12px; border: 1px solid #E2E8F0; font-size: 0.92rem; resize: none; box-sizing: border-box; font-family: inherit;"></textarea>
                                 <div class="composer-char-counter" style="text-align: right; font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;"><span id="flashCharCount">0</span>/280</div>
@@ -309,7 +315,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="contactMemberForm">
+                <form id="contactMemberForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="contactSenderName">Votre Prénom / Nom</label>
                         <input type="text" id="contactSenderName" class="modal-input" placeholder="Ex: Jean-Baptiste" required>
@@ -345,7 +351,7 @@
                 </button>
                 <div class="modal-divider"><span>ou avec votre email</span></div>
 
-                <form id="loginForm">
+                <form id="loginForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="loginEmail">Adresse email</label>
                         <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" required>
@@ -628,7 +634,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="reportForm">
+                <form id="reportForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="reportReason">Motif du signalement</label>
                         <select id="reportReason" class="modal-input" required>
@@ -748,7 +754,7 @@
 
                     <!-- OVERLAY: DIRECT PRICE FORM -->
                     <div id="chatDirectPriceForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="directPriceForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <form id="directPriceForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer un Tarif Direct (-200€)</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Description de la prestation</label>
@@ -767,7 +773,7 @@
 
                     <!-- OVERLAY: DETAILED DEVIS FORM -->
                     <div id="chatMilestoneDevisForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="milestoneDevisForm" style="width:100%; max-width:560px; margin:0 auto; padding:20px 24px 24px; box-sizing:border-box; display:flex; flex-direction:column; gap:10px; max-height:420px; overflow-y:auto;">
+                        <form id="milestoneDevisForm" style="width:100%; max-width:560px; margin:0 auto; padding:20px 24px 24px; box-sizing:border-box; display:flex; flex-direction:column; gap:10px; max-height:420px; overflow-y:auto;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Créer un Devis détaillé</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Libellé général du chantier</label>
@@ -908,7 +914,7 @@
                                 </div>
                             </div>
 
-                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;">
+                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;" onsubmit="event.preventDefault();">
                                 <div>
                                     <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Numéro de carte</label>
                                     <input type="text" class="modal-input" autocomplete="cc-number" inputmode="numeric" required style="width: 100%; box-sizing: border-box;" placeholder="Numéro de carte">
@@ -947,7 +953,7 @@
 
                     <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
                     <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
-                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
                             <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
                             <div>
@@ -982,7 +988,7 @@
                                 <i class="ph ph-camera"></i> Prendre une photo <span class="attach-badge-soon">Bientôt</span>
                             </button>
                         </div>
-                        <form id="chatInputForm" style="display: flex; gap: 8px; align-items: flex-end; width: 100%; margin: 0;">
+                        <form id="chatInputForm" style="display: flex; gap: 8px; align-items: flex-end; width: 100%; margin: 0;" onsubmit="event.preventDefault();">
                             <button type="button" class="btn-chat-attach" id="chatAttachBtn" title="Ajouter une pièce jointe" onclick="window.toggleChatAttachMenu(event)"><i class="ph ph-plus"></i></button>
                             <textarea id="chatInputField" class="modal-input chat-input-field-mobile" placeholder="Écrivez un message..." rows="1"></textarea>
                             <button type="submit" class="btn btn-primary chat-send-btn-mobile" title="Envoyer"><i class="ph-fill ph-paper-plane-right"></i></button>
@@ -1005,7 +1011,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="bookingForm">
+                <form id="bookingForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="bookingServiceType">Domaine d'intervention</label>
                         <select id="bookingServiceType" class="modal-input" required>
@@ -1124,7 +1130,7 @@
                     <!-- Section Profil Public -->
                     <div class="profile-section-card">
                         <h4 class="profile-section-title">👤 Profil Public & Présentation</h4>
-                        <form id="publicProfileForm">
+                        <form id="publicProfileForm" onsubmit="event.preventDefault();">
                             <div class="form-group" style="margin-bottom: 14px;">
                                 <label>Bio / Présentation</label>
                                 <textarea class="modal-input" style="height: 75px;" placeholder="Présentez-vous à la communauté..."></textarea>
@@ -1251,7 +1257,7 @@
 
                     <div class="profile-section-card">
                         <h4 class="profile-section-title">🔑 Sécurité du Compte</h4>
-                        <form id="accountSecurityFormHub">
+                        <form id="accountSecurityFormHub" onsubmit="event.preventDefault();">
                             <div class="form-group" style="margin-bottom: 10px;">
                                 <label>Mot de passe actuel</label>
                                 <input type="password" class="modal-input" placeholder="••••••••">
@@ -1742,6 +1748,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="search-engine.js"></script>
     <script src="matching-engine.js"></script>
+    <script src="sentry-init.js?v=20260916"></script>
+    <script src="surface-manager.js?v=20260914"></script>
+    <script src="app-router.js?v=20260914"></script>
     <script src="api-client.js?v=20260907-DOM-OBSERVER-FIX"></script>
     <script src="session-store.js"></script>
     <script src="auth-state.js"></script>

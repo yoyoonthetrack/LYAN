@@ -164,7 +164,7 @@
                 <!-- PARCOURS A: JE CHERCHE UN LYANNEUR -->
                 <div id="parcoursSearchPanel" class="parcours-panel active">
                     <!-- Barre de Recherche Complète -->
-                    <form class="hero-search results-search-bar" id="heroSearchForm">
+                    <form class="hero-search results-search-bar" id="heroSearchForm" onsubmit="event.preventDefault();">
                         <div class="hero-search-fields">
                             <div class="search-input-wrapper flex-2">
                                 <i class="ph ph-magnifying-glass"></i>
@@ -365,7 +365,7 @@
                 </button>
                 <div class="modal-divider"><span>ou avec votre email</span></div>
 
-                <form id="loginForm">
+                <form id="loginForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="loginEmail">Adresse email</label>
                         <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" required>
@@ -641,7 +641,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="reportForm">
+                <form id="reportForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="reportReason">Motif du signalement</label>
                         <select id="reportReason" class="modal-input" required>
@@ -763,7 +763,7 @@
 
                     <!-- OVERLAY: DIRECT PRICE FORM -->
                     <div id="chatDirectPriceForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="directPriceForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <form id="directPriceForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer un Tarif Direct (-200€)</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Description de la prestation</label>
@@ -782,7 +782,7 @@
 
                     <!-- OVERLAY: DETAILED DEVIS FORM -->
                     <div id="chatMilestoneDevisForm" class="chat-overlay-pane" style="display: none;">
-                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;">
+                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Créer un Devis détaillé</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Libellé général du chantier</label>
@@ -855,7 +855,7 @@
                                 </div>
                             </div>
 
-                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;">
+                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;" onsubmit="event.preventDefault();">
                                 <div>
                                     <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 2px;">Numéro de carte</label>
                                     <input type="text" class="modal-input" autocomplete="cc-number" inputmode="numeric" required style="width: 100%; box-sizing: border-box;" placeholder="Numéro de carte">
@@ -894,7 +894,7 @@
 
                     <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
                     <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
-                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
                             <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
                             <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
                             <div>
@@ -918,7 +918,7 @@
 
                     <!-- INPUT AREA (COMPOSER MOBILE) -->
                     <div class="chat-input-area">
-                        <form id="chatInputForm" style="display: flex; gap: 8px; align-items: flex-end; width: 100%; margin: 0;">
+                        <form id="chatInputForm" style="display: flex; gap: 8px; align-items: flex-end; width: 100%; margin: 0;" onsubmit="event.preventDefault();">
                             <button type="button" class="btn-chat-attach" id="chatAttachBtn" title="Ajouter une pièce jointe"><i class="ph ph-plus"></i></button>
                             <textarea id="chatInputField" class="modal-input chat-input-field-mobile" placeholder="Écrivez un message..." rows="1"></textarea>
                             <button type="submit" class="btn btn-primary chat-send-btn-mobile" title="Envoyer"><i class="ph-fill ph-paper-plane-right"></i></button>
@@ -941,7 +941,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="bookingForm">
+                <form id="bookingForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="bookingServiceType">Domaine d'intervention</label>
                         <select id="bookingServiceType" class="modal-input" required>
@@ -1060,7 +1060,7 @@
                     <!-- Section Profil Public -->
                     <div class="profile-section-card">
                         <h4 class="profile-section-title">👤 Profil Public & Présentation</h4>
-                        <form id="publicProfileForm">
+                        <form id="publicProfileForm" onsubmit="event.preventDefault();">
                             <div class="form-group" style="margin-bottom: 14px;">
                                 <label>Bio / Présentation</label>
                                 <textarea class="modal-input" style="height: 75px;" placeholder="Présentez-vous à la communauté..."></textarea>
@@ -1187,7 +1187,7 @@
 
                     <div class="profile-section-card">
                         <h4 class="profile-section-title">🔑 Sécurité du Compte</h4>
-                        <form id="accountSecurityFormHub">
+                        <form id="accountSecurityFormHub" onsubmit="event.preventDefault();">
                             <div class="form-group" style="margin-bottom: 10px;">
                                 <label>Mot de passe actuel</label>
                                 <input type="password" class="modal-input" placeholder="••••••••">
@@ -1250,6 +1250,9 @@
     <script src="pro-verification-engine.js"></script>
     <script src="search-engine.js"></script>
     <script src="matching-engine.js"></script>
+    <script src="sentry-init.js?v=20260916"></script>
+    <script src="surface-manager.js?v=20260914"></script>
+    <script src="app-router.js?v=20260914"></script>
     <script src="api-client.js"></script>
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>

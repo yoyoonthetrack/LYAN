@@ -479,7 +479,7 @@
                         <h3 style="margin-top: 24px; margin-bottom: 16px; color: var(--admin-brand-yellow);"><i class="ph-bold ph-gear"></i> Actions d'Administration Sensibles</h3>
                         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                             <button class="admin-btn admin-btn-primary btn-approve-kyc"><i class="ph-bold ph-check-circle"></i> Réattester KYC</button>
-                            <button class="admin-btn admin-btn-secondary"><i class="ph-bold ph-sparkle"></i> Offrir Abonnement Pro</button>
+                            <button class="admin-btn admin-btn-secondary btn-grant-subscription" onclick="alert('🎁 Abonnement Pro offert à cet utilisateur avec succès !');"><i class="ph-bold ph-sparkle"></i> Offrir Abonnement Pro</button>
                             <button class="admin-btn admin-btn-danger btn-suspend-user"><i class="ph-bold ph-user-minus"></i> Suspendre le Compte</button>
                         </div>
                     </div>
@@ -516,8 +516,8 @@
                                 <td>Climatisation & Froid</td>
                                 <td><span class="status-badge verified">PUBLIÉ</span></td>
                                 <td>
-                                    <button class="admin-btn admin-btn-sm admin-btn-secondary"><i class="ph-bold ph-eye"></i> Voir</button>
-                                    <button class="admin-btn admin-btn-sm admin-btn-danger"><i class="ph-bold ph-trash"></i> Retirer</button>
+                                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('👁️ Consultation de la demande de réparation split.');"><i class="ph-bold ph-eye"></i> Voir</button>
+                                    <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="if(confirm('Retirer cette annonce de la plateforme ?')) { alert('🗑️ Annonce retirée avec succès.'); this.closest('tr').remove(); }"><i class="ph-bold ph-trash"></i> Retirer</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -692,7 +692,7 @@
                         <h1 class="admin-page-title">Facturation & Exports Comptables</h1>
                         <p class="admin-page-sub">Génération automatique des pièces justificatives HT/TVA/TTC et exports d'écritures.</p>
                     </div>
-                    <button class="admin-btn admin-btn-primary" onclick="alert('📊 Export comptable au format CSV initié avec succès.');"><i class="ph-bold ph-download-simple"></i> Exporter Écritures Comptables (CSV)</button>
+                    <button class="admin-btn admin-btn-primary" onclick="exportAdminReportCSV('accounting')"><i class="ph-bold ph-download-simple"></i> Exporter Écritures Comptables (CSV)</button>
                 </div>
                 <div class="admin-card">
                     <table class="admin-table">
@@ -713,7 +713,7 @@
                                 <td>146,91 €</td>
                                 <td>12,49 €</td>
                                 <td><strong>159,40 €</strong></td>
-                                <td><button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('📄 Prévisualisation du PDF Facture généré.');"><i class="ph-bold ph-file-pdf"></i> Aperçu PDF</button></td>
+                                <td><button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="previewAdminInvoicePDF('FAC-2026-0901')"><i class="ph-bold ph-file-pdf"></i> Aperçu PDF</button></td>
                             </tr>
                         </tbody>
                     </table>
@@ -780,7 +780,7 @@
                                 <td>Écoulement d'eau après intervention split (Photo fournie)</td>
                                 <td><span class="status-badge pending">DOCS_REQUESTED</span></td>
                                 <td>
-                                    <button class="admin-btn admin-btn-sm admin-btn-primary"><i class="ph-bold ph-check"></i> Accorder Remboursement</button>
+                                    <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="if(confirm('Accorder le remboursement au réclamant ?')) alert('✅ Remboursement accordé avec succès.');"><i class="ph-bold ph-check"></i> Accorder Remboursement</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -819,8 +819,8 @@
                                 <td>Travail contesté par le demandeur</td>
                                 <td><span class="status-badge suspended">UNDER_INVESTIGATION</span></td>
                                 <td>
-                                    <button class="admin-btn admin-btn-sm admin-btn-danger"><i class="ph-bold ph-arrow-u-down-left"></i> Déclencher Remboursement Client</button>
-                                    <button class="admin-btn admin-btn-sm admin-btn-primary"><i class="ph-bold ph-check"></i> Valider Payout Prestataire</button>
+                                    <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="if(confirm('Déclencher le remboursement intégral du client pour #DIS-0041 ?')) alert('💸 Remboursement intégral du client effectué.');"><i class="ph-bold ph-arrow-u-down-left"></i> Déclencher Remboursement Client</button>
+                                    <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="if(confirm('Débloquer le séquestre et valider le paiement du prestataire pour #DIS-0041 ?')) alert('✅ Séquestre débloqué et virement prestataire validé.');"><i class="ph-bold ph-check"></i> Valider Payout Prestataire</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -917,7 +917,7 @@
                                 <td>Dispo pour travaux de peinture sur Le Gosier ce week-end !</td>
                                 <td>0 Signalement</td>
                                 <td>
-                                    <button class="admin-btn admin-btn-sm admin-btn-secondary"><i class="ph-bold ph-push-pin"></i> Épingler</button>
+                                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('📌 Publication #BOK-1092 épinglée en tête du fil Bokantaj.');"><i class="ph-bold ph-push-pin"></i> Épingler</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -1171,7 +1171,7 @@
                 <div class="mika-header-card" style="background: linear-gradient(135deg, rgba(26, 43, 34, 0.95), rgba(18, 30, 24, 0.98)); border: 1px solid rgba(74, 124, 89, 0.4); border-radius: 16px; padding: 24px; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                         <div style="display: flex; align-items: center; gap: 18px;">
-                            <img src="/brain/fd51f70e-ee89-49e4-851d-15aa38e3d416/avatar_01.png" id="mikaHeaderAvatar" style="width: 72px; height: 72px; border-radius: 50%; border: 3px solid #E5B345; object-fit: cover; box-shadow: 0 0 15px rgba(229, 179, 69, 0.3);">
+                            <img src="avatar_01.png" id="mikaHeaderAvatar" style="width: 72px; height: 72px; border-radius: 50%; border: 3px solid #E5B345; object-fit: cover; box-shadow: 0 0 15px rgba(229, 179, 69, 0.3);">
                             <div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <h1 style="font-size: 1.8rem; font-weight: 800; color: #FFFFFF; margin: 0;">Mika</h1>
@@ -1576,7 +1576,7 @@
                     </div>
                 </div>
                 <div class="admin-card" style="max-width: 650px;">
-                    <form id="newCampaignForm">
+                    <form id="newCampaignForm" onsubmit="event.preventDefault();">
                         <div style="margin-bottom: 12px;">
                             <label class="admin-label">Titre Notification Push *</label>
                             <input type="text" id="campTitle" class="admin-input" placeholder="Ex: Nouveaux besoins climatisation disponible !" required>
@@ -1639,7 +1639,7 @@
                         <h1 class="admin-page-title">Gestion de l'Équipe & Collaborateurs</h1>
                         <p class="admin-page-sub">Comptes employés habilités à administrer la plateforme.</p>
                     </div>
-                    <button class="admin-btn admin-btn-primary" onclick="alert('👤 Modal d\'invitation collaborateur.');"><i class="ph-bold ph-user-plus"></i> Inviter un Collaborateur</button>
+                    <button class="admin-btn admin-btn-primary" onclick="openInviteTeamMemberModal()"><i class="ph-bold ph-user-plus"></i> Inviter un Collaborateur</button>
                 </div>
                 <div class="admin-card">
                     <table class="admin-table">
@@ -1811,7 +1811,7 @@
                 <h3 style="color: var(--admin-brand-yellow); display: flex; align-items: center; gap: 8px;"><i class="ph-bold ph-robot"></i> Déploiement d'un Nouvel Agent LYANN</h3>
                 <button class="admin-modal-close" style="background: none; border: none; color: #FFF; font-size: 1.2rem; cursor: pointer;">&times;</button>
             </div>
-            <form id="createAgentForm" style="padding-top: 16px;">
+            <form id="createAgentForm" style="padding-top: 16px;" onsubmit="event.preventDefault();">
                 <div style="margin-bottom: 14px;">
                     <label class="admin-label">Nom Interne de l'Agent *</label>
                     <input type="text" id="newAgentName" class="admin-input" placeholder="Ex: Mélissa — Animation Jardinage Guadeloupe" required>
@@ -1880,7 +1880,7 @@
 
                 <!-- 1. IDENTITÉ -->
                 <div id="drawerSectionOverview">
-                    <form id="formAgentStudioIdentity" style="display: flex; flex-direction: column; gap: 14px;">
+                    <form id="formAgentStudioIdentity" style="display: flex; flex-direction: column; gap: 14px;" onsubmit="event.preventDefault();">
                         <div class="admin-grid-2">
                             <div>
                                 <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Prénom</label>
@@ -1937,7 +1937,7 @@
 
                 <!-- 2. PERSONNALITÉ (PERSONALITY BUILDER) -->
                 <div id="drawerSectionPersonality" style="display: none;">
-                    <form id="formAgentStudioPersonality" style="display: flex; flex-direction: column; gap: 14px;">
+                    <form id="formAgentStudioPersonality" style="display: flex; flex-direction: column; gap: 14px;" onsubmit="event.preventDefault();">
                         <div class="admin-grid-3">
                             <div>
                                 <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Ton</label>
@@ -2005,7 +2005,7 @@
 
                 <!-- 3. TERRITOIRE & TAGS -->
                 <div id="drawerSectionTerritory" style="display: none;">
-                    <form id="formAgentStudioTerritory" style="display: flex; flex-direction: column; gap: 14px;">
+                    <form id="formAgentStudioTerritory" style="display: flex; flex-direction: column; gap: 14px;" onsubmit="event.preventDefault();">
                         <div>
                             <label style="font-size: 0.8rem; color: var(--admin-text-muted);">Communes Autorisées (séparées par virgules)</label>
                             <input type="text" id="studioCommunes" class="admin-input" placeholder="Saint-François, Le Moule, Sainte-Anne">

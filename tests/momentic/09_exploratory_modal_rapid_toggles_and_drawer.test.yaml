@@ -1,0 +1,15 @@
+fileType: momentic/test/v2
+id: 09-modal-toggles-drawer
+description: Exploratory QA - Mobile menu drawer, auth modal login/signup toggle, backdrop clicks
+defaultEnv: local
+steps:
+  - click: "Hamburger menu button or menu icon"
+  - assert: "Verify mobile navigation drawer opens"
+  - click: "Close mobile menu button"
+  - assert: "Verify mobile menu drawer closes"
+  - click: "Connexion button"
+  - assert: "Verify authentication modal opens"
+  - click: "S'inscrire gratuitement link"
+  - assert: "Verify onboarding signup modal opens"
+  - click: "Se connecter link"
+  - assert: "Verify login modal opens"

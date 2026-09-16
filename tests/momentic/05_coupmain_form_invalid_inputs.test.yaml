@@ -1,0 +1,7 @@
+fileType: momentic/test/v2
+id: 05-coupmain-form-invalid-inputs
+description: Exploratory QA - Request search form validation, submitting without required fields
+defaultEnv: local
+steps:
+  - click: "Trouver search button"
+  - assert: "Verify search validation error banner is displayed asking to enter a service or keyword"

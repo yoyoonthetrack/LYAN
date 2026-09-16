@@ -1,0 +1,12 @@
+fileType: momentic/test/v2
+id: 07-unauth-protected-actions
+description: Exploratory QA - Unauthenticated protected action triggers (messaging, account, payment portal)
+defaultEnv: local
+steps:
+  - act: "Click on messaging icon button while logged out"
+  - assert: "Verify login modal or authentication prompt is displayed"
+  - act: "Close authentication modal"
+  - click: "Tarifs & Abonnements or Tarifs link"
+  - assert: "Verify pricing page loads"
+  - click: "Paiement sécurisé link"
+  - assert: "Verify payment portal page loads cleanly"

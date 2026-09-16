@@ -1,0 +1,9 @@
+fileType: momentic/test/v2
+id: 07-authenticated-business-journey
+name: "LYANN V1 - Phase 3C Authenticated Business Journey"
+description: "Verify authenticated User A login, request visibility, and navigation state"
+steps:
+  - act: Navigate to landing page
+  - assert: Page title contains LYANN or page header is visible
+  - act: Open auth login modal
+  - assert: Login form is visible

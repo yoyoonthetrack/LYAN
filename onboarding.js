@@ -205,8 +205,14 @@ runOnDomReady(() => {
 
     // Global toggle function
     window.openOnboarding = function() {
+        const loginModal = document.getElementById('loginModal');
+        const passwordResetModal = document.getElementById('passwordResetModal');
+        if (loginModal) loginModal.classList.remove('active');
+        if (passwordResetModal) passwordResetModal.classList.remove('active');
         if (onboardingModal) {
             onboardingModal.classList.add('active');
+            onboardingModal.setAttribute('aria-hidden', 'false');
+            if (loginModal) loginModal.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = 'hidden';
             resetOnboarding();
         }

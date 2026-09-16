@@ -1,0 +1,10 @@
+fileType: momentic/test/v2
+id: 02-bokantaj-feed
+description: Exploratory QA - Bokantaj feed, posts, filter tags, unauthenticated behavior
+defaultEnv: local
+steps:
+  - click: "Bokantaj navigation link"
+  - assert: "Verify Bokantaj feed section is displayed"
+  - refresh: {}
+  - click: "Accueil navigation link"
+  - assert: "Verify return to homepage"

@@ -1,0 +1,12 @@
+fileType: momentic/test/v2
+id: 03-explorer-lyanneurs
+description: Exploratory QA - Explorer section, Lyanneur cards, search with non-existent query, category filters
+defaultEnv: local
+steps:
+  - click: "Explorer navigation link"
+  - assert: "Verify Explorer surface is loaded"
+  - type:
+      text: "XYZ999UNKNOWN"
+      into: "Search input field"
+  - click: "Trouver button"
+  - assert: "Verify no results or proper empty state message is visible"
