@@ -542,6 +542,25 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
             });
             refreshChatUI();
         }
+    else if (actionId === 'PROPOSE_DATE') {
+        closeAllOverlays();
+        const overlay = document.getElementById('chatProposeDateForm');
+        if (overlay) {
+            openChatChildSurface('chatProposeDateForm');
+            setChatContextCoveredByOverlay(true);
+            const firstRequired = overlay.querySelector('[required]');
+            if (firstRequired) requestAnimationFrame(() => firstRequired.focus());
+        } else {
+            const dateStr = await window.lyannPrompt("Proposer une date d'intervention (ex: Demain 14h, ou 25 Octobre) :");
+            if (!dateStr) return;
+            addMessageToContact(contactId, {
+                type: 'text',
+                sender: getMyId(),
+                text: `📅 Proposition de rendez-vous : ${dateStr}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            refreshChatUI();
+        }
         return;
     }
 
@@ -2177,6 +2196,20 @@ document.addEventListener('click', (e) => {
         e.stopPropagation();
         const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT || window.currentVisitingMember;
         window.shareProfile(contact || 'ce membre');
+    }
+
+    const dateBtn = e.target.closest('#btnCtxDate, #bsActionDate, #btnChooseDate, #btnProposeDate, .btn-propose-date');
+    if (dateBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeAllOverlays();
+        const overlay = document.getElementById('chatProposeDateForm');
+        if (overlay) {
+            openChatChildSurface('chatProposeDateForm');
+            setChatContextCoveredByOverlay(true);
+            const firstRequired = overlay.querySelector('[required]');
+            if (firstRequired) requestAnimationFrame(() => firstRequired.focus());
+        }
     }
 });
 

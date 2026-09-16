@@ -7851,6 +7851,8 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
+    modal.classList.add('opened-from-chat');
+    modal.style.setProperty('z-index', '1000005', 'important');
 
     // Close button handler
     const closeBtn = document.getElementById('closeLyannDetailModalBtn');
