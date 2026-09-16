@@ -1474,8 +1474,7 @@ document.addEventListener('touchstart', (e) => {
         chatProposeBtn.addEventListener('click', () => {
             closeAllOverlays();
             if (chatActionChoicesOverlay) {
-                chatActionChoicesOverlay.style.display = 'flex';
-                setChatContextCoveredByOverlay(true);
+                openChatChildSurface('chatActionChoicesOverlay');
             }
         });
     }
@@ -1485,8 +1484,7 @@ document.addEventListener('touchstart', (e) => {
         btnChooseDirectPrice.addEventListener('click', () => {
             closeAllOverlays();
             if (chatDirectPriceForm) {
-                chatDirectPriceForm.style.display = 'flex';
-                setChatContextCoveredByOverlay(true);
+                openChatChildSurface('chatDirectPriceForm');
                 const firstRequired = chatDirectPriceForm.querySelector('[required]');
                 if (firstRequired) requestAnimationFrame(() => firstRequired.focus());
             }
@@ -1498,8 +1496,7 @@ document.addEventListener('touchstart', (e) => {
         btnChooseMilestoneDevis.addEventListener('click', () => {
             closeAllOverlays();
             if (chatMilestoneDevisForm) {
-                chatMilestoneDevisForm.style.display = 'flex';
-                setChatContextCoveredByOverlay(true);
+                openChatChildSurface('chatMilestoneDevisForm');
                 const firstRequired = chatMilestoneDevisForm.querySelector('[required]');
                 if (firstRequired) requestAnimationFrame(() => firstRequired.focus());
             }
