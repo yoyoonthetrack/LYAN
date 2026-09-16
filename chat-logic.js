@@ -1512,51 +1512,94 @@ document.addEventListener('touchstart', (e) => {
     });
 
     // SUBMIT DIRECT PRICE
+    async function handleDirectPriceFormSubmit(e) {
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+        }
+        try {
+            const descInput = document.getElementById('dpDescription');
+            const amountInput = document.getElementById('dpAmount');
+            const desc = descInput ? descInput.value.trim() : '';
+            const amount = amountInput ? parseFloat(amountInput.value) : 0;
+
+            let contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+            if (!contact || !contact.id) {
+                try {
+                    const saved = localStorage.getItem('lyann_last_active_contact');
+                    if (saved) contact = JSON.parse(saved);
+                } catch(e) {}
+            }
+
+            if (!contact || !contact.id) {
+                throw new Error("Aucun contact sélectionné pour la discussion.");
+            }
+
+            if (!desc || isNaN(amount) || amount <= 0) {
+                const alertMsg = "Veuillez remplir la description et indiquer un montant valide.";
+                if (window.showToast) window.showToast(alertMsg, 'error');
+                else if (window.lyannAlert) window.lyannAlert(alertMsg);
+                else alert(alertMsg);
+                return;
+            }
+
+            let createdQuoteResult = null;
+            // RPC Supabase proposition si invitation active
+            if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getActiveInvitationBetween === 'function' && typeof window.LYANN_API_CLIENT.createRequestQuote === 'function') {
+                try {
+                    const activeInv = await window.LYANN_API_CLIENT.getActiveInvitationBetween(getMyId(), contact.id);
+                    if (activeInv && activeInv.id) {
+                        const milestonePayload = [{ title: desc || "Tarif Direct", description: "Tarif direct convenu", amount: amount, percentage: 100 }];
+                        createdQuoteResult = await window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, desc, null, milestonePayload);
+                        console.log("⚡ Offre directe créée via RPC Supabase:", createdQuoteResult);
+                    }
+                } catch (invErr) {
+                    console.warn("Notice: RPC createRequestQuote note:", invErr);
+                }
+            }
+
+            // Fallback mockProposePrice s'il n'y a pas d'invitation RPC active
+            if (!createdQuoteResult && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.mockProposePrice === 'function') {
+                try {
+                    await window.LYANN_API_CLIENT.mockProposePrice(getMyId(), contact.id, amount, desc);
+                } catch (mockErr) {
+                    console.warn("Notice: mockProposePrice note:", mockErr);
+                }
+            }
+
+            await addMessageToContact(contact.id, {
+                type: 'system_card',
+                cardType: 'PRICE_PROPOSAL',
+                sender: getMyId(),
+                amount: amount,
+                title: desc,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+
+            if (descInput) descInput.value = '';
+            if (amountInput) amountInput.value = '';
+            closeAllOverlays();
+            if (typeof refreshChatUI === 'function') {
+                await refreshChatUI();
+            }
+
+            window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId: 'PROPOSE_PRICE', contactId: contact.id } }));
+        } catch (err) {
+            console.error("Error in directPriceForm submit:", err);
+            if (window.showToast) window.showToast("Erreur lors de l'envoi de l'offre : " + err.message, 'error');
+            else if (window.lyannAlert) window.lyannAlert("Erreur lors de l'envoi de l'offre : " + err.message);
+        }
+    }
+    window.handleDirectPriceFormSubmit = handleDirectPriceFormSubmit;
+
     const directPriceForm = document.getElementById('directPriceForm');
     if (directPriceForm) {
-        directPriceForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            try {
-                const descInput = document.getElementById('dpDescription');
-                const amountInput = document.getElementById('dpAmount');
-                const desc = descInput ? descInput.value.trim() : '';
-                const amount = amountInput ? parseFloat(amountInput.value) : 0;
-
-                if (!currentChatContact) {
-                    throw new Error("Aucun contact sélectionné pour la discussion.");
-                }
-
-                if (!desc || isNaN(amount) || amount <= 0) {
-                    if (window.lyannAlert) window.lyannAlert("Veuillez remplir tous les champs correctement.");
-                    else alert("Veuillez remplir tous les champs correctement.");
-                    return;
-                }
-
-                if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.mockProposePrice === 'function') {
-                    await window.LYANN_API_CLIENT.mockProposePrice(getMyId(), currentChatContact.id, amount, desc);
-                }
-
-                await addMessageToContact(currentChatContact.id, {
-                    type: 'system_card',
-                    cardType: 'PRICE_PROPOSAL',
-                    sender: getMyId(),
-                    amount: amount,
-                    title: desc,
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                });
-
-                if (descInput) descInput.value = '';
-                if (amountInput) amountInput.value = '';
-                closeAllOverlays();
-                refreshChatUI();
-
-                window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId: 'PROPOSE_PRICE', contactId: currentChatContact.id } }));
-            } catch (err) {
-                console.error("Error in directPriceForm submit:", err);
-                if (window.lyannAlert) window.lyannAlert("Erreur lors de l'envoi de l'offre : " + err.message);
-            }
-        });
+        directPriceForm.addEventListener('submit', handleDirectPriceFormSubmit);
     }
+    document.addEventListener('submit', (e) => {
+        if (e.target && (e.target.id === 'directPriceForm' || e.target.closest('#directPriceForm'))) {
+            handleDirectPriceFormSubmit(e);
+        }
+    });
 
     // SUBMIT PROPOSE DATE
     const proposeDateForm = document.getElementById('proposeDateForm');
