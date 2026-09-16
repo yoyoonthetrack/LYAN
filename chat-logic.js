@@ -237,10 +237,28 @@ window.openPhotoLightbox = function (url) {
 };
 
 window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, initialNeed = null) {
+    const isUUID = (str) => typeof window.isUUID === 'function' ? window.isUUID(str) : (typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+    
+    // Safety gate: If contactId is a request UUID, resolve the true requester_id first
+    if (contactId && isUUID(contactId) && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+        try {
+            const { data: reqData } = await window.LYANN_API_CLIENT.supabase
+                .from('requests')
+                .select('id, requester_id, title')
+                .eq('id', contactId)
+                .maybeSingle();
+            if (reqData && reqData.requester_id) {
+                if (!initialNeed) initialNeed = { requestId: reqData.id, requesterId: reqData.requester_id, title: reqData.title };
+                contactId = reqData.requester_id;
+            }
+        } catch(e) {}
+    }
+
     const myId = getMyId();
     if (contactId && myId && contactId === myId && contactId !== "me") {
-        if (window.lyannAlert) window.lyannAlert("⚠️ Vous ne pouvez pas démarrer une mise en relation avec vous-même.");
-        return;
+        if (window.showToast) window.showToast("⚠️ Vous ne pouvez pas démarrer une mise en relation avec vous-même.", "warning");
+        else if (window.lyannAlert) window.lyannAlert("⚠️ Vous ne pouvez pas démarrer une mise en relation avec vous-même.");
+        return false;
     }
 
     const modal = document.getElementById('chatModal');

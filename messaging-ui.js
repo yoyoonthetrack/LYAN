@@ -290,13 +290,15 @@
             || null;
     }
 
+    const isUUID = (str) => typeof window.isUUID === 'function' ? window.isUUID(str) : (typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+
     async function openConversation(options = {}) {
         let contactId = options.contactId || options.requesterId || options.initialNeed?.requesterId || options.memberId || options.name;
         let name = options.name || 'Membre LYANN';
         let avatar = options.avatar || defaultAvatar();
 
         // Safety gate: If contactId matches a request ID or is missing, try to resolve requester_id from Supabase
-        if (contactId && typeof isUUID === 'function' && isUUID(contactId) && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+        if (contactId && isUUID(contactId) && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
             try {
                 const { data: isReq } = await window.LYANN_API_CLIENT.supabase
                     .from('requests')
@@ -308,6 +310,18 @@
                     if (!options.initialNeed) options.initialNeed = { requestId: isReq.id, requesterId: isReq.requester_id, title: isReq.title };
                     contactId = isReq.requester_id;
                     options.contactId = contactId;
+                }
+            } catch(e) {}
+        }
+
+        if (contactId && isUUID(contactId) && (!name || name === 'Membre LYANN' || isUUID(name)) && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function') {
+            try {
+                const prof = await window.LYANN_API_CLIENT.getUserProfile(contactId);
+                if (prof) {
+                    name = window.formatPublicName ? window.formatPublicName(prof, null, 'Contact') : (prof.first_name || 'Contact');
+                    if (prof.avatar_url && window.getLyannAvatarUrl) {
+                        avatar = window.getLyannAvatarUrl(prof.avatar_url);
+                    }
                 }
             } catch(e) {}
         }

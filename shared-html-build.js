@@ -1,12 +1,12 @@
 const fs = require('fs');
 
-const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260914" defer></script>';
+const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260916-5" defer></script>';
 const SHARED_RUNTIME_TAGS = [
-  '<script src="sentry-init.js?v=20260916"></script>',
-  '<script src="surface-manager.js?v=20260914"></script>',
-  '<script src="app-router.js?v=20260914"></script>',
-  '<script src="safety-repository.js?v=20260914"></script>',
-  '<script src="legacy-compat.js?v=20260914"></script>'
+  '<script src="sentry-init.js?v=20260916-5"></script>',
+  '<script src="surface-manager.js?v=20260916-5"></script>',
+  '<script src="app-router.js?v=20260916-5"></script>',
+  '<script src="safety-repository.js?v=20260916-5"></script>',
+  '<script src="legacy-compat.js?v=20260916-5"></script>'
 ];
 const SHARED_RUNTIME_ANCHORS = [
   '<script src="sentry-init.js"',
