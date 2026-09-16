@@ -1602,35 +1602,73 @@ document.addEventListener('touchstart', (e) => {
     });
 
     // SUBMIT PROPOSE DATE
-    const proposeDateForm = document.getElementById('proposeDateForm');
-    if (proposeDateForm) {
-        proposeDateForm.addEventListener('submit', async (e) => {
+    async function handleProposeDateFormSubmit(e) {
+        if (e && typeof e.preventDefault === 'function') {
             e.preventDefault();
-            if (!currentChatContact) return;
+        }
+        try {
+            let contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+            if (!contact || !contact.id) {
+                try {
+                    const saved = localStorage.getItem('lyann_last_active_contact');
+                    if (saved) contact = JSON.parse(saved);
+                } catch(e) {}
+            }
 
-            const dateVal = document.getElementById('pdDate')?.value;
+            if (!contact || !contact.id) {
+                throw new Error("Aucun contact sélectionné pour la discussion.");
+            }
+
+            const dateInput = document.getElementById('pdDate');
+            const dateVal = dateInput ? dateInput.value : '';
             const slotVal = document.getElementById('pdTimeSlot')?.value || '';
             const noteVal = document.getElementById('pdNote')?.value || '';
 
             if (!dateVal) {
-                if (window.lyannAlert) window.lyannAlert("Veuillez sélectionner une date.");
+                const alertMsg = "Veuillez sélectionner une date d'intervention.";
+                if (window.showToast) window.showToast(alertMsg, 'error');
+                else if (window.lyannAlert) window.lyannAlert(alertMsg);
+                else alert(alertMsg);
                 return;
             }
 
             const formattedDate = new Date(dateVal).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
             const msgText = `📅 Proposition de rendez-vous : ${formattedDate} (${slotVal})${noteVal ? ' — ' + noteVal : ''}`;
 
-            await addMessageToContact(currentChatContact.id, {
+            await addMessageToContact(contact.id, {
                 type: 'text',
                 sender: getMyId(),
                 text: msgText,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             });
 
+            if (dateInput) dateInput.value = '';
+            const noteInput = document.getElementById('pdNote');
+            if (noteInput) noteInput.value = '';
+
             closeAllOverlays();
-            refreshChatUI();
-        });
+            if (typeof refreshChatUI === 'function') {
+                await refreshChatUI();
+            }
+
+            window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId: 'PROPOSE_DATE', contactId: contact.id } }));
+        } catch (err) {
+            console.error("Error in proposeDateForm submit:", err);
+            if (window.showToast) window.showToast("Erreur lors de la proposition : " + err.message, 'error');
+            else if (window.lyannAlert) window.lyannAlert("Erreur lors de la proposition : " + err.message);
+        }
     }
+    window.handleProposeDateFormSubmit = handleProposeDateFormSubmit;
+
+    const proposeDateForm = document.getElementById('proposeDateForm');
+    if (proposeDateForm) {
+        proposeDateForm.addEventListener('submit', handleProposeDateFormSubmit);
+    }
+    document.addEventListener('submit', (e) => {
+        if (e.target && (e.target.id === 'proposeDateForm' || e.target.closest('#proposeDateForm'))) {
+            handleProposeDateFormSubmit(e);
+        }
+    });
 
     // SUBMIT LEAVE REVIEW
     const leaveReviewForm = document.getElementById('leaveReviewForm');
@@ -2007,27 +2045,92 @@ window.getLyannFavorites = function() {
     return [];
 };
 
-window.isContactFavorite = function(contactId) {
-    if (window.LyannFavoritesService && typeof window.LyannFavoritesService.isFavorite === 'function') {
-        return window.LyannFavoritesService.isFavorite('PROFILE', contactId);
+window.shareProfile = async function(memberOrName, role) {
+    const name = (typeof memberOrName === 'object' && memberOrName) ? (memberOrName.name || memberOrName.first_name || 'ce membre') : (memberOrName || 'ce membre');
+    const memberRole = (typeof memberOrName === 'object' && memberOrName) ? (memberOrName.role || memberOrName.primary_activity || role || 'Lyanneur') : (role || 'Lyanneur');
+    const shareText = `Découvrez le profil de ${name} (${memberRole}) sur LYANN !`;
+    const shareUrl = window.location.href;
+
+    let shared = false;
+    if (typeof window.shareNative === 'function') {
+        try { shared = await window.shareNative("Profil LYANN", shareText, shareUrl); } catch(e) {}
+    } else if (navigator.share) {
+        try {
+            await navigator.share({ title: "Profil LYANN", text: shareText, url: shareUrl });
+            shared = true;
+        } catch (e) {
+            shared = false;
+        }
     }
-    return false;
+
+    if (!shared && navigator.clipboard) {
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            shared = true;
+        } catch(e) {}
+    }
+
+    const msg = `🔗 Lien du profil de ${name} copié dans votre presse-papier !`;
+    if (typeof window.showToast === 'function') window.showToast(msg, 'success');
+    else if (typeof window.lyannAlert === 'function') window.lyannAlert(msg);
+    else alert(msg);
+};
+
+window.isContactFavorite = function(contactId) {
+    if (!contactId) return false;
+    if (window.LyannFavoritesService && typeof window.LyannFavoritesService.isFavorite === 'function') {
+        try {
+            const isFav = window.LyannFavoritesService.isFavorite('PROFILE', contactId);
+            if (typeof isFav === 'boolean') return isFav;
+        } catch(e) {}
+    }
+    try {
+        const localFavs = JSON.parse(localStorage.getItem('lyann_local_favorites') || '[]');
+        return localFavs.includes(contactId);
+    } catch(e) {
+        return false;
+    }
 };
 
 window.toggleContactFavorite = async function(contactId, contactName) {
-    if (!contactId) return;
+    const targetId = contactId || (currentChatContact ? currentChatContact.id : null);
+    if (!targetId) return;
+    const name = contactName || (currentChatContact ? currentChatContact.name : 'ce membre');
+    let isNowFav = false;
+
     if (window.LyannFavoritesService && typeof window.LyannFavoritesService.toggleFavorite === 'function') {
-        const res = await window.LyannFavoritesService.toggleFavorite('PROFILE', contactId);
-        const name = contactName || 'Membre';
-        if (res.isFavorite) {
-            if (window.NotificationService) {
-                window.NotificationService.showToast('success', `${name} ajouté(e) à vos favoris.`);
+        try {
+            const res = await window.LyannFavoritesService.toggleFavorite('PROFILE', targetId);
+            if (res && typeof res.isFavorite === 'boolean') {
+                isNowFav = res.isFavorite;
+            } else {
+                isNowFav = !window.isContactFavorite(targetId);
             }
-        } else {
-            if (window.NotificationService) {
-                window.NotificationService.showToast('info', `${name} retiré(e) de vos favoris.`);
-            }
+        } catch(e) {
+            isNowFav = !window.isContactFavorite(targetId);
         }
+    } else {
+        isNowFav = !window.isContactFavorite(targetId);
+    }
+
+    try {
+        let localFavs = JSON.parse(localStorage.getItem('lyann_local_favorites') || '[]');
+        if (isNowFav) {
+            if (!localFavs.includes(targetId)) localFavs.push(targetId);
+        } else {
+            localFavs = localFavs.filter(id => id !== targetId);
+        }
+        localStorage.setItem('lyann_local_favorites', JSON.stringify(localFavs));
+    } catch(e) {}
+
+    const msg = isNowFav ? `⭐ ${name} ajouté(e) à vos favoris.` : `💔 ${name} retiré(e) de vos favoris.`;
+    if (window.showToast) window.showToast(msg, isNowFav ? 'success' : 'info');
+    else if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+        window.NotificationService.showToast(isNowFav ? 'success' : 'info', msg);
+    } else if (window.lyannAlert) window.lyannAlert(msg);
+    else alert(msg);
+
+    if (typeof window.updateChatFavHeaderUI === 'function') {
         window.updateChatFavHeaderUI();
     }
 };
@@ -2056,11 +2159,24 @@ window.updateChatFavHeaderUI = function() {
 };
 
 document.addEventListener('click', (e) => {
-    const favBtn = e.target.closest('#chatToggleFavoriteBtn, #chatDropAddFavorite');
-    if (favBtn && currentChatContact) {
+    const favBtn = e.target.closest('#chatToggleFavoriteBtn, #chatDropAddFavorite, #shareFavoriteBtn, .btn-favorite, [data-action="favorite"]');
+    if (favBtn) {
         e.preventDefault();
         e.stopPropagation();
-        window.toggleContactFavorite(currentChatContact.id, currentChatContact.name);
+        const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+        const targetId = favBtn.dataset.contactId || (contact ? contact.id : null);
+        const targetName = favBtn.dataset.contactName || (contact ? contact.name : 'ce membre');
+        if (targetId) {
+            window.toggleContactFavorite(targetId, targetName);
+        }
+    }
+
+    const shareBtn = e.target.closest('#shareProfileBtn, .btn-share-profile, #chatDropShareProfile');
+    if (shareBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT || window.currentVisitingMember;
+        window.shareProfile(contact || 'ce membre');
     }
 });
 

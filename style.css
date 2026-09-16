@@ -15576,10 +15576,19 @@ body.is-native-app .navbar .nav-auth-btn {
     z-index: 250 !important;
 }
 
-body.chat-child-modal-open #lyannDetailModal.opened-from-chat,
+#lyannDetailModal.active,
+#lyannDetailModal[style*="display: flex"],
+#lyannDetailModal[style*="display:flex"],
+#publicMemberProfileModal.active,
+#publicMemberProfileModal[style*="display: flex"],
+#publicMemberProfileModal[style*="display:flex"],
+#quickProfileModal.active,
+#quickProfileModal[style*="display: flex"],
+#quickProfileModal[style*="display:flex"],
+body.chat-child-modal-open #lyannDetailModal,
 body.chat-child-modal-open #publicMemberProfileModal,
 body.chat-child-modal-open #quickProfileModal {
-    z-index: 20050 !important;
+    z-index: 1000005 !important;
 }
 
 body.chat-child-modal-open #chatModal {

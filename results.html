@@ -879,6 +879,34 @@
                         </div>
                     </div>
 
+                    <!-- OVERLAY: PROPOSE DATE FORM -->
+                    <div id="chatProposeDateForm" class="chat-overlay-pane" style="display: none;">
+                        <form id="proposeDateForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer une date d'intervention 📅</h4>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Date souhaitée</label>
+                                <input type="date" id="pdDate" class="modal-input" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Créneau horaire</label>
+                                <select id="pdTimeSlot" class="modal-input" style="width: 100%; box-sizing: border-box;">
+                                    <option value="Matin (8h - 12h)">Matin (8h - 12h)</option>
+                                    <option value="Après-midi (14h - 18h)">Après-midi (14h - 18h)</option>
+                                    <option value="Fin de journée (17h - 20h)">Fin de journée (17h - 20h)</option>
+                                    <option value="Toute la journée">Toute la journée</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Note ou précision (optionnel)</label>
+                                <input type="text" id="pdNote" class="modal-input" placeholder="Ex: Je serai présent à partir de 8h30" style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Envoyer la proposition</button>
+                            </div>
+                        </form>
+                    </div>
+
                     <!-- OVERLAY: SHARED TRACKING / SUIVI DE CHANTIER -->
                     <div id="chatTrackingOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF; flex-direction: column;">
                         <div style="padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
@@ -1254,7 +1282,7 @@
     <script src="api-client.js"></script>
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>
-<script src="chat-logic.js?v=20260916-DIRECTPRICE-FIX"></script>
+<script src="chat-logic.js?v=20260916-MODAL-FAV-SHARE-FIX"></script>
     <script src="ai-simulator.js"></script>
     <script src="ai-classifier.js"></script>
     <script src="platform-core.js"></script>
