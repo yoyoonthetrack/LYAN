@@ -53,8 +53,8 @@ class LyanAIClassifier {
             .trim();
     }
 
-    async fetchTaxonomyFromDB() {
-        if (this.cachedTaxonomy) return this.cachedTaxonomy;
+    async fetchTaxonomyFromDB({ strict = false } = {}) {
+        if (this.cachedTaxonomy && (!strict || this.cachedTaxonomy.every(t => t.id))) return this.cachedTaxonomy;
 
         if (typeof window !== 'undefined' && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
             try {
@@ -63,14 +63,17 @@ class LyanAIClassifier {
                     .select('*')
                     .eq('active', true);
                 
-                if (!error && data && data.length > 0) {
+                if (error && strict) throw error;
+                if (!error && data && (strict || data.length > 0)) {
                     this.cachedTaxonomy = data;
                     return data;
                 }
             } catch (err) {
+                if (strict) throw err;
                 console.warn("[TaxonomyEngine] Could not fetch DB taxonomy, using robust baseline.", err);
             }
         }
+        if (strict) throw new Error("Taxonomie indisponible");
         this.cachedTaxonomy = this.baselineTaxonomy;
         return this.cachedTaxonomy;
     }

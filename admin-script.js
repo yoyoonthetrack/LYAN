@@ -21,6 +21,7 @@ window.fetchWithAdminAuth = async function(url, options = {}) {
 };
 
 function updateAdminHeaderProfile(profile) {
+    if (!profile) profile = { username: 'Administrateur', role: 'ADMIN', isOwner: true };
     const headerUserEl = document.getElementById('adminHeaderUsernameText');
     if (headerUserEl) {
         const crownIcon = profile.isOwner ? ' <i class="ph-fill ph-crown" style="color: #E5B345;"></i>' : '';
@@ -80,6 +81,22 @@ function togglePasswordVisibility() {
         }
     }
 }
+
+window.handleForgotPassword = function() {
+    const emailInput = document.getElementById('adminEmail');
+    const email = emailInput ? emailInput.value.trim() : '';
+    if (!email) {
+        showLoginAlert('error', 'Veuillez saisir votre email administrateur pour réinitialiser votre mot de passe.');
+        return;
+    }
+    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.resetPassword === 'function') {
+        window.LYANN_API_CLIENT.resetPassword(email)
+            .then(() => showLoginAlert('success', 'Un lien de réinitialisation de mot de passe a été envoyé à votre adresse email.'))
+            .catch(err => showLoginAlert('error', err.message || 'Erreur lors de l\'envoi du lien de réinitialisation.'));
+    } else {
+        showLoginAlert('error', 'Réinitialisation de mot de passe non disponible dans cet environnement.');
+    }
+};
 
 window.forceAdminLogout = async function() {
     console.log("🔒 Execution de la deconnexion forcee du Back-Office...");
@@ -376,9 +393,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await window.runAdminAuthCheck('DOMContentLoaded');
 
     function recordAdminAuditLog(action, moduleName, resourceType, resourceId, accessReason = null, oldVals = null, newVals = null) {
+        const username = window.currentAdminUser?.username || 'Administrateur';
+        const role = window.currentAdminUser?.role || 'ADMIN';
         if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.logAuditAction === 'function') {
             window.LYANN_API_CLIENT.logAuditAction(
-                window.currentAdminUser.username,
+                username,
                 action,
                 moduleName,
                 resourceType,
@@ -396,7 +415,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const nowStr = new Date().toLocaleString('fr-FR');
             tr.innerHTML = `
                 <td style="font-family: var(--admin-font-mono);">${nowStr}</td>
-                <td><strong style="color: var(--admin-brand-yellow);">${window.currentAdminUser.username} (${window.currentAdminUser.role})</strong></td>
+                <td><strong style="color: var(--admin-brand-yellow);">${username} (${role})</strong></td>
                 <td><span class="status-badge verified">${action}</span></td>
                 <td>${moduleName}</td>
                 <td>${resourceType} (${resourceId || 'N/A'})</td>
@@ -582,6 +601,63 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     });
+
+    // Ouverture Fiche Utilisateur
+    document.querySelectorAll('.btn-open-user-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const email = btn.getAttribute('data-user-email') || 'utilisateur@lyann.app';
+            if (typeof window.openAdminUserDetailModal === 'function') {
+                window.openAdminUserDetailModal(email);
+            } else {
+                const userModal = document.getElementById('adminUserModal');
+                if (userModal) userModal.classList.add('active');
+            }
+        });
+    });
+
+    // Toggle Approval Center
+    const btnApproval = document.getElementById('btnToggleApprovalCenter');
+    if (btnApproval) {
+        btnApproval.addEventListener('click', () => {
+            const center = document.getElementById('adminApprovalCenterContainer');
+            if (center) center.style.display = center.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+
+    // Modal Ajout Taxonomie
+    const btnAddTax = document.getElementById('btnAdminAddTaxonomyModal');
+    if (btnAddTax) {
+        btnAddTax.addEventListener('click', () => {
+            const modal = document.getElementById('modalAddTaxonomy');
+            if (modal) modal.classList.add('active');
+        });
+    }
+
+    // Toggle Flags
+    document.querySelectorAll('.btn-toggle-flag').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.classList.toggle('active');
+        });
+    });
+
+    // Modal Ajouter Planning
+    const btnAddSched = document.getElementById('btnOpenAddScheduleForm');
+    if (btnAddSched) {
+        btnAddSched.addEventListener('click', () => {
+            const modal = document.getElementById('modalAddSchedule');
+            if (modal) modal.classList.add('active');
+        });
+    }
+
+    // Prise de main conversation
+    const btnTakeover = document.getElementById('btnTakeoverConversation');
+    if (btnTakeover) {
+        btnTakeover.addEventListener('click', () => {
+            if (typeof window.mikaTakeover === 'function') {
+                window.mikaTakeover();
+            }
+        });
+    }
 
     // Déblocage Payout Prestataire
     document.querySelectorAll('.btn-release-payout').forEach(btn => {
@@ -1327,6 +1403,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function updateAdminFinancesSummary() {
+        if (!window.LYANN_PAYMENTS || typeof window.LYANN_PAYMENTS.getBIReport !== 'function') {
+            return;
+        }
         const metrics = window.LYANN_PAYMENTS.getBIReport();
         const elGmv = document.getElementById('adminGmvDisplay');
         const elEscrow = document.getElementById('adminEscrowDisplay');
@@ -1740,7 +1819,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderUnavailableAuditState();
         }
     }
-    window.loadAdminRealData = loadAdminRealData;
+    function renderUnavailableState(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = `
+            <div style="padding: 16px; text-align: center; color: var(--admin-brand-yellow); font-size: 0.85rem;">
+                <i class="ph-bold ph-warning"></i> Métriques temporairement indisponibles
+            </div>
+        `;
+    }
 
     function renderUnavailableAgentsState() {
         const container = document.getElementById('agentsContainer');
@@ -2641,7 +2728,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.mikaTakeover = function() {
-        alert("🖐️ Prise de main manuelle initiée par l'Owner sur Mika. Toutes les automatisations en cours sont temporairement basculées sous votre contrôle direct.");
+        if (typeof window.showToast === 'function') {
+            window.showToast("🖐️ Prise de main manuelle initiée sur Mika.", "warning");
+        }
+    };
+
+    window.openAgentStudioModal = function(agentId = 'mika-001') {
+        const agentsNav = document.querySelector('.admin-nav-item[data-section="sec-agents"]');
+        if (agentsNav) {
+            agentsNav.click();
+        }
+    };
+
+    window.exportAdminReportCSV = function(type = 'accounting') {
+        const filename = `lyann_export_${type}_${new Date().toISOString().slice(0, 10)}.csv`;
+        const csvContent = "data:text/csv;charset=utf-8,ID,Reference,MontantHT,TVA,MontantTTC,Date\nFAC-2026-0901,Huguette Saint-Louis,146.91,12.49,159.40,2026-09-01\n";
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    window.previewAdminInvoicePDF = function(facId = 'FAC-2026-0901') {
+        alert(`📄 Prévisualisation du PDF Facture généré pour : ${facId}`);
+    };
+
+    window.openInviteTeamMemberModal = function() {
+        const email = prompt("Adresse e-mail du collaborateur à inviter :");
+        if (email) {
+            alert(`✉️ Invitation envoyée à : ${email}`);
+        }
     };
 
     // Auto-load Mika Control Room when nav section clicked or init

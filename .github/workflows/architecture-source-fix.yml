@@ -1,0 +1,25 @@
+name: Legacy Source Normalizers (manual only)
+
+# The stabilization branch is now moving to explicit canonical owners.
+# Historical normalizers remain available only for forensic/manual recovery;
+# they must never mutate the branch automatically after a developer push.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-normalizer-inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: architecture-stabilization
+
+      - name: Explain retirement
+        run: |
+          echo "Automatic source normalization is retired."
+          echo "Canonical modules and explicit migrations now own source changes."
+          echo "Historical scripts under scripts/normalize-* are retained temporarily for audit/recovery only."

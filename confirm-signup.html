@@ -14,11 +14,14 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260916">
 
     <!-- Supabase SDK & API Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="api-client.js"></script>
+    <script src="session-store.js"></script>
+    <script src="auth-state.js"></script>
+    <script src="explorer-repository.js"></script>
 
     <style>
         body {
@@ -254,7 +257,7 @@
             </p>
 
             <div id="actionContainer">
-                <button id="btnConfirm" class="btn-confirm-action">
+                <button id="btnConfirm" class="btn-confirm-action" onclick="handleHumanConfirmation()">
                     <i class="ph ph-check-circle"></i> Confirmer mon adresse
                 </button>
             </div>
@@ -266,6 +269,43 @@
     </footer>
 
     <script>
+        window.handleHumanConfirmation = async function handleHumanConfirmation() {
+            const btn = document.getElementById('btnConfirm');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph ph-spinner spin"></i> Confirmation en cours...';
+            }
+
+            const searchParams = new URLSearchParams(window.location.search);
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            let tokenHash = searchParams.get('token_hash') || searchParams.get('token');
+            let authType = searchParams.get('type') || 'email';
+            let rawConfirmationUrl = searchParams.get('confirmation_url');
+
+            try {
+                if (tokenHash && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+                    const targetType = (authType === 'signup' || authType === 'email') ? authType : 'email';
+                    const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.verifyOtp({
+                        token_hash: tokenHash,
+                        type: targetType
+                    });
+                    if (error) {
+                        if (typeof window.renderExpiredState === 'function') window.renderExpiredState();
+                        return;
+                    }
+                    if (typeof window.renderSuccessState === 'function') window.renderSuccessState();
+                    return;
+                }
+                if (rawConfirmationUrl && (rawConfirmationUrl.startsWith('http://') || rawConfirmationUrl.startsWith('https://'))) {
+                    window.location.href = rawConfirmationUrl;
+                    return;
+                }
+                if (typeof window.renderErrorState === 'function') window.renderErrorState('Lien de confirmation incomplet ou altéré.');
+            } catch(err) {
+                if (typeof window.renderErrorState === 'function') window.renderErrorState(err.message || 'Erreur imprévue lors de la confirmation.');
+            }
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
             const iconBox = document.getElementById('iconBox');
             const iconEl = document.getElementById('iconEl');
@@ -336,11 +376,10 @@
                 confirmTitle.textContent = 'Validation de votre adresse email';
                 confirmDesc.textContent = 'Pour valider votre adresse email et activer votre compte LYANN, cliquez sur le bouton ci-dessous.';
                 actionContainer.innerHTML = `
-                    <button id="btnConfirm" class="btn-confirm-action">
+                    <button id="btnConfirm" class="btn-confirm-action" onclick="handleHumanConfirmation()">
                         <i class="ph ph-check-circle"></i> Confirmer mon adresse
                     </button>
                 `;
-                document.getElementById('btnConfirm').addEventListener('click', handleHumanConfirmation);
             }
 
             function renderSuccessState() {
@@ -404,7 +443,6 @@
                 `;
             }
 
-            // 4. Traitement uniquement lors du clic humain
             async function handleHumanConfirmation() {
                 const btn = document.getElementById('btnConfirm');
                 if (btn) {
@@ -452,6 +490,7 @@
                     renderErrorState(err.message || 'Erreur imprévue lors de la confirmation.');
                 }
             }
+            window.handleHumanConfirmation = handleHumanConfirmation;
         });
     </script>
 </body>

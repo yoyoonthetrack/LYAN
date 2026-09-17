@@ -1,0 +1,13 @@
+fileType: momentic/test/v2
+id: 01-landing-navigation
+description: Exploratory QA - Landing page, navigation menu, header controls, refresh
+defaultEnv: local
+steps:
+  - assert: "Verify homepage header and LYANN navigation bar are visible"
+  - click: "Explorer navigation link"
+  - assert: "Verify Explorer search surface is displayed"
+  - click: "Comment ça marche navigation link"
+  - assert: "Verify Comment ça marche page title or pill badge is displayed"
+  - refresh: {}
+  - click: "LYANN logo"
+  - assert: "Verify return to homepage"

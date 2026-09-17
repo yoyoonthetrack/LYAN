@@ -1,0 +1,37 @@
+name: Architecture Stability Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - architecture-stabilization
+
+permissions:
+  contents: read
+
+jobs:
+  architecture-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run architecture audit
+        run: npm test
+
+      - name: Build shared Web + Capacitor artifact
+        run: npm run build:mobile
+
+      - name: Verify generated iOS bundle core syntax
+        run: |
+          node --check ios/App/App/public/app-router.js
+          node --check ios/App/App/public/surface-manager.js
+          node --check ios/App/App/public/messaging-ui.js
+          node --check ios/App/App/public/chat-logic.js
+          node --check ios/App/App/public/api-client.js
+          node --check ios/App/App/public/script.js

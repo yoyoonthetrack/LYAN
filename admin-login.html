@@ -579,10 +579,9 @@
             banner.style.display = 'none';
         }
 
-        // Forgot password notice
-        function handleForgotPassword() {
-            alert("🔒 Réinitialisation de mot de passe Administrateur :\n\nVeuillez contacter le Super Admin (Owner) ou exécuter la procédure de récupération via la console d'administration centrale.");
-        }
+        window.handleForgotPassword = function() {
+            showAlert('error', "🔒 Réinitialisation Administrateur : Veuillez contacter le Super Admin (Owner) ou l'administration centrale.");
+        };
 
         // Main Login Handler
         async function handleAdminLogin(event) {

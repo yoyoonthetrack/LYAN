@@ -3,6 +3,7 @@
  * Supports Web, iOS Native, Android Native, and Enterprise Admin Console.
  */
 
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 if (typeof global.WebSocket === 'undefined') {
@@ -10,17 +11,21 @@ if (typeof global.WebSocket === 'undefined') {
 }
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local'), override: true });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS for all clients (Web App, iOS Swift, Android Kotlin, Admin Back-Office admin.lyann.app)
+// Enable CORS for all clients (Web App, iOS Native, Android Native, Enterprise Admin Console)
 app.use(cors({
     origin: (origin, callback) => callback(null, true),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Platform-Client', 'Accept'],
     credentials: true
 }));
+
+// Serve local static frontend files when running locally
+app.use(express.static(path.join(__dirname, '..')));
 
 // URL Normalizer for Vercel Serverless Rewrites
 app.use((req, res, next) => {
@@ -41,6 +46,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
 });
+
+const { createPublicRequestsHandler } = require('./public-explorer-requests');
+app.get('/v1/explorer/requests', createPublicRequestsHandler(supabaseAdmin, Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)));
 
 function getSupabaseClient(req) {
     const authHeader = req ? (req.headers['authorization'] || req.headers['Authorization']) : null;
@@ -1190,7 +1198,7 @@ app.get('/v1/admin/agents/mika', async (req, res) => {
                 name: agent.agent_name || MIKA_DEFAULT_CONFIG.name,
                 public_name: MIKA_DEFAULT_CONFIG.public_name,
                 role: MIKA_DEFAULT_CONFIG.role,
-                avatar: '/brain/fd51f70e-ee89-49e4-851d-15aa38e3d416/avatar_01.png',
+                avatar: 'avatar_01.png',
                 status: agent.status || 'ACTIVE'
             },
             metrics_today: {

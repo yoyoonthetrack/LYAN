@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  // Temporary defense-in-depth only. Source/build sanitization is authoritative.
+  // Deliberately one-shot: no MutationObserver is allowed to mutate live product UI.
   const DEMO_MARKERS = [
     'Jocelyn Cabort',
     'Hugues Zami',
@@ -35,9 +37,7 @@
   function removeKnownDemoSections(root = document) {
     root.querySelectorAll('.talents-section, .testimonials-section').forEach((section) => {
       const text = section.textContent || '';
-      if (DEMO_MARKERS.some((marker) => text.includes(marker))) {
-        section.remove();
-      }
+      if (DEMO_MARKERS.some((marker) => text.includes(marker))) section.remove();
     });
   }
 
@@ -47,15 +47,10 @@
       const alt = img.getAttribute('alt') || '';
       const isDemo = DEMO_IMAGE_PARTS.some((part) => src.includes(part)) || DEMO_MARKERS.some((marker) => alt.includes(marker));
       if (!isDemo) return;
-
       const card = img.closest(SAFE_CARD_SELECTORS);
-      if (card) {
-        card.remove();
-      } else {
-        img.remove();
-      }
+      if (card) card.remove();
+      else img.remove();
     });
-
     root.querySelectorAll('[data-member-id="200"], [data-member-id="201"], [data-member-id="212"]').forEach((el) => el.remove());
   }
 
@@ -72,44 +67,16 @@
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
-
     nodes.forEach((node) => {
       const parent = node.parentElement;
       if (!parent || parent.closest('script, style, noscript, textarea')) return;
-
-      let value = node.nodeValue || '';
-      const original = value;
-
-      value = value
+      const original = node.nodeValue || '';
+      const value = original
         .replace(/Coup de pouce/g, 'Service de confiance')
         .replace(/coup de pouce/g, 'service de confiance')
         .replace(/\s*\(Simul[ée]\)/gi, '')
         .replace(/Bonjour David\b/g, 'Bonjour');
-
       if (value !== original) node.nodeValue = value;
-    });
-  }
-
-  function hideResidualDemoBlocks(root = document) {
-    const candidates = root.querySelectorAll('body *');
-    candidates.forEach((el) => {
-      if (el.children.length > 8) return;
-      const text = (el.textContent || '').trim();
-      if (!text) return;
-
-      const marker = DEMO_MARKERS.find((m) => text.includes(m));
-      if (!marker || marker === 'Bonjour David') return;
-
-      const safeContainer = el.closest(SAFE_CARD_SELECTORS);
-      if (safeContainer) {
-        safeContainer.remove();
-        return;
-      }
-
-      if (marker === 'Zone de Test') {
-        const block = el.closest('section, fieldset, details, [class*="test"], [class*="demo"]');
-        if (block) block.remove();
-      }
     });
   }
 
@@ -118,28 +85,14 @@
     removeKnownDemoCards(root);
     neutralizeHardcodedCounters(root);
     sanitizeTextNodes(root);
-    hideResidualDemoBlocks(root);
   }
 
   function start() {
     runHygiene(document);
-
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE) runHygiene(node);
-        });
-      }
-    });
-
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-
+    // One second pass after deferred scripts have initialized. No ongoing observer.
     window.addEventListener('load', () => runHygiene(document), { once: true });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start, { once: true });
-  } else {
-    start();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
 })();

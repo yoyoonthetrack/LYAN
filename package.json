@@ -5,6 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "test": "npm run audit:architecture",
+    "audit:architecture": "node scripts/architecture-audit.js && node scripts/profile-architecture-audit.js && node scripts/bokantaj-architecture-audit.js && node scripts/responsive-interactions-audit.js && node scripts/favorites-interaction-audit.js && node scripts/immediate-surfaces-audit.js && node scripts/explorer-architecture-audit.js && node scripts/messaging-responsiveness-audit.js && node scripts/optimistic-chat-send-audit.js && node scripts/chat-atomic-render-audit.js && node scripts/messaging-repository-audit.js && node scripts/chat-quote-context-audit.js && node scripts/chat-proposal-overlay-audit.js && node scripts/messaging-architecture-audit.js && node scripts/web-mobile-structural-parity-audit.js && node scripts/shared-build-parity-audit.js && node scripts/runtime-ownership-audit.js && node scripts/navigation-runtime-smoke-audit.js && node scripts/production-data-contract-audit.js && node scripts/release-candidate-audit.js",
+    "test:integration": "npx playwright test",
     "build:mobile": "node build_mobile.js",
     "cap:sync": "npx cap sync",
     "ios": "npx cap open ios",
@@ -33,5 +36,9 @@
     "twilio": "^5.2.2"
   },
   "author": "LYANN",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "momentic": "^3.58.1"
+  }
 }

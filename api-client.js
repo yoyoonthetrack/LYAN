@@ -1,6 +1,6 @@
 /**
  * LYANN DOM — SUPABASE & API CLIENT SDK
- * Includes LocalStorage Mock Backend for DEV/Testing of the Messaging & AI System
+ * Production Supabase client. No local mock business-data fallback is permitted.
  */
 
 // Global Supabase init
@@ -13,6 +13,7 @@ function isUUID(str) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return uuidRegex.test(str);
 }
+window.isUUID = isUUID;
 if (window.supabase) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
@@ -24,8 +25,8 @@ if (window.supabase) {
     console.log("⚡ Supabase client initialized with session persistence.");
     console.log("⚡ [BOOT 03] Supabase ready");
 } else {
-    console.warn("⚠️ Supabase JS SDK missing. Running in Mock Mode only.");
-    console.log("⚡ [BOOT 03] Supabase ready (Mock Mode)");
+    console.error("⚠️ Supabase JS SDK missing. Production data features are unavailable.");
+    console.log("⚡ [BOOT 03] Supabase unavailable");
 }
 
 if (!window.getLyannDefaultAvatar) {
@@ -96,29 +97,9 @@ if (!window.getLyannDefaultAvatar) {
 
 
 // ----------------------------------------------------------------------
-// MOCK LOCAL DATABASE FOR MISSIONS (Used for DEV/AI testing)
+// PRODUCTION DATA POLICY: business data is remote-only (Supabase/RPC).
+// No localStorage mission/message/service fallback is allowed.
 // ----------------------------------------------------------------------
-const MOCK_STORAGE_KEY = 'lyann_mock_missions_db';
-
-function getMockMissions() {
-    try {
-        const data = localStorage.getItem(MOCK_STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
-    } catch (e) {
-        return [];
-    }
-}
-
-function saveMockMissions(missions) {
-    localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(missions));
-    // Dispatch event to force UI update if needed
-    window.dispatchEvent(new CustomEvent('lyann_missions_updated'));
-}
-
-function generateId() {
-    return 'm_' + Math.random().toString(36).substr(2, 9);
-}
-
 function normalizeAuthError(error) {
     if (!error) return null;
     const msg = (error.message || '').toLowerCase();
@@ -497,8 +478,9 @@ const LYANN_API_CLIENT = {
         if (!this.supabase) return { data: [] };
         return await this.supabase
             .from('services')
-            .select('id, owner_id, title, description, category, created_at')
+            .select('id, owner_id, title, description, category, price_type, base_price, is_active, created_at')
             .eq('owner_id', userId)
+            .eq('is_active', true)
             .order('created_at', { ascending: false });
     },
 
@@ -742,29 +724,10 @@ const LYANN_API_CLIENT = {
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (postsError) {
-                console.warn("[LYANN API] Error fetching bokantaj_posts:", postsError);
-            }
-
-            // 2. Fetch OPEN Requests (Lyanns)
-            const { data: requestsData, error: requestsError } = await this.supabase
-                .from('requests')
-                .select('*')
-                .eq('status', 'OPEN')
-                .order('created_at', { ascending: false });
-
-            if (requestsError) {
-                console.warn("[LYANN API] Error fetching OPEN requests for Bokantaj feed:", requestsError);
-            }
-
+            if (postsError) throw postsError;
             const posts = postsData || [];
-            const openRequests = requestsData || [];
-
-            // 2b. Collect all author IDs & fetch public_profiles (bypassing RLS restriction on profiles)
-            const authorIds = Array.from(new Set([
-                ...posts.map(p => p.user_id || p.author_id),
-                ...openRequests.map(r => r.requester_id || r.user_id)
-            ].filter(Boolean)));
+            // Community discovery never queries or merges transactional Requests.
+            const authorIds = [...new Set(posts.map(p => p.author_id).filter(Boolean))];
 
             const profilesMap = {};
             if (authorIds.length > 0) {
@@ -850,13 +813,13 @@ const LYANN_API_CLIENT = {
                     author_name: authorName,
                     author_avatar: avatarUrl,
                     author_city: authorProf?.city || authorProf?.territory || p.territory || 'Guadeloupe',
-                    badge: p.post_type === 'dispo' ? '<i class="ph ph-lightning"></i> Disponibilité' : (p.post_type === 'besoin' ? '<i class="ph ph-magnifying-glass"></i> Besoin' : '<i class="ph ph-newspaper"></i> Info Bokantaj'),
-                    type: p.post_type,
-                    location: p.territory || authorProf?.city || 'Guadeloupe',
+                    badge: p.type === 'dispo' ? '<i class="ph ph-lightning"></i> Disponibilité' : (p.type === 'besoin' ? '<i class="ph ph-magnifying-glass"></i> Besoin' : '<i class="ph ph-newspaper"></i> Info Bokantaj'),
+                    type: p.type,
+                    location: p.city || p.territory || authorProf?.city || '',
                     territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
                     created_at: p.created_at,
                     content: p.content,
-                    images: p.media_urls || [],
+                    images: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url)),
                     likes: (postLikesCountMap[p.id] !== undefined) ? postLikesCountMap[p.id] : (p.likes_count || 0),
                     user_has_liked: userLikedPostsSet.has(p.id),
                     comments_count: postCommentsCountMap[p.id] || p.replies_count || 0,
@@ -864,45 +827,7 @@ const LYANN_API_CLIENT = {
                 };
             });
 
-            const formattedLyanns = openRequests.map(r => {
-                const authorProf = profilesMap[r.requester_id || r.user_id];
-                const authorName = formatAuthorName(authorProf);
-                const avatarUrl = window.getLyannAvatarUrl(authorProf?.avatar_url);
-                const cityStr = authorProf ? (authorProf.city || authorProf.territory || 'Guadeloupe') : (r.location || 'Guadeloupe');
-
-                return {
-                    id: r.id,
-                    request_id: r.id,
-                    item_type: 'LYANN',
-                    author_id: r.requester_id,
-                    author_name: authorName,
-                    author_avatar: avatarUrl,
-                    author_city: cityStr,
-                    badge: `LYANN · ${r.category || 'Besoin'}`,
-                    type: 'lyann',
-                    location: r.location || cityStr,
-                    territoryKey: extractTerritoryKey(r.location || cityStr, authorProf?.territory),
-                    created_at: r.created_at,
-                    title: r.title || 'Demande d\'aide',
-                    content: r.description || r.title || '',
-                    category: r.category || 'Général',
-                    budget: r.budget,
-                    budget_display: r.budget ? `${r.budget} €` : 'Sur devis',
-                    urgency: r.urgency,
-                    status: r.status,
-                    images: r.media_urls || [],
-                    likes: requestLikesCountMap[r.id] || 0,
-                    user_has_liked: userLikedRequestsSet.has(r.id),
-                    comments_count: requestCommentsCountMap[r.id] || 0
-                };
-            });
-
-            // 4. Merge and sort unified feed by created_at DESC
-            const unifiedFeed = [...formattedPosts, ...formattedLyanns].sort((a, b) => {
-                const dateA = new Date(a.created_at || 0).getTime();
-                const dateB = new Date(b.created_at || 0).getTime();
-                return dateB - dateA;
-            });
+            const unifiedFeed = formattedPosts;
 
             return { data: unifiedFeed, error: null };
         } catch (err) {
@@ -913,6 +838,20 @@ const LYANN_API_CLIENT = {
 
     // --- BOKANTAJ SOCIAL API METHODS ---
 
+    async uploadPostPhoto(file) {
+        if (!this.supabase || !file) throw new Error('Photo indisponible');
+        const user = await this.getCurrentUser();
+        if (!user) throw new Error('Veuillez vous connecter');
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+            throw new Error('Choisissez une photo JPG, PNG ou WEBP de moins de 5 Mo.');
+        }
+        const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type];
+        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+        const { error } = await this.supabase.storage.from('bokantaj-media').upload(path, file);
+        if (error) throw new Error('La photo n’a pas pu être envoyée. Réessayez avant de publier.');
+        return this.supabase.storage.from('bokantaj-media').getPublicUrl(path).data.publicUrl;
+    },
+
     async createPost(payload) {
         if (!this.supabase) throw new Error("Supabase non initialisé");
         const session = await this.getCurrentUser();
@@ -920,7 +859,7 @@ const LYANN_API_CLIENT = {
 
         const postRecord = {
             author_id: session.id,
-            type: payload.type || 'dispo',
+            type: payload.type || 'info',
             content: payload.content,
             city: payload.city || null,
             territory: payload.territory || null,
@@ -1110,14 +1049,7 @@ const LYANN_API_CLIENT = {
     // Gets the active mission between two users
     
     async getActiveMissionBetween(userId1, userId2) {
-        if (!isUUID(userId1) || !isUUID(userId2) || !this.supabase) {
-            const missions = getMockMissions();
-            const matched = missions.filter(m => 
-                (m.requester_id === userId1 && m.helper_id === userId2) ||
-                (m.requester_id === userId2 && m.helper_id === userId1)
-            );
-            return matched.length > 0 ? matched[matched.length - 1] : null;
-        }
+        if (!isUUID(userId1) || !isUUID(userId2) || !this.supabase) return null;
         try {
             const { data, error } = await this.supabase
                 .from('missions')
@@ -1127,31 +1059,15 @@ const LYANN_API_CLIENT = {
                 .limit(1);
             if (error) throw error;
             return data && data.length > 0 ? data[0] : null;
-        } catch (e) {
-            console.warn("Supabase active mission fetch failed, falling back to local:", e);
-            const missions = getMockMissions();
-            const matched = missions.filter(m => 
-                (m.requester_id === userId1 && m.helper_id === userId2) ||
-                (m.requester_id === userId2 && m.helper_id === userId1)
-            );
-            return matched.length > 0 ? matched[matched.length - 1] : null;
+        } catch (error) {
+            console.error('[MISSIONS] active mission query failed', error);
+            return null;
         }
     },
 
-    async mockCreateNeed(requesterId, helperId, title) {
-        const missions = getMockMissions();
-        const mission = {
-            id: generateId(),
-            requester_id: requesterId,
-            helper_id: helperId,
-            title: title || "Demande d'aide",
-            agreed_price: 0,
-            status: 'DISCUSSION',
-            proposed_by: null
-        };
-        missions.push(mission);
-        saveMockMissions(missions);
-        return mission;
+    /** @deprecated Local mock mission creation is disabled in production. */
+    async mockCreateNeed() {
+        throw new Error('Legacy local mission creation is disabled. Use the request/invitation workflow.');
     },
 
     // --- QUOTES & MILESTONES (PRODUCTION BACKEND RPCs) ---
@@ -1468,219 +1384,68 @@ const LYANN_API_CLIENT = {
         return data[0];
     },
 
-    /** @deprecated Code legacy fallback. Préférer createRequestQuote() */
+    /** @deprecated Compatibility wrapper. Remote production data only. */
     async mockProposePrice(proposerId, receiverId, amount, description) {
         if (!isUUID(proposerId) || !isUUID(receiverId) || !this.supabase) {
-            const missions = getMockMissions();
-            let mission = missions.find(m => 
-                (m.requester_id === proposerId && m.helper_id === receiverId) ||
-                (m.requester_id === receiverId && m.helper_id === proposerId)
-            );
-
-            if (!mission || mission.status === 'COMPLETED' || mission.status === 'CANCELLED') {
-                mission = {
-                    id: generateId(),
-                    requester_id: receiverId,
-                    helper_id: proposerId,
-                    title: description || "Service demandé",
-                    agreed_price: amount,
-                    status: 'PROPOSED',
-                    proposed_by: proposerId
-                };
-                missions.push(mission);
-            } else {
-                mission.agreed_price = amount;
-                mission.status = 'PROPOSED';
-                mission.proposed_by = proposerId;
-                mission.title = description || mission.title;
-            }
-            saveMockMissions(missions);
-            return mission;
+            throw new Error('Proposition impossible sans session Supabase valide.');
         }
-        try {
-            let mission = await this.getActiveMissionBetween(proposerId, receiverId);
-            if (!mission || mission.status === 'COMPLETED' || mission.status === 'CANCELLED') {
-                const { data, error } = await this.supabase.from('missions').insert({
-                    requester_id: receiverId, 
-                    helper_id: proposerId,    
-                    title: description || "Service demandé",
-                    agreed_price: amount,
-                    status: 'PROPOSED',
-                    proposed_by: proposerId
-                }).select().single();
-                if (error) throw error;
-                return data;
-            } else {
-                const { data, error } = await this.supabase.from('missions').update({
-                    agreed_price: amount,
-                    status: 'PROPOSED',
-                    proposed_by: proposerId,
-                    title: description || mission.title
-                }).eq('id', mission.id).select().single();
-                if (error) throw error;
-                return data;
-            }
-        } catch (e) {
-            console.warn("Supabase mockProposePrice failed, falling back to local:", e);
-            const missions = getMockMissions();
-            let mission = missions.find(m => 
-                (m.requester_id === proposerId && m.helper_id === receiverId) ||
-                (m.requester_id === receiverId && m.helper_id === proposerId)
-            );
-            if (!mission || mission.status === 'COMPLETED' || mission.status === 'CANCELLED') {
-                mission = {
-                    id: generateId(),
-                    requester_id: receiverId,
-                    helper_id: proposerId,
-                    title: description || "Service demandé",
-                    agreed_price: amount,
-                    status: 'PROPOSED',
-                    proposed_by: proposerId
-                };
-                missions.push(mission);
-            } else {
-                mission.agreed_price = amount;
-                mission.status = 'PROPOSED';
-                mission.proposed_by = proposerId;
-                mission.title = description || mission.title;
-            }
-            saveMockMissions(missions);
-            return mission;
-        }
-    },
-
-    async mockAcceptPrice(missionId, userId) {
-        if (!isUUID(missionId) || !this.supabase) {
-            const missions = getMockMissions();
-            const mission = missions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'AGREED';
-                saveMockMissions(missions);
-            }
-            return mission;
-        }
-        try {
-            const { data, error } = await this.supabase.from('missions').update({ status: 'AGREED' }).eq('id', missionId).select().single();
+        const mission = await this.getActiveMissionBetween(proposerId, receiverId);
+        if (!mission || mission.status === 'COMPLETED' || mission.status === 'CANCELLED') {
+            const { data, error } = await this.supabase.from('missions').insert({
+                requester_id: receiverId,
+                helper_id: proposerId,
+                title: description || 'Service demandé',
+                agreed_price: amount,
+                status: 'PROPOSED',
+                proposed_by: proposerId
+            }).select().single();
             if (error) throw error;
             return data;
-        } catch (e) {
-            console.warn("Supabase mockAcceptPrice failed, falling back to local:", e);
-            const missions = getMockMissions();
-            const mission = missions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'AGREED';
-                saveMockMissions(missions);
-            }
-            return mission;
         }
+        const { data, error } = await this.supabase.from('missions').update({
+            agreed_price: amount,
+            status: 'PROPOSED',
+            proposed_by: proposerId,
+            title: description || mission.title
+        }).eq('id', mission.id).select().single();
+        if (error) throw error;
+        return data;
+    },
+
+    async mockAcceptPrice(missionId) {
+        if (!isUUID(missionId) || !this.supabase) throw new Error('Mission invalide.');
+        const { data, error } = await this.supabase.from('missions').update({ status: 'AGREED' }).eq('id', missionId).select().single();
+        if (error) throw error;
+        return data;
     },
 
     async mockPayMission(missionId) {
-        if (!isUUID(missionId) || !this.supabase) {
-            const missions = getMockMissions();
-            const mission = missions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'IN_PROGRESS';
-                mission.payment_status = 'PAID_ESCROW';
-                saveMockMissions(missions);
-            }
-            return mission;
-        }
-        try {
-            const { data, error } = await this.supabase.from('missions').update({ status: 'IN_PROGRESS', payment_status: 'PAID_ESCROW' }).eq('id', missionId).select().single();
-            if (error) throw error;
-            return data;
-        } catch (e) {
-            console.warn("Supabase mockPayMission failed, falling back to local:", e);
-            const missions = getMockMissions();
-            const mission = missions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'IN_PROGRESS';
-                mission.payment_status = 'PAID_ESCROW';
-                saveMockMissions(missions);
-            }
-            return mission;
-        }
+        if (!isUUID(missionId) || !this.supabase) throw new Error('Mission invalide.');
+        const { data, error } = await this.supabase.from('missions').update({ status: 'IN_PROGRESS', payment_status: 'PAID_ESCROW' }).eq('id', missionId).select().single();
+        if (error) throw error;
+        return data;
     },
 
     async mockMarkMissionDone(missionId) {
-        if (!isUUID(missionId) || !this.supabase) {
-            const missions = getMockMissions();
-            const mission = missions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'WORK_MARKED_COMPLETE';
-                saveMockMissions(missions);
-            }
-            return mission;
-        }
-        try {
-            const { data, error } = await this.supabase.from('missions').update({ status: 'WORK_MARKED_COMPLETE' }).eq('id', missionId).select().single();
-            if (error) throw error;
-            return data;
-        } catch (e) {
-            console.warn("Supabase mockMarkMissionDone failed, falling back to local:", e);
-            const missions = getMockMissions();
-            const mission = missions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'WORK_MARKED_COMPLETE';
-                saveMockMissions(missions);
-            }
-            return mission;
-        }
+        if (!isUUID(missionId) || !this.supabase) throw new Error('Mission invalide.');
+        const { data, error } = await this.supabase.from('missions').update({ status: 'WORK_MARKED_COMPLETE' }).eq('id', missionId).select().single();
+        if (error) throw error;
+        return data;
     },
 
     async mockConfirmMissionCompletion(missionId) {
-        if (!isUUID(missionId) || !this.supabase) {
-            const missions = getMockMissions();
-            const mission = missions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'COMPLETED';
-                saveMockMissions(missions);
-            }
-            return mission;
-        }
-        try {
-            const { data, error } = await this.supabase.from('missions').update({ status: 'COMPLETED' }).eq('id', missionId).select().single();
-            if (error) throw error;
-            return data;
-        } catch (e) {
-            console.warn("Supabase mockConfirmMissionCompletion failed, falling back to local:", e);
-            const missions = getMockMissions();
-            const mission = missions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'COMPLETED';
-                saveMockMissions(missions);
-            }
-            return mission;
-        }
+        if (!isUUID(missionId) || !this.supabase) throw new Error('Mission invalide.');
+        const { data, error } = await this.supabase.from('missions').update({ status: 'COMPLETED' }).eq('id', missionId).select().single();
+        if (error) throw error;
+        return data;
     },
 
     async mockReportProblem(missionId) {
-        if (!isUUID(missionId) || !this.supabase) {
-            const missions = getMockMissions();
-            const mission = missions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'DISPUTE';
-                saveMockMissions(missions);
-            }
-            return mission;
-        }
-        try {
-            const { data, error } = await this.supabase.from('missions').update({ status: 'DISPUTE' }).eq('id', missionId).select().single();
-            if (error) throw error;
-            return data;
-        } catch (e) {
-            console.warn("Supabase mockReportProblem failed, falling back to local:", e);
-            const missions = getMockMissions();
-            const mission = missions.find(m => m.id === missionId);
-            if (mission) {
-                mission.status = 'DISPUTE';
-                saveMockMissions(missions);
-            }
-            return mission;
-        }
+        if (!isUUID(missionId) || !this.supabase) throw new Error('Mission invalide.');
+        const { data, error } = await this.supabase.from('missions').update({ status: 'DISPUTE' }).eq('id', missionId).select().single();
+        if (error) throw error;
+        return data;
     },
-
 
     // --- STATE MACHINE & ROLE-BASED ACTIONS ---
     getAvailableMissionActions(userId, mission) {
@@ -1759,97 +1524,29 @@ const LYANN_API_CLIENT = {
     },
 
     // --- SERVICES MANAGEMENT ---
-    async getUserServices(userId) {
-        if (!userId || !isUUID(userId) || !this.supabase) {
-            return [];
-        }
-        try {
-            const { data, error } = await this.supabase
-                .from('services')
-                .select('*')
-                .eq('owner_id', userId)
-                .eq('is_active', true);
-            if (error) throw error;
-            if (!data || !Array.isArray(data)) return [];
-            return data.map(s => {
-                const billingText = s.pricing_model === 'HOURLY' ? '/ heure' :
-                                     s.pricing_model === 'DAILY' ? '/ jour' :
-                                     s.pricing_model === 'FLAT_RATE' ? '/ unité' : '';
-                return {
-                    id: s.id,
-                    title: s.title,
-                    price: s.indicative_price ? s.indicative_price.toString() : 'Sur devis',
-                    billing: billingText,
-                    details: s.description || '',
-                    status: (s.is_active !== false && s.active !== false) ? 'Actif' : 'Inactif'
-                };
-            });
-        } catch (e) {
-            console.warn("Supabase getUserServices query failed:", e);
-            return [];
-        }
-    },
-
     async addUserService(userId, title, price, billing, description) {
-        const mockNewService = {
-            id: 's_' + Math.random().toString(36).substr(2, 9),
-            title,
-            price,
+        if (!isUUID(userId) || !this.supabase) {
+            throw new Error('Impossible d’ajouter un service sans session Supabase valide.');
+        }
+        const pricing_model = billing === '/ heure' ? 'HOURLY' :
+                              billing === '/ jour' ? 'DAILY' :
+                              billing === 'Sur devis' ? 'QUOTE' : 'FLAT_RATE';
+        const indicative_price = (price === 'Sur devis' || isNaN(parseFloat(price))) ? null : parseFloat(price);
+        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        const { data, error } = await this.supabase
+            .from('services')
+            .insert({ owner_id: userId, title, slug, description, pricing_model, indicative_price, active: true })
+            .select()
+            .single();
+        if (error) throw error;
+        return {
+            id: data.id,
+            title: data.title,
+            price: data.indicative_price ? data.indicative_price.toString() : 'Sur devis',
             billing,
-            details: description,
+            details: data.description || '',
             status: 'Actif'
         };
-
-        if (!isUUID(userId) || !this.supabase) {
-            try {
-                const mockObj = localStorage.getItem('lyann_mock_services');
-                const list = mockObj ? JSON.parse(mockObj) : [];
-                list.push(mockNewService);
-                localStorage.setItem('lyann_mock_services', JSON.stringify(list));
-            } catch(e) {}
-            return mockNewService;
-        }
-
-        try {
-            const pricing_model = billing === '/ heure' ? 'HOURLY' :
-                                  billing === '/ jour' ? 'DAILY' :
-                                  billing === 'Sur devis' ? 'QUOTE' : 'FLAT_RATE';
-            const indicative_price = (price === 'Sur devis' || isNaN(parseFloat(price))) ? null : parseFloat(price);
-            const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-
-            const { data, error } = await this.supabase
-                .from('services')
-                .insert({
-                    owner_id: userId,
-                    title,
-                    slug,
-                    description,
-                    pricing_model,
-                    indicative_price,
-                    active: true
-                })
-                .select()
-                .single();
-            
-            if (error) throw error;
-            return {
-                id: data.id,
-                title: data.title,
-                price: data.indicative_price ? data.indicative_price.toString() : 'Sur devis',
-                billing: billing,
-                details: data.description || '',
-                status: 'Actif'
-            };
-        } catch (e) {
-            console.warn("Supabase addUserService failed, falling back to local:", e);
-            try {
-                const mockObj = localStorage.getItem('lyann_mock_services');
-                const list = mockObj ? JSON.parse(mockObj) : [];
-                list.push(mockNewService);
-                localStorage.setItem('lyann_mock_services', JSON.stringify(list));
-            } catch(err) {}
-            return mockNewService;
-        }
     },
 
     // --- ENTERPRISE ADMIN BACK-OFFICE METHODS ---
@@ -1931,13 +1628,16 @@ const LYANN_API_CLIENT = {
             const membersList = (typeof window.isExplicitDemoMode === 'function' && window.isExplicitDemoMode()) ? (window.LYANN_MEMBERS || []) : [];
             return window.LyannMatchingEngine.dispatchTargetedNeedNotifications(needData, membersList, batchSize);
         }
-        return { dispatched_count: 0, fallback_message: "Votre besoin est bien publié dans Bokantaj." };
+        return { dispatched_count: 0, fallback_message: "Votre besoin est bien publié dans Explorer → Annonces." };
     },
 
     // --- REAL HELP REQUESTS API (requests table) ---
     async createRequest(payload) {
         if (!this.supabase) {
             throw new Error("Supabase non initialisé");
+        }
+        if (payload.media_urls?.length) {
+            throw new Error("Les annonces se publient sans photo pour le moment.");
         }
         
         // Identity MUST come strictly from session auth.uid()
@@ -1953,7 +1653,6 @@ const LYANN_API_CLIENT = {
         }
 
         const requestData = {
-            id: payload.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined),
             requester_id: authUid,
             title: payload.title || "Demande d'aide",
             description: payload.description || "",
@@ -2001,10 +1700,6 @@ const LYANN_API_CLIENT = {
         if (error) {
             console.error("Erreur création demande Supabase DB:", error);
             throw error;
-        }
-
-        if (data && payload.media_urls && Array.isArray(payload.media_urls)) {
-            data.media_urls = payload.media_urls;
         }
 
         return data;
@@ -2550,6 +2245,5 @@ LYANN_API_CLIENT.addFavorite = window.LyannFavoritesService.addFavorite.bind(win
 LYANN_API_CLIENT.removeFavorite = window.LyannFavoritesService.removeFavorite.bind(window.LyannFavoritesService);
 LYANN_API_CLIENT.toggleFavorite = window.LyannFavoritesService.toggleFavorite.bind(window.LyannFavoritesService);
 LYANN_API_CLIENT.getHydratedFavorites = window.LyannFavoritesService.getHydratedFavorites.bind(window.LyannFavoritesService);
-
 
 

@@ -1,0 +1,9 @@
+fileType: momentic/test/v2
+id: 04-annonces-demandes
+description: Exploratory QA - Dual intent cards (Je cherche un Lyanneur / J'ai un besoin) and secondary action chips
+defaultEnv: local
+steps:
+  - act: "Click on J'ai un besoin card in hero search experience"
+  - assert: "Verify need panel or search intent switches"
+  - act: "Click on Je cherche un Lyanneur card"
+  - assert: "Verify Lyanneur search panel is active"

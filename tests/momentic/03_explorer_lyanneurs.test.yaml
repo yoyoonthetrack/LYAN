@@ -1,0 +1,15 @@
+fileType: momentic/test/v2
+id: 03-explorer-lyanneurs
+description: Explorer dual discovery - real public profiles, service search, empty recovery and filter sheet
+defaultEnv: local
+url: http://127.0.0.1:8080/results.html?mode=lyanneurs&area=
+steps:
+  - assert: "Explorer shows Annonces and Lyanneurs tabs and a service search field"
+  - act:
+      goal: "Explore Lyanneurs discovery without logging in or writing data. Search for Jardinage and verify a matching service profile is shown. Open that profile and verify its services are visible, then close it. Open Filtres et zone, enter CommuneIntrouvable as the area and apply. Verify an explicit no-result message. Remove the area filter to recover the profiles. Do not send a message, publish content, add favorites or submit any business action."
+      cache: false
+  - type:
+      text: "XYZ999UNKNOWN"
+      into: "Explorer service search field"
+  - click: "Rechercher button in Explorer search form"
+  - assert: "Aucun Lyanneur trouvé pour cette recherche is visible with a recovery action"
