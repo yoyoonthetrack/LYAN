@@ -65,7 +65,7 @@
                 } while (offset !== null);
                 return rows;
             }
-            const requests = await readAll('requests', q => q.eq('visibility', 'PUBLIC'));
+            const requests = await readAll('requests', q => q.eq('visibility', 'PUBLIC').eq('status', 'OPEN').eq('safety_status', 'SAFE').is('target_user_id', null).in('classification_status', ['CLASSIFIED', 'UNCLASSIFIED']));
             const ids = [...new Set(requests.map(r => r.requester_id).filter(Boolean))];
             const profiles = new Map();
             for (let offset = 0; offset < ids.length; offset += 100) {
@@ -113,9 +113,14 @@
             const location = normalize(mode === 'annonces' ? record.location : [record.city, record.territory].filter(Boolean).join(' '));
             // Saved territory labels and Request locations can put the same
             // department code before or after the name (971 / Guadeloupe).
-            if (!areaTerms.every(term => location.includes(term))) return false;
+            if (mode === 'annonces' && !areaTerms.every(term => location.includes(term))) return false;
+            if (mode === 'lyanneurs') {
+                const clean = value => normalize(String(value || '').replace(/\s*\(\d+\)/g, ''));
+                if (filters.territory && clean(record.territory) !== clean(filters.territory)) return false;
+                if (filters.commune && clean(record.city) !== clean(filters.commune)) return false;
+            }
             if (mode === 'annonces') {
-                if (filters.status && record.status !== filters.status) return false;
+                if (record.status !== 'OPEN') return false;
                 if (filters.urgency && record.urgency !== filters.urgency) return false;
                 if (filters.budget !== '' && (record.budget == null || Number(record.budget) > Number(filters.budget))) return false;
             }

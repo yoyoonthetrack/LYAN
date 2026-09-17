@@ -62,10 +62,10 @@
     });
     window.dispatchEvent(new CustomEvent('lyann:auth-state', { detail: state }));
 
-    if (state.status === 'ready' && !readyResolved) {
+    if (['ready', 'error'].includes(state.status) && !readyResolved) {
       readyResolved = true;
       readyResolve(state);
-      window.dispatchEvent(new CustomEvent('lyann:auth-ready', { detail: state }));
+      if (state.status === 'ready') window.dispatchEvent(new CustomEvent('lyann:auth-ready', { detail: state }));
     }
   }
 
@@ -93,7 +93,7 @@
   }
 
   async function ready() {
-    if (current.status === 'ready') return snapshot();
+    if (['ready', 'error'].includes(current.status)) return snapshot();
     return readyPromise;
   }
 

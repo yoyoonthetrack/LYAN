@@ -7,7 +7,7 @@ const results = read('results.html');
 const api = read('api-client.js');
 assert(repo.includes("readAll('public_profiles')"), 'Discovery must use public identity, not private profiles');
 assert(repo.includes("readAll('services', q => q.eq('is_active', true))"), 'Real active services required');
-assert(repo.includes("readAll('requests', q => q.eq('visibility', 'PUBLIC'))"), 'Only public Requests belong in discovery');
+assert(repo.includes("readAll('requests', q => q.eq('visibility', 'PUBLIC').eq('status', 'OPEN').eq('safety_status', 'SAFE').is('target_user_id', null).in('classification_status', ['CLASSIFIED', 'UNCLASSIFIED']))"), 'Only public, OPEN, safe, untargeted and publishable Requests belong in discovery');
 assert(repo.includes('TTL_MS = 30000') && repo.includes('.dedupe('), 'Bounded shared cache and in-flight dedupe');
 assert(repo.includes('.range('), 'No silent truncation at Supabase row limit');
 assert(repo.includes('fetchTaxonomyFromDB({ strict: true })'), 'Shared real taxonomy with explicit errors');

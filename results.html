@@ -121,7 +121,7 @@
     <main id="explorer" class="explorer-page">
         <header class="explorer-heading">
             <h1>Explorer</h1>
-            <p>Des besoins et des talents, près de chez vous.</p>
+            <p>Des besoins et des talents près de chez vous</p>
         </header>
         <div class="explorer-modes" role="tablist" aria-label="Que souhaitez-vous découvrir ?">
             <button id="annoncesTab" role="tab" aria-selected="true" aria-controls="explorerPanel" data-mode="annonces">Annonces</button>
@@ -151,11 +151,11 @@
             <form method="dialog" id="explorerFilterForm">
                 <div class="explorer-sheet-heading"><h2 id="explorerFilterTitle">Affiner la recherche</h2><button type="button" id="explorerFiltersClose" aria-label="Fermer les filtres">×</button></div>
                 <label>Service / sous-catégorie<select id="explorerService"><option value="">Tous les services</option></select></label>
-                <label>Commune ou territoire<input id="explorerArea" type="text" placeholder="Ex. Le Gosier, Guadeloupe" autocomplete="address-level2"></label>
+                <label id="explorerAreaLabel">Commune ou territoire<input id="explorerArea" type="text" placeholder="Ex. Le Gosier, Guadeloupe" autocomplete="address-level2"></label>
+                <div id="explorerProfileGeography"><label>Territoire<select id="explorerTerritory"></select></label><label>Commune<select id="explorerCommune"></select></label></div>
                 <p class="explorer-hint">Recherche par lieu renseigné. Aucune distance estimée.</p>
                 <button type="button" id="explorerSavedArea" class="btn btn-outline" hidden>Utiliser mon lieu de profil</button>
                 <div id="explorerRequestFilters">
-                    <label>État<select id="explorerStatus"><option value="OPEN">Ouvertes</option><option value="">Tous les états</option><option value="ASSIGNED">Attribuées</option><option value="COMPLETED">Terminées</option><option value="CANCELLED">Annulées</option></select></label>
                     <label>Délai<select id="explorerUrgency"><option value="">Tous les délais</option></select></label>
                     <label>Budget maximum (€)<input id="explorerBudget" type="number" min="0" step="1" placeholder="Sans limite"></label>
                     <p class="explorer-hint">Avec un budget maximum, seules les annonces au budget renseigné sont affichées.</p>

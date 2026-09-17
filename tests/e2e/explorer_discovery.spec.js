@@ -171,7 +171,7 @@ test('A canonical category also selects a real published service in Lyanneurs', 
 });
 
 test('Filter sheet Enter applies the search; Escape discards unapplied edits', async ({page}) => {
-  await ready(page,'lyanneurs');
+  await ready(page); // Text area remains an Annonces filter; Lyanneurs uses dependent selects.
   await page.getByRole('button',{name:'Filtres et zone'}).click();
   await page.locator('#explorerArea').fill('CommuneIntrouvable');
   await page.locator('#explorerArea').press('Enter');
@@ -197,7 +197,7 @@ test('Lyanneurs filters preserve Request-only criteria when switching modes', as
   await page.getByRole('tab',{name:'Lyanneurs',exact:true}).click();
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
   await page.getByRole('button',{name:'Filtres et zone'}).click();
-  await page.locator('#explorerArea').fill('Guadeloupe');
+  await page.locator('#explorerTerritory').selectOption('Guadeloupe (971)');
   await page.getByRole('button',{name:'Afficher les résultats'}).click();
   await page.getByRole('tab',{name:'Annonces',exact:true}).click();
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
@@ -230,6 +230,7 @@ test('Bokantaj Request wizard reaches real-taxonomy review without writing or of
   page.on('request',r => {
     if (r.method() === 'POST' && /\/rest\/v1\/(requests|bokantaj_posts|rpc\/send_request_invitations)/.test(r.url())) writes.push(r.url());
   });
+  await ready(page); // Publishing is an authenticated interaction; keep all wizard assertions.
   await page.goto('/feed.html');
   await page.locator('#btnComposerNeedShortcut').click();
   await page.locator('#wizardDescInput').fill('Une fuite sous mon évier, besoin de réparer la plomberie.');

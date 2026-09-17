@@ -18,6 +18,10 @@ test.describe('LYANN V1 — Messaging & Date Proposal Regression', () => {
       document.body.classList.remove('user-is-logged-out', 'auth-resolving');
       document.body.classList.add('user-is-logged-in', 'auth-ready');
       window.CURRENT_USER_ID = mockUser.id;
+      // This isolated mocked messaging regression supplies its auth dependency
+      // through the canonical state API, rather than relying on CSS identity.
+      window.LYANN_AUTH_STATE.isAuthenticated = () => true;
+      window.LYANN_AUTH_STATE.getSnapshot = () => ({status:'ready', authenticated:true, userId:mockUser.id, user:mockUser});
     });
 
     // Inject test card

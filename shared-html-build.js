@@ -114,7 +114,7 @@ function injectSharedStylesheet(html) {
 }
 
 function enforceScriptCacheBusting(html) {
-  const version = '20260917-explorer';
+  const version = '20260918-human-qa1';
   return String(html || '').replace(/src="([^"]+\.js)(?:\?v=[^"]*)?"/gi, (match, scriptPath) => {
     if (scriptPath.startsWith('http://') || scriptPath.startsWith('https://') || scriptPath.startsWith('//')) {
       return match;

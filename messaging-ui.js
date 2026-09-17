@@ -268,6 +268,7 @@
     }
 
     async function openList() {
+        if (!await window.LYANN_ROUTER.requireAuthForInteraction('messages')) return false;
         document.body.classList.remove('lyann-messaging-transition');
         registerSurfaces();
         if (!setShellVisible(true)) {
@@ -291,6 +292,7 @@
     }
 
     async function openConversation(options = {}) {
+        if (!await window.LYANN_ROUTER.requireAuthForInteraction(options.requestId ? 'requestHelp' : 'messages', options)) return false;
         console.log('[MESSAGING openConversation] called with:', JSON.stringify({
             contactId: options.contactId, id: options.id, name: options.name,
             requestId: options.requestId, memberId: options.memberId,

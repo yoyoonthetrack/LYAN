@@ -486,6 +486,7 @@ window.refreshChatUI = async function () {
 }
 
 window.handleAcceptQuote = async function(quoteId) {
+    if (!await window.LYANN_ROUTER.requireAuthForInteraction('proposal', { quoteId, contactId: currentChatContact?.id })) return;
     if (!quoteId) return;
     try {
         if (window.lyannConfirm) {
@@ -509,6 +510,7 @@ window.handleAcceptQuote = async function(quoteId) {
 };
 
 window.handleRejectQuote = async function(quoteId) {
+    if (!await window.LYANN_ROUTER.requireAuthForInteraction('proposal', { quoteId, contactId: currentChatContact?.id })) return;
     if (!quoteId) return;
     try {
         if (window.lyannConfirm) {
@@ -532,6 +534,7 @@ window.handleRejectQuote = async function(quoteId) {
 };
 
 async function handleChatAction(actionId, missionOrExtra = null, extraDataInput = null) {
+    if (!await window.LYANN_ROUTER.requireAuthForInteraction('proposal', { actionId, contactId: currentChatContact?.id, requestId: currentChatContact?.requestId })) return;
     const extraData = (missionOrExtra && missionOrExtra.quoteId) ? missionOrExtra : (extraDataInput || {});
     const mission = (missionOrExtra && !missionOrExtra.quoteId) ? missionOrExtra : null;
     const contactId = currentChatContact ? currentChatContact.id : null;
@@ -2131,6 +2134,7 @@ window.isContactFavorite = function(contactId) {
 };
 
 window.toggleContactFavorite = async function(contactId, contactName) {
+    if (!await window.LYANN_ROUTER.requireAuthForInteraction('favorite', { entityType: 'PROFILE', entityId: contactId || currentChatContact?.id })) return;
     const targetId = contactId || (currentChatContact ? currentChatContact.id : null);
     if (!targetId) return;
     const name = contactName || (currentChatContact ? currentChatContact.name : 'ce membre');
@@ -2378,6 +2382,7 @@ window.openMissionDetailsModal = async function(missionId) {
 };
 
 window.handleMarkMilestoneDone = async function(milestoneId, missionId) {
+    if (!await window.LYANN_ROUTER.requireAuthForInteraction('missionAction', { missionId, milestoneId, contactId: currentChatContact?.id })) return;
     if (!milestoneId) return;
     const res = await window.LYANN_API_CLIENT.markMilestoneDoneSecure(milestoneId);
     if (res.error) {
@@ -2389,6 +2394,7 @@ window.handleMarkMilestoneDone = async function(milestoneId, missionId) {
 };
 
 window.handleValidateMilestone = async function(milestoneId, missionId) {
+    if (!await window.LYANN_ROUTER.requireAuthForInteraction('missionAction', { missionId, milestoneId, contactId: currentChatContact?.id })) return;
     if (!milestoneId) return;
     const res = await window.LYANN_API_CLIENT.validateMilestoneSecure(milestoneId);
     if (res.error) {

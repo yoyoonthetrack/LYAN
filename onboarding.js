@@ -210,6 +210,7 @@ runOnDomReady(() => {
         if (loginModal) loginModal.classList.remove('active');
         if (passwordResetModal) passwordResetModal.classList.remove('active');
         if (onboardingModal) {
+            onboardingModal.style.removeProperty('display');
             onboardingModal.classList.add('active');
             onboardingModal.setAttribute('aria-hidden', 'false');
             if (loginModal) loginModal.setAttribute('aria-hidden', 'true');

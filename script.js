@@ -2723,40 +2723,6 @@ safeDomReady(() => {
             });
         });
 
-        document.querySelectorAll('.btn-help-lyann').forEach(btn => {
-            if (btn.dataset.listenersBound === 'true') return;
-            btn.dataset.listenersBound = 'true';
-            btn.addEventListener('click', () => {
-                const reqId = btn.dataset.requestId;
-                const requesterId = btn.dataset.requesterId;
-                const requesterName = btn.dataset.requesterName || 'Lyanneur';
-                const requesterAvatar = btn.dataset.requesterAvatar || '/default-avatar.svg';
-                const title = btn.dataset.title || 'Lyann d\'entraide';
-
-                const currentAuthUserId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id || window.LYANN_API_CLIENT?.getCurrentUserId?.();
-                if (!currentAuthUserId) {
-                    try {
-                        sessionStorage.setItem('pending_lyann_help', JSON.stringify({ reqId, requesterId, requesterName, requesterAvatar, title }));
-                    } catch(e) {}
-                    const loginModal = document.getElementById('loginModal');
-                    if (loginModal) loginModal.classList.add('active');
-                    return;
-                }
-
-                const myId = currentAuthUserId;
-                const initialNeed = { requestId: reqId, requesterId, helperId: myId, title };
-
-                if (requesterId) {
-                    window.LYANN_ROUTER?.go?.('messages', {
-                        contactId: requesterId,
-                        name: requesterName,
-                        requestId: reqId,
-                        initialNeed
-                    });
-                }
-            });
-        });
-
         document.querySelectorAll('.btn-open-chat-direct').forEach(btn => {
             if (btn.dataset.listenersBound === 'true') return;
             btn.dataset.listenersBound = 'true';
@@ -3229,6 +3195,17 @@ safeDomReady(() => {
     const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
     const loginTriggers = document.querySelectorAll('a[href="#login"], .open-login-trigger');
     const loginForm = document.getElementById('loginForm');
+    // Older public page templates omit the registration link. Complete the
+    // existing auth surface once, using its canonical mode-switch handler.
+    if (loginForm && !loginModal.querySelector('#switchToSignupBtn')) {
+        const signup = document.createElement('button');
+        signup.type = 'button';
+        signup.id = 'switchToSignupBtn';
+        signup.className = 'btn btn-outline';
+        signup.textContent = 'Créer un compte';
+        signup.style.cssText = 'width:100%;min-height:44px;margin-top:12px';
+        loginForm.after(signup);
+    }
 
     function setAuthModalMode(mode) {
         const obModal = document.getElementById('onboardingModal');
@@ -3274,7 +3251,8 @@ safeDomReady(() => {
     }
     window.openLoginModal = openLoginModal;
 
-    function closeLoginModal() {
+    function closeLoginModal({ preserveIntent = false } = {}) {
+        if (!preserveIntent) window.LYANN_ROUTER?.cancelAuthIntent?.();
         const obModal = document.getElementById('onboardingModal');
         const lgModal = document.getElementById('loginModal');
         const pwResetModal = document.getElementById('passwordResetModal');
@@ -3364,28 +3342,12 @@ safeDomReady(() => {
                 localStorage.setItem('lyan_user_logged_in', 'true');
                 localStorage.setItem('lyan_user_id', activeSession.user.id);
 
-                closeLoginModal();
+                closeLoginModal({ preserveIntent: true });
                 loginForm.reset();
 
                 await updateHeaderAuthState();
 
-                try {
-                    const pendingHelpStr = sessionStorage.getItem('pending_lyann_help');
-                    if (pendingHelpStr) {
-                        sessionStorage.removeItem('pending_lyann_help');
-                        const p = JSON.parse(pendingHelpStr);
-                        const myId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id || window.LYANN_API_CLIENT?.getCurrentUserId?.();
-                        const initialNeed = { requestId: p.reqId, requesterId: p.requesterId, helperId: myId, title: p.title };
-                        if (p.requesterId) {
-                            window.LYANN_ROUTER?.go?.('messages', {
-                                contactId: p.requesterId,
-                                name: p.requesterName,
-                                requestId: p.reqId,
-                                initialNeed
-                            });
-                        }
-                    }
-                } catch(e) {}
+                if (await window.LYANN_ROUTER?.resumeAuthIntent?.()) return;
 
                 if (isNativePlatform()) {
                     const path = window.location.pathname;
@@ -3423,7 +3385,7 @@ safeDomReady(() => {
     if (switchToSignupBtn) {
         switchToSignupBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            closeLoginModal();
+            closeLoginModal({ preserveIntent: true });
             if (typeof window.openOnboarding === 'function') {
                 window.openOnboarding();
             }
@@ -3635,15 +3597,16 @@ safeDomReady(() => {
             return { label: 'Ouvert', class: 'pill-green' };
         }
         if (status === 'IN_PROGRESS' || status === 'EN_COURS' || status === 'PENDING') {
-            return { label: 'En cours', class: 'pill-blue' };
+            return { label: 'En cours', class: 'pill-red' };
         }
         if (status === 'COMPLETED' || status === 'TERMINÉ' || status === 'CLOSED') {
-            return { label: 'Terminé', class: 'pill-gray' };
+            return { label: 'Terminé', class: 'pill-red' };
         }
         if (status === 'CANCELLED' || status === 'ANNULÉ') {
             return { label: 'Annulé', class: 'pill-red' };
         }
-        return { label: 'Ouvert', class: 'pill-green' };
+        if (status === 'ASSIGNED') return { label: 'Attribué', class: 'pill-red' };
+        return { label: 'Inactif', class: 'pill-red' };
     };
 
     window.renderMonActiviteSubView = async function(currentUserId, activeTab = 'requests') {
@@ -3666,16 +3629,16 @@ safeDomReady(() => {
                 const { data: miss } = await client.supabase
                     .from('missions')
                     .select('*')
-                    .or(`requester_id.eq.${currentUserId},provider_id.eq.${currentUserId}`)
+                    .or(`requester_id.eq.${currentUserId},helper_id.eq.${currentUserId}`)
                     .order('created_at', { ascending: false });
                 if (miss) myMissions = miss;
             } catch(e) {}
 
             try {
                 const { data: offs } = await client.supabase
-                    .from('offers')
+                    .from('quotes')
                     .select('*')
-                    .eq('user_id', currentUserId)
+                    .eq('provider_id', currentUserId)
                     .order('created_at', { ascending: false });
                 if (offs) myOffers = offs;
             } catch(e) {}
@@ -5052,40 +5015,9 @@ safeDomReady(() => {
             const type = favBtn.dataset.favoriteType || favBtn.dataset.favType;
             const id = favBtn.dataset.favoriteId || favBtn.dataset.favId;
 
-            let isAuthenticated = false;
-            let currentUserId = null;
-            if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getCurrentUserId === 'function') {
-                currentUserId = window.LYANN_API_CLIENT.getCurrentUserId();
-                if (currentUserId) isAuthenticated = true;
-            }
-            if (!isAuthenticated && window.supabaseClient) {
-                try {
-                    const { data } = await window.supabaseClient.auth.getSession();
-                    if (data?.session?.user) {
-                        isAuthenticated = true;
-                        currentUserId = data.session.user.id;
-                    }
-                } catch (err) {}
-            }
-
-            console.log(`[FavoriteTap] surface=${surface} entityType=${type} entityId=${id} authenticated=${isAuthenticated} userId=${currentUserId || 'NONE'} handlerReached=true`);
-
-            if (!type || !id) {
-                console.warn('[FavoriteTap] Missing parameters type or id:', { type, id });
-                return;
-            }
-
-            if (!isAuthenticated) {
-                if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
-                    window.NotificationService.showToast('info', 'Connectez-vous pour enregistrer vos favoris.');
-                } else if (typeof window.lyannAlert === 'function') {
-                    window.lyannAlert('Connectez-vous pour enregistrer vos favoris.');
-                }
-                if (typeof window.openAuthModal === 'function') {
-                    window.openAuthModal('login');
-                }
-                return;
-            }
+            if (!type || !id) return;
+            if (!await window.LYANN_ROUTER.requireAuthForInteraction('favorite', { entityType: type, entityId: id })) return;
+            const currentUserId = window.LYANN_AUTH_STATE.getSnapshot().userId;
 
             if (favBtn.dataset.favoritePending === 'true') return;
 
@@ -6644,7 +6576,8 @@ safeDomReady(() => {
 
     window.wizardSelectedPhotos = window.wizardSelectedPhotos || [];
 
-    window.openLyannWizard = function(prefillQuery = null) {
+    window.openLyannWizard = async function(prefillQuery = null) {
+        if (!await window.LYANN_ROUTER.requireAuthForInteraction('publish', { query: prefillQuery })) return;
         if(modalRequestHelp) {
             window.wizardSelectedPhotos = [];
             if (typeof window.renderWizardPhotoPreviews === 'function') {
@@ -7456,7 +7389,18 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
     let requestData = initialData || null;
     let authorProf = initialData ? (initialData.profiles || null) : null;
 
-    if (!requestData && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+    await window.LYANN_AUTH_STATE?.ready?.();
+    const publicRead = !window.LYANN_AUTH_STATE?.isAuthenticated?.();
+    if (!requestData && publicRead) {
+        try {
+            requestData = (await window.LYANN_EXPLORER_REPOSITORY.loadRequests()).find(row => row.id === requestId) || null;
+            authorProf = requestData?.profiles || null;
+        } catch (_) {
+            if (bodyEl) bodyEl.textContent = 'Annonce temporairement indisponible. Réessayez.';
+            return;
+        }
+    }
+    if (!requestData && !publicRead && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         try {
             const { data, error } = await window.LYANN_API_CLIENT.supabase
                 .from('requests')
@@ -7604,37 +7548,11 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                 modal.style.display = 'none';
                 modal.classList.remove('active');
                 document.body.style.overflow = '';
-                const currentAuthUserId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id || window.LYANN_API_CLIENT?.getCurrentUserId?.();
-                if (!currentAuthUserId) {
-                    // Public Explorer deliberately has no requester identity. Use the
-                    // canonical auth gate; authenticated discovery reloads secure rows.
-                    if (!requestData.requester_id) {
-                        window.LYANN_ROUTER?.go?.('messages');
-                        return;
-                    }
-                    try {
-                        sessionStorage.setItem('pending_lyann_help', JSON.stringify({
-                            reqId: requestData.id,
-                            requesterId: requestData.requester_id,
-                            requesterName: authorName,
-                            requesterAvatar: authorAvatar,
-                            title: requestData.title
-                        }));
-                    } catch(e) {}
-                    const loginModal = document.getElementById('loginModal');
-                    if (loginModal) loginModal.classList.add('active');
-                    return;
-                }
-                const myId = currentAuthUserId;
-                const initialNeed = { requestId: requestData.id, requesterId: requestData.requester_id, helperId: myId, title: requestData.title };
-                if (requestData.requester_id) {
-                    window.LYANN_ROUTER?.go?.('messages', {
-                        contactId: requestData.requester_id,
-                        name: authorName,
-                        requestId: requestData.id,
-                        initialNeed
-                    });
-                }
+                window.LYANN_ROUTER.go('messages', {
+                    contactId: requestData.requester_id, name: authorName, requestId: requestData.id,
+                    initialNeed: { requestId: requestData.id, requesterId: requestData.requester_id,
+                        helperId: window.LYANN_AUTH_STATE?.getSnapshot?.().userId, title: requestData.title }
+                });
             });
         }
     }

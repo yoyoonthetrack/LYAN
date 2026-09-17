@@ -59,6 +59,8 @@
         }
     };
 
+    window.LYANN_TERRITORY_DATASET = LYANN_TERRITORY_DATASET;
+
     function findTerritoryAndIslandForCommune(communeStr) {
         if (!communeStr) return null;
         const cleanStr = String(communeStr).replace(/\s*\(\d+\)\s*/g, '').trim().toLowerCase();

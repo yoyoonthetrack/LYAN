@@ -50,3 +50,8 @@
 .explorer-page .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .explorer-page .btn-primary{background:var(--primary,#4a7c59);color:#fff;box-shadow:none}
 .explorer-search input{width:auto!important;border:0!important;box-shadow:none!important}
+
+.explorer-heading{text-align:center}
+.explorer-modes{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:640px;margin:24px auto;padding:6px;background:#eaf1ec;border:1px solid #c7d4cb;border-radius:16px}
+.explorer-modes button{min-height:60px;border:0;border-radius:11px;font-size:1.05rem;letter-spacing:.06em;text-transform:uppercase;color:#36513f;background:transparent}
+.explorer-modes [aria-selected=true]{background:var(--primary-dark,#284f35);color:#fff;box-shadow:0 2px 6px #203b2920}

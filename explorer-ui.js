@@ -11,7 +11,7 @@
         let filters = { query: params.get('query') || params.get('searchInput') || '',
             category: params.get('category') || '', service: params.get('service') || '',
             area: params.get('area') ?? params.get('citySelect') ?? params.get('locationSelect') ?? '',
-            status: params.get('status') ?? 'OPEN', urgency: params.get('urgency') || '', budget: params.get('budget') || '' };
+            territory: params.get('territory') || '', commune: params.get('commune') || '', urgency: params.get('urgency') || '', budget: params.get('budget') || '' };
         let leaves = [], records = [], revision = 0, savedArea = '';
         const urgencyLabel = value => ({flexible:'Flexible', urgent:'Urgent', asap:'Dès que possible', today:"Aujourd’hui", week:'Cette semaine', specific:'Date à convenir', date:'Date à convenir'}[value] || value || 'À convenir');
         const statusLabel = value => ({OPEN:'Ouverte', ASSIGNED:'Attribuée', COMPLETED:'Terminée', CANCELLED:'Annulée', CLOSED:'Clôturée'}[value] || value || 'État non renseigné');
@@ -42,11 +42,25 @@
                 <div class="explorer-card-actions"><button class="btn btn-primary" data-action="profile" data-id="${escape(p.id)}">Voir le profil</button>${p.id !== currentUserId() ? `<button class="btn btn-outline" data-action="contact" data-id="${escape(p.id)}">Contacter</button>` : ''}</div>
             </article>`;
         }
+        const territories = () => Object.keys(window.LYANN_TERRITORY_DATASET || {}).filter(t => /\((971|972|973|974)\)/.test(t));
+        function inferGeography(value, territoryHint = '') {
+            const clean = v => window.LyanAI.normalizeText(String(v || '').replace(/\s*\(\d+\)/g, ''));
+            const territory = territories().find(t => clean(t) === clean(territoryHint || value));
+            const matches = (territory ? [territory] : territories()).flatMap(t => Object.values(window.LYANN_TERRITORY_DATASET[t]).flat().filter(c => clean(c) === clean(value)).map(c => ({territory:t, commune:c})));
+            return matches.length === 1 ? matches[0] : {territory:territory || '', commune:''};
+        }
+        function syncCommunes(territory, selected = '') {
+            const communes = [...new Set(Object.values(window.LYANN_TERRITORY_DATASET?.[territory] || {}).flat())].sort((a,b) => a.localeCompare(b, 'fr'));
+            $('explorerCommune').innerHTML = '<option value="">Toutes les communes</option>' + communes.map(c => `<option value="${escape(c)}">${escape(c)}</option>`).join('');
+            $('explorerCommune').disabled = !territory;
+            $('explorerCommune').value = communes.includes(selected) ? selected : '';
+        }
+        $('explorerTerritory').addEventListener('change', () => syncCommunes($('explorerTerritory').value, $('explorerCommune').value));
         function syncUrl() {
             const next = new URLSearchParams();
             next.set('mode', mode);
             Object.entries(filters).forEach(([key, value]) => {
-                if (value || key === 'area' || key === 'status') next.set(key, value);
+                if (value || key === 'area') next.set(key, value);
             });
             history.replaceState(null, '', `${location.pathname}?${next}`);
         }
@@ -64,25 +78,30 @@
             $('explorerCategory').value = filters.category;
             $('explorerService').innerHTML = '<option value="">Tous les services</option>' + leaves.filter(t => !filters.category || t.category === filters.category).map(t => `<option value="${escape(t.id)}">${escape(t.category)} — ${escape(t.subcategory)}</option>`).join('');
             $('explorerService').value = filters.service;
-            for (const key of ['area','status','urgency','budget']) $('explorer' + key[0].toUpperCase() + key.slice(1)).value = filters[key];
+            for (const key of ['area','urgency','budget']) $('explorer' + key[0].toUpperCase() + key.slice(1)).value = filters[key];
             $('explorerRequestFilters').hidden = mode !== 'annonces';
+            $('explorerAreaLabel').hidden = mode !== 'annonces';
+            $('explorerProfileGeography').hidden = mode !== 'lyanneurs';
+            $('explorerSavedArea').hidden = mode !== 'annonces' || !savedArea;
+            $('explorerTerritory').innerHTML = '<option value="">Tous les territoires</option>' + territories().map(t => `<option value="${escape(t)}">${escape(t.replace(/\s*\(\d+\)/, '').replace('La Réunion', 'Réunion'))}</option>`).join('');
+            $('explorerTerritory').value = filters.territory;
+            syncCommunes(filters.territory, filters.commune);
             const chips = [];
-            for (const key of ['query','category','service','area','urgency','budget']) {
-                if (!filters[key] || mode === 'lyanneurs' && ['urgency','budget'].includes(key)) continue;
+            for (const key of ['query','category','service','area','territory','commune','urgency','budget']) {
+                if (!filters[key] || mode === 'lyanneurs' && ['area','urgency','budget'].includes(key) || mode === 'annonces' && ['territory','commune'].includes(key)) continue;
                 const label = key === 'service' ? leaves.find(t => t.id === filters.service)?.subcategory : key === 'budget' ? `Budget ≤ ${filters.budget} €` : filters[key];
                 chips.push(`<button data-remove="${key}" aria-label="Retirer le filtre ${escape(label)}">${escape(label)} ×</button>`);
             }
-            if (mode === 'annonces' && filters.status) chips.push(`<button data-remove="status" aria-label="Retirer le filtre état">${escape(statusLabel(filters.status))} ×</button>`);
             $('explorerActiveFilters').innerHTML = chips.join('');
         }
         function render() {
             syncControls(); syncUrl();
             const results = repo.discover(records, leaves, filters, mode);
-            $('explorerSummary').textContent = `${results.length} ${mode === 'annonces' ? 'annonce(s)' : 'Lyanneur(s)'}${filters.area ? ' · ' + filters.area : ' · Tous les lieux'}`;
+            $('explorerSummary').textContent = `${results.length} ${mode === 'annonces' ? 'annonce(s)' : 'Lyanneur(s)'} · ${(mode === 'annonces' ? filters.area : [filters.commune, filters.territory].filter(Boolean).join(' · ')) || 'Tous les lieux'}`;
             $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
             const container = $('explorerResults');
             container.dataset.state = results.length ? 'SUCCESS' : 'EMPTY';
-            container.innerHTML = results.length ? results.map(mode === 'annonces' ? requestCard : profileCard).join('') : `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${filters.area ? '<button class="btn btn-outline" data-remove="area">Élargir la zone</button>' : ''}<button class="btn btn-primary explorer-publish">Publier une annonce</button></div>`;
+            container.innerHTML = results.length ? results.map(mode === 'annonces' ? requestCard : profileCard).join('') : `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}<button class="btn btn-primary explorer-publish">Publier une annonce</button></div>`;
             window.syncFavoriteButtonStates?.();
         }
         async function search(force = false) {
@@ -110,7 +129,7 @@
             }
         }
         function reset() {
-            filters = {query:'',category:'',service:'',area:'',status:'OPEN',urgency:'',budget:''};
+            filters = {query:'',category:'',service:'',area:'',territory:'',commune:'',urgency:'',budget:''};
             search();
         }
         root.addEventListener('click', event => {
@@ -119,6 +138,7 @@
             if (button.dataset.mode) { mode = button.dataset.mode; search(); return; }
             if (button.dataset.remove) {
                 filters[button.dataset.remove] = '';
+                if (button.dataset.remove === 'territory') filters.commune = '';
                 if (button.dataset.remove === 'category') filters.service = '';
                 search(); return;
             }
@@ -151,7 +171,7 @@
         $('explorerFiltersClose').addEventListener('click', () => $('explorerFilters').close());
         $('explorerFilterForm').addEventListener('submit', event => {
             if (event.submitter?.value !== 'apply') return;
-            const keys = mode === 'annonces' ? ['service','area','status','urgency','budget'] : ['service','area'];
+            const keys = mode === 'annonces' ? ['service','area','urgency','budget'] : ['service','territory','commune'];
             for (const key of keys) filters[key] = $('explorer' + key[0].toUpperCase() + key.slice(1)).value.trim();
             search();
         });
@@ -167,7 +187,10 @@
             try {
                 const { data, error } = await window.LYANN_API_CLIENT.getProfile(id);
                 if (id !== currentUserId()) return;
-                if (!error) savedArea = data?.city || data?.territory || '';
+                if (!error) {
+                    savedArea = data?.city || data?.territory || '';
+                    if (useDefault && !params.has('territory') && !params.has('commune') && !params.has('area') && !params.has('citySelect') && !params.has('locationSelect')) Object.assign(filters, inferGeography(data?.city, data?.territory));
+                }
                 $('explorerSavedArea').hidden = !savedArea;
                 if (useDefault && savedArea && !params.has('area') && !params.has('citySelect') && !params.has('locationSelect')) filters.area = savedArea;
             } catch (_) { /* Optional saved location must not block public discovery. */ }
@@ -181,6 +204,7 @@
                 refreshSavedArea(identity);
                 search(true);
             }, {immediate:false});
+            if (!params.has('territory') && !params.has('commune') && filters.area) Object.assign(filters, inferGeography(filters.area));
             await refreshSavedArea(identity, true);
             await search();
             if (params.get('openLyann')) {

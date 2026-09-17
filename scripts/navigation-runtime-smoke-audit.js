@@ -35,7 +35,11 @@ const document = {
   querySelector() { return null; }
 };
 
+let authenticated = true;
 const window = {
+  addEventListener() {},
+  dispatchEvent() {},
+  LYANN_AUTH_STATE: { isAuthenticated: () => authenticated, getSnapshot: () => ({status:'ready', authenticated}) },
   location: {
     href: 'https://lyann.app/index.html',
     pathname: '/index.html',
@@ -55,6 +59,7 @@ window.window = window;
 const context = {
   window,
   document,
+  CustomEvent: class { constructor(type, options) { this.type=type; this.detail=options?.detail; } },
   URL,
   URLSearchParams,
   console,
@@ -139,6 +144,7 @@ click({ selector: '#tab-explorer' });
 assert(navigations.includes('results.html'), 'Explorer must remain routable through the canonical router');
 
 // Verify a logged-out protected route produces a visible login action instead of a silent no-op.
+authenticated = false;
 document.body.classList.contains = () => false;
 click({ explicit: fakeElement({ 'data-lyann-route': 'settings' }) });
 click({ selector: messageSelector });
