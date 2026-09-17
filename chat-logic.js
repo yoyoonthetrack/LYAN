@@ -560,6 +560,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
             });
             refreshChatUI();
         }
+    }
     else if (actionId === 'PROPOSE_DATE') {
         closeAllOverlays();
         const overlay = document.getElementById('chatProposeDateForm');

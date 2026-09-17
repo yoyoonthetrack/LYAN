@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>LYANN — Bokantaj • Espace d'Échange du Quartier</title>
-    <meta name="description" content="Découvrez les échos, disponibilités d'artisans, besoins urgents et recommandations dans Bokantaj de LYANN.">
+    <meta name="description" content="Échangez des idées, conseils, recommandations et informations locales dans Bokantaj, la communauté LYANN.">
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M12 42 L50 14 L88 42' stroke='%234A7C59' stroke-width='8' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='34' cy='46' r='7' fill='%234A7C59'/%3E%3Ccircle cx='50' cy='42' r='7' fill='%23709C7D'/%3E%3Ccircle cx='66' cy='46' r='7' fill='%23E5B345'/%3E%3Cpath d='M 23 72 C 23 60 31 56 38 56 C 45 56 47 62 50 62 C 53 62 55 56 62 56 C 69 56 77 60 77 72' stroke='%234A7C59' stroke-width='7.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
@@ -155,6 +155,7 @@
                         <form id="createFlashForm" onsubmit="event.preventDefault();">
                             <div class="composer-textarea-wrapper" style="margin-bottom: 10px;">
                                 <textarea id="flashContentInput" placeholder="Partagez une idée, une réalisation, une question ou une disponibilité…" maxlength="280" required style="width: 100%; border-radius: 14px; padding: 10px 12px; border: 1px solid #E2E8F0; font-size: 0.92rem; resize: none; box-sizing: border-box; font-family: inherit;"></textarea>
+                                <p style="font-size:.82rem;color:var(--text-muted)">Un coup de main ? Votre demande sera publiée dans Explorer → Annonces.</p>
                                 <div class="composer-char-counter" style="text-align: right; font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;"><span id="flashCharCount">0</span>/280</div>
                             </div>
 
@@ -176,7 +177,7 @@
 
                                     <button type="button" class="media-upload-btn btn-trigger-wizard-shortcut" id="btnComposerNeedShortcut" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(74, 124, 89, 0.1); border: 1px solid rgba(74, 124, 89, 0.25); border-radius: 20px; font-size: 0.85rem; font-weight: 800; color: #2D5A39; cursor: pointer; min-height: 40px;">
                                         <i class="ph ph-hand-heart" style="color: #4A7C59; font-size: 1.1rem;"></i>
-                                        <span>J'ai un besoin</span>
+                                        <span>Besoin d’un coup de main</span>
                                     </button>
                                 </div>
 
@@ -1739,7 +1740,7 @@
                     <div class="filter-sheet-type-options">
                         <button type="button" class="sheet-type-btn active" data-type="all">Tout</button>
                         <button type="button" class="sheet-type-btn" data-type="post">📄 Publications</button>
-                        <button type="button" class="sheet-type-btn" data-type="lyann">🤝 Lyanns (Demandes)</button>
+                        <a href="results.html?mode=annonces" class="btn btn-outline">Voir les annonces dans Explorer</a>
                     </div>
                 </div>
 
@@ -1801,4 +1802,3 @@
 
 </body>
 </html>
-

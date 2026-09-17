@@ -47,6 +47,9 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
 });
 
+const { createPublicRequestsHandler } = require('./public-explorer-requests');
+app.get('/v1/explorer/requests', createPublicRequestsHandler(supabaseAdmin, Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)));
+
 function getSupabaseClient(req) {
     const authHeader = req ? (req.headers['authorization'] || req.headers['Authorization']) : null;
     if (authHeader && authHeader.startsWith('Bearer ')) {

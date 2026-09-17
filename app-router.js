@@ -131,6 +131,7 @@
   register('explorer', (payload = {}) => {
     const params = new URLSearchParams();
     if (payload.query) params.set('query', payload.query);
+    if (payload.mode) params.set('mode', payload.mode);
     if (payload.category) params.set('category', payload.category);
     const suffix = params.toString();
     return hardNavigate(`results.html${suffix ? `?${suffix}` : ''}`);

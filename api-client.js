@@ -478,8 +478,9 @@ const LYANN_API_CLIENT = {
         if (!this.supabase) return { data: [] };
         return await this.supabase
             .from('services')
-            .select('id, owner_id, title, description, category, created_at')
+            .select('id, owner_id, title, description, category, price_type, base_price, is_active, created_at')
             .eq('owner_id', userId)
+            .eq('is_active', true)
             .order('created_at', { ascending: false });
     },
 
@@ -723,29 +724,10 @@ const LYANN_API_CLIENT = {
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (postsError) {
-                console.warn("[LYANN API] Error fetching bokantaj_posts:", postsError);
-            }
-
-            // 2. Fetch OPEN Requests (Lyanns)
-            const { data: requestsData, error: requestsError } = await this.supabase
-                .from('requests')
-                .select('*')
-                .eq('status', 'OPEN')
-                .order('created_at', { ascending: false });
-
-            if (requestsError) {
-                console.warn("[LYANN API] Error fetching OPEN requests for Bokantaj feed:", requestsError);
-            }
-
+            if (postsError) throw postsError;
             const posts = postsData || [];
-            const openRequests = requestsData || [];
-
-            // 2b. Collect all author IDs & fetch public_profiles (bypassing RLS restriction on profiles)
-            const authorIds = Array.from(new Set([
-                ...posts.map(p => p.user_id || p.author_id),
-                ...openRequests.map(r => r.requester_id || r.user_id)
-            ].filter(Boolean)));
+            // Community discovery never queries or merges transactional Requests.
+            const authorIds = [...new Set(posts.map(p => p.author_id).filter(Boolean))];
 
             const profilesMap = {};
             if (authorIds.length > 0) {
@@ -831,13 +813,13 @@ const LYANN_API_CLIENT = {
                     author_name: authorName,
                     author_avatar: avatarUrl,
                     author_city: authorProf?.city || authorProf?.territory || p.territory || 'Guadeloupe',
-                    badge: p.post_type === 'dispo' ? '<i class="ph ph-lightning"></i> Disponibilité' : (p.post_type === 'besoin' ? '<i class="ph ph-magnifying-glass"></i> Besoin' : '<i class="ph ph-newspaper"></i> Info Bokantaj'),
-                    type: p.post_type,
-                    location: p.territory || authorProf?.city || 'Guadeloupe',
+                    badge: p.type === 'dispo' ? '<i class="ph ph-lightning"></i> Disponibilité' : (p.type === 'besoin' ? '<i class="ph ph-magnifying-glass"></i> Besoin' : '<i class="ph ph-newspaper"></i> Info Bokantaj'),
+                    type: p.type,
+                    location: p.city || p.territory || authorProf?.city || '',
                     territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
                     created_at: p.created_at,
                     content: p.content,
-                    images: p.media_urls || [],
+                    images: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url)),
                     likes: (postLikesCountMap[p.id] !== undefined) ? postLikesCountMap[p.id] : (p.likes_count || 0),
                     user_has_liked: userLikedPostsSet.has(p.id),
                     comments_count: postCommentsCountMap[p.id] || p.replies_count || 0,
@@ -845,45 +827,7 @@ const LYANN_API_CLIENT = {
                 };
             });
 
-            const formattedLyanns = openRequests.map(r => {
-                const authorProf = profilesMap[r.requester_id || r.user_id];
-                const authorName = formatAuthorName(authorProf);
-                const avatarUrl = window.getLyannAvatarUrl(authorProf?.avatar_url);
-                const cityStr = authorProf ? (authorProf.city || authorProf.territory || 'Guadeloupe') : (r.location || 'Guadeloupe');
-
-                return {
-                    id: r.id,
-                    request_id: r.id,
-                    item_type: 'LYANN',
-                    author_id: r.requester_id,
-                    author_name: authorName,
-                    author_avatar: avatarUrl,
-                    author_city: cityStr,
-                    badge: `LYANN · ${r.category || 'Besoin'}`,
-                    type: 'lyann',
-                    location: r.location || cityStr,
-                    territoryKey: extractTerritoryKey(r.location || cityStr, authorProf?.territory),
-                    created_at: r.created_at,
-                    title: r.title || 'Demande d\'aide',
-                    content: r.description || r.title || '',
-                    category: r.category || 'Général',
-                    budget: r.budget,
-                    budget_display: r.budget ? `${r.budget} €` : 'Sur devis',
-                    urgency: r.urgency,
-                    status: r.status,
-                    images: r.media_urls || [],
-                    likes: requestLikesCountMap[r.id] || 0,
-                    user_has_liked: userLikedRequestsSet.has(r.id),
-                    comments_count: requestCommentsCountMap[r.id] || 0
-                };
-            });
-
-            // 4. Merge and sort unified feed by created_at DESC
-            const unifiedFeed = [...formattedPosts, ...formattedLyanns].sort((a, b) => {
-                const dateA = new Date(a.created_at || 0).getTime();
-                const dateB = new Date(b.created_at || 0).getTime();
-                return dateB - dateA;
-            });
+            const unifiedFeed = formattedPosts;
 
             return { data: unifiedFeed, error: null };
         } catch (err) {
@@ -894,6 +838,20 @@ const LYANN_API_CLIENT = {
 
     // --- BOKANTAJ SOCIAL API METHODS ---
 
+    async uploadPostPhoto(file) {
+        if (!this.supabase || !file) throw new Error('Photo indisponible');
+        const user = await this.getCurrentUser();
+        if (!user) throw new Error('Veuillez vous connecter');
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+            throw new Error('Choisissez une photo JPG, PNG ou WEBP de moins de 5 Mo.');
+        }
+        const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type];
+        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+        const { error } = await this.supabase.storage.from('bokantaj-media').upload(path, file);
+        if (error) throw new Error('La photo n’a pas pu être envoyée. Réessayez avant de publier.');
+        return this.supabase.storage.from('bokantaj-media').getPublicUrl(path).data.publicUrl;
+    },
+
     async createPost(payload) {
         if (!this.supabase) throw new Error("Supabase non initialisé");
         const session = await this.getCurrentUser();
@@ -901,7 +859,7 @@ const LYANN_API_CLIENT = {
 
         const postRecord = {
             author_id: session.id,
-            type: payload.type || 'dispo',
+            type: payload.type || 'info',
             content: payload.content,
             city: payload.city || null,
             territory: payload.territory || null,
@@ -1566,37 +1524,6 @@ const LYANN_API_CLIENT = {
     },
 
     // --- SERVICES MANAGEMENT ---
-    async getUserServices(userId) {
-        if (!userId || !isUUID(userId) || !this.supabase) {
-            return [];
-        }
-        try {
-            const { data, error } = await this.supabase
-                .from('services')
-                .select('*')
-                .eq('owner_id', userId)
-                .eq('is_active', true);
-            if (error) throw error;
-            if (!data || !Array.isArray(data)) return [];
-            return data.map(s => {
-                const billingText = s.pricing_model === 'HOURLY' ? '/ heure' :
-                                     s.pricing_model === 'DAILY' ? '/ jour' :
-                                     s.pricing_model === 'FLAT_RATE' ? '/ unité' : '';
-                return {
-                    id: s.id,
-                    title: s.title,
-                    price: s.indicative_price ? s.indicative_price.toString() : 'Sur devis',
-                    billing: billingText,
-                    details: s.description || '',
-                    status: (s.is_active !== false && s.active !== false) ? 'Actif' : 'Inactif'
-                };
-            });
-        } catch (e) {
-            console.warn("Supabase getUserServices query failed:", e);
-            return [];
-        }
-    },
-
     async addUserService(userId, title, price, billing, description) {
         if (!isUUID(userId) || !this.supabase) {
             throw new Error('Impossible d’ajouter un service sans session Supabase valide.');
@@ -1701,13 +1628,16 @@ const LYANN_API_CLIENT = {
             const membersList = (typeof window.isExplicitDemoMode === 'function' && window.isExplicitDemoMode()) ? (window.LYANN_MEMBERS || []) : [];
             return window.LyannMatchingEngine.dispatchTargetedNeedNotifications(needData, membersList, batchSize);
         }
-        return { dispatched_count: 0, fallback_message: "Votre besoin est bien publié dans Bokantaj." };
+        return { dispatched_count: 0, fallback_message: "Votre besoin est bien publié dans Explorer → Annonces." };
     },
 
     // --- REAL HELP REQUESTS API (requests table) ---
     async createRequest(payload) {
         if (!this.supabase) {
             throw new Error("Supabase non initialisé");
+        }
+        if (payload.media_urls?.length) {
+            throw new Error("Les annonces se publient sans photo pour le moment.");
         }
         
         // Identity MUST come strictly from session auth.uid()
@@ -1723,7 +1653,6 @@ const LYANN_API_CLIENT = {
         }
 
         const requestData = {
-            id: payload.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined),
             requester_id: authUid,
             title: payload.title || "Demande d'aide",
             description: payload.description || "",
@@ -1771,10 +1700,6 @@ const LYANN_API_CLIENT = {
         if (error) {
             console.error("Erreur création demande Supabase DB:", error);
             throw error;
-        }
-
-        if (data && payload.media_urls && Array.isArray(payload.media_urls)) {
-            data.media_urls = payload.media_urls;
         }
 
         return data;
@@ -2320,6 +2245,5 @@ LYANN_API_CLIENT.addFavorite = window.LyannFavoritesService.addFavorite.bind(win
 LYANN_API_CLIENT.removeFavorite = window.LyannFavoritesService.removeFavorite.bind(window.LyannFavoritesService);
 LYANN_API_CLIENT.toggleFavorite = window.LyannFavoritesService.toggleFavorite.bind(window.LyannFavoritesService);
 LYANN_API_CLIENT.getHydratedFavorites = window.LyannFavoritesService.getHydratedFavorites.bind(window.LyannFavoritesService);
-
 
 

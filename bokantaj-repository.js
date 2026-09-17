@@ -14,10 +14,7 @@
     if (!Array.isArray(items)) return [];
     return items.filter((item) => {
       if (!item) return false;
-      // A private targeted request must never leak into the public Bokantaj feed.
-      if (item.item_type === 'LYANN' && item.visibility && item.visibility !== 'PUBLIC') {
-        return false;
-      }
+      if (item.item_type !== 'POST' || item.request_id) return false;
       return true;
     });
   }

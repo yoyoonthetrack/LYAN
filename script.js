@@ -2049,6 +2049,7 @@ safeDomReady(() => {
     let activeFeedTypeFilter = 'all';
     let activeFeedTerritoryFilter = 'all';
     let attachedPhotos = [];
+    let attachedPhotoFiles = [];
     let attachedVideo = null;
     let bokantajFeedState = 'LOADING'; // 'LOADING' | 'ERROR' | 'EMPTY' | 'READY'
 
@@ -2064,93 +2065,28 @@ safeDomReady(() => {
     const flashMediaPreviewContainer = document.getElementById('flashMediaPreviewContainer');
     const mediaUploadBadge = document.getElementById('mediaUploadBadge');
 
-    window.renderTalentsSidebar = async function(isDemo = false) {
+    window.renderTalentsSidebar = async function() {
         const container = document.getElementById('topTalentsSidebarContainer');
         if (!container) return;
-
-        if (isDemo) {
-            container.innerHTML = `
-                <div class="top-talent-item view-member-profile-btn" data-member-id="200">
-                    <div class="talent-avatar-sm"><img src="jocelyn-cabort.png" alt="Jocelyn Cabort"></div>
-                    <div class="talent-mini-info">
-                        <strong>Jocelyn Cabort <i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></strong>
-                        <span>Plomberie & Fuites • Baie-Mahault</span>
-                    </div>
-                    <span class="mini-score">⭐ 5.0</span>
-                </div>
-                <div class="top-talent-item view-member-profile-btn" data-member-id="201">
-                    <div class="talent-avatar-sm"><img src="hugues-zami.png" alt="Hugues Zami"></div>
-                    <div class="talent-mini-info">
-                        <strong>Hugues Zami <i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></strong>
-                        <span>Climatisation & Électricité • Les Abymes</span>
-                    </div>
-                    <span class="mini-score">⭐ 4.9</span>
-                </div>
-                <div class="top-talent-item view-member-profile-btn" data-member-id="202">
-                    <div class="talent-avatar-sm"><img src="murielle-placide.png" alt="Murielle Placide"></div>
-                    <div class="talent-mini-info">
-                        <strong>Murielle Placide <span class="badge-pro-mini">PRO</span></strong>
-                        <span>Ménage & Repassage • Le Gosier</span>
-                    </div>
-                    <span class="mini-score">⭐ 5.0</span>
-                </div>
-            `;
-            return;
-        }
-
-        if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
-            container.innerHTML = '';
-            return;
-        }
-
+        container.dataset.state = 'LOADING';
         try {
-            const { data: realProfiles, error } = await window.LYANN_API_CLIENT.supabase
-                .from('profiles')
-                .select('id, first_name, last_name, avatar_url, city, territory, role, primary_activity, rating')
-                .limit(3);
-
-            if (error || !realProfiles || realProfiles.length === 0) {
-                container.innerHTML = `<p style="font-size: 0.82rem; color: var(--text-muted); padding: 8px 0;">Aucun membre recommandé pour le moment.</p>`;
-                return;
-            }
-
-            container.innerHTML = realProfiles.map(p => {
-                const name = window.formatPublicName(p, null, 'Lyanneur');
-                const avatar = window.getLyannAvatarUrl(p.avatar_url);
-                const location = p.city || p.territory || '';
-
-                let displayActivity = p.primary_activity || p.role || '';
-                if (typeof displayActivity === 'string' && /^(user|client|admin|system|member|membre)$/i.test(displayActivity.trim())) {
-                    displayActivity = '';
-                }
-
-                let subText = location;
-                if (displayActivity && location) {
-                    subText = `${displayActivity} • ${location}`;
-                } else if (displayActivity) {
-                    subText = displayActivity;
-                } else if (!location) {
-                    subText = 'Guadeloupe';
-                }
-
-                const scoreHTML = (p.rating && !isNaN(p.rating) && Number(p.rating) > 0)
-                    ? `<span class="mini-score">⭐ ${Number(p.rating).toFixed(1)}</span>`
-                    : '';
-
-                return `
-                    <div class="top-talent-item view-member-profile-btn" data-member-id="${p.id}">
-                        <div class="talent-avatar-sm"><img src="${avatar}" alt="${name}"></div>
-                        <div class="talent-mini-info">
-                            <strong>${name} <i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></strong>
-                            <span>${subText}</span>
-                        </div>
-                        ${scoreHTML}
+            const profiles = await window.LYANN_EXPLORER_REPOSITORY.load();
+            const talents = profiles.filter(p => p.services.length)
+                .sort((a,b) => a.name.localeCompare(b.name, 'fr')).slice(0,3);
+            container.dataset.state = talents.length ? 'SUCCESS' : 'EMPTY';
+            const escape = window.escapeHtmlAttr;
+            container.innerHTML = talents.length ? talents.map(p => `
+                <button type="button" class="top-talent-item view-member-profile-btn" data-member-id="${escape(p.id)}" style="width:100%;min-height:44px;border:0;background:none;text-align:left;cursor:pointer;">
+                    <div class="talent-avatar-sm"><img src="${escape(p.avatar)}" alt="" onerror="window.handleAvatarError(this)"></div>
+                    <div class="talent-mini-info">
+                        <strong>${escape(p.name)}</strong>
+                        <span>${escape([p.services[0].title,p.city || p.territory].filter(Boolean).join(' • '))}</span>
                     </div>
-                `;
-            }).join('');
-        } catch (e) {
-            console.warn("Talents sidebar query error:", e);
-            container.innerHTML = '';
+                </button>`).join('') : '<p>Aucun service publié pour le moment.</p>';
+        } catch (error) {
+            container.dataset.state = 'ERROR';
+            container.innerHTML = '<p>Les Lyanneurs sont momentanément indisponibles.</p>';
+            console.warn('[BOKANTAJ] Talents discovery failed', error);
         }
     };
 
@@ -2202,6 +2138,8 @@ safeDomReady(() => {
     if (flashPhotoInput) {
         flashPhotoInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files).slice(0, 3);
+            attachedPhotos.forEach(url => URL.revokeObjectURL(url));
+            attachedPhotoFiles = files;
             attachedPhotos = files.map(file => URL.createObjectURL(file));
             updateMediaPreview();
         });
@@ -2858,7 +2796,7 @@ safeDomReady(() => {
         createFlashForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = flashContentInput ? flashContentInput.value.trim() : '';
-            const type = document.getElementById('flashTypeSelect')?.value || 'dispo';
+            const type = document.getElementById('flashTypeSelect')?.value || 'info';
             const location = document.getElementById('flashTerritorySelect')?.value || 'Guadeloupe (971)';
 
             if (!text && attachedPhotos.length === 0 && !attachedVideo) {
@@ -2878,23 +2816,28 @@ safeDomReady(() => {
             }
 
             try {
+                if (!window.LYANN_API_CLIENT?.createPost) throw new Error('Publication indisponible');
+                const mediaUrls = [];
+                for (const file of attachedPhotoFiles) mediaUrls.push(await window.LYANN_API_CLIENT.uploadPostPhoto(file));
                 if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.createPost === 'function') {
                     await window.LYANN_API_CLIENT.createPost({
                         content: text,
                         type: type,
                         territory: territoryKey,
                         city: location,
-                        media_urls: attachedPhotos
+                        media_urls: mediaUrls
                     });
                 }
 
+                attachedPhotos.forEach(url => URL.revokeObjectURL(url));
                 attachedPhotos = [];
+                attachedPhotoFiles = [];
                 attachedVideo = null;
                 if (flashMediaPreviewContainer) flashMediaPreviewContainer.innerHTML = '';
                 if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
 
                 if (typeof window.loadBokantajFeedFromSupabase === 'function') {
-                    await window.loadBokantajFeedFromSupabase();
+                    await window.loadBokantajFeedFromSupabase({ force: true });
                 }
 
                 createFlashForm.reset();
@@ -4281,7 +4224,13 @@ safeDomReady(() => {
         let servicesList = [];
         try {
             if (window.LYANN_API_CLIENT) {
-                servicesList = await window.LYANN_API_CLIENT.getUserServices(userId);
+                if (!userId || !/^[0-9a-f-]{36}$/i.test(userId)) return;
+                const result = await window.LYANN_API_CLIENT.getUserServices(userId);
+                if (result.error) throw result.error;
+                servicesList = (result.data || []).map(s => ({ ...s,
+                    price: s.base_price == null ? 'Sur devis' : String(s.base_price),
+                    billing: s.price_type === 'HOURLY' ? '/ heure' : s.price_type === 'DAILY' ? '/ jour' : '',
+                    details: s.description || '', status: s.is_active ? 'Actif' : 'Inactif' }));
             }
         } catch(e) {
             console.error("Failed to fetch user services:", e);
@@ -6292,45 +6241,6 @@ safeDomReady(() => {
         }
     }
 
-    function bindDynamicTalentCards() {
-        document.querySelectorAll('#searchResultsContainer .trigger-quick-profile').forEach(el => {
-            el.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const memberId = el.getAttribute('data-member-id');
-                if (memberId && typeof openPublicMemberProfile === 'function') {
-                    openPublicMemberProfile(memberId);
-                }
-            });
-        });
-
-        document.querySelectorAll('#searchResultsContainer .trigger-contact-lyanneur').forEach(el => {
-            el.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const memberId = el.getAttribute('data-member-id');
-                if (memberId) {
-                    const chatModal = document.getElementById('modal-chat');
-                    if (chatModal) {
-                        chatModal.classList.add('active');
-                        document.body.style.overflow = 'hidden';
-                    }
-                }
-            });
-        });
-
-        document.querySelectorAll('#searchResultsContainer .btn-propose-need').forEach(el => {
-            el.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const memberId = el.getAttribute('data-member-id');
-                if (typeof window.openLyannWizard === 'function') {
-                    window.openLyannWizard(null, memberId);
-                }
-            });
-        });
-    }
-
     function setSelectValueSafely(selectElem, targetValue, fallbackValue) {
         if (!selectElem) return;
         let found = Array.from(selectElem.options).find(opt => opt.value === targetValue || opt.value === escapeSearchHtml(targetValue));
@@ -6494,328 +6404,16 @@ safeDomReady(() => {
             .replace(/'/g, '&#039;');
     }
 
-    function renderZeroResultUI(container, rawQuery) {
-        const safeQuery = rawQuery ? escapeSearchHtml(rawQuery) : '';
-        container.innerHTML = `
-            <div class="zero-result-card" style="grid-column: 1/-1; background: #FFFFFF; border: 2px dashed rgba(74, 124, 89, 0.25); border-radius: 20px; padding: 44px 24px; text-align: center; max-width: 680px; margin: 20px auto; box-shadow: 0 8px 24px rgba(0,0,0,0.04);">
-                <div style="width: 54px; height: 54px; background: rgba(229, 179, 69, 0.15); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
-                    <i class="ph-bold ph-sparkle" style="font-size: 26px; color: #C69222;"></i>
-                </div>
-                <h3 style="font-size: 1.35rem; font-weight: 800; color: #1F3827; margin-bottom: 8px; line-height: 1.3;">
-                    Aucun Lyanneur trouvé pour le moment.
-                </h3>
-                <p style="font-size: 0.95rem; color: #556B5D; margin-bottom: 24px; line-height: 1.5; max-width: 500px; margin-left: auto; margin-right: auto;">
-                    Publiez votre besoin : les personnes correspondant à votre recherche pourront le découvrir.
-                </p>
-                
-                <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center;">
-                    <button type="button" class="btn btn-primary btn-lg" id="zeroResultPublishBtn" style="font-weight: 800; padding: 12px 24px; border-radius: 12px; font-size: 0.96rem;">
-                        J’ai un besoin <i class="ph-bold ph-arrow-right" style="margin-left: 6px;"></i>
-                    </button>
-                    
-                    <button type="button" class="btn btn-outline" id="zeroResultWidenBtn" style="padding: 12px 20px; border-radius: 12px; font-size: 0.9rem; color: #4A7C59; border-color: rgba(74, 124, 89, 0.3);">
-                        Modifier ma recherche
-                    </button>
-                </div>
-            </div>
-        `;
-
-        // Bind CTA "J'ai un besoin"
-        const publishBtn = document.getElementById('zeroResultPublishBtn');
-        if (publishBtn) {
-            publishBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (typeof window.openLyannWizard === 'function') {
-                    window.openLyannWizard(rawQuery);
-                }
-            });
-        }
-
-        // Bind CTA "Modifier ma recherche"
-        const widenBtn = document.getElementById('zeroResultWidenBtn');
-        if (widenBtn) {
-            widenBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const searchInput = document.getElementById('searchInput');
-                if (searchInput) {
-                    searchInput.focus();
-                    searchInput.select();
-                }
-            });
-        }
+    function performSearch(userTriggered = false) {
+        // Explorer owns discovery. The homepage only supplies the search intent.
+        if (!userTriggered) return;
+        const params = new URLSearchParams({ mode: 'lyanneurs' });
+        const query = document.getElementById('searchInput')?.value.trim();
+        const area = document.getElementById('citySelect')?.value || document.getElementById('locationSelect')?.value;
+        if (query) params.set('query', query);
+        if (area) params.set('area', area);
+        window.location.assign(`results.html?${params}`);
     }
-
-    function renderTalentCard(c) {
-        const candId = c.id || c.user_id;
-        const name = escapeSearchHtml(c.display_name || (c.name ? c.name.split(' (')[0] : 'Lyanneur'));
-        const avatar = escapeSearchHtml(c.avatar || c.avatar_url || '/default-avatar.svg');
-        const role = escapeSearchHtml(c.role || c.category || 'Services & Entraide');
-        const city = escapeSearchHtml(c.city || c.public_location || 'Guadeloupe');
-        const rating = (c.rating || 5.0).toFixed(1);
-        const reviewsCount = c.reviews_count || c.reviewsCount || 0;
-        const bio = escapeSearchHtml(c.bio || (c.human_reasons && c.human_reasons[0]) || 'Disponible et à votre service.');
-        
-        let badgeHtml = '';
-        if (c.is_verified_pro || c.public_badge) {
-            badgeHtml = `<span class="badge badge-verified" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(74, 124, 89, 0.12); color: #4A7C59; padding: 4px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; margin-bottom: 8px;"><i class="ph-fill ph-seal-check"></i> ${escapeSearchHtml(c.public_badge || 'Professionnel vérifié')}</span>`;
-        } else if (c.pro_subscription_badge) {
-            badgeHtml = `<span class="badge badge-pro" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(229, 179, 69, 0.15); color: #B38210; padding: 4px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; margin-bottom: 8px;"><i class="ph-fill ph-crown"></i> PRO</span>`;
-        }
-
-        return `
-            <div class="talent-card" data-member-id="${candId}" style="background: #FFF; border: 1px solid var(--border); border-radius: 16px; padding: 20px; transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <div class="talent-card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
-                            <div class="talent-photo trigger-quick-profile" data-member-id="${candId}" style="cursor: pointer; width: 54px; height: 54px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 2px solid var(--primary-light);">
-                                <img src="${avatar}" alt="${name}" style="width: 100%; height: 100%; object-fit: cover;">
-                            </div>
-                            <div style="min-width: 0; flex: 1;">
-                                <h3 class="trigger-quick-profile" data-member-id="${candId}" style="cursor: pointer; font-size: 1.1rem; font-weight: 800; color: var(--primary-dark); margin: 0 0 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${name}</h3>
-                                <span class="talent-role" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${role} · ${city}</span>
-                            </div>
-                        </div>
-                        <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="PROFILE" data-favorite-id="${candId}" data-fav-type="PROFILE" data-fav-id="${candId}" data-surface="search-explorer" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
-                            <i class="ph ph-bookmark-simple"></i>
-                        </button>
-                    </div>
-
-                    ${badgeHtml}
-
-                    <div class="talent-stars" style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 0.88rem; color: #E5B345; font-weight: 700;">
-                        <i class="ph-fill ph-star"></i> <span>${rating}</span>
-                        <span style="color: var(--text-muted); font-weight: 400;">(${reviewsCount} avis)</span>
-                    </div>
-
-                    <blockquote style="font-size: 0.88rem; color: var(--text-dark); font-style: italic; background: rgba(247, 245, 240, 0.7); padding: 10px 12px; border-radius: 10px; margin: 0 0 16px 0; border-left: 3px solid var(--primary);">
-                        "${bio}"
-                    </blockquote>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <button type="button" class="btn btn-outline btn-sm trigger-quick-profile" data-member-id="${candId}" style="justify-content: center; font-weight: 700; border-radius: 10px; padding: 8px 0; font-size: 0.82rem;">
-                            <i class="ph ph-user"></i> Voir le profil
-                        </button>
-                        <button type="button" class="btn btn-outline btn-sm trigger-contact-lyanneur" data-member-id="${candId}" style="justify-content: center; font-weight: 700; border-radius: 10px; padding: 8px 0; font-size: 0.82rem; color: #4A7C59; border-color: rgba(74, 124, 89, 0.3);">
-                            <i class="ph ph-chat-circle"></i> Contacter
-                        </button>
-                    </div>
-                    <button type="button" class="btn btn-primary btn-sm btn-propose-need" data-member-id="${candId}" style="width: 100%; justify-content: center; font-weight: 800; border-radius: 10px; padding: 9px 0; font-size: 0.85rem; background: var(--primary);">
-                        <i class="ph-bold ph-paper-plane-tilt"></i> Lui proposer mon besoin
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    async function performSearch(userTriggered = false) {
-        const searchInput = document.getElementById('searchInput');
-        const locationSelect = document.getElementById('locationSelect');
-        const citySelect = document.getElementById('citySelect');
-        const container = document.getElementById('searchResultsContainer');
-        const summaryBadge = document.getElementById('searchSummaryBadge');
-        const sortSelect = document.getElementById('searchSortSelect');
-        const categorySelect = document.getElementById('modalCategoryFilterSelect');
-
-        if (!container) return;
-
-        // Loading Skeleton
-        container.innerHTML = `
-            <div class="search-loading-skeleton" style="grid-column: 1/-1; padding: 50px 20px; text-align: center;">
-                <div style="display: inline-block; width: 36px; height: 36px; border: 4px solid rgba(74, 124, 89, 0.2); border-top-color: #4A7C59; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-                <p style="margin-top: 14px; font-weight: 600; color: #1F3827; font-size: 0.95rem;">Recherche des lyanneurs en cours...</p>
-            </div>
-        `;
-
-        const rawQuery = searchInput ? searchInput.value.trim() : '';
-        const territoryVal = locationSelect ? locationSelect.value : 'guadeloupe';
-        const cityVal = citySelect ? citySelect.value : '';
-        const selectedCategory = categorySelect ? categorySelect.value : 'all';
-        const selectedSort = sortSelect ? sortSelect.value : 'recommended';
-
-        // 1. Fetch Candidates through centralized cached Explorer repository
-        let candidatesList = [];
-        let callingUserId = null;
-        let searchHasError = false;
-
-        const isExplicitDemoMode = typeof window !== 'undefined' && (
-            window.LYANN_FORCE_DEMO_DATA === true ||
-            (window.location && window.location.search && (
-                window.location.search.includes('demo=true') ||
-                window.location.search.includes('dev_fixtures=true')
-            ))
-        );
-
-        try {
-            if (!window.LYANN_EXPLORER_REPOSITORY) {
-                return;
-            }
-
-            if (window.LYANN_AUTH_STATE && typeof window.LYANN_AUTH_STATE.getUserId === 'function') {
-                callingUserId = window.LYANN_AUTH_STATE.getUserId() || null;
-            }
-
-            // If cached results exist, use them immediately; repository refresh is deduped.
-            const cachedCandidates = window.LYANN_EXPLORER_REPOSITORY.peek();
-            if (Array.isArray(cachedCandidates)) {
-                candidatesList = cachedCandidates;
-            } else {
-                candidatesList = await window.LYANN_EXPLORER_REPOSITORY.load();
-            }
-        } catch (err) {
-            console.error('❌ [LYANN SEARCH] Explorer repository error:', err);
-            searchHasError = true;
-        }
-
-        if (searchHasError) {
-            container.innerHTML = `
-                <div class="search-error-state" style="grid-column: 1/-1; padding: 40px 20px; text-align: center; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed #E2E8F0;">
-                    <i class="ph ph-warning-circle" style="font-size: 2.5rem; color: #DC2626; margin-bottom: 10px;"></i>
-                    <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1E293B;">Impossible de charger les Lyanneurs pour le moment.</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Veuillez réessayer dans quelques instants.</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Demo fixtures remain available only when explicitly requested.
-        if (isExplicitDemoMode && candidatesList.length === 0 && window.LYANN_MEMBERS && Array.isArray(window.LYANN_MEMBERS)) {
-            candidatesList = window.LYANN_MEMBERS.map(m => ({
-                id: String(m.id || m.user_id || m.name),
-                user_id: String(m.id || m.user_id || m.name),
-                name: m.name,
-                avatar: m.avatar || '/default-avatar.svg',
-                role: m.role || 'Services & Entraide',
-                category: m.category || 'general',
-                city: m.city || 'Guadeloupe',
-                location: m.location || 'guadeloupe',
-                rating: m.rating || 0,
-                reviewsCount: m.reviewsCount || 0,
-                completed_missions_count: m.completedMissions || 0,
-                is_verified_pro: m.badge === 'Artisan Vérifié' || m.isVerified === true,
-                skills: m.skills || m.keywords || [],
-                bio: m.bio || '',
-                subscription_plan: m.subscription_plan || 'FREE',
-                source: 'DEMO'
-            }));
-        }
-
-        // 2. Invoke LyannSearchEngine.performUniversalSearch
-        let publicCards = [];
-        let isZeroResult = false;
-
-        if (window.LyannSearchEngine && typeof window.LyannSearchEngine.performUniversalSearch === 'function') {
-            const searchOptions = {
-                location: cityVal || territoryVal,
-                verifiedProOnly: false
-            };
-            const searchRes = window.LyannSearchEngine.performUniversalSearch(rawQuery, candidatesList, searchOptions, callingUserId);
-            publicCards = searchRes.results || [];
-            isZeroResult = searchRes.is_zero_result === true;
-        } else {
-            // Fallback filtering if LyannSearchEngine script is absent
-            const normQ = rawQuery.toLowerCase();
-            publicCards = candidatesList.filter(m => {
-                if (!normQ) return true;
-                const candText = `${m.name} ${m.role} ${m.bio} ${(m.skills || []).join(' ')}`.toLowerCase();
-                return candText.includes(normQ);
-            }).map(c => ({
-                id: c.id,
-                display_name: c.name,
-                avatar: c.avatar,
-                role: c.role,
-                city: c.city,
-                rating: c.rating,
-                reviews_count: c.reviewsCount,
-                bio: c.bio,
-                is_verified_pro: c.is_verified_pro,
-                source: c.source || 'SUPABASE',
-                relevance_score: normQ ? 40 : 0,
-                matched_fields: ['text_fallback'],
-                total_score: 50
-            }));
-            isZeroResult = publicCards.length === 0;
-        }
-
-        // Filter by DOM category select if selected
-        if (selectedCategory && selectedCategory !== 'all') {
-            publicCards = publicCards.filter(c => {
-                const candCat = (c.category || c.role || '').toLowerCase();
-                return candCat.includes(selectedCategory.toLowerCase());
-            });
-        }
-
-        // Filter by location (territory/city)
-        if (territoryVal) {
-            const territoryMap = {
-                'guadeloupe': ['guadeloupe', '971', 'baie-mahault', 'les abymes', 'le gosier', 'sainte-anne', 'pointe-à-pitre', 'basse-terre', 'le moule', 'petit-bourg', 'trois-rivières', 'sainte-rose'],
-                'martinique': ['martinique', '972', 'fort-de-france', 'le lamentin', 'schœlcher', 'le robert', 'sainte-marie'],
-                'guyane': ['guyane', '973', 'cayenne', 'kourou', 'saint-laurent-du-maroni'],
-                'reunion': ['reunion', 'réunion', '974', 'saint-denis', 'saint-paul', 'saint-pierre'],
-                'saint-martin': ['saint-martin', 'st-martin', '978', 'marigot']
-            };
-            const allowedCities = territoryMap[territoryVal.toLowerCase()] || [territoryVal.toLowerCase()];
-            publicCards = publicCards.filter(c => {
-                const candCity = (c.city || c.location || '').toLowerCase();
-                return allowedCities.some(loc => candCity.includes(loc) || loc.includes(candCity));
-            });
-        }
-
-        if (cityVal) {
-            publicCards = publicCards.filter(c => {
-                const candCity = (c.city || '').toLowerCase();
-                return candCity.includes(cityVal.toLowerCase()) || cityVal.toLowerCase().includes(candCity);
-            });
-        }
-
-        // Apply Sorting
-        if (selectedSort === 'reviews') {
-            publicCards.sort((a, b) => (b.reviews_count || 0) - (a.reviews_count || 0));
-        } else if (selectedSort === 'city') {
-            publicCards.sort((a, b) => (a.city || '').localeCompare(b.city || ''));
-        } else if (selectedSort === 'name') {
-            publicCards.sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''));
-        }
-
-        // SEARCH DEBUG — DEV ONLY
-        if (isDevDebug && publicCards.length > 0) {
-            console.group(`🔍 [SEARCH DEBUG] Query: "${rawQuery}" | Found: ${publicCards.length}`);
-            publicCards.forEach(c => {
-                console.log(`[SEARCH DEBUG] profile_id: ${c.id} | source: ${c.source || 'SUPABASE'} | relevance_score: ${c.relevance_score || 0} | matched_fields: ${JSON.stringify(c.matched_fields || [])} | total_score: ${c.total_score || 0}`);
-            });
-            console.groupEnd();
-        }
-
-        // Update Summary Badge
-        if (summaryBadge) {
-            const locLabel = locationSelect ? locationSelect.options[locationSelect.selectedIndex].text : 'Guadeloupe';
-            const cityLabel = cityVal ? `, ${cityVal}` : '';
-            const qLabel = rawQuery ? ` pour « <strong>${escapeSearchHtml(rawQuery)}</strong> »` : '';
-            summaryBadge.innerHTML = `<i class="ph ph-sliders"></i> <strong>${publicCards.length}</strong> membre(s) trouvé(s) à <strong>${escapeSearchHtml(locLabel)}${escapeSearchHtml(cityLabel)}</strong>${qLabel}`;
-        }
-
-        // 3. Render Results or Zero Result UI
-        if (publicCards.length === 0) {
-            renderZeroResultUI(container, rawQuery);
-        } else {
-            container.innerHTML = publicCards.map(c => renderTalentCard(c)).join('');
-            bindDynamicTalentCards();
-            if (typeof window.syncFavoriteButtonStates === 'function') {
-                window.syncFavoriteButtonStates();
-            }
-        }
-
-        // Scroll to results section on manual search click
-        const path = window.location.pathname || '';
-        if (userTriggered && path.includes('results.html')) {
-            const resultsSection = document.querySelector('.results-main-section');
-            if (resultsSection) {
-                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
-    }
-
 
     // Bind location select change
     const locationSelect = document.getElementById('locationSelect');
@@ -7031,6 +6629,11 @@ safeDomReady(() => {
     if(!modalRequestHelp) return;
 
     let currentStep = 1;
+    // Requests currently have no persisted media field/bucket. Do not offer a
+    // photo step that can silently discard files while reporting publication success.
+    const publishedRequestSteps = [1, 2, 4, 5, 6];
+    const agreedDateOption = modalRequestHelp.querySelector('#wizardDateType option[value="date"]');
+    if (agreedDateOption) agreedDateOption.textContent = 'Date à convenir ensemble';
     const totalSteps = 6;
     const btnNext = document.getElementById('wizardBtnNext');
     const btnPrev = document.getElementById('wizardBtnPrev');
@@ -7090,6 +6693,8 @@ safeDomReady(() => {
         const target = modalRequestHelp.querySelector(`.wizard-step[data-step="${step}"]`);
         if(target) {
             target.style.display = 'block';
+            const heading = target.querySelector('h4');
+            if (heading) heading.textContent = heading.textContent.replace(/^\d+\./, `${publishedRequestSteps.indexOf(step) + 1}.`);
             // slight delay for animation
             setTimeout(() => target.classList.add('active', 'fade-in'), 10);
         }
@@ -7098,7 +6703,7 @@ safeDomReady(() => {
         
         // Update progress bar
         if(progressBar) {
-            progressBar.style.width = `${(currentStep / totalSteps) * 100}%`;
+            progressBar.style.width = `${((publishedRequestSteps.indexOf(currentStep) + 1) / publishedRequestSteps.length) * 100}%`;
         }
 
         // Dynamically query footer buttons within modal container
@@ -7451,14 +7056,14 @@ safeDomReady(() => {
                     }
                 }
             } else if (currentStep < totalSteps) {
-                goToStep(currentStep + 1);
+                goToStep(publishedRequestSteps[publishedRequestSteps.indexOf(currentStep) + 1]);
             }
         });
     }
 
     if(btnPrev) {
         btnPrev.addEventListener('click', () => {
-            if (currentStep > 1) goToStep(currentStep - 1);
+            if (currentStep > 1) goToStep(publishedRequestSteps[publishedRequestSteps.indexOf(currentStep) - 1]);
         });
     }
 
@@ -7534,32 +7139,19 @@ safeDomReady(() => {
             btnSubmit.disabled = true;
             btnSubmit.innerHTML = '<i class="ph ph-spinner spin"></i> Publication...';
 
-            let uploadedPhotoUrls = [];
-            if (window.wizardSelectedPhotos && window.wizardSelectedPhotos.length > 0) {
-                btnSubmit.innerHTML = '<i class="ph ph-spinner spin"></i> Envoi des photos...';
-                for (const photoFile of window.wizardSelectedPhotos) {
-                    try {
-                        const url = await window.LYANN_API_CLIENT.uploadRequestPhoto(photoFile);
-                        if (url) {
-                            uploadedPhotoUrls.push(url);
-                        }
-                    } catch (uploadErr) {
-                        console.warn("Notice: Storage photo upload warning:", uploadErr);
-                    }
-                }
-            }
-
             try {
+                const taxonomy = await window.LyanAI.fetchTaxonomyFromDB({ strict: true });
+                const selectedTaxonomy = taxonomy.find(t => t.universe === document.getElementById('wizardDomain')?.value && t.category === categoryText && t.subcategory === subCatText);
                 // Call real Supabase DB API
                 const createdRequest = await window.LYANN_API_CLIENT.createRequest({
                     title: title,
                     description: desc,
                     category: categoryText,
+                    taxonomy_id: selectedTaxonomy?.id || null,
                     location: location,
                     budget: budgetVal,
                     urgency: urgencyVal,
-                    status: 'OPEN',
-                    media_urls: uploadedPhotoUrls
+                    status: 'OPEN'
                 });
 
                 window.wizardSelectedPhotos = [];
@@ -7696,7 +7288,7 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
     const countNum = Number(insertedCount) || 0;
     const notificationMsg = countNum > 0
         ? `Nous l'avons également partagé à <strong>${countNum} Lyanneur${countNum > 1 ? 's' : ''}</strong> correspondant à ton besoin.`
-        : `Ton besoin est maintenant visible dans le Bokantaj. Aucun Lyanneur direct n'a encore été notifié.`;
+        : `Ton besoin est maintenant visible dans Explorer → Annonces. Aucun Lyanneur direct n'a encore été notifié.`;
 
     stepPost.innerHTML = `
         <div style="text-align: center; padding: 10px 0;">
@@ -7704,7 +7296,7 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
                 <i class="ph-fill ph-check-circle" style="font-size: 36px; color: var(--primary);"></i>
             </div>
             <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--primary-dark); margin: 0 0 6px 0;">Ton Lyann est publié !</h3>
-            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 20px 0;">Ton besoin est maintenant partagé dans le Bokantaj.</p>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 20px 0;">Ton besoin est maintenant publié dans Explorer → Annonces.</p>
             
             <div style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 18px; text-align: left; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
@@ -7730,7 +7322,7 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
                 Voir mon Lyann <i class="ph ph-arrow-right"></i>
             </button>
             <button type="button" class="btn btn-outline" id="btnPostPublishGoBokantaj" style="width: 100%; justify-content: center; font-weight: 600; font-size: 0.9rem; padding: 10px;">
-                Voir le Bokantaj
+                Voir les annonces
             </button>
         </div>
     `;
@@ -7753,7 +7345,7 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
             if (targetReqId && typeof window.openLyannDetailModal === 'function') {
                 window.openLyannDetailModal(targetReqId, targetReqObj);
             } else if (targetReqId) {
-                window.location.assign(`feed.html?openLyann=${targetReqId}`);
+                window.location.assign(`results.html?mode=annonces&openLyann=${targetReqId}`);
             }
         };
     }
@@ -7765,15 +7357,7 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
             wizardModal.classList.remove('active');
             document.body.style.overflow = '';
             
-            const feedSection = document.getElementById('flashFeedContainer') || document.querySelector('.feed-preview-section');
-            if (feedSection) {
-                if (typeof window.loadBokantajFeedFromSupabase === 'function') {
-                    window.loadBokantajFeedFromSupabase();
-                }
-                feedSection.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                window.location.assign('feed.html');
-            }
+            window.location.assign('results.html?mode=annonces');
         };
     }
 }
@@ -7868,6 +7452,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         };
     }
 
+    if (footerEl) footerEl.innerHTML = '';
     let requestData = initialData || null;
     let authorProf = initialData ? (initialData.profiles || null) : null;
 
@@ -7875,13 +7460,15 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         try {
             const { data, error } = await window.LYANN_API_CLIENT.supabase
                 .from('requests')
-                .select('*, profiles:requester_id(first_name, last_name, avatar_url, city, territory)')
+                .select('*')
                 .eq('id', requestId)
                 .single();
 
             if (data && !error) {
                 requestData = data;
-                authorProf = data.profiles;
+                const { data: publicAuthor } = await window.LYANN_API_CLIENT.supabase.from('public_profiles')
+                    .select('id, first_name, last_name, avatar_url, city, territory').eq('id', data.requester_id).maybeSingle();
+                authorProf = publicAuthor;
             }
         } catch (e) {
             console.warn("Detail Lyann Supabase error:", e);
@@ -7918,11 +7505,11 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
 
     const authorName = authorProf ? window.formatPublicName(authorProf, null, 'Lyanneur') : 'Lyanneur';
     const authorAvatar = window.getLyannAvatarUrl(authorProf?.avatar_url);
-    const locationStr = requestData.location || authorProf?.city || 'Guadeloupe';
+    const locationStr = requestData.location || authorProf?.city || 'Lieu à préciser';
     const dateStr = requestData.created_at ? new Date(requestData.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Récemment';
 
     if (titleEl) titleEl.textContent = requestData.title || 'Demande d\'entraide';
-    if (badgeEl) badgeEl.innerHTML = `<i class="ph ph-hand-heart"></i> LYANN · ${requestData.category || 'Général'}`;
+    if (badgeEl) badgeEl.textContent = `LYANN · ${requestData.category || 'Général'}`;
     if (statusEl) statusEl.textContent = `● ${requestData.status || 'OPEN'}`;
 
     const favDetailBtn = document.getElementById('lyannDetailFavBtn');
@@ -7936,7 +7523,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         window.syncFavoriteButtonStates();
     }
 
-    const currentUserId = window.LYANN_API_CLIENT?.getCurrentUserId?.() || null;
+    const currentUserId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.CURRENT_USER_ID || null;
     const isOwnLyann = currentUserId && requestData.requester_id === currentUserId;
 
     if (bodyEl) {
@@ -7961,15 +7548,15 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
 
         bodyEl.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #F1F5F9;">
-                <img src="${authorAvatar}" alt="${authorName}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+                <img src="${authorAvatar}" alt="${window.escapeHtmlAttr(authorName)}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
                 <div>
-                    <strong style="font-size: 1rem; color: #1E2822; display: block;">${authorName} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.9rem;"></i></strong>
-                    <span style="font-size: 0.85rem; color: #64748B;">📍 ${locationStr} • 🗓️ ${dateStr}</span>
+                    <strong style="font-size: 1rem; color: #1E2822; display: block;">${window.escapeHtmlAttr(authorName)}</strong>
+                    <span style="font-size: 0.85rem; color: #64748B;">📍 ${window.escapeHtmlAttr(locationStr)} • 🗓️ ${dateStr}</span>
                 </div>
             </div>
 
             <div style="color: #334155; font-size: 0.96rem; line-height: 1.6; white-space: pre-wrap; margin-bottom: 12px;">
-                ${escapeSearchHtml(requestData.description || requestData.title || '')}
+                ${window.escapeHtmlAttr(requestData.description || requestData.title || '')}
             </div>
 
             ${budgetHTML}
@@ -7999,6 +7586,8 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                 const userProfileModal = document.getElementById('modal-user-profile');
                 if (userProfileModal) userProfileModal.classList.add('active');
             });
+        } else if (requestData.status !== 'OPEN') {
+            footerEl.textContent = 'Cette annonce n’est plus ouverte aux propositions.';
         } else {
             footerEl.innerHTML = `
                 <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn" style="flex: 1; justify-content: center;">Fermer</button>
@@ -8017,6 +7606,12 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                 document.body.style.overflow = '';
                 const currentAuthUserId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id || window.LYANN_API_CLIENT?.getCurrentUserId?.();
                 if (!currentAuthUserId) {
+                    // Public Explorer deliberately has no requester identity. Use the
+                    // canonical auth gate; authenticated discovery reloads secure rows.
+                    if (!requestData.requester_id) {
+                        window.LYANN_ROUTER?.go?.('messages');
+                        return;
+                    }
                     try {
                         sessionStorage.setItem('pending_lyann_help', JSON.stringify({
                             reqId: requestData.id,
@@ -8499,5 +8094,3 @@ window.openHelpRequestWithTarget = function(targetUserId, targetName) {
         reqModal.classList.add('active');
     }
 };
-
-

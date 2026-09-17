@@ -22,6 +22,7 @@
     
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20260916">
+    <link rel="stylesheet" href="explorer.css?v=20260917">
 </head>
 <body class="results-page">
 
@@ -117,169 +118,52 @@
         </div>
     </div>
 
-    <!-- ========== HERO BARRE DE RECHERCHE PAGE RÉSULTATS ========== -->
-    <section class="results-hero-section">
-        <div class="container">
-            <div class="results-hero-content text-center">
-                <span class="pill-badge pill-emerald"><i class="ph ph-magnifying-glass"></i> Recherche & réseau LYANN</span>
-                <h1 class="results-page-title">Qui peut vous aider <span class="text-gradient">aujourd'hui ?</span></h1>
-                <p class="results-page-subtitle">Trouve quelqu'un près de chez toi pour t'aider dans les DOM.</p>
-                
-                <!-- STEP 17 SEARCH EXPERIENCE V2: DUAL INTENT ENTRY -->
-                <div class="search-v2-intent-container" id="searchV2IntentContainer" style="margin: 20px auto 24px; max-width: 720px;">
-                    <div class="search-v2-header">
-                        <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--primary-dark); margin-bottom: 12px;">Comment peut-on t’aider ?</h3>
-                    </div>
-                    <div class="search-v2-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; text-align: left;">
-                        <!-- Option A: Je cherche un Lyanneur -->
-                        <div class="search-v2-card active" id="btnIntentSearch" data-intent="search" style="cursor: pointer;">
-                            <div class="search-v2-card-icon">
-                                <i class="ph-bold ph-users-three"></i>
-                            </div>
-                            <div class="search-v2-card-body">
-                                <h4>Je cherche un Lyanneur</h4>
-                                <p>Parcourir les profils</p>
-                            </div>
-                            <div class="search-v2-card-check">
-                                <i class="ph-bold ph-check"></i>
-                            </div>
-                        </div>
-
-                        <!-- Option B: J'ai un besoin -->
-                        <div class="search-v2-card" id="btnIntentNeed" data-intent="need" style="cursor: pointer;">
-                            <div class="search-v2-card-icon" style="background: rgba(229, 179, 69, 0.15); color: #C69222;">
-                                <i class="ph-bold ph-chat-circle-dots"></i>
-                            </div>
-                            <div class="search-v2-card-body">
-                                <h4>J’ai un besoin</h4>
-                                <p>Décrire ce que je cherche</p>
-                            </div>
-                            <div class="search-v2-card-check">
-                                <i class="ph-bold ph-check"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- PARCOURS A: JE CHERCHE UN LYANNEUR -->
-                <div id="parcoursSearchPanel" class="parcours-panel active">
-                    <!-- Barre de Recherche Complète -->
-                    <form class="hero-search results-search-bar" id="heroSearchForm" onsubmit="event.preventDefault();">
-                        <div class="hero-search-fields">
-                            <div class="search-input-wrapper flex-2">
-                                <i class="ph ph-magnifying-glass"></i>
-                                <input type="text" id="searchInput" placeholder="Que recherches-tu ? (ex: Plombier, Jardinier...)" autocomplete="off">
-                            </div>
-                            <div class="search-input-wrapper">
-                                <i class="ph ph-map-pin"></i>
-                                <select id="locationSelect">
-                                    <option value="guadeloupe" selected>971 - Guadeloupe</option>
-                                    <option value="martinique">972 - Martinique</option>
-                                    <option value="guyane">973 - Guyane</option>
-                                    <option value="reunion">974 - La Réunion</option>
-                                    <option value="saint-martin">978 - St-Martin</option>
-                                </select>
-                            </div>
-                            <div class="search-input-wrapper">
-                                <i class="ph ph-buildings"></i>
-                                <select id="citySelect">
-                                    <option value="" selected>Toutes les communes</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary search-btn">Trouver</button>
-                        </div>
-                    </form>
-
-                    <!-- Exemples humains et discrets de recherche -->
-                    <div class="suggestion-tags example-suggestions-group" style="margin-top: 14px; overflow-x: auto; padding-bottom: 4px; white-space: nowrap; -webkit-overflow-scrolling: touch; display: flex; align-items: center; gap: 8px; justify-content: center;">
-                        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-right: 4px;">Exemples :</span>
-                        <button type="button" class="tag example-chip" data-search="plombier" style="border-radius: 20px; background: rgba(74, 124, 89, 0.08); color: var(--primary-dark); font-weight: 600; font-size: 0.85rem; padding: 6px 14px; border: 1px solid rgba(74, 124, 89, 0.18); cursor: pointer;">plombier</button>
-                        <button type="button" class="tag example-chip" data-search="jardinier" style="border-radius: 20px; background: rgba(74, 124, 89, 0.08); color: var(--primary-dark); font-weight: 600; font-size: 0.85rem; padding: 6px 14px; border: 1px solid rgba(74, 124, 89, 0.18); cursor: pointer;">jardinier</button>
-                        <button type="button" class="tag example-chip" data-search="réparation" style="border-radius: 20px; background: rgba(74, 124, 89, 0.08); color: var(--primary-dark); font-weight: 600; font-size: 0.85rem; padding: 6px 14px; border: 1px solid rgba(74, 124, 89, 0.18); cursor: pointer;">réparation</button>
-                        <button type="button" class="tag example-chip" data-search="cours de musique" style="border-radius: 20px; background: rgba(74, 124, 89, 0.08); color: var(--primary-dark); font-weight: 600; font-size: 0.85rem; padding: 6px 14px; border: 1px solid rgba(74, 124, 89, 0.18); cursor: pointer;">cours de musique</button>
-                    </div>
-                </div>
-
-                <!-- PARCOURS B: J'AI UN BESOIN -->
-                <div id="parcoursNeedPanel" class="parcours-panel" style="display: none; max-width: 720px; margin: 0 auto; text-align: left;">
-                    <div class="need-intent-hero-box" style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: var(--radius-xl); padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
-                        <h4 style="font-size: 1.15rem; font-weight: 800; color: var(--primary-dark); margin-bottom: 4px;">De quoi as-tu besoin ?</h4>
-                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Décris simplement ce qu’il te faut. Pas besoin de connaître le métier exact.</p>
-                        
-                        <div class="need-quick-chips" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                            <button type="button" class="need-example-chip" data-need="Mon scooter ne démarre plus">
-                                <i class="ph-bold ph-moped"></i> Mon scooter ne démarre plus
-                            </button>
-                            <button type="button" class="need-example-chip" data-need="J’ai une fuite sous mon évier">
-                                <i class="ph-bold ph-drop"></i> J’ai une fuite sous mon évier
-                            </button>
-                            <button type="button" class="need-example-chip" data-need="Je dois monter une armoire">
-                                <i class="ph-bold ph-wrench"></i> Je dois monter une armoire
-                            </button>
-                            <button type="button" class="need-example-chip" data-need="Je cherche quelqu’un pour photographier mon anniversaire">
-                                <i class="ph-bold ph-camera"></i> Photographier mon anniversaire
-                            </button>
-                        </div>
-
-                        <button type="button" class="btn btn-primary btn-lg" id="btnLaunchNeedWizard" style="margin-top: 18px; width: 100%; justify-content: center; font-weight: 800; font-size: 1rem; padding: 14px;">
-                            Expliquer mon besoin <i class="ph ph-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
+    <main id="explorer" class="explorer-page">
+        <header class="explorer-heading">
+            <h1>Explorer</h1>
+            <p>Des besoins et des talents, près de chez vous.</p>
+        </header>
+        <div class="explorer-modes" role="tablist" aria-label="Que souhaitez-vous découvrir ?">
+            <button id="annoncesTab" role="tab" aria-selected="true" aria-controls="explorerPanel" data-mode="annonces">Annonces</button>
+            <button id="lyanneursTab" role="tab" aria-selected="false" aria-controls="explorerPanel" data-mode="lyanneurs" tabindex="-1">Lyanneurs</button>
         </div>
-    </section>
-
-
-    <!-- ========== CONTENU PRINCIPAL DES RÉSULTATS ========== -->
-    <section class="results-main-section section">
-        <div class="container">
-            
-            <!-- Toolbar de Filtres & Récapitulatif -->
-            <div class="results-page-toolbar">
-                <div class="results-summary-info">
-                    <div class="search-summary-badge" id="searchSummaryBadge">
-                        <!-- Dynamic summary filled by script.js -->
-                    </div>
-                </div>
-
-                <div class="search-filters-toolbar">
-                    <div class="toolbar-filter-item">
-                        <label for="searchSortSelect"><i class="ph ph-arrows-down-up"></i> Trier par :</label>
-                        <select id="searchSortSelect" class="search-toolbar-select">
-                            <option value="recommended" selected>🏆 Recommandés & Mieux notés</option>
-                            <option value="reviews">⭐ Nombre d'avis clients</option>
-                            <option value="city">📍 Par Commune</option>
-                            <option value="name">🔤 Nom de A à Z</option>
-                        </select>
-                    </div>
-
-                    <div class="toolbar-filter-item">
-                        <label for="modalCategoryFilterSelect"><i class="ph ph-grid-four"></i> Domaine / Métier :</label>
-                        <select id="modalCategoryFilterSelect" class="search-toolbar-select">
-                            <option value="all" selected>Tous les domaines</option>
-                            <option value="maison">🏠 Maison & Rénovation</option>
-                            <option value="jardin">🌴 Jardin & Espaces Verts</option>
-                            <option value="climatisation">❄️ Climatisation & Froid</option>
-                            <option value="menage">🧹 Ménage & Propreté</option>
-                            <option value="demenagement">🚚 Déménagement & Transport</option>
-                            <option value="electricite">⚡ Électricité</option>
-                            <option value="plomberie">💧 Plomberie</option>
-                            <option value="peinture">🎨 Peinture</option>
-                            <option value="bricolage">🛠️ Bricolage</option>
-                            <option value="babysitting">👶 Baby-sitting</option>
-                            <option value="aide-personne">🤝 Aide à la personne</option>
-                        </select>
-                    </div>
-                </div>
+        <section id="explorerPanel" role="tabpanel" aria-labelledby="annoncesTab">
+            <form id="explorerSearchForm" class="explorer-search" role="search">
+                <label class="sr-only" for="explorerSearchInput">Rechercher dans les annonces</label>
+                <input id="explorerSearchInput" type="search" placeholder="De quoi avez-vous besoin ?" autocomplete="off">
+                <button type="submit" class="btn btn-primary" aria-label="Rechercher"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Rechercher</span></button>
+            </form>
+            <div class="explorer-tools">
+                <label class="explorer-category">Catégorie
+                    <select id="explorerCategory"><option value="">Toutes les catégories</option></select>
+                </label>
+                <button id="explorerFiltersButton" class="btn btn-outline" aria-haspopup="dialog"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i> Filtres et zone</button>
             </div>
-
-            <!-- Grille des Cartes de Membres -->
-            <div class="search-results-grid" id="searchResultsContainer">
-                <!-- Dynamically injected member profile cards -->
+            <div id="explorerActiveFilters" class="explorer-active-filters" aria-label="Filtres actifs"></div>
+            <div class="explorer-results-heading">
+                <p id="explorerSummary" role="status" aria-live="polite"></p>
+                <button class="explorer-publish btn btn-outline" type="button">Publier une annonce</button>
             </div>
-        </div>
-    </section>
+            <div id="explorerResults" class="explorer-grid" aria-busy="true"></div>
+            <p id="explorerRanking" class="explorer-ranking">Annonces les plus récentes en premier.</p>
+        </section>
+        <dialog id="explorerFilters" class="explorer-filter-sheet" aria-labelledby="explorerFilterTitle">
+            <form method="dialog" id="explorerFilterForm">
+                <div class="explorer-sheet-heading"><h2 id="explorerFilterTitle">Affiner la recherche</h2><button type="button" id="explorerFiltersClose" aria-label="Fermer les filtres">×</button></div>
+                <label>Service / sous-catégorie<select id="explorerService"><option value="">Tous les services</option></select></label>
+                <label>Commune ou territoire<input id="explorerArea" type="text" placeholder="Ex. Le Gosier, Guadeloupe" autocomplete="address-level2"></label>
+                <p class="explorer-hint">Recherche par lieu renseigné. Aucune distance estimée.</p>
+                <button type="button" id="explorerSavedArea" class="btn btn-outline" hidden>Utiliser mon lieu de profil</button>
+                <div id="explorerRequestFilters">
+                    <label>État<select id="explorerStatus"><option value="OPEN">Ouvertes</option><option value="">Tous les états</option><option value="ASSIGNED">Attribuées</option><option value="COMPLETED">Terminées</option><option value="CANCELLED">Annulées</option></select></label>
+                    <label>Délai<select id="explorerUrgency"><option value="">Tous les délais</option></select></label>
+                    <label>Budget maximum (€)<input id="explorerBudget" type="number" min="0" step="1" placeholder="Sans limite"></label>
+                    <p class="explorer-hint">Avec un budget maximum, seules les annonces au budget renseigné sont affichées.</p>
+                </div>
+                <div class="explorer-sheet-actions"><button type="button" id="explorerReset" class="btn btn-outline">Réinitialiser</button><button value="apply" class="btn btn-primary">Afficher les résultats</button></div>
+            </form>
+        </dialog>
+    </main>
 
         <!-- ========== FOOTER ========== -->
     <footer class="footer">
@@ -1280,6 +1164,9 @@
     <script src="surface-manager.js?v=20260914"></script>
     <script src="app-router.js?v=20260914"></script>
     <script src="api-client.js"></script>
+    <script src="session-store.js"></script>
+    <script src="auth-state.js"></script>
+    <script src="data-cache.js"></script>
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>
 <script src="chat-logic.js?v=20260916-JEPEUXAIDER-FIX"></script>
@@ -1290,6 +1177,8 @@
     <script src="app-shell.js"></script>
     <script src="messaging-ui.js"></script>
     <script src="profile-repository.js"></script>
+    <script src="explorer-repository.js"></script>
+    <script src="explorer-ui.js" defer></script>
     <script src="script.js?v=20260916-OVERLAY-FIX"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->

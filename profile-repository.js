@@ -103,7 +103,7 @@
     if (window.LYANN_AUTH_STATE) {
       try {
         await window.LYANN_AUTH_STATE.ready();
-        return window.LYANN_AUTH_STATE.getUserId();
+        return window.LYANN_AUTH_STATE.getSnapshot().userId;
       } catch (_) {}
     }
     if (window.LYANN_SESSION) {
@@ -135,14 +135,16 @@
       };
     }
 
-    const profilePromise = typeof api.getProfile === 'function' ? api.getProfile(memberId).catch(() => null) : Promise.resolve(null);
+    const profilePromise = isSelf
+      ? api.getProfile(memberId)
+      : api.supabase.from('public_profiles').select('*').eq('id', memberId).maybeSingle();
     const trustPromise = typeof api.getUserTrustAndReputation === 'function' ? api.getUserTrustAndReputation(memberId).catch(() => null) : Promise.resolve(null);
     const portfolioPromise = typeof api.getUserPortfolio === 'function' ? api.getUserPortfolio(memberId, isSelf).catch(() => null) : Promise.resolve(null);
     const servicesPromise = typeof api.getUserServices === 'function' ? api.getUserServices(memberId).catch(() => null) : Promise.resolve(null);
     const reviewsPromise = api.supabase
       ? api.supabase
           .from('reviews')
-          .select('*, author:profiles!author_id(first_name, last_name, avatar_url, city)')
+          .select('*')
           .eq('target_id', memberId)
           .order('created_at', { ascending: false })
           .then((result) => result)
@@ -162,7 +164,15 @@
 
     const portfolioItems = Array.isArray(portfolioRes?.data) ? portfolioRes.data : [];
     const userServices = Array.isArray(servicesRes?.data) ? servicesRes.data : [];
-    const reviewsList = mapReviews(reviewsRes?.data || []);
+    const reviewRows = reviewsRes?.data || [];
+    const authorIds = [...new Set(reviewRows.map(r => r.author_id).filter(Boolean))];
+    if (authorIds.length) {
+      const { data: authors } = await api.supabase.from('public_profiles')
+        .select('id, first_name, last_name, city').in('id', authorIds);
+      const byId = new Map((authors || []).map(p => [p.id, p]));
+      reviewRows.forEach(r => { r.author = byId.get(r.author_id) || null; });
+    }
+    const reviewsList = mapReviews(reviewRows);
 
     profileData.metrics.reviews_count = reviewsList.length;
     if (!reviewsList.length) profileData.metrics.average_rating = null;

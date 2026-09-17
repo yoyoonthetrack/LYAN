@@ -20,8 +20,8 @@ if (!router.includes("['#tab-home', 'home']")) fail('app-router.js must own bott
 if (!surfaces.includes('window.LYANN_SURFACES = api')) fail('surface-manager.js must own window.LYANN_SURFACES');
 if (!surfaces.includes("config.mode === 'major'")) fail('surface-manager.js must enforce major-surface exclusivity');
 
-if (!sharedBuild.includes('surface-manager.js?v=20260914')) fail('shared build must inject surface manager');
-if (!sharedBuild.includes('app-router.js?v=20260914')) fail('shared build must inject application router');
+if (!sharedBuild.includes('surface-manager.js?v=')) fail('shared build must inject surface manager');
+if (!sharedBuild.includes('app-router.js?v=')) fail('shared build must inject application router');
 
 if (hygiene.includes('new MutationObserver')) fail('production hygiene must not observe/mutate the live DOM continuously');
 if (!hygiene.includes('No ongoing observer')) fail('production hygiene must document one-shot behavior');

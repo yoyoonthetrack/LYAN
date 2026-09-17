@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { requireWriteBackend, login } = require('./helpers/approved-backend');
 
 const PAGES = [
   'index.html',
@@ -130,29 +131,37 @@ test.describe('LYANN V1 — Playwright Global Interaction Coverage', () => {
   });
 
   test('Interactive CTAs & Buttons Coverage (Web Human QA Bug #1 Assertion)', async ({ page }) => {
-    // 1. Log in via API client on index.html
-    await page.goto('/index.html');
-    await page.evaluate(async () => {
-      if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.login === 'function') {
-        await window.LYANN_API_CLIENT.login('req_user_b@lyann.app', 'Password123!');
-      }
-    });
-
-    // 2. Navigate to feed.html with real authenticated Supabase session
-    await page.goto('/feed.html');
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForFunction(() => document.body.classList.contains('auth-ready') && document.body.classList.contains('user-is-logged-in'), { timeout: 10000 });
-
-    // 3. Test "Je peux aider" CTA on feed.html (selecting a request published by another user)
-    const helpBtn = page.locator('.btn-help-lyann:not([data-requester-id="dba9e8fe-caba-425a-a6c3-07332744bbe4"])').first();
-    await helpBtn.waitFor({ state: 'visible', timeout: 10000 });
-    await expect(helpBtn).toBeVisible();
-    await helpBtn.click();
-    await page.waitForTimeout(500);
-
+    await requireWriteBackend(page);
+    const helperId = await login(page, 'HELPER');
+    await page.goto('/results.html?mode=annonces&area=');
+    await expect(page.locator('#explorerResults')).toHaveAttribute('data-state', 'SUCCESS');
+    const request = await page.evaluate(async helperId => (await window.LYANN_EXPLORER_REPOSITORY.loadRequests())
+      .find(r => r.status === 'OPEN' && r.requester_id !== helperId), helperId);
+    expect(request, 'An existing public Request from another test participant is required').toBeTruthy();
+    const resultPromise = page.waitForResponse(r => r.url().includes('/rpc/initiate_lyann_help_conversation'));
+    await page.locator(`[data-request-id="${request.id}"] [data-action="help"]`).click();
+    const response = await resultPromise;
+    expect(response.ok()).toBe(true);
+    const linked = await response.json();
+    expect(linked.request_id).toBe(request.id);
+    expect(linked.requester_id).toBe(request.requester_id);
+    expect(linked.helper_id).toBe(helperId);
+    expect(linked.conversation_id).toBeTruthy();
     const chatModal = page.locator('#chatModal');
-    await expect(chatModal).toHaveClass(/active/);
     await expect(chatModal).toBeVisible();
+    const expectedName = await page.evaluate(p => window.formatPublicName(p, null, 'Lyanneur'), request.profiles);
+    await expect(page.locator('#chatHeaderName')).toHaveText(expectedName);
+    await expect(page.locator('#chatMissionContextBar')).toContainText(request.title);
+    const context = await page.evaluate(() => window.LYANN_ACTIVE_CHAT_CONTACT);
+    expect(context.id).toBe(request.requester_id);
+    expect(context.requestId).toBe(request.id);
+    const persisted = await page.evaluate(async id => {
+      const {data,error} = await window.LYANN_API_CLIENT.supabase.from('request_invitations')
+        .select('request_id,requester_id,recipient_id,conversation_id').eq('conversation_id',id);
+      if(error) throw error;
+      return data;
+    }, linked.conversation_id);
+    expect(persisted).toContainEqual({request_id:request.id,requester_id:request.requester_id,recipient_id:helperId,conversation_id:linked.conversation_id});
 
     // 4. Close messaging modal
     await page.evaluate(() => window.LYANN_MESSAGING?.close?.());

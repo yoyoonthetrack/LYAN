@@ -12,7 +12,7 @@ module.exports = defineConfig({
   workers: 1,
   reporter: [['list']],
   use: {
-    baseURL: 'http://127.0.0.1:8080',
+    baseURL: process.env.LYANN_E2E_BASE_URL || 'http://127.0.0.1:8080',
     trace: 'on-first-retry',
     viewport: { width: 1280, height: 720 }
   },
@@ -22,7 +22,7 @@ module.exports = defineConfig({
       use: { ...devices['Desktop Chrome'] }
     }
   ],
-  webServer: {
+  webServer: process.env.LYANN_E2E_BASE_URL ? undefined : {
     command: 'PORT=8080 node api/server.js',
     port: 8080,
     reuseExistingServer: !process.env.CI

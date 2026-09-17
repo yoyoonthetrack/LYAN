@@ -33,7 +33,10 @@ if (start === -1 || end === -1) {
 
 if (!repo.includes('inFlight')) fail('bokantaj-repository.js: in-flight request deduplication missing');
 if (!repo.includes('CACHE_TTL_MS')) fail('bokantaj-repository.js: short-lived feed cache missing');
-if (!repo.includes("item.visibility !== 'PUBLIC'")) fail('bokantaj-repository.js: private targeted request public-feed guard missing');
+if (!repo.includes("item.item_type !== 'POST' || item.request_id")) fail('bokantaj-repository.js: community-only guard missing');
+const api = fs.readFileSync(path.join(root, 'api-client.js'), 'utf8');
+const getFeed = api.slice(api.indexOf('async getFeed()'), api.indexOf('// --- BOKANTAJ SOCIAL API METHODS ---'));
+if (getFeed.includes(".from('requests')")) fail('Bokantaj must not query transactional Requests');
 
 if (failures.length) {
   console.error('Bokantaj architecture audit failed:');
