@@ -290,47 +290,29 @@
             || null;
     }
 
-    const isUUID = (str) => typeof window.isUUID === 'function' ? window.isUUID(str) : (typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
-
     async function openConversation(options = {}) {
-        let contactId = options.contactId || options.requesterId || options.initialNeed?.requesterId || options.memberId || options.name;
-        let name = options.name || 'Membre LYANN';
-        let avatar = options.avatar || defaultAvatar();
+        console.log('[MESSAGING openConversation] called with:', JSON.stringify({
+            contactId: options.contactId, id: options.id, name: options.name,
+            requestId: options.requestId, memberId: options.memberId,
+            initialNeed: options.initialNeed
+        }));
 
-        // Safety gate: If contactId matches a request ID or is missing, try to resolve requester_id from Supabase
-        if (contactId && isUUID(contactId) && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-            try {
-                const { data: isReq } = await window.LYANN_API_CLIENT.supabase
-                    .from('requests')
-                    .select('id, requester_id, title')
-                    .eq('id', contactId)
-                    .maybeSingle();
-                if (isReq && isReq.requester_id) {
-                    options.requestId = isReq.id;
-                    if (!options.initialNeed) options.initialNeed = { requestId: isReq.id, requesterId: isReq.requester_id, title: isReq.title };
-                    contactId = isReq.requester_id;
-                    options.contactId = contactId;
-                }
-            } catch(e) {}
+        // Resolve contactId from available options. All callers (router extractPayload,
+        // conversation row click, openChatWithUser compat) already supply the correct
+        // user UUID. Request UUID → user UUID resolution is handled downstream by
+        // __LYANN_CHAT_CORE_OPEN so we must NOT duplicate it here.
+        const contactId = options.contactId || options.requesterId
+            || options.initialNeed?.requesterId || options.memberId
+            || options.id || null;
+        const name = options.name || 'Membre LYANN';
+        const avatar = options.avatar || defaultAvatar();
+
+        console.log('[MESSAGING openConversation] contactId:', contactId, 'name:', name);
+
+        if (!contactId) {
+            console.warn('[MESSAGING openConversation] no contactId, falling back to list');
+            return openList();
         }
-
-        if (contactId && isUUID(contactId) && (!name || name === 'Membre LYANN' || isUUID(name)) && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function') {
-            try {
-                const prof = await window.LYANN_API_CLIENT.getUserProfile(contactId);
-                if (prof) {
-                    name = window.formatPublicName ? window.formatPublicName(prof, null, 'Contact') : (prof.first_name || 'Contact');
-                    if (prof.avatar_url && window.getLyannAvatarUrl) {
-                        avatar = window.getLyannAvatarUrl(prof.avatar_url);
-                    }
-                }
-            } catch(e) {}
-        }
-
-        if (!contactId && options.initialNeed?.requesterId) {
-            contactId = options.initialNeed.requesterId;
-        }
-
-        if (!contactId) return openList();
 
         const legacyOpenConversation = getLegacyHydrator();
         registerSurfaces();
@@ -350,6 +332,7 @@
         if (main) main.setAttribute('aria-busy', 'true');
 
         try {
+            console.log('[MESSAGING openConversation] calling legacyOpenConversation with:', name, contactId);
             await legacyOpenConversation(name, avatar, contactId, options.initialNeed || null);
             const l = layout();
             if (l) l.classList.add('mobile-conversation-active');
