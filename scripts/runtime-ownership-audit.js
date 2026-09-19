@@ -20,6 +20,32 @@ if (!router.includes("['#tab-home', 'home']")) fail('app-router.js must own bott
 if (!surfaces.includes('window.LYANN_SURFACES = api')) fail('surface-manager.js must own window.LYANN_SURFACES');
 if (!surfaces.includes("config.mode === 'major'")) fail('surface-manager.js must enforce major-surface exclusivity');
 
+const script = read('script.js');
+if (!/LYANN_SURFACES\.register\(['"]lyann-detail['"]/.test(script)) {
+  fail('script.js must register lyann-detail with LYANN_SURFACES');
+}
+if (!script.includes('window.closeLyannDetailSurface')) {
+  fail('script.js must close lyann-detail through a canonical surface helper');
+}
+if (!/LYANN_SURFACES\.close\(['"]lyann-detail['"]/.test(script)) {
+  fail('lyann-detail close must go through LYANN_SURFACES');
+}
+if (!/closeLyannDetailFooterBtn[\s\S]{0,250}closeLyannDetailSurface/.test(script)) {
+  fail('Lyann detail footer Fermer must close through LYANN_SURFACES, not ad-hoc display:none');
+}
+if (!/btnHelpLyannFromModal[\s\S]{0,400}closeLyannDetailSurface/.test(script)) {
+  fail('Je peux aider from Lyann detail must close the surface before opening messaging');
+}
+if (!/LYANN_SURFACES\.register\(['"]account['"]/.test(script)) {
+  fail('script.js must register account with LYANN_SURFACES');
+}
+if (!/LYANN_SURFACES\.open\(['"]account['"]/.test(script)) {
+  fail('account must open through LYANN_SURFACES');
+}
+if (!/LYANN_SURFACES\.close\(['"]account['"]/.test(script)) {
+  fail('account close must go through LYANN_SURFACES');
+}
+
 if (!sharedBuild.includes('surface-manager.js?v=')) fail('shared build must inject surface manager');
 if (!sharedBuild.includes('app-router.js?v=')) fail('shared build must inject application router');
 

@@ -4130,8 +4130,18 @@ safeDomReady(() => {
             </div>
         `;
 
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        if (window.LYANN_SURFACES) {
+            window.LYANN_SURFACES.register('account', {
+                element: modal,
+                mode: 'major',
+                hideBottomNav: true,
+                lockBody: true
+            });
+            window.LYANN_SURFACES.open('account', { section: subViewName });
+        } else {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
     };
 
     window.openAccountModal = function(subView = 'account') {
@@ -4140,11 +4150,17 @@ safeDomReady(() => {
     window.openUserAccountModal = window.openAccountModal;
 
     window.closeUserAccountModal = function() {
+        if (window.LYANN_SURFACES?.isOpen?.('account')) {
+            window.LYANN_SURFACES.close('account', { reason: 'close' });
+            return;
+        }
         const modal = document.getElementById('userAccountModal');
         if (modal) {
-            modal.classList.remove('active');
+            modal.classList.remove('active', 'lyann-surface-active');
         }
-        document.body.style.overflow = '';
+        if (!document.body.classList.contains('lyann-messaging-open') && !window.LYANN_SURFACES?.current?.()) {
+            document.body.style.overflow = '';
+        }
     };
 
     window.openAccountTab = function(tabId) {
@@ -7296,6 +7312,22 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
 }
 
 // --- FICHE DÉTAILLÉE DU LYANN (MODAL FICHE LYANN) ---
+window.closeLyannDetailSurface = function(reason = 'close') {
+    if (window.LYANN_SURFACES?.isOpen?.('lyann-detail')) {
+        return window.LYANN_SURFACES.close('lyann-detail', { reason });
+    }
+    const modal = document.getElementById('lyannDetailModal');
+    if (modal) {
+        modal.classList.remove('active', 'lyann-surface-active');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+    if (!document.body.classList.contains('lyann-messaging-open') && !window.LYANN_SURFACES?.current?.()) {
+        document.body.style.overflow = '';
+    }
+    return false;
+};
+
 window.openLyannDetailModal = async function(requestId, initialData = null) {
     let modal = document.getElementById('lyannDetailModal');
     if (!modal) {
@@ -7335,12 +7367,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
 
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                if (window.LYANN_SURFACES?.isOpen?.('lyann-detail')) window.LYANN_SURFACES.close('lyann-detail', { reason: 'backdrop' });
-                else {
-                    modal.style.display = 'none';
-                    modal.classList.remove('active');
-                    document.body.style.overflow = '';
-                }
+                window.closeLyannDetailSurface('backdrop');
             }
         });
     }
@@ -7375,14 +7402,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
     const closeBtn = document.getElementById('closeLyannDetailModalBtn');
     if (closeBtn && !closeBtn.dataset.bound) {
         closeBtn.dataset.bound = 'true';
-        closeBtn.onclick = () => {
-            if (window.LYANN_SURFACES?.isOpen?.('lyann-detail')) window.LYANN_SURFACES.close('lyann-detail', { reason: 'close-button' });
-            else {
-                modal.style.display = 'none';
-                modal.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        };
+        closeBtn.onclick = () => window.closeLyannDetailSurface('close-button');
     }
 
     if (footerEl) footerEl.innerHTML = '';
@@ -7517,14 +7537,10 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                 </button>
             `;
             document.getElementById('closeLyannDetailFooterBtn')?.addEventListener('click', () => {
-                modal.style.display = 'none';
-                modal.classList.remove('active');
-                document.body.style.overflow = '';
+                window.closeLyannDetailSurface('footer');
             });
             document.getElementById('btnManageMyLyann')?.addEventListener('click', () => {
-                modal.style.display = 'none';
-                modal.classList.remove('active');
-                document.body.style.overflow = '';
+                window.closeLyannDetailSurface('manage');
                 const requestsTabBtn = document.querySelector('[data-profile-tab="tab-requests"]');
                 if (requestsTabBtn) requestsTabBtn.click();
                 const userProfileModal = document.getElementById('modal-user-profile');
@@ -7540,14 +7556,10 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                 </button>
             `;
             document.getElementById('closeLyannDetailFooterBtn')?.addEventListener('click', () => {
-                modal.style.display = 'none';
-                modal.classList.remove('active');
-                document.body.style.overflow = '';
+                window.closeLyannDetailSurface('footer');
             });
             document.getElementById('btnHelpLyannFromModal')?.addEventListener('click', () => {
-                modal.style.display = 'none';
-                modal.classList.remove('active');
-                document.body.style.overflow = '';
+                window.closeLyannDetailSurface('help');
                 window.LYANN_ROUTER.go('messages', {
                     contactId: requestData.requester_id, name: authorName, requestId: requestData.id,
                     initialNeed: { requestId: requestData.id, requesterId: requestData.requester_id,
