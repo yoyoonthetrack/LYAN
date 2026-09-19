@@ -1,3 +1,7 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env.local') });
+require('dotenv').config();
+
 const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
