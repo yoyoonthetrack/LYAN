@@ -533,12 +533,53 @@ window.handleRejectQuote = async function(quoteId) {
     }
 };
 
+function notifyQuoteUnavailable(err) {
+    const msg = (err && err.message) ? String(err.message) : 'Proposition indisponible.';
+    if (window.showToast) window.showToast(msg, 'error');
+    else if (window.lyannAlert) window.lyannAlert(msg);
+    else alert(msg);
+}
+
+async function createProductionQuoteForContact(contactId, description, amount, milestones) {
+    if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.createRequestQuote !== 'function') {
+        throw new Error('Proposition indisponible : le contrat de devis n’est pas disponible.');
+    }
+    const myId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!myId || !contactId) {
+        throw new Error('Proposition indisponible : aucun interlocuteur identifié.');
+    }
+    if (typeof window.LYANN_API_CLIENT.getActiveInvitationBetween !== 'function') {
+        throw new Error('Proposition indisponible : un devis ne peut être créé que dans un échange lié à une invitation acceptée.');
+    }
+    const activeInv = await window.LYANN_API_CLIENT.getActiveInvitationBetween(myId, contactId);
+    if (!activeInv || !activeInv.id) {
+        throw new Error('Proposition indisponible : un devis ne peut être créé que dans un échange lié à une invitation acceptée.');
+    }
+    const parsedAmount = Number(amount);
+    const milestonePayload = milestones || [{
+        title: description || 'Tarif proposé',
+        description: description || 'Tarif convenu',
+        amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
+        percentage: 100
+    }];
+    return window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, description, null, milestonePayload);
+}
+
 async function handleChatAction(actionId, missionOrExtra = null, extraDataInput = null) {
     if (!await window.LYANN_ROUTER.requireAuthForInteraction('proposal', { actionId, contactId: currentChatContact?.id, requestId: currentChatContact?.requestId })) return;
     const extraData = (missionOrExtra && missionOrExtra.quoteId) ? missionOrExtra : (extraDataInput || {});
     const mission = (missionOrExtra && !missionOrExtra.quoteId) ? missionOrExtra : null;
     const contactId = currentChatContact ? currentChatContact.id : null;
     if (!contactId) return;
+    const isMissionUuid = (id) => typeof window.isUUID === 'function'
+        ? window.isUUID(id)
+        : (typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+    const refuseUnlinkedMission = (label) => {
+        if (window.lyannAlert) {
+            window.lyannAlert(`${label} indisponible : cette action n’est pas liée à une mission enregistrée.`);
+        }
+        return false;
+    };
 
     if (actionId === 'MAKE_PROPOSAL' || actionId === 'PROPOSE_PRICE') {
         closeAllOverlays();
@@ -552,16 +593,13 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
             const desc = await window.lyannPrompt("Description de votre proposition (ex: Réparation portail) :");
             if (!desc) return;
 
-            if (window.LYANN_API_CLIENT) window.LYANN_API_CLIENT.mockProposePrice(getMyId(), contactId, parseFloat(amount), desc);
-            addMessageToContact(contactId, {
-                type: 'system_card',
-                cardType: 'PRICE_PROPOSAL',
-                sender: getMyId(),
-                amount: parseFloat(amount),
-                title: desc,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            });
-            refreshChatUI();
+            try {
+                await createProductionQuoteForContact(contactId, desc, parseFloat(amount));
+            } catch (err) {
+                notifyQuoteUnavailable(err);
+                return;
+            }
+            if (typeof refreshChatUI === 'function') refreshChatUI();
         }
     }
     else if (actionId === 'PROPOSE_DATE') {
@@ -615,11 +653,15 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
     }
 
     else if (actionId === 'ACCEPT_PROPOSAL' || actionId === 'ACCEPT_PRICE' || actionId === 'ACCEPT_QUOTE') {
-        let acceptRes = null;
-        const propId = extraData.proposalId || (missionOrExtra && missionOrExtra.proposalId) || (extraData && extraData.quoteId);
-        if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.acceptProposalSecure === 'function' && propId) {
+        const quoteId = extraData.quoteId || (missionOrExtra && missionOrExtra.quoteId) || null;
+        const proposalId = extraData.proposalId || (missionOrExtra && missionOrExtra.proposalId) || null;
+        if (quoteId) {
+            await window.handleAcceptQuote(quoteId);
+            return;
+        }
+        if (proposalId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.acceptProposalSecure === 'function') {
             try {
-                const res = await window.LYANN_API_CLIENT.acceptProposalSecure(propId);
+                const res = await window.LYANN_API_CLIENT.acceptProposalSecure(proposalId);
                 if (res && res.error) {
                     if (window.lyannAlert) window.lyannAlert(res.error.message || res.error);
                     return;
@@ -633,15 +675,16 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                 if (window.lyannAlert) window.lyannAlert("Erreur lors de l'acceptation : " + (err.message || err));
                 return;
             }
-        } else if (mission && window.LYANN_API_CLIENT) {
-            await window.LYANN_API_CLIENT.mockAcceptPrice(mission.id, getMyId());
         }
-
+        if (!mission || !isMissionUuid(mission.id) || !window.LYANN_API_CLIENT) {
+            return refuseUnlinkedMission('Acceptation');
+        }
+        await window.LYANN_API_CLIENT.mockAcceptPrice(mission.id, getMyId());
         addMessageToContact(contactId, {
             type: 'system_card',
             cardType: 'AGREEMENT_REACHED',
-            amount: acceptRes ? acceptRes.total_amount : (mission ? mission.agreed_price : 0),
-            title: mission ? mission.title : 'Prestation convenue',
+            amount: mission.agreed_price,
+            title: mission.title || 'Prestation convenue',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
         refreshChatUI();
@@ -661,14 +704,16 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
     }
 
     else if (actionId === 'PAY_MISSION') {
+        if (!mission || !isMissionUuid(mission.id)) return refuseUnlinkedMission('Paiement');
         const coPrestationTitle = document.getElementById('coPrestationTitle');
         const coDevisAmount = document.getElementById('coDevisAmount');
         const coLyannFee = document.getElementById('coLyannFee');
         const coAssuranceFee = document.getElementById('coAssuranceFee');
         const coTotalAmount = document.getElementById('coTotalAmount');
 
-        const agreedPrice = mission ? mission.agreed_price : 50;
-        const title = mission ? mission.title : 'Intervention LYANN';
+        const agreedPrice = Number(mission.agreed_price);
+        const title = mission.title || 'Intervention LYANN';
+        if (!Number.isFinite(agreedPrice)) return refuseUnlinkedMission('Paiement');
 
         if (coPrestationTitle) coPrestationTitle.textContent = title;
         if (coDevisAmount) coDevisAmount.textContent = `${agreedPrice.toFixed(2)} €`;
@@ -687,21 +732,15 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         const chatCheckoutOverlay = document.getElementById('chatCheckoutOverlay');
         if (chatCheckoutOverlay) {
             openChatChildSurface('chatCheckoutOverlay');
-        } else {
-            if (mission && window.LYANN_API_CLIENT) window.LYANN_API_CLIENT.mockPayMission(mission.id);
-            addMessageToContact(contactId, {
-                type: 'system_card',
-                cardType: 'PAYMENT_CONFIRMED',
-                amount: agreedPrice,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            });
-            refreshChatUI();
+        } else if (window.lyannAlert) {
+            window.lyannAlert('Paiement indisponible : le portail de paiement n’est pas disponible sur cet écran.');
         }
         return;
     }
 
     else if (actionId === 'MARK_DONE') {
-        if (mission && window.LYANN_API_CLIENT) window.LYANN_API_CLIENT.mockMarkMissionDone(mission.id);
+        if (!mission || !isMissionUuid(mission.id)) return refuseUnlinkedMission('Clôture');
+        if (window.LYANN_API_CLIENT) window.LYANN_API_CLIENT.mockMarkMissionDone(mission.id);
         addMessageToContact(contactId, {
             type: 'system_card',
             cardType: 'WORK_DONE',
@@ -712,7 +751,8 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
     }
 
     else if (actionId === 'CONFIRM_DONE') {
-        if (mission && window.LYANN_API_CLIENT) window.LYANN_API_CLIENT.mockConfirmMissionCompletion(mission.id);
+        if (!mission || !isMissionUuid(mission.id)) return refuseUnlinkedMission('Validation');
+        if (window.LYANN_API_CLIENT) window.LYANN_API_CLIENT.mockConfirmMissionCompletion(mission.id);
         addMessageToContact(contactId, {
             type: 'system_card',
             cardType: 'MISSION_COMPLETED',
@@ -992,7 +1032,7 @@ async function renderMessages(passedMessages = null) {
                     const accBtn = div.querySelector('.btn-accept-inline');
                     const ctrBtn = div.querySelector('.btn-counter-inline');
                     if (accBtn) {
-                        accBtn.onclick = () => handleChatAction('ACCEPT_PRICE', { title: msg.title, agreed_price: msg.amount, id: 'm_' + Date.now() });
+                        accBtn.onclick = () => handleChatAction('ACCEPT_PRICE', { title: msg.title, agreed_price: msg.amount, id: msg.missionId || null, quoteId: msg.quoteId || null });
                     }
                     if (ctrBtn) {
                         ctrBtn.onclick = () => handleChatAction('COUNTER_OFFER');
@@ -1015,7 +1055,7 @@ async function renderMessages(passedMessages = null) {
                 `;
                 setTimeout(() => {
                     const payBtn = div.querySelector('.btn-pay-inline');
-                    if (payBtn) payBtn.onclick = () => handleChatAction('PAY_MISSION', { title: msg.title, agreed_price: msg.amount, id: 'm_' + Date.now() });
+                    if (payBtn) payBtn.onclick = () => handleChatAction('PAY_MISSION', { title: msg.title, agreed_price: msg.amount, id: msg.missionId || null });
                 }, 0);
             }
             else if (msg.cardType === 'PAYMENT_CONFIRMED') {
@@ -1044,7 +1084,7 @@ async function renderMessages(passedMessages = null) {
                 `;
                 setTimeout(() => {
                     const cBtn = div.querySelector('.btn-confirm-work');
-                    if (cBtn) cBtn.onclick = () => handleChatAction('CONFIRM_DONE', { id: 'm_' + Date.now() });
+                    if (cBtn) cBtn.onclick = () => handleChatAction('CONFIRM_DONE', { id: msg.missionId || null });
                 }, 0);
             }
             else if (msg.cardType === 'MISSION_COMPLETED') {
@@ -1583,38 +1623,12 @@ document.addEventListener('touchstart', (e) => {
                 return;
             }
 
-            let createdQuoteResult = null;
-            // RPC Supabase proposition si invitation active
-            if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getActiveInvitationBetween === 'function' && typeof window.LYANN_API_CLIENT.createRequestQuote === 'function') {
-                try {
-                    const activeInv = await window.LYANN_API_CLIENT.getActiveInvitationBetween(getMyId(), contact.id);
-                    if (activeInv && activeInv.id) {
-                        const milestonePayload = [{ title: desc || "Tarif Direct", description: "Tarif direct convenu", amount: amount, percentage: 100 }];
-                        createdQuoteResult = await window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, desc, null, milestonePayload);
-                        console.log("⚡ Offre directe créée via RPC Supabase:", createdQuoteResult);
-                    }
-                } catch (invErr) {
-                    console.warn("Notice: RPC createRequestQuote note:", invErr);
-                }
+            try {
+                await createProductionQuoteForContact(contact.id, desc, amount);
+            } catch (invErr) {
+                notifyQuoteUnavailable(invErr);
+                return;
             }
-
-            // Fallback mockProposePrice s'il n'y a pas d'invitation RPC active
-            if (!createdQuoteResult && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.mockProposePrice === 'function') {
-                try {
-                    await window.LYANN_API_CLIENT.mockProposePrice(getMyId(), contact.id, amount, desc);
-                } catch (mockErr) {
-                    console.warn("Notice: mockProposePrice note:", mockErr);
-                }
-            }
-
-            await addMessageToContact(contact.id, {
-                type: 'system_card',
-                cardType: 'PRICE_PROPOSAL',
-                sender: getMyId(),
-                amount: amount,
-                title: desc,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            });
 
             if (descInput) descInput.value = '';
             if (amountInput) amountInput.value = '';
@@ -1883,27 +1897,11 @@ document.addEventListener('touchstart', (e) => {
                     { title: j3Title, description: "Phase 3", amount: m3, percentage: p3 }
                 ];
 
-                let createdQuoteResult = null;
-                // Tentative via backend production RPC Supabase
-                if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getActiveInvitationBetween === 'function') {
-                    const activeInv = await window.LYANN_API_CLIENT.getActiveInvitationBetween(getMyId(), currentChatContact.id);
-                    if (activeInv) {
-                        createdQuoteResult = await window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, title, null, milestonesPayload);
-                        console.log("⚡ Devis réel créé via RPC Supabase:", createdQuoteResult);
-                    }
-                }
-
-                // Fallback local si pas d'invitation active ou mode dev
-                if (!createdQuoteResult) {
-                    await window.LYANN_API_CLIENT.mockProposePrice(getMyId(), currentChatContact.id, total, title);
-                    await addMessageToContact(currentChatContact.id, {
-                        type: 'system_card',
-                        cardType: 'PRICE_PROPOSAL',
-                        sender: getMyId(),
-                        amount: total,
-                        title: `${title} (Devis à Jalons)`,
-                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    });
+                try {
+                    await createProductionQuoteForContact(currentChatContact.id, title, total, milestonesPayload);
+                } catch (quoteErr) {
+                    notifyQuoteUnavailable(quoteErr);
+                    return;
                 }
 
                 // Clean & close
@@ -1926,22 +1924,11 @@ document.addEventListener('touchstart', (e) => {
     if (checkoutPaymentForm) {
         checkoutPaymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!currentChatContact) return;
-
-            const mission = await window.LYANN_API_CLIENT.getActiveMissionBetween(getMyId(), currentChatContact.id);
-            if (mission) {
-                await window.LYANN_API_CLIENT.mockPayMission(mission.id);
-                addMessageToContact(currentChatContact.id, {
-                    type: 'system_card',
-                    cardType: 'PAYMENT_CONFIRMED',
-                    amount: mission.agreed_price,
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                });
-            }
+            const msg = 'Paiement indisponible : le paiement réel passe par un jalon enregistré. Ce formulaire ne confirme aucun versement.';
+            if (window.showToast) window.showToast(msg, 'error');
+            else if (window.lyannAlert) window.lyannAlert(msg);
+            else alert(msg);
             closeAllOverlays();
-            refreshChatUI();
-
-            window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId: 'PAY_MISSION', contactId: currentChatContact.id } }));
         });
     }
 

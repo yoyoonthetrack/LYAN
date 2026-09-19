@@ -3711,7 +3711,7 @@ safeDomReady(() => {
                         <i class="ph ph-broadcast" style="font-size:2.2rem; color:#94A3B8; margin-bottom:10px; display:block;"></i>
                         <h5 style="font-size:1rem; font-weight:700; color:#17231C; margin:0 0 6px 0;">Aucun Lyann publié</h5>
                         <p style="font-size:0.86rem; color:#64748B; margin:0 0 16px 0;">Tu n'as encore publié aucun besoin sur LYANN.</p>
-                        <button class="btn btn-primary btn-sm" onclick="window.closeUserAccountModal(); if(typeof window.openHelpRequestModal==='function') window.openHelpRequestModal();" style="display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-plus"></i> Publier un besoin</button>
+                        <button class="btn btn-primary btn-sm" onclick="window.closeUserAccountModal(); if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('publish'); else if (typeof window.openLyannWizard === 'function') window.openLyannWizard();" style="display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-plus"></i> Publier un besoin</button>
                     </div>
                 `;
             }
@@ -3842,9 +3842,6 @@ safeDomReady(() => {
         } else if (subViewName === 'finances') {
             titleText = 'Finances';
             subtitleText = 'Solde, versements et formule LYANN.';
-            let availableBal = '0,00 €';
-            let pendingBal = '0,00 €';
-
             subViewContent = `
                 <div class="account-desktop-sections">
                     <section class="account-desktop-section">
@@ -3852,14 +3849,15 @@ safeDomReady(() => {
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                                 <div>
                                     <span style="font-size:0.82rem; color:rgba(255,255,255,0.8); display:block;">Solde disponible</span>
-                                    <strong style="font-size:1.6rem; color:white;">${availableBal}</strong>
+                                    <strong style="font-size:1.6rem; color:white;">Indisponible</strong>
                                 </div>
                                 <div style="text-align:right;">
                                     <span style="font-size:0.82rem; color:rgba(255,255,255,0.8); display:block;">En cours</span>
-                                    <strong style="font-size:1.3rem; color:white;">${pendingBal}</strong>
+                                    <strong style="font-size:1.3rem; color:white;">Indisponible</strong>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-primary" style="width:100%; justify-content:center; background:#4A7C59; border:none; padding:12px; font-weight:700;" onclick="if(window.NotificationService) window.NotificationService.showToast('info', 'Demande de versement transmise.');"><i class="ph ph-hand-coins"></i> Retirer mes fonds</button>
+                            <p style="margin:0 0 14px 0; font-size:0.85rem; line-height:1.45; color:rgba(255,255,255,0.85);">Le solde Stripe n’est pas raccordé à cet écran. Aucun montant n’est affiché, et aucun versement ne peut être déclenché ici.</p>
+                            <button type="button" class="btn" id="accountWithdrawFundsBtn" disabled aria-disabled="true" style="width:100%; justify-content:center; background:rgba(255,255,255,0.16); color:rgba(255,255,255,0.7); border:none; padding:12px; font-weight:700; cursor:not-allowed;"><i class="ph ph-hand-coins"></i> Retirer mes fonds</button>
                         </div>
                     </section>
                     <section class="account-desktop-section">
@@ -4628,34 +4626,11 @@ safeDomReady(() => {
         const userEmail = profileData?.email || forcedSession?.user?.email || '';
 
         // Calculate dynamic transactions & wallets for active userId
-        let availableBal = 0;
-        let pendingBal = 0;
-        let revenueMonth = 0;
-        let expensesMonth = 0;
         let completedMissionsCount = 0;
         let requestedMissionsCount = 0;
 
-        if (window.LYANN_PAYMENTS && typeof window.LYANN_PAYMENTS.getWallets === 'function') {
-            try {
-                const wallets = window.LYANN_PAYMENTS.getWallets() || {};
-                const userWallet = wallets[userId];
-                if (userWallet) {
-                    availableBal = userWallet.availableBalance ?? 0;
-                    pendingBal = userWallet.pendingBalance ?? 0;
-                }
-                const txs = (window.LYANN_PAYMENTS.getTransactions ? window.LYANN_PAYMENTS.getTransactions() : []) || [];
-                txs.forEach(t => {
-                    if (t.providerId === userId && t.status === 'completed') {
-                        revenueMonth += t.amount ?? 0;
-                        completedMissionsCount++;
-                    }
-                    if (t.customerId === userId) {
-                        expensesMonth += t.amount ?? 0;
-                        requestedMissionsCount++;
-                    }
-                });
-            } catch (e) {}
-        }
+        // Local payment wallets are not an authoritative Stripe balance.
+        // Mission counts stay empty until a real activity query fills them.
 
         // Update KPI card elements dynamically
         const kpiRatingVal = document.getElementById('accountKpiRating');
@@ -4673,10 +4648,10 @@ safeDomReady(() => {
         if (kpiMissionsVal) kpiMissionsVal.textContent = String(completedMissionsCount);
         if (kpiDemandesVal) kpiDemandesVal.textContent = String(requestedMissionsCount);
         if (kpiRespTimeVal) kpiRespTimeVal.textContent = 'N/A';
-        if (kpiRevenueVal) kpiRevenueVal.textContent = (revenueMonth).toFixed(2).replace('.', ',') + ' €';
-        if (kpiExpensesVal) kpiExpensesVal.textContent = (expensesMonth).toFixed(2).replace('.', ',') + ' €';
-        if (kpiAvailBalVal) kpiAvailBalVal.textContent = (availableBal).toFixed(2).replace('.', ',') + ' €';
-        if (kpiPendBalVal) kpiPendBalVal.textContent = (pendingBal).toFixed(2).replace('.', ',') + ' €';
+        if (kpiRevenueVal) kpiRevenueVal.textContent = 'Indisponible';
+        if (kpiExpensesVal) kpiExpensesVal.textContent = 'Indisponible';
+        if (kpiAvailBalVal) kpiAvailBalVal.textContent = 'Indisponible';
+        if (kpiPendBalVal) kpiPendBalVal.textContent = 'Indisponible';
 
         // Render Clean Empty State Containers for logged-in user with no activity
         const servicesContainer = document.getElementById('accountServicesContainer');
@@ -7541,10 +7516,9 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             });
             document.getElementById('btnManageMyLyann')?.addEventListener('click', () => {
                 window.closeLyannDetailSurface('manage');
-                const requestsTabBtn = document.querySelector('[data-profile-tab="tab-requests"]');
-                if (requestsTabBtn) requestsTabBtn.click();
-                const userProfileModal = document.getElementById('modal-user-profile');
-                if (userProfileModal) userProfileModal.classList.add('active');
+                if (typeof window.openAccountModalSubView === 'function') {
+                    window.openAccountModalSubView('activity');
+                }
             });
         } else if (requestData.status !== 'OPEN') {
             footerEl.textContent = 'Cette annonce n’est plus ouverte aux propositions.';

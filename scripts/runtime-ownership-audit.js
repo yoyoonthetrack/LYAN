@@ -45,6 +45,29 @@ if (!/LYANN_SURFACES\.open\(['"]account['"]/.test(script)) {
 if (!/LYANN_SURFACES\.close\(['"]account['"]/.test(script)) {
   fail('account close must go through LYANN_SURFACES');
 }
+if (script.includes("Demande de versement transmise.")) {
+  fail('account finances must not fake a payout success toast');
+}
+if (script.includes('let availableBal = \'0,00 €\'')) {
+  fail('account finances must not invent a 0,00 € Stripe balance');
+}
+if (script.includes("openHelpRequestModal==='function'")) {
+  fail('activity publish CTA must use the canonical publish route, not a missing openHelpRequestModal');
+}
+if (!/btnManageMyLyann[\s\S]{0,400}openAccountModalSubView\('activity'\)/.test(script)) {
+  fail('Gérer mon Lyann must open real account activity');
+}
+
+const chat = read('chat-logic.js');
+if (chat.includes("'m_' + Date.now()")) {
+  fail('chat payment/accept actions must not invent mission ids');
+}
+if (chat.includes('mockProposePrice')) {
+  fail('chat must create quotes via createRequestQuote, not mockProposePrice');
+}
+if (chat.includes('mockPayMission')) {
+  fail('chat checkout must not invent a paid escrow via mockPayMission');
+}
 
 if (!sharedBuild.includes('surface-manager.js?v=')) fail('shared build must inject surface manager');
 if (!sharedBuild.includes('app-router.js?v=')) fail('shared build must inject application router');
