@@ -6669,12 +6669,23 @@ safeDomReady(() => {
             const summaryCity = document.getElementById('wizardSummaryCity');
             if (summaryCity && wizardCitySelect) {
                 const city = wizardCitySelect.value || '';
-                const terrName = (wizardTerritorySelect && wizardTerritorySelect.options[wizardTerritorySelect.selectedIndex]) 
-                    ? wizardTerritorySelect.options[wizardTerritorySelect.selectedIndex].text 
+                const terrName = (wizardTerritorySelect && wizardTerritorySelect.options[wizardTerritorySelect.selectedIndex])
+                    ? wizardTerritorySelect.options[wizardTerritorySelect.selectedIndex].text
                     : 'Guadeloupe (971)';
                 summaryCity.innerHTML = city
                     ? `<i class="ph ph-map-pin"></i> ${city} (${terrName})`
                     : `<i class="ph ph-map-pin"></i> Lieu à renseigner`;
+            }
+            const summaryCategory = document.getElementById('wizardSummaryCategory');
+            const categorySelect = document.getElementById('wizardCategory');
+            if (summaryCategory) {
+                const categoryValue = categorySelect ? String(categorySelect.value || '').trim() : '';
+                const categoryLabel = categoryValue
+                    ? (categorySelect.options[categorySelect.selectedIndex]?.text || categoryValue)
+                    : '';
+                summaryCategory.innerHTML = categoryLabel
+                    ? `<i class="ph-fill ph-wrench"></i> ${categoryLabel}`
+                    : `<i class="ph-fill ph-wrench"></i> Catégorie à renseigner`;
             }
         }
 
@@ -7299,7 +7310,26 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
 }
 
 // --- FICHE DÉTAILLÉE DU LYANN (MODAL FICHE LYANN) ---
+let lyannDetailOpenGeneration = 0;
+
+function bindLyannDetailFooterClose() {
+    const footerClose = document.getElementById('closeLyannDetailFooterBtn');
+    if (!footerClose || footerClose.dataset.bound === 'true') return;
+    footerClose.dataset.bound = 'true';
+    footerClose.addEventListener('click', () => window.closeLyannDetailSurface('footer'));
+}
+
+function renderLyannDetailLoadingFooter() {
+    const footerEl = document.getElementById('lyannDetailFooter');
+    if (!footerEl) return;
+    footerEl.innerHTML = `
+        <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn" style="flex: 1; justify-content: center;">Fermer</button>
+    `;
+    bindLyannDetailFooterClose();
+}
+
 window.closeLyannDetailSurface = function(reason = 'close') {
+    lyannDetailOpenGeneration += 1;
     if (window.LYANN_SURFACES?.isOpen?.('lyann-detail')) {
         return window.LYANN_SURFACES.close('lyann-detail', { reason });
     }
@@ -7316,6 +7346,7 @@ window.closeLyannDetailSurface = function(reason = 'close') {
 };
 
 window.openLyannDetailModal = async function(requestId, initialData = null) {
+    const generation = ++lyannDetailOpenGeneration;
     let modal = document.getElementById('lyannDetailModal');
     if (!modal) {
         // Dynamically create modal if not present on page
@@ -7374,6 +7405,8 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         `;
     }
 
+    renderLyannDetailLoadingFooter();
+
     if (window.LYANN_SURFACES) {
         window.LYANN_SURFACES.register('lyann-detail', { element: modal, mode: 'child', hideBottomNav: true, lockBody: true });
         window.LYANN_SURFACES.open('lyann-detail', { requestId });
@@ -7392,21 +7425,24 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         closeBtn.onclick = () => window.closeLyannDetailSurface('close-button');
     }
 
-    if (footerEl) footerEl.innerHTML = '';
     let requestData = initialData || null;
     let authorProf = initialData ? (initialData.profiles || null) : null;
 
     await window.LYANN_AUTH_STATE?.ready?.();
+    if (generation !== lyannDetailOpenGeneration) return;
     const publicRead = !window.LYANN_AUTH_STATE?.isAuthenticated?.();
     if (!requestData && publicRead) {
         try {
             requestData = (await window.LYANN_EXPLORER_REPOSITORY.loadRequests()).find(row => row.id === requestId) || null;
             authorProf = requestData?.profiles || null;
         } catch (_) {
+            if (generation !== lyannDetailOpenGeneration) return;
             if (bodyEl) bodyEl.textContent = 'Annonce temporairement indisponible. Réessayez.';
+            renderLyannDetailLoadingFooter();
             return;
         }
     }
+    if (generation !== lyannDetailOpenGeneration) return;
     if (!requestData && !publicRead && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         try {
             const { data, error } = await window.LYANN_API_CLIENT.supabase
@@ -7425,6 +7461,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             console.warn("Detail Lyann Supabase error:", e);
         }
     }
+    if (generation !== lyannDetailOpenGeneration) return;
 
     if (!requestData && typeof currentFlashPosts !== 'undefined') {
         const found = currentFlashPosts.find(p => (p.request_id === requestId || p.id === requestId));
@@ -7451,8 +7488,10 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
 
     if (!requestData) {
         if (bodyEl) bodyEl.innerHTML = '<div style="color: #DC2626; text-align: center; padding: 20px;">Impossible de charger ce Lyann.</div>';
+        renderLyannDetailLoadingFooter();
         return;
     }
+    if (generation !== lyannDetailOpenGeneration) return;
 
     const authorName = authorProf ? window.formatPublicName(authorProf, null, 'Lyanneur') : 'Lyanneur';
     const authorAvatar = window.getLyannAvatarUrl(authorProf?.avatar_url);
@@ -7515,6 +7554,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         `;
     }
 
+    if (generation !== lyannDetailOpenGeneration) return;
     if (footerEl) {
         if (isOwnLyann) {
             footerEl.innerHTML = `
@@ -7523,9 +7563,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                     <i class="ph ph-note-pencil"></i> Gérer mon Lyann
                 </button>
             `;
-            document.getElementById('closeLyannDetailFooterBtn')?.addEventListener('click', () => {
-                window.closeLyannDetailSurface('footer');
-            });
+            bindLyannDetailFooterClose();
             document.getElementById('btnManageMyLyann')?.addEventListener('click', () => {
                 window.closeLyannDetailSurface('manage');
                 if (typeof window.openAccountModalSubView === 'function') {
@@ -7533,7 +7571,11 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                 }
             });
         } else if (requestData.status !== 'OPEN') {
-            footerEl.textContent = 'Cette annonce n’est plus ouverte aux propositions.';
+            footerEl.innerHTML = `
+                <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn" style="flex: 1; justify-content: center;">Fermer</button>
+                <span style="flex: 2; color: #64748B; font-size: 0.88rem;">Cette annonce n’est plus ouverte aux propositions.</span>
+            `;
+            bindLyannDetailFooterClose();
         } else {
             footerEl.innerHTML = `
                 <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn" style="flex: 1; justify-content: center;">Fermer</button>
@@ -7541,9 +7583,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                     <i class="ph ph-hand-heart"></i> Je peux aider
                 </button>
             `;
-            document.getElementById('closeLyannDetailFooterBtn')?.addEventListener('click', () => {
-                window.closeLyannDetailSurface('footer');
-            });
+            bindLyannDetailFooterClose();
             document.getElementById('btnHelpLyannFromModal')?.addEventListener('click', () => {
                 window.closeLyannDetailSurface('help');
                 window.LYANN_ROUTER.go('messages', {

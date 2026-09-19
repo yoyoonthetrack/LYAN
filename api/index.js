@@ -224,5 +224,16 @@ module.exports = async function lyannApiGateway(req, res) {
         }
     }
 
+    // Restore the public /v1 path before Express sees the request.
+    // Vercel rewrites `/v1/:path*` to `/api`, so req.url may be `/api` while
+    // the original route lives in x-vercel-original-url / x-forwarded-uri.
+    const original = paths.find((candidate) => candidate.startsWith('/v1/'));
+    if (original) {
+        const incomingQuery = String(req.url || '').includes('?')
+            ? String(req.url).slice(String(req.url).indexOf('?'))
+            : (original.includes('?') ? original.slice(original.indexOf('?')) : '');
+        req.url = original.split('?')[0] + incomingQuery;
+    }
+
     return app(req, res);
 };

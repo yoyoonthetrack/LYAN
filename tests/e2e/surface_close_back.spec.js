@@ -218,6 +218,27 @@ test.describe('Lyann detail and account close through LYANN_SURFACES', () => {
     expect(jsErrors).toEqual([]);
   });
 
+  test('detail Fermer stays available while request data is still loading', async ({ page }) => {
+    const jsErrors = [];
+    page.on('pageerror', (err) => jsErrors.push(err.message));
+
+    await page.goto('/feed.html');
+    await page.waitForLoadState('domcontentloaded');
+    await installHarness(page);
+
+    await page.evaluate(async ({ contactId }) => {
+      window.LYANN_AUTH_STATE.ready = () => new Promise(() => {});
+      await window.LYANN_MESSAGING.openConversation({ contactId, name: 'Marie Dupont' });
+    }, { contactId: CONTACT_ID });
+    await expectStack(page, ['messaging']);
+
+    await openMissionFromConversation(page);
+    await page.locator('#closeLyannDetailFooterBtn').click();
+    await expectStack(page, ['messaging']);
+    await expect(page.locator('#chatMessagesContainer')).toContainText(MESSAGE_TEXT);
+    expect(jsErrors).toEqual([]);
+  });
+
   test('fiche Lyann → Je peux aider → correct conversation without blocking overlay', async ({ page }) => {
     const jsErrors = [];
     page.on('pageerror', (err) => jsErrors.push(err.message));

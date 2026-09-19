@@ -2397,7 +2397,8 @@
                     
                     <label>Domaine principal</label>
                     <select class="modal-input" id="wizardDomain" style="margin-bottom: 16px;">
-                        <option value="maison" selected>Maison & Travaux</option>
+                        <option value="" selected>Choisir un domaine</option>
+                        <option value="maison">Maison & Travaux</option>
                         <option value="jardin">Jardin & Extérieur</option>
                         <option value="cours">Cours & Soutien</option>
                         <option value="bien-etre">Beauté & Bien-être</option>
@@ -2405,14 +2406,16 @@
 
                     <label>Catégorie</label>
                     <select class="modal-input" id="wizardCategory" style="margin-bottom: 16px;">
-                        <option value="plomberie" selected>Plomberie</option>
+                        <option value="" selected>Choisir une catégorie</option>
+                        <option value="plomberie">Plomberie</option>
                         <option value="electricite">Électricité</option>
                         <option value="menage">Ménage</option>
                     </select>
 
                     <label>Sous-catégorie</label>
                     <select class="modal-input" id="wizardSubCat">
-                        <option value="reparation-fuite" selected>Réparation de fuite</option>
+                        <option value="" selected>Choisir une sous-catégorie</option>
+                        <option value="reparation-fuite">Réparation de fuite</option>
                         <option value="installation">Installation d'équipement</option>
                     </select>
                 </div>
@@ -2449,7 +2452,8 @@
                     
                     <label>Commune de la mission</label>
                     <select id="wizardCitySelect" class="modal-input" style="margin-bottom: 16px;">
-                        <option value="Les Abymes" selected>Les Abymes</option>
+                        <option value="" selected>Choisir une commune</option>
+                        <option value="Les Abymes">Les Abymes</option>
                         <option value="Baie-Mahault">Baie-Mahault</option>
                         <option value="Le Gosier">Le Gosier</option>
                         <option value="Sainte-Anne">Sainte-Anne</option>
@@ -2501,12 +2505,12 @@
                     
                     <div style="background: #FFFFFF; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; box-shadow: var(--shadow-sm);">
                         <div style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 800; font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase;">
-                            <i class="ph-fill ph-wrench"></i> Plomberie
+                            <span id="wizardSummaryCategory"><i class="ph-fill ph-wrench"></i> Catégorie à renseigner</span>
                         </div>
                         <p id="wizardSummaryDesc" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 12px; color: var(--text);">"J'ai une fuite sous mon évier..."</p>
                         
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; color: var(--text-muted);">
-                            <div style="display: flex; align-items: center; gap: 6px;" id="wizardSummaryCity"><i class="ph ph-map-pin"></i> Les Abymes (Guadeloupe)</div>
+                            <div style="display: flex; align-items: center; gap: 6px;" id="wizardSummaryCity"><i class="ph ph-map-pin"></i> Lieu à renseigner</div>
                             <div style="display: flex; align-items: center; gap: 6px;"><i class="ph ph-calendar"></i> Flexible (Prochains jours)</div>
                             <div style="display: flex; align-items: center; gap: 6px;"><i class="ph ph-currency-eur"></i> En attente de propositions</div>
                         </div>

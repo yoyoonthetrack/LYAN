@@ -74,6 +74,10 @@
       "destination": "/api/render?file=confirm-signup.html"
     },
     {
+      "source": "/v1/explorer/requests",
+      "destination": "/api"
+    },
+    {
       "source": "/v1/(.*)",
       "destination": "/api"
     },

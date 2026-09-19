@@ -54,7 +54,7 @@
                 const rows = [];
                 let offset = 0;
                 do {
-                    const response = await fetch(`/v1/explorer/requests?offset=${offset}`);
+                    const response = await (window.lyannBackendFetch || fetch)(`/v1/explorer/requests?offset=${offset}`);
                     if (!response.ok) throw new Error('Public request discovery unavailable');
                     const result = await response.json();
                     if (!Array.isArray(result.requests)) throw new Error('Invalid public discovery response');

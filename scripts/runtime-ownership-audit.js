@@ -33,6 +33,12 @@ if (!/LYANN_SURFACES\.close\(['"]lyann-detail['"]/.test(script)) {
 if (!/closeLyannDetailFooterBtn[\s\S]{0,250}closeLyannDetailSurface/.test(script)) {
   fail('Lyann detail footer Fermer must close through LYANN_SURFACES, not ad-hoc display:none');
 }
+if (!script.includes('renderLyannDetailLoadingFooter();')) {
+  fail('lyann-detail must render Fermer before async request loading');
+}
+if (!script.includes('lyannDetailOpenGeneration')) {
+  fail('lyann-detail must discard stale opens after close');
+}
 if (!/btnHelpLyannFromModal[\s\S]{0,400}closeLyannDetailSurface/.test(script)) {
   fail('Je peux aider from Lyann detail must close the surface before opening messaging');
 }
@@ -134,6 +140,9 @@ if (!apiGateway.includes("capacitor://localhost")) {
 }
 if (!apiGateway.includes('ALLOWED_NATIVE_ORIGINS')) {
   fail('production API gateway must distinguish native Capacitor origins from unknown browsers');
+}
+if (!apiGateway.includes("candidate.startsWith('/v1/')")) {
+  fail('production API gateway must restore the original /v1 path after the Vercel /api rewrite');
 }
 
 const payments = read('payment-script.js');

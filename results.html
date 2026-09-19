@@ -1238,6 +1238,7 @@
                     
                     <label style="font-weight: 600; display: block; margin-bottom: 4px;">Domaine principal (Univers)</label>
                     <select class="modal-input" id="wizardDomain" style="margin-bottom: 16px; width: 100%;">
+                        <option value="" selected>Choisir un domaine</option>
                         <option value="Auto & Mobilité">Auto & Mobilité</option>
                         <option value="Maison & Travaux">Maison & Travaux</option>
                         <option value="Jardin & Extérieur">Jardin & Extérieur</option>
@@ -1255,18 +1256,20 @@
                         <option value="Mode & Couture">Mode & Couture</option>
                         <option value="Cuisine & Alimentation">Cuisine & Alimentation</option>
                         <option value="Nettoyage & Entretien">Nettoyage & Entretien</option>
-                        <option value="Autres Besoins" selected>Autres Besoins</option>
+                        <option value="Autres Besoins">Autres Besoins</option>
                     </select>
 
                     <label style="font-weight: 600; display: block; margin-bottom: 4px;">Catégorie</label>
                     <select class="modal-input" id="wizardCategory" style="margin-bottom: 16px; width: 100%;">
-                        <option value="Général" selected>Général</option>
+                        <option value="" selected>Choisir une catégorie</option>
+                        <option value="Général">Général</option>
                         <option value="Autre / Je ne trouve pas">Autre / Je ne trouve pas</option>
                     </select>
 
                     <label style="font-weight: 600; display: block; margin-bottom: 4px;">Sous-catégorie</label>
                     <select class="modal-input" id="wizardSubCat" style="width: 100%;">
-                        <option value="Demande libre" selected>Demande libre</option>
+                        <option value="" selected>Choisir une sous-catégorie</option>
+                        <option value="Demande libre">Demande libre</option>
                     </select>
                 </div>
 
@@ -1302,7 +1305,8 @@
                     
                     <label>Commune de la mission</label>
                     <select id="wizardCitySelect" class="modal-input" style="margin-bottom: 16px;">
-                        <option value="Les Abymes" selected>Les Abymes</option>
+                        <option value="" selected>Choisir une commune</option>
+                        <option value="Les Abymes">Les Abymes</option>
                         <option value="Baie-Mahault">Baie-Mahault</option>
                         <option value="Le Gosier">Le Gosier</option>
                         <option value="Sainte-Anne">Sainte-Anne</option>
@@ -1354,12 +1358,12 @@
                     
                     <div style="background: #FFFFFF; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; box-shadow: var(--shadow-sm);">
                         <div style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 800; font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase;">
-                            <i class="ph-fill ph-wrench"></i> Plomberie
+                            <span id="wizardSummaryCategory"><i class="ph-fill ph-wrench"></i> Catégorie à renseigner</span>
                         </div>
                         <p id="wizardSummaryDesc" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 12px; color: var(--text);">"J'ai une fuite sous mon évier..."</p>
                         
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; color: var(--text-muted);">
-                            <div style="display: flex; align-items: center; gap: 6px;" id="wizardSummaryCity"><i class="ph ph-map-pin"></i> Les Abymes (Guadeloupe)</div>
+                            <div style="display: flex; align-items: center; gap: 6px;" id="wizardSummaryCity"><i class="ph ph-map-pin"></i> Lieu à renseigner</div>
                             <div style="display: flex; align-items: center; gap: 6px;"><i class="ph ph-calendar"></i> Flexible (Prochains jours)</div>
                             <div style="display: flex; align-items: center; gap: 6px;"><i class="ph ph-currency-eur"></i> En attente de propositions</div>
                         </div>
