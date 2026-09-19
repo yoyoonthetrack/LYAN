@@ -67,6 +67,9 @@ const shellOpenerDefinitions = countMatches(shell, /window\.openLyannMessagesMod
 const conversationOpenerDefinitions = countMatches(chat, /window\.openChatWithUser\s*=\s*(?:async\s+)?function\s*\(/g);
 if (shellOpenerDefinitions > 0) fail(`app-shell.js contains a competing messaging opener definition`);
 if (conversationOpenerDefinitions > 0) fail(`chat-logic.js contains a competing public conversation opener definition`);
+if (/closest\(['"]\.chat-contact-item['"]\)[\s\S]{0,500}openChatWithUser/.test(chat)) {
+  fail('chat-logic.js must not re-open conversations from list row clicks; LYANN_MESSAGING owns list selection');
+}
 
 const legacyOpenerStart = chat.indexOf('window.openLyannChatModal = function');
 if (legacyOpenerStart !== -1) {

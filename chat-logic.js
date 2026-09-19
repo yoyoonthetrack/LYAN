@@ -2027,21 +2027,10 @@ document.addEventListener('click', function(e) {
     const closeBtn = e.target.closest('#closeChatModalBtn, .close-chat-modal-trigger, .chat-close-modal-btn');
     if (closeBtn && closeBtn.closest('#chatModal')) {
         window.closeLyannChatModal(e);
-        return;
     }
-
-    const contactItem = e.target.closest('.chat-contact-item');
-    if (contactItem && contactItem.closest('#chatModal')) {
-        const contactId = contactItem.getAttribute('data-chat-member-id');
-        const nameEl = contactItem.querySelector('.chat-contact-name');
-        const imgEl = contactItem.querySelector('.chat-contact-avatar');
-        const name = nameEl ? nameEl.textContent.trim() : (contactId || 'Lyanneur');
-        const avatar = imgEl ? imgEl.src : 'lyann-avatar-placeholder.svg';
-        
-        if (typeof window.openChatWithUser === 'function') {
-            window.openChatWithUser(name, avatar, contactId || name);
-        }
-    }
+    // Conversation-list clicks are owned by LYANN_MESSAGING.renderConversationRows.
+    // A second document listener here re-opened the chat with the visible name
+    // whenever data-chat-member-id was absent, wiping the UUID conversation.
 });
 
 window.addEventListener('lyann_missions_updated', () => refreshChatUI());
