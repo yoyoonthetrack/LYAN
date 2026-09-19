@@ -2,9 +2,13 @@
 
 // === NOTIFICATIONS MODAL & BADGE SYSTEM ===
 function updateHeaderNotificationBadge() {
-    const currentUserId = window.LYANN_CURRENT_USER?.id || 'demo_user';
+    const currentUserId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
     const badge = document.querySelector('.notif-badge-count');
     if (!badge) return;
+    if (!currentUserId) {
+        badge.style.display = 'none';
+        return;
+    }
 
     if (window.LyannNotificationEngine) {
         const unreadCount = window.LyannNotificationEngine.getUnreadCount(currentUserId, currentUserId);
@@ -18,7 +22,7 @@ function updateHeaderNotificationBadge() {
 }
 
 function openNotificationsModal() {
-    const currentUserId = window.LYANN_CURRENT_USER?.id || 'demo_user';
+    const currentUserId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
     let modal = document.getElementById('notificationsModal');
     if (!modal) {
         modal = document.createElement('div');

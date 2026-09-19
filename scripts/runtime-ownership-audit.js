@@ -77,7 +77,63 @@ if (chat.includes('mockMarkMissionDone') || chat.includes('mockConfirmMissionCom
 
 const apiClient = read('api-client.js');
 if (apiClient.includes('this.backendUrl')) {
-  fail('milestone payment APIs must call relative /v1 paths, not undefined backendUrl');
+  fail('milestone payment APIs must not call undefined this.backendUrl');
+}
+if (!apiClient.includes('function getLyannBackendOrigin')) {
+  fail('api-client.js must resolve the backend origin for Web vs Capacitor');
+}
+if (!apiClient.includes('function lyannBackendFetch')) {
+  fail('api-client.js must fetch /v1 through lyannBackendFetch');
+}
+if (!apiClient.includes("const LYANN_PRODUCTION_ORIGIN = 'https://lyann.app'")) {
+  fail('native API origin must be the public production host, not a relative Capacitor origin');
+}
+if (apiClient.includes("STRIPE_SECRET_KEY") && /STRIPE_SECRET_KEY\s*=\s*['"]sk_/.test(apiClient)) {
+  fail('api-client.js must not embed a Stripe secret key');
+}
+
+if (!chat.includes('window.resolveChatMilestoneId = resolveChatMilestoneId')) {
+  fail('chat must expose resolveChatMilestoneId for quote-context milestone provenance');
+}
+if (/if \(isPersistedUuid\(preferredId\)\) return preferredId;/.test(chat)) {
+  fail('chat must not treat an arbitrary UUID as a milestone id');
+}
+
+const notificationsUi = read('notifications-ui.js');
+if (notificationsUi.includes('demo_user')) {
+  fail('notifications-ui.js must not fall back to demo_user');
+}
+
+const productPages = [
+  'index.html',
+  'feed.html',
+  'results.html',
+  'payment-portal.html',
+  'pricing.html',
+  'how-it-works.html',
+  'about.html'
+];
+for (const file of productPages) {
+  const html = read(file);
+  if (!html.includes('<script src="script.js')) continue;
+  if (!html.includes('<script src="data-cache.js"></script>')) {
+    fail(`${file}: data-cache.js must load on every authenticated product page`);
+  }
+}
+
+if (!sharedBuild.includes('function injectDataCache')) {
+  fail('shared HTML build must inject data-cache.js when a page has auth-state');
+}
+if (!sharedBuild.includes('injectDataCache(sanitizeStaticHtml')) {
+  fail('shared HTML build must run injectDataCache inside buildHtml');
+}
+
+const apiGateway = read('api/index.js');
+if (!apiGateway.includes("capacitor://localhost")) {
+  fail('production API gateway must allow Capacitor native Origin, not only lyann.app');
+}
+if (!apiGateway.includes('ALLOWED_NATIVE_ORIGINS')) {
+  fail('production API gateway must distinguish native Capacitor origins from unknown browsers');
 }
 
 const payments = read('payment-script.js');

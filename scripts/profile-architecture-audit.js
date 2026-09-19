@@ -43,6 +43,7 @@ for (const file of productPages) {
   const repoIndex = html.indexOf('<script src="profile-repository.js"></script>');
   const scriptIndex = html.indexOf('<script src="script.js');
   if (repoIndex === -1) fail(`${file}: profile-repository.js missing`);
+  else if (cacheIndex === -1) fail(`${file}: data-cache.js missing`);
   else if (!(cacheIndex < repoIndex && repoIndex < scriptIndex)) fail(`${file}: profile-repository.js must load after data-cache and before script.js`);
 }
 

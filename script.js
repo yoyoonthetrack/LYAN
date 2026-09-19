@@ -5101,6 +5101,12 @@ safeDomReady(() => {
             }
             return null;
         }
+        if (window.LYANN_SESSION && typeof window.LYANN_SESSION.getSnapshot === 'function') {
+            const snap = window.LYANN_SESSION.getSnapshot();
+            if (snap.status === 'ready' && snap.session && snap.session.user) {
+                return snap.session;
+            }
+        }
         try {
             const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.getSession();
             const session = data?.session;
@@ -6662,11 +6668,13 @@ safeDomReady(() => {
             const wizardTerritorySelect = document.getElementById('wizardTerritorySelect');
             const summaryCity = document.getElementById('wizardSummaryCity');
             if (summaryCity && wizardCitySelect) {
-                const city = wizardCitySelect.value || 'Les Abymes';
+                const city = wizardCitySelect.value || '';
                 const terrName = (wizardTerritorySelect && wizardTerritorySelect.options[wizardTerritorySelect.selectedIndex]) 
                     ? wizardTerritorySelect.options[wizardTerritorySelect.selectedIndex].text 
                     : 'Guadeloupe (971)';
-                summaryCity.innerHTML = `<i class="ph ph-map-pin"></i> ${city} (${terrName})`;
+                summaryCity.innerHTML = city
+                    ? `<i class="ph ph-map-pin"></i> ${city} (${terrName})`
+                    : `<i class="ph ph-map-pin"></i> Lieu à renseigner`;
             }
         }
 
@@ -6863,11 +6871,15 @@ safeDomReady(() => {
             const terr = wizardTerritorySelect.value || 'guadeloupe';
             const cities = TERRITORY_CITIES[terr] || TERRITORY_CITIES.guadeloupe;
             wizardCitySelect.innerHTML = '';
-            cities.forEach((c, idx) => {
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Choisir une commune';
+            placeholder.selected = true;
+            wizardCitySelect.appendChild(placeholder);
+            cities.forEach((c) => {
                 const opt = document.createElement('option');
                 opt.value = c;
                 opt.textContent = c;
-                if (idx === 0) opt.selected = true;
                 wizardCitySelect.appendChild(opt);
             });
         });
@@ -7025,7 +7037,7 @@ safeDomReady(() => {
             const territoryVal = territorySelect ? (territorySelect.options[territorySelect.selectedIndex]?.text || territorySelect.value) : '971 - Guadeloupe';
             
             const citySelect = document.getElementById('wizardCitySelect');
-            const cityVal = citySelect ? citySelect.value : 'Le Gosier';
+            const cityVal = citySelect ? citySelect.value : '';
 
             const urgencySelect = document.getElementById('wizardDateType');
             const urgencyVal = urgencySelect ? urgencySelect.value : 'flexible';

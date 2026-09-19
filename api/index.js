@@ -20,6 +20,13 @@ const ALLOWED_WEB_ORIGINS = new Set([
     'https://admin.lyann.app'
 ]);
 
+const ALLOWED_NATIVE_ORIGINS = new Set([
+    'capacitor://localhost',
+    'ionic://localhost',
+    'http://localhost',
+    'https://localhost'
+]);
+
 const PRODUCTION_DISABLED_ROUTES = new Set([
     '/v1/auth/login',
     '/v1/members',
@@ -145,9 +152,15 @@ module.exports = async function lyannApiGateway(req, res) {
     const hasStripeWebhook = matchesAnyPath(paths, isStripeWebhook);
     const hasAdminRoute = paths.some(path => path === '/v1/admin' || path.startsWith('/v1/admin/'));
 
-    // Native Capacitor clients typically do not send a browser Origin header.
+    // Native Capacitor WebViews send Origin: capacitor://localhost (or ionic://).
+    // Requests with no Origin header remain allowed (non-browser / native HTTP).
     // Browser requests in production must originate from a LYANN-owned origin.
-    if (IS_PRODUCTION && origin && !ALLOWED_WEB_ORIGINS.has(origin)) {
+    if (
+        IS_PRODUCTION
+        && origin
+        && !ALLOWED_WEB_ORIGINS.has(origin)
+        && !ALLOWED_NATIVE_ORIGINS.has(origin)
+    ) {
         return jsonError(res, 403, 'ORIGIN_NOT_ALLOWED', 'Origine non autorisée.');
     }
 

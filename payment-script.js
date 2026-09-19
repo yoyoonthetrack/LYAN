@@ -279,7 +279,8 @@
             // If in Production / Stripe mode, create PaymentIntent on server
             if (this.PAYMENT_MODE === 'stripe_production') {
                 try {
-                    const res = await fetch('/v1/payments/create-intent', {
+                    const fetcher = typeof window.lyannBackendFetch === 'function' ? window.lyannBackendFetch : fetch;
+                    const res = await fetcher('/v1/payments/create-intent', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

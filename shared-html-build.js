@@ -123,8 +123,20 @@ function enforceScriptCacheBusting(html) {
   });
 }
 
+function injectDataCache(html) {
+  let out = String(html || '');
+  if (out.includes('data-cache.js')) return out;
+  if (out.includes('auth-state.js')) {
+    return out.replace(
+      /(<script src="auth-state\.js[^"]*"><\/script>)/,
+      '$1\n    <script src="data-cache.js"></script>'
+    );
+  }
+  return out;
+}
+
 function buildHtml(html) {
-  return enforceScriptCacheBusting(injectSharedStylesheet(injectProductionHygiene(injectSharedRuntime(sanitizeStaticHtml(html)))));
+  return enforceScriptCacheBusting(injectSharedStylesheet(injectProductionHygiene(injectSharedRuntime(injectDataCache(sanitizeStaticHtml(html))))));
 }
 
 function buildHtmlFile(sourcePath, destinationPath = sourcePath) {

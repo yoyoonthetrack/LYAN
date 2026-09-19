@@ -14,6 +14,36 @@ function isUUID(str) {
     return uuidRegex.test(str);
 }
 window.isUUID = isUUID;
+
+const LYANN_PRODUCTION_ORIGIN = 'https://lyann.app';
+
+function isCapacitorRuntime() {
+    if (typeof window === 'undefined') return false;
+    try {
+        if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+            return true;
+        }
+    } catch (e) {}
+    const protocol = window.location && window.location.protocol;
+    return protocol === 'capacitor:' || protocol === 'ionic:' || protocol === 'file:';
+}
+
+function getLyannBackendOrigin() {
+    if (typeof window !== 'undefined' && window.LYANN_BACKEND_ORIGIN) {
+        return String(window.LYANN_BACKEND_ORIGIN).replace(/\/$/, '');
+    }
+    if (isCapacitorRuntime()) return LYANN_PRODUCTION_ORIGIN;
+    return '';
+}
+
+function lyannBackendFetch(path, options) {
+    const origin = getLyannBackendOrigin();
+    const url = /^https?:\/\//i.test(path) ? path : `${origin}${path}`;
+    return fetch(url, options);
+}
+
+window.getLyannBackendOrigin = getLyannBackendOrigin;
+window.lyannBackendFetch = lyannBackendFetch;
 if (window.supabase) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
@@ -1031,10 +1061,7 @@ const LYANN_API_CLIENT = {
     async serverRequest(endpoint, body = {}) {
         const session = await this.getSession();
         const token = session?.data?.session?.access_token;
-        const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-        const baseUrl = isLocalhost ? 'http://localhost:3000' : '';
-        
-        return fetch(`${baseUrl}${endpoint}`, {
+        return lyannBackendFetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1286,7 +1313,7 @@ const LYANN_API_CLIENT = {
             return { error: { message: "Utilisateur non authentifié." } };
         }
         try {
-            const res = await fetch('/v1/payments/create-milestone-intent', {
+            const res = await lyannBackendFetch('/v1/payments/create-milestone-intent', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1311,7 +1338,7 @@ const LYANN_API_CLIENT = {
             return { error: { message: "Utilisateur non authentifié." } };
         }
         try {
-            const res = await fetch('/v1/milestones/start-work', {
+            const res = await lyannBackendFetch('/v1/milestones/start-work', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1336,7 +1363,7 @@ const LYANN_API_CLIENT = {
             return { error: { message: "Utilisateur non authentifié." } };
         }
         try {
-            const res = await fetch('/v1/milestones/submit-completion', {
+            const res = await lyannBackendFetch('/v1/milestones/submit-completion', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1945,7 +1972,7 @@ const LYANN_API_CLIENT = {
         const { data: { session } } = await this.supabase.auth.getSession();
         if (!session || !session.user) throw new Error("Utilisateur non connecté");
 
-        const response = await fetch('/v1/milestones/release-payment', {
+        const response = await lyannBackendFetch('/v1/milestones/release-payment', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1969,7 +1996,7 @@ const LYANN_API_CLIENT = {
         const { data: { session } } = await this.supabase.auth.getSession();
         if (!session || !session.user) throw new Error("Utilisateur non connecté");
 
-        const response = await fetch('/v1/milestones/claim-transfer', {
+        const response = await lyannBackendFetch('/v1/milestones/claim-transfer', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1992,7 +2019,7 @@ const LYANN_API_CLIENT = {
         const { data: { session } } = await this.supabase.auth.getSession();
         if (!session || !session.user) throw new Error("Utilisateur non connecté");
 
-        const response = await fetch('/v1/milestones/raise-dispute', {
+        const response = await lyannBackendFetch('/v1/milestones/raise-dispute', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

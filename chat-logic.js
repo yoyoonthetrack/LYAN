@@ -572,14 +572,26 @@ function isPersistedUuid(id) {
 }
 
 async function resolveChatMilestoneId(preferredId, statuses) {
-    if (isPersistedUuid(preferredId)) return preferredId;
-    if (!window.LYANN_MESSAGING_REPOSITORY || !currentChatContact || !currentChatContact.id) return null;
-    const quotes = await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), currentChatContact.id, { fresh: true });
-    const milestones = (quotes || []).flatMap((quote) => quote.milestones || []);
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    if (!window.LYANN_MESSAGING_REPOSITORY || !contact || !contact.id) return null;
+    const quotes = await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), contact.id, { fresh: true });
+    const milestones = (quotes || []).flatMap((quote) => (quote.milestones || []).map((milestone) => ({
+        ...milestone,
+        quoteId: quote.id,
+        quoteStatus: quote.status
+    })));
     const wanted = Array.isArray(statuses) && statuses.length ? statuses : null;
-    const match = milestones.find((milestone) => !wanted || wanted.includes(milestone.status));
-    return match && match.id ? match.id : null;
+    const eligible = milestones.filter((milestone) => milestone && isPersistedUuid(milestone.id) && (!wanted || wanted.includes(milestone.status)));
+    if (isPersistedUuid(preferredId)) {
+        const explicit = eligible.find((milestone) => milestone.id === preferredId);
+        return explicit ? explicit.id : null;
+    }
+    if (eligible.length === 1) return eligible[0].id;
+    const accepted = eligible.filter((milestone) => milestone.quoteStatus === 'ACCEPTED');
+    if (accepted.length === 1) return accepted[0].id;
+    return null;
 }
+window.resolveChatMilestoneId = resolveChatMilestoneId;
 
 function notifyActionUnavailable(err) {
     const msg = (err && err.message) ? String(err.message) : 'Action indisponible.';

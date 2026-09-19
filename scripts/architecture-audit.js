@@ -67,6 +67,19 @@ for (const file of productPages) {
   }
 }
 
+for (const file of productPages) {
+  const html = read(file);
+  if (!html.includes('<script src="script.js')) continue;
+  const authState = indexOfOrInfinity(html, '<script src="auth-state.js');
+  const dataCache = indexOfOrInfinity(html, '<script src="data-cache.js');
+  const scriptJs = indexOfOrInfinity(html, '<script src="script.js');
+  if (!Number.isFinite(authState) || !Number.isFinite(dataCache)) {
+    fail(`${file}: auth-state/data-cache boot layer is missing`);
+  } else if (!(authState < dataCache && dataCache < scriptJs)) {
+    fail(`${file}: data-cache.js must load after auth-state and before script.js`);
+  }
+}
+
 if (fs.existsSync(path.join(root, 'feed.html'))) {
   const html = read('feed.html');
   const detailOpen = html.indexOf('id="lyannDetailModal"');
