@@ -1945,7 +1945,7 @@ const LYANN_API_CLIENT = {
         const { data: { session } } = await this.supabase.auth.getSession();
         if (!session || !session.user) throw new Error("Utilisateur non connecté");
 
-        const response = await fetch(`${this.backendUrl}/v1/milestones/release-payment`, {
+        const response = await fetch('/v1/milestones/release-payment', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1969,7 +1969,7 @@ const LYANN_API_CLIENT = {
         const { data: { session } } = await this.supabase.auth.getSession();
         if (!session || !session.user) throw new Error("Utilisateur non connecté");
 
-        const response = await fetch(`${this.backendUrl}/v1/milestones/claim-transfer`, {
+        const response = await fetch('/v1/milestones/claim-transfer', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1992,7 +1992,7 @@ const LYANN_API_CLIENT = {
         const { data: { session } } = await this.supabase.auth.getSession();
         if (!session || !session.user) throw new Error("Utilisateur non connecté");
 
-        const response = await fetch(`${this.backendUrl}/v1/milestones/raise-dispute`, {
+        const response = await fetch('/v1/milestones/raise-dispute', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

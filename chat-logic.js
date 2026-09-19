@@ -565,6 +565,29 @@ async function createProductionQuoteForContact(contactId, description, amount, m
     return window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, description, null, milestonePayload);
 }
 
+function isPersistedUuid(id) {
+    return typeof window.isUUID === 'function'
+        ? window.isUUID(id)
+        : (typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+}
+
+async function resolveChatMilestoneId(preferredId, statuses) {
+    if (isPersistedUuid(preferredId)) return preferredId;
+    if (!window.LYANN_MESSAGING_REPOSITORY || !currentChatContact || !currentChatContact.id) return null;
+    const quotes = await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), currentChatContact.id, { fresh: true });
+    const milestones = (quotes || []).flatMap((quote) => quote.milestones || []);
+    const wanted = Array.isArray(statuses) && statuses.length ? statuses : null;
+    const match = milestones.find((milestone) => !wanted || wanted.includes(milestone.status));
+    return match && match.id ? match.id : null;
+}
+
+function notifyActionUnavailable(err) {
+    const msg = (err && err.message) ? String(err.message) : 'Action indisponible.';
+    if (window.showToast) window.showToast(msg, 'error');
+    else if (window.lyannAlert) window.lyannAlert(msg);
+    else alert(msg);
+}
+
 async function handleChatAction(actionId, missionOrExtra = null, extraDataInput = null) {
     if (!await window.LYANN_ROUTER.requireAuthForInteraction('proposal', { actionId, contactId: currentChatContact?.id, requestId: currentChatContact?.requestId })) return;
     const extraData = (missionOrExtra && missionOrExtra.quoteId) ? missionOrExtra : (extraDataInput || {});
@@ -574,9 +597,9 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
     const isMissionUuid = (id) => typeof window.isUUID === 'function'
         ? window.isUUID(id)
         : (typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
-    const refuseUnlinkedMission = (label) => {
+        const refuseUnlinkedMission = (label) => {
         if (window.lyannAlert) {
-            window.lyannAlert(`${label} indisponible : cette action n’est pas liée à une mission enregistrée.`);
+            window.lyannAlert(`${label} indisponible : cette action n’est pas liée à un jalon enregistré.`);
         }
         return false;
     };
@@ -731,6 +754,12 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         closeAllOverlays();
         const chatCheckoutOverlay = document.getElementById('chatCheckoutOverlay');
         if (chatCheckoutOverlay) {
+            const milestoneId = await resolveChatMilestoneId(
+                extraData.milestoneId || (mission && mission.milestoneId),
+                ['PENDING']
+            );
+            if (milestoneId) chatCheckoutOverlay.dataset.milestoneId = milestoneId;
+            else delete chatCheckoutOverlay.dataset.milestoneId;
             openChatChildSurface('chatCheckoutOverlay');
         } else if (window.lyannAlert) {
             window.lyannAlert('Paiement indisponible : le portail de paiement n’est pas disponible sur cet écran.');
@@ -739,31 +768,53 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
     }
 
     else if (actionId === 'MARK_DONE') {
-        if (!mission || !isMissionUuid(mission.id)) return refuseUnlinkedMission('Clôture');
-        if (window.LYANN_API_CLIENT) window.LYANN_API_CLIENT.mockMarkMissionDone(mission.id);
-        addMessageToContact(contactId, {
-            type: 'system_card',
-            cardType: 'WORK_DONE',
-            title: mission ? mission.title : 'Travaux',
-            sender: getMyId(),
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
+        const milestoneId = await resolveChatMilestoneId(
+            extraData.milestoneId || (mission && mission.milestoneId),
+            ['FUNDED', 'IN_PROGRESS']
+        );
+        if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.submitMilestoneCompletion !== 'function') {
+            return refuseUnlinkedMission('Clôture');
+        }
+        const result = await window.LYANN_API_CLIENT.submitMilestoneCompletion(milestoneId);
+        if (result && result.error) {
+            notifyActionUnavailable(result.error);
+            return;
+        }
+        if (typeof window.showToast === 'function') {
+            window.showToast((result && result.data && result.data.message) || 'Prestation déclarée réalisée, en attente de validation.', 'success');
+        }
+        refreshChatUI();
+        return;
     }
 
     else if (actionId === 'CONFIRM_DONE') {
-        if (!mission || !isMissionUuid(mission.id)) return refuseUnlinkedMission('Validation');
-        if (window.LYANN_API_CLIENT) window.LYANN_API_CLIENT.mockConfirmMissionCompletion(mission.id);
-        addMessageToContact(contactId, {
-            type: 'system_card',
-            cardType: 'MISSION_COMPLETED',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
+        const milestoneId = await resolveChatMilestoneId(
+            extraData.milestoneId || (mission && mission.milestoneId),
+            ['COMPLETED']
+        );
+        if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.releaseMilestonePayment !== 'function') {
+            return refuseUnlinkedMission('Validation');
+        }
+        try {
+            const result = await window.LYANN_API_CLIENT.releaseMilestonePayment(milestoneId);
+            if (typeof window.showToast === 'function') {
+                window.showToast((result && result.message) || 'Validation enregistrée.', 'success');
+            }
+        } catch (err) {
+            notifyActionUnavailable(err);
+            return;
+        }
+        refreshChatUI();
+        return;
     }
 
     else if (actionId === 'LEAVE_REVIEW') {
         closeAllOverlays();
         const overlay = document.getElementById('chatLeaveReviewForm');
-        if (overlay) overlay.style.display = 'flex';
+        if (overlay) {
+            openChatChildSurface('chatLeaveReviewForm');
+            setChatContextCoveredByOverlay(true);
+        }
         return;
     }
 
@@ -780,34 +831,45 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
     else if (actionId === 'REPORT_PROBLEM') {
         const reason = await window.lyannPrompt("Quel est le problème ?");
         if (!reason) return;
-        if (mission && window.LYANN_API_CLIENT) window.LYANN_API_CLIENT.mockReportProblem(mission.id);
-        addMessageToContact(contactId, {
-            type: 'text',
-            sender: getMyId(),
-            text: `⚠️ Signalement de litige : ${reason}`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
+        const milestoneId = await resolveChatMilestoneId(
+            extraData.milestoneId || (mission && mission.milestoneId),
+            null
+        );
+        if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.raiseMilestoneDispute !== 'function') {
+            return refuseUnlinkedMission('Signalement');
+        }
+        try {
+            await window.LYANN_API_CLIENT.raiseMilestoneDispute(milestoneId, reason);
+        } catch (err) {
+            notifyActionUnavailable(err);
+            return;
+        }
+        refreshChatUI();
+        return;
     }
 
     refreshChatUI();
     window.dispatchEvent(new CustomEvent('lyann_chat_action_taken', { detail: { actionId, contactId } }));
 }
 
-window.deleteMessage = function(msgId) {
+window.deleteMessage = async function(msgId) {
     if (!currentChatContact || !msgId) return;
-    const contactId = currentChatContact.id;
-    let storedMsgs = {};
-    try {
-        const stored = localStorage.getItem(CHAT_MSG_KEY);
-        if (stored) storedMsgs = JSON.parse(stored);
-    } catch(e) {}
-    
-    if (storedMsgs[contactId]) {
-        storedMsgs[contactId] = storedMsgs[contactId].filter(m => m.id !== msgId);
-        localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(storedMsgs));
-        renderMessages();
-        renderChatContacts();
+    if (!isPersistedUuid(msgId) || !window.LYANN_API_CLIENT?.supabase) {
+        notifyActionUnavailable({ message: 'Suppression indisponible : ce message n’est pas enregistré côté serveur.' });
+        return;
     }
+    const { error } = await window.LYANN_API_CLIENT.supabase.from('messages').delete().eq('id', msgId);
+    if (error) {
+        notifyActionUnavailable({ message: 'Suppression indisponible : le contrat messages autorise l’envoi et la lecture, pas l’effacement.' });
+        return;
+    }
+    const conversationId = window.LYANN_MESSAGING_REPOSITORY && typeof window.LYANN_MESSAGING_REPOSITORY.findConversationId === 'function'
+        ? await window.LYANN_MESSAGING_REPOSITORY.findConversationId(getMyId(), currentChatContact.id)
+        : null;
+    if (window.LYANN_MESSAGING_REPOSITORY) {
+        window.LYANN_MESSAGING_REPOSITORY.invalidateMessages(conversationId);
+    }
+    if (typeof renderMessages === 'function') await renderMessages();
 };
 
 let activeReplyTo = null;
@@ -833,26 +895,7 @@ window.cancelQuoteMessage = function() {
 };
 
 window.toggleMessageReaction = function(msgId, emoji) {
-    if (!currentChatContact || !msgId) return;
-    const contactId = currentChatContact.id;
-    let storedMsgs = {};
-    try {
-        const stored = localStorage.getItem(CHAT_MSG_KEY);
-        if (stored) storedMsgs = JSON.parse(stored);
-    } catch(e) {}
-    
-    const msgs = storedMsgs[contactId] || [];
-    const msg = msgs.find(m => m.id === msgId);
-    if (msg) {
-        if (!msg.reactions) msg.reactions = {};
-        if (msg.reactions[emoji]) {
-            delete msg.reactions[emoji];
-        } else {
-            msg.reactions[emoji] = 1;
-        }
-        localStorage.setItem(CHAT_MSG_KEY, JSON.stringify(storedMsgs));
-        renderMessages();
-    }
+    notifyActionUnavailable({ message: 'Réaction indisponible : aucun champ de réaction n’existe sur les messages serveur.' });
 };
 
 function renderEmptyConversationState(container) {
@@ -1084,7 +1127,7 @@ async function renderMessages(passedMessages = null) {
                 `;
                 setTimeout(() => {
                     const cBtn = div.querySelector('.btn-confirm-work');
-                    if (cBtn) cBtn.onclick = () => handleChatAction('CONFIRM_DONE', { id: msg.missionId || null });
+                    if (cBtn) cBtn.onclick = () => handleChatAction('CONFIRM_DONE', { id: msg.missionId || null, milestoneId: msg.milestoneId || null });
                 }, 0);
             }
             else if (msg.cardType === 'MISSION_COMPLETED') {
@@ -1924,11 +1967,24 @@ document.addEventListener('touchstart', (e) => {
     if (checkoutPaymentForm) {
         checkoutPaymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const msg = 'Paiement indisponible : le paiement réel passe par un jalon enregistré. Ce formulaire ne confirme aucun versement.';
-            if (window.showToast) window.showToast(msg, 'error');
-            else if (window.lyannAlert) window.lyannAlert(msg);
-            else alert(msg);
-            closeAllOverlays();
+            const overlay = document.getElementById('chatCheckoutOverlay');
+            const milestoneId = overlay && overlay.dataset ? overlay.dataset.milestoneId : null;
+            if (!isPersistedUuid(milestoneId) || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.createMilestonePaymentIntent !== 'function') {
+                notifyActionUnavailable({ message: 'Paiement indisponible : il faut un jalon PENDING et POST /v1/payments/create-milestone-intent. Les champs carte de cet écran ne sont pas envoyés à Stripe.' });
+                return;
+            }
+            const result = await window.LYANN_API_CLIENT.createMilestonePaymentIntent(milestoneId);
+            if (result && result.error) {
+                notifyActionUnavailable(result.error);
+                return;
+            }
+            const payload = result && result.data ? result.data : {};
+            const mockIntent = payload.mode === 'stripe_test_mock' || (typeof payload.client_secret === 'string' && payload.client_secret.includes('_secret_test'));
+            if (mockIntent || !payload.client_secret) {
+                notifyActionUnavailable({ message: 'Paiement indisponible : Stripe test n’est pas configuré sur ce serveur (STRIPE_SECRET_KEY). Aucun versement n’a été confirmé.' });
+                return;
+            }
+            notifyActionUnavailable({ message: 'Paiement indisponible : l’intent jalon a été créé, mais cet écran n’embarque pas Stripe.js pour confirmer la carte. Les champs carte locaux ne sont pas utilisés.' });
         });
     }
 

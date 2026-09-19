@@ -81,6 +81,13 @@
             const event = new CustomEvent('lyann_payment_' + name);
             window.dispatchEvent(event);
         },
+        financialUnavailable: function(actionLabel) {
+            const msg = (actionLabel || 'Opération') + ' indisponible : ce portail n’est pas raccordé à Stripe. Aucun solde ni versement n’est simulé.';
+            if (window.showToast) window.showToast(msg, 'error');
+            else if (window.lyannAlert) window.lyannAlert(msg);
+            else alert(msg);
+            return null;
+        },
 
         // ----------------------------------------------------------------------
         // 3. API METRICS POUR L'ADMINISTRATION
@@ -146,6 +153,7 @@
         // 4. WORKFLOW TRANSACTIONNEL & ESCROW
         // ----------------------------------------------------------------------
         createServiceRequest: function(data) {
+            return this.financialUnavailable('Création de demande');
             const txs = this.getTransactions();
             const config = this.getConfig();
 
@@ -258,6 +266,7 @@
         })(),
 
         approveQuotationAndPay: async function(txId, hasProtection, paymentDetails) {
+            return this.financialUnavailable('Paiement du devis');
             const txs = this.getTransactions();
             const idx = txs.findIndex(t => t.id === txId);
             if (idx === -1) return null;
@@ -539,6 +548,7 @@
         // 5. PORTEFEUILLE & PAYOUTS STRIPE CONNECT
         // ----------------------------------------------------------------------
         requestPayout: function(providerId, amount, iban) {
+            return this.financialUnavailable('Versement');
             const wallets = this.getWallets();
             const w = wallets[providerId];
             if (!w || w.availableBalance < amount || w.kycStatus !== "verified") return null;

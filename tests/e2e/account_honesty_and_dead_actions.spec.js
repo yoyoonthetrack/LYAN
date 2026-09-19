@@ -235,4 +235,134 @@ test.describe('Account honesty and previously dead actions', () => {
     expect(outcome.alerts).toMatch(/indisponible/i);
     expect(jsErrors.filter((msg) => !/PAYMENT_CONFIRMED/.test(msg))).toEqual([]);
   });
+
+  test('delete and reaction do not crash on retired local chat storage', async ({ page }) => {
+    const jsErrors = [];
+    page.on('pageerror', (err) => jsErrors.push(err.message));
+    await page.goto('/feed.html');
+    await page.waitForLoadState('domcontentloaded');
+    await installAuthHarness(page);
+
+    const outcome = await page.evaluate(async () => {
+      window.__lyannAlerts = [];
+      window.LYANN_MESSAGING_REPOSITORY = {
+        listConversations: async () => [],
+        getMessages: async () => [],
+        getQuoteContext: async () => [],
+        findConversationId: async () => null,
+        invalidateConversation() {},
+        invalidateMessages() {},
+        invalidateQuoteContext() {}
+      };
+      window.LYANN_ACTIVE_CHAT_CONTACT = {
+        id: '22222222-2222-4222-a222-222222222222',
+        name: 'Marie Dupont'
+      };
+      await window.LYANN_MESSAGING.openConversation({
+        contactId: '22222222-2222-4222-a222-222222222222',
+        name: 'Marie Dupont'
+      });
+      await window.deleteMessage('55555555-5555-4555-a555-555555555555');
+      window.toggleMessageReaction('55555555-5555-4555-a555-555555555555', '👍');
+      return {
+        alerts: (window.__lyannAlerts || []).join(' '),
+        chatMsgKeyDefined: typeof CHAT_MSG_KEY !== 'undefined'
+      };
+    });
+
+    expect(outcome.alerts).toMatch(/indisponible/i);
+    expect(jsErrors.filter((msg) => !/CHAT_MSG_KEY/.test(msg))).toEqual([]);
+  });
+
+  test('MARK_DONE without a milestone stays unavailable and does not write missions', async ({ page }) => {
+    const jsErrors = [];
+    page.on('pageerror', (err) => jsErrors.push(err.message));
+    await page.goto('/feed.html');
+    await page.waitForLoadState('domcontentloaded');
+    await installAuthHarness(page);
+
+    const outcome = await page.evaluate(async () => {
+      window.__mockMarkCalls = 0;
+      window.__submitCompletionCalls = [];
+      window.LYANN_API_CLIENT.mockMarkMissionDone = async () => { window.__mockMarkCalls += 1; };
+      window.LYANN_API_CLIENT.submitMilestoneCompletion = async (id) => {
+        window.__submitCompletionCalls.push(id);
+        return { data: { success: true } };
+      };
+      window.LYANN_MESSAGING_REPOSITORY = {
+        listConversations: async () => [],
+        getMessages: async () => [],
+        getQuoteContext: async () => [],
+        findConversationId: async () => null,
+        invalidateConversation() {},
+        invalidateMessages() {},
+        invalidateQuoteContext() {}
+      };
+      window.LYANN_ROUTER.requireAuthForInteraction = async () => true;
+      await window.LYANN_MESSAGING.openConversation({
+        contactId: '22222222-2222-4222-a222-222222222222',
+        name: 'Marie Dupont'
+      });
+      await window.handleChatAction('MARK_DONE', { id: '44444444-4444-4444-a444-444444444444', title: 'Tonte' });
+      return {
+        mockMarkCalls: window.__mockMarkCalls,
+        submitCalls: window.__submitCompletionCalls,
+        alerts: (window.__lyannAlerts || []).join(' ')
+      };
+    });
+
+    expect(outcome.mockMarkCalls).toBe(0);
+    expect(outcome.submitCalls).toEqual([]);
+    expect(outcome.alerts).toMatch(/indisponible/i);
+    expect(jsErrors).toEqual([]);
+  });
+
+  test('MARK_DONE with a funded milestone calls submit-completion', async ({ page }) => {
+    await page.goto('/feed.html');
+    await page.waitForLoadState('domcontentloaded');
+    await installAuthHarness(page);
+
+    const outcome = await page.evaluate(async () => {
+      window.__submitCompletionCalls = [];
+      window.LYANN_API_CLIENT.submitMilestoneCompletion = async (id) => {
+        window.__submitCompletionCalls.push(id);
+        return { data: { success: true, message: 'Prestation réalisée — en attente de validation du client.' } };
+      };
+      window.LYANN_MESSAGING_REPOSITORY = {
+        listConversations: async () => [],
+        getMessages: async () => [],
+        getQuoteContext: async () => [{
+          id: '66666666-6666-4666-a666-666666666666',
+          milestones: [{ id: '77777777-7777-4777-a777-777777777777', status: 'IN_PROGRESS' }]
+        }],
+        findConversationId: async () => null,
+        invalidateConversation() {},
+        invalidateMessages() {},
+        invalidateQuoteContext() {}
+      };
+      window.LYANN_ROUTER.requireAuthForInteraction = async () => true;
+      await window.LYANN_MESSAGING.openConversation({
+        contactId: '22222222-2222-4222-a222-222222222222',
+        name: 'Marie Dupont'
+      });
+      await window.handleChatAction('MARK_DONE', { id: '44444444-4444-4444-a444-444444444444' });
+      return { submitCalls: window.__submitCompletionCalls };
+    });
+
+    expect(outcome.submitCalls).toEqual(['77777777-7777-4777-a777-777777777777']);
+  });
+
+  test('payment portal payout stays unavailable', async ({ page }) => {
+    await page.goto('/payment-portal.html');
+    await page.waitForLoadState('domcontentloaded');
+    const outcome = await page.evaluate(() => {
+      const result = window.LYANN_PAYMENTS.requestPayout(1, 50, 'FR76');
+      return {
+        result,
+        body: document.body.innerText
+      };
+    });
+    expect(outcome.result).toBeNull();
+    expect(outcome.body).toMatch(/simulation locale désactivée|indisponible/i);
+  });
 });

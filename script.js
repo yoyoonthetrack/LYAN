@@ -3867,7 +3867,7 @@ safeDomReady(() => {
                                 <div class="row-icon"><i class="ph ph-bank"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">Compte de versement</strong>
-                                    <span class="row-subtitle">Gérer mes versements Stripe</span>
+                                    <span class="row-subtitle">Portail paiement — non raccordé au solde Stripe</span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>

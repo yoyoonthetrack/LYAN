@@ -497,8 +497,8 @@
             <div class="sim-info">
                 <i class="ph ph-swap sim-info-icon"></i>
                 <div>
-                    <h4 style="font-weight: 800; color: var(--primary-dark); font-size: 1rem; margin-bottom: 2px;">Interface de Simulation Financière & Connect</h4>
-                    <p style="font-size: 0.78rem; color: var(--text-muted);">Basculez de rôle pour simuler le parcours client/prestataire en temps réel.</p>
+                    <h4 style="font-weight: 800; color: var(--primary-dark); font-size: 1rem; margin-bottom: 2px;">Portail paiement — simulation locale désactivée</h4>
+                    <p style="font-size: 0.78rem; color: var(--text-muted);">Aucun solde, devis ou versement n’est créé ici. Le contrat réel est create-milestone-intent / submit-completion / release-payment.</p>
                 </div>
             <div class="role-switch-container">
                 <button class="role-switch-btn active" id="btnToggleClient">
@@ -1482,149 +1482,23 @@
 
             // PROVIDER: TAB 3 - Portefeuille & Retraits
             function renderProviderWalletTab() {
-                const wallets = window.LYANN_PAYMENTS.getWallets();
-                const myWallet = wallets[1]; // David Jean-Baptiste
-
                 portalCardWorkspace.innerHTML = `
                     <div class="portal-card-header">
                         <div class="portal-card-title provider-title"><i class="ph ph-wallet"></i> Votre Portefeuille LYANN</div>
-                        <span style="font-family: monospace; font-size: 0.8rem; background: var(--bg-warm); padding: 4px 10px; border-radius: var(--radius-sm);">Connect ID: ${myWallet.stripeAccountId}</span>
                     </div>
-
-                    <!-- Balance cards grid -->
-                    <div class="wallet-card-grid">
-                        <div class="wallet-balance-box available">
-                            <span class="balance-label">Disponible immédiatement</span>
-                            <span class="balance-amount">${myWallet.availableBalance.toFixed(2)} €</span>
-                            <span style="font-size:0.72rem; opacity:0.9;">Prêt pour virement vers votre banque</span>
-                        </div>
-                        <div class="wallet-balance-box">
-                            <span class="balance-label" style="color:var(--text-muted);">Paiements en cours</span>
-                            <span class="balance-amount" style="color:var(--primary-dark);">${myWallet.pendingBalance.toFixed(2)} €</span>
-                            <span style="font-size:0.72rem; color:var(--text-muted);">En attente de validation client</span>
-                        </div>
-                    </div>
-
-                    <!-- Withdrawal form -->
-                    <div style="background: var(--bg-warm); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 30px;">
-                        <h5 style="font-weight: 800; font-size: 0.9rem; margin-bottom: 12px;"><i class="ph ph-bank"></i> Demande de reversement Stripe Connect Payout</h5>
-                        
-                        ${myWallet.kycStatus !== 'verified' ? `
-                            <div style="background: rgba(229,179,69,0.15); color: var(--sand-yellow-dark); border: 1px solid var(--sand-yellow); border-radius: 8px; padding: 12px; font-size: 0.8rem; font-weight:700;">
-                                ⚠️ Reversements impossibles : Votre dossier d'identité KYC est en cours de validation ou incomplet. Veuillez compléter votre compte Stripe Connect.
-                            </div>
-                        ` : `
-                            <form id="payoutForm" onsubmit="event.preventDefault();">
-                                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 12px;">
-                                    <div>
-                                        <label style="font-size: 0.8rem;">Montant à retirer (€)</label>
-                                        <input type="number" id="payoutAmount" class="form-input" min="1" max="${myWallet.availableBalance}" value="${myWallet.availableBalance}" required style="padding: 8px;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size: 0.8rem;">IBAN de virement enregistré</label>
-                                        <input type="text" id="payoutIban" class="form-input" value="FR76 3000 6000 0001 2345 6789 001" readonly style="padding: 8px; background: #e2e8f0;">
-                                    </div>
-                                </div>
-                                <button type="submit" class="btn btn-primary" style="background: var(--sand-yellow-dark); width: 100%; justify-content: center;">
-                                    Transférer immédiatement vers ma banque (24h/Stripe Instant Payout) 💸
-                                </button>
-                            </form>
-                        `}
-                    </div>
-
-                    <!-- Payout logs -->
-                    <h5 style="font-weight: 800; font-size: 0.9rem; margin-bottom: 12px;">Historique des Virements Effectués :</h5>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left;">
-                        <thead>
-                            <tr style="border-bottom: 2px solid var(--border); padding-bottom: 8px;">
-                                <th style="padding: 8px 0;">Référence</th>
-                                <th>Date</th>
-                                <th>IBAN</th>
-                                <th>Montant</th>
-                                <th>Statut</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${myWallet.withdrawals.map(w => `
-                                <tr style="border-bottom: 1px solid var(--border);">
-                                    <td style="padding: 10px 0; font-family: monospace;">${w.id}</td>
-                                    <td>${new Date(w.date).toLocaleDateString()}</td>
-                                    <td style="font-family: monospace;">... ${w.iban.slice(-8)}</td>
-                                    <td style="font-family: monospace; font-weight:700;">${w.amount.toFixed(2)} €</td>
-                                    <td><span class="step-status-tag status-approved">Validé</span></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                    <p style="margin:0 0 16px 0; color:var(--text-muted); line-height:1.5;">Solde indisponible. Il n’existe pas d’API wallet GET raccordée à cet écran, et le stockage local n’est plus utilisé comme solde Stripe.</p>
+                    <button type="button" class="btn" disabled aria-disabled="true">Demande de versement indisponible</button>
                 `;
-
-                // Payout Form submit event
-                const form = document.getElementById('payoutForm');
-                if (form) {
-                    form.addEventListener('submit', (e) => {
-                        e.preventDefault();
-                        const amount = parseFloat(document.getElementById('payoutAmount').value);
-                        const iban = document.getElementById('payoutIban').value;
-
-                        const wid = window.LYANN_PAYMENTS.requestPayout(1, amount, iban);
-                        if (wid) {
-                            showToast(`Virement #${wid} de ${amount}€ exécuté avec succès vers votre banque via Stripe Connect.`);
-                            renderWorkspace();
-                        } else {
-                            alert("Solde insuffisant ou erreur de validation.");
-                        }
-                    });
-                }
             }
 
             // PROVIDER: TAB 4 - Stripe Connect KYC
             function renderStripeConnectTab() {
-                const wallets = window.LYANN_PAYMENTS.getWallets();
-                const myWallet = wallets[1];
-
                 portalCardWorkspace.innerHTML = `
                     <div class="portal-card-header">
                         <div class="portal-card-title provider-title"><i class="ph ph-bank"></i> Espace Identité Stripe Connect & KYC</div>
                     </div>
-
-                    <div style="background: var(--bg-warm); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 25px; margin-bottom: 25px; text-align: center;">
-                        <img src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=400&q=80" alt="Stripe Verify" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto 16px; border: 3px solid var(--border);">
-                        
-                        <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px;">Vérification d'Identité pour les reversements</h4>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 500px; margin: 0 auto 16px;">
-                            Pour recevoir des fonds et effectuer des retraits vers votre compte bancaire, les régulations européennes imposent une vérification KYC (Know Your Customer) via notre partenaire Stripe.
-                        </p>
-
-                        <div style="margin-bottom: 20px;">
-                            Statut actuel de votre compte : 
-                            <span class="step-status-tag status-${myWallet.kycStatus === 'verified' ? 'approved' : (myWallet.kycStatus === 'pending' ? 'submitted' : 'rejected')}">
-                                ${myWallet.kycStatus === 'verified' ? 'Identité Validée ✔' : (myWallet.kycStatus === 'pending' ? 'Dossier en Cours d\'Examen ⏳' : 'Action Requise ❌')}
-                            </span>
-                        </div>
-
-                        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                            <button class="btn btn-primary" id="btnSimKycUpload" style="background: var(--sand-yellow-dark);">
-                                <i class="ph ph-upload"></i> Envoyer pièce d'identité
-                            </button>
-                            <button class="btn btn-outline" id="btnSimKycReset" style="border-color: var(--border);">
-                                Réinitialiser statut KYC
-                            </button>
-                        </div>
-                    </div>
+                    <p style="margin:0; color:var(--text-muted); line-height:1.5;">Vérification KYC indisponible ici : aucun onboarding Stripe Connect n’est raccordé, et le statut local n’est plus simulé.</p>
                 `;
-
-                // KYC Buttons binding
-                document.getElementById('btnSimKycUpload').addEventListener('click', () => {
-                    window.LYANN_PAYMENTS.updateKycStatus(1, 'pending');
-                    showToast("Fichier transmis à Stripe Connect. Statut passé à 'En attente d'examen'.");
-                    renderWorkspace();
-                });
-
-                document.getElementById('btnSimKycReset').addEventListener('click', () => {
-                    window.LYANN_PAYMENTS.updateKycStatus(1, 'unverified');
-                    showToast("Statut KYC réinitialisé. Compte non vérifié.");
-                    renderWorkspace();
-                });
             }
 
             // Initial load

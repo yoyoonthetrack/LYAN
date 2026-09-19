@@ -68,6 +68,26 @@ if (chat.includes('mockProposePrice')) {
 if (chat.includes('mockPayMission')) {
   fail('chat checkout must not invent a paid escrow via mockPayMission');
 }
+if (chat.includes('CHAT_MSG_KEY')) {
+  fail('chat delete/reactions must not use the retired localStorage CHAT_MSG_KEY');
+}
+if (chat.includes('mockMarkMissionDone') || chat.includes('mockConfirmMissionCompletion')) {
+  fail('chat completion must use milestone APIs, not client mission status writes');
+}
+
+const apiClient = read('api-client.js');
+if (apiClient.includes('this.backendUrl')) {
+  fail('milestone payment APIs must call relative /v1 paths, not undefined backendUrl');
+}
+
+const payments = read('payment-script.js');
+if (!payments.includes("return this.financialUnavailable('Versement')")) {
+  fail('payment portal must not simulate a Stripe payout');
+}
+
+if (script.includes('Gérer mes versements Stripe')) {
+  fail('account must not present payment-portal as a live Stripe wallet');
+}
 
 if (!sharedBuild.includes('surface-manager.js?v=')) fail('shared build must inject surface manager');
 if (!sharedBuild.includes('app-router.js?v=')) fail('shared build must inject application router');
