@@ -4,12 +4,14 @@
  */
 
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 if (typeof global.WebSocket === 'undefined') {
     global.WebSocket = class WebSocket {};
 }
 const { createClient } = require('@supabase/supabase-js');
+const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-build');
 require('dotenv').config();
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local'), override: true });
 
@@ -23,6 +25,39 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Platform-Client', 'Accept'],
     credentials: true
 }));
+
+const PRODUCT_HTML = {
+    '/': 'index.html',
+    '/index.html': 'index.html',
+    '/feed': 'feed.html',
+    '/feed.html': 'feed.html',
+    '/results': 'results.html',
+    '/results.html': 'results.html',
+    '/payment-portal': 'payment-portal.html',
+    '/payment-portal.html': 'payment-portal.html',
+    '/pricing': 'pricing.html',
+    '/pricing.html': 'pricing.html',
+    '/how-it-works': 'how-it-works.html',
+    '/how-it-works.html': 'how-it-works.html',
+    '/about': 'about.html',
+    '/about.html': 'about.html',
+    '/confirm-signup': 'confirm-signup.html',
+    '/confirm-signup.html': 'confirm-signup.html'
+};
+
+app.get(Object.keys(PRODUCT_HTML), (req, res, next) => {
+    const file = PRODUCT_HTML[req.path];
+    if (!file) return next();
+    try {
+        const filePath = path.join(__dirname, '..', file);
+        const html = injectIsolatedSupabaseConfig(buildHtml(fs.readFileSync(filePath, 'utf8')));
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+        res.send(html);
+    } catch (error) {
+        next(error);
+    }
+});
 
 // Serve local static frontend files when running locally
 app.use(express.static(path.join(__dirname, '..')));

@@ -17,9 +17,20 @@ async function requireWriteBackend(page) {
   }
   expect(host).toBe(`${ref}.supabase.co`);
 }
+function lookupActorCreds(actor) {
+  const names = [actor];
+  if (actor === 'REQUESTER') names.push('A');
+  if (actor === 'HELPER') names.push('B');
+  for (const name of names) {
+    const email = process.env[`LYANN_E2E_${name}_EMAIL`] || process.env[`LYANN_E2E_QA_${name}_EMAIL`];
+    const password = process.env[`LYANN_E2E_${name}_PASSWORD`] || process.env[`LYANN_E2E_QA_${name}_PASSWORD`];
+    if (email && password) return { email, password };
+  }
+  return { email: undefined, password: undefined };
+}
+
 async function login(page, actor) {
-  const email = process.env[`LYANN_E2E_${actor}_EMAIL`];
-  const password = process.env[`LYANN_E2E_${actor}_PASSWORD`];
+  const { email, password } = lookupActorCreds(actor);
   expect(email, `Existing ${actor} email required`).toBeTruthy();
   expect(password, `Existing ${actor} password required`).toBeTruthy();
   const result = await page.evaluate(async ({ email, password }) => {
@@ -28,6 +39,15 @@ async function login(page, actor) {
   }, {email,password});
   expect(result.error).toBeFalsy();
   expect(result.id).toBeTruthy();
+  await waitAuthenticated(page);
   return result.id;
 }
-module.exports = {requireWriteBackend,login};
+async function waitAuthenticated(page) {
+  await expect.poll(async () => page.evaluate(async () => {
+    const res = await window.LYANN_API_CLIENT.getSession();
+    const sessionOk = !!(res && res.data && res.data.session && res.data.session.user && res.data.session.user.id);
+    const authOk = window.LYANN_AUTH_STATE?.isAuthenticated?.() === true;
+    return sessionOk && authOk;
+  }), { timeout: 15000 }).toBe(true);
+}
+module.exports = {requireWriteBackend,login,waitAuthenticated};

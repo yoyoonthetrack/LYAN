@@ -135,6 +135,31 @@ function injectDataCache(html) {
   return out;
 }
 
+function injectIsolatedSupabaseConfig(html) {
+  if (process.env.VERCEL_ENV === 'production') return html;
+  if (process.env.LYANN_E2E_ALLOW_WRITES !== '1') return html;
+  const url = String(process.env.LYANN_SUPABASE_URL || '').replace(/\/$/, '');
+  const anon = process.env.LYANN_SUPABASE_ANON_KEY || '';
+  if (!url || !anon) return html;
+  let host = '';
+  try {
+    host = new URL(url).hostname;
+  } catch (e) {
+    return html;
+  }
+  if (host === 'gzispjfoywklpqatjyop.supabase.co') return html;
+  if (!host.endsWith('.supabase.co')) return html;
+  let out = String(html || '');
+  if (out.includes('window.LYANN_SUPABASE_URL')) return out;
+  const tag = `    <script>window.LYANN_SUPABASE_URL=${JSON.stringify(url)};window.LYANN_SUPABASE_ANON_KEY=${JSON.stringify(anon)};</script>\n`;
+  const apiClientAt = out.indexOf('api-client.js');
+  if (apiClientAt > 0) {
+    const scriptAt = out.lastIndexOf('<script', apiClientAt);
+    if (scriptAt >= 0) return `${out.slice(0, scriptAt)}${tag}${out.slice(scriptAt)}`;
+  }
+  return out.includes('</head>') ? out.replace('</head>', `${tag}</head>`) : `${tag}${out}`;
+}
+
 function buildHtml(html) {
   return enforceScriptCacheBusting(injectSharedStylesheet(injectProductionHygiene(injectSharedRuntime(injectDataCache(sanitizeStaticHtml(html))))));
 }
@@ -152,6 +177,7 @@ module.exports = {
   sanitizeStaticHtml,
   injectSharedRuntime,
   injectProductionHygiene,
+  injectIsolatedSupabaseConfig,
   buildHtml,
   buildHtmlFile
 };

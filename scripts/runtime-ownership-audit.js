@@ -133,6 +133,12 @@ if (!sharedBuild.includes('function injectDataCache')) {
 if (!sharedBuild.includes('injectDataCache(sanitizeStaticHtml')) {
   fail('shared HTML build must run injectDataCache inside buildHtml');
 }
+if (!sharedBuild.includes("process.env.VERCEL_ENV === 'production'")) {
+  fail('isolated Supabase inject must refuse Vercel production');
+}
+if (!sharedBuild.includes('gzispjfoywklpqatjyop.supabase.co')) {
+  fail('isolated Supabase inject must refuse the production project host');
+}
 
 const apiGateway = read('api/index.js');
 if (!apiGateway.includes("capacitor://localhost")) {

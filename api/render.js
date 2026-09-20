@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { buildHtml } = require('../shared-html-build');
+const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-build');
 
 const ALLOWED_PAGES = new Set([
   'index.html',
@@ -26,7 +26,7 @@ module.exports = function handler(req, res) {
 
   try {
     const filePath = path.join(process.cwd(), file);
-    const html = buildHtml(fs.readFileSync(filePath, 'utf8'));
+    const html = injectIsolatedSupabaseConfig(buildHtml(fs.readFileSync(filePath, 'utf8')));
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

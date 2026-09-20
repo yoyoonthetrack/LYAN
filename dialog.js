@@ -9,7 +9,7 @@ function ensureDialogMarkup() {
         overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.id = 'lyannDialogOverlay';
-        overlay.style.cssText = 'z-index: 10000; display: none; align-items: center; justify-content: center;';
+        overlay.style.cssText = 'z-index: 1000001; display: none; align-items: center; justify-content: center;';
         overlay.innerHTML = `
             <div class="lyann-dialog-card">
                 <div class="lyann-dialog-icon" id="lyannDialogIcon">
@@ -120,7 +120,9 @@ function showDialog({ type, title, message, showInput, buttons }) {
         btn.className = `btn ${btnConf.style}`;
         btn.textContent = btnConf.text;
         btn.onclick = () => {
+            overlay.classList.remove('active');
             overlay.style.display = 'none';
+            overlay.setAttribute('aria-hidden', 'true');
             if (showInput && btnConf.text === 'Valider') {
                 btnConf.onClick(inputEl.value);
             } else {
@@ -130,6 +132,9 @@ function showDialog({ type, title, message, showInput, buttons }) {
         actionsEl.appendChild(btn);
     });
 
-    // Show Overlay
+    // Show Overlay above chat (z-index 999999) and other .modal-overlay surfaces.
+    overlay.classList.add('active');
     overlay.style.display = 'flex';
+    overlay.style.setProperty('z-index', '1000001', 'important');
+    overlay.setAttribute('aria-hidden', 'false');
 }

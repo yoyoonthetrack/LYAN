@@ -177,8 +177,14 @@
                 return api.lastResult;
             }
             setPaymentError('');
+            if (global.LYANN_MESSAGING && typeof global.LYANN_MESSAGING.hideAllChildSurfaces === 'function') {
+                global.LYANN_MESSAGING.hideAllChildSurfaces();
+            } else {
+                const overlay = document.getElementById('chatCheckoutOverlay');
+                if (overlay) overlay.style.display = 'none';
+            }
             const successMessage = 'Carte confirmée par Stripe. Le séquestre LYANN sera mis à jour après confirmation serveur (webhook), pas depuis cet écran.';
-            if (global.showToast) global.showToast(successMessage, 'success');
+            if (typeof global.showToast === 'function') global.showToast(successMessage, 'success');
             else if (global.lyannAlert) {
                 Promise.resolve(global.lyannAlert(successMessage)).catch(() => {});
             }

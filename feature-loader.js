@@ -6,7 +6,7 @@
         subscriptions: 'subscriptions-engine.js',
         proVerification: 'pro-verification-engine.js',
         chatSurface: 'chat-surface-stack.js',
-        stripeCheckout: 'lyann-stripe.js?v=20260920-card2'
+        stripeCheckout: 'lyann-stripe.js?v=20260920-card3'
     };
 
     const loads = new Map();

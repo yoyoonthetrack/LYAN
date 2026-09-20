@@ -495,6 +495,7 @@ window.handleAcceptQuote = async function(quoteId) {
         }
         const res = await window.LYANN_API_CLIENT.acceptRequestQuote(quoteId);
         console.log("⚡ Devis accepté avec succès via RPC Supabase:", res);
+        invalidateActiveQuoteContext();
         if (window.lyannAlert) {
             window.lyannAlert("✅ Devis accepté ! La mission a été créée.");
         }
@@ -562,7 +563,16 @@ async function createProductionQuoteForContact(contactId, description, amount, m
         amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
         percentage: 100
     }];
-    return window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, description, null, milestonePayload);
+    const created = await window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, description, null, milestonePayload);
+    invalidateActiveQuoteContext();
+    return created;
+}
+
+function invalidateActiveQuoteContext() {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    if (window.LYANN_MESSAGING_REPOSITORY && contact && contact.id && typeof getMyId === 'function') {
+        window.LYANN_MESSAGING_REPOSITORY.invalidateQuoteContext(getMyId(), contact.id);
+    }
 }
 
 function isPersistedUuid(id) {
@@ -782,7 +792,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                 }
                 return new Promise((resolve, reject) => {
                     const script = document.createElement('script');
-                    script.src = 'lyann-stripe.js?v=20260920-card2';
+                    script.src = 'lyann-stripe.js?v=20260920-card3';
                     script.addEventListener('load', resolve, { once: true });
                     script.addEventListener('error', () => reject(new Error('Stripe checkout unavailable')), { once: true });
                     document.head.appendChild(script);
@@ -822,6 +832,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         if (typeof window.showToast === 'function') {
             window.showToast((result && result.data && result.data.message) || 'Prestation déclarée réalisée, en attente de validation.', 'success');
         }
+        invalidateActiveQuoteContext();
         refreshChatUI();
         return;
     }
@@ -843,6 +854,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
             notifyActionUnavailable(err);
             return;
         }
+        invalidateActiveQuoteContext();
         refreshChatUI();
         return;
     }
@@ -1186,7 +1198,10 @@ async function renderMessages(passedMessages = null) {
 
     // Render Production Supabase Real Quote Cards
     realQuotes.forEach(q => {
-        const isMyQuote = q.helper_id === getMyId();
+        const isMyQuote = (q.provider_id || q.helper_id) === getMyId();
+        const pendingMs = (q.milestones || []).find((m) => m && m.status === 'PENDING');
+        const fundedMs = (q.milestones || []).find((m) => m && (m.status === 'FUNDED' || m.status === 'IN_PROGRESS'));
+        const completedMs = (q.milestones || []).find((m) => m && m.status === 'COMPLETED');
         const quoteDiv = document.createElement('div');
         quoteDiv.className = `chat-msg-card ${isMyQuote ? 'align-right' : 'align-left'}`;
         quoteDiv.style.cssText = 'width: 100%; max-width: 440px; border: 1.5px solid var(--border); border-radius: 16px; background: #ffffff; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin: 12px 0;';
@@ -1233,11 +1248,48 @@ async function renderMessages(passedMessages = null) {
                 `;
             }
         } else if (q.status === 'ACCEPTED') {
-            actionsHTML = `
+            const acceptedBadge = `
                 <div style="font-size: 0.85rem; color: #15803d; font-weight: 700; text-align: center; margin-top: 8px; padding: 8px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
                     <i class="ph ph-check-circle"></i> Devis Accepté · Mission Créée
                 </div>
             `;
+            const providerId = q.provider_id || q.helper_id;
+            if (q.requester_id === getMyId() && pendingMs && q.mission_id) {
+                actionsHTML = `
+                    ${acceptedBadge}
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button type="button" class="btn btn-primary btn-quote-pay" data-quote-pay style="flex: 1; justify-content: center; background:#2E7D32;">
+                            <i class="ph ph-lock-key"></i> Payer & Bloquer (${q.total_amount} €)
+                        </button>
+                    </div>
+                `;
+            } else if (providerId === getMyId() && fundedMs) {
+                actionsHTML = `
+                    ${acceptedBadge}
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button type="button" class="btn btn-primary btn-quote-mark-done" data-quote-mark-done style="flex: 1; justify-content: center;">
+                            ✓ J'ai terminé
+                        </button>
+                    </div>
+                `;
+            } else if (q.requester_id === getMyId() && completedMs) {
+                actionsHTML = `
+                    ${acceptedBadge}
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button type="button" class="btn btn-primary btn-quote-confirm" data-quote-confirm style="flex: 1; justify-content: center;">
+                            ✓ Tout est bon
+                        </button>
+                    </div>
+                `;
+            } else if (fundedMs) {
+                actionsHTML = `
+                    <div style="font-size: 0.85rem; color: #15803d; font-weight: 700; text-align: center; margin-top: 8px; padding: 8px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+                        <i class="ph ph-lock-key"></i> Fonds sécurisés · mission en cours
+                    </div>
+                `;
+            } else {
+                actionsHTML = acceptedBadge;
+            }
         } else if (q.status === 'REJECTED') {
             actionsHTML = `
                 <div style="font-size: 0.85rem; color: #b91c1c; font-weight: 700; text-align: center; margin-top: 8px; padding: 8px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
@@ -1260,6 +1312,29 @@ async function renderMessages(passedMessages = null) {
             ${milestonesHTML}
             ${actionsHTML}
         `;
+        const payBtn = quoteDiv.querySelector('[data-quote-pay]');
+        if (payBtn && pendingMs && q.mission_id) {
+            payBtn.addEventListener('click', () => handleChatAction('PAY_MISSION', {
+                title: q.description || 'Intervention LYANN',
+                agreed_price: Number(q.total_amount),
+                id: q.mission_id,
+                milestoneId: pendingMs.id
+            }));
+        }
+        const markDoneBtn = quoteDiv.querySelector('[data-quote-mark-done]');
+        if (markDoneBtn && fundedMs) {
+            markDoneBtn.addEventListener('click', () => handleChatAction('MARK_DONE', {
+                id: q.mission_id,
+                milestoneId: fundedMs.id
+            }));
+        }
+        const confirmBtn = quoteDiv.querySelector('[data-quote-confirm]');
+        if (confirmBtn && completedMs) {
+            confirmBtn.addEventListener('click', () => handleChatAction('CONFIRM_DONE', {
+                id: q.mission_id,
+                milestoneId: completedMs.id
+            }));
+        }
         container.appendChild(quoteDiv);
     });
 
@@ -2021,7 +2096,7 @@ document.addEventListener('touchstart', (e) => {
                     } else {
                         await new Promise((resolve, reject) => {
                             const script = document.createElement('script');
-                            script.src = 'lyann-stripe.js?v=20260920-card2';
+                            script.src = 'lyann-stripe.js?v=20260920-card3';
                             script.addEventListener('load', resolve, { once: true });
                             script.addEventListener('error', () => reject(new Error('Stripe checkout unavailable')), { once: true });
                             document.head.appendChild(script);
