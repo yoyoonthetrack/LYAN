@@ -144,7 +144,20 @@ if (!apiGateway.includes('ALLOWED_NATIVE_ORIGINS')) {
 if (!apiGateway.includes("candidate.startsWith('/v1/')")) {
   fail('production API gateway must restore the original /v1 path after the Vercel /api rewrite');
 }
+if (!apiGateway.includes('IS_VERCEL_PRODUCTION')) {
+  fail('production API gateway must distinguish Vercel production from preview');
+}
+if (!apiGateway.includes('PAYMENT_WRITES_BLOCKED_ON_PRODUCTION')) {
+  fail('production API gateway must block payment writes on preview against production Supabase');
+}
 
+const serverJs = read('api/server.js');
+if (!serverJs.includes("return process.env.VERCEL_ENV === 'production';")) {
+  fail('payment write guard must key off VERCEL_ENV=production');
+}
+if (/function isHostedProductionRuntime\(\) \{[\s\S]{0,400}NODE_ENV === 'production'/.test(serverJs)) {
+  fail('payment write guard must not treat NODE_ENV=production as Vercel production');
+}
 const payments = read('payment-script.js');
 if (!payments.includes("return this.financialUnavailable('Versement')")) {
   fail('payment portal must not simulate a Stripe payout');

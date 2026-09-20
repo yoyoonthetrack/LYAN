@@ -12,7 +12,9 @@
 const { createClient } = require('@supabase/supabase-js');
 const app = require('./server.js');
 
-const IS_PRODUCTION = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+const IS_VERCEL_PRODUCTION = process.env.VERCEL_ENV === 'production';
+const IS_PRODUCTION = IS_VERCEL_PRODUCTION || process.env.NODE_ENV === 'production';
+const LYANN_PRODUCTION_SUPABASE_HOST = 'gzispjfoywklpqatjyop.supabase.co';
 
 const ALLOWED_WEB_ORIGINS = new Set([
     'https://lyann.app',
@@ -93,6 +95,15 @@ function isFinancialRoute(path) {
     return PRODUCTION_FINANCIAL_ROUTES.has(path) || isStripeWebhook(path);
 }
 
+function isProductionSupabaseConfigured() {
+    const url = process.env.SUPABASE_URL || `https://${LYANN_PRODUCTION_SUPABASE_HOST}`;
+    try {
+        return new URL(url).hostname === LYANN_PRODUCTION_SUPABASE_HOST;
+    } catch (e) {
+        return false;
+    }
+}
+
 function jsonError(res, status, code, message) {
     res.statusCode = status;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -156,7 +167,7 @@ module.exports = async function lyannApiGateway(req, res) {
     // Requests with no Origin header remain allowed (non-browser / native HTTP).
     // Browser requests in production must originate from a LYANN-owned origin.
     if (
-        IS_PRODUCTION
+        IS_VERCEL_PRODUCTION
         && origin
         && !ALLOWED_WEB_ORIGINS.has(origin)
         && !ALLOWED_NATIVE_ORIGINS.has(origin)
@@ -168,6 +179,23 @@ module.exports = async function lyannApiGateway(req, res) {
     // production origin allowlist above has accepted them.
     if (req.method === 'OPTIONS') {
         return app(req, res);
+    }
+
+    if (!IS_VERCEL_PRODUCTION && hasFinancialRoute && isProductionSupabaseConfigured()) {
+        return jsonError(
+            res,
+            403,
+            'PAYMENT_WRITES_BLOCKED_ON_PRODUCTION',
+            'Écriture de paiement bloquée : cet environnement n’est pas la production Vercel et pointe vers le Supabase de production.'
+        );
+    }
+
+    if (
+        hasFinancialRoute
+        && String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_')
+        && process.env.STRIPE_LIVE_ENABLED !== 'true'
+    ) {
+        return jsonError(res, 503, 'STRIPE_LIVE_DISABLED', 'Stripe Live est désactivé.');
     }
 
     // Historical mock/demo endpoints must never be callable in production.

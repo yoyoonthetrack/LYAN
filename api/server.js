@@ -58,7 +58,9 @@ const PAYMENT_WRITE_PATHS = [
 ];
 
 function isHostedProductionRuntime() {
-    return process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+    // Vercel preview also sets NODE_ENV=production. Only the production
+    // deployment may write payments against the production Supabase project.
+    return process.env.VERCEL_ENV === 'production';
 }
 
 function isProductionSupabaseTarget() {
@@ -76,7 +78,7 @@ function rejectPaymentWritesOnProductionFromDev(req, res) {
         return false;
     }
     res.status(403).json({
-        error: 'Écriture de paiement bloquée : ce serveur local pointe vers le Supabase de production. Utilisez un projet QA isolé.',
+        error: 'Écriture de paiement bloquée : cet environnement n’est pas la production Vercel et pointe vers le Supabase de production.',
         code: 'PAYMENT_WRITES_BLOCKED_ON_PRODUCTION'
     });
     return true;
