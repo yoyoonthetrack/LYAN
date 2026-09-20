@@ -222,17 +222,12 @@ test.describe('Account honesty and previously dead actions', () => {
       const form = document.getElementById('checkoutPaymentForm');
       if (!form) return { submitted: false };
       form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      return {
-        submitted: true,
-        mockPayMissionCalls: window.__mockPayMissionCalls,
-        alerts: (window.__lyannAlerts || []).join(' ')
-      };
+      return { submitted: true, mockPayMissionCalls: window.__mockPayMissionCalls };
     });
 
     expect(outcome.submitted).toBe(true);
     expect(outcome.mockPayMissionCalls).toBe(0);
-    expect(outcome.alerts).toMatch(/indisponible/i);
+    await expect.poll(() => page.evaluate(() => (window.__lyannAlerts || []).join(' '))).toMatch(/indisponible/i);
     expect(jsErrors.filter((msg) => !/PAYMENT_CONFIRMED/.test(msg))).toEqual([]);
   });
 
@@ -364,5 +359,8 @@ test.describe('Account honesty and previously dead actions', () => {
     });
     expect(outcome.result).toBeNull();
     expect(outcome.body).toMatch(/simulation locale désactivée|indisponible/i);
+    await expect(page.locator('#portalCardWorkspace')).toContainText('Publication indisponible ici');
+    await expect(page.getByRole('button', { name: 'Publier une demande indisponible' })).toBeDisabled();
+    await expect(page.locator('#portalCardWorkspace')).not.toContainText('publiée avec succès');
   });
 });

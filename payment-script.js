@@ -60,8 +60,7 @@
             this.dispatchEvent('config_changed');
         },
         getTransactions: function() {
-            const data = safeStorage.getItem(STORAGE_KEY_TX);
-            return data ? JSON.parse(data) : DEFAULT_TRANSACTIONS;
+            return [];
         },
         saveTransactions: function(txs) {
             safeStorage.setItem(STORAGE_KEY_TX, JSON.stringify(txs));
@@ -331,6 +330,7 @@
         },
 
         submitMilestoneCompletion: function(txId, milestoneId, data) {
+            return this.financialUnavailable('Soumission de jalon');
             const txs = this.getTransactions();
             const idx = txs.findIndex(t => t.id === txId);
             if (idx === -1) return null;

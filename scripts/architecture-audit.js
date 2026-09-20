@@ -112,6 +112,7 @@ if (fs.existsSync(path.join(root, 'feed.html'))) {
   }
 
   if (html.includes('https://js.stripe.com/v3/')) fail('feed.html: Stripe SDK must not be eager-loaded on the Bokantaj critical path');
+  if (html.includes('lyann-stripe.js')) fail('feed.html: lyann-stripe.js must be deferred through feature-loader.js');
 
   for (const src of ['safety-disputes-engine.js', 'subscriptions-engine.js', 'pro-verification-engine.js']) {
     if (html.includes(`<script src="${src}"></script>`)) fail(`feed.html: ${src} must be deferred through feature-loader.js`);
@@ -122,8 +123,15 @@ if (fs.existsSync(path.join(root, 'feed.html'))) {
   if (eagerScripts.length >= 5) warn(`feed.html: ${eagerScripts.length} feature scripts remain on the Bokantaj critical path; continue modularization`);
 }
 
-for (const requiredModule of ['platform-core.js', 'notifications-ui.js', 'app-shell.js', 'session-store.js', 'auth-state.js', 'data-cache.js']) {
+for (const requiredModule of ['platform-core.js', 'notifications-ui.js', 'app-shell.js', 'session-store.js', 'auth-state.js', 'data-cache.js', 'lyann-stripe.js']) {
   if (!fs.existsSync(path.join(root, requiredModule))) fail(`${requiredModule}: extracted/shared domain file missing`);
+}
+
+if (fs.existsSync(path.join(root, 'lyann-stripe.js'))) {
+  const stripeCheckout = read('lyann-stripe.js');
+  if (!stripeCheckout.includes('confirmCardPayment')) fail('lyann-stripe.js: card confirmation must use Stripe.js confirmCardPayment');
+  if (!stripeCheckout.includes("create('card'")) fail('lyann-stripe.js: must mount a Stripe Card Element');
+  if (/sk_(live|test)_/.test(stripeCheckout)) fail('lyann-stripe.js: must not embed a Stripe secret key');
 }
 
 if (fs.existsSync(path.join(root, 'auth-state.js'))) {

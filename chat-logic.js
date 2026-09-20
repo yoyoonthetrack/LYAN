@@ -773,6 +773,33 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
             if (milestoneId) chatCheckoutOverlay.dataset.milestoneId = milestoneId;
             else delete chatCheckoutOverlay.dataset.milestoneId;
             openChatChildSurface('chatCheckoutOverlay');
+            const ensureStripeCheckout = () => {
+                if (window.LYANN_STRIPE && typeof window.LYANN_STRIPE.prepareCheckout === 'function') {
+                    return Promise.resolve();
+                }
+                if (window.LYANN_FEATURES && typeof window.LYANN_FEATURES.ensure === 'function') {
+                    return window.LYANN_FEATURES.ensure('stripeCheckout');
+                }
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'lyann-stripe.js?v=20260920-card2';
+                    script.addEventListener('load', resolve, { once: true });
+                    script.addEventListener('error', () => reject(new Error('Stripe checkout unavailable')), { once: true });
+                    document.head.appendChild(script);
+                });
+            };
+            const prepareStripe = () => {
+                if (!window.LYANN_STRIPE || typeof window.LYANN_STRIPE.prepareCheckout !== 'function') return;
+                window.LYANN_STRIPE.prepareCheckout(milestoneId).then((prepared) => {
+                    if (prepared && prepared.error) notifyActionUnavailable(prepared.error);
+                }).catch((err) => {
+                    notifyActionUnavailable({ message: err && err.message ? err.message : 'Paiement indisponible.' });
+                });
+            };
+            ensureStripeCheckout().then(prepareStripe).catch((err) => {
+                notifyActionUnavailable({ message: 'Paiement indisponible : Stripe.js n’a pas pu être chargé.' });
+                console.warn(err);
+            });
         } else if (window.lyannAlert) {
             window.lyannAlert('Paiement indisponible : le portail de paiement n’est pas disponible sur cet écran.');
         }
@@ -1979,24 +2006,33 @@ document.addEventListener('touchstart', (e) => {
     if (checkoutPaymentForm) {
         checkoutPaymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const overlay = document.getElementById('chatCheckoutOverlay');
-            const milestoneId = overlay && overlay.dataset ? overlay.dataset.milestoneId : null;
-            if (!isPersistedUuid(milestoneId) || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.createMilestonePaymentIntent !== 'function') {
-                notifyActionUnavailable({ message: 'Paiement indisponible : il faut un jalon PENDING et POST /v1/payments/create-milestone-intent. Les champs carte de cet écran ne sont pas envoyés à Stripe.' });
-                return;
+            const runConfirm = async () => {
+                if (!window.LYANN_STRIPE || typeof window.LYANN_STRIPE.confirmCheckout !== 'function') {
+                    notifyActionUnavailable({ message: 'Paiement indisponible : Stripe.js n’est pas chargé. Aucun versement n’a été confirmé.' });
+                    return;
+                }
+                const confirmResult = await window.LYANN_STRIPE.confirmCheckout();
+                if (confirmResult && confirmResult.error) notifyActionUnavailable(confirmResult.error);
+            };
+            if (!window.LYANN_STRIPE || typeof window.LYANN_STRIPE.confirmCheckout !== 'function') {
+                try {
+                    if (window.LYANN_FEATURES && typeof window.LYANN_FEATURES.ensure === 'function') {
+                        await window.LYANN_FEATURES.ensure('stripeCheckout');
+                    } else {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'lyann-stripe.js?v=20260920-card2';
+                            script.addEventListener('load', resolve, { once: true });
+                            script.addEventListener('error', () => reject(new Error('Stripe checkout unavailable')), { once: true });
+                            document.head.appendChild(script);
+                        });
+                    }
+                } catch (err) {
+                    notifyActionUnavailable({ message: 'Paiement indisponible : Stripe.js n’a pas pu être chargé.' });
+                    return;
+                }
             }
-            const result = await window.LYANN_API_CLIENT.createMilestonePaymentIntent(milestoneId);
-            if (result && result.error) {
-                notifyActionUnavailable(result.error);
-                return;
-            }
-            const payload = result && result.data ? result.data : {};
-            const mockIntent = payload.mode === 'stripe_test_mock' || (typeof payload.client_secret === 'string' && payload.client_secret.includes('_secret_test'));
-            if (mockIntent || !payload.client_secret) {
-                notifyActionUnavailable({ message: 'Paiement indisponible : Stripe test n’est pas configuré sur ce serveur (STRIPE_SECRET_KEY). Aucun versement n’a été confirmé.' });
-                return;
-            }
-            notifyActionUnavailable({ message: 'Paiement indisponible : l’intent jalon a été créé, mais cet écran n’embarque pas Stripe.js pour confirmer la carte. Les champs carte locaux ne sont pas utilisés.' });
+            await runConfirm();
         });
     }
 

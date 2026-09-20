@@ -149,6 +149,17 @@ const payments = read('payment-script.js');
 if (!payments.includes("return this.financialUnavailable('Versement')")) {
   fail('payment portal must not simulate a Stripe payout');
 }
+const stripeCheckout = read('lyann-stripe.js');
+if (!stripeCheckout.includes('confirmCardPayment')) {
+  fail('checkout must confirm cards through Stripe.js confirmCardPayment');
+}
+const chatLogic = read('chat-logic.js');
+if (!chatLogic.includes('LYANN_STRIPE.confirmCheckout')) {
+  fail('chat checkout submit must go through LYANN_STRIPE.confirmCheckout');
+}
+if (chatLogic.includes('n’embarque pas Stripe.js')) {
+  fail('chat checkout must not stop at a missing-Stripe.js notice');
+}
 
 if (script.includes('Gérer mes versements Stripe')) {
   fail('account must not present payment-portal as a live Stripe wallet');

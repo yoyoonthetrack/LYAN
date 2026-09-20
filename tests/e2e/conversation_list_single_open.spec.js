@@ -130,22 +130,22 @@ test.describe('Conversation list opens a single canonical conversation', () => {
     const jsErrors = [];
     page.on('pageerror', (err) => jsErrors.push(err.message));
 
-    await page.goto('/feed.html');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/feed.html', { waitUntil: 'domcontentloaded' });
     await installMessagingHarness(page);
 
     await page.evaluate(({ requestId, contactId }) => {
-      const host = document.getElementById('flashFeedContainer') || document.body;
-      const wrap = document.createElement('div');
-      wrap.innerHTML = `<button type="button" class="btn-help-lyann"
-          data-request-id="${requestId}"
-          data-requester-id="${contactId}"
-          data-requester-name="Marie Dupont"
-          data-title="Besoin d'aide jardinage">Je peux aider</button>`;
-      host.prepend(wrap);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn-help-lyann';
+      button.setAttribute('data-request-id', requestId);
+      button.setAttribute('data-requester-id', contactId);
+      button.setAttribute('data-requester-name', 'Marie Dupont');
+      button.setAttribute('data-title', "Besoin d'aide jardinage");
+      button.textContent = 'Je peux aider';
+      document.body.appendChild(button);
     }, { requestId: REQUEST_ID, contactId: CONTACT_ID });
 
-    await page.locator('.btn-help-lyann').first().click();
+    await page.locator('body > .btn-help-lyann').click();
 
     await expectSingleCanonicalOpen(page, { forbiddenIds: [REQUEST_ID, 'Marie Dupont'] });
     expect(jsErrors).toEqual([]);

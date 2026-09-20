@@ -11,14 +11,14 @@ function qaCredentials(actor) {
 // Public real-backend journeys. No synthetic profiles, Requests, or successful API mocks.
 async function ready(page, mode = 'annonces') {
   if (mode === 'annonces') {
-    await page.goto('/index.html');
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
     const error = await page.evaluate(async ({email,password}) => {
       const result = await window.LYANN_API_CLIENT.login(email, password);
       return result.error?.message || null;
     }, qaCredentials('B'));
     expect(error, 'Real repository QA login must succeed').toBeNull();
   }
-  await page.goto(`/results.html?mode=${mode}&area=`);
+  await page.goto(`/results.html?mode=${mode}&area=`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy', 'false', { timeout: 20000 });
   await expect(page.locator('#explorerResults')).not.toHaveAttribute('data-state', 'ERROR');
 }
@@ -66,6 +66,7 @@ test('Lyanneurs queries real profiles/services and opens canonical profile', asy
 });
 
 test('Both modes use the same database taxonomy and removable category filter', async ({page}) => {
+  test.setTimeout(60000);
   await ready(page);
   const categories = await page.locator('#explorerCategory option').allTextContents();
   const category = await page.evaluate(async () => {
@@ -88,23 +89,25 @@ test('Both modes use the same database taxonomy and removable category filter', 
 
 for (const mode of ['annonces', 'lyanneurs']) {
   test(`${mode}: useful empty state, recover filters, retain URL on reload`, async ({page}) => {
+    test.setTimeout(60000);
     await ready(page, mode);
     await page.getByRole('searchbox').fill('zzzz_aucun_resultat_998877');
     await page.getByRole('button', {name:'Rechercher',exact:true}).click();
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state', 'EMPTY');
     await expect(page.locator('#explorerResults')).toContainText(mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.');
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('searchbox')).toHaveValue('zzzz_aucun_resultat_998877');
-    await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','EMPTY');
+    await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','EMPTY', { timeout: 20000 });
     await page.getByRole('button',{name:'Modifier les filtres',exact:true}).click();
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
   });
   test(`${mode}: failed backend is ERROR, retry returns real data`, async ({page}) => {
+    test.setTimeout(60000);
     const table = mode === 'annonces' ? 'requests' : 'public_profiles';
     const pattern = `**/rest/v1/${table}?*`;
     await ready(page, mode);
     await page.route(pattern, route => route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Injected transport failure'})}));
-    await page.goto(`/results.html?mode=${mode}&area=`);
+    await page.goto(`/results.html?mode=${mode}&area=`, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','ERROR',{timeout:20000});
     await expect(page.locator('#explorerResults')).not.toContainText('Aucun Lyanneur trouvé');
     await expect(page.locator('#explorerResults')).not.toContainText("Pas encore d'annonce");
@@ -118,7 +121,7 @@ test('Bokantaj displays only real community posts and no transactional Requests'
   const telemetry = observe(page);
   const requestReads = [];
   page.on('request',r => { if (r.url().includes('/rest/v1/requests?')) requestReads.push(r.url()); });
-  await page.goto('/feed.html');
+  await page.goto('/feed.html', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#flashFeedContainer .flash-card').first()).toBeVisible({timeout:15000});
   await expect(page.locator('#topTalentsSidebarContainer')).toHaveAttribute('data-state','SUCCESS');
   const feed = await page.evaluate(() => window.LYANN_BOKANTAJ_REPOSITORY.load());
@@ -231,7 +234,7 @@ test('Bokantaj Request wizard reaches real-taxonomy review without writing or of
     if (r.method() === 'POST' && /\/rest\/v1\/(requests|bokantaj_posts|rpc\/send_request_invitations)/.test(r.url())) writes.push(r.url());
   });
   await ready(page); // Publishing is an authenticated interaction; keep all wizard assertions.
-  await page.goto('/feed.html');
+  await page.goto('/feed.html', { waitUntil: 'domcontentloaded' });
   await page.locator('#btnComposerNeedShortcut').click();
   await page.locator('#wizardDescInput').fill('Une fuite sous mon évier, besoin de réparer la plomberie.');
   for (const step of [2,4,5,6]) {
@@ -260,14 +263,14 @@ test('Bokantaj Request wizard reaches real-taxonomy review without writing or of
 });
 
 test('Own persisted Requests have details and favorites but no help action', async ({page}) => {
-  await page.goto('/index.html');
+  await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
   const user = await page.evaluate(async ({email,password}) => {
     const res = await window.LYANN_API_CLIENT.login(email, password);
     return {id:res.data?.user?.id,error:res.error?.message};
   }, qaCredentials('A'));
   expect(user.error).toBeFalsy();
   expect(user.id).toBeTruthy();
-  await page.goto('/results.html?mode=annonces&area=');
+  await page.goto('/results.html?mode=annonces&area=', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
   const own = await page.evaluate(async id => (await window.LYANN_EXPLORER_REPOSITORY.loadRequests())
     .filter(r => r.requester_id === id && r.status === 'OPEN'), user.id);

@@ -16,8 +16,7 @@ test.describe('LYANN V1 — Presentation & Asset Delivery Smoke Test', () => {
       });
 
       // Navigate to the page
-      await page.goto(pagePath);
-      await page.waitForLoadState('domcontentloaded');
+      await page.goto(pagePath, { waitUntil: 'domcontentloaded' });
 
       // 2. Verify required stylesheet responses are HTTP 200 and Content-Type is CSS
       expect(stylesheetResponses.length).toBeGreaterThan(0);

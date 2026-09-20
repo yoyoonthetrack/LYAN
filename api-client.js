@@ -28,6 +28,20 @@ function isCapacitorRuntime() {
     return protocol === 'capacitor:' || protocol === 'ionic:' || protocol === 'file:';
 }
 
+function getLyannSupabaseUrl() {
+    if (typeof window !== 'undefined' && window.LYANN_SUPABASE_URL) {
+        return String(window.LYANN_SUPABASE_URL).replace(/\/$/, '');
+    }
+    return SUPABASE_URL;
+}
+
+function getLyannSupabaseAnonKey() {
+    if (typeof window !== 'undefined' && window.LYANN_SUPABASE_ANON_KEY) {
+        return String(window.LYANN_SUPABASE_ANON_KEY);
+    }
+    return SUPABASE_ANON_KEY;
+}
+
 function getLyannBackendOrigin() {
     if (typeof window !== 'undefined' && window.LYANN_BACKEND_ORIGIN) {
         return String(window.LYANN_BACKEND_ORIGIN).replace(/\/$/, '');
@@ -43,9 +57,10 @@ function lyannBackendFetch(path, options) {
 }
 
 window.getLyannBackendOrigin = getLyannBackendOrigin;
+window.getLyannSupabaseUrl = getLyannSupabaseUrl;
 window.lyannBackendFetch = lyannBackendFetch;
 if (window.supabase) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    supabaseClient = window.supabase.createClient(getLyannSupabaseUrl(), getLyannSupabaseAnonKey(), {
         auth: {
             persistSession: true,
             autoRefreshToken: true,
@@ -157,7 +172,7 @@ function normalizeAuthError(error) {
 const LYANN_API_CLIENT = {
     get supabase() {
         if (!supabaseClient && window.supabase) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            supabaseClient = window.supabase.createClient(getLyannSupabaseUrl(), getLyannSupabaseAnonKey(), {
                 auth: {
                     persistSession: true,
                     autoRefreshToken: true,

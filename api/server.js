@@ -43,6 +43,44 @@ app.use((req, res, next) => {
 // Supabase Admin Client (Service Role for Payment Core DB Operations)
 const supabaseUrl = process.env.SUPABASE_URL || 'https://gzispjfoywklpqatjyop.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'placeholder_service_key';
+const LYANN_PRODUCTION_SUPABASE_REF = 'gzispjfoywklpqatjyop';
+const PAYMENT_WRITE_PATHS = [
+    '/v1/payments/create-milestone-intent',
+    '/v1/milestones/start-work',
+    '/v1/milestones/submit-completion',
+    '/v1/milestones/release-payment',
+    '/v1/milestones/claim-transfer',
+    '/v1/milestones/raise-dispute',
+    '/v1/payments/webhook',
+    '/v1/webhooks/stripe',
+    '/payments/webhook',
+    '/webhooks/stripe'
+];
+
+function isHostedProductionRuntime() {
+    return process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+}
+
+function isProductionSupabaseTarget() {
+    try {
+        return new URL(supabaseUrl).hostname === `${LYANN_PRODUCTION_SUPABASE_REF}.supabase.co`;
+    } catch (e) {
+        return false;
+    }
+}
+
+function rejectPaymentWritesOnProductionFromDev(req, res) {
+    if (isHostedProductionRuntime() || !isProductionSupabaseTarget()) return false;
+    const path = String(req.path || req.url || '').split('?')[0];
+    if (!PAYMENT_WRITE_PATHS.some((candidate) => path === candidate || path.startsWith(candidate + '/'))) {
+        return false;
+    }
+    res.status(403).json({
+        error: 'Écriture de paiement bloquée : ce serveur local pointe vers le Supabase de production. Utilisez un projet QA isolé.',
+        code: 'PAYMENT_WRITES_BLOCKED_ON_PRODUCTION'
+    });
+    return true;
+}
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
 });
@@ -132,6 +170,20 @@ app.use((req, res, next) => {
     const clientType = req.headers['x-platform-client'] || 'Web-Client';
     console.log(`[API v1] ${new Date().toISOString()} | ${req.method} ${req.url} | Client: ${clientType}`);
     next();
+});
+
+app.use((req, res, next) => {
+    if (req.method !== 'POST') return next();
+    if (rejectPaymentWritesOnProductionFromDev(req, res)) return;
+    next();
+});
+
+app.get('/v1/payments/config', (req, res) => {
+    const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || '';
+    res.json({
+        publishableKey,
+        stripeReady: Boolean(process.env.STRIPE_SECRET_KEY && publishableKey.startsWith('pk_'))
+    });
 });
 
 // Root & API Version Health Check Endpoint

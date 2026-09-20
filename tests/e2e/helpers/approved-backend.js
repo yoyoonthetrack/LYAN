@@ -9,7 +9,13 @@ async function requireWriteBackend(page) {
   expect(ref, 'Production must remain untouched').not.toBe('gzispjfoywklpqatjyop');
   await page.goto('/index.html');
   const actual = await page.evaluate(() => window.LYANN_API_CLIENT.supabase.supabaseUrl);
-  expect(new URL(actual).hostname).toBe(`${ref}.supabase.co`);
+  const host = new URL(actual).hostname;
+  const localHosts = new Set(['127.0.0.1', 'localhost']);
+  if (localHosts.has(host)) {
+    expect(ref, 'Local isolated QA must use write ref "local"').toBe('local');
+    return;
+  }
+  expect(host).toBe(`${ref}.supabase.co`);
 }
 async function login(page, actor) {
   const email = process.env[`LYANN_E2E_${actor}_EMAIL`];
