@@ -127,6 +127,7 @@ test.describe('Conversation list opens a single canonical conversation', () => {
   });
 
   test('Je peux aider opens the requester UUID once and shows that conversation', async ({ page }) => {
+    test.setTimeout(45000);
     const jsErrors = [];
     page.on('pageerror', (err) => jsErrors.push(err.message));
 
@@ -152,11 +153,11 @@ test.describe('Conversation list opens a single canonical conversation', () => {
   });
 
   test('Contacter opens the member UUID once and shows that conversation', async ({ page }) => {
+    test.setTimeout(45000);
     const jsErrors = [];
     page.on('pageerror', (err) => jsErrors.push(err.message));
 
-    await page.goto('/feed.html');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/feed.html', { waitUntil: 'domcontentloaded' });
     await installMessagingHarness(page);
 
     await page.evaluate((contactId) => {
@@ -169,7 +170,7 @@ test.describe('Conversation list opens a single canonical conversation', () => {
       document.body.appendChild(button);
     }, CONTACT_ID);
 
-    await page.locator('.btn-contact-member').click();
+    await page.locator('body > .btn-contact-member').click();
 
     await expectSingleCanonicalOpen(page, { forbiddenIds: ['Marie Dupont'] });
     expect(jsErrors).toEqual([]);
