@@ -60,11 +60,6 @@ function maisonEmail(profile) {
   return `maison.${slugify(profile.first_name)}.${slugify(profile.last_name)}@lyann.app`;
 }
 
-function skillSlug(title) {
-  return title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'service';
-}
-
 async function findUserByEmail(email) {
   let page = 1;
   while (true) {
@@ -104,11 +99,9 @@ async function syncServices(userId, skills) {
     .map((title) => ({
       owner_id: userId,
       title,
-      slug: skillSlug(title),
+      category: title,
       description: title,
-      territory: 'guadeloupe',
-      intervention_radius_km: 25,
-      active: true
+      is_active: true
     }));
   if (rows.length) {
     const { error } = await supabase.from('services').insert(rows);
