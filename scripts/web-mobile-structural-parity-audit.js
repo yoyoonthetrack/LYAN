@@ -10,7 +10,9 @@ const pages = [
   'pricing.html',
   'payment-portal.html',
   'how-it-works.html',
-  'about.html'
+  'about.html',
+  'legal.html',
+  'confidentialite.html'
 ].filter((file) => fs.existsSync(path.join(root, file)));
 
 function read(file) {

@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 const productPages = [
-  'index.html', 'feed.html', 'results.html', 'pricing.html', 'payment-portal.html', 'how-it-works.html', 'about.html'
+  'index.html', 'feed.html', 'results.html', 'pricing.html', 'payment-portal.html', 'how-it-works.html', 'about.html', 'legal.html', 'confidentialite.html'
 ].filter(fs.existsSync);
 
 for (const file of productPages) {

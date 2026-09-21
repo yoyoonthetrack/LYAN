@@ -74,6 +74,48 @@ function isNativePlatform() {
 }
 window.isNativePlatform = isNativePlatform;
 
+function bindHeroStoryMedia() {
+    const video = document.querySelector('.hero-story-video');
+    if (!video) return;
+    const figure = video.closest('.hero-story');
+    const still = figure && figure.querySelector('.hero-story-still');
+    const native = isNativePlatform();
+    const src = native
+        ? (video.getAttribute('data-src-native') || 'lyann-home-story-square.mp4')
+        : (video.getAttribute('data-src-web') || 'lyann-home-story.mp4');
+    const poster = native
+        ? (video.getAttribute('data-poster-native') || 'lyann-home-story-square.jpg')
+        : (video.getAttribute('data-poster-web') || 'lyann-home-story.jpg');
+    if (figure) figure.classList.toggle('hero-story--square', native);
+    if (poster && video.getAttribute('poster') !== poster) video.setAttribute('poster', poster);
+    if (still) {
+        const stillSrc = native
+            ? (still.getAttribute('data-src-native') || poster)
+            : (still.getAttribute('data-src-web') || poster);
+        if (still.getAttribute('src') !== stillSrc) still.setAttribute('src', stillSrc);
+        if (native) {
+            still.width = 720;
+            still.height = 720;
+        }
+    }
+    let source = video.querySelector('source');
+    const current = source && source.getAttribute('src');
+    if (current === src) return;
+    if (!source) {
+        source = document.createElement('source');
+        source.type = 'video/mp4';
+        video.appendChild(source);
+    }
+    source.setAttribute('src', src);
+    video.load();
+}
+window.bindHeroStoryMedia = bindHeroStoryMedia;
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindHeroStoryMedia);
+} else {
+    bindHeroStoryMedia();
+}
+
     window.isExplicitDemoMode = function() {
         if (typeof window === 'undefined' || !window.location) return false;
         const host = window.location.hostname;
@@ -197,6 +239,7 @@ function ensureMobileHamburgerDrawer() {
                             <a href="#" class="drawer-sub-link" data-lyann-route="help"><i class="ph ph-book-open"></i> Comment ça marche</a>
                             <a href="pricing.html" class="drawer-sub-link"><i class="ph ph-tag"></i> Tarifs</a>
                             <a href="about.html#support" class="drawer-sub-link"><i class="ph ph-headset"></i> Aide & support</a>
+                            <a href="legal.html" class="drawer-sub-link"><i class="ph ph-scales"></i> Conditions & informations légales</a>
                             <a href="#" class="drawer-sub-link logged-in-only"><i class="ph ph-user-plus"></i> Inviter quelqu'un</a>
                             <a href="#" class="drawer-sub-link" data-lyann-route="about"><i class="ph ph-info"></i> À propos de LYANN</a>
                         </div>
@@ -1699,6 +1742,66 @@ safeDomReady(() => {
         if (contactModal) contactModal.classList.remove('active');
     });
 
+    function ensureCookiePrefsModal() {
+        if (document.getElementById('cookiePrefsModal')) return document.getElementById('cookiePrefsModal');
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay cookie-prefs-modal';
+        overlay.id = 'cookiePrefsModal';
+        overlay.innerHTML = `
+            <div class="modal-card" style="max-width: 480px;">
+                <button class="modal-close-btn" type="button" id="closeCookiePrefsBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+                <div class="modal-header">
+                    <span style="font-weight:800;color:#4A7C59;"><i class="ph ph-cookie"></i> Cookies & traceurs</span>
+                    <h3 class="step-title" style="font-size:1.3rem;margin-top:6px;">Gérer mes cookies</h3>
+                </div>
+                <div class="modal-body">
+                    <div class="cookie-pref-row">
+                        <div><strong>Nécessaires</strong><p style="margin:4px 0 0;color:var(--text-muted);font-size:0.85rem;">Authentification, sécurité et fonctionnement de LYANN.</p></div>
+                        <span style="font-weight:800;color:var(--primary-dark);">Toujours actifs</span>
+                    </div>
+                    <div class="cookie-pref-row">
+                        <div><strong>Mesure d’audience</strong><p style="margin:4px 0 0;color:var(--text-muted);font-size:0.85rem;">Statistiques anonymisées, uniquement avec votre accord.</p></div>
+                        <input type="checkbox" id="cookiePrefAudience" style="accent-color: var(--primary); width:18px;height:18px;">
+                    </div>
+                    <p style="margin-top:12px;font-size:0.85rem;"><a href="legal.html#cookies">Consulter la politique relative aux cookies</a></p>
+                    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-outline" id="cookiePrefRefuse">Tout refuser</button>
+                        <button type="button" class="btn btn-outline" id="cookiePrefAccept">Tout accepter</button>
+                        <button type="button" class="btn btn-primary" id="cookiePrefSave">Enregistrer</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        const load = () => {
+            try {
+                const saved = JSON.parse(localStorage.getItem('lyann_cookie_prefs') || '{}');
+                overlay.querySelector('#cookiePrefAudience').checked = saved.audience === true;
+            } catch (err) {}
+        };
+        const persist = (audience) => {
+            localStorage.setItem('lyann_cookie_prefs', JSON.stringify({ necessary: true, audience: !!audience, updatedAt: new Date().toISOString() }));
+            overlay.classList.remove('active');
+        };
+        overlay.querySelector('#closeCookiePrefsBtn').addEventListener('click', () => overlay.classList.remove('active'));
+        overlay.querySelector('#cookiePrefRefuse').addEventListener('click', () => persist(false));
+        overlay.querySelector('#cookiePrefAccept').addEventListener('click', () => persist(true));
+        overlay.querySelector('#cookiePrefSave').addEventListener('click', () => persist(overlay.querySelector('#cookiePrefAudience').checked));
+        overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.classList.remove('active'); });
+        load();
+        return overlay;
+    }
+    window.openLyannCookiePrefs = function () {
+        const modal = ensureCookiePrefsModal();
+        modal.classList.add('active');
+    };
+    document.addEventListener('click', (ev) => {
+        if (ev.target.closest('.open-cookie-prefs-trigger')) {
+            ev.preventDefault();
+            window.openLyannCookiePrefs();
+        }
+    });
+
     // Formulaire de contact
     document.getElementById('contactForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -1808,8 +1911,8 @@ safeDomReady(() => {
                 `;
                 document.body.appendChild(modal);
 
-                modal.querySelector('#closeSubDetailBtn')?.addEventListener('click', window.closeSubscriptionDetailModal);
-                modal.querySelector('#btnSubDetailClose')?.addEventListener('click', window.closeSubscriptionDetailModal);
+                modal.querySelector('#closeSubDetailBtn')?.addEventListener('click', () => window.closeSubscriptionDetailModal());
+                modal.querySelector('#btnSubDetailClose')?.addEventListener('click', () => window.closeSubscriptionDetailModal({ requireCgv: true }));
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) window.closeSubscriptionDetailModal();
                 });
@@ -1913,6 +2016,31 @@ safeDomReady(() => {
                 }
             }
 
+            let legalBox = modal.querySelector('#subDetailLegal');
+            if (!legalBox) {
+                legalBox = document.createElement('div');
+                legalBox.id = 'subDetailLegal';
+                const closeBtn = modal.querySelector('#btnSubDetailClose');
+                if (closeBtn && closeBtn.parentNode) closeBtn.parentNode.insertBefore(legalBox, closeBtn);
+                else modal.querySelector('.modal-card')?.appendChild(legalBox);
+            }
+            if (normalizedPlan === 'FREE' || normalizedPlan === 'LYANNEUR') {
+                legalBox.innerHTML = '';
+                legalBox.style.display = 'none';
+            } else {
+                legalBox.style.display = 'block';
+                legalBox.innerHTML = `
+                    <div style="text-align:left;margin-bottom:18px;padding:14px;border:1px solid var(--border);border-radius:14px;background:#F8FAF8;">
+                        <p style="font-size:0.84rem;line-height:1.5;margin:0 0 10px;color:#1E293B;"><strong>Informations précontractuelles.</strong> Prix et périodicité ci-dessus. Abonnement renouvelé automatiquement jusqu’à résiliation. La résiliation empêche le renouvellement futur. Le droit de rétractation s’applique lorsqu’il est légalement ouvert au consommateur.</p>
+                        <p style="font-size:0.84rem;line-height:1.5;margin:0 0 12px;color:#1E293B;">Les fonctionnalités et tarifs applicables sont ceux présentés avant la validation de la commande. Un abonnement payant ne garantit pas l’obtention d’une mission.</p>
+                        <label class="lyann-cgu-accept" for="subAcceptCgv" style="margin-top:0;">
+                            <input type="checkbox" id="subAcceptCgv">
+                            <span>J'accepte les <a href="legal.html#cgv-abonnements" target="_blank" rel="noopener">Conditions générales de vente</a> et j'ai pris connaissance des informations précontractuelles.</span>
+                        </label>
+                    </div>
+                `;
+            }
+
             modal.style.display = 'flex';
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -1925,8 +2053,15 @@ safeDomReady(() => {
         }
     };
 
-    window.closeSubscriptionDetailModal = function() {
+    window.closeSubscriptionDetailModal = function(options) {
         const modal = document.getElementById('modalSubscriptionDetail');
+        const requireCgv = options && options.requireCgv;
+        const cgv = modal && modal.querySelector('#subAcceptCgv');
+        if (requireCgv && cgv && !cgv.checked) {
+            if (window.lyannAlert) window.lyannAlert('Pour continuer, acceptez les Conditions générales de vente et les informations précontractuelles.');
+            else alert('Pour continuer, acceptez les Conditions générales de vente et les informations précontractuelles.');
+            return;
+        }
         if (modal) {
             modal.style.display = 'none';
             modal.classList.remove('active');
@@ -2008,8 +2143,8 @@ safeDomReady(() => {
         const closeBtnBottom = document.getElementById('btnSubDetailClose');
         const modal = document.getElementById('modalSubscriptionDetail');
 
-        if (closeBtn) closeBtn.addEventListener('click', window.closeSubscriptionDetailModal);
-        if (closeBtnBottom) closeBtnBottom.addEventListener('click', window.closeSubscriptionDetailModal);
+        if (closeBtn) closeBtn.addEventListener('click', () => window.closeSubscriptionDetailModal());
+        if (closeBtnBottom) closeBtnBottom.addEventListener('click', () => window.closeSubscriptionDetailModal({ requireCgv: true }));
         if (modal) {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) window.closeSubscriptionDetailModal();
@@ -3994,6 +4129,53 @@ safeDomReady(() => {
                     </section>
                 </div>
             `;
+        } else if (subViewName === 'aboutLyann') {
+            titleText = 'À propos de LYANN';
+            subtitleText = 'Conditions, données personnelles et mentions légales.';
+            subViewContent = `
+                <div class="account-desktop-sections">
+                    <section class="account-desktop-section">
+                        <h4 class="account-section-heading">CONDITIONS & INFORMATIONS LÉGALES</h4>
+                        <div class="account-group-box">
+                            <div class="account-touch-row" onclick="window.location.href='legal.html'">
+                                <div class="row-icon"><i class="ph ph-scales"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Conditions & informations légales</strong>
+                                    <span class="row-subtitle">CGU, CGV, paiements, charte et mentions</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.location.href='confidentialite.html'">
+                                <div class="row-icon"><i class="ph ph-shield-check"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Confidentialité</strong>
+                                    <span class="row-subtitle">Données personnelles et droits RGPD</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.location.href='legal.html#cookies'">
+                                <div class="row-icon"><i class="ph ph-cookie"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Cookies</strong>
+                                    <span class="row-subtitle">Traceurs et préférences</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.location.href='legal.html#mentions-legales'">
+                                <div class="row-icon"><i class="ph ph-buildings"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Mentions légales</strong>
+                                    <span class="row-subtitle">YOYOOTT — éditeur de LYANN</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            `;
         } else if (subViewName === 'settings') {
             titleText = 'Réglages';
             subtitleText = 'Notifications, sécurité et confidentialité.';
@@ -4011,7 +4193,7 @@ safeDomReady(() => {
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>
                             <div class="account-divider"></div>
-                            <div class="account-touch-row" onclick="window.location.href='about.html#privacy'">
+                            <div class="account-touch-row" onclick="window.location.href='confidentialite.html'">
                                 <div class="row-icon"><i class="ph ph-eye-slash"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">Confidentialité</strong>
@@ -4029,11 +4211,11 @@ safeDomReady(() => {
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>
                             <div class="account-divider"></div>
-                            <div class="account-touch-row" onclick="window.location.href='about.html#legal'">
-                                <div class="row-icon"><i class="ph ph-file-text"></i></div>
+                            <div class="account-touch-row" onclick="window.openAccountModalSubView('aboutLyann')">
+                                <div class="row-icon"><i class="ph ph-info"></i></div>
                                 <div class="row-content">
-                                    <strong class="row-title">Conditions & confidentialité</strong>
-                                    <span class="row-subtitle">CGU et mentions légales</span>
+                                    <strong class="row-title">À propos de LYANN</strong>
+                                    <span class="row-subtitle">Conditions, confidentialité et mentions légales</span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>
@@ -4175,7 +4357,7 @@ safeDomReady(() => {
                         <button type="button" class="sidebar-nav-btn ${subViewName === 'help' ? 'active' : ''}" onclick="window.openAccountModalSubView('help')">
                             <i class="ph ph-question"></i> Aide & LYANN
                         </button>
-                        <button type="button" class="sidebar-nav-btn ${subViewName === 'settings' ? 'active' : ''}" onclick="window.openAccountModalSubView('settings')">
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'settings' || subViewName === 'aboutLyann' ? 'active' : ''}" onclick="window.openAccountModalSubView('settings')">
                             <i class="ph ph-gear"></i> Réglages
                         </button>
                     </nav>
@@ -4190,7 +4372,7 @@ safeDomReady(() => {
                 <!-- MAIN CONTENT PANE (Right Pane) -->
                 <main class="account-desktop-main">
                     <header class="account-main-header">
-                        <button type="button" class="account-v3-back-btn mobile-only-btn" onclick="window.closeUserAccountModal()" aria-label="Retour"><i class="ph ph-arrow-left"></i></button>
+                        <button type="button" class="account-v3-back-btn mobile-only-btn" onclick="${subViewName === 'aboutLyann' ? "window.openAccountModalSubView('settings')" : 'window.closeUserAccountModal()'}" aria-label="Retour"><i class="ph ph-arrow-left"></i></button>
                         <div class="account-header-titles">
                             <h3 class="account-main-title">${titleText}</h3>
                             <span class="account-main-subtitle">${subtitleText}</span>

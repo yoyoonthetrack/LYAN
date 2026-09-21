@@ -36,7 +36,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20260921d">
+    <link rel="stylesheet" href="style.css?v=20260921h">
     <style>html.lyann-boot-splash-skip .lyann-boot-splash{display:none!important}</style>
     <script>(function(){try{var skip=sessionStorage.getItem('lyann_boot_splash_seen')==='1'||/Playwright|HeadlessChrome/i.test(navigator.userAgent);if(skip)document.documentElement.classList.add('lyann-boot-splash-skip');}catch(e){}})();</script>
 </head>
@@ -183,10 +183,31 @@
                 <h1>Qui peut vous aider <br class="desktop-only-br"><span class="text-gradient">aujourd'hui ?</span></h1>
                 <p class="hero-subtitle">Le réseau de confiance qui relie les habitants aux talents de leur quartier dans les DOM.</p>
                 <figure class="hero-story">
-                    <video class="hero-story-video" autoplay muted loop playsinline poster="lyann-home-story.jpg" aria-label="Une habitante découvre une fuite sous son évier, dans sa cuisine." onerror="this.style.display='none';var still=this.nextElementSibling;if(still)still.style.display='block';">
-                        <source src="lyann-home-story.mp4?v=16x9" type="video/mp4">
-                    </video>
-                    <img class="hero-story-still" src="lyann-home-story.jpg" alt="Une habitante découvre une fuite sous son évier, dans sa cuisine." width="1280" height="720">
+                    <video class="hero-story-video" autoplay muted loop playsinline poster="lyann-home-story.jpg" data-src-web="lyann-home-story.mp4?v=16x9" data-src-native="lyann-home-story-square.mp4?v=square" data-poster-web="lyann-home-story.jpg" data-poster-native="lyann-home-story-square.jpg" aria-label="Une habitante découvre une fuite sous son évier, dans sa cuisine." onerror="this.style.display='none';var still=this.nextElementSibling;if(still)still.style.display='block';"></video>
+                    <img class="hero-story-still" src="lyann-home-story.jpg" data-src-web="lyann-home-story.jpg" data-src-native="lyann-home-story-square.jpg" alt="Une habitante découvre une fuite sous son évier, dans sa cuisine." width="1280" height="720">
+                    <script>
+                    (function(){
+                      var video=document.querySelector('.hero-story-video');
+                      if(!video) return;
+                      var native=!!(window.Capacitor && ((typeof window.Capacitor.isNativePlatform==='function' && window.Capacitor.isNativePlatform()) || (typeof window.Capacitor.getPlatform==='function' && (window.Capacitor.getPlatform()==='ios' || window.Capacitor.getPlatform()==='android'))));
+                      var src=native ? video.getAttribute('data-src-native') : video.getAttribute('data-src-web');
+                      var poster=native ? video.getAttribute('data-poster-native') : video.getAttribute('data-poster-web');
+                      var figure=video.closest('.hero-story');
+                      if(figure) figure.classList.toggle('hero-story--square', native);
+                      if(poster) video.setAttribute('poster', poster);
+                      var still=figure && figure.querySelector('.hero-story-still');
+                      if(still){
+                        still.src=native ? (still.getAttribute('data-src-native')||poster) : (still.getAttribute('data-src-web')||poster);
+                        if(native){ still.width=720; still.height=720; }
+                      }
+                      if(!src || video.querySelector('source')) return;
+                      var source=document.createElement('source');
+                      source.type='video/mp4';
+                      source.src=src;
+                      video.appendChild(source);
+                      video.load();
+                    })();
+                    </script>
                 </figure>
             </div>
         </div>
@@ -548,15 +569,19 @@
                     <div class="footer-links-group">
                         <a href="#" class="open-signup-trigger">Inscrire mon activité</a>
                         <a href="#" class="open-login-trigger">Espace Membre</a>
-                        <a href="#privacy" class="open-privacy-trigger">Confidentialité</a>
-                        <a href="#terms" class="open-terms-trigger">Conditions</a>
-                        <a href="#contact" class="open-contact-trigger">Contact</a>
                     </div>
                 </div>
             </div>
 
             <div class="footer-bottom">
-                <p>&copy; 2026 LYANN DOM. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
+                <nav class="footer-legal-strip" aria-label="Conditions et informations légales">
+                    <a href="legal.html">Conditions</a>
+                    <a href="confidentialite.html">Confidentialité</a>
+                    <a href="legal.html#cookies">Cookies</a>
+                    <a href="legal.html#mentions-legales">Mentions légales</a>
+                    <a href="#contact" class="open-contact-trigger">Contact</a>
+                </nav>
+                <p>&copy; 2026 YOYOOTT — Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
             </div>
         </div>
     </footer>

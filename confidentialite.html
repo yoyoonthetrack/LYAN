@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Comment fonctionne LYANN ? - Plateforme d'Entraide Locale & Services DOM</title>
-    <meta name="description" content="Découvrez comment fonctionne LYANN dans les DOM (Guadeloupe, Martinique, Guyane, La Réunion, St-Martin). Un compte unique pour proposer vos services et trouver de l'aide près de chez vous en toute sécurité.">
+    <title>Politique de confidentialité — LYANN</title>
+    <meta name="description" content="Politique de confidentialité LYANN : données collectées, finalités, durées de conservation, destinataires et droits RGPD.">
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M12 42 L50 14 L88 42' stroke='%234A7C59' stroke-width='8' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='34' cy='46' r='7' fill='%234A7C59'/%3E%3Ccircle cx='50' cy='42' r='7' fill='%23709C7D'/%3E%3Ccircle cx='66' cy='46' r='7' fill='%23E5B345'/%3E%3Cpath d='M 23 72 C 23 60 31 56 38 56 C 45 56 47 62 50 62 C 53 62 55 56 62 56 C 69 56 77 60 77 72' stroke='%234A7C59' stroke-width='7.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
-    <meta property="og:title" content="Comment fonctionne LYANN ? - Plateforme d'Entraide Locale">
-    <meta property="og:description" content="Un compte unique pour proposer vos services et trouver de l'aide près de chez vous en toute sécurité.">
+    <meta property="og:title" content="Politique de confidentialité — LYANN">
+    <meta property="og:description" content="Comment LYANN protège vos données personnelles.">
     <meta name="theme-color" content="#4A7C59">
     
     <!-- Google Fonts -->
@@ -21,9 +21,9 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20260916">
+    <link rel="stylesheet" href="style.css?v=20260921k">
 </head>
-<body>
+<body class="legal-page legal-policy-page">
 
     <!-- ========== NAVIGATION ========== -->
     <nav class="navbar">
@@ -59,7 +59,7 @@
                 <a href="index.html" class="desktop-nav-link"><i class="ph ph-house"></i> Accueil</a>
                 <a href="results.html" class="desktop-nav-link"><i class="ph ph-magnifying-glass"></i> Explorer</a>
                 <a href="feed.html" class="desktop-nav-link nav-link-bokantaj"><i class="ph ph-broadcast" style="color: #E76F51;"></i> Bokantaj</a>
-                <a href="how-it-works.html" class="desktop-nav-link active"><i class="ph ph-info"></i> Comment ça marche</a>
+                <a href="how-it-works.html" class="desktop-nav-link"><i class="ph ph-info"></i> Comment ça marche</a>
             </div>
 
             <div class="mobile-header-actions" style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
@@ -100,7 +100,7 @@
                     <a href="feed.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <span class="nav-live-dot"></span> <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="#" class="open-chat-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGERIE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
-                    <a href="how-it-works.html" class="active" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="about.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                 </nav>
             </div>
@@ -116,292 +116,500 @@
         </div>
     </div>
 
-    <!-- ========== HERO PAGE COMMENT ÇA MARCHE ========== -->
-    <header class="hero how-hero">
-        <div class="container text-center">
-            <span class="pill-badge pill-green" style="margin-bottom: 16px; display: inline-flex;"><i class="ph ph-sparkle"></i> COMMENT ÇA MARCHE</span>
-            <h1 class="how-hero-title">Un besoin, une compétence, <br class="desktop-only-br"><span class="text-gradient">et le bon Lyanneur à proximité.</span></h1>
-            <p class="hero-subtitle" style="margin: 0 auto 32px; max-width: 680px;">
-                LYANN facilite les échanges entre personnes d'un même territoire. Publiez ce dont vous avez besoin ou trouvez directement quelqu'un qui peut vous aider. LYANN vous accompagne ensuite de la mise en relation jusqu'à la réalisation.
-            </p>
 
-            <!-- Boutons d'action universels -->
-            <div class="hero-cta-group" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-                <a href="#" class="btn btn-primary btn-lg open-signup-trigger">
-                    <i class="ph ph-hand-heart"></i> J'ai un besoin
-                </a>
-                <a href="results.html" class="btn btn-outline btn-lg">
-                    <i class="ph ph-magnifying-glass"></i> Explorer les Lyanneurs
-                </a>
-            </div>
+<header class="legal-hero">
+  <div class="container">
+    <a class="legal-back" href="legal.html"><i class="ph ph-arrow-left"></i> Retour aux conditions</a>
+    <span class="pill-badge pill-green"><i class="ph ph-shield-check"></i> Données personnelles</span>
+    <h1>Politique de confidentialité</h1>
+    <p class="legal-updated">Dernière mise à jour : 21 septembre 2026</p>
+    <p class="hero-subtitle legal-hero-intro">Chez <strong>LYANN</strong>, la confiance passe aussi par la protection de vos données personnelles.</p>
+    <p class="hero-subtitle legal-hero-intro">La présente Politique de confidentialité explique quelles données peuvent être collectées lorsque vous utilisez LYANN, pourquoi elles sont utilisées, avec qui elles peuvent être partagées, combien de temps elles peuvent être conservées et quels sont vos droits.</p>
+  </div>
+</header>
 
-            <!-- Illustration Officielle LYANN -->
-            <div class="how-illustration-container fade-in-up" style="margin-top: 36px;">
-                <img src="how-it-works-illustration.png" alt="Comment fonctionne LYANN - Les étapes d'un Lyann réussi" class="how-illustration-img">
-            </div>
+<section class="legal-section">
+  <div class="container">
+    <article class="legal-policy" id="politique-confidentialite">
+      <nav class="legal-policy-toc" aria-label="Sommaire">
+        <strong>Sommaire</strong>
+        <ol>
+          <li><a href="#pc-1">Responsable du traitement</a></li>
+          <li><a href="#pc-2">À qui s’applique cette politique&nbsp;?</a></li>
+          <li><a href="#pc-3">Données que nous pouvons collecter</a></li>
+          <li><a href="#pc-4">Profil Lyanneur</a></li>
+          <li><a href="#pc-5">Données professionnelles</a></li>
+          <li><a href="#pc-6">Vérification d’identité</a></li>
+          <li><a href="#pc-7">Demandes publiées sur LYANN</a></li>
+          <li><a href="#pc-8">Localisation</a></li>
+          <li><a href="#pc-9">Messagerie</a></li>
+          <li><a href="#pc-10">Propositions, devis et prestations</a></li>
+          <li><a href="#pc-11">Paiements</a></li>
+          <li><a href="#pc-12">Abonnements</a></li>
+          <li><a href="#pc-13">Avis et réputation</a></li>
+          <li><a href="#pc-14">Données techniques et de sécurité</a></li>
+          <li><a href="#pc-15">Pourquoi utilisons-nous vos données&nbsp;?</a></li>
+          <li><a href="#pc-16">Bases légales</a></li>
+          <li><a href="#pc-17">Avec qui partageons-nous les données&nbsp;?</a></li>
+          <li><a href="#pc-18">Hébergement et infrastructure</a></li>
+          <li><a href="#pc-19">Transferts hors de l’EEE</a></li>
+          <li><a href="#pc-20">Durées de conservation</a></li>
+          <li><a href="#pc-21">Vos droits</a></li>
+          <li><a href="#pc-22">Réclamation auprès de la CNIL</a></li>
+          <li><a href="#pc-23">Suppression du compte</a></li>
+          <li><a href="#pc-24">Sécurité</a></li>
+          <li><a href="#pc-25">Cookies et technologies similaires</a></li>
+          <li><a href="#pc-26">Communications commerciales</a></li>
+          <li><a href="#pc-27">Mineurs</a></li>
+          <li><a href="#pc-28">Évolution de cette politique</a></li>
+          <li><a href="#pc-29">Nous contacter</a></li>
+        </ol>
+      </nav>
+
+      <section id="pc-1">
+        <h2>1. Responsable du traitement</h2>
+        <p>LYANN est édité et exploité par&nbsp;:</p>
+        <div class="legal-address">
+          <p><strong>YOYOOTT</strong><br>Société par actions simplifiée unipersonnelle (SASU)<br>Capital social&nbsp;: <strong>1&nbsp;000&nbsp;€</strong></p>
+          <p>34 avenue des Champs-Élysées<br>75008 Paris<br>France</p>
+          <p>SIREN&nbsp;: <strong>914 471 040</strong><br>SIRET&nbsp;: <strong>914 471 040 00016</strong></p>
         </div>
-    </header>
+        <p>Contact concernant la protection des données&nbsp;: <a href="mailto:contact@lyann.app"><strong>contact@lyann.app</strong></a></p>
+        <p>YOYOOTT est responsable des traitements de données personnelles réalisés dans le cadre de l’exploitation de LYANN, sauf lorsqu’un prestataire agit en qualité de responsable de traitement indépendant pour certaines opérations.</p>
+      </section>
 
-    <!-- ========== INTRO / PHILOSOPHIE PRODUCT ========== -->
-    <section class="section philosophy-section" style="padding: 48px 0; background: #FFFFFF;">
-        <div class="container text-center" style="max-width: 760px; margin: 0 auto;">
-            <span class="pill-badge pill-green" style="margin-bottom: 14px; display: inline-flex;"><i class="ph ph-heart"></i> Notre Philosophie</span>
-            <h2 style="font-size: 1.85rem; font-weight: 800; color: #173F36; margin-bottom: 12px;">Ici, chacun peut avoir besoin des autres.</h2>
-            <p style="font-size: 1.02rem; color: #334155; line-height: 1.65; margin-bottom: 12px;">
-                Sur LYANN, il n'y a pas d'un côté les clients et de l'autre les prestataires. Un même Lyanneur peut chercher quelqu'un aujourd'hui et proposer ses compétences demain.
-            </p>
-            <p style="font-size: 1.02rem; font-weight: 700; color: #4A7C59; line-height: 1.65; margin: 0;">
-                C'est ce qui fait de LYANN un réseau local vivant, basé sur la proximité, les compétences et la confiance.
-            </p>
+      <section id="pc-2">
+        <h2>2. À qui s’applique cette politique&nbsp;?</h2>
+        <p>Cette politique concerne notamment&nbsp;:</p>
+        <ul>
+          <li>les visiteurs du site LYANN&nbsp;;</li>
+          <li>les personnes créant un compte&nbsp;;</li>
+          <li>les Demandeurs publiant un besoin&nbsp;;</li>
+          <li>les Lyanneurs proposant leurs services&nbsp;;</li>
+          <li>les professionnels utilisant LYANN&nbsp;;</li>
+          <li>les personnes communiquant avec le support&nbsp;;</li>
+          <li>les utilisateurs des applications mobiles LYANN.</li>
+        </ul>
+      </section>
+
+      <section id="pc-3">
+        <h2>3. Données que nous pouvons collecter</h2>
+        <p>Les données effectivement collectées dépendent de la manière dont vous utilisez LYANN et des fonctionnalités que vous activez.</p>
+        <h3>Données de compte</h3>
+        <p>Lors de la création et de l’utilisation d’un compte, nous pouvons notamment traiter&nbsp;:</p>
+        <ul>
+          <li>nom&nbsp;;</li>
+          <li>prénom&nbsp;;</li>
+          <li>pseudonyme ou nom affiché&nbsp;;</li>
+          <li>adresse électronique&nbsp;;</li>
+          <li>numéro de téléphone&nbsp;;</li>
+          <li>photo de profil&nbsp;;</li>
+          <li>identifiants internes du compte&nbsp;;</li>
+          <li>date de création du compte&nbsp;;</li>
+          <li>préférences du compte.</li>
+        </ul>
+        <p>Certaines informations sont indispensables pour fournir le service. D’autres sont facultatives.</p>
+      </section>
+
+      <section id="pc-4">
+        <h2>4. Profil Lyanneur</h2>
+        <p>Lorsque vous utilisez LYANN comme Lyanneur, nous pouvons notamment traiter&nbsp;:</p>
+        <ul>
+          <li>présentation&nbsp;;</li>
+          <li>compétences&nbsp;;</li>
+          <li>catégories d’activité&nbsp;;</li>
+          <li>expérience&nbsp;;</li>
+          <li>photographies et réalisations du portfolio&nbsp;;</li>
+          <li>zones d’intervention&nbsp;;</li>
+          <li>disponibilités&nbsp;;</li>
+          <li>évaluations et avis&nbsp;;</li>
+          <li>statistiques liées à votre activité sur LYANN&nbsp;;</li>
+          <li>historique des prestations et propositions réalisées sur la plateforme.</li>
+        </ul>
+        <p>Certaines de ces informations peuvent être rendues visibles aux autres utilisateurs afin de permettre la mise en relation.</p>
+      </section>
+
+      <section id="pc-5">
+        <h2>5. Données professionnelles</h2>
+        <p>Lorsqu’un utilisateur déclare exercer en qualité de professionnel, LYANN peut traiter certaines informations telles que&nbsp;:</p>
+        <ul>
+          <li>dénomination ou nom commercial&nbsp;;</li>
+          <li>SIREN&nbsp;;</li>
+          <li>SIRET&nbsp;;</li>
+          <li>adresse professionnelle&nbsp;;</li>
+          <li>activité déclarée&nbsp;;</li>
+          <li>statut professionnel&nbsp;;</li>
+          <li>justificatifs professionnels&nbsp;;</li>
+          <li>attestations d’assurance&nbsp;;</li>
+          <li>assurance responsabilité civile professionnelle&nbsp;;</li>
+          <li>assurance décennale lorsqu’elle est applicable à l’activité concernée.</li>
+        </ul>
+        <p>Certaines informations peuvent être vérifiées auprès de sources officielles ou de prestataires spécialisés.</p>
+      </section>
+
+      <section id="pc-6">
+        <h2>6. Vérification d’identité</h2>
+        <p>LYANN peut proposer ou imposer une vérification d’identité pour certaines fonctionnalités.</p>
+        <p>Selon la solution de vérification utilisée, certaines informations peuvent être demandées, telles que&nbsp;:</p>
+        <ul>
+          <li>nom&nbsp;;</li>
+          <li>prénom&nbsp;;</li>
+          <li>date de naissance&nbsp;;</li>
+          <li>document d’identité&nbsp;;</li>
+          <li>photographie ou contrôle de correspondance&nbsp;;</li>
+          <li>résultat ou statut de la vérification.</li>
+        </ul>
+        <p>Lorsque la vérification est confiée à un prestataire spécialisé, celui-ci peut traiter directement certaines données.</p>
+        <p>LYANN cherche à limiter la conservation des documents d’identité au strict nécessaire.</p>
+        <p>Les modalités précises dépendront du prestataire de vérification retenu.</p>
+      </section>
+
+      <section id="pc-7">
+        <h2>7. Demandes publiées sur LYANN</h2>
+        <p>Lorsque vous publiez un besoin, nous pouvons traiter&nbsp;:</p>
+        <ul>
+          <li>titre de la demande&nbsp;;</li>
+          <li>description&nbsp;;</li>
+          <li>catégorie&nbsp;;</li>
+          <li>photographies&nbsp;;</li>
+          <li>documents éventuellement ajoutés&nbsp;;</li>
+          <li>budget ou estimation&nbsp;;</li>
+          <li>disponibilité&nbsp;;</li>
+          <li>zone géographique&nbsp;;</li>
+          <li>informations nécessaires à la compréhension de la mission.</li>
+        </ul>
+        <p>Nous vous recommandons de ne jamais publier dans une annonce des informations personnelles qui ne sont pas nécessaires à la réalisation de votre demande.</p>
+      </section>
+
+      <section id="pc-8">
+        <h2>8. Localisation</h2>
+        <p>La proximité est au cœur du fonctionnement de LYANN.</p>
+        <p>Selon les fonctionnalités utilisées et les autorisations accordées, LYANN peut traiter&nbsp;:</p>
+        <ul>
+          <li>une commune&nbsp;;</li>
+          <li>un code postal&nbsp;;</li>
+          <li>une zone d’intervention&nbsp;;</li>
+          <li>une position approximative&nbsp;;</li>
+          <li>et, lorsque cela est réellement nécessaire et autorisé par l’utilisateur, une localisation plus précise.</li>
+        </ul>
+        <p>Ces informations peuvent notamment servir à&nbsp;:</p>
+        <ul>
+          <li>trouver des Lyanneurs à proximité&nbsp;;</li>
+          <li>afficher les demandes pertinentes&nbsp;;</li>
+          <li>calculer ou estimer une distance&nbsp;;</li>
+          <li>déterminer une zone d’intervention&nbsp;;</li>
+          <li>améliorer la pertinence des résultats.</li>
+        </ul>
+        <p class="legal-policy-note"><strong>LYANN n’a pas vocation à afficher publiquement l’adresse personnelle précise d’un utilisateur lorsque cela n’est pas nécessaire.</strong></p>
+        <p>Vous pouvez retirer les autorisations de localisation depuis les réglages de votre appareil lorsqu’elles reposent sur ces autorisations.</p>
+        <p>Certaines fonctionnalités peuvent alors devenir moins précises ou indisponibles.</p>
+      </section>
+
+      <section id="pc-9">
+        <h2>9. Messagerie</h2>
+        <p>Lorsque vous utilisez la messagerie LYANN, nous pouvons traiter&nbsp;:</p>
+        <ul>
+          <li>messages envoyés et reçus&nbsp;;</li>
+          <li>date et heure des échanges&nbsp;;</li>
+          <li>pièces jointes&nbsp;;</li>
+          <li>informations relatives à la mission concernée&nbsp;;</li>
+          <li>événements nécessaires au fonctionnement et à la sécurité de la messagerie.</li>
+        </ul>
+        <p>Ces données permettent notamment aux utilisateurs de communiquer et peuvent contribuer au traitement d’un signalement, d’une fraude ou d’un litige.</p>
+        <p>Nous vous déconseillons de communiquer dans la messagerie des données sensibles qui ne sont pas nécessaires à la prestation.</p>
+      </section>
+
+      <section id="pc-10">
+        <h2>10. Propositions, devis et prestations</h2>
+        <p>LYANN peut traiter les informations relatives aux prestations réalisées ou envisagées, notamment&nbsp;:</p>
+        <ul>
+          <li>propositions&nbsp;;</li>
+          <li>devis&nbsp;;</li>
+          <li>prix&nbsp;;</li>
+          <li>frais de déplacement&nbsp;;</li>
+          <li>main-d’œuvre&nbsp;;</li>
+          <li>matériaux&nbsp;;</li>
+          <li>rendez-vous&nbsp;;</li>
+          <li>étapes ou jalons&nbsp;;</li>
+          <li>validations&nbsp;;</li>
+          <li>annulations&nbsp;;</li>
+          <li>incidents&nbsp;;</li>
+          <li>documents liés à la prestation.</li>
+        </ul>
+      </section>
+
+      <section id="pc-11">
+        <h2>11. Paiements</h2>
+        <p>Lorsque les fonctionnalités de paiement seront activées, LYANN pourra traiter certaines informations nécessaires au suivi des transactions, notamment&nbsp;:</p>
+        <ul>
+          <li>montant&nbsp;;</li>
+          <li>devise&nbsp;;</li>
+          <li>référence de transaction&nbsp;;</li>
+          <li>statut du paiement&nbsp;;</li>
+          <li>date&nbsp;;</li>
+          <li>remboursement éventuel&nbsp;;</li>
+          <li>frais applicables&nbsp;;</li>
+          <li>identité des parties à la transaction.</li>
+        </ul>
+        <p>Les paiements pourront être techniquement réalisés par un prestataire de services de paiement spécialisé.</p>
+        <p class="legal-policy-note"><strong>LYANN n’a pas vocation à conserver directement les numéros complets de cartes bancaires lorsque ceux-ci sont traités directement par le prestataire de paiement.</strong></p>
+        <p>Les informations relatives au prestataire de paiement seront actualisées lors de l’activation définitive de cette fonctionnalité.</p>
+      </section>
+
+      <section id="pc-12">
+        <h2>12. Abonnements</h2>
+        <p>Lorsque vous souscrivez une formule payante, nous pouvons traiter&nbsp;:</p>
+        <ul>
+          <li>formule choisie&nbsp;;</li>
+          <li>date de souscription&nbsp;;</li>
+          <li>statut de l’abonnement&nbsp;;</li>
+          <li>historique des renouvellements&nbsp;;</li>
+          <li>factures&nbsp;;</li>
+          <li>résiliation&nbsp;;</li>
+          <li>informations nécessaires à la gestion du paiement.</li>
+        </ul>
+      </section>
+
+      <section id="pc-13">
+        <h2>13. Avis et réputation</h2>
+        <p>LYANN peut traiter&nbsp;:</p>
+        <ul>
+          <li>notes&nbsp;;</li>
+          <li>commentaires&nbsp;;</li>
+          <li>réponses aux avis&nbsp;;</li>
+          <li>date de publication&nbsp;;</li>
+          <li>mission associée&nbsp;;</li>
+          <li>signalements&nbsp;;</li>
+          <li>historique nécessaire à la détection de faux avis.</li>
+        </ul>
+        <p>Certaines informations peuvent être rendues publiques sur le profil concerné.</p>
+      </section>
+
+      <section id="pc-14">
+        <h2>14. Données techniques et de sécurité</h2>
+        <p>Lorsque vous utilisez LYANN, certaines données techniques peuvent être automatiquement traitées&nbsp;:</p>
+        <ul>
+          <li>adresse IP&nbsp;;</li>
+          <li>type d’appareil&nbsp;;</li>
+          <li>système d’exploitation&nbsp;;</li>
+          <li>navigateur&nbsp;;</li>
+          <li>version de l’application&nbsp;;</li>
+          <li>identifiants techniques&nbsp;;</li>
+          <li>date et heure de connexion&nbsp;;</li>
+          <li>journaux techniques&nbsp;;</li>
+          <li>événements de sécurité&nbsp;;</li>
+          <li>erreurs et diagnostics.</li>
+        </ul>
+        <p>Ces informations sont notamment utilisées pour faire fonctionner LYANN, prévenir les fraudes, résoudre les problèmes techniques et protéger les utilisateurs.</p>
+      </section>
+
+      <section id="pc-15">
+        <h2>15. Pourquoi utilisons-nous vos données&nbsp;?</h2>
+        <p>Nous utilisons les données personnelles notamment afin de&nbsp;:</p>
+        <h3>Fournir LYANN</h3>
+        <p>Créer et gérer les comptes, publier les demandes, présenter les profils, permettre les mises en relation et fournir les différentes fonctionnalités.</p>
+        <h3>Faciliter les mises en relation</h3>
+        <p>Afficher des demandes et des Lyanneurs pertinents selon notamment les compétences, catégories et zones géographiques.</p>
+        <h3>Permettre les échanges</h3>
+        <p>Faire fonctionner la messagerie et les notifications.</p>
+        <h3>Gérer les prestations</h3>
+        <p>Permettre la création de propositions, devis, rendez-vous et jalons.</p>
+        <h3>Gérer les paiements</h3>
+        <p>Permettre et suivre les transactions lorsque ces fonctionnalités sont activées.</p>
+        <h3>Gérer les abonnements</h3>
+        <p>Souscrire, renouveler, facturer ou résilier les offres payantes.</p>
+        <h3>Renforcer la confiance</h3>
+        <p>Vérifier certaines identités, informations professionnelles, assurances ou autres justificatifs.</p>
+        <h3>Sécuriser LYANN</h3>
+        <p>Détecter les comportements suspects, abus, fraudes, faux comptes et tentatives d’accès non autorisées.</p>
+        <h3>Gérer les avis</h3>
+        <p>Publier, modérer et contrôler les évaluations.</p>
+        <h3>Assurer le support</h3>
+        <p>Répondre aux demandes et traiter les réclamations.</p>
+        <h3>Améliorer LYANN</h3>
+        <p>Analyser le fonctionnement de la plateforme, corriger les erreurs et améliorer l’expérience utilisateur.</p>
+        <h3>Respecter nos obligations</h3>
+        <p>Respecter les obligations légales, réglementaires, fiscales, comptables ou judiciaires applicables.</p>
+      </section>
+
+      <section id="pc-16">
+        <h2>16. Bases légales</h2>
+        <p>Selon le traitement concerné, nous utilisons l’une des bases juridiques prévues par la réglementation applicable.</p>
+        <h3>Exécution du contrat</h3>
+        <p>Lorsque le traitement est nécessaire pour créer votre compte, fournir LYANN, gérer une prestation ou exécuter un service demandé.</p>
+        <h3>Obligation légale</h3>
+        <p>Lorsque nous devons conserver ou communiquer certaines informations en application d’une obligation légale.</p>
+        <h3>Intérêt légitime</h3>
+        <p>Notamment pour&nbsp;:</p>
+        <ul>
+          <li>sécuriser LYANN&nbsp;;</li>
+          <li>prévenir la fraude&nbsp;;</li>
+          <li>améliorer raisonnablement le service&nbsp;;</li>
+          <li>protéger les utilisateurs&nbsp;;</li>
+          <li>défendre les droits de YOYOOTT.</li>
+        </ul>
+        <p>Nous prenons alors en considération les droits et libertés des personnes concernées.</p>
+        <h3>Consentement</h3>
+        <p>Lorsque votre consentement est nécessaire, notamment pour certaines utilisations de traceurs, communications ou fonctionnalités.</p>
+        <p>Vous pouvez retirer votre consentement lorsqu’un traitement repose sur celui-ci, sans remettre en cause la licéité du traitement réalisé avant son retrait.</p>
+      </section>
+
+      <section id="pc-17">
+        <h2>17. Avec qui partageons-nous les données&nbsp;?</h2>
+        <p>Nous ne vendons pas vos données personnelles.</p>
+        <p>Certaines données peuvent néanmoins être communiquées lorsque cela est nécessaire au fonctionnement de LYANN.</p>
+        <p>Les destinataires peuvent notamment comprendre&nbsp;:</p>
+        <ul>
+          <li>personnel autorisé de YOYOOTT&nbsp;;</li>
+          <li>autres utilisateurs lorsque cela est nécessaire à la mise en relation&nbsp;;</li>
+          <li>hébergeurs&nbsp;;</li>
+          <li>services de base de données&nbsp;;</li>
+          <li>services d’authentification&nbsp;;</li>
+          <li>prestataires de paiement&nbsp;;</li>
+          <li>services de vérification d’identité&nbsp;;</li>
+          <li>prestataires d’envoi d’e-mails ou de notifications&nbsp;;</li>
+          <li>services de sécurité&nbsp;;</li>
+          <li>services d’analyse technique&nbsp;;</li>
+          <li>prestataires de support&nbsp;;</li>
+          <li>autorités administratives ou judiciaires lorsqu’une obligation légale l’impose.</li>
+        </ul>
+        <p>Nos prestataires ne doivent traiter les données que dans le cadre applicable à leurs missions et à leurs propres obligations.</p>
+      </section>
+
+      <section id="pc-18">
+        <h2>18. Hébergement et infrastructure</h2>
+        <p>LYANN utilise notamment des services d’infrastructure fournis par <strong>Vercel</strong> pour certaines parties de son fonctionnement.</p>
+        <p>D’autres prestataires techniques peuvent intervenir, notamment pour la base de données, l’authentification, le stockage, les paiements, les notifications ou les vérifications.</p>
+        <p>La liste des principaux prestataires sera actualisée en fonction de l’architecture définitive de production.</p>
+      </section>
+
+      <section id="pc-19">
+        <h2>19. Transferts hors de l’Espace économique européen</h2>
+        <p>Certains prestataires utilisés par LYANN peuvent être établis ou traiter certaines données en dehors de l’Espace économique européen.</p>
+        <p>Lorsque la réglementation l’exige, YOYOOTT veille à ce que ces transferts reposent sur un mécanisme juridique approprié et sur les garanties requises.</p>
+      </section>
+
+      <section id="pc-20">
+        <h2>20. Combien de temps conservons-nous les données&nbsp;?</h2>
+        <p>Nous ne souhaitons pas conserver vos données plus longtemps que nécessaire.</p>
+        <p>La durée dépend de la nature des informations, de la finalité du traitement et des obligations légales applicables.</p>
+        <p>À titre de principe&nbsp;:</p>
+        <ul>
+          <li><strong>Données du compte&nbsp;:</strong> pendant la durée d’utilisation du compte, puis pendant la durée nécessaire à la gestion des obligations résiduelles.</li>
+          <li><strong>Données de prestations et transactions&nbsp;:</strong> pendant la durée nécessaire à la gestion de la prestation, puis lorsque cela est nécessaire pendant les durées légales applicables.</li>
+          <li><strong>Documents comptables&nbsp;:</strong> pendant la durée imposée par la réglementation applicable.</li>
+          <li><strong>Messagerie et litiges&nbsp;:</strong> pendant une durée adaptée au fonctionnement du service, à la sécurité et à la gestion des éventuels litiges.</li>
+          <li><strong>Données de vérification&nbsp;:</strong> pendant la durée nécessaire à la vérification et aux obligations applicables.</li>
+          <li><strong>Données techniques et de sécurité&nbsp;:</strong> pendant une durée proportionnée aux besoins de sécurité et de prévention des fraudes.</li>
+        </ul>
+        <p>Les durées précises pourront être actualisées à mesure que l’architecture et les prestataires définitifs de LYANN seront déployés.</p>
+      </section>
+
+      <section id="pc-21">
+        <h2>21. Vos droits</h2>
+        <p>Dans les conditions prévues par la réglementation, vous pouvez disposer notamment&nbsp;:</p>
+        <ul>
+          <li>d’un <strong>droit d’accès</strong> à vos données&nbsp;;</li>
+          <li>d’un <strong>droit de rectification</strong>&nbsp;;</li>
+          <li>d’un <strong>droit à l’effacement</strong>&nbsp;;</li>
+          <li>d’un <strong>droit à la limitation du traitement</strong>&nbsp;;</li>
+          <li>d’un <strong>droit d’opposition</strong> à certains traitements&nbsp;;</li>
+          <li>d’un <strong>droit à la portabilité</strong> dans les cas prévus par la réglementation&nbsp;;</li>
+          <li>du <strong>droit de retirer votre consentement</strong> lorsqu’un traitement repose sur celui-ci.</li>
+        </ul>
+        <p>Vous pouvez exercer vos droits en écrivant à&nbsp;: <a href="mailto:contact@lyann.app"><strong>contact@lyann.app</strong></a></p>
+        <p>Indiquez suffisamment d’informations pour nous permettre d’identifier votre demande.</p>
+        <p>Une preuve d’identité pourra être demandée uniquement lorsqu’elle est raisonnablement nécessaire pour vérifier que la demande émane bien de la personne concernée.</p>
+      </section>
+
+      <section id="pc-22">
+        <h2>22. Réclamation auprès de la CNIL</h2>
+        <p>Si vous estimez que vos droits relatifs à vos données personnelles ne sont pas respectés, vous pouvez également introduire une réclamation auprès de la&nbsp;:</p>
+        <p><strong>Commission nationale de l’informatique et des libertés (CNIL)</strong></p>
+      </section>
+
+      <section id="pc-23">
+        <h2>23. Suppression du compte</h2>
+        <p>Vous pouvez demander la fermeture de votre compte depuis les fonctionnalités mises à disposition par LYANN ou en nous contactant&nbsp;: <a href="mailto:contact@lyann.app"><strong>contact@lyann.app</strong></a></p>
+        <p>La fermeture du compte entraîne la suppression ou l’anonymisation des données qui ne sont plus nécessaires.</p>
+        <p>Certaines informations peuvent néanmoins être conservées lorsqu’une obligation légale, la prévention de la fraude, un litige ou la défense de droits le justifie.</p>
+      </section>
+
+      <section id="pc-24">
+        <h2>24. Sécurité</h2>
+        <p>Nous mettons en œuvre des mesures techniques et organisationnelles destinées à protéger les données personnelles contre notamment&nbsp;:</p>
+        <ul>
+          <li>l’accès non autorisé&nbsp;;</li>
+          <li>la perte&nbsp;;</li>
+          <li>l’altération&nbsp;;</li>
+          <li>la divulgation&nbsp;;</li>
+          <li>la destruction&nbsp;;</li>
+          <li>les usages frauduleux.</li>
+        </ul>
+        <p>Les utilisateurs doivent également protéger leurs identifiants et nous signaler rapidement toute utilisation suspecte de leur compte.</p>
+      </section>
+
+      <section id="pc-25">
+        <h2>25. Cookies et technologies similaires</h2>
+        <p>LYANN peut utiliser des cookies, SDK ou technologies similaires.</p>
+        <p>Certains sont nécessaires au fonctionnement et à la sécurité de la plateforme.</p>
+        <p>D’autres peuvent servir notamment à la mesure d’audience ou à l’amélioration du service.</p>
+        <p>Lorsque votre consentement est requis, ces technologies ne sont utilisées qu’après recueil de votre choix.</p>
+        <p>Vous devez pouvoir&nbsp;:</p>
+        <ul>
+          <li><strong>Tout accepter</strong></li>
+          <li><strong>Tout refuser</strong></li>
+          <li><strong>Personnaliser vos choix</strong></li>
+        </ul>
+        <p>Vous pourrez également modifier ultérieurement vos préférences depuis l’outil de gestion prévu à cet effet.</p>
+        <div class="legal-hub-actions">
+          <button type="button" class="btn btn-outline open-cookie-prefs-trigger">Gérer mes cookies</button>
+          <a class="btn btn-primary" href="legal.html#cookies">Consulter la politique relative aux cookies</a>
         </div>
-    </section>
+      </section>
 
-    <!-- ========== DEUX FAÇONS DE CRÉER UN LIEN ========== -->
-    <section class="section two-ways-section" style="padding: 56px 0; background: #F8FAFC;">
-        <div class="container">
-            <div class="section-header text-center" style="margin-bottom: 40px;">
-                <span class="pill-badge pill-blue"><i class="ph ph-arrows-split"></i> Entrée Simplifiée</span>
-                <h2>Deux façons de créer un lien</h2>
-                <p class="section-subtitle">Trouvez une personne compétente autour de vous ou exprimez directement ce que vous cherchez.</p>
-            </div>
+      <section id="pc-26">
+        <h2>26. Communications commerciales</h2>
+        <p>LYANN peut vous adresser les communications nécessaires au fonctionnement du service&nbsp;: messages, sécurité, prestations, paiements, modifications importantes ou notifications liées à votre compte.</p>
+        <p>Les communications commerciales et promotionnelles sont gérées séparément lorsque la réglementation impose un consentement préalable ou un droit d’opposition.</p>
+        <p>Vous pouvez utiliser les moyens proposés dans LYANN ou dans les communications concernées pour gérer vos préférences.</p>
+      </section>
 
-            <div class="two-ways-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 900px; margin: 0 auto;">
-                <!-- Carte 1 -->
-                <div class="two-ways-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); padding: 32px; text-align: left; box-shadow: 0 4px 16px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div class="two-ways-icon" style="width: 52px; height: 52px; border-radius: 16px; background: rgba(63, 158, 176, 0.12); color: #3F9EB0; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin-bottom: 18px;">
-                            <i class="ph-fill ph-magnifying-glass"></i>
-                        </div>
-                        <h3 style="font-size: 1.35rem; font-weight: 800; color: #1F3827; margin-bottom: 12px;">Je cherche un Lyanneur</h3>
-                        <p style="font-size: 0.94rem; color: #475569; line-height: 1.6; margin-bottom: 24px;">
-                            Vous savez déjà ce qu'il vous faut ? Explorez les profils disponibles autour de vous, découvrez leurs compétences, leurs réalisations et leurs recommandations, puis entrez directement en contact avec la personne qui vous correspond.
-                        </p>
-                    </div>
-                    <a href="results.html" class="btn btn-outline" style="justify-content: center; width: 100%; font-weight: 800;"><i class="ph ph-magnifying-glass"></i> Explorer</a>
-                </div>
+      <section id="pc-27">
+        <h2>27. Mineurs</h2>
+        <p>LYANN est principalement destiné à des personnes disposant de la capacité nécessaire pour conclure les prestations proposées sur la plateforme.</p>
+        <p>Certaines fonctionnalités, notamment celles impliquant des paiements ou des engagements contractuels, peuvent être réservées aux personnes majeures.</p>
+      </section>
 
-                <!-- Carte 2 -->
-                <div class="two-ways-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); padding: 32px; text-align: left; box-shadow: 0 4px 16px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div class="two-ways-icon" style="width: 52px; height: 52px; border-radius: 16px; background: rgba(231, 111, 81, 0.12); color: #E76F51; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin-bottom: 18px;">
-                            <i class="ph-fill ph-hand-heart"></i>
-                        </div>
-                        <h3 style="font-size: 1.35rem; font-weight: 800; color: #1F3827; margin-bottom: 12px;">J'ai un besoin</h3>
-                        <p style="font-size: 0.94rem; color: #475569; line-height: 1.6; margin-bottom: 24px;">
-                            Décrivez simplement ce que vous recherchez : le type de besoin, le lieu, vos disponibilités, votre budget et, si nécessaire, quelques photos.<br><br>Votre besoin devient alors un <strong>Lyann</strong> que LYANN peut présenter aux personnes pertinentes autour de vous.
-                        </p>
-                    </div>
-                    <a href="#" class="btn btn-primary open-signup-trigger" data-preset-role="provider" style="justify-content: center; width: 100%; font-weight: 800;"><i class="ph ph-plus-circle"></i> Publier un Lyann</a>
-                </div>
-            </div>
+      <section id="pc-28">
+        <h2>28. Évolution de cette politique</h2>
+        <p>Cette Politique de confidentialité peut évoluer notamment en raison&nbsp;:</p>
+        <ul>
+          <li>de nouvelles fonctionnalités&nbsp;;</li>
+          <li>de nouveaux prestataires&nbsp;;</li>
+          <li>d’une évolution de l’architecture technique&nbsp;;</li>
+          <li>d’une évolution réglementaire.</li>
+        </ul>
+        <p>En cas de modification substantielle, les utilisateurs pourront être informés par un moyen approprié.</p>
+        <p>La date de dernière mise à jour est indiquée en haut du document.</p>
+      </section>
+
+      <section id="pc-29">
+        <h2>29. Nous contacter</h2>
+        <p>Pour toute question concernant cette Politique de confidentialité ou l’utilisation de vos données personnelles&nbsp;: <a href="mailto:contact@lyann.app"><strong>contact@lyann.app</strong></a></p>
+        <div class="legal-address">
+          <p><strong>YOYOOTT</strong><br>34 avenue des Champs-Élysées<br>75008 Paris<br>France</p>
         </div>
-    </section>
+      </section>
 
-    <!-- ========== PARCOURS DÉTAILLÉ EN 6 ÉTAPES ========== -->
-    <section class="section steps-detail-section">
-        <div class="container">
-            <div class="section-header text-center">
-                <span class="pill-badge pill-blue"><i class="ph ph-list-numbers"></i> Parcours Clair & Sécurisé</span>
-                <h2>Les 6 étapes d'un Lyann réussi</h2>
-                <p class="section-subtitle">De l'expression de votre besoin jusqu'à la validation finale, un déroulement structuré et transparent.</p>
-            </div>
+      <p class="legal-signoff">LYANN — Sé Lyann a lòt<small>© 2026 YOYOOTT — Tous droits réservés.</small></p>
+    </article>
+  </div>
+</section>
 
-            <div class="detailed-steps-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
-                
-                <!-- Étape 1 -->
-                <div class="detail-step-card">
-                    <div class="step-number-badge">1</div>
-                    <div class="step-card-icon step-icon-blue">
-                        <i class="ph-fill ph-note-pencil"></i>
-                    </div>
-                    <h3>1. Publiez votre besoin</h3>
-                    <p>Expliquez ce que vous souhaitez faire, où et dans quelles conditions. LYANN vous aide à structurer votre demande pour qu'elle soit claire : catégorie, localisation, budget, disponibilités et photos si nécessaire. Une fois publié, votre besoin devient un Lyann visible dans l'écosystème LYANN.</p>
-                </div>
 
-                <!-- Étape 2 -->
-                <div class="detail-step-card">
-                    <div class="step-number-badge">2</div>
-                    <div class="step-card-icon step-icon-emerald">
-                        <i class="ph-fill ph-broadcast"></i>
-                    </div>
-                    <h3>2. LYANN crée les bonnes connexions</h3>
-                    <p>Votre Lyann peut être découvert dans le Bokantaj et proposé aux Lyanneurs dont les compétences, la zone d'intervention et le profil correspondent à votre besoin. L'objectif n'est pas de contacter tout le monde, mais de favoriser des connexions réellement pertinentes et locales.</p>
-                </div>
+                <!-- ========== FOOTER ========== -->
 
-                <!-- Étape 3 -->
-                <div class="detail-step-card">
-                    <div class="step-number-badge">3</div>
-                    <div class="step-card-icon step-icon-coral">
-                        <i class="ph-fill ph-chat-circle-dots"></i>
-                    </div>
-                    <h3>3. Échangez avant de vous engager</h3>
-                    <p>Une personne intéressée peut vous contacter depuis votre Lyann. Vous échangez dans la messagerie LYANN pour préciser le besoin, poser des questions et vous mettre d'accord sur les conditions de la mission. Vous gardez la décision finale.</p>
-                </div>
-
-                <!-- Étape 4 -->
-                <div class="detail-step-card">
-                    <div class="step-number-badge">4</div>
-                    <div class="step-card-icon step-icon-yellow">
-                        <i class="ph-fill ph-file-text"></i>
-                    </div>
-                    <h3>4. Recevez une proposition claire</h3>
-                    <p>Le Lyanneur peut vous envoyer une proposition détaillée avec le montant et, lorsque la mission le nécessite, plusieurs étapes de réalisation. Vous pouvez la consulter avant de l'accepter. Aucune mission ne démarre simplement parce qu me personne vous a contacté.</p>
-                </div>
-
-                <!-- Étape 5 -->
-                <div class="detail-step-card">
-                    <div class="step-number-badge">5</div>
-                    <div class="step-card-icon step-icon-purple" style="background: rgba(123, 97, 255, 0.15); color: #7B61FF;">
-                        <i class="ph-fill ph-list-checks"></i>
-                    </div>
-                    <h3>5. Suivez la mission étape par étape</h3>
-                    <p>Une fois la proposition acceptée, la mission est créée dans LYANN. Les étapes permettent de suivre l'avancement simplement : démarrage, réalisation, validation et clôture. Pour les missions importantes, ce fonctionnement permet à chacun de savoir précisément où en est le travail.</p>
-                </div>
-
-                <!-- Étape 6 -->
-                <div class="detail-step-card">
-                    <div class="step-number-badge">6</div>
-                    <div class="step-card-icon step-icon-emerald" style="background: rgba(74, 124, 89, 0.15); color: #4A7C59;">
-                        <i class="ph-fill ph-check-circle"></i>
-                    </div>
-                    <h3>6. Validez ce qui a été réalisé</h3>
-                    <p>Lorsqu'une étape est terminée, le Lyanneur indique qu'elle est réalisée. La personne à l'origine du Lyann peut alors la vérifier et la valider. Cette validation permet de conserver un déroulement clair pour les deux parties.</p>
-                </div>
-
-            </div>
-
-            <div class="text-center" style="margin-top: 40px;">
-                <button type="button" class="btn btn-primary btn-lg open-signup-trigger">
-                    <i class="ph ph-rocket-launch"></i> Rejoindre la communauté LYANN
-                </button>
-            </div>
-        </div>
-    </section>
-
-    <!-- ========== PAIEMENT SÉCURISÉ & ÉTAPE PAR ÉTAPE ========== -->
-    <section class="section payment-guarantee-section" style="background: linear-gradient(135deg, #173F36 0%, #2E5A44 100%); color: #FFFFFF; padding: 70px 0; position: relative;">
-        <div class="container">
-            <div class="section-header text-center" style="margin-bottom: 40px;">
-                <span class="pill-badge pill-yellow" style="background: rgba(229, 179, 69, 0.2); color: #E5B345;"><i class="ph ph-shield-check"></i> Transactions Réfléchies</span>
-                <h2 style="color: #FFFFFF;">Un paiement pensé pour avancer sereinement</h2>
-                <p class="section-subtitle" style="color: rgba(255, 255, 255, 0.9); max-width: 720px; margin: 0 auto; line-height: 1.6;">
-                    Lorsque le paiement LYANN est utilisé, les montants liés à la mission sont gérés étape par étape afin de sécuriser l'échange. Le paiement et le reversement suivent l'avancement et les validations de la mission, plutôt qu'un simple échange informel entre les deux parties.
-                </p>
-            </div>
-
-            <!-- Notice indicative paiement sécurisé -->
-            <div style="max-width: 680px; margin: 0 auto; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25); border-radius: 16px; padding: 18px 24px; text-align: center; backdrop-filter: blur(10px);">
-                <i class="ph ph-info" style="color: #E5B345; font-size: 1.4rem; vertical-align: middle; margin-right: 8px;"></i>
-                <span style="font-size: 0.92rem; color: #FAF7F2; line-height: 1.5; font-weight: 500;">
-                    Le paiement sécurisé LYANN accompagnera prochainement les missions éligibles sur nos territoires.
-                </span>
-            </div>
-        </div>
-    </section>
-
-    <!-- ========== LE BOKANTAJ SECTION ========== -->
-    <section class="section bokantaj-feature-section" style="padding: 60px 0; background: #FAF7F2;">
-        <div class="container">
-            <div style="max-width: 800px; margin: 0 auto; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); padding: 36px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
-                <span class="pill-badge pill-coral" style="margin-bottom: 14px; display: inline-flex;"><i class="ph ph-broadcast"></i> La Vie Locale</span>
-                <h2 style="font-size: 1.75rem; font-weight: 800; color: #17231C; margin-bottom: 14px;">Le Bokantaj, la vie locale de LYANN</h2>
-                <p style="font-size: 0.98rem; color: #475569; line-height: 1.65; margin-bottom: 24px;">
-                    Le Bokantaj est l'espace où la communauté se retrouve. On peut y découvrir les Lyanns publiés autour de soi, partager une réalisation, une idée, une question ou une disponibilité, et découvrir d'autres Lyanneurs.<br><br>
-                    C'est la partie vivante de LYANN : ce qui se passe près de chez vous, au même endroit.
-                </p>
-                <a href="feed.html" class="btn btn-primary btn-lg" style="font-weight: 800;">
-                    <i class="ph ph-broadcast"></i> Découvrir le Bokantaj
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- ========== CHARTE DE CONFIANCE & SÉRÉNITÉ ========== -->
-    <section class="section trust-charter-section">
-        <div class="container">
-            <div class="section-header text-center">
-                <span class="pill-badge pill-yellow"><i class="ph ph-shield-check"></i> Notre Engagement</span>
-                <h2>La confiance se construit au fil des Lyanns</h2>
-                <p class="section-subtitle">Avant de choisir quelqu'un, vous pouvez consulter son profil, ses compétences, ses réalisations et les retours laissés par la communauté.</p>
-            </div>
-
-            <div class="charter-grid">
-                <div class="charter-card">
-                    <div class="charter-icon"><i class="ph-fill ph-user-focus"></i></div>
-                    <h4>Profils & Identités Vérifiés</h4>
-                    <p>Un « Profil vérifié » indique la vérification d'identité selon les règles LYANN, permettant des échanges authentiques en toute transparence.</p>
-                </div>
-
-                <div class="charter-card">
-                    <div class="charter-icon"><i class="ph-fill ph-shield-check"></i></div>
-                    <h4>PRO vérifié par LYANN</h4>
-                    <p>Le statut PRO vérifié est distinct de l'abonnement PRO et repose sur des vérifications professionnelles réalisées par LYANN.</p>
-                </div>
-
-                <div class="charter-card">
-                    <div class="charter-icon"><i class="ph-fill ph-star"></i></div>
-                    <h4>Avis & Recommandations</h4>
-                    <p>Découvrez les retours d'expérience authentiques laissés par la communauté pour guider vos choix et valoriser les compétences locales.</p>
-                </div>
-
-                <div class="charter-card">
-                    <div class="charter-icon"><i class="ph-fill ph-map-trifold"></i></div>
-                    <h4>Pensé pour la proximité</h4>
-                    <p>LYANN privilégie les échanges utiles à l'échelle locale. La zone d'intervention fait émerger les bonnes compétences sans exposer votre adresse exacte.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ========== SECTION VOTRE PROFIL ÉVOLUE AVEC VOUS ========== -->
-    <section class="section profile-evolution-section" style="padding: 56px 0; background: #FFFFFF;">
-        <div class="container" style="max-width: 820px; text-align: center;">
-            <span class="pill-badge pill-green" style="margin-bottom: 14px; display: inline-flex;"><i class="ph ph-user"></i> Profil Unique</span>
-            <h2 style="font-size: 1.75rem; font-weight: 800; color: #1F3827; margin-bottom: 14px;">Votre profil évolue avec vous</h2>
-            <p style="font-size: 0.98rem; color: #334155; line-height: 1.65; margin: 0 auto 20px;">
-                Ajoutez vos compétences, votre zone d'intervention, une présentation et, si vous le souhaitez, des réalisations. Votre profil permet aux autres Lyanneurs de comprendre ce que vous pouvez apporter à la communauté.<br><br>
-                Et lorsque vous avez vous-même un besoin, vous utilisez exactement le même compte.
-            </p>
-        </div>
-    </section>
-
-    <!-- ========== SECTION CTA FINAL ========== -->
-    <section class="section cta-section">
-        <div class="container">
-            <div class="section-header text-center">
-                <span class="pill-badge pill-green"><i class="ph ph-handshake"></i> Une Seule Communauté</span>
-                <h2>Un besoin peut devenir un Lyann.</h2>
-                <p class="section-subtitle">Décrivez ce que vous recherchez et découvrez les personnes qui peuvent vous aider autour de vous.</p>
-            </div>
-            
-            <div class="cta-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
-                <div class="cta-card cta-propose open-signup-trigger" data-preset-role="provider">
-                    <div class="cta-icon-wrapper step-icon-emerald">
-                        <i class="ph-fill ph-hand-heart" style="font-size: 2.6rem; color: #4A7C59;"></i>
-                    </div>
-                    <h3>J'ai un besoin</h3>
-                    <p>Exprimez votre demande et permettez aux Lyanneurs pertinents de votre commune de vous répondre.</p>
-                    <button class="btn btn-primary btn-lg">Publier mon besoin</button>
-                </div>
-                <div class="cta-card cta-search open-signup-trigger" data-preset-role="seeker">
-                    <div class="cta-icon-wrapper step-icon-blue">
-                        <i class="ph-fill ph-magnifying-glass" style="font-size: 2.6rem; color: #3F9EB0;"></i>
-                    </div>
-                    <h3>Explorer les Lyanneurs</h3>
-                    <p>Découvrez les compétences et profils disponibles dans votre secteur géographique.</p>
-                    <button class="btn btn-accent btn-lg">Explorer la communauté</button>
-                </div>
-            </div>
-
-            <div class="text-center" style="margin-top: 32px;">
-                <a href="feed.html" style="color: #E76F51; font-weight: 800; font-size: 0.98rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="ph ph-broadcast"></i> Découvrir le Bokantaj <i class="ph ph-arrow-right"></i>
-                </a>
-            </div>
-        </div>
-    </section>
-
-        <!-- ========== FOOTER ========== -->
     <footer class="footer">
         <div class="container">
             <div class="footer-grid-2col">
@@ -449,13 +657,11 @@
                     <a href="legal.html#mentions-legales">Mentions légales</a>
                     <a href="#contact" class="open-contact-trigger">Contact</a>
                 </nav>
-                <p>&copy; 2026 LYANN. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
+                <p>&copy; 2026 LYANN DOM. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
             </div>
         </div>
     </footer>
 
-    <!-- MODALES RÉUTILISÉES POUR LA PAGE COMMENT ÇA MARCHE -->
-    <!-- Modal Inscription -->
     <!-- ========== MODAL PARCOURS D'INSCRIPTION INTERACTIF ========== -->
         <!-- ========== MODAL ONBOARDING (COMPTE UNIQUE) ========== -->
     <div class="modal-overlay" id="onboardingModal">
@@ -594,42 +800,32 @@
     <div class="modal-overlay" id="loginModal">
         <div class="modal-card">
             <button class="modal-close-btn" id="closeLoginModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
             <div class="modal-header">
                 <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Connexion LYANN</span>
                 <h3 class="step-title" style="font-size: 1.5rem; margin-top: 8px;">Heureux de vous revoir !</h3>
             </div>
+
             <div class="modal-body">
                 <button type="button" class="btn btn-google" id="googleAuthBtn" style="width: 100%;">Continuer avec Google</button>
-                <div class="auth-divider"><span>ou avec votre email</span></div>
+                <div class="auth-divider" style="margin: 15px 0; text-align: center; border-bottom: 1px solid var(--border); line-height: 0.1em;"><span style="background:#fff; padding:0 10px; color:var(--text-muted); font-size:0.8rem;">ou avec votre email</span></div>
+
                 <form id="loginForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
-                        <label>Adresse email</label>
-                        <input type="email" class="modal-input" placeholder="votre.email@exemple.com" required>
+                        <label for="loginEmail">Adresse email</label>
+                        <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" required style="width: 100%; box-sizing: border-box;">
                     </div>
-                    <div class="form-group">
-                        <label>Mot de passe</label>
-                        <input type="password" class="modal-input" placeholder="••••••••" required>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label for="loginPassword">Mot de passe</label>
+                        <input type="password" id="loginPassword" class="modal-input" placeholder="••••••••" required style="width: 100%; box-sizing: border-box;">
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 16px;">Se connecter</button>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 16px;">Se connecter 🚀</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Modal Recherche Membres -->
-    <div class="modal-overlay" id="searchResultsModal">
-        <div class="modal-card modal-card-large">
-            <button class="modal-close-btn" id="closeSearchModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
-            <div class="modal-header">
-                <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Talents recommandés</span>
-                <div class="search-summary-badge" id="searchSummaryBadge"></div>
-            </div>
-            <div class="modal-body search-modal-body">
-                <div class="search-results-grid" id="searchResultsContainer"></div>
-            </div>
-        </div>
-    </div>
-
+    <!-- JavaScript -->
     <script src="payment-script.js"></script>
     <script src="notifications-service.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -650,31 +846,6 @@
     <script src="messaging-ui.js"></script>
     <script src="profile-repository.js"></script>
     <script src="script.js?v=20260916-OVERLAY-FIX"></script>
-    <script>
-        // Logique spécifique du commutateur de rôle sur la page Comment ça marche
-        document.addEventListener('DOMContentLoaded', () => {
-            const pillSeekers = document.getElementById('pillForSeekers');
-            const pillProviders = document.getElementById('pillForProviders');
-            const secSeekers = document.getElementById('sectionSeekersSteps');
-            const secProviders = document.getElementById('sectionProvidersSteps');
-
-            if (pillSeekers && pillProviders && secSeekers && secProviders) {
-                pillSeekers.addEventListener('click', () => {
-                    pillSeekers.classList.add('active');
-                    pillProviders.classList.remove('active');
-                    secSeekers.style.display = 'block';
-                    secProviders.style.display = 'none';
-                });
-
-                pillProviders.addEventListener('click', () => {
-                    pillProviders.classList.add('active');
-                    pillSeekers.classList.remove('active');
-                    secProviders.style.display = 'block';
-                    secSeekers.style.display = 'none';
-                });
-            }
-        });
-    </script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->
     <div class="speed-dial-wrapper" id="speedDialWrapper">
@@ -921,7 +1092,7 @@
     </div>
     <script src="onboarding.js"></script>
 
-    <!-- MODALE PUBLIER UN BESOIN (WIZARD) -->
+    <!-- MODALE BESOIN D'UN COUP DE MAIN (WIZARD) -->
     <div class="modal-overlay" id="modal-request-help">
         <div class="modal-card" style="max-width: 600px; height: 90vh; max-height: 800px; display: flex; flex-direction: column; overflow: hidden;">
             <div class="modal-header" style="border-bottom: 1px solid var(--border); padding: 20px 24px; flex-shrink: 0;">
@@ -1288,7 +1459,7 @@
 
                                 <!-- CARTE 2: DEVIS PAR JALONS -->
                                 <div class="choice-card-vertical">
-                                    <div class="choice-card-title">📑 Devis par Parties</div>
+                                    <div class="choice-card-title">📑 Devis par jalons</div>
                                     <div class="choice-card-desc">Pour un projet plus important avec plusieurs étapes.</div>
                                     <div class="choice-card-ex">Exemple : Rénovation, travaux, projet avec acomptes et étapes.</div>
                                     <button type="button" class="btn btn-outline choice-card-btn" id="btnChooseMilestoneDevis">Choisir le Devis par Jalons</button>
@@ -1412,7 +1583,7 @@
                                     <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
                                     <span style="font-size: 0.8rem;">%</span>
                                 </div>
-                                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des Parties doit faire 100%.</p>
+                                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des jalons doit faire 100%.</p>
                             </div>
 
                             <div style="display: flex; gap: 10px; margin-top: 10px;">

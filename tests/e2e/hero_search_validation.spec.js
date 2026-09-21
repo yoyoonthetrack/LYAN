@@ -12,6 +12,8 @@ test.describe('LYANN V1 — Accueil story and Explorer search', () => {
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Qui peut vous aider');
     await expect(page.locator('.hero-subtitle')).toContainText('réseau de confiance');
     await expect(page.locator('.hero-story-video, .hero-story-still').first()).toBeVisible();
+    await expect(page.locator('.hero-story-video source')).toHaveAttribute('src', /lyann-home-story\.mp4/);
+    await expect(page.locator('.hero-story--square')).toHaveCount(0);
     await expect(page.locator('#heroSearchForm')).toHaveCount(0);
     await expect(page.locator('#searchV2IntentContainer')).toHaveCount(0);
     await expect(page.getByText('Comment peut-on t’aider ?')).toHaveCount(0);

@@ -117,7 +117,9 @@ const productPages = [
   'payment-portal.html',
   'pricing.html',
   'how-it-works.html',
-  'about.html'
+  'about.html',
+  'legal.html',
+  'confidentialite.html'
 ];
 for (const file of productPages) {
   const html = read(file);

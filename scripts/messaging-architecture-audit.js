@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 const failures = [];
-const pages = ['index.html', 'feed.html', 'results.html', 'pricing.html', 'payment-portal.html', 'how-it-works.html', 'about.html']
+const pages = ['index.html', 'feed.html', 'results.html', 'pricing.html', 'payment-portal.html', 'how-it-works.html', 'about.html', 'legal.html', 'confidentialite.html']
   .filter(fs.existsSync);
 
 function read(file) { return fs.readFileSync(file, 'utf8'); }

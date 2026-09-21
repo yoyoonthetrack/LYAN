@@ -1,0 +1,10 @@
+fileType: momentic/test/v2
+id: 10-informations-legales
+description: Footer Conditions opens the legal hub; Consulter les CGU reveals the long CGU text
+defaultEnv: local
+steps:
+  - click: Footer link Conditions
+  - assert: Page heading Conditions & informations légales is visible with last update 21 septembre 2026
+  - assert: Hub shows eight readable blocks including Consulter les CGU and Consulter les CGV
+  - click: Consulter les CGU
+  - assert: Long CGU text is visible including Demandeurs, Lyanneurs, and YOYOOTT is not the prestataire

@@ -1,0 +1,7 @@
+fileType: momentic/test/v2
+id: 11-signup-cgu-acceptance
+description: Signup requires an explicit CGU checkbox with a link to the CGU
+defaultEnv: local
+steps:
+  - click: S'inscrire or Créer mon Compte
+  - assert: Signup surface shows a checkbox J'accepte les Conditions générales d'utilisation with a link to the CGU

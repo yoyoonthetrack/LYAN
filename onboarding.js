@@ -89,6 +89,14 @@ runOnDomReady(() => {
             const btn = e.target.closest('.btn-google-auth, #btnGoogleLogin, #btnGoogleSignup, #googleAuthBtn, .btn-google, #btnWelcomeGoogle');
             if (btn) {
                 e.preventDefault();
+                if (btn.closest('#onboardingModal')) {
+                    const accept = document.getElementById('obAcceptCgu');
+                    if (!accept || !accept.checked) {
+                        if (window.lyannAlert) window.lyannAlert('Pour créer un compte, cochez « J\'accepte les Conditions générales d\'utilisation ».');
+                        else alert('Pour créer un compte, cochez « J\'accepte les Conditions générales d\'utilisation ».');
+                        return;
+                    }
+                }
                 console.log('[Google Auth] Initiating OAuth trigger from button:', btn.id || btn.className);
                 if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                     try {
@@ -167,6 +175,24 @@ runOnDomReady(() => {
         }
     }
 
+    function ensureCguAcceptRow() {
+        if (document.getElementById('obAcceptCgu')) return;
+        const step = document.getElementById('obStep2');
+        if (!step) return;
+        const wrap = document.createElement('label');
+        wrap.className = 'lyann-cgu-accept';
+        wrap.setAttribute('for', 'obAcceptCgu');
+        wrap.innerHTML = `
+            <input type="checkbox" id="obAcceptCgu" name="obAcceptCgu" required>
+            <span>J'accepte les <a href="legal.html#cgu" target="_blank" rel="noopener">Conditions générales d'utilisation</a>.</span>
+        `;
+        wrap.querySelector('a').addEventListener('click', (ev) => ev.stopPropagation());
+        const footerText = step.querySelector('.auth-footer-text');
+        if (footerText) step.insertBefore(wrap, footerText);
+        else step.appendChild(wrap);
+    }
+    ensureCguAcceptRow();
+
     // Attach Signup Triggers
     const signupTriggers = document.querySelectorAll('.open-signup-trigger, .open-register-modal, #btnWelcomeSignup');
     signupTriggers.forEach(btn => {
@@ -216,6 +242,7 @@ runOnDomReady(() => {
             if (loginModal) loginModal.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = 'hidden';
             resetOnboarding();
+            ensureCguAcceptRow();
         }
     };
     
@@ -301,6 +328,14 @@ runOnDomReady(() => {
                     return;
                 }
 
+                const acceptCgu = document.getElementById('obAcceptCgu');
+                if (!acceptCgu || !acceptCgu.checked) {
+                    if (window.lyannAlert) window.lyannAlert('Pour continuer, acceptez les Conditions générales d\'utilisation.');
+                    else alert('Pour continuer, acceptez les Conditions générales d\'utilisation.');
+                    if (acceptCgu) acceptCgu.focus();
+                    return;
+                }
+
                 // Check duplicate email
                 const users = getRegisteredUsers();
                 const duplicate = users.find(u => u.email.toLowerCase() === em.toLowerCase());
@@ -330,6 +365,15 @@ runOnDomReady(() => {
 
             // Submit on Step 2 (Engagement) -> Click "Créer mon compte"
             if (currentStep === 1) {
+                const acceptCgu = document.getElementById('obAcceptCgu');
+                if (!acceptCgu || !acceptCgu.checked) {
+                    if (window.lyannAlert) window.lyannAlert('Pour créer un compte, acceptez les Conditions générales d\'utilisation.');
+                    else alert('Pour créer un compte, acceptez les Conditions générales d\'utilisation.');
+                    currentStep = 0;
+                    updateStepsUI();
+                    if (acceptCgu) acceptCgu.focus();
+                    return;
+                }
                 obNextBtn.disabled = true;
                 obNextBtn.textContent = 'Création en cours...';
 
@@ -403,6 +447,8 @@ runOnDomReady(() => {
         if (lnEl) lnEl.value = '';
         if (emEl) emEl.value = '';
         if (pwEl) pwEl.value = '';
+        const acceptCgu = document.getElementById('obAcceptCgu');
+        if (acceptCgu) acceptCgu.checked = false;
         
         onboardingData = { intent: 'unified_profile', firstName: '', lastName: '', email: '', password: '' };
         updateStepsUI();

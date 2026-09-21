@@ -10,6 +10,8 @@ const productPages = [
   'pricing.html',
   'how-it-works.html',
   'about.html',
+  'legal.html',
+  'confidentialite.html',
   'confirm-signup.html'
 ].filter((name) => fs.existsSync(path.join(root, name)));
 
@@ -172,6 +174,19 @@ if (!read('shared-html-build.js').includes('lyann-boot-logo.gif')) fail('shared-
 if (!read('style.css').includes('.lyann-boot-splash')) fail('style.css: boot splash styles missing');
 if (!read('build_mobile.js').includes("'.gif'")) fail('build_mobile.js: Capacitor artifact must copy the boot GIF');
 if (!fs.existsSync(path.join(root, 'lyann-home-story.mp4'))) fail('lyann-home-story.mp4: home story video missing');
+if (!fs.existsSync(path.join(root, 'legal.html'))) fail('legal.html: informations légales page missing');
+if (!read('legal.html').includes('Conditions &amp; informations légales') && !read('legal.html').includes('Conditions & informations légales')) fail('legal.html: conditions hub title missing');
+if (!read('legal.html').includes('Consulter les CGU')) fail('legal.html: CGU hub action missing');
+if (!read('legal.html').includes('class="legal-drawer"')) fail('legal.html: long legal documents missing');
+if ((read('legal.html').match(/class="legal-drawer"/g) || []).length !== 8) fail('legal.html: expected 8 long legal documents');
+if (!read('index.html').includes('href="legal.html"')) fail('index.html: footer must link to conditions');
+if (!fs.existsSync(path.join(root, 'confidentialite.html'))) fail('confidentialite.html: privacy policy page missing');
+if (!read('confidentialite.html').includes('Politique de confidentialité')) fail('confidentialite.html: privacy policy title missing');
+if (!read('index.html').includes('href="confidentialite.html"')) fail('index.html: footer must link to privacy policy');
+if (!fs.existsSync(path.join(root, 'lyann-home-story-square.mp4'))) fail('lyann-home-story-square.mp4: native home story video missing');
+if (!read('index.html').includes('data-src-web="lyann-home-story.mp4')) fail('index.html: web home story must use the 16:9 video');
+if (!read('index.html').includes('data-src-native="lyann-home-story-square.mp4')) fail('index.html: native home story must use the square video');
+if (!read('script.js').includes('function bindHeroStoryMedia()')) fail('script.js: home story must pick web vs native source at runtime');
 if (!read('build_mobile.js').includes("'.mp4'")) fail('build_mobile.js: Capacitor artifact must copy the home story video');
 
 console.log('LYANN architecture audit');
