@@ -86,7 +86,7 @@ test.describe('Account honesty and previously dead actions', () => {
     expect(jsErrors).toEqual([]);
   });
 
-  test('Gérer mon Lyann opens account activity instead of a missing profile modal', async ({ page }) => {
+  test('Gérer mon annonce opens account activity instead of a missing profile modal', async ({ page }) => {
     const jsErrors = [];
     page.on('pageerror', (err) => jsErrors.push(err.message));
     await page.goto('/feed.html');
@@ -107,6 +107,8 @@ test.describe('Account honesty and previously dead actions', () => {
     }, { requestId: REQUEST_ID, userId: USER_ID });
 
     await expect(page.locator('#btnManageMyLyann')).toBeVisible();
+    await expect(page.locator('#btnManageMyLyann')).toContainText('Gérer mon annonce');
+    await expect(page.locator('#btnDeleteMyAnnouncement')).toBeVisible();
     await page.locator('#btnManageMyLyann').click();
 
     await expect.poll(() => page.evaluate(() => window.LYANN_SURFACES.isOpen('lyann-detail'))).toBe(false);

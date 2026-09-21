@@ -2405,7 +2405,7 @@ safeDomReady(() => {
                     <i class="ph ph-chats-teardrop" style="font-size: 2.5rem; color: var(--primary-light); margin-bottom: 12px;"></i>
                     <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 6px; color: #1E293B;">Le Bokantaj est encore calme…</h4>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 18px;">Soyez parmi les premiers à partager quelque chose.</p>
-                    <button type="button" class="btn btn-primary" id="btnEmptyBokantajShare" style="font-weight: 700;">Partager dans le quartier</button>
+                    <button type="button" class="btn btn-primary" id="btnEmptyBokantajShare" style="font-weight: 700;">Écrire un Lyann</button>
                 </div>
             `;
             return;
@@ -2997,18 +2997,13 @@ safeDomReady(() => {
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Partager dans le quartier';
+                    submitBtn.innerHTML = 'Publier';
                 }
             }
         });
     }
 
     window.openBokantajComposer = function() {
-        const card = document.getElementById('flashComposerCard');
-        const btn = document.getElementById('btnOpenBokantajComposer');
-        if (!card) return;
-        card.hidden = false;
-        if (btn) btn.hidden = true;
         const input = document.getElementById('flashContentInput');
         if (input) {
             input.focus();
@@ -3016,13 +3011,17 @@ safeDomReady(() => {
         }
     };
     window.closeBokantajComposer = function() {
-        const card = document.getElementById('flashComposerCard');
-        const btn = document.getElementById('btnOpenBokantajComposer');
-        if (card) card.hidden = true;
-        if (btn) btn.hidden = false;
+        const input = document.getElementById('flashContentInput');
+        const count = document.getElementById('flashCharCount');
+        const preview = document.getElementById('flashMediaPreviewContainer');
+        const photo = document.getElementById('flashPhotoInput');
+        if (input) input.value = '';
+        if (count) count.textContent = '0';
+        if (preview) preview.innerHTML = '';
+        if (photo) photo.value = '';
     };
     document.addEventListener('click', (event) => {
-        const opener = event.target.closest('#btnOpenBokantajComposer, #btnEmptyBokantajShare');
+        const opener = event.target.closest('#btnEmptyBokantajShare');
         if (!opener) return;
         event.preventDefault();
         window.openBokantajComposer();
@@ -3906,7 +3905,9 @@ safeDomReady(() => {
                                 <span class="pill-badge ${statusBadge.class}" style="font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:12px;">
                                     ${statusBadge.label}
                                 </span>
-                                <i class="ph ph-caret-right row-chevron" style="font-size:1rem; color:#94A3B8;"></i>
+                                <button type="button" class="activity-delete-btn" aria-label="Supprimer cette annonce" onclick="event.stopPropagation(); window.deleteMyAnnouncement('${r.id}');">
+                                    <i class="ph ph-trash"></i>
+                                </button>
                             </div>
                         </div>
                     `;
@@ -3977,6 +3978,33 @@ safeDomReady(() => {
                 </section>
             </div>
         `;
+    };
+
+    window.deleteMyAnnouncement = async function(requestId) {
+        if (!requestId) return;
+        const confirmed = window.lyannConfirm
+            ? await window.lyannConfirm('Supprimer cette annonce ? Elle ne sera plus visible dans Explorer.')
+            : window.confirm('Supprimer cette annonce ? Elle ne sera plus visible dans Explorer.');
+        if (!confirmed) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client || typeof client.deleteRequest !== 'function') {
+            if (window.NotificationService) window.NotificationService.showToast('warning', "Impossible de supprimer l'annonce pour le moment.");
+            return;
+        }
+        try {
+            await client.deleteRequest(requestId);
+            if (window.NotificationService) window.NotificationService.showToast('success', 'Annonce supprimée.');
+            if (typeof window.closeLyannDetailSurface === 'function') window.closeLyannDetailSurface('deleted');
+            const session = window.LYANN_AUTH_STATE?.getSnapshot?.();
+            const userId = session?.userId || window.CURRENT_USER_ID;
+            if (userId && document.getElementById('monActiviteContainer')) {
+                await window.switchActivityTab('requests', userId);
+            }
+            if (typeof window.loadExplorerResults === 'function') window.loadExplorerResults();
+        } catch (err) {
+            if (window.NotificationService) window.NotificationService.showToast('warning', err.message || "La suppression n'a pas abouti.");
+            else if (window.lyannAlert) window.lyannAlert(err.message || "La suppression n'a pas abouti.");
+        }
     };
 
     window.switchActivityTab = async function(tabName, userId) {
@@ -7825,15 +7853,26 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             footerEl.innerHTML = `
                 <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn" style="flex: 1; justify-content: center;">Fermer</button>
                 <button type="button" class="btn btn-primary" id="btnManageMyLyann" style="flex: 2; justify-content: center; font-weight: 800;">
-                    <i class="ph ph-note-pencil"></i> Gérer mon Lyann
+                    <i class="ph ph-note-pencil"></i> Gérer mon annonce
                 </button>
             `;
+            footerEl.style.flexWrap = 'wrap';
             bindLyannDetailFooterClose();
             document.getElementById('btnManageMyLyann')?.addEventListener('click', () => {
                 window.closeLyannDetailSurface('manage');
                 if (typeof window.openAccountModalSubView === 'function') {
                     window.openAccountModalSubView('activity');
                 }
+            });
+            const deleteOwnBtn = document.createElement('button');
+            deleteOwnBtn.type = 'button';
+            deleteOwnBtn.className = 'btn btn-outline activity-delete-btn';
+            deleteOwnBtn.id = 'btnDeleteMyAnnouncement';
+            deleteOwnBtn.style.cssText = 'flex: 1; justify-content: center; color: #C45C4A; border-color: rgba(196,92,74,0.35);';
+            deleteOwnBtn.innerHTML = '<i class="ph ph-trash"></i> Supprimer';
+            footerEl.appendChild(deleteOwnBtn);
+            deleteOwnBtn.addEventListener('click', () => {
+                window.deleteMyAnnouncement(requestData.id);
             });
         } else if (requestData.status !== 'OPEN') {
             footerEl.innerHTML = `

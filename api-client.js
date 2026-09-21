@@ -1818,7 +1818,8 @@ const LYANN_API_CLIENT = {
         const { error } = await this.supabase
             .from('requests')
             .delete()
-            .eq('id', requestId);
+            .eq('id', requestId)
+            .eq('requester_id', session.user.id);
 
         if (error) throw error;
         return true;

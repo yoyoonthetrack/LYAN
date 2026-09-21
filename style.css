@@ -796,11 +796,17 @@ h1, h2, h3, h4 {
     grid-template-columns: 1fr;
     gap: 0;
     align-items: start;
+    text-align: center;
 }
 
 .hero-content {
     width: 100%;
     max-width: 100%;
+}
+
+.hero-content #heroGreetingBadge {
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .hero-content h1 {
@@ -814,12 +820,12 @@ h1, h2, h3, h4 {
 .hero-subtitle {
     font-size: 1.25rem;
     color: var(--text-muted);
-    margin-bottom: 28px;
+    margin: 0 auto 28px;
     max-width: 660px;
 }
 
 .hero-story {
-    margin: 0;
+    margin: 0 auto;
     max-width: 860px;
     width: 100%;
 }
@@ -835,6 +841,7 @@ h1, h2, h3, h4 {
     height: auto;
     aspect-ratio: 16 / 9;
     object-fit: cover;
+    object-position: center;
     border: 0;
     border-radius: 28px;
     background: #F4EFE6;
@@ -5529,7 +5536,7 @@ input:checked + .slider:before {
    LE LAKOU - ÉCHOS & LYANNS DU QUARTIER (feed.html)
    ========================================================================== */
 .feed-page {
-    background: var(--gradient-bg-soft);
+    background: var(--bg);
 }
 
 .nav-live-dot {
@@ -5550,29 +5557,36 @@ input:checked + .slider:before {
 }
 
 .feed-hero-section {
-    padding: 100px 0 20px;
-    background: #FFFFFF;
-    border-bottom: 1.5px solid var(--border);
+    padding: 110px 0 18px;
+    background: transparent;
+    border-bottom: none;
 }
 
 @media (max-width: 768px) {
     .feed-hero-section {
-        padding: 100px 0 16px;
+        padding: 100px 0 12px;
     }
 }
 
 .feed-page-title {
-    font-size: 2.5rem;
+    font-size: 3rem;
     font-weight: 800;
-    line-height: 1.25;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
     color: var(--text);
-    margin: 14px 0 8px;
+    margin: 0 0 12px;
+}
+
+@media (max-width: 768px) {
+    .feed-page-title {
+        font-size: 2.15rem;
+    }
 }
 
 .feed-page-subtitle {
-    font-size: 1.1rem;
+    font-size: 1.18rem;
     color: var(--text-muted);
-    max-width: 680px;
+    max-width: 640px;
     margin: 0 auto;
 }
 
@@ -7999,10 +8013,23 @@ body.user-is-logged-in #mobileHamburgerDrawer .drawer-sub-link.logged-in-only {
 body.user-is-logged-in #mobileHamburgerDrawer .drawer-footer.logged-in-only {
     display: block !important;
 }
-#flashComposerCard[hidden],
-#btnOpenBokantajComposer[hidden],
-.explorer-publish[hidden] {
-    display: none !important;
+.activity-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 6px;
+    border: none;
+    background: transparent;
+    color: #C45C4A;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.activity-delete-btn:hover,
+.activity-delete-btn:focus-visible {
+    background: rgba(196, 92, 74, 0.1);
 }
 .drawer-guest-title {
     font-weight: 800;

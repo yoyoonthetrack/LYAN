@@ -43,7 +43,6 @@ test.describe('Explorer business persistence — approved staging only', () => {
     await login(page,'REQUESTER');
     const content = `Conseil de quartier — validation ${Date.now()}`;
     await page.goto('/feed.html');
-    await page.locator('#btnOpenBokantajComposer').click();
     await page.locator('#flashContentInput').fill(content);
     const insert = page.waitForResponse(r => r.url().includes('/rest/v1/bokantaj_posts') && r.request().method()==='POST');
     await page.locator('#createFlashForm button[type="submit"]').click();

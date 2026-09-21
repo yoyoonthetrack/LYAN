@@ -61,7 +61,10 @@ if (script.includes("openHelpRequestModal==='function'")) {
   fail('activity publish CTA must use the canonical publish route, not a missing openHelpRequestModal');
 }
 if (!/btnManageMyLyann[\s\S]{0,400}openAccountModalSubView\('activity'\)/.test(script)) {
-  fail('Gérer mon Lyann must open real account activity');
+  fail('Gérer mon annonce must open real account activity');
+}
+if (!script.includes('deleteMyAnnouncement')) {
+  fail('activity must expose deleteMyAnnouncement for own requests');
 }
 
 const chat = read('chat-logic.js');
