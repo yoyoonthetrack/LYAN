@@ -192,7 +192,7 @@
             const dx = event.clientX - swipeX;
             const dy = event.clientY - swipeY;
             if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.35) return;
-            const next = dx < 0 ? 'lyanneurs' : 'annonces';
+            const next = dx < 0 ? 'annonces' : 'lyanneurs';
             if (next === mode) return;
             mode = next;
             search();
