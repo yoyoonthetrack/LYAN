@@ -891,3 +891,72 @@ input:checked + .slider:before { transform: translateX(22px); }
     .grid-2col, .grid-equal, .grid-3col { grid-template-columns: 1fr; }
     .analytics-control-bar { flex-direction: column; align-items: stretch; }
 }
+
+.maison-studio {
+    display: grid;
+    grid-template-columns: minmax(240px, 300px) 1fr;
+    gap: 18px;
+    align-items: start;
+}
+.maison-roster-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 68vh;
+    overflow-y: auto;
+}
+.maison-profile-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: inherit;
+    cursor: pointer;
+}
+.maison-profile-btn.active {
+    border-color: rgba(229, 179, 69, 0.7);
+    background: rgba(229, 179, 69, 0.08);
+}
+.maison-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #1F3827;
+    flex-shrink: 0;
+}
+.maison-muted {
+    color: var(--admin-text-muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin: 0;
+}
+.maison-desk-grid {
+    display: grid;
+    gap: 20px;
+}
+.maison-thread {
+    max-height: 240px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 10px 0;
+}
+.maison-bubble {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 0.88rem;
+}
+.maison-bubble.own {
+    background: rgba(74, 124, 89, 0.25);
+}
+@media (max-width: 900px) {
+    .maison-studio { grid-template-columns: 1fr; }
+}

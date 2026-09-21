@@ -107,6 +107,11 @@ test.describe('LYANN V1 — Playwright Global Interaction Coverage', () => {
     await bokantajNav.click();
     await expect(page.locator('#sec-bokantaj')).toHaveClass(/active/);
 
+    const maisonNav = page.locator('.admin-nav-item[data-section="sec-maison"]').first();
+    await maisonNav.click();
+    await expect(page.locator('#sec-maison')).toHaveClass(/active/);
+    await expect(page.locator('#sec-maison')).toContainText('Profils maison');
+
     // Click on Mika Control Room nav item
     const mikaNav = page.locator('.admin-nav-item[data-section="sec-mika"]').first();
     await mikaNav.click();

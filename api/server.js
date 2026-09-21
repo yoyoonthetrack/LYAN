@@ -353,6 +353,253 @@ async function verifyAdminPermission(req, requiredPermission = null) {
     }
 }
 
+async function requireMaisonOperator(req) {
+    return verifyAdminPermission(req, 'users.manage');
+}
+
+async function loadMaisonProfile(profileId) {
+    const { data, error } = await supabaseAdmin
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url, city, territory, email, bio, account_type, created_at')
+        .eq('id', profileId)
+        .maybeSingle();
+    if (error) throw error;
+    if (!data || data.account_type !== 'seed') return null;
+    return data;
+}
+
+async function recordMaisonAudit(adminUserId, action, targetId, details) {
+    try {
+        await supabaseAdmin.from('admin_audit_events').insert({
+            actor_type: 'ADMIN',
+            actor_id: adminUserId,
+            actor_name: 'Admin',
+            action,
+            module_name: 'Profils maison',
+            target_type: 'seed_profile',
+            target_id: targetId || null,
+            metadata: details || {},
+            created_at: new Date().toISOString()
+        });
+    } catch (e) {
+        console.warn('Maison audit log skipped:', e.message || e);
+    }
+}
+
+app.get('/v1/admin/maison/profiles', async (req, res) => {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('profiles')
+            .select('id, first_name, last_name, avatar_url, city, territory, account_type, created_at')
+            .eq('account_type', 'seed')
+            .order('first_name', { ascending: true });
+        if (error) throw error;
+        return res.json({ success: true, profiles: data || [] });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de charger les profils maison.' });
+    }
+});
+
+app.get('/v1/admin/maison/profiles/:id/desk', async (req, res) => {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const profile = await loadMaisonProfile(req.params.id);
+        if (!profile) {
+            return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        }
+        const userId = profile.id;
+        const [{ data: posts }, { data: parts }, { data: quotes }, { data: missions }] = await Promise.all([
+            supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, created_at').eq('author_id', userId).order('created_at', { ascending: false }).limit(12),
+            supabaseAdmin.from('conversation_participants').select('conversation_id').eq('user_id', userId),
+            supabaseAdmin.from('quotes').select('id, status, total_amount, requester_id, provider_id, request_id, request_invitation_id, valid_until, created_at').or(`requester_id.eq.${userId},provider_id.eq.${userId}`).eq('status', 'SENT').order('created_at', { ascending: false }).limit(20),
+            supabaseAdmin.from('missions').select('id, title, status, total_amount, requester_id, helper_id, created_at').or(`requester_id.eq.${userId},helper_id.eq.${userId}`).order('created_at', { ascending: false }).limit(20)
+        ]);
+        const conversationIds = [...new Set((parts || []).map((row) => row.conversation_id).filter(Boolean))];
+        let conversations = [];
+        if (conversationIds.length) {
+            const { data: allParts } = await supabaseAdmin
+                .from('conversation_participants')
+                .select('conversation_id, user_id')
+                .in('conversation_id', conversationIds);
+            const otherIds = [...new Set((allParts || []).map((row) => row.user_id).filter((id) => id && id !== userId))];
+            const { data: otherProfiles } = otherIds.length
+                ? await supabaseAdmin.from('profiles').select('id, first_name, last_name, avatar_url').in('id', otherIds)
+                : { data: [] };
+            const profileMap = {};
+            (otherProfiles || []).forEach((p) => { profileMap[p.id] = p; });
+            const { data: recentMessages } = await supabaseAdmin
+                .from('messages')
+                .select('id, conversation_id, sender_id, content, created_at')
+                .in('conversation_id', conversationIds)
+                .order('created_at', { ascending: false })
+                .limit(200);
+            conversations = conversationIds.map((cid) => {
+                const thread = (recentMessages || []).filter((m) => m.conversation_id === cid).slice(0, 12).reverse();
+                const counterpartId = (allParts || []).find((row) => row.conversation_id === cid && row.user_id !== userId)?.user_id;
+                const counterpart = counterpartId ? profileMap[counterpartId] : null;
+                return {
+                    id: cid,
+                    counterpart: counterpart ? {
+                        id: counterpart.id,
+                        name: `${counterpart.first_name || ''} ${counterpart.last_name || ''}`.trim() || 'Membre',
+                        avatar_url: counterpart.avatar_url
+                    } : { name: 'Membre' },
+                    messages: thread
+                };
+            });
+        }
+        return res.json({
+            success: true,
+            profile,
+            posts: posts || [],
+            conversations,
+            quotes: quotes || [],
+            missions: missions || []
+        });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de charger le bureau du profil.' });
+    }
+});
+
+app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const profile = await loadMaisonProfile(req.params.id);
+        if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        const content = String(req.body?.content || '').trim();
+        if (!content) return res.status(400).json({ success: false, error: 'Écris le Lyann à publier.' });
+        const { data, error } = await supabaseAdmin.from('bokantaj_posts').insert({
+            author_id: profile.id,
+            type: req.body?.type || 'info',
+            content,
+            city: req.body?.city || profile.city || null,
+            territory: req.body?.territory || profile.territory || null,
+            media_urls: []
+        }).select('id').single();
+        if (error) throw error;
+        await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_BOKANTAJ', profile.id, { post_id: data.id });
+        return res.json({ success: true, post_id: data.id });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Publication impossible.' });
+    }
+});
+
+app.post('/v1/admin/maison/profiles/:id/messages', async (req, res) => {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const profile = await loadMaisonProfile(req.params.id);
+        if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        const conversationId = req.body?.conversation_id;
+        const content = String(req.body?.content || '').trim();
+        if (!conversationId || !content) {
+            return res.status(400).json({ success: false, error: 'Conversation et message requis.' });
+        }
+        const { data: membership } = await supabaseAdmin
+            .from('conversation_participants')
+            .select('conversation_id')
+            .eq('conversation_id', conversationId)
+            .eq('user_id', profile.id)
+            .maybeSingle();
+        if (!membership) {
+            return res.status(403).json({ success: false, error: 'Ce profil n’est pas dans cette conversation.' });
+        }
+        const { data, error } = await supabaseAdmin.from('messages').insert({
+            conversation_id: conversationId,
+            sender_id: profile.id,
+            content
+        }).select('id').single();
+        if (error) throw error;
+        await recordMaisonAudit(authResult.userId, 'MAISON_SEND_MESSAGE', profile.id, { conversation_id: conversationId, message_id: data.id });
+        return res.json({ success: true, message_id: data.id });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Message impossible.' });
+    }
+});
+
+async function actOnMaisonQuote(req, res, action) {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const profile = await loadMaisonProfile(req.params.id);
+        if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        const { data: quote, error: quoteErr } = await supabaseAdmin.from('quotes').select('*').eq('id', req.params.quoteId).maybeSingle();
+        if (quoteErr) throw quoteErr;
+        if (!quote) return res.status(404).json({ success: false, error: 'Proposition introuvable.' });
+        if (quote.status !== 'SENT') {
+            return res.status(409).json({ success: false, error: `Cette proposition n’est plus en attente (${quote.status}).` });
+        }
+        if (action === 'accept' || action === 'reject') {
+            if (quote.requester_id !== profile.id) {
+                return res.status(403).json({ success: false, error: 'Seul le demandeur de ce profil maison peut accepter ou refuser.' });
+            }
+        } else if (action === 'withdraw') {
+            if (quote.provider_id !== profile.id) {
+                return res.status(403).json({ success: false, error: 'Seul le Lyanneur de ce profil maison peut retirer la proposition.' });
+            }
+        }
+        if (action === 'accept') {
+            if (quote.valid_until && new Date(quote.valid_until) < new Date()) {
+                return res.status(409).json({ success: false, error: 'La proposition a expiré.' });
+            }
+            const { data: requestRow } = await supabaseAdmin.from('requests').select('id, title, status').eq('id', quote.request_id).maybeSingle();
+            if (!requestRow || requestRow.status !== 'OPEN') {
+                return res.status(409).json({ success: false, error: 'Le Lyann n’est plus ouvert.' });
+            }
+            const { error: updErr } = await supabaseAdmin.from('quotes').update({ status: 'ACCEPTED', updated_at: new Date().toISOString() }).eq('id', quote.id).eq('status', 'SENT');
+            if (updErr) throw updErr;
+            let missionId = null;
+            if (quote.request_invitation_id) {
+                const { data: existing } = await supabaseAdmin.from('missions').select('id').eq('request_invitation_id', quote.request_invitation_id).neq('status', 'CANCELLED').maybeSingle();
+                missionId = existing?.id || null;
+            }
+            if (!missionId) {
+                const title = (requestRow.title && String(requestRow.title).trim()) || 'Mission LYANN';
+                const { data: mission, error: missionErr } = await supabaseAdmin.from('missions').insert({
+                    requester_id: quote.requester_id,
+                    helper_id: quote.provider_id,
+                    related_request_id: quote.request_id,
+                    request_invitation_id: quote.request_invitation_id,
+                    title,
+                    status: 'AGREED',
+                    total_amount: quote.total_amount,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }).select('id').single();
+                if (missionErr) throw missionErr;
+                missionId = mission.id;
+            }
+            await recordMaisonAudit(authResult.userId, 'MAISON_ACCEPT_QUOTE', profile.id, { quote_id: quote.id, mission_id: missionId });
+            return res.json({ success: true, status: 'ACCEPTED', mission_id: missionId });
+        }
+        const nextStatus = action === 'reject' ? 'REJECTED' : 'WITHDRAWN';
+        const { error: updErr } = await supabaseAdmin.from('quotes').update({ status: nextStatus, updated_at: new Date().toISOString() }).eq('id', quote.id).eq('status', 'SENT');
+        if (updErr) throw updErr;
+        await recordMaisonAudit(authResult.userId, `MAISON_${nextStatus}_QUOTE`, profile.id, { quote_id: quote.id });
+        return res.json({ success: true, status: nextStatus });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Action mission impossible.' });
+    }
+}
+
+app.post('/v1/admin/maison/profiles/:id/quotes/:quoteId/accept', (req, res) => actOnMaisonQuote(req, res, 'accept'));
+app.post('/v1/admin/maison/profiles/:id/quotes/:quoteId/reject', (req, res) => actOnMaisonQuote(req, res, 'reject'));
+app.post('/v1/admin/maison/profiles/:id/quotes/:quoteId/withdraw', (req, res) => actOnMaisonQuote(req, res, 'withdraw'));
+
 // 5.0 GET CURRENT ADMIN USER SESSION (/v1/admin/me)
 app.get('/v1/admin/me', async (req, res) => {
     const authResult = await verifyAdminPermission(req);

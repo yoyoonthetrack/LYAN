@@ -473,6 +473,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="font-size: 0.75rem; color: var(--admin-text-muted); padding: 6px 12px; font-weight: 800; text-transform: uppercase;">Accès Rapide Pôles</div>
                     <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-overview\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-chart-line-up"></i> BI & Tableau de Bord</div>
                     <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-users\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-users"></i> Utilisateurs & KYC</div>
+                    <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-maison\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-house-line"></i> Profils maison</div>
                     <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-finances\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-bank"></i> Finances & Stripe Connect</div>
                     <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-aiops\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-robot"></i> Bots IA & Animation</div>
                 `;
@@ -542,6 +543,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (targetSection) {
                 targetSection.classList.add('active');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (targetSectionId === 'sec-maison' && typeof window.loadMaisonStudio === 'function') {
+                    window.loadMaisonStudio();
+                }
             }
         });
     });
@@ -2770,6 +2774,196 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.loadMikaControlRoom();
         });
     }
+
+    const maisonEsc = (value) => String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    const maisonName = (profile) => `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Profil maison';
+    let maisonProfilesCache = [];
+    let maisonSelectedId = null;
+
+    async function maisonJson(url, options = {}) {
+        const res = await window.fetchWithAdminAuth(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(options.headers || {})
+            }
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || body.success === false) {
+            throw new Error(body.error || `Action admin impossible (${res.status})`);
+        }
+        return body;
+    }
+
+    function renderMaisonRoster(profiles) {
+        const list = document.getElementById('maisonRosterList');
+        const badge = document.getElementById('sidebarMaisonBadge');
+        if (badge) badge.textContent = String(profiles.length);
+        if (!list) return;
+        if (!profiles.length) {
+            list.innerHTML = '<p class="maison-muted">Aucun profil maison pour l’instant. Dès que les comptes relais seront créés (account_type = seed), ils apparaîtront ici.</p>';
+            return;
+        }
+        list.innerHTML = profiles.map((p) => `
+            <button type="button" class="maison-profile-btn${p.id === maisonSelectedId ? ' active' : ''}" data-maison-id="${maisonEsc(p.id)}">
+                <img class="maison-avatar" src="${maisonEsc(p.avatar_url || 'lyann-avatar-placeholder.svg')}" alt="">
+                <span>
+                    <strong style="display:block;">${maisonEsc(maisonName(p))}</strong>
+                    <span class="maison-muted">${maisonEsc(p.city || p.territory || 'Territoire à préciser')}</span>
+                </span>
+            </button>
+        `).join('');
+        list.querySelectorAll('[data-maison-id]').forEach((btn) => {
+            btn.addEventListener('click', () => window.openMaisonDesk(btn.getAttribute('data-maison-id')));
+        });
+    }
+
+    function renderMaisonDesk(payload) {
+        const desk = document.getElementById('maisonDesk');
+        if (!desk) return;
+        const profile = payload.profile;
+        const quotes = payload.quotes || [];
+        const conversations = payload.conversations || [];
+        const missions = payload.missions || [];
+        const posts = payload.posts || [];
+        desk.innerHTML = `
+            <div class="maison-desk-grid">
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <img class="maison-avatar" style="width:48px;height:48px;" src="${maisonEsc(profile.avatar_url || 'lyann-avatar-placeholder.svg')}" alt="">
+                    <div>
+                        <h2 style="margin:0; font-size:1.2rem;">${maisonEsc(maisonName(profile))}</h2>
+                        <p class="maison-muted">${maisonEsc(profile.city || '')} ${maisonEsc(profile.territory || '')}</p>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Publier dans Bokantaj</h3>
+                    <textarea id="maisonBokantajInput" class="admin-input" rows="3" placeholder="Écrire un Lyann au nom de ${maisonEsc(maisonName(profile))}…" style="width:100%;"></textarea>
+                    <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn" style="margin-top:10px;"><i class="ph-bold ph-paper-plane-tilt"></i> Publier</button>
+                    ${posts.length ? `<p class="maison-muted" style="margin-top:10px;">Derniers posts : ${posts.map((p) => maisonEsc((p.content || '').slice(0, 42))).join(' · ')}</p>` : ''}
+                </div>
+                <div>
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Messagerie</h3>
+                    ${conversations.length ? conversations.map((c) => `
+                        <div class="admin-card" style="padding:12px; margin-bottom:10px;" data-maison-conv="${maisonEsc(c.id)}">
+                            <strong>${maisonEsc(c.counterpart?.name || 'Membre')}</strong>
+                            <div class="maison-thread">
+                                ${(c.messages || []).map((m) => `
+                                    <div class="maison-bubble${m.sender_id === profile.id ? ' own' : ''}">${maisonEsc(m.content || '')}</div>
+                                `).join('') || '<p class="maison-muted">Pas encore de messages.</p>'}
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" class="admin-input maison-reply-input" placeholder="Répondre…" style="flex:1;">
+                                <button type="button" class="admin-btn admin-btn-secondary maison-reply-btn">Envoyer</button>
+                            </div>
+                        </div>
+                    `).join('') : '<p class="maison-muted">Aucune conversation pour ce profil.</p>'}
+                </div>
+                <div>
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Missions & propositions</h3>
+                    ${quotes.length ? quotes.map((q) => {
+                        const asRequester = q.requester_id === profile.id;
+                        return `
+                        <div class="admin-card" style="padding:12px; margin-bottom:10px;">
+                            <div style="font-weight:700;">Proposition ${maisonEsc(q.id.slice(0, 8))}</div>
+                            <p class="maison-muted">Montant : ${q.total_amount != null ? maisonEsc(q.total_amount) : '—'} · rôle : ${asRequester ? 'demandeur' : 'Lyanneur'}</p>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                ${asRequester ? `
+                                    <button type="button" class="admin-btn admin-btn-primary admin-btn-sm" data-maison-quote="${maisonEsc(q.id)}" data-maison-quote-action="accept">Accepter</button>
+                                    <button type="button" class="admin-btn admin-btn-danger admin-btn-sm" data-maison-quote="${maisonEsc(q.id)}" data-maison-quote-action="reject">Refuser</button>
+                                ` : `
+                                    <button type="button" class="admin-btn admin-btn-secondary admin-btn-sm" data-maison-quote="${maisonEsc(q.id)}" data-maison-quote-action="withdraw">Retirer</button>
+                                `}
+                            </div>
+                        </div>`;
+                    }).join('') : '<p class="maison-muted">Aucune proposition en attente.</p>'}
+                    ${missions.length ? `<p class="maison-muted">Missions : ${missions.map((m) => maisonEsc(m.title || m.status)).join(' · ')}</p>` : ''}
+                </div>
+            </div>
+        `;
+        document.getElementById('maisonPublishBtn')?.addEventListener('click', async () => {
+            const input = document.getElementById('maisonBokantajInput');
+            try {
+                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
+                    method: 'POST',
+                    body: JSON.stringify({ content: input?.value || '', city: profile.city, territory: profile.territory })
+                });
+                await window.openMaisonDesk(profile.id);
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+        desk.querySelectorAll('.maison-reply-btn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const card = btn.closest('[data-maison-conv]');
+                const input = card?.querySelector('.maison-reply-input');
+                try {
+                    await maisonJson(`/v1/admin/maison/profiles/${profile.id}/messages`, {
+                        method: 'POST',
+                        body: JSON.stringify({ conversation_id: card.getAttribute('data-maison-conv'), content: input?.value || '' })
+                    });
+                    await window.openMaisonDesk(profile.id);
+                } catch (err) {
+                    alert(err.message);
+                }
+            });
+        });
+        desk.querySelectorAll('[data-maison-quote]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const action = btn.getAttribute('data-maison-quote-action');
+                const quoteId = btn.getAttribute('data-maison-quote');
+                try {
+                    await maisonJson(`/v1/admin/maison/profiles/${profile.id}/quotes/${quoteId}/${action}`, { method: 'POST', body: '{}' });
+                    await window.openMaisonDesk(profile.id);
+                } catch (err) {
+                    alert(err.message);
+                }
+            });
+        });
+    }
+
+    window.loadMaisonStudio = async function() {
+        const list = document.getElementById('maisonRosterList');
+        if (list) list.innerHTML = '<p class="maison-muted">Chargement des profils maison…</p>';
+        try {
+            const data = await maisonJson('/v1/admin/maison/profiles');
+            maisonProfilesCache = data.profiles || [];
+            const query = (document.getElementById('maisonSearchInput')?.value || '').trim().toLowerCase();
+            const filtered = query
+                ? maisonProfilesCache.filter((p) => maisonName(p).toLowerCase().includes(query) || (p.city || '').toLowerCase().includes(query))
+                : maisonProfilesCache;
+            renderMaisonRoster(filtered);
+            if (maisonSelectedId && filtered.some((p) => p.id === maisonSelectedId)) {
+                await window.openMaisonDesk(maisonSelectedId);
+            }
+        } catch (err) {
+            if (list) list.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;
+        }
+    };
+
+    window.openMaisonDesk = async function(profileId) {
+        maisonSelectedId = profileId;
+        renderMaisonRoster(maisonProfilesCache);
+        const desk = document.getElementById('maisonDesk');
+        if (desk) desk.innerHTML = '<p class="maison-muted">Ouverture du bureau…</p>';
+        try {
+            const payload = await maisonJson(`/v1/admin/maison/profiles/${profileId}/desk`);
+            renderMaisonDesk(payload);
+        } catch (err) {
+            if (desk) desk.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;
+        }
+    };
+
+    document.getElementById('maisonSearchInput')?.addEventListener('input', () => {
+        const query = (document.getElementById('maisonSearchInput')?.value || '').trim().toLowerCase();
+        const filtered = query
+            ? maisonProfilesCache.filter((p) => maisonName(p).toLowerCase().includes(query) || (p.city || '').toLowerCase().includes(query))
+            : maisonProfilesCache;
+        renderMaisonRoster(filtered);
+    });
 
     // Chargement initial
     refreshDashboardData();

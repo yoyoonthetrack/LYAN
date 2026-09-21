@@ -167,6 +167,10 @@
             <a href="#" class="admin-nav-item" data-section="sec-users">
                 <div class="admin-nav-item-left"><i class="ph-bold ph-users"></i> <span>Utilisateurs</span></div>
             </a>
+            <a href="#" class="admin-nav-item" data-section="sec-maison">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-house-line"></i> <span>Profils maison</span></div>
+                <span class="admin-nav-badge" id="sidebarMaisonBadge" style="background: rgba(229,179,69,0.18); color:#E5B345;">Relais</span>
+            </a>
             <a href="#" class="admin-nav-item" data-section="sec-lyanneurs">
                 <div class="admin-nav-item-left"><i class="ph-bold ph-user-check"></i> <span>Lyanneurs</span></div>
             </a>
@@ -435,6 +439,31 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================================================
+                 PROFILS MAISON — COMPTES RELAIS OPÉRÉS PAR L'ADMIN
+                 ========================================================================== -->
+            <section id="sec-maison" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Profils maison</h1>
+                        <p class="admin-page-sub">Comptes relais que tu animes toi-même : publier dans Bokantaj, répondre en messagerie, accepter ou refuser une mission. Côté public, ce sont des membres. Ici, ils restent clairement des profils maison.</p>
+                    </div>
+                </div>
+                <div class="maison-studio" id="maisonStudio">
+                    <aside class="admin-card maison-roster">
+                        <div class="table-toolbar" style="margin-bottom: 12px;">
+                            <input type="search" id="maisonSearchInput" class="admin-input" placeholder="Filtrer un profil…" autocomplete="off">
+                        </div>
+                        <div id="maisonRosterList" class="maison-roster-list">
+                            <p class="maison-muted">Chargement des profils maison…</p>
+                        </div>
+                    </aside>
+                    <div class="admin-card maison-desk" id="maisonDesk">
+                        <p class="maison-muted" id="maisonDeskEmpty">Choisis un profil à gauche pour publier, répondre ou traiter une mission en son nom.</p>
                     </div>
                 </div>
             </section>
