@@ -649,22 +649,48 @@ app.get('/v1/admin/kpis', async (req, res) => {
             }
         });
 
+        const extraCounts = await Promise.all([
+            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_type', 'real'),
+            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_type', 'seed'),
+            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('is_pro', true),
+            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('kyc_verified', true),
+            supabaseAdmin.from('requests').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('requests').select('*', { count: 'exact', head: true }).eq('status', 'OPEN'),
+            supabaseAdmin.from('bokantaj_posts').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('conversations').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('services').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('quotes').select('*', { count: 'exact', head: true }),
+            supabaseAdmin.from('user_reports').select('*', { count: 'exact', head: true }).eq('status', 'OPEN')
+        ]);
+        const extra = extraCounts.map((row) => (row && !row.error ? (row.count || 0) : 0));
+
         res.json({
             success: true,
             data_available: true,
-            activeMembers: userCount || 0,
-            activeMissions: missionCount || 0,
+            activeMembers: validUserCount,
+            activeMissions: validMissionCount,
             gmvMonth: (totalGmvCents / 100) || 0,
             mrrCommissions: (totalLyannRevenueCents / 100) || 0,
             pendingTransfers: pendingTransfersCount,
-            openDisputes: openDisputesCount || 0,
-            activeAgents: activeAgentsCount || 0,
-            pendingApprovals: pendingTasksCount || 0,
+            openDisputes: validDisputes,
+            activeAgents: validAgents,
+            pendingApprovals: validPendingTasks,
+            realMembers: extra[0],
+            seedMembers: extra[1],
+            lyanneurs: extra[2],
+            kycVerified: extra[3],
+            requests: extra[4],
+            openRequests: extra[5],
+            bokantajPosts: extra[6],
+            conversations: extra[7],
+            services: extra[8],
+            quotes: extra[9],
+            openReports: extra[10],
             kpis: {
                 gmvCents: totalGmvCents,
                 lyannRevenueCents: totalLyannRevenueCents,
-                activeMissions: missionCount || 0,
-                activeMembers: userCount || 0
+                activeMissions: validMissionCount,
+                activeMembers: validUserCount
             }
         });
     } catch (e) {
@@ -674,6 +700,473 @@ app.get('/v1/admin/kpis', async (req, res) => {
             data_available: false,
             error: "Données temporairement indisponibles"
         });
+    }
+});
+
+function adminProfileName(profile) {
+    if (!profile) return 'Membre';
+    const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+    return name || profile.email || 'Membre';
+}
+
+function adminCentsToEuro(cents) {
+    return Number(cents || 0) / 100;
+}
+
+async function adminMapProfiles(ids) {
+    const unique = [...new Set((ids || []).filter(Boolean))];
+    if (!unique.length) return {};
+    const { data, error } = await supabaseAdmin
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url, city, territory, email, account_type, is_pro, kyc_verified, professional_status, stripe_account_id')
+        .in('id', unique);
+    if (error) {
+        console.warn('adminMapProfiles:', error.message);
+        return {};
+    }
+    const map = {};
+    (data || []).forEach((row) => { map[row.id] = row; });
+    return map;
+}
+
+async function adminSafeSelect(table, columns, build) {
+    try {
+        let query = supabaseAdmin.from(table).select(columns);
+        if (typeof build === 'function') query = build(query);
+        const { data, error } = await query;
+        if (error) {
+            console.warn(`admin ops ${table}:`, error.message);
+            return [];
+        }
+        return data || [];
+    } catch (e) {
+        console.warn(`admin ops ${table} threw:`, e.message || e);
+        return [];
+    }
+}
+
+function adminFormatPayment(row, profiles) {
+    const provider = profiles[row.provider_id] || profiles[row.recipient_id];
+    const requester = profiles[row.requester_id] || profiles[row.payer_id];
+    return {
+        id: row.id,
+        mission_id: row.mission_id || null,
+        requester_name: adminProfileName(requester),
+        provider_name: adminProfileName(provider),
+        customer_total: adminCentsToEuro(row.customer_total_cents),
+        lyann_revenue: adminCentsToEuro(row.lyann_revenue_cents),
+        customer_fee: adminCentsToEuro(row.customer_fee_cents),
+        provider_net: adminCentsToEuro(row.provider_net_cents),
+        payment_status: row.payment_status || row.status || null,
+        transfer_status: row.transfer_status || null,
+        stripe_payment_intent_id: row.stripe_payment_intent_id || null,
+        stripe_transfer_id: row.stripe_transfer_id || null,
+        created_at: row.created_at
+    };
+}
+
+app.get('/v1/admin/ops', async (req, res) => {
+    const authResult = await verifyAdminPermission(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    const resource = String(req.query.resource || '').trim();
+    const limit = Math.min(Number(req.query.limit) || 150, 300);
+    try {
+        if (resource === 'users' || resource === 'lyanneurs') {
+            let query = supabaseAdmin
+                .from('profiles')
+                .select('id, first_name, last_name, email, phone, city, territory, avatar_url, is_pro, kyc_verified, account_type, professional_status, stripe_account_id, created_at')
+                .order('created_at', { ascending: false })
+                .limit(limit);
+            if (resource === 'lyanneurs') query = query.eq('is_pro', true);
+            const { data, error } = await query;
+            if (error) return res.status(503).json({ success: false, error: error.message });
+            return res.json({ success: true, rows: data || [] });
+        }
+
+        if (resource === 'requests') {
+            const rows = await adminSafeSelect(
+                'requests',
+                'id, title, category, location, status, requester_id, budget, created_at',
+                (q) => q.order('created_at', { ascending: false }).limit(limit)
+            );
+            const profiles = await adminMapProfiles(rows.map((row) => row.requester_id));
+            return res.json({
+                success: true,
+                rows: rows.map((row) => ({
+                    ...row,
+                    requester_name: adminProfileName(profiles[row.requester_id]),
+                    requester_city: profiles[row.requester_id]?.city || null,
+                    requester_territory: profiles[row.requester_id]?.territory || null
+                }))
+            });
+        }
+
+        if (resource === 'services') {
+            let rows = await adminSafeSelect(
+                'services',
+                'id, owner_id, title, category, price_type, base_price, is_active, created_at',
+                (q) => q.order('created_at', { ascending: false }).limit(limit)
+            );
+            if (!rows.length) {
+                rows = (await adminSafeSelect(
+                    'services',
+                    'id, owner_id, title, pricing_model, indicative_price, active, created_at',
+                    (q) => q.order('created_at', { ascending: false }).limit(limit)
+                )).map((row) => ({
+                    id: row.id,
+                    owner_id: row.owner_id,
+                    title: row.title,
+                    category: null,
+                    price_type: row.pricing_model,
+                    base_price: row.indicative_price,
+                    is_active: row.active,
+                    created_at: row.created_at
+                }));
+            }
+            const profiles = await adminMapProfiles(rows.map((row) => row.owner_id));
+            return res.json({
+                success: true,
+                rows: rows.map((row) => ({
+                    ...row,
+                    owner_name: adminProfileName(profiles[row.owner_id])
+                }))
+            });
+        }
+
+        if (resource === 'missions') {
+            const rows = await adminSafeSelect(
+                'missions',
+                'id, title, status, total_amount, requester_id, helper_id, created_at',
+                (q) => q.order('created_at', { ascending: false }).limit(limit)
+            );
+            const profiles = await adminMapProfiles(rows.flatMap((row) => [row.requester_id, row.helper_id]));
+            return res.json({
+                success: true,
+                rows: rows.map((row) => ({
+                    ...row,
+                    requester_name: adminProfileName(profiles[row.requester_id]),
+                    helper_name: adminProfileName(profiles[row.helper_id])
+                }))
+            });
+        }
+
+        if (resource === 'quotes') {
+            const rows = await adminSafeSelect(
+                'quotes',
+                'id, status, total_amount, requester_id, provider_id, created_at',
+                (q) => q.order('created_at', { ascending: false }).limit(limit)
+            );
+            const profiles = await adminMapProfiles(rows.flatMap((row) => [row.requester_id, row.provider_id]));
+            return res.json({
+                success: true,
+                rows: rows.map((row) => ({
+                    ...row,
+                    requester_name: adminProfileName(profiles[row.requester_id]),
+                    provider_name: adminProfileName(profiles[row.provider_id])
+                }))
+            });
+        }
+
+        if (resource === 'payments' || resource === 'payouts' || resource === 'invoices') {
+            const rows = await adminSafeSelect(
+                'payments',
+                'id, mission_id, requester_id, provider_id, customer_total_cents, customer_fee_cents, lyann_revenue_cents, provider_net_cents, payment_status, transfer_status, stripe_payment_intent_id, stripe_transfer_id, created_at',
+                (q) => q.order('created_at', { ascending: false }).limit(limit)
+            );
+            const profiles = await adminMapProfiles(rows.flatMap((row) => [row.requester_id, row.provider_id]));
+            let formatted = rows.map((row) => adminFormatPayment(row, profiles));
+            if (resource === 'payouts') {
+                formatted = formatted.filter((row) => ['TRANSFERRED', 'TRANSFER_PROCESSING', 'PENDING_VALIDATION'].includes(row.transfer_status));
+            }
+            if (resource === 'invoices') {
+                formatted = formatted.filter((row) => row.payment_status === 'SUCCEEDED');
+            }
+            return res.json({ success: true, rows: formatted });
+        }
+
+        if (resource === 'disputes') {
+            const rows = await adminSafeSelect(
+                'disputes',
+                'id, mission_id, status, reason, description, requester_id, provider_id, created_at',
+                (q) => q.order('created_at', { ascending: false }).limit(limit)
+            );
+            const profiles = await adminMapProfiles(rows.flatMap((row) => [row.requester_id, row.provider_id]));
+            return res.json({
+                success: true,
+                rows: rows.map((row) => ({
+                    ...row,
+                    requester_name: adminProfileName(profiles[row.requester_id]),
+                    provider_name: adminProfileName(profiles[row.provider_id])
+                }))
+            });
+        }
+
+        if (resource === 'reviews') {
+            const rows = await adminSafeSelect(
+                'reviews',
+                'id, author_id, target_id, rating, comment, created_at',
+                (q) => q.order('created_at', { ascending: false }).limit(limit)
+            );
+            const profiles = await adminMapProfiles(rows.flatMap((row) => [row.author_id, row.target_id]));
+            return res.json({
+                success: true,
+                rows: rows.map((row) => ({
+                    ...row,
+                    author_name: adminProfileName(profiles[row.author_id]),
+                    target_name: adminProfileName(profiles[row.target_id])
+                }))
+            });
+        }
+
+        if (resource === 'reports') {
+            const userReports = await adminSafeSelect(
+                'user_reports',
+                'id, reporter_id, target_user_id, reason, details, status, created_at',
+                (q) => q.order('created_at', { ascending: false }).limit(limit)
+            );
+            const bokReports = await adminSafeSelect(
+                'bokantaj_reports',
+                'id, reporter_id, post_id, request_id, comment_id, reason, status, created_at',
+                (q) => q.order('created_at', { ascending: false }).limit(limit)
+            );
+            const profiles = await adminMapProfiles([
+                ...userReports.flatMap((row) => [row.reporter_id, row.target_user_id]),
+                ...bokReports.map((row) => row.reporter_id)
+            ]);
+            return res.json({
+                success: true,
+                rows: [
+                    ...userReports.map((row) => ({
+                        id: row.id,
+                        source: 'user',
+                        reporter_name: adminProfileName(profiles[row.reporter_id]),
+                        target_name: adminProfileName(profiles[row.target_user_id]),
+                        reason: row.reason,
+                        details: row.details,
+                        status: row.status,
+                        created_at: row.created_at
+                    })),
+                    ...bokReports.map((row) => ({
+                        id: row.id,
+                        source: 'bokantaj',
+                        reporter_name: adminProfileName(profiles[row.reporter_id]),
+                        target_name: row.post_id || row.request_id || row.comment_id || 'Publication',
+                        reason: row.reason,
+                        details: null,
+                        status: row.status,
+                        created_at: row.created_at
+                    }))
+                ]
+            });
+        }
+
+        if (resource === 'bokantaj') {
+            const rows = await adminSafeSelect(
+                'bokantaj_posts',
+                'id, author_id, type, content, city, territory, created_at',
+                (q) => q.order('created_at', { ascending: false }).limit(limit)
+            );
+            const profiles = await adminMapProfiles(rows.map((row) => row.author_id));
+            return res.json({
+                success: true,
+                rows: rows.map((row) => ({
+                    ...row,
+                    author_name: adminProfileName(profiles[row.author_id]),
+                    account_type: profiles[row.author_id]?.account_type || 'real'
+                }))
+            });
+        }
+
+        if (resource === 'conversations') {
+            const parts = await adminSafeSelect(
+                'conversation_participants',
+                'conversation_id, user_id',
+                (q) => q.limit(800)
+            );
+            const grouped = {};
+            parts.forEach((row) => {
+                if (!row.conversation_id) return;
+                if (!grouped[row.conversation_id]) grouped[row.conversation_id] = [];
+                grouped[row.conversation_id].push(row.user_id);
+            });
+            const ids = Object.keys(grouped).slice(0, limit);
+            const profiles = await adminMapProfiles(parts.map((row) => row.user_id));
+            const convRows = ids.length
+                ? await adminSafeSelect('conversations', 'id, created_at, updated_at', (q) => q.in('id', ids))
+                : [];
+            const convMap = {};
+            convRows.forEach((row) => { convMap[row.id] = row; });
+            return res.json({
+                success: true,
+                rows: ids.map((id) => ({
+                    id,
+                    participants: (grouped[id] || []).map((uid) => adminProfileName(profiles[uid])),
+                    created_at: convMap[id]?.created_at || null,
+                    updated_at: convMap[id]?.updated_at || convMap[id]?.created_at || null
+                }))
+            });
+        }
+
+        if (resource === 'team') {
+            const { data, error } = await supabaseAdmin
+                .from('admin_members')
+                .select('id, user_id, status, created_at, admin_roles!role_id(code, name)')
+                .order('created_at', { ascending: false });
+            if (error) return res.status(503).json({ success: false, error: error.message });
+            const profiles = await adminMapProfiles((data || []).map((row) => row.user_id));
+            return res.json({
+                success: true,
+                rows: (data || []).map((row) => ({
+                    id: row.id,
+                    user_id: row.user_id,
+                    name: adminProfileName(profiles[row.user_id]),
+                    email: profiles[row.user_id]?.email || null,
+                    role: row.admin_roles?.code || null,
+                    role_name: row.admin_roles?.name || null,
+                    status: row.status,
+                    created_at: row.created_at
+                }))
+            });
+        }
+
+        if (resource === 'health') {
+            const started = Date.now();
+            const { error, count } = await supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true });
+            return res.json({
+                success: true,
+                supabase_ok: !error,
+                supabase_ms: Date.now() - started,
+                profiles: count || 0,
+                stripe_configured: Boolean(process.env.STRIPE_SECRET_KEY),
+                error: error ? error.message : null
+            });
+        }
+
+        if (resource === 'territories') {
+            const { data, error } = await supabaseAdmin.from('profiles').select('territory');
+            if (error) return res.status(503).json({ success: false, error: error.message });
+            const counts = {};
+            (data || []).forEach((row) => {
+                const key = String(row.territory || 'non_renseigne').toLowerCase();
+                counts[key] = (counts[key] || 0) + 1;
+            });
+            return res.json({ success: true, counts });
+        }
+
+        return res.status(400).json({ success: false, error: 'Ressource admin inconnue.' });
+    } catch (e) {
+        console.error('Admin ops error:', e);
+        return res.status(503).json({ success: false, error: e.message || 'Données temporairement indisponibles' });
+    }
+});
+
+app.post('/v1/admin/ops/requests/:id/close', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'moderation.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('requests')
+            .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
+            .eq('id', req.params.id)
+            .select('id, status')
+            .maybeSingle();
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        if (!data) return res.status(404).json({ success: false, error: 'Demande introuvable.' });
+        await recordMaisonAudit(authResult.userId, 'REQUEST_CLOSED', req.params.id, { status: 'CANCELLED' });
+        return res.json({ success: true, row: data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de retirer la demande.' });
+    }
+});
+
+app.post('/v1/admin/ops/users/:id/kyc', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'users.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const verified = req.body?.verified !== false;
+        const { data, error } = await supabaseAdmin
+            .from('profiles')
+            .update({ kyc_verified: verified, updated_at: new Date().toISOString() })
+            .eq('id', req.params.id)
+            .select('id, kyc_verified, first_name, last_name')
+            .maybeSingle();
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        if (!data) return res.status(404).json({ success: false, error: 'Profil introuvable.' });
+        await recordMaisonAudit(authResult.userId, 'KYC_UPDATED', req.params.id, { kyc_verified: verified });
+        return res.json({ success: true, row: data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de mettre à jour le KYC.' });
+    }
+});
+
+app.post('/v1/admin/ops/reports/:id', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'moderation.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    const nextStatus = String(req.body?.status || '').toUpperCase();
+    const source = req.body?.source === 'bokantaj' ? 'bokantaj_reports' : 'user_reports';
+    const allowed = source === 'bokantaj_reports'
+        ? ['PENDING', 'RESOLVED', 'DISMISSED']
+        : ['OPEN', 'IN_REVIEW', 'RESOLVED', 'DISMISSED'];
+    if (!allowed.includes(nextStatus)) {
+        return res.status(400).json({ success: false, error: 'Statut de signalement invalide.' });
+    }
+    try {
+        const payload = source === 'user_reports'
+            ? { status: nextStatus, updated_at: new Date().toISOString() }
+            : { status: nextStatus };
+        const { data, error } = await supabaseAdmin
+            .from(source)
+            .update(payload)
+            .eq('id', req.params.id)
+            .select('id, status')
+            .maybeSingle();
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        if (!data) return res.status(404).json({ success: false, error: 'Signalement introuvable.' });
+        await recordMaisonAudit(authResult.userId, 'REPORT_UPDATED', req.params.id, { status: nextStatus, source });
+        return res.json({ success: true, row: data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de mettre à jour le signalement.' });
+    }
+});
+
+app.post('/v1/admin/ops/conversations/:id/inspect', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'moderation.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    const reason = String(req.body?.reason || '').trim();
+    if (reason.length < 5) {
+        return res.status(400).json({ success: false, error: 'Un motif d’au moins 5 caractères est obligatoire.' });
+    }
+    try {
+        const { data: messages, error } = await supabaseAdmin
+            .from('messages')
+            .select('id, sender_id, content, created_at')
+            .eq('conversation_id', req.params.id)
+            .order('created_at', { ascending: true })
+            .limit(40);
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        const profiles = await adminMapProfiles((messages || []).map((row) => row.sender_id));
+        await recordMaisonAudit(authResult.userId, 'PRIVATE_CHAT_ACCESSED', req.params.id, { reason });
+        return res.json({
+            success: true,
+            messages: (messages || []).map((row) => ({
+                id: row.id,
+                sender_name: adminProfileName(profiles[row.sender_id]),
+                content: row.content,
+                created_at: row.created_at
+            }))
+        });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de consulter la conversation.' });
     }
 });
 

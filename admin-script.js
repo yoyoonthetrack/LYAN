@@ -475,7 +475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-users\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-users"></i> Utilisateurs & KYC</div>
                     <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-maison\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-house-line"></i> Profils maison</div>
                     <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-finances\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-bank"></i> Finances & Stripe Connect</div>
-                    <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-aiops\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-robot"></i> Bots IA & Animation</div>
+                    <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'sec-agents\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-robot"></i> Agents LYANN</div>
                 `;
                 return;
             }
@@ -494,12 +494,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnRequestChatAccess = document.getElementById('btnRequestChatAccess');
     if (btnRequestChatAccess) {
         btnRequestChatAccess.addEventListener('click', () => {
-            const reason = prompt("⚠️ ACCÈS PRIVILÉGIÉ À LA MESSAGERIE PRIVÉE\n\nVeuillez indiquer le motif obligatoire de consultation (ex: Litige #562, Réclamation Fraude, Support Ticket #1082) :");
+            const reason = prompt("Motif obligatoire pour consulter une conversation (litige, support, sécurité) :");
             if (reason && reason.trim().length >= 5) {
-                recordAdminAuditLog('PRIVATE_CHAT_ACCESSED', 'Messagerie Encadrée', 'Conversation', 'ALL_ACTIVE', reason.trim());
-                alert(`🔓 Accès accordé sous le motif : "${reason.trim()}". L'opération a été inscrite dans les Audit Logs.`);
+                const firstRow = document.querySelector('#conversationsAdminTableBody button[data-conversation-id]');
+                if (firstRow) {
+                    window.inspectAdminConversation(firstRow.getAttribute('data-conversation-id'), reason.trim());
+                } else {
+                    alert('Aucune conversation à consulter pour le moment.');
+                }
             } else if (reason !== null) {
-                alert("❌ Consultation refusée : Le motif doit comporter au moins 5 caractères pour être valide.");
+                alert('Le motif doit comporter au moins 5 caractères.');
             }
         });
     }
@@ -546,6 +550,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (targetSectionId === 'sec-maison' && typeof window.loadMaisonStudio === 'function') {
                     window.loadMaisonStudio();
                 }
+                if (typeof window.loadAdminSection === 'function') {
+                    window.loadAdminSection(targetSectionId);
+                }
             }
         });
     });
@@ -553,7 +560,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Raccourci vers la section Bots IA
     document.querySelectorAll('.trigger-goto-aiops').forEach(btn => {
         btn.addEventListener('click', () => {
-            const aiNavItem = document.querySelector('.admin-nav-item[data-section="sec-aiops"]');
+            const aiNavItem = document.querySelector('.admin-nav-item[data-section="sec-agents"]');
             if (aiNavItem) aiNavItem.click();
         });
     });
@@ -640,7 +647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Toggle Flags
     document.querySelectorAll('.btn-toggle-flag').forEach(btn => {
         btn.addEventListener('click', () => {
-            btn.classList.toggle('active');
+            alert('Ces interrupteurs ne sont pas encore reliés à system_settings. Aucun changement n’a été appliqué.');
         });
     });
 
@@ -811,13 +818,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Lancement de Campagne Notification
     const newCampaignForm = document.getElementById('newCampaignForm');
-    if (newCampaignForm) {
+        if (newCampaignForm) {
         newCampaignForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const title = document.getElementById('campTitle')?.value || 'Alerte';
-            const territory = document.getElementById('campTerritory')?.value || 'Tous les DOM';
-            alert(`🚀 Campagne [${title}] programmée avec succès pour diffusion Push & SMS sur : ${territory}`);
-            newCampaignForm.reset();
+            alert('Aucun envoi. La diffusion push n’est pas branchée.');
         });
     }
 
@@ -1621,32 +1625,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             reports = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]');
         } catch(e) {}
 
-        // Seed mock reports if empty
-        if (reports.length === 0) {
-            reports = [
-                {
-                    id: 'REP-849201',
-                    reporterName: 'Membre LYANN',
-                    targetName: 'Profil Suspect #41',
-                    reason: 'spam',
-                    reasonLabel: 'Démarchage abusif / Spam',
-                    details: 'Messages automatisés sollicitant un transfert de coordonnées bancaires hors plateforme.',
-                    timestamp: 'Aujourd\'hui à 11:24',
-                    status: 'En cours'
-                },
-                {
-                    id: 'REP-730192',
-                    reporterName: 'Tati Huguette Cazeau',
-                    targetName: 'Marc L.',
-                    reason: 'inapproprie',
-                    reasonLabel: 'Propos inappropriés / Harcèlement',
-                    details: 'Langage irrespectueux tenu lors de la négociation de la prestation.',
-                    timestamp: 'Hier à 16:45',
-                    status: 'En cours'
-                }
-            ];
-            try { localStorage.setItem('LYANN_REPORTS', JSON.stringify(reports)); } catch(e) {}
-        }
+        // Reports come from /v1/admin/ops — never seed fake rows
+        if (!Array.isArray(reports)) reports = [];
 
         if (countBadge) countBadge.textContent = reports.length;
 
@@ -1749,14 +1729,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (res.ok) {
                 const data = await res.json();
                 if (data.success && data.data_available) {
+                    const euro = (n) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
                     const kpiGmv = document.getElementById('kpiGmv');
-                    if (kpiGmv && data.gmvMonth !== undefined) kpiGmv.textContent = data.gmvMonth.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+                    if (kpiGmv && data.gmvMonth !== undefined) kpiGmv.textContent = euro(data.gmvMonth);
                     const kpiRevenue = document.getElementById('kpiRevenue');
-                    if (kpiRevenue && data.mrrCommissions !== undefined) kpiRevenue.textContent = data.mrrCommissions.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+                    if (kpiRevenue && data.mrrCommissions !== undefined) kpiRevenue.textContent = euro(data.mrrCommissions);
                     const kpiUsers = document.getElementById('kpiTotalUsers');
                     if (kpiUsers && data.activeMembers !== undefined) kpiUsers.textContent = data.activeMembers;
                     const kpiMissions = document.getElementById('kpiTotalMissions');
                     if (kpiMissions && data.activeMissions !== undefined) kpiMissions.textContent = data.activeMissions;
+                    const usersSub = document.getElementById('kpiUsersSub');
+                    if (usersSub) usersSub.textContent = `${data.realMembers || 0} membres • ${data.seedMembers || 0} profils maison • ${data.kycVerified || 0} KYC`;
+                    const missionsSub = document.getElementById('kpiMissionsSub');
+                    if (missionsSub) missionsSub.textContent = `${data.openRequests || 0} demandes ouvertes`;
+                    const activity = document.getElementById('kpiActivityMix');
+                    if (activity) activity.textContent = `${data.openRequests || 0} demandes • ${data.bokantajPosts || 0} Lyanns • ${data.conversations || 0} conv.`;
+                    const bots = document.getElementById('kpiActiveBots');
+                    if (bots) bots.textContent = `${data.activeAgents || 0} actifs • ${data.pendingApprovals || 0} en attente`;
+                    const disputes = document.getElementById('kpiOpenDisputes');
+                    if (disputes) disputes.textContent = `${data.openDisputes || 0} litiges • ${data.openReports || 0} signalements`;
+                    const agentBadge = document.getElementById('sidebarAgentBadge');
+                    if (agentBadge) agentBadge.textContent = String(data.activeAgents || 0);
+                    const disputeBadge = document.getElementById('sidebarDisputeBadge');
+                    if (disputeBadge) disputeBadge.textContent = String(data.openDisputes || 0);
+                    const maisonBadge = document.getElementById('sidebarMaisonBadge');
+                    if (maisonBadge && data.seedMembers !== undefined) maisonBadge.textContent = String(data.seedMembers);
                 } else {
                     renderUnavailableState('kpiContainer');
                 }
@@ -1998,7 +1995,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (confirm(confirmMsg)) {
                 try {
-                    const res = await fetch('/v1/admin/kill-switch/global', {
+                    const res = await window.fetchWithAdminAuth('/v1/admin/kill-switch/global', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ suspended: nextState, reason: 'Command Center Kill Switch Toggle' })
@@ -2053,7 +2050,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const instructions = document.getElementById('newAgentInstructions')?.value || '';
 
             try {
-                const res = await fetch('/v1/admin/agents', {
+                const res = await window.fetchWithAdminAuth('/v1/admin/agents', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2503,7 +2500,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.loadMikaControlRoom = async function() {
         try {
-            const res = await fetch('/v1/admin/agents/mika');
+            const res = await window.fetchWithAdminAuth('/v1/admin/agents/mika');
             if (!res.ok) return;
             const data = await res.json();
             if (!data.success) return;
@@ -2590,7 +2587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         messagesBox.scrollTop = messagesBox.scrollHeight;
 
         try {
-            const res = await fetch('/v1/admin/agents/mika/chat', {
+            const res = await window.fetchWithAdminAuth('/v1/admin/agents/mika/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: msg })
@@ -2638,7 +2635,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!cmd) return;
 
         try {
-            const res = await fetch('/v1/admin/agents/mika/command', {
+            const res = await window.fetchWithAdminAuth('/v1/admin/agents/mika/command', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ command: cmd })
@@ -2676,7 +2673,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (note === null) return; // User cancelled prompt
 
         try {
-            const res = await fetch('/v1/admin/agents/mika/feedback', {
+            const res = await window.fetchWithAdminAuth('/v1/admin/agents/mika/feedback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ task_id: taskId, feedback_type: type, note: note })
@@ -2693,7 +2690,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.initMikaTestTasks = async function() {
         try {
-            const res = await fetch('/v1/admin/agents/mika/init-test-tasks', { method: 'POST' });
+            const res = await window.fetchWithAdminAuth('/v1/admin/agents/mika/init-test-tasks', { method: 'POST' });
             if (res.ok) {
                 alert("🚀 5 tâches TEST créées dans l'Approval Center de Mika !");
                 window.loadMikaControlRoom();
@@ -2745,26 +2742,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.exportAdminReportCSV = function(type = 'accounting') {
+        const rows = window.__adminPaymentsCache || [];
         const filename = `lyann_export_${type}_${new Date().toISOString().slice(0, 10)}.csv`;
-        const csvContent = "data:text/csv;charset=utf-8,ID,Reference,MontantHT,TVA,MontantTTC,Date\nFAC-2026-0901,Huguette Saint-Louis,146.91,12.49,159.40,2026-09-01\n";
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", filename);
+        const header = 'ID,Demandeur,Prestataire,TotalClient,Commission,Payout,Statut,Date\n';
+        const body = rows.map((row) => [
+            row.id,
+            `"${(row.requester_name || '').replace(/"/g, '')}"`,
+            `"${(row.provider_name || '').replace(/"/g, '')}"`,
+            row.customer_total,
+            row.lyann_revenue,
+            row.provider_net,
+            row.payment_status,
+            row.created_at || ''
+        ].join(',')).join('\n');
+        const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + header + body);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', filename);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
-    window.previewAdminInvoicePDF = function(facId = 'FAC-2026-0901') {
-        alert(`📄 Prévisualisation du PDF Facture généré pour : ${facId}`);
+    window.previewAdminInvoicePDF = function() {
+        alert('Aucun PDF généré : pas de facture en base pour le moment.');
     };
 
     window.openInviteTeamMemberModal = function() {
-        const email = prompt("Adresse e-mail du collaborateur à inviter :");
-        if (email) {
-            alert(`✉️ Invitation envoyée à : ${email}`);
-        }
+        alert('L’invitation d’un collaborateur n’est pas encore branchée. Ajoute le compte dans admin_members côté Supabase.');
     };
 
     // Auto-load Mika Control Room when nav section clicked or init
@@ -2965,13 +2970,394 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderMaisonRoster(filtered);
     });
 
+    window.loadAdminRealData = loadAdminRealData;
+
+    function adminEscape(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[char]));
+    }
+    function adminMoney(value) {
+        return Number(value || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+    }
+    function adminDate(iso) {
+        if (!iso) return '—';
+        const date = new Date(iso);
+        return Number.isNaN(date.getTime()) ? String(iso) : date.toLocaleString('fr-FR');
+    }
+    function adminEmpty(colspan, text) {
+        return `<tr><td colspan="${colspan}" class="admin-empty-cell">${adminEscape(text)}</td></tr>`;
+    }
+    function adminBadge(status) {
+        const label = String(status || '—');
+        const key = label.toUpperCase();
+        let cls = 'pending';
+        if (['OPEN','ACTIVE','SUCCEEDED','TRANSFERRED','RESOLVED','VERIFIED','ACCEPTED','COMPLETED','SEED','TRUE'].includes(key)) cls = 'verified';
+        if (['CANCELLED','FAILED','DISMISSED','SUSPENDED','DISPUTED'].includes(key) || key.includes('FAIL')) cls = 'suspended';
+        return `<span class="status-badge ${cls}">${adminEscape(label)}</span>`;
+    }
+
+    async function fetchAdminOps(resource) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops?resource=${encodeURIComponent(resource)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) throw new Error(data.error || 'Chargement impossible');
+        return data;
+    }
+
+    function renderAdminUsers(rows, tbodyId, kind) {
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        if (!rows.length) {
+            tbody.innerHTML = adminEmpty(kind === 'lyanneurs' ? 7 : 6, kind === 'lyanneurs' ? 'Aucun lyanneur (is_pro) pour le moment.' : 'Aucun membre pour le moment.');
+            return;
+        }
+        tbody.innerHTML = rows.map((row) => {
+            const name = `${row.first_name || ''} ${row.last_name || ''}`.trim() || row.email || 'Membre';
+            const avatar = row.avatar_url || 'lyann-avatar-placeholder.svg';
+            const account = row.account_type === 'seed' ? 'Maison' : (row.account_type || 'real');
+            if (kind === 'lyanneurs') {
+                return `<tr>
+                    <td><div style="display:flex;align-items:center;gap:10px;"><img src="${adminEscape(avatar)}" class="user-avatar-sm" alt=""><strong>${adminEscape(name)}</strong></div></td>
+                    <td>${adminEscape(row.city || '—')} • ${adminEscape(row.territory || '—')}</td>
+                    <td>${adminEscape(row.professional_status || '—')}</td>
+                    <td style="font-family:var(--admin-font-mono);font-size:0.78rem;">${adminEscape(row.stripe_account_id || '—')}</td>
+                    <td>${adminEscape(account)}</td>
+                    <td>${row.kyc_verified ? adminBadge('VÉRIFIÉ') : adminBadge('KYC À FAIRE')}</td>
+                    <td>${row.kyc_verified ? '' : `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminApproveKyc('${row.id}')">Valider KYC</button>`}</td>
+                </tr>`;
+            }
+            return `<tr>
+                <td><div style="display:flex;align-items:center;gap:10px;"><img src="${adminEscape(avatar)}" class="user-avatar-sm" alt=""><div><div style="font-weight:800;">${adminEscape(name)}</div><div style="font-size:0.75rem;color:var(--admin-text-muted);">${adminEscape(account)} • ${adminDate(row.created_at)}</div></div></div></td>
+                <td>${adminEscape(row.email || '—')}<div style="font-size:0.78rem;color:var(--admin-text-muted);">${adminEscape(row.city || '—')} • ${adminEscape(row.territory || '—')}</div></td>
+                <td>${row.kyc_verified ? adminBadge('VÉRIFIÉ') : adminBadge('KYC À FAIRE')}</td>
+                <td>${row.is_pro ? 'Lyanneur' : 'Membre'}</td>
+                <td>${adminEscape(row.professional_status || 'Libre')}</td>
+                <td>${row.kyc_verified ? '' : `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminApproveKyc('${row.id}')">Valider KYC</button>`}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    window.adminApproveKyc = async function(userId) {
+        if (!confirm('Valider le KYC de ce membre ?')) return;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/users/${userId}/kyc`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ verified: true })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'KYC non mis à jour.');
+            return;
+        }
+        window.loadAdminSection('sec-users');
+        window.loadAdminSection('sec-lyanneurs');
+    };
+
+    window.adminCloseRequest = async function(requestId) {
+        if (!confirm('Retirer cette demande de la plateforme (statut CANCELLED) ?')) return;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/requests/${requestId}/close`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Demande non retirée.');
+            return;
+        }
+        window.loadAdminSection('sec-requests');
+    };
+
+    window.adminUpdateReport = async function(reportId, source, status) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/reports/${reportId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source, status })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Signalement non mis à jour.');
+            return;
+        }
+        window.loadAdminSection('sec-content');
+    };
+
+    window.inspectAdminConversation = async function(conversationId, existingReason) {
+        const reason = existingReason || prompt('Motif obligatoire de consultation (min. 5 caractères) :');
+        if (!reason || reason.trim().length < 5) return;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/conversations/${conversationId}/inspect`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason.trim() })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Consultation refusée.');
+            return;
+        }
+        const messages = (data.messages || []).map((msg) => `${adminDate(msg.created_at)} — ${msg.sender_name}: ${msg.content || ''}`).join('\n');
+        alert(messages || 'Aucun message dans cette conversation.');
+    };
+
+    window.loadAdminSection = async function(sectionId) {
+        const loaders = {
+            'sec-overview': () => loadAdminRealData(),
+            'sec-users': async () => {
+                const data = await fetchAdminOps('users');
+                window.__adminUsersCache = data.rows || [];
+                renderAdminUsers(window.__adminUsersCache, 'usersAdminTableBody', 'users');
+            },
+            'sec-lyanneurs': async () => {
+                const data = await fetchAdminOps('lyanneurs');
+                renderAdminUsers(data.rows || [], 'lyanneursAdminTableBody', 'lyanneurs');
+            },
+            'sec-requests': async () => {
+                const data = await fetchAdminOps('requests');
+                const tbody = document.getElementById('requestsAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td><strong>${adminEscape(row.title || 'Demande')}</strong></td>
+                    <td>${adminEscape(row.requester_name)}</td>
+                    <td>${adminEscape(row.location || row.requester_city || '—')}</td>
+                    <td>${adminEscape(row.category || '—')}</td>
+                    <td>${adminBadge(row.status)}</td>
+                    <td>${row.status === 'CANCELLED' ? '—' : `<button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminCloseRequest('${row.id}')">Retirer</button>`}</td>
+                </tr>`).join('') : adminEmpty(6, 'Aucune demande pour le moment.');
+            },
+            'sec-services': async () => {
+                const data = await fetchAdminOps('services');
+                const tbody = document.getElementById('servicesAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td>${adminEscape(row.title)}</td>
+                    <td>${adminEscape(row.owner_name)}</td>
+                    <td>${adminEscape(row.price_type || '—')}</td>
+                    <td>${row.base_price == null ? '—' : adminMoney(row.base_price)}</td>
+                    <td>${row.is_active ? adminBadge('ACTIF') : adminBadge('INACTIF')}</td>
+                    <td>${adminEscape(row.category || '—')}</td>
+                </tr>`).join('') : adminEmpty(6, 'Aucune prestation en base.');
+            },
+            'sec-missions': async () => {
+                const data = await fetchAdminOps('missions');
+                const tbody = document.getElementById('missionsAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape(row.requester_name)} → ${adminEscape(row.helper_name)}</td>
+                    <td>${adminEscape(row.title || '—')}</td>
+                    <td>${row.total_amount == null ? '—' : adminMoney(row.total_amount)}</td>
+                    <td>${adminBadge(row.status)}</td>
+                    <td>${adminDate(row.created_at)}</td>
+                </tr>`).join('') : adminEmpty(6, 'Aucune mission pour le moment.');
+            },
+            'sec-quotes': async () => {
+                const data = await fetchAdminOps('quotes');
+                const tbody = document.getElementById('quotesAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape(row.provider_name)}</td>
+                    <td>${adminEscape(row.requester_name)}</td>
+                    <td>${row.total_amount == null ? '—' : adminMoney(row.total_amount)}</td>
+                    <td>—</td>
+                    <td>${adminBadge(row.status)}</td>
+                </tr>`).join('') : adminEmpty(6, 'Aucun devis pour le moment.');
+            },
+            'sec-finances': async () => {
+                const data = await fetchAdminOps('payments');
+                window.__adminPaymentsCache = data.rows || [];
+                const tbody = document.getElementById('paymentsAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminMoney(row.customer_total)}</td>
+                    <td>${adminMoney(row.lyann_revenue)}</td>
+                    <td>${adminMoney(row.customer_fee)}</td>
+                    <td>${adminMoney(row.provider_net)}</td>
+                    <td style="font-family:var(--admin-font-mono);font-size:0.78rem;">${adminEscape(row.stripe_payment_intent_id || '—')}</td>
+                    <td>${adminBadge(row.payment_status)}</td>
+                </tr>`).join('') : adminEmpty(7, 'Aucun paiement encaissé.');
+            },
+            'sec-invoices': async () => {
+                const data = await fetchAdminOps('invoices');
+                const tbody = document.getElementById('invoicesAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape(row.requester_name)}</td>
+                    <td>${adminMoney(row.customer_total / 1.085)}</td>
+                    <td>${adminMoney(row.customer_total - (row.customer_total / 1.085))}</td>
+                    <td><strong>${adminMoney(row.customer_total)}</strong></td>
+                    <td>${adminDate(row.created_at)}</td>
+                </tr>`).join('') : adminEmpty(6, 'Aucune écriture : aucun paiement SUCCEEDED.');
+            },
+            'sec-payouts': async () => {
+                const data = await fetchAdminOps('payouts');
+                const tbody = document.getElementById('payoutsAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.stripe_transfer_id || '—')}</td>
+                    <td>${adminEscape(row.mission_id || '—')}</td>
+                    <td>${adminEscape(row.provider_name)}</td>
+                    <td><strong>${adminMoney(row.provider_net)}</strong></td>
+                    <td>—</td>
+                    <td>${adminDate(row.created_at)}</td>
+                    <td>${adminBadge(row.transfer_status)}</td>
+                </tr>`).join('') : adminEmpty(7, 'Aucun versement pour le moment.');
+            },
+            'sec-disputes': async () => {
+                const data = await fetchAdminOps('disputes');
+                const tbody = document.getElementById('disputesAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape(row.mission_id || '—')}</td>
+                    <td>${adminEscape(row.requester_name)} / ${adminEscape(row.provider_name)}</td>
+                    <td>${adminEscape(row.reason || row.description || '—')}</td>
+                    <td>${adminBadge(row.status)}</td>
+                    <td>${adminDate(row.created_at)}</td>
+                </tr>`).join('') : adminEmpty(6, 'Aucun litige ouvert.');
+            },
+            'sec-reviews': async () => {
+                const data = await fetchAdminOps('reviews');
+                const tbody = document.getElementById('reviewsAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td>${adminEscape(row.author_name)}</td>
+                    <td>${adminEscape(row.target_name)}</td>
+                    <td>${row.rating != null ? `${row.rating}/5` : '—'}</td>
+                    <td>${adminEscape(row.comment || '—')}</td>
+                    <td>${adminDate(row.created_at)}</td>
+                    <td>${adminBadge('PUBLIÉ')}</td>
+                </tr>`).join('') : adminEmpty(6, 'Aucun avis pour le moment.');
+            },
+            'sec-bokantaj': async () => {
+                const data = await fetchAdminOps('bokantaj');
+                const tbody = document.getElementById('bokantajAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape(row.author_name)}</td>
+                    <td>${adminEscape(row.city || row.territory || '—')}</td>
+                    <td>${adminEscape((row.content || '').slice(0, 120))}</td>
+                    <td>${adminDate(row.created_at)}</td>
+                    <td>${adminBadge(row.account_type === 'seed' ? 'MAISON' : row.type || 'LYANN')}</td>
+                    <td>${adminBadge(row.type || 'info')}</td>
+                </tr>`).join('') : adminEmpty(7, 'Aucun Lyann publié.');
+            },
+            'sec-content': async () => {
+                const data = await fetchAdminOps('reports');
+                const tbody = document.getElementById('adminReportsTableBody');
+                const rows = data.rows || [];
+                const count = document.getElementById('adminReportsCount');
+                if (count) count.textContent = String(rows.length);
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape(row.reporter_name)}</td>
+                    <td>${adminEscape(row.target_name)}</td>
+                    <td>${adminEscape(row.reason)}</td>
+                    <td>${adminEscape(row.details || '—')}</td>
+                    <td>${adminDate(row.created_at)}</td>
+                    <td>${adminBadge(row.status)}</td>
+                    <td>
+                        <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminUpdateReport('${row.id}','${row.source}','RESOLVED')">Classer</button>
+                    </td>
+                </tr>`).join('') : adminEmpty(8, 'Aucun signalement.');
+                const bok = await fetchAdminOps('bokantaj');
+                const bokBody = document.getElementById('contentBokantajTableBody');
+                if (bokBody) {
+                    const posts = bok.rows || [];
+                    bokBody.innerHTML = posts.length ? posts.map((row) => `<tr>
+                        <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                        <td>${adminEscape(row.author_name)}</td>
+                        <td>${adminEscape((row.content || '').slice(0, 140))}</td>
+                        <td>—</td>
+                        <td>${adminDate(row.created_at)}</td>
+                    </tr>`).join('') : adminEmpty(5, 'Aucune publication à modérer.');
+                }
+            },
+            'sec-chat': async () => {
+                const data = await fetchAdminOps('conversations');
+                const tbody = document.getElementById('conversationsAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape((row.participants || []).join(' • '))}</td>
+                    <td>${adminDate(row.updated_at || row.created_at)}</td>
+                    <td><button class="admin-btn admin-btn-sm admin-btn-primary" data-conversation-id="${adminEscape(row.id)}" onclick="window.inspectAdminConversation('${row.id}')">Consulter</button></td>
+                </tr>`).join('') : adminEmpty(4, 'Aucune conversation.');
+            },
+            'sec-team': async () => {
+                const data = await fetchAdminOps('team');
+                const tbody = document.getElementById('teamAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td><strong>${adminEscape(row.name)}</strong></td>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.email || row.user_id)}</td>
+                    <td>${adminBadge(row.role || row.role_name)}</td>
+                    <td>${adminBadge(row.status)}</td>
+                </tr>`).join('') : adminEmpty(4, 'Aucun membre admin_members.');
+            },
+            'sec-health': async () => {
+                const data = await fetchAdminOps('health');
+                const supabaseEl = document.getElementById('healthSupabaseStatus');
+                const stripeEl = document.getElementById('healthStripeStatus');
+                const profilesEl = document.getElementById('healthProfilesStatus');
+                if (supabaseEl) supabaseEl.textContent = data.supabase_ok ? `OK (${data.supabase_ms} ms)` : (data.error || 'Indisponible');
+                if (stripeEl) stripeEl.textContent = data.stripe_configured ? 'Clé Stripe configurée' : 'Clé Stripe absente';
+                if (profilesEl) profilesEl.textContent = `${data.profiles || 0} profils`;
+            },
+            'sec-territories': async () => {
+                const data = await fetchAdminOps('territories');
+                const counts = data.counts || {};
+                document.querySelectorAll('.territory-count').forEach((el) => {
+                    const key = el.getAttribute('data-territory');
+                    const n = Object.keys(counts).filter((k) => k.includes(key)).reduce((sum, k) => sum + counts[k], 0);
+                    el.textContent = `Comptes : ${n}`;
+                });
+            },
+            'sec-agents': () => loadAdminRealData(),
+            'sec-mika': () => window.loadMikaControlRoom && window.loadMikaControlRoom(),
+            'sec-audit-logs': () => loadAdminRealData()
+        };
+        const loader = loaders[sectionId];
+        if (!loader) return;
+        try {
+            await loader();
+        } catch (e) {
+            console.warn('Admin section load failed', sectionId, e);
+        }
+    };
+
+    document.getElementById('userSearchInput')?.addEventListener('input', () => {
+        const query = (document.getElementById('userSearchInput')?.value || '').trim().toLowerCase();
+        const rows = window.__adminUsersCache || [];
+        const filtered = query
+            ? rows.filter((row) => `${row.first_name || ''} ${row.last_name || ''} ${row.email || ''} ${row.city || ''}`.toLowerCase().includes(query))
+            : rows;
+        renderAdminUsers(filtered, 'usersAdminTableBody', 'users');
+    });
+    document.getElementById('userTerritoryFilter')?.addEventListener('change', () => {
+        const territory = document.getElementById('userTerritoryFilter')?.value || 'all';
+        const rows = window.__adminUsersCache || [];
+        const filtered = territory === 'all'
+            ? rows
+            : rows.filter((row) => String(row.territory || '').toLowerCase().includes(territory));
+        renderAdminUsers(filtered, 'usersAdminTableBody', 'users');
+    });
+    document.getElementById('exportBiReportBtn')?.addEventListener('click', async () => {
+        try { await window.loadAdminSection('sec-finances'); } catch (e) {}
+        window.exportAdminReportCSV('payments');
+    });
+
     // Chargement initial
     refreshDashboardData();
     renderNotificationsLogTable();
-    renderAdminReports();
     loadAdminRealData();
+    if (typeof window.loadAdminSection === 'function') {
+        window.loadAdminSection('sec-users');
+    }
     window.loadMikaControlRoom();
 
-    console.log('🚀 Console d\'Administration LYANN Enterprise & Mika Control Room initialisés.');
+    console.log('Back-office LYANN initialisé.');
 });
 
