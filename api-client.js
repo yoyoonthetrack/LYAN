@@ -15,6 +15,25 @@ function isUUID(str) {
 }
 window.isUUID = isUUID;
 
+function isPublishedService(row) {
+    if (!row) return false;
+    if (row.is_active === false || row.active === false) return false;
+    return true;
+}
+
+function presentService(row) {
+    if (!row) return row;
+    const category = typeof row.category === 'string' ? row.category : '';
+    return {
+        ...row,
+        is_active: isPublishedService(row),
+        category,
+        taxonomy_id: row.taxonomy_id || null,
+        price_type: row.price_type || row.pricing_model || null,
+        base_price: row.base_price != null ? row.base_price : row.indicative_price
+    };
+}
+
 const LYANN_PRODUCTION_ORIGIN = 'https://lyann.app';
 
 function isCapacitorRuntime() {
@@ -184,6 +203,8 @@ const LYANN_API_CLIENT = {
     },
 
     normalizeAuthError,
+    isPublishedService,
+    presentService,
 
     // --- AUTHENTICATION ---
     async signUp(email, password, metadata) {
@@ -342,10 +363,8 @@ const LYANN_API_CLIENT = {
         });
         if (error) {
             console.warn('[Trust Engine RPC Fallback]:', error.message);
-            // Fallback gracefully to basic profile if RPC not yet deployed
-            const prof = await this.getProfile(userId);
-            if (!prof || !prof.data) return { data: null };
-            const p = prof.data;
+            const { data: p } = await this.supabase.from('public_profiles').select('*').eq('id', userId).maybeSingle();
+            if (!p) return { data: null };
             return {
                 data: {
                     user_id: p.id,
@@ -476,8 +495,8 @@ const LYANN_API_CLIENT = {
                     skillsToInsert.push({
                         owner_id: userId,
                         title: title,
-                        category: 'general',
-                        is_active: true
+                        slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'service',
+                        active: true
                     });
                 }
             });
@@ -521,12 +540,13 @@ const LYANN_API_CLIENT = {
 
     async getUserServices(userId) {
         if (!this.supabase) return { data: [] };
-        return await this.supabase
+        const { data, error } = await this.supabase
             .from('services')
-            .select('id, owner_id, title, description, category, price_type, base_price, is_active, created_at')
+            .select('*')
             .eq('owner_id', userId)
-            .eq('is_active', true)
             .order('created_at', { ascending: false });
+        if (error) return { data: [], error };
+        return { data: (data || []).filter(isPublishedService).map(presentService) };
     },
 
     async getUserPortfolio(userId, isSelf = false) {

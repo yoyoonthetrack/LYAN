@@ -8,7 +8,7 @@ const sharedDist = path.join(__dirname, 'www');
 const iosPublic = path.join(__dirname, 'ios', 'App', 'App', 'public');
 const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'assets', 'public');
 
-const ROOT_EXTENSIONS = new Set(['.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.webp']);
+const ROOT_EXTENSIONS = new Set(['.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.webp', '.gif', '.mp4']);
 const EXCLUDED_ROOT_FILES = new Set(['shared-html-build.js']);
 
 function resetDir(dir) {

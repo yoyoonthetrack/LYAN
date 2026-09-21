@@ -36,9 +36,33 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20260916">
+    <link rel="stylesheet" href="style.css?v=20260921d">
+    <style>html.lyann-boot-splash-skip .lyann-boot-splash{display:none!important}</style>
+    <script>(function(){try{var skip=sessionStorage.getItem('lyann_boot_splash_seen')==='1'||/Playwright|HeadlessChrome/i.test(navigator.userAgent);if(skip)document.documentElement.classList.add('lyann-boot-splash-skip');}catch(e){}})();</script>
 </head>
 <body>
+<div id="lyannBootSplash" class="lyann-boot-splash" role="status" aria-label="Chargement de LYANN" style="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#FFFFFF;border:0;margin:0;padding:0;box-shadow:none;">
+  <img src="lyann-boot-logo.gif" alt="" width="88" height="88" decoding="async" style="width:88px;height:88px;border:0;outline:none;box-shadow:none;background:transparent;display:block;border-radius:0;mix-blend-mode:darken;">
+</div>
+<script>
+(function(){
+  var el=document.getElementById('lyannBootSplash');
+  if(!el) return;
+  var skip=false;
+  try { skip=sessionStorage.getItem('lyann_boot_splash_seen')==='1'; } catch(e) {}
+  if(skip || /Playwright|HeadlessChrome/i.test(navigator.userAgent) || (window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
+    el.remove();
+    return;
+  }
+  try { sessionStorage.setItem('lyann_boot_splash_seen','1'); } catch(e) {}
+  function hide(){
+    if(!el||!el.parentNode) return;
+    el.classList.add('is-done');
+    setTimeout(function(){ if(el&&el.parentNode) el.remove(); }, 380);
+  }
+  setTimeout(hide, 5000);
+})();
+</script>
 
 
     <!-- ========== NAVIGATION ========== -->
@@ -123,7 +147,6 @@
                     <a href="feed.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <span class="nav-live-dot"></span> <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="#" class="open-chat-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGERIE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
-                    <a href="payment-portal.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-shield-check" style="color: #E76F51; font-size: 1.2rem;"></i> PAIEMENT SÉCURISÉ 🔒 <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="about.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                 </nav>
@@ -159,169 +182,12 @@
                 </div>
                 <h1>Qui peut vous aider <br class="desktop-only-br"><span class="text-gradient">aujourd'hui ?</span></h1>
                 <p class="hero-subtitle">Le réseau de confiance qui relie les habitants aux talents de leur quartier dans les DOM.</p>
-                
-                <!-- STEP 17 SEARCH EXPERIENCE V2: DUAL INTENT ENTRY -->
-                <div class="search-v2-intent-container" id="searchV2IntentContainer">
-                    <div class="search-v2-header">
-                        <h3>Comment peut-on t’aider ?</h3>
-                    </div>
-                    <div class="search-v2-cards">
-                        <!-- Option A: Je cherche un Lyanneur -->
-                        <div class="search-v2-card active" id="btnIntentSearch" data-intent="search">
-                            <div class="search-v2-card-icon">
-                                <i class="ph-bold ph-users-three"></i>
-                            </div>
-                            <div class="search-v2-card-body">
-                                <h4>Je cherche un Lyanneur</h4>
-                                <p>Parcourir les profils</p>
-                            </div>
-                            <div class="search-v2-card-check">
-                                <i class="ph-bold ph-check"></i>
-                            </div>
-                        </div>
-
-                        <!-- Option B: J'ai un besoin -->
-                        <div class="search-v2-card" id="btnIntentNeed" data-intent="need">
-                            <div class="search-v2-card-icon" style="background: rgba(229, 179, 69, 0.15); color: #C69222;">
-                                <i class="ph-bold ph-chat-circle-dots"></i>
-                            </div>
-                            <div class="search-v2-card-body">
-                                <h4>J’ai un besoin</h4>
-                                <p>Décrire ce que je cherche</p>
-                            </div>
-                            <div class="search-v2-card-check">
-                                <i class="ph-bold ph-check"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- PARCOURS A: JE CHERCHE UN LYANNEUR -->
-                <div id="parcoursSearchPanel" class="parcours-panel active">
-                    <form class="hero-search" id="heroSearchForm" onsubmit="event.preventDefault();">
-                        <div class="hero-search-fields">
-                            <div class="search-input-wrapper">
-                                <i class="ph ph-magnifying-glass"></i>
-                                <input type="text" id="searchInput" placeholder="Que recherches-tu ? (ex: Plombier, Jardinier...)" autocomplete="off">
-                            </div>
-                            <div class="search-input-wrapper">
-                                <i class="ph ph-map-pin"></i>
-                                <select id="locationSelect">
-                                    <option value="guadeloupe" selected>971 - Guadeloupe</option>
-                                    <option value="martinique">972 - Martinique</option>
-                                    <option value="guyane">973 - Guyane</option>
-                                    <option value="reunion">974 - La Réunion</option>
-                                    <option value="saint-martin">978 - St-Martin</option>
-                                </select>
-                            </div>
-                            <div class="search-input-wrapper">
-                                <i class="ph ph-buildings"></i>
-                                <select id="citySelect">
-                                    <option value="" selected>Toutes les communes</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary search-btn">Trouver</button>
-                        </div>
-                    </form>
-
-                    <!-- Examples Chips -->
-                    <div class="search-v2-examples" style="margin-top: 14px; font-size: 0.85rem; color: var(--text-muted);">
-                        <span style="font-weight: 700; margin-right: 4px; color: var(--text-main);">Exemples :</span>
-                        <button type="button" class="example-chip" data-search="plombier">plombier</button>
-                        <button type="button" class="example-chip" data-search="jardinier">jardinier</button>
-                        <button type="button" class="example-chip" data-search="photographe">photographe</button>
-                        <button type="button" class="example-chip" data-search="mécanicien scooter">mécanicien scooter</button>
-                        <button type="button" class="example-chip" data-search="professeur de piano">professeur de piano</button>
-                        <button type="button" class="example-chip" data-search="réparer une fuite">réparer une fuite</button>
-                    </div>
-
-                    <!-- Suggestion Hashtags -->
-                    <div class="suggestion-tags hashtag-filters-group" style="margin-top: 16px;">
-                        <button type="button" class="tag hashtag-tag" data-query="Réparer une fuite"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Plomberie</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Climatisation"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Climatisation</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Jardinage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Jardinage</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Bricolage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Bricolage</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Transport"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Transport</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Électricité"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Électricité</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Peinture"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Peinture</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Ménage"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Ménage</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Aide à la personne"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #AideAuxSeniors</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Garde d'enfants"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #GardeEnfants</button>
-                        <button type="button" class="tag hashtag-tag" data-query="Informatique"><i class="ph-bold ph-hash" style="color: #4A7C59;"></i> #Informatique</button>
-                    </div>
-                </div>
-
-                <!-- PARCOURS B: J'AI UN BESOIN -->
-                <div id="parcoursNeedPanel" class="parcours-panel" style="display: none;">
-                    <div class="need-intent-hero-box">
-                        <h4 style="font-size: 1.15rem; font-weight: 800; color: var(--primary-dark); margin-bottom: 4px;">De quoi as-tu besoin ?</h4>
-                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Décris simplement ce qu’il te faut. Pas besoin de connaître le métier exact.</p>
-                        
-                        <div class="need-quick-chips">
-                            <button type="button" class="need-example-chip" data-need="Mon scooter ne démarre plus">
-                                <i class="ph-bold ph-moped"></i> Mon scooter ne démarre plus
-                            </button>
-                            <button type="button" class="need-example-chip" data-need="J’ai une fuite sous mon évier">
-                                <i class="ph-bold ph-drop"></i> J’ai une fuite sous mon évier
-                            </button>
-                            <button type="button" class="need-example-chip" data-need="Je dois monter une armoire">
-                                <i class="ph-bold ph-wrench"></i> Je dois monter une armoire
-                            </button>
-                            <button type="button" class="need-example-chip" data-need="Je cherche quelqu’un pour photographier mon anniversaire">
-                                <i class="ph-bold ph-camera"></i> Photographier mon anniversaire
-                            </button>
-                        </div>
-
-                        <button type="button" class="btn btn-primary btn-lg" id="btnLaunchNeedWizard" style="margin-top: 18px; width: 100%; justify-content: center; font-weight: 800; font-size: 1rem; padding: 14px;">
-                            Expliquer mon besoin <i class="ph ph-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="hero-visual fade-in-right">
-                <svg viewBox="0 0 500 500" class="hero-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <!-- Soft Blob background -->
-                    <ellipse cx="250" cy="260" rx="230" ry="210" fill="#F4EFE6" opacity="0.8"/>
-                    
-                    <!-- Sun 3D -->
-                    <circle cx="390" cy="85" r="55" fill="#E5B345" opacity="0.25"/>
-                    <circle cx="390" cy="85" r="38" fill="#F4D375" opacity="0.6"/>
-                    <line x1="390" y1="20" x2="390" y2="5" stroke="#E5B345" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
-                    <line x1="435" y1="40" x2="448" y2="28" stroke="#E5B345" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
-                    <line x1="450" y1="85" x2="465" y2="85" stroke="#E5B345" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
-                    
-                    <!-- Tropical Palm -->
-                    <path d="M120 460 Q135 340 145 260 Q150 220 142 190" stroke="#4A7C59" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.8"/>
-                    <path d="M142 190 Q90 140 45 165 Q100 130 142 190Z" fill="#4A7C59" opacity="0.45"/>
-                    <path d="M142 190 Q110 120 65 110 Q120 110 142 190Z" fill="#709C7D" opacity="0.45"/>
-                    <path d="M142 190 Q170 110 215 100 Q170 130 142 190Z" fill="#4A7C59" opacity="0.45"/>
-                    <path d="M142 190 Q190 145 225 160 Q180 140 142 190Z" fill="#80A86E" opacity="0.4"/>
-                    
-                    <!-- Stylized House 3D -->
-                    <g transform="translate(300, 310)">
-                        <rect x="0" y="25" width="75" height="55" rx="8" fill="#FFFFFF" stroke="#4A7C59" stroke-width="3"/>
-                        <polygon points="-8,27 37.5,-10 83,27" fill="#E5B345"/>
-                        <rect x="28" y="45" width="20" height="35" rx="3" fill="#4A7C59"/>
-                        <circle cx="20" cy="42" r="6" fill="#7BC5E3"/>
-                        <circle cx="55" cy="42" r="6" fill="#7BC5E3"/>
-                    </g>
-                    
-                    <!-- Wrench & Heart Floating -->
-                    <g transform="translate(270, 210) rotate(-25)" opacity="0.6">
-                        <rect x="-6" y="0" width="12" height="75" rx="6" fill="#7BC5E3"/>
-                        <circle cx="0" cy="-10" r="20" fill="none" stroke="#7BC5E3" stroke-width="8"/>
-                    </g>
-                    
-                    <g transform="translate(420, 200)" opacity="0.5">
-                        <path d="M0 10 Q0 0 10 0 Q20 0 20 10 Q20 20 10 30 Q0 20 0 10Z" fill="#E76F51" transform="rotate(-45, 10, 15)"/>
-                    </g>
-                    
-                    <!-- 3D Connection Dots -->
-                    <circle cx="70" cy="390" r="8" fill="#E5B345" opacity="0.5"/>
-                    <circle cx="95" cy="415" r="5" fill="#7BC5E3" opacity="0.6"/>
-                    <circle cx="430" cy="370" r="7" fill="#4A7C59" opacity="0.5"/>
-                </svg>
+                <figure class="hero-story">
+                    <video class="hero-story-video" autoplay muted loop playsinline poster="lyann-home-story.jpg" aria-label="Une habitante découvre une fuite sous son évier, dans sa cuisine." onerror="this.style.display='none';var still=this.nextElementSibling;if(still)still.style.display='block';">
+                        <source src="lyann-home-story.mp4?v=16x9" type="video/mp4">
+                    </video>
+                    <img class="hero-story-still" src="lyann-home-story.jpg" alt="Une habitante découvre une fuite sous son évier, dans sa cuisine." width="1280" height="720">
+                </figure>
             </div>
         </div>
     </header>
@@ -330,9 +196,9 @@
     <section id="about" class="section trust-section">
         <div class="container">
             <div class="section-header text-center reveal">
-                <span class="pill-badge pill-green"><i class="ph ph-shield-check"></i> Garantie & Sérénité Locale</span>
+                <span class="pill-badge pill-green"><i class="ph ph-star"></i> Confiance du quartier</span>
                 <h2>L'esprit d'entraide des îles, en toute sécurité.</h2>
-                <p class="section-subtitle">Chaque talent est vérifié pour garantir des rencontres chaleureuses et des interventions en toute sérénité.</p>
+                <p class="section-subtitle">Les notes et les avis des habitants donnent confiance pour des rencontres chaleureuses et des interventions en toute sérénité.</p>
             </div>
             
             <div class="trust-split-grid reveal delay-1">
@@ -340,10 +206,10 @@
                 <div class="trust-image-block">
                     <img src="caribbean-mutual-help.png" alt="Entraide et solidarité dans les Antilles - LYANN DOM" class="trust-photo">
                     <div class="trust-floating-badge">
-                        <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.5rem;"></i>
+                        <i class="ph-fill ph-star" style="color: #E5B345; font-size: 1.5rem;"></i>
                         <div>
-                            <strong>Artisans & Talents Vérifiés</strong>
-                            <span>Identité, SIRET & Assurance contrôlés</span>
+                            <strong>Notes & avis du quartier</strong>
+                            <span>La réputation se construit entre voisins</span>
                         </div>
                     </div>
                 </div>
@@ -352,11 +218,11 @@
                 <div class="trust-benefits-list">
                     <div class="trust-benefit-card">
                         <div class="trust-icon-box step-icon-emerald">
-                            <i class="ph-fill ph-user-check"></i>
+                            <i class="ph-fill ph-house"></i>
                         </div>
                         <div class="trust-benefit-text">
-                            <h3>Des personnes vérifiées de chez nous</h3>
-                            <p>Artisans qualifiés et voisins passionnés, recommandés par les habitants de vos communes.</p>
+                            <h3>Des talents de vos communes</h3>
+                            <p>Voisins passionnés et artisans qualifiés, recommandés par les habitants de vos communes.</p>
                         </div>
                     </div>
 
@@ -384,50 +250,7 @@
         </div>
     </section>
 
-    <!-- ========== SECTION 3 : COMMENT ÇA FONCTIONNE (ILLUSTRATION OFFICIELLE) ========== -->
-    <section id="how-it-works" class="section how-section text-center">
-        <div class="container">
-            <div class="section-header text-center reveal">
-                <span class="pill-badge pill-blue"><i class="ph ph-sparkle"></i> Simplicité & Transparence</span>
-                <h2>Comment fonctionne le réseau LYANN ?</h2>
-                <p class="section-subtitle">Du besoin exprimé jusqu'à l'intervention de confiance, découvrez le parcours en 3 étapes créoles.</p>
-            </div>
-            
-            <!-- Vitrine Panoramique de l'Illustration Officielle -->
-            <div class="how-illustration-showcase reveal delay-1">
-                <img src="how-it-works-illustration.png" alt="Comment fonctionne LYANN DOM - Recherche, Intervention et Satisfaction" class="how-main-illustration">
-            </div>
-
-            <!-- Légende Étape par Étape -->
-            <div class="how-steps-legend-row reveal delay-2">
-                <div class="legend-step-pill">
-                    <span class="legend-step-num">1</span>
-                    <div>
-                        <strong>📱 1. Vous cherchez de l'aide</strong>
-                        <p>Faites votre demande sur mobile depuis chez vous.</p>
-                    </div>
-                </div>
-
-                <div class="legend-step-pill">
-                    <span class="legend-step-num">2</span>
-                    <div>
-                        <strong>🧰 2. L'Artisan intervient</strong>
-                        <p>Déplacement ponctuel avec matériel professionnel.</p>
-                    </div>
-                </div>
-
-                <div class="legend-step-pill">
-                    <span class="legend-step-num">3</span>
-                    <div>
-                        <strong><i class="ph-fill ph-hand-heart"></i> 3. Projet réussi !</strong>
-                        <p>Coup de pouce de confiance & recommandation.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ========== SECTION 4 : CATÉGORIES (PHOTOS HD DES ANTILLES) ========== -->
+    <!-- ========== CATÉGORIES (PHOTOS HD DES ANTILLES) ========== -->
     <section id="search-services" class="section categories-section">
         <div class="container">
             <div class="section-header text-center reveal">
@@ -481,7 +304,7 @@
                     <div class="photo-category-overlay">
                         <span class="photo-category-badge" style="background: #FFF3D6; color: #8A6200;"><i class="ph-fill ph-lightning"></i> Électricité & Dépannage</span>
                         <h4 class="photo-category-title">Tableaux, Moteurs & Panneaux</h4>
-                        <span class="photo-category-sub">35 électriciens vérifiés</span>
+                        <span class="photo-category-sub">35 électriciens près de chez vous</span>
                     </div>
                 </a>
 
@@ -639,7 +462,7 @@
                             <img src="huguette-68.png" alt="Tati Huguette Cazeau" class="flash-avatar">
                             <div class="flash-author-info">
                                 <strong>Tati Huguette Cazeau <i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i></strong>
-                                <span>Habitante vérifiée • 📍 Fort-de-France (Martinique)</span>
+                                <span>Habitante de Fort-de-France • 📍 Martinique</span>
                             </div>
                         </div>
                         <span class="flash-badge-besoin">🔍 Besoin</span>

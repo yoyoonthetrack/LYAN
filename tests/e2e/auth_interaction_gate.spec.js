@@ -93,7 +93,7 @@ async function publicExplorer(page, mode='annonces') {
 }
 for (const [label,mode,selector] of [
   ['Favorite','annonces','.btn-fav-toggle'],['Contact','lyanneurs','[data-action="contact"]'],
-  ['Je peux aider','annonces','[data-action="help"]'],['Publish Request','annonces','.explorer-publish']
+  ['Lyanner','annonces','[data-action="help"]'],['Publish Request','annonces','.explorer-publish']
 ]) test(`Anonymous ${label} invokes the shared auth gate without a business write`, async ({page}) => {
   const writes=[];
   page.on('request',r=>{if(r.url().includes('/rest/v1/') && r.method()!=='GET')writes.push(r.url());});

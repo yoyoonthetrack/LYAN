@@ -79,7 +79,7 @@ test('Both modes use the same database taxonomy and removable category filter', 
   await expect(page.locator('#explorerActiveFilters')).toContainText(category);
   const requestIds = await page.locator('#explorerResults [data-request-id]').evaluateAll(nodes => nodes.map(n => n.dataset.requestId));
   expect(requestIds.length).toBeGreaterThan(0);
-  await page.getByRole('tab', {name:'Lyanneurs',exact:true}).click();
+  await page.getByRole('tab', {name:/Lyanneurs/}).click();
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
   expect(await page.locator('#explorerCategory option').allTextContents()).toEqual(categories);
   await expect(page.locator('#explorerCategory')).toHaveValue(category);
@@ -147,15 +147,15 @@ for (const width of [390,1440]) {
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','EMPTY');
     await page.getByRole('button',{name:'Élargir la zone',exact:true}).click();
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
-    await page.getByRole('tab',{name:'Annonces',exact:true}).focus();
+    await page.getByRole('tab',{name:/Annonces/}).focus();
     await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('tab',{name:'Lyanneurs',exact:true})).toHaveAttribute('aria-selected','true');
+    await expect(page.getByRole('tab',{name:/Lyanneurs/})).toHaveAttribute('aria-selected','true');
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const targets = await page.locator('#explorer button:visible, #explorer select:visible, #explorer input:visible').evaluateAll(nodes => nodes.map(n => ({text:n.textContent,height:n.getBoundingClientRect().height,width:n.getBoundingClientRect().width})));
     expect(targets.filter(t => t.height < 44 || t.width < 44)).toEqual([]);
     await page.screenshot({path:`artifacts/explorer/lyanneurs-${width}.png`,fullPage:true});
-    await page.getByRole('tab',{name:'Annonces',exact:true}).click();
+    await page.getByRole('tab',{name:/Annonces/}).click();
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
     await page.screenshot({path:`artifacts/explorer/annonces-${width}.png`,fullPage:true});
     expect(telemetry.errors).toEqual([]);
@@ -197,12 +197,12 @@ test('Lyanneurs filters preserve Request-only criteria when switching modes', as
   await page.locator('#explorerUrgency').selectOption(urgency);
   await page.locator('#explorerBudget').fill('150');
   await page.getByRole('button',{name:'Afficher les résultats'}).click();
-  await page.getByRole('tab',{name:'Lyanneurs',exact:true}).click();
+  await page.getByRole('tab',{name:/Lyanneurs/}).click();
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
   await page.getByRole('button',{name:'Filtres et zone'}).click();
   await page.locator('#explorerTerritory').selectOption('Guadeloupe (971)');
   await page.getByRole('button',{name:'Afficher les résultats'}).click();
-  await page.getByRole('tab',{name:'Annonces',exact:true}).click();
+  await page.getByRole('tab',{name:/Annonces/}).click();
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
   await page.getByRole('button',{name:'Filtres et zone'}).click();
   await expect(page.locator('#explorerUrgency')).toHaveValue(urgency);
@@ -234,8 +234,8 @@ test('Bokantaj Request wizard reaches real-taxonomy review without writing or of
     if (r.method() === 'POST' && /\/rest\/v1\/(requests|bokantaj_posts|rpc\/send_request_invitations)/.test(r.url())) writes.push(r.url());
   });
   await ready(page); // Publishing is an authenticated interaction; keep all wizard assertions.
-  await page.goto('/feed.html', { waitUntil: 'domcontentloaded' });
-  await page.locator('#btnComposerNeedShortcut').click();
+  await page.goto('/results.html?mode=annonces', { waitUntil: 'domcontentloaded' });
+  await page.locator('.explorer-results-heading .explorer-publish').click();
   await page.locator('#wizardDescInput').fill('Une fuite sous mon évier, besoin de réparer la plomberie.');
   for (const step of [2,4,5,6]) {
     await page.locator('#wizardBtnNext').click();
@@ -282,7 +282,7 @@ test('Own persisted Requests have details and favorites but no help action', asy
     await expect(card.locator('.btn-fav-toggle')).toBeVisible();
     await card.getByRole('button',{name:'Détails',exact:true}).click();
     await expect(page.locator('#lyannDetailTitle')).toHaveText(request.title);
-    await expect(page.locator('#lyannDetailModal').getByRole('button',{name:'Je peux aider',exact:true})).toHaveCount(0);
+    await expect(page.locator('#lyannDetailModal').getByRole('button',{name:'Lyanner',exact:true})).toHaveCount(0);
     await page.locator('#closeLyannDetailModalBtn').click();
   }
 });

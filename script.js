@@ -107,8 +107,11 @@ function ensureMobileHamburgerDrawer() {
         overlay.innerHTML = `
             <div class="hamburger-drawer-card" id="mobileHamburgerDrawer">
                 
-                <!-- EN-TÊTE PROFIL -->
-                <div class="drawer-profile-header">
+                <div class="drawer-profile-header logged-out-only drawer-guest-header">
+                    <span class="drawer-guest-title">Menu</span>
+                    <button class="drawer-close-btn" type="button" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
+                </div>
+                <div class="drawer-profile-header logged-in-only">
                     <a href="#" class="drawer-profile-link" data-lyann-route="profile">
                         <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" alt="Profil Utilisateur" class="drawer-avatar" id="drawerUserAvatar" onerror="window.handleAvatarError(this)">
                         <div class="drawer-user-info">
@@ -120,11 +123,29 @@ function ensureMobileHamburgerDrawer() {
                     <button class="drawer-close-btn" id="closeMobileDrawerBtn" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
                 </div>
 
-                <!-- CORPS DU MENU -->
                 <div class="drawer-body">
-                    
-                    <!-- 1. MON COMPTE -->
+
                     <div class="drawer-menu-group">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="publish">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-plus-circle"></i>
+                                <span>Publier un besoin</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
+                    </div>
+
+                    <div class="drawer-menu-group">
+                        <a href="results.html" class="drawer-direct-link" data-lyann-route="explorer">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <span>Explorer</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
+                    </div>
+
+                    <div class="drawer-menu-group logged-in-only">
                         <a href="#" class="drawer-direct-link" data-lyann-route="account">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-user-circle"></i>
@@ -134,8 +155,7 @@ function ensureMobileHamburgerDrawer() {
                         </a>
                     </div>
 
-                    <!-- 2. MON ACTIVITÉ -->
-                    <div class="drawer-menu-group">
+                    <div class="drawer-menu-group logged-in-only">
                         <a href="#" class="drawer-direct-link" data-lyann-route="activity">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-clock-counter-clockwise"></i>
@@ -145,8 +165,7 @@ function ensureMobileHamburgerDrawer() {
                         </a>
                     </div>
 
-                    <!-- 3. FAVORIS -->
-                    <div class="drawer-menu-group">
+                    <div class="drawer-menu-group logged-in-only">
                         <a href="#" class="drawer-direct-link" data-lyann-route="favorites">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-heart" style="color: var(--primary);"></i>
@@ -156,8 +175,7 @@ function ensureMobileHamburgerDrawer() {
                         </a>
                     </div>
 
-                    <!-- 4. FINANCES -->
-                    <div class="drawer-menu-group">
+                    <div class="drawer-menu-group logged-in-only">
                         <a href="#" class="drawer-direct-link" data-lyann-route="finances">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-credit-card"></i>
@@ -167,7 +185,6 @@ function ensureMobileHamburgerDrawer() {
                         </a>
                     </div>
 
-                    <!-- 5. AIDE & LYANN -->
                     <div class="drawer-menu-group">
                         <button class="drawer-accordion-btn" data-target="submenuHelp">
                             <span class="drawer-accordion-label">
@@ -178,14 +195,14 @@ function ensureMobileHamburgerDrawer() {
                         </button>
                         <div class="drawer-submenu" id="submenuHelp">
                             <a href="#" class="drawer-sub-link" data-lyann-route="help"><i class="ph ph-book-open"></i> Comment ça marche</a>
+                            <a href="pricing.html" class="drawer-sub-link"><i class="ph ph-tag"></i> Tarifs</a>
                             <a href="about.html#support" class="drawer-sub-link"><i class="ph ph-headset"></i> Aide & support</a>
-                            <a href="#" class="drawer-sub-link open-signup-trigger"><i class="ph ph-user-plus"></i> Inviter quelqu'un</a>
+                            <a href="#" class="drawer-sub-link logged-in-only"><i class="ph ph-user-plus"></i> Inviter quelqu'un</a>
                             <a href="#" class="drawer-sub-link" data-lyann-route="about"><i class="ph ph-info"></i> À propos de LYANN</a>
                         </div>
                     </div>
 
-                    <!-- 6. RÉGLAGES -->
-                    <div class="drawer-menu-group">
+                    <div class="drawer-menu-group logged-in-only">
                         <a href="#" class="drawer-direct-link" data-lyann-route="settings">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-gear"></i>
@@ -221,6 +238,9 @@ function ensureMobileHamburgerDrawer() {
 }
 
 window.openLyannHamburgerDrawer = function() {
+    if (typeof window.closeLoginModal === 'function') {
+        window.closeLoginModal();
+    }
     // Remove static legacy mobileMenu overlay if present to prevent dual-drawer conflicts
     const legacyMenu = document.getElementById('mobileMenu');
     if (legacyMenu && legacyMenu.parentNode) {
@@ -1943,6 +1963,12 @@ safeDomReady(() => {
         e.preventDefault();
         if (cta) e.stopPropagation();
 
+        if (planCode === 'FREE' && !document.body.classList.contains('user-is-logged-in')) {
+            const signup = document.querySelector('.open-signup-trigger');
+            if (signup) signup.click();
+            return;
+        }
+
         const billingInput = document.getElementById('billingToggleInput');
         const period = (billingInput && billingInput.checked) ? 'YEARLY' : 'MONTHLY';
         console.log(`[REAL_WEB_PRICING_CLICK] target=${e.target.tagName} plan=${planCode} period=${period}`);
@@ -2029,6 +2055,20 @@ safeDomReady(() => {
             billingToggleInput.addEventListener('change', updatePricingDisplay);
         }
         updatePricingDisplay();
+
+        const freeCta = document.querySelector('[data-plan-cta="FREE"]');
+        if (freeCta) {
+            const loggedIn = document.body.classList.contains('user-is-logged-in');
+            freeCta.textContent = loggedIn ? 'Offre actuelle' : 'Commencer gratuitement';
+        }
+        const showPaidBtn = document.getElementById('btnShowPaidPlans');
+        if (showPaidBtn) {
+            showPaidBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                document.body.classList.add('show-paid-plans');
+            });
+        }
     }
 
     if (document.readyState === 'loading') {
@@ -2203,8 +2243,8 @@ safeDomReady(() => {
             feedContainer.innerHTML = `
                 <div class="text-center" style="padding: 50px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px solid #E2E8F0;">
                     <i class="ph ph-spinner spinner" style="font-size: 2.2rem; color: var(--primary); margin-bottom: 12px; display: inline-block;"></i>
-                    <h4 style="font-weight: 800; font-size: 1.05rem; color: #1E293B; margin-bottom: 4px;">Chargement du Bokantaj…</h4>
-                    <p style="color: var(--text-muted); font-size: 0.88rem;">Connexion au réseau communautaire LYANN en cours.</p>
+                    <h4 style="font-weight: 800; font-size: 1.05rem; color: #1E293B; margin-bottom: 4px;">Les nouvelles du quartier arrivent…</h4>
+                    <p style="color: var(--text-muted); font-size: 0.88rem;">Un instant, on charge les partages près de chez vous.</p>
                 </div>
             `;
             return;
@@ -2215,7 +2255,7 @@ safeDomReady(() => {
                 <div class="text-center" style="padding: 45px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed #FCA5A5;">
                     <i class="ph ph-warning-circle" style="font-size: 2.5rem; color: #DC2626; margin-bottom: 12px;"></i>
                     <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 6px; color: #1E293B;">Impossible de charger le Bokantaj pour le moment.</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 18px;">Veuillez vérifier votre connexion Supabase ou réessayer plus tard.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 18px;">Vérifiez votre connexion, puis réessayez.</p>
                     <button class="btn btn-primary" onclick="window.loadBokantajFeedFromSupabase()" style="font-weight: 700; gap: 6px;">
                         <i class="ph ph-arrows-clockwise"></i> Réessayer
                     </button>
@@ -2229,7 +2269,8 @@ safeDomReady(() => {
                 <div class="text-center" style="padding: 50px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed var(--border);">
                     <i class="ph ph-chats-teardrop" style="font-size: 2.5rem; color: var(--primary-light); margin-bottom: 12px;"></i>
                     <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 6px; color: #1E293B;">Le Bokantaj est encore calme…</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Soyez parmi les premiers à partager quelque chose.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 18px;">Soyez parmi les premiers à partager quelque chose.</p>
+                    <button type="button" class="btn btn-primary" id="btnEmptyBokantajShare" style="font-weight: 700;">Partager dans le quartier</button>
                 </div>
             `;
             return;
@@ -2318,7 +2359,7 @@ safeDomReady(() => {
                         } else {
                             actionBtnHTML = `
                                 <button class="flash-action-btn btn-open-lyann-detail" data-request-id="${targetId}" style="background: #F1F5F9; color: #334155; font-weight: 700; border-radius: 20px; min-height: 40px;"><i class="ph ph-eye"></i> <span>Voir le Lyann</span></button>
-                                <button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${window.escapeHtmlAttr(post.author_name || post.authorName || '')}" data-requester-avatar="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" data-title="${window.escapeHtmlAttr(post.title || post.content || '')}" style="background: var(--primary); color: #FFF; font-weight: 800; border-radius: 20px; min-height: 40px;"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>
+                                <button class="flash-action-btn btn-help-lyann" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${window.escapeHtmlAttr(post.author_name || post.authorName || '')}" data-requester-avatar="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" data-title="${window.escapeHtmlAttr(post.title || post.content || '')}" style="background: var(--primary); color: #FFF; font-weight: 800; border-radius: 20px; min-height: 40px;"><span>Lyanner</span></button>
                             `;
                         }
                     } else {
@@ -2381,7 +2422,7 @@ safeDomReady(() => {
                         const secondaryCtaHTML = `<button class="flash-action-btn btn-open-lyann-detail lyann-cta-secondary" data-request-id="${targetId}"><i class="ph ${viewIcon}"></i> <span>${viewLabel}</span></button>`;
                         
                         if (!isOwnLyann) {
-                            const primaryCtaHTML = `<button class="flash-action-btn btn-help-lyann lyann-cta-primary" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${window.escapeHtmlAttr(authorDisplayName)}" data-requester-avatar="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" data-title="${window.escapeHtmlAttr(post.title || post.content || '')}"><i class="ph ph-hand-heart"></i> <span>Je peux aider</span></button>`;
+                            const primaryCtaHTML = `<button class="flash-action-btn btn-help-lyann lyann-cta-primary" data-request-id="${targetId}" data-requester-id="${authorId}" data-requester-name="${window.escapeHtmlAttr(authorDisplayName)}" data-requester-avatar="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" data-title="${window.escapeHtmlAttr(post.title || post.content || '')}"><span>Lyanner</span></button>`;
                             
                             ctaRowHTML = `
                                 <div class="lyann-cta-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; box-sizing: border-box; margin-top: 8px;">
@@ -2811,6 +2852,9 @@ safeDomReady(() => {
                 if (window.NotificationService) {
                     window.NotificationService.showToast('success', "✨ Votre publication a été enregistrée dans Bokantaj !");
                 }
+                if (typeof window.closeBokantajComposer === 'function') {
+                    window.closeBokantajComposer();
+                }
             } catch (err) {
                 if (window.NotificationService) {
                     window.NotificationService.showToast('warning', err.message || "Veuillez vous connecter pour publier.");
@@ -2818,26 +2862,36 @@ safeDomReady(() => {
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Publier dans Bokantaj <i class="ph ph-paper-plane-right"></i>';
+                    submitBtn.innerHTML = 'Partager dans le quartier';
                 }
             }
         });
     }
 
-    const btnComposerNeedShortcut = document.getElementById('btnComposerNeedShortcut');
-    if (btnComposerNeedShortcut) {
-        btnComposerNeedShortcut.addEventListener('click', (e) => {
-            e.preventDefault();
-            const modalRequestHelp = document.getElementById('modal-request-help');
-            if (modalRequestHelp) {
-                modalRequestHelp.classList.add('active');
-                document.body.style.overflow = 'hidden';
-                if (typeof window.showWizardStep === 'function') {
-                    window.showWizardStep(1);
-                }
-            }
-        });
-    }
+    window.openBokantajComposer = function() {
+        const card = document.getElementById('flashComposerCard');
+        const btn = document.getElementById('btnOpenBokantajComposer');
+        if (!card) return;
+        card.hidden = false;
+        if (btn) btn.hidden = true;
+        const input = document.getElementById('flashContentInput');
+        if (input) {
+            input.focus();
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
+    window.closeBokantajComposer = function() {
+        const card = document.getElementById('flashComposerCard');
+        const btn = document.getElementById('btnOpenBokantajComposer');
+        if (card) card.hidden = true;
+        if (btn) btn.hidden = false;
+    };
+    document.addEventListener('click', (event) => {
+        const opener = event.target.closest('#btnOpenBokantajComposer, #btnEmptyBokantajShare');
+        if (!opener) return;
+        event.preventDefault();
+        window.openBokantajComposer();
+    });
 
     // LOGIQUE DU DOSSIER FILTRES BOKANTAJ (SINGLE ROW)
     const feedFilterFolderBtn = document.getElementById('feedFilterFolderBtn');
@@ -3247,6 +3301,9 @@ safeDomReady(() => {
     window.setAuthModalMode = setAuthModalMode;
 
     function openLoginModal() {
+        if (typeof window.closeLyannHamburgerDrawer === 'function') {
+            window.closeLyannHamburgerDrawer();
+        }
         setAuthModalMode('login');
     }
     window.openLoginModal = openLoginModal;
@@ -3275,6 +3332,22 @@ safeDomReady(() => {
     if (closeLoginModalBtn) {
         closeLoginModalBtn.addEventListener('click', closeLoginModal);
     }
+
+    if (loginModal) {
+        loginModal.addEventListener('click', (e) => {
+            if (e.target === loginModal) closeLoginModal();
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        const lgModal = document.getElementById('loginModal');
+        const obModal = document.getElementById('onboardingModal');
+        if (lgModal?.classList.contains('active') || obModal?.classList.contains('active')) {
+            e.preventDefault();
+            closeLoginModal();
+        }
+    });
 
     loginTriggers.forEach(trigger => {
         trigger.addEventListener('click', (e) => {
@@ -3863,13 +3936,12 @@ safeDomReady(() => {
                     <section class="account-desktop-section">
                         <h4 class="account-section-heading">MOYENS DE PAIEMENT & ABONNEMENT</h4>
                         <div class="account-group-box">
-                            <div class="account-touch-row" onclick="window.location.href='payment-portal.html'">
+                            <div class="account-touch-row" aria-disabled="true">
                                 <div class="row-icon"><i class="ph ph-bank"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">Compte de versement</strong>
-                                    <span class="row-subtitle">Portail paiement — non raccordé au solde Stripe</span>
+                                    <span class="row-subtitle">Le paiement se fait dans la conversation, une fois le devis accepté.</span>
                                 </div>
-                                <i class="ph ph-caret-right row-chevron"></i>
                             </div>
                             <div class="account-divider"></div>
                             <div class="account-touch-row" onclick="window.location.href='pricing.html'">
@@ -3983,6 +4055,9 @@ safeDomReady(() => {
                 verifText = 'Profil vérifié';
                 verifClass = 'pill-green';
             }
+            const isVerified = !!(userProf?.is_pro_verified || userProf?.is_verified);
+            const verifRowTitle = isVerified ? 'Vérification' : 'Vérifier mon identité';
+            const emailEmpty = !userEmail;
 
             subViewContent = `
                 <div class="account-desktop-sections">
@@ -4016,21 +4091,22 @@ safeDomReady(() => {
                                 </div>
                             </div>
                             <div class="account-divider"></div>
-                            <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openVerificationModal==='function') window.openVerificationModal();">
+                            <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
                                 <div class="row-icon"><i class="ph ph-shield-check"></i></div>
                                 <div class="row-content">
-                                    <strong class="row-title">Vérification</strong>
+                                    <strong class="row-title">${verifRowTitle}</strong>
                                     <span class="row-subtitle"><span class="pill-badge ${verifClass}">${verifText}</span></span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>
                             <div class="account-divider"></div>
-                            <div class="account-touch-row">
+                            <div class="account-touch-row"${emailEmpty ? ' onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"' : ''}>
                                 <div class="row-icon"><i class="ph ph-envelope-simple"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">Email</strong>
-                                    <span class="row-subtitle">${userEmail || 'Email non renseigné'}</span>
+                                    <span class="row-subtitle">${userEmail || 'Ajoutez votre email'}</span>
                                 </div>
+                                ${emailEmpty ? '<i class="ph ph-caret-right row-chevron"></i>' : ''}
                             </div>
                             <div class="account-divider"></div>
                             <div class="account-touch-row">
@@ -4446,7 +4522,9 @@ safeDomReady(() => {
             sdActionScanQR.addEventListener('click', (e) => {
                 e.preventDefault();
                 speedDialWrapper.classList.remove('active');
-                window.lyannAlert('📷 Scanner QR Code activé ! Placez le QR Code du lyanneur en face de la caméra.');
+                if (window.lyannAlert) {
+                    window.lyannAlert('Le scan QR n’est pas encore disponible.');
+                }
             });
         }
 
@@ -5222,7 +5300,10 @@ safeDomReady(() => {
 
         if (isLoggedIn && userId) {
             document.body.classList.add('user-is-logged-in');
+            const freeCta = document.querySelector('[data-plan-cta="FREE"]');
+            if (freeCta) freeCta.textContent = 'Offre actuelle';
             document.querySelectorAll('.app-welcome-screen').forEach(el => el.remove());
+            try { localStorage.removeItem('lyann_guest_browse'); } catch (e) {}
             window.CURRENT_USER_ID = userId;
 
             if (loginModalEl) {
@@ -5259,6 +5340,8 @@ safeDomReady(() => {
             }
         } else {
             document.body.classList.remove('user-is-logged-in');
+            const freeCta = document.querySelector('[data-plan-cta="FREE"]');
+            if (freeCta) freeCta.textContent = 'Commencer gratuitement';
             window.CURRENT_USER_ID = null;
             window.LYANN_CURRENT_USER = null;
 
@@ -7580,7 +7663,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             footerEl.innerHTML = `
                 <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn" style="flex: 1; justify-content: center;">Fermer</button>
                 <button type="button" class="btn btn-primary" id="btnHelpLyannFromModal" style="flex: 2; justify-content: center; font-weight: 800;">
-                    <i class="ph ph-hand-heart"></i> Je peux aider
+                    <i class="ph ph-handshake"></i> Lyanner
                 </button>
             `;
             bindLyannDetailFooterClose();
@@ -7690,7 +7773,7 @@ window.loadUserReceivedInvitationsUI = async function() {
                             <i class="ph ph-x"></i> Décliner
                         </button>
                         <button class="btn btn-primary btn-sm btn-inv-accept" data-inv-id="${inv.id}" data-req-title="${req.title || 'Demande'}" data-requester-name="${requesterName}" data-requester-id="${inv.requester_id}" style="background: var(--primary); font-weight: 800; font-size: 0.85rem; padding: 6px 14px;">
-                            <i class="ph ph-hand-waving"></i> Je peux aider
+                            <i class="ph ph-handshake"></i> Lyanner
                         </button>
                     </div>
                 `;

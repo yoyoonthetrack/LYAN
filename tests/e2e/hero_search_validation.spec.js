@@ -1,37 +1,28 @@
 const { test, expect } = require('@playwright/test');
 
-test.describe('LYANN V1 — Hero Search Validation Regression', () => {
+test.describe('LYANN V1 — Accueil story and Explorer search', () => {
 
-  test('Submitting empty hero search shows visible validation banner and does not navigate', async ({ page }) => {
+  test('Home keeps the greeting and story, without the old search block', async ({ page }) => {
     const jsErrors = [];
     page.on('pageerror', err => jsErrors.push(err.message));
 
     await page.goto('/index.html');
     await page.waitForLoadState('domcontentloaded');
 
-    // Find search form and input
-    const searchForm = page.locator('#heroSearchForm');
-    const searchInput = page.locator('#searchInput');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Qui peut vous aider');
+    await expect(page.locator('.hero-subtitle')).toContainText('réseau de confiance');
+    await expect(page.locator('.hero-story-video, .hero-story-still').first()).toBeVisible();
+    await expect(page.locator('#heroSearchForm')).toHaveCount(0);
+    await expect(page.locator('#searchV2IntentContainer')).toHaveCount(0);
+    await expect(page.getByText('Comment peut-on t’aider ?')).toHaveCount(0);
 
-    await expect(searchForm).toBeVisible();
-    await expect(searchInput).toBeVisible();
-
-    // Ensure input is empty
-    await searchInput.fill('');
-
-    // Submit form
-    await searchForm.evaluate(form => form.requestSubmit());
-
-    // Expect validation banner or toast to be displayed
-    const valBanner = page.locator('#heroSearchValidationError');
-    await expect(valBanner).toBeVisible();
-    await expect(valBanner).toContainText('Veuillez saisir un service ou un mot-clé');
-
-    // Expect focus to return to searchInput
-    await expect(searchInput).toBeFocused();
-
-    // Expect no JS console errors
     expect(jsErrors).toEqual([]);
+  });
+
+  test('Search lives in Explorer', async ({ page }) => {
+    await page.goto('/results.html');
+    await expect(page.locator('#explorerSearchForm')).toBeVisible();
+    await expect(page.locator('#explorerSearchInput')).toBeVisible();
   });
 
 });

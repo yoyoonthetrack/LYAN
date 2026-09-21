@@ -96,6 +96,30 @@
             color: var(--sand-yellow-dark);
         }
 
+        .role-switch-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .role-switch-btn {
+            min-height: 44px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font: inherit;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .role-switch-btn.active {
+            border-color: var(--primary);
+            background: var(--pop-emerald-light);
+            color: var(--primary-dark);
+        }
+
         .portal-menu-item-left {
             display: flex;
             align-items: center;
@@ -497,15 +521,16 @@
             <div class="sim-info">
                 <i class="ph ph-swap sim-info-icon"></i>
                 <div>
-                    <h4 style="font-weight: 800; color: var(--primary-dark); font-size: 1rem; margin-bottom: 2px;">Portail paiement — simulation locale désactivée</h4>
-                    <p style="font-size: 0.78rem; color: var(--text-muted);">Aucun solde, devis ou versement n’est créé ici. Le contrat réel est create-milestone-intent / submit-completion / release-payment.</p>
+                    <h1 style="font-weight: 800; color: var(--primary-dark); font-size: 1.1rem; margin: 0 0 4px;">Paiements LYANN</h1>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0;">Le devis, le paiement et le jalon se font dans la conversation. Cette page n’enregistre pas de solde.</p>
                 </div>
+            </div>
             <div class="role-switch-container">
                 <button class="role-switch-btn active" id="btnToggleClient">
-                    <i class="ph ph-user"></i> Mode Client (Habitant)
+                    <i class="ph ph-user"></i> Je cherche de l'aide
                 </button>
                 <button class="role-switch-btn" id="btnToggleProvider">
-                    <i class="ph ph-briefcase"></i> Mode Prestataire (Lyanneur)
+                    <i class="ph ph-handshake"></i> Je propose mon aide
                 </button>
             </div>
         </div>
@@ -531,11 +556,11 @@
         <div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
             <div>
                 <span style="font-family: 'Outfit', sans-serif; font-weight: 800; color: var(--sand-yellow);">LYANN DOM</span>
-                <p style="font-size: 0.75rem; color: #A3B5A8; margin-top: 4px;">Le tiers de confiance financier des Antilles & de la Réunion.</p>
+                <p style="font-size: 0.75rem; color: #A3B5A8; margin-top: 4px;">Le tiers de confiance des Antilles et de la Réunion.</p>
             </div>
             <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: #A3B5A8; display: flex; align-items: center; gap: 8px;">
                 <span style="display: inline-block; width: 8px; height: 8px; background: #4A7C59; border-radius: 50%; box-shadow: 0 0 8px #4A7C59;"></span>
-                MODULE STRIPE CONNECT : OPÉRATIONNEL
+                Paiement sécurisé avec Stripe
             </div>
         </div>
     </footer>
@@ -601,7 +626,7 @@
                 const items = currentRole === 'client' ? [
                     { id: 'requests', label: '1. Demander un service', icon: 'ph-plus-circle' },
                     { id: 'approval', label: '2. Devis reçus', icon: 'ph-receipt' },
-                    { id: 'tracking', label: '3. Suivi & Jalons (Escrow)', icon: 'ph-stepper-card' },
+                    { id: 'tracking', label: '3. Suivi & jalons', icon: 'ph-stepper-card' },
                     { id: 'dispute', label: '4. Litiges & Médiation', icon: 'ph-shield-warning' }
                 ] : [
                     { id: 'quote', label: '1. Répondre aux demandes', icon: 'ph-pencil-line' },

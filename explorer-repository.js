@@ -39,9 +39,13 @@
 
     async function load(options = {}) {
         return cached('profiles', async () => {
-            const [profiles, services] = await Promise.all([
-                readAll('public_profiles'), readAll('services', q => q.eq('is_active', true))
+            const [profiles, serviceRows] = await Promise.all([
+                readAll('public_profiles'), readAll('services')
             ]);
+            const api = client();
+            const services = serviceRows
+                .filter(s => api.isPublishedService(s))
+                .map(s => api.presentService(s));
             return profiles.map(p => mapProfile(p, services.filter(s => s.owner_id === p.id)));
         }, options.force);
     }
@@ -115,6 +119,8 @@
             // department code before or after the name (971 / Guadeloupe).
             if (mode === 'annonces' && !areaTerms.every(term => location.includes(term))) return false;
             if (mode === 'lyanneurs') {
+                const offered = record.services || [];
+                if (!offered.some((service) => service && (service.title || service.name))) return false;
                 const clean = value => normalize(String(value || '').replace(/\s*\(\d+\)/g, ''));
                 if (filters.territory && clean(record.territory) !== clean(filters.territory)) return false;
                 if (filters.commune && clean(record.city) !== clean(filters.commune)) return false;

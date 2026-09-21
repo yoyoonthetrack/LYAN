@@ -29,17 +29,19 @@
                 <div class="explorer-meta"><span>📍 ${escape(r.location || 'Lieu à préciser')}</span><span>◷ ${escape(urgencyLabel(r.urgency))}</span></div>
                 <p class="explorer-budget">${r.budget == null ? 'Budget à convenir' : escape(Number(r.budget).toLocaleString('fr-FR')) + ' €'}</p>
                 <div class="explorer-person"><img src="${avatar(r.profiles)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><span>${escape(name(r.profiles))}${own ? ' · Votre annonce' : ''}</span></div>
-                <div class="explorer-card-actions">${!own && r.status === 'OPEN' ? `<button class="btn btn-primary" data-action="help" data-id="${escape(r.id)}">Je peux aider</button>` : ''}<button class="btn btn-outline" data-action="detail" data-id="${escape(r.id)}">Détails</button></div>
+                <div class="explorer-card-actions"><button class="btn btn-outline" data-action="detail" data-id="${escape(r.id)}">Détails</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-primary" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
             </article>`;
         }
         function profileCard(p) {
+            const hasOffer = (p.services || []).some(s => s && (s.title || s.name));
+            const place = [p.city, p.territory].filter(Boolean).join(' · ');
             return `<article class="explorer-card" data-member-id="${escape(p.id)}">
                 <div class="explorer-card-top"><div class="explorer-person"><img src="${avatar(p)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><h2>${escape(p.name)}</h2></div>${favorite('PROFILE', p.id)}</div>
                 ${p.is_pro ? '<span class="explorer-meta">Professionnel</span>' : ''}
-                <p>${escape(p.services.map(s => s.title).slice(0, 3).join(' · ') || 'Services non renseignés')}</p>
-                <p class="explorer-meta">📍 ${escape([p.city, p.territory].filter(Boolean).join(' · ') || 'Lieu non renseigné')}</p>
+                <p>${escape((p.services || []).map(s => s.title || s.name).filter(Boolean).slice(0, 3).join(' · '))}</p>
+                <p class="explorer-meta">📍 ${escape(place || 'Lieu à préciser')}</p>
                 ${p.bio ? `<p class="explorer-card-description">${escape(p.bio)}</p>` : ''}
-                <div class="explorer-card-actions"><button class="btn btn-primary" data-action="profile" data-id="${escape(p.id)}">Voir le profil</button>${p.id !== currentUserId() ? `<button class="btn btn-outline" data-action="contact" data-id="${escape(p.id)}">Contacter</button>` : ''}</div>
+                <div class="explorer-card-actions"><button class="btn btn-primary" data-action="profile" data-id="${escape(p.id)}">Voir le profil</button>${p.id !== currentUserId() && hasOffer ? `<button class="btn btn-outline" data-action="contact" data-id="${escape(p.id)}">Contacter</button>` : ''}</div>
             </article>`;
         }
         const territories = () => Object.keys(window.LYANN_TERRITORY_DATASET || {}).filter(t => /\((971|972|973|974)\)/.test(t));
@@ -65,13 +67,21 @@
             history.replaceState(null, '', `${location.pathname}?${next}`);
         }
         function syncControls() {
-            root.querySelectorAll('[data-mode]').forEach(tab => {
+            root.dataset.mode = mode;
+            document.body.dataset.explorerMode = mode;
+            root.querySelectorAll('[role="tab"][data-mode]').forEach(tab => {
                 const active = tab.dataset.mode === mode;
                 tab.setAttribute('aria-selected', String(active));
+                tab.classList.toggle('active', active);
                 tab.tabIndex = active ? 0 : -1;
             });
             $('explorerPanel').setAttribute('aria-labelledby', `${mode}Tab`);
             $('explorerSearchInput').placeholder = mode === 'annonces' ? 'De quoi avez-vous besoin ?' : 'Quel service recherchez-vous ?';
+            const publishBtn = root.querySelector('.explorer-results-heading .explorer-publish');
+            if (publishBtn) {
+                publishBtn.hidden = mode === 'lyanneurs';
+                publishBtn.textContent = 'Publier un besoin';
+            }
             root.querySelector('label[for="explorerSearchInput"]').textContent = `Rechercher dans les ${mode}`;
             $('explorerSearchInput').value = filters.query;
             $('explorerCategory').innerHTML = '<option value="">Toutes les catégories</option>' + [...new Set(leaves.map(t => t.category))].sort((a,b) => a.localeCompare(b,'fr')).map(c => `<option value="${escape(c)}">${escape(c)}</option>`).join('');
@@ -97,11 +107,14 @@
         function render() {
             syncControls(); syncUrl();
             const results = repo.discover(records, leaves, filters, mode);
-            $('explorerSummary').textContent = `${results.length} ${mode === 'annonces' ? 'annonce(s)' : 'Lyanneur(s)'} · ${(mode === 'annonces' ? filters.area : [filters.commune, filters.territory].filter(Boolean).join(' · ')) || 'Tous les lieux'}`;
+            const countLabel = mode === 'annonces'
+                ? (results.length <= 1 ? 'annonce' : 'annonces')
+                : (results.length <= 1 ? 'Lyanneur' : 'Lyanneurs');
+            $('explorerSummary').textContent = `${results.length} ${countLabel} · ${(mode === 'annonces' ? filters.area : [filters.commune, filters.territory].filter(Boolean).join(' · ')) || 'Tous les lieux'}`;
             $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
             const container = $('explorerResults');
             container.dataset.state = results.length ? 'SUCCESS' : 'EMPTY';
-            container.innerHTML = results.length ? results.map(mode === 'annonces' ? requestCard : profileCard).join('') : `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}<button class="btn btn-primary explorer-publish">Publier une annonce</button></div>`;
+            container.innerHTML = results.length ? results.map(mode === 'annonces' ? requestCard : profileCard).join('') : `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish">Publier un besoin</button>' : ''}</div>`;
             window.syncFavoriteButtonStates?.();
         }
         async function search(force = false) {
@@ -111,6 +124,7 @@
             $('explorerResults').dataset.state = 'LOADING';
             $('explorerResults').innerHTML = '<div class="explorer-state" role="status">Chargement…</div>';
             $('explorerSummary').textContent = '';
+            $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
             try {
                 await window.LYANN_AUTH_STATE?.ready?.();
                 const [data, taxonomy] = await Promise.all([mode === 'annonces' ? repo.loadRequests({force}) : repo.load({force}), repo.taxonomy(force)]);
@@ -164,6 +178,26 @@
             mode = event.key === 'Home' ? 'annonces' : event.key === 'End' ? 'lyanneurs' : mode === 'annonces' ? 'lyanneurs' : 'annonces';
             search(); $(`${mode}Tab`).focus();
         });
+        let swipeX = 0, swipeY = 0, swipeOn = false;
+        root.addEventListener('pointerdown', event => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            if (event.target.closest('input, select, textarea, dialog, button, a, .explorer-filter-sheet')) return;
+            swipeOn = true;
+            swipeX = event.clientX;
+            swipeY = event.clientY;
+        });
+        root.addEventListener('pointerup', event => {
+            if (!swipeOn) return;
+            swipeOn = false;
+            const dx = event.clientX - swipeX;
+            const dy = event.clientY - swipeY;
+            if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.35) return;
+            const next = dx < 0 ? 'lyanneurs' : 'annonces';
+            if (next === mode) return;
+            mode = next;
+            search();
+        });
+        root.addEventListener('pointercancel', () => { swipeOn = false; });
         $('explorerSearchInput').addEventListener('input', () => { filters.query = $('explorerSearchInput').value; });
         $('explorerSearchForm').addEventListener('submit', event => { event.preventDefault(); filters.query = $('explorerSearchInput').value.trim(); search(); });
         $('explorerCategory').addEventListener('change', () => { filters.category = $('explorerCategory').value; filters.service = ''; search(); });

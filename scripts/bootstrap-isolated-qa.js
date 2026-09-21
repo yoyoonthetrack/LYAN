@@ -84,12 +84,16 @@ function bootstrapFiles() {
   const files = migrationFiles();
   const schemaIdx = files.findIndex((file) => path.basename(file) === 'schema.sql');
   const requestBridge = path.join(__dirname, 'isolated-qa-requests-bridge.sql');
+  const servicesBridge = path.join(__dirname, 'isolated-qa-services-bridge.sql');
   const disputesBridge = path.join(__dirname, 'isolated-qa-disputes-bridge.sql');
   if (schemaIdx === -1) {
     files.unshift(requestBridge);
   } else {
     files.splice(schemaIdx + 1, 0, requestBridge);
   }
+  const servicesIdx = files.findIndex((file) => path.basename(file) === 'isolated-qa-requests-bridge.sql');
+  if (servicesIdx === -1) files.push(servicesBridge);
+  else files.splice(servicesIdx + 1, 0, servicesBridge);
   const eleven = files.findIndex((file) => path.basename(file) === '11_disputes_and_refunds_migration.sql');
   if (eleven === -1) files.push(disputesBridge);
   else files.splice(eleven, 0, disputesBridge);
@@ -249,6 +253,32 @@ async function ensureQaUsers(url, service, anon) {
   }
 }
 
+async function ensureQaService(url, service) {
+  const admin = createClient(url, service, { auth: { autoRefreshToken: false, persistSession: false } });
+  const helperEmail = process.env.LYANN_E2E_QA_B_EMAIL || 'req_user_b@lyann.app';
+  const { data: listed, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+  if (listErr) throw listErr;
+  const helper = (listed.users || []).find((u) => u.email === helperEmail);
+  if (!helper) throw new Error('QA helper user missing for service seed');
+  const { data: existing, error: existingErr } = await admin.from('services').select('id').eq('owner_id', helper.id).limit(1);
+  if (existingErr) throw existingErr;
+  if (existing && existing.length) {
+    console.log('SERVICE exists');
+    return;
+  }
+  const { error } = await admin.from('services').insert({
+    owner_id: helper.id,
+    title: 'Taille de haie',
+    slug: 'taille-de-haie',
+    description: 'Entretien de jardin — offre QA isolée',
+    pricing_model: 'FLAT_RATE',
+    indicative_price: 50,
+    active: true
+  });
+  if (error) throw error;
+  console.log('SERVICE CREATED');
+}
+
 function enableIsolatedWrites() {
   const envPath = path.join(ROOT, '.env.local');
   let text = fs.readFileSync(envPath, 'utf8');
@@ -293,6 +323,7 @@ async function main() {
   }
 
   await ensureQaUsers(cfg.url, cfg.service, cfg.anon);
+  await ensureQaService(cfg.url, cfg.service);
   enableIsolatedWrites();
   console.log('STATUS=ready isolated_qa', cfg.ref);
 }

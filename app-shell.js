@@ -8,10 +8,19 @@ function getPendingActions() {
 }
 
 // === APP WELCOME SCREEN (GUEST MODE / ONBOARDING / LOGIN) ===
+function isGuestBrowse() {
+    try { return localStorage.getItem('lyann_guest_browse') === '1'; } catch (e) { return false; }
+}
+
+function enableGuestBrowse() {
+    try { localStorage.setItem('lyann_guest_browse', '1'); } catch (e) {}
+}
+
 function showAppWelcomeScreen() {
     console.log('[AUTH_REAL] welcome/login screen mounted = true');
     if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.loginScreenMounted = true;
 
+    if (isGuestBrowse()) return;
     if (document.querySelector('.app-welcome-screen')) return;
 
     const screen = document.createElement('div');
@@ -66,7 +75,8 @@ function showAppWelcomeScreen() {
         triggerHaptic('light');
         console.log('[AUTH_REAL] welcome/login screen mounted = false');
         if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.loginScreenMounted = false;
-        screen.remove(); // Dismiss welcome view
+        enableGuestBrowse();
+        screen.remove();
     });
 }
 

@@ -104,7 +104,7 @@ for (const width of [390,1440]) test(`Anonymous Explorer at ${width}px uses only
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
   const card = page.locator(`[data-request-id="${body.requests[0].id}"]`);
   await expect(card).toContainText(body.requests[0].title);
-  await expect(card.getByRole('button',{name:'Je peux aider',exact:true})).toBeVisible();
+  await expect(card.getByRole('button',{name:'Lyanner',exact:true})).toBeVisible();
   await card.getByRole('button',{name:'Détails',exact:true}).click();
   await expect(page.locator('#lyannDetailTitle')).toHaveText(body.requests[0].title);
   await page.locator('#btnHelpLyannFromModal').click();

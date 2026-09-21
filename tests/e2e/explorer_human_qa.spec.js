@@ -80,10 +80,10 @@ test('Segmented selector and centered introduction support keyboard and clear se
   await page.setViewportSize({width:390,height:844});await ready(page);
   await expect(page.locator('.explorer-heading')).toContainText('Des besoins et des talents près de chez vous');
   expect(await page.locator('.explorer-heading').evaluate(e=>getComputedStyle(e).textAlign)).toBe('center');
-  const first=page.getByRole('tab',{name:'Annonces',exact:true}), second=page.getByRole('tab',{name:'Lyanneurs',exact:true});
+  const first=page.getByRole('tab',{name:/Annonces/}), second=page.getByRole('tab',{name:/Lyanneurs/});
   expect((await first.boundingBox()).height).toBeGreaterThanOrEqual(60);
   expect((await first.boundingBox()).width).toBeGreaterThan(140);
-  expect(await first.evaluate(e=>getComputedStyle(e).backgroundColor)).not.toBe(await second.evaluate(e=>getComputedStyle(e).backgroundColor));
+  expect(await first.evaluate(e=>getComputedStyle(e).color)).not.toBe(await second.evaluate(e=>getComputedStyle(e).color));
   await first.focus();await first.press('ArrowRight');
   await expect(second).toBeFocused();await expect(second).toHaveAttribute('aria-selected','true');
   expect(await second.evaluate(e=>getComputedStyle(e).outlineStyle)).not.toBe('none');

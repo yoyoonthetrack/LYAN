@@ -21,10 +21,10 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20260916">
-    <link rel="stylesheet" href="explorer.css?v=20260917">
+    <link rel="stylesheet" href="style.css?v=20260921">
+    <link rel="stylesheet" href="explorer.css?v=20260921c">
 </head>
-<body class="results-page">
+<body class="results-page" data-explorer-mode="annonces">
 
     <!-- ========== NAVIGATION ========== -->
     <nav class="navbar">
@@ -101,7 +101,6 @@
                     <a href="feed.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <span class="nav-live-dot"></span> <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="#" class="open-chat-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGERIE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
-                    <a href="payment-portal.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-shield-check" style="color: #E76F51; font-size: 1.2rem;"></i> PAIEMENT SÉCURISÉ 🔒 <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="about.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                 </nav>
@@ -118,15 +117,25 @@
         </div>
     </div>
 
-    <main id="explorer" class="explorer-page">
+    <main id="explorer" class="explorer-page" data-mode="annonces">
         <header class="explorer-heading">
             <h1>Explorer</h1>
             <p>Des besoins et des talents près de chez vous</p>
         </header>
-        <div class="explorer-modes" role="tablist" aria-label="Que souhaitez-vous découvrir ?">
-            <button id="annoncesTab" role="tab" aria-selected="true" aria-controls="explorerPanel" data-mode="annonces">Annonces</button>
-            <button id="lyanneursTab" role="tab" aria-selected="false" aria-controls="explorerPanel" data-mode="lyanneurs" tabindex="-1">Lyanneurs</button>
+        <p class="explorer-intent-label" id="explorerIntentLabel">Deux mondes à explorer</p>
+        <div class="explorer-modes explorer-worlds" role="tablist" aria-labelledby="explorerIntentLabel">
+            <span class="explorer-world-slider" aria-hidden="true"></span>
+            <button id="annoncesTab" class="explorer-world-tab is-annonces active" type="button" role="tab" aria-selected="true" aria-controls="explorerPanel" data-mode="annonces">
+                <i class="ph-bold ph-megaphone" aria-hidden="true"></i>
+                <span>Annonces</span>
+            </button>
+            <button id="lyanneursTab" class="explorer-world-tab is-lyanneurs" type="button" role="tab" aria-selected="false" aria-controls="explorerPanel" data-mode="lyanneurs" tabindex="-1">
+                <i class="ph-bold ph-users-three" aria-hidden="true"></i>
+                <span>Je cherche un Lyanneur</span>
+                <span class="sr-only">Lyanneurs</span>
+            </button>
         </div>
+        <p class="explorer-swipe-hint">Glissez pour passer d’un monde à l’autre</p>
         <section id="explorerPanel" role="tabpanel" aria-labelledby="annoncesTab">
             <form id="explorerSearchForm" class="explorer-search" role="search">
                 <label class="sr-only" for="explorerSearchInput">Rechercher dans les annonces</label>
@@ -142,7 +151,7 @@
             <div id="explorerActiveFilters" class="explorer-active-filters" aria-label="Filtres actifs"></div>
             <div class="explorer-results-heading">
                 <p id="explorerSummary" role="status" aria-live="polite"></p>
-                <button class="explorer-publish btn btn-outline" type="button">Publier une annonce</button>
+                <button class="explorer-publish btn btn-outline" type="button">Publier un besoin</button>
             </div>
             <div id="explorerResults" class="explorer-grid" aria-busy="true"></div>
             <p id="explorerRanking" class="explorer-ranking">Annonces les plus récentes en premier.</p>

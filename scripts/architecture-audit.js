@@ -167,6 +167,13 @@ if (fs.existsSync(path.join(root, 'script.js'))) {
   if (setTimeouts > 20) warn(`script.js: ${setTimeouts} setTimeout calls; review timing-based UI synchronization`);
 }
 
+if (!fs.existsSync(path.join(root, 'lyann-boot-logo.gif'))) fail('lyann-boot-logo.gif: boot splash asset missing');
+if (!read('shared-html-build.js').includes('lyann-boot-logo.gif')) fail('shared-html-build.js: boot splash must inject the logo GIF');
+if (!read('style.css').includes('.lyann-boot-splash')) fail('style.css: boot splash styles missing');
+if (!read('build_mobile.js').includes("'.gif'")) fail('build_mobile.js: Capacitor artifact must copy the boot GIF');
+if (!fs.existsSync(path.join(root, 'lyann-home-story.mp4'))) fail('lyann-home-story.mp4: home story video missing');
+if (!read('build_mobile.js').includes("'.mp4'")) fail('build_mobile.js: Capacitor artifact must copy the home story video');
+
 console.log('LYANN architecture audit');
 console.log(`Pages checked: ${productPages.length}`);
 if (warnings.length) {

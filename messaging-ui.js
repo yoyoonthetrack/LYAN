@@ -186,7 +186,7 @@
             <div class="chat-empty-state" style="padding:48px 20px;text-align:center;">
                 <i class="ph ph-chat-circle-dots" style="font-size:2.4rem;color:#cbd5e1;"></i>
                 <h4 style="font-weight:800;margin:12px 0 6px;">Aucune conversation pour le moment.</h4>
-                <p style="color:#64748b;margin:0;">Vos échanges avec la communauté et les Lyanneurs apparaîtront ici.</p>
+                <p style="color:#64748b;margin:0;">Vos échanges autour d’un besoin apparaîtront ici.</p>
             </div>`;
     }
 
@@ -240,8 +240,13 @@
         if (!listContainer) return;
 
         listContainer.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;">Chargement des conversations…</div>';
-        if (!repo || typeof repo.listConversations !== 'function' || !userId) {
+        if (!userId) {
             setListEmptyState(listContainer);
+            return;
+        }
+        if (!repo || typeof repo.listConversations !== 'function') {
+            listContainer.innerHTML = '<div class="chat-empty-state" style="padding:48px 20px;text-align:center;"><strong>Impossible de charger les conversations.</strong><p>Vérifiez votre connexion, puis réessayez.</p><button type="button" class="btn btn-outline" id="chatRetryConversations" style="margin-top:16px;min-height:44px;">Réessayer</button></div>';
+            listContainer.querySelector('#chatRetryConversations')?.addEventListener('click', () => renderConversationList());
             return;
         }
 
@@ -262,7 +267,8 @@
                     requestId: recent.requestId || null
                 }]);
             } else {
-                listContainer.innerHTML = '<div class="chat-empty-state" style="padding:48px 20px;text-align:center;"><strong>Impossible de charger les conversations.</strong><p>Vérifiez votre connexion puis réessayez.</p></div>';
+                listContainer.innerHTML = '<div class="chat-empty-state" style="padding:48px 20px;text-align:center;"><strong>Impossible de charger les conversations.</strong><p>Vérifiez votre connexion, puis réessayez.</p><button type="button" class="btn btn-outline" id="chatRetryConversations" style="margin-top:16px;min-height:44px;">Réessayer</button></div>';
+                listContainer.querySelector('#chatRetryConversations')?.addEventListener('click', () => renderConversationList());
             }
         }
     }
@@ -277,7 +283,9 @@
         }
         hideAllChildSurfaces();
         const l = layout();
-        if (l) l.classList.remove('mobile-conversation-active');
+        if (l) {
+            l.classList.remove('mobile-conversation-active', 'has-active-conversation');
+        }
         document.querySelectorAll('#chatModal .chat-contacts-sidebar').forEach((node) => node.style.removeProperty('display'));
         await renderConversationList();
     }
@@ -337,7 +345,9 @@
             console.log('[MESSAGING openConversation] calling legacyOpenConversation with:', name, contactId);
             await legacyOpenConversation(name, avatar, contactId, options.initialNeed || null);
             const l = layout();
-            if (l) l.classList.add('mobile-conversation-active');
+            if (l) {
+                l.classList.add('mobile-conversation-active', 'has-active-conversation');
+            }
             const enriched = window.LYANN_ACTIVE_CHAT_CONTACT || {};
             const active = {
                 id: contactId,

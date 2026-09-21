@@ -107,7 +107,6 @@
                     <a href="feed.html" class="active" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="#" class="open-chat-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGERIE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
-                    <a href="payment-portal.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-shield-check" style="color: #E76F51; font-size: 1.2rem;"></i> PAIEMENT SÉCURISÉ 🔒 <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="about.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                 </nav>
@@ -143,45 +142,32 @@
                 <main class="feed-main-column">
                     
                     <!-- BLOC COMPOSITEUR SOCIAL (BOKANTAJ V2) -->
-                    <div class="flash-composer-card" id="flashComposerCard" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+                    <button type="button" id="btnOpenBokantajComposer" class="btn btn-outline" style="width:100%; justify-content:center; min-height:44px; margin-bottom:12px; font-weight:700;">Partager dans le quartier</button>
+                    <div class="flash-composer-card" id="flashComposerCard" hidden style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
                         <div class="composer-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
                             <img id="composerUserAvatar" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" onerror="window.handleAvatarError(this)" alt="Avatar" class="user-avatar-circle" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);">
                             <div class="composer-title-block">
                                 <h4 style="font-size: 1rem; font-weight: 800; color: #17231C; margin: 0;">Quoi de neuf près de chez vous ?</h4>
-                                <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Partagez avec les Lyanneurs du quartier</p>
+                                <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Partagez une idée, une réalisation ou une disponibilité</p>
                             </div>
                         </div>
 
                         <form id="createFlashForm" onsubmit="event.preventDefault();">
                             <div class="composer-textarea-wrapper" style="margin-bottom: 10px;">
                                 <textarea id="flashContentInput" placeholder="Partagez une idée, une réalisation, une question ou une disponibilité…" maxlength="280" required style="width: 100%; border-radius: 14px; padding: 10px 12px; border: 1px solid #E2E8F0; font-size: 0.92rem; resize: none; box-sizing: border-box; font-family: inherit;"></textarea>
-                                <p style="font-size:.82rem;color:var(--text-muted)">Un coup de main ? Votre demande sera publiée dans Explorer → Annonces.</p>
                                 <div class="composer-char-counter" style="text-align: right; font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;"><span id="flashCharCount">0</span>/280</div>
                             </div>
 
                             <div class="flash-media-preview-container" id="flashMediaPreviewContainer"></div>
 
-                            <!-- Barre d'actions sociales du Composer -->
                             <div class="composer-actions-bar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-top: 8px; border-top: 1px solid #F1F5F9;">
-                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                    <label class="media-upload-btn" id="btnComposerPhoto" title="Joindre une photo" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 0.85rem; font-weight: 700; color: #334155; cursor: pointer; min-height: 40px;">
-                                        <i class="ph ph-image" style="color: #4A7C59; font-size: 1.1rem;"></i>
-                                        <span>Photo</span>
-                                        <input type="file" id="flashPhotoInput" accept="image/*" multiple style="display: none;">
-                                    </label>
+                                <label class="media-upload-btn" id="btnComposerPhoto" title="Joindre une photo" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 0.85rem; font-weight: 700; color: #334155; cursor: pointer; min-height: 40px;">
+                                    <i class="ph ph-image" style="color: #4A7C59; font-size: 1.1rem;"></i>
+                                    <span>Photo</span>
+                                    <input type="file" id="flashPhotoInput" accept="image/*" multiple style="display: none;">
+                                </label>
 
-                                    <button type="button" class="media-upload-btn" id="btnComposerGif" title="Intégration GIF bientôt disponible" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 0.85rem; font-weight: 700; color: #94A3B8; cursor: not-allowed; min-height: 40px;" disabled>
-                                        <i class="ph ph-gif" style="font-size: 1.1rem;"></i>
-                                        <span>GIF</span>
-                                    </button>
-
-                                    <button type="button" class="media-upload-btn btn-trigger-wizard-shortcut" id="btnComposerNeedShortcut" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(74, 124, 89, 0.1); border: 1px solid rgba(74, 124, 89, 0.25); border-radius: 20px; font-size: 0.85rem; font-weight: 800; color: #2D5A39; cursor: pointer; min-height: 40px;">
-                                        <i class="ph ph-hand-heart" style="color: #4A7C59; font-size: 1.1rem;"></i>
-                                        <span>Besoin d’un coup de main</span>
-                                    </button>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary btn-publish-flash" style="padding: 8px 20px; font-weight: 800; border-radius: 20px; font-size: 0.92rem; min-height: 40px;">Publier</button>
+                                <button type="submit" class="btn btn-primary btn-publish-flash" style="padding: 8px 20px; font-weight: 800; border-radius: 20px; font-size: 0.92rem; min-height: 40px;">Partager dans le quartier</button>
                             </div>
                         </form>
                     </div>
