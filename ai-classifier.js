@@ -196,6 +196,34 @@ class LyanAIClassifier {
             clarification_question: null
         };
     }
+
+    generateProfilePhrases(options = {}) {
+        const city = (options.city || 'Guadeloupe').trim();
+        const rawSkills = Array.isArray(options.skills) && options.skills.length ? options.skills : ['entraide et petits travaux'];
+        const radiusRaw = options.radius || '20 km';
+
+        let radiusText = "jusqu'à 20 km";
+        const rLower = String(radiusRaw).toLowerCase();
+        if (rLower.includes('toute') || rLower.includes('ile') || rLower.includes('île') || rLower.includes('territoire') || Number(radiusRaw) >= 50) {
+            radiusText = "dans toute l'île";
+        } else {
+            const num = parseInt(rLower.replace(/\D/g, ''), 10);
+            if (!isNaN(num) && num > 0) {
+                radiusText = `jusqu'à ${num} km`;
+            } else if (rLower.includes('km')) {
+                radiusText = `jusqu'à ${rLower}`;
+            }
+        }
+
+        const skill1 = rawSkills[0] || 'petits travaux';
+        const skillsListStr = rawSkills.slice(0, 3).join(' · ');
+
+        return [
+            `« ${skillsListStr} sur ${city}. Matériel disponible, interventions soignées. Se déplace ${radiusText}. »`,
+            `« Habitant engagé à ${city}, disponible pour vous donner un coup de main efficace sur : ${skill1}. »`,
+            `« Voisin réactif et outillé sur la zone de ${city}, toujours prêt à rendre service avec le sourire. »`
+        ];
+    }
 }
 
 // Global instance initialization

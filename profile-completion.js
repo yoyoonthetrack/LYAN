@@ -423,8 +423,166 @@
             });
         }
 
+        function setupRadiusSliderUI() {
+            const selectEl = document.getElementById('cpRadiusSelect');
+            if (!selectEl) return;
+
+            let container = document.getElementById('cpRadiusSliderContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'cpRadiusSliderContainer';
+                container.className = 'cp-radius-slider-container';
+                container.style.cssText = 'background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 14px 16px; margin-top: 10px; box-sizing: border-box;';
+
+                container.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                        <label style="font-size: 0.85rem; font-weight: 700; color: #1F3827; margin: 0;">Curseur de déplacement :</label>
+                        <span id="cpRadiusBadgeDisplay" style="font-size: 0.82rem; font-weight: 800; color: #4A7C59; background: #E8F1EA; border: 1px solid #C9D9CE; padding: 4px 12px; border-radius: 20px;">📍 Se déplace jusqu'à 20 km</span>
+                    </div>
+                    <input type="range" id="cpRadiusRangeInput" min="1" max="5" step="1" value="3" style="width: 100%; accent-color: #4A7C59; cursor: pointer; margin: 8px 0 4px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: #64748B; font-weight: 600;">
+                        <span>5 km</span>
+                        <span>10 km</span>
+                        <span>20 km</span>
+                        <span>40 km</span>
+                        <span>Toute l'île</span>
+                    </div>
+                `;
+
+                if (selectEl.parentElement) {
+                    selectEl.parentElement.appendChild(container);
+                    selectEl.style.display = 'none';
+                }
+            }
+
+            const rangeInput = document.getElementById('cpRadiusRangeInput');
+            const badgeDisplay = document.getElementById('cpRadiusBadgeDisplay');
+            if (!rangeInput || !badgeDisplay) return;
+
+            const mapStepToSelect = {
+                1: { selectVal: '5 km', badgeText: "📍 Se déplace jusqu'à 5 km" },
+                2: { selectVal: '10 km', badgeText: "📍 Se déplace jusqu'à 10 km" },
+                3: { selectVal: '20 km', badgeText: "📍 Se déplace jusqu'à 20 km" },
+                4: { selectVal: '40 km', badgeText: "📍 Se déplace jusqu'à 40 km" },
+                5: { selectVal: "Toute l'île", badgeText: "📍 Se déplace dans toute l'île" }
+            };
+
+            const mapSelectToStep = (val) => {
+                const s = String(val || '').toLowerCase();
+                if (s.includes('toute') || s.includes('50') || s.includes('territoire')) return 5;
+                if (s.includes('40')) return 4;
+                if (s.includes('20') || s.includes('15') || s.includes('25')) return 3;
+                if (s.includes('10')) return 2;
+                return 1;
+            };
+
+            const syncFromSelect = () => {
+                const step = mapSelectToStep(selectEl.value);
+                rangeInput.value = step;
+                badgeDisplay.textContent = mapStepToSelect[step].badgeText;
+            };
+
+            syncFromSelect();
+
+            rangeInput.oninput = (e) => {
+                const step = parseInt(e.target.value, 10) || 3;
+                const mapped = mapStepToSelect[step];
+                selectEl.value = mapped.selectVal;
+                badgeDisplay.textContent = mapped.badgeText;
+            };
+        }
+
+        function setupAiBioHelperUI() {
+            const bioEl = document.getElementById('cpBio');
+            if (!bioEl) return;
+
+            let helperContainer = document.getElementById('cpAiBioHelperContainer');
+            if (!helperContainer) {
+                helperContainer = document.createElement('div');
+                helperContainer.id = 'cpAiBioHelperContainer';
+                helperContainer.className = 'cp-ai-bio-helper';
+                helperContainer.style.cssText = 'margin-bottom: 14px; background: linear-gradient(135deg, #F0FDF4 0%, #FEFCE8 100%); border: 1px solid #C9D9CE; border-radius: 14px; padding: 14px; box-sizing: border-box;';
+
+                helperContainer.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                        <span style="font-size: 0.85rem; font-weight: 800; color: #1F3827; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph-fill ph-sparkle" style="color: #E5B345;"></i> Suggérer une phrase avec LyanAI
+                        </span>
+                        <button type="button" id="cpGenerateBioAiBtn" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 4px 12px; border-radius: 16px; background: white; font-weight: 700; color: #2D5A39; border-color: #A3C9AD;">
+                            <i class="ph ph-magic-wand"></i> Générer
+                        </button>
+                    </div>
+                    <p style="font-size: 0.78rem; color: #536258; margin: 0 0 10px 0;">Cliquez sur une phrase ci-dessous pour l'appliquer à votre profil (modifiable à tout moment).</p>
+                    <div id="cpAiBioSuggestionsList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                `;
+
+                if (bioEl.parentElement) {
+                    bioEl.parentElement.insertBefore(helperContainer, bioEl);
+                }
+            }
+
+            const generateBtn = document.getElementById('cpGenerateBioAiBtn');
+            const listEl = document.getElementById('cpAiBioSuggestionsList');
+
+            const renderSuggestions = () => {
+                if (!listEl) return;
+                const fn = document.getElementById('cpFirstName')?.value.trim() || 'Membre';
+                const city = document.getElementById('cpCitySelect')?.value || document.getElementById('cpCityInput')?.value || 'Guadeloupe';
+                const radius = document.getElementById('cpRadiusSelect')?.value || '20 km';
+                const skillsArr = Array.from(selectedSkills);
+
+                let phrases = [];
+                if (window.LyanAI && typeof window.LyanAI.generateProfilePhrases === 'function') {
+                    phrases = window.LyanAI.generateProfilePhrases({ firstName: fn, skills: skillsArr, city: city, radius: radius });
+                } else {
+                    const skillStr = skillsArr.slice(0, 3).join(' · ') || 'petits travaux & entraide';
+                    phrases = [
+                        `« ${skillStr} sur ${city}. Matériel disponible, interventions soignées. Se déplace jusqu'à ${radius}. »`,
+                        `« Habitant engagé à ${city}, toujours prêt à vous donner un coup de main efficace et rapide. »`,
+                        `« Voisin réactif et outillé sur la zone de ${city}, disponible pour vos besoins du quotidien. »`
+                    ];
+                }
+
+                listEl.innerHTML = phrases.map(p => `
+                    <div class="cp-ai-bio-pill" data-phrase="${window.escapeHtmlAttr ? window.escapeHtmlAttr(p) : p}" style="cursor: pointer; background: white; border: 1px solid #D3E0D6; border-radius: 10px; padding: 10px 12px; font-size: 0.85rem; color: #1E293B; font-style: italic; transition: all 0.2s ease;">
+                        ${window.escapeHtmlAttr ? window.escapeHtmlAttr(p) : p}
+                    </div>
+                `).join('');
+
+                listEl.querySelectorAll('.cp-ai-bio-pill').forEach(pill => {
+                    pill.addEventListener('click', () => {
+                        const phraseText = pill.getAttribute('data-phrase');
+                        if (phraseText && bioEl) {
+                            bioEl.value = phraseText;
+                            bioEl.focus();
+                            listEl.querySelectorAll('.cp-ai-bio-pill').forEach(el => {
+                                el.style.border = '1px solid #D3E0D6';
+                                el.style.background = 'white';
+                            });
+                            pill.style.border = '2px solid #4A7C59';
+                            pill.style.background = '#F0FDF4';
+                        }
+                    });
+                });
+            };
+
+            if (generateBtn) {
+                generateBtn.onclick = (e) => {
+                    e.preventDefault();
+                    renderSuggestions();
+                };
+            }
+
+            if (listEl && !listEl.children.length) {
+                renderSuggestions();
+            }
+        }
+
         // Wizard step UI navigation
         function updateWizardUI() {
+            setupRadiusSliderUI();
+            setupAiBioHelperUI();
+
             const steps = [
                 document.getElementById('cpStep1'),
                 document.getElementById('cpStep2'),
