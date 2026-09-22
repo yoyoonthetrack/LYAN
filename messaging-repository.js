@@ -4,7 +4,8 @@
   if (window.LYANN_MESSAGING_REPOSITORY) return;
 
   const CONVERSATION_TTL_MS = 30_000;
-  const MESSAGES_TTL_MS = 5_000;
+  const MESSAGES_TTL_MS = 0;
+  const SUPPORT_NAME = 'Support LYANN';
   const QUOTE_CONTEXT_TTL_MS = 10_000;
   const LIST_TTL_MS = 10_000;
 
@@ -37,7 +38,11 @@
       if (sharedError) throw sharedError;
       return shared?.[0]?.conversation_id || null;
     };
-    return c ? c.dedupe('chat-conversation', key, loader, CONVERSATION_TTL_MS) : loader();
+    const id = c ? await c.dedupe('chat-conversation', key, loader, CONVERSATION_TTL_MS) : await loader();
+    // A missing conversation must not stay cached, or the first real message
+    // is read back as an empty thread.
+    if (!id && c) c.invalidate('chat-conversation', key);
+    return id;
   }
 
   async function listConversations(userId, options = {}) {
@@ -55,7 +60,7 @@
 
       const [participantResult, messageResult] = await Promise.all([
         client.supabase.from('conversation_participants').select('conversation_id,user_id').in('conversation_id', conversationIds),
-        client.supabase.from('messages').select('id,conversation_id,sender_id,content,created_at').in('conversation_id', conversationIds).order('created_at', { ascending: false })
+        client.supabase.from('messages').select('id,conversation_id,sender_id,content,created_at').in('conversation_id', conversationIds).order('created_at', { ascending: false }).limit(Math.min(conversationIds.length * 4, 160))
       ]);
       if (participantResult.error) throw participantResult.error;
       if (messageResult.error) throw messageResult.error;
@@ -86,9 +91,9 @@
         const latest = latestByConversation.get(conversationId) || null;
         const supportId = window.LYANN_SUPPORT_USER_ID;
         const isSupport = supportId && contactId === supportId;
-        const firstName = isSupport ? 'Aide' : (profile?.first_name || profile?.display_name || 'Membre');
-        const lastName = isSupport ? ' LYANN' : (profile?.last_name ? ` ${String(profile.last_name).charAt(0)}.` : '');
-        const name = isSupport ? 'Aide LYANN' : (`${firstName}${lastName}`.trim() || 'Membre LYANN');
+        const firstName = profile?.first_name || profile?.display_name || 'Membre';
+        const lastName = profile?.last_name ? ` ${String(profile.last_name).charAt(0)}.` : '';
+        const name = isSupport ? SUPPORT_NAME : (`${firstName}${lastName}`.trim() || 'Membre LYANN');
         const avatar = typeof window.getLyannAvatarUrl === 'function' ? window.getLyannAvatarUrl(profile?.avatar_url) : (profile?.avatar_url || '');
         return { conversationId, contactId, name, avatar, preview: latest?.content || (isSupport ? 'Écrivez-nous ici' : ''), lastMessageAt: latest?.created_at || null, pinned: !!isSupport };
       }).filter(Boolean).sort((a, b) => {

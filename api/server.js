@@ -1271,7 +1271,7 @@ app.get('/v1/admin/support/threads/:id', async (req, res) => {
             messages: (messages || []).map((row) => ({
                 id: row.id,
                 sender_id: row.sender_id,
-                sender_name: row.sender_id === supportId ? 'Aide LYANN' : adminProfileName(profiles[row.sender_id]),
+                sender_name: row.sender_id === supportId ? 'Support LYANN' : adminProfileName(profiles[row.sender_id]),
                 from_support: row.sender_id === supportId,
                 content: row.content,
                 created_at: row.created_at

@@ -316,8 +316,8 @@
       return false;
     }
     const messaging = window.LYANN_MESSAGING;
-    if (messaging) return messaging.openConversation({ contactId: supportId, name: 'Aide LYANN' });
-    const params = new URLSearchParams({ action: 'messages', contact: supportId, name: 'Aide LYANN' });
+    if (messaging) return messaging.openConversation({ contactId: supportId, name: 'Support LYANN' });
+    const params = new URLSearchParams({ action: 'messages', contact: supportId, name: 'Support LYANN' });
     return hardNavigate(`feed.html?${params.toString()}`);
   });
   register('about', () => hardNavigate('about.html'));

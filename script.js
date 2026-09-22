@@ -238,7 +238,7 @@ function ensureMobileHamburgerDrawer() {
                         <div class="drawer-submenu" id="submenuHelp">
                             <a href="#" class="drawer-sub-link" data-lyann-route="help"><i class="ph ph-book-open"></i> Comment ça marche</a>
                             <a href="pricing.html" class="drawer-sub-link" data-lyann-route="pricing"><i class="ph ph-tag"></i> Tarifs</a>
-                            <a href="#" class="drawer-sub-link" data-lyann-route="support"><i class="ph ph-headset"></i> Aide LYANN</a>
+                            <a href="#" class="drawer-sub-link" data-lyann-route="support"><i class="ph ph-headset"></i> Support LYANN</a>
                             <a href="legal.html" class="drawer-sub-link"><i class="ph ph-scales"></i> Conditions & informations légales</a>
                             <a href="#" class="drawer-sub-link logged-in-only"><i class="ph ph-user-plus"></i> Inviter quelqu'un</a>
                             <a href="#" class="drawer-sub-link" data-lyann-route="about"><i class="ph ph-info"></i> À propos de LYANN</a>
@@ -989,6 +989,10 @@ safeDomReady(() => {
             fn = (profileOrFirstName.first_name || '').trim();
             ln = (profileOrFirstName.last_name || profileOrFirstName.last_name_initial || '').trim();
             dn = (profileOrFirstName.display_name || profileOrFirstName.name || profileOrFirstName.full_name || '').trim();
+            const supportName = `${fn} ${ln}`.trim().toLowerCase();
+            if (profileOrFirstName.email === 'aide@lyann.app' || supportName === 'aide lyann' || supportName === 'support lyann') {
+                return 'Support LYANN';
+            }
         } else {
             fn = (profileOrFirstName || '').trim();
             ln = (lastName || '').trim();
@@ -4155,7 +4159,7 @@ safeDomReady(() => {
                             <div class="account-touch-row" data-lyann-route="support" style="cursor:pointer;">
                                 <div class="row-icon"><i class="ph ph-headset"></i></div>
                                 <div class="row-content">
-                                    <strong class="row-title">Aide LYANN</strong>
+                                    <strong class="row-title">Support LYANN</strong>
                                     <span class="row-subtitle">Écrire à l'équipe dans la messagerie</span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>

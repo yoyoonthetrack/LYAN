@@ -13,6 +13,26 @@ window.getBlockedUsers = function() {
     }
 };
 
+function isLyannSupportContact(contactId) {
+    const id = contactId || currentChatContact?.id || window.LYANN_ACTIVE_CHAT_CONTACT?.id;
+    return Boolean(id && window.LYANN_SUPPORT_USER_ID && String(id) === String(window.LYANN_SUPPORT_USER_ID));
+}
+
+function hideChatMissionChrome() {
+    const banner = document.getElementById('chatMissionContextBar') || document.getElementById('chatMissionContext');
+    if (banner) {
+        banner.style.display = 'none';
+        banner.removeAttribute('data-request-context');
+        banner.innerHTML = '';
+    }
+    const dropViewMission = document.getElementById('chatDropViewMission');
+    if (dropViewMission) dropViewMission.style.display = 'none';
+    const viewMissionBtn = document.getElementById('chatViewMissionBtn');
+    if (viewMissionBtn) viewMissionBtn.style.display = 'none';
+    const actionContainer = document.getElementById('chatContextualActionsBar');
+    if (actionContainer) actionContainer.style.display = 'none';
+}
+
 window.isUserBlocked = function(idOrName) {
     if (!idOrName) return false;
     const list = window.getBlockedUsers();
@@ -200,20 +220,28 @@ async function addMessageToContact(contactId, msgObj) {
 
         const sharedConvId = convRes.id;
         const contentToSave = normalizedMsg.type === 'transactional' ? JSON.stringify(normalizedMsg.txData) : normalizedMsg.text;
-        const { error: sendErr } = await window.LYANN_API_CLIENT.sendMessage(sharedConvId, userId, contentToSave);
+        const { data: sentRow, error: sendErr } = await window.LYANN_API_CLIENT.sendMessage(sharedConvId, userId, contentToSave);
         if (sendErr) throw sendErr;
 
         if (window.LYANN_MESSAGING_REPOSITORY) {
-            // Opening a thread caches "no conversation yet". Invalidating only
-            // the message list leaves that empty lookup in place, so the next
-            // render paints an empty thread and the just-sent text vanishes.
             window.LYANN_MESSAGING_REPOSITORY.invalidateConversation(userId, contactId, sharedConvId);
         }
 
         if (currentChatContact && currentChatContact.id === contactId) {
             currentChatContact.conversationId = sharedConvId;
-            await renderMessages(null, { fresh: true });
         }
+        if (optimisticNode && optimisticNode.isConnected) {
+            if (sentRow?.id) optimisticNode.dataset.messageId = sentRow.id;
+            const status = optimisticNode.querySelector('[data-optimistic-status]');
+            if (status) {
+                const time = typeof normalizedMsg.timestamp === 'number'
+                    ? new Date(normalizedMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                status.textContent = time;
+                status.dataset.optimisticStatus = 'sent';
+            }
+        }
+        window.dispatchEvent(new CustomEvent('lyann:chat-activity'));
     } catch(e) {
         console.warn("Supabase message send failed:", e);
         if (optimisticNode && optimisticNode.isConnected) {
@@ -242,6 +270,9 @@ window.openPhotoLightbox = function (url) {
 
 window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, initialNeed = null) {
     const isUUID = (str) => typeof window.isUUID === 'function' ? window.isUUID(str) : (typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+    if (window.LYANN_API_CLIENT?.getSupportUserId) {
+        try { await window.LYANN_API_CLIENT.getSupportUserId(); } catch (_) {}
+    }
     
     // Safety gate: If contactId is a request UUID, resolve the true requester_id first
     if (contactId && isUUID(contactId) && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
@@ -281,7 +312,12 @@ let displayName = name;
     if (initialHeaderName) initialHeaderName.textContent = displayName || 'Membre LYANN';
     if (initialHeaderAvatar && displayAvatar) initialHeaderAvatar.src = displayAvatar;
 
-    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function' && contactId && isUUID(contactId)) {
+    if (isLyannSupportContact(contactId)) {
+        displayName = 'Support LYANN';
+        initialNeed = null;
+    }
+
+    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function' && contactId && isUUID(contactId) && !isLyannSupportContact(contactId)) {
         try {
             const prof = await window.LYANN_API_CLIENT.getUserProfile(contactId);
             if (prof) {
@@ -296,6 +332,10 @@ let displayName = name;
     }
 
     currentChatContact = { id: contactId, name: displayName, avatar: displayAvatar };
+    if (isLyannSupportContact(contactId)) {
+        currentChatContact.requestId = null;
+        hideChatMissionChrome();
+    }
     window.LYANN_ACTIVE_CHAT_CONTACT = { ...currentChatContact };
     
     try {
@@ -303,7 +343,7 @@ let displayName = name;
     } catch(e) {}
 
     // Link conversation to request in DB safely via initiateLyannHelp (Step 17.4 Security Gate)
-    if (initialNeed && initialNeed.requestId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.initiateLyannHelp === 'function') {
+    if (!isLyannSupportContact(contactId) && initialNeed && initialNeed.requestId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.initiateLyannHelp === 'function') {
         try {
             const helpRes = await window.LYANN_API_CLIENT.initiateLyannHelp(initialNeed.requestId);
             if (helpRes && helpRes.error) {
@@ -361,12 +401,30 @@ window.refreshChatUI = async function () {
         window.updateChatFavHeaderUI();
     }
 
-    // Start message rendering immediately; mission/request context can resolve in parallel.
-    const messagesPromise = renderMessages();
+    if (!window.LYANN_SUPPORT_USER_ID && window.LYANN_API_CLIENT?.getSupportUserId) {
+        try { await window.LYANN_API_CLIENT.getSupportUserId(); } catch (_) {}
+    }
+    const supportThread = isLyannSupportContact(currentChatContact.id);
+    if (supportThread) {
+        currentChatContact.requestId = null;
+        currentChatContact.requestData = null;
+        hideChatMissionChrome();
+    }
 
     const myUserId = getMyId();
     let sharedConvId = currentChatContact.conversationId;
-    if (!sharedConvId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getOrCreateConversation === 'function' && currentChatContact.id && currentChatContact.id !== 'me') {
+    if (supportThread && window.LYANN_API_CLIENT?.openSupportConversation) {
+        try {
+            const opened = await window.LYANN_API_CLIENT.openSupportConversation();
+            if (opened?.data?.id) {
+                sharedConvId = opened.data.id;
+                currentChatContact.conversationId = sharedConvId;
+                if (window.LYANN_MESSAGING_REPOSITORY) {
+                    window.LYANN_MESSAGING_REPOSITORY.invalidateConversation(myUserId, currentChatContact.id, sharedConvId);
+                }
+            }
+        } catch (_) {}
+    } else if (!sharedConvId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getOrCreateConversation === 'function' && currentChatContact.id && currentChatContact.id !== 'me') {
         try {
             const convRes = await window.LYANN_API_CLIENT.getOrCreateConversation(myUserId, currentChatContact.id);
             if (convRes && convRes.data && convRes.data.id) {
@@ -379,16 +437,18 @@ window.refreshChatUI = async function () {
         } catch(e) {}
     }
 
+    const messagesPromise = renderMessages(null, supportThread ? { fresh: true } : undefined);
+
     // 1. Fetch persistent request context for this conversation from request_invitations / requests
     let requestContext = null;
     const reqHint = (currentChatContact && currentChatContact.requestId) ? currentChatContact.requestId : null;
-    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getConversationRequestContext === 'function') {
+    if (!supportThread && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getConversationRequestContext === 'function') {
         requestContext = await window.LYANN_API_CLIENT.getConversationRequestContext(sharedConvId, reqHint);
     }
 
     // 2. Fetch active mission (if any)
     let mission = null;
-    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getActiveMissionBetween === 'function') {
+    if (!supportThread && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getActiveMissionBetween === 'function') {
         mission = await window.LYANN_API_CLIENT.getActiveMissionBetween(myUserId, currentChatContact.id);
     }
 
@@ -397,7 +457,7 @@ window.refreshChatUI = async function () {
     const bannerMeta = document.getElementById('chatBannerMeta');
     const dropViewMission = document.getElementById('chatDropViewMission');
 
-    if (requestContext && requestContext.request) {
+    if (!supportThread && requestContext && requestContext.request) {
         currentChatContact.requestId = requestContext.requestId;
         currentChatContact.requestData = requestContext.request;
 
@@ -479,8 +539,7 @@ window.refreshChatUI = async function () {
         }
         if (dropViewMission) dropViewMission.style.display = 'flex';
     } else {
-        if (banner) banner.style.display = 'none';
-        if (dropViewMission) dropViewMission.style.display = 'none';
+        hideChatMissionChrome();
     }
 
     // Hide floating separate actions toolbar completely (actions are integrated into the Context Card)
@@ -958,11 +1017,14 @@ window.toggleMessageReaction = function(msgId, emoji) {
 
 function renderEmptyConversationState(container) {
     if (!container) return;
+    const supportThread = isLyannSupportContact();
     container.innerHTML = `
         <div class="chat-empty-state">
             <i class="ph ph-chat-circle-dots"></i>
-            <h4 style="font-weight: 700; color: #1E2822; margin: 8px 0 4px 0;">Commencez l’échange</h4>
-            <p style="color: #64748B; font-size: 0.88rem; margin: 0;">Présentez-vous ou posez une question à propos de ce Lyann.</p>
+            <h4 style="font-weight: 700; color: #1E2822; margin: 8px 0 4px 0;">${supportThread ? 'Support LYANN' : 'Commencez l’échange'}</h4>
+            <p style="color: #64748B; font-size: 0.88rem; margin: 0;">${supportThread
+                ? 'Posez votre question ici. L’équipe LYANN vous répond dans cette conversation.'
+                : 'Présentez-vous ou posez une question à propos de ce Lyann.'}</p>
         </div>
     `;
 }
@@ -2405,6 +2467,69 @@ document.addEventListener('click', (e) => {
 let chatSubscription = null;
 let missionSubscription = null;
 
+function appendLiveChatMessage(row) {
+    const container = document.getElementById('chatMessagesContainer');
+    if (!container || !row || !currentChatContact) return;
+    const messageId = row.id ? String(row.id) : '';
+    if (messageId && container.querySelector(`[data-message-id="${messageId}"]`)) return;
+
+    const mine = row.sender_id && row.sender_id === getMyId();
+    const text = typeof row.content === 'string' ? row.content : '';
+    if (mine) {
+        const pending = [...container.querySelectorAll('[data-optimistic-status="sending"], [data-optimistic-status="sent"]')]
+            .map((node) => node.closest('.chat-msg-bubble-wrap'))
+            .find((node) => node && !node.dataset.messageId && node.querySelector('.chat-msg-text')?.textContent === text);
+        if (pending) {
+            if (messageId) pending.dataset.messageId = messageId;
+            const status = pending.querySelector('[data-optimistic-status]');
+            if (status) status.dataset.optimisticStatus = 'sent';
+            return;
+        }
+    }
+
+    container.querySelector('.chat-empty-state')?.remove();
+    if (!container.querySelector('.chat-date-separator')) {
+        const dateSep = document.createElement('div');
+        dateSep.className = 'chat-date-separator';
+        const span = document.createElement('span');
+        span.textContent = "Aujourd'hui";
+        dateSep.appendChild(span);
+        container.appendChild(dateSep);
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `chat-msg-bubble-wrap ${mine ? 'sent' : 'received'}`;
+    if (messageId) wrapper.dataset.messageId = messageId;
+    const bubble = document.createElement('div');
+    bubble.className = `chat-msg-bubble ${mine ? 'sent' : 'received'}`;
+    const textNode = document.createElement('div');
+    textNode.className = 'chat-msg-text';
+    textNode.textContent = text;
+    const meta = document.createElement('div');
+    meta.className = 'chat-msg-time';
+    const created = row.created_at ? new Date(row.created_at) : new Date();
+    meta.textContent = Number.isNaN(created.getTime()) ? '' : created.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    bubble.append(textNode, meta);
+    wrapper.appendChild(bubble);
+    container.appendChild(wrapper);
+    container.scrollTop = container.scrollHeight;
+}
+
+async function syncOpenThread() {
+    if (!currentChatContact?.id || document.hidden) return;
+    const msgs = await getChatMessages(currentChatContact.id, { fresh: true });
+    if (!Array.isArray(msgs) || !currentChatContact) return;
+    msgs.forEach((msg) => {
+        if (!msg || msg.type === 'transactional') return;
+        appendLiveChatMessage({
+            id: msg.id,
+            sender_id: msg.sender === 'me' ? getMyId() : 'them',
+            content: msg.text,
+            created_at: msg.timestamp ? new Date(msg.timestamp).toISOString() : null
+        });
+    });
+}
+
 function setupRealtime() {
     if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) return;
     const supabase = window.LYANN_API_CLIENT.supabase;
@@ -2414,29 +2539,29 @@ function setupRealtime() {
 
     chatSubscription = supabase.channel('public:messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-            if (!currentChatContact) return;
-            const convId = payload?.new?.conversation_id;
-            if (currentChatContact.conversationId && convId && convId !== currentChatContact.conversationId) return;
+            const row = payload?.new;
+            if (!row) return;
             const userId = getMyId();
-            if (window.LYANN_MESSAGING_REPOSITORY) {
-                window.LYANN_MESSAGING_REPOSITORY.invalidateConversation(userId, currentChatContact.id, convId);
+            const convId = row.conversation_id;
+            const mineOrContact = currentChatContact && (row.sender_id === userId || row.sender_id === currentChatContact.id);
+            const openHere = mineOrContact && (!currentChatContact.conversationId || currentChatContact.conversationId === convId);
+            if (openHere) {
+                if (convId && !currentChatContact.conversationId) currentChatContact.conversationId = convId;
+                if (window.LYANN_MESSAGING_REPOSITORY) {
+                    window.LYANN_MESSAGING_REPOSITORY.invalidateMessages(convId);
+                }
+                appendLiveChatMessage(row);
+            } else if (window.LYANN_MESSAGING_REPOSITORY && userId) {
+                window.LYANN_MESSAGING_REPOSITORY.invalidateConversation(userId, null, convId);
             }
-            renderMessages(null, { fresh: true });
-        })
-        .subscribe();
-
-    missionSubscription = supabase.channel('public:missions')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, payload => {
-            if (currentChatContact) {
-                renderMessages(); // This will refresh the context actions bar
-            }
+            window.dispatchEvent(new CustomEvent('lyann:chat-activity'));
         })
         .subscribe();
 }
 
-// Realtime starts only after canonical auth resolution.
 if (window.LYANN_AUTH_STATE?.getSnapshot?.().status === 'ready') setupRealtime();
 else window.addEventListener('lyann:auth-ready', setupRealtime, { once: true });
+setInterval(() => { syncOpenThread().catch(() => {}); }, 3000);
 
 // =============================================================================
 // LYANN STEP 19 — ESPACE MISSION UI & JALONS CONTROLLER

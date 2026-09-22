@@ -143,7 +143,7 @@ function renderNotificationsModal() {
 
             // Deep link actions (TEST F)
             if (entityType === 'conversation' || nType === 'NEW_MESSAGE') {
-                window.LYANN_ROUTER?.go?.('messages', { contactId: entityId, name: entityId === window.LYANN_SUPPORT_USER_ID ? 'Aide LYANN' : undefined });
+                window.LYANN_ROUTER?.go?.('messages', { contactId: entityId, name: entityId === window.LYANN_SUPPORT_USER_ID ? 'Support LYANN' : undefined });
             } else if (entityType === 'request' && entityId) {
                 if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('mission', { requestId: entityId });
                 else if (typeof window.openRequestDetails === 'function') window.openRequestDetails(entityId);

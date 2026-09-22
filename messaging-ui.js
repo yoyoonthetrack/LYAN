@@ -239,7 +239,10 @@
         const userId = await resolveCurrentUserId();
         if (!listContainer) return;
 
-        listContainer.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;">Chargement des conversations…</div>';
+        const keepVisible = listContainer.querySelector('.chat-contact-item');
+        if (!keepVisible) {
+            listContainer.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;">Chargement des conversations…</div>';
+        }
         if (!userId) {
             setListEmptyState(listContainer);
             return;
@@ -257,7 +260,7 @@
             if (supportId && !rows.some((row) => row.contactId === supportId)) {
                 rows.unshift({
                     contactId: supportId,
-                    name: 'Aide LYANN',
+                    name: 'Support LYANN',
                     preview: 'Écrivez-nous ici',
                     pinned: true
                 });
@@ -301,11 +304,13 @@
     }
 
     function resolveRequestId(options = {}) {
+        const contactId = options.contactId || options.id || options.memberId;
+        if (contactId && window.LYANN_SUPPORT_USER_ID && String(contactId) === String(window.LYANN_SUPPORT_USER_ID)) {
+            return null;
+        }
+        if (options.name === 'Support LYANN' || options.name === 'Aide LYANN') return null;
         return options.requestId
             || options.initialNeed?.requestId
-            || window.LYANN_ACTIVE_CHAT_CONTACT?.requestId
-            || document.getElementById('chatMissionContextBar')?.dataset?.requestContext
-            || document.getElementById('btnViewLyannFromChat')?.dataset?.requestId
             || null;
     }
 
@@ -353,7 +358,11 @@
 
         try {
             console.log('[MESSAGING openConversation] calling legacyOpenConversation with:', name, contactId);
-            await legacyOpenConversation(name, avatar, contactId, options.initialNeed || null);
+            if (!window.LYANN_SUPPORT_USER_ID && window.LYANN_API_CLIENT?.getSupportUserId) {
+                try { await window.LYANN_API_CLIENT.getSupportUserId(); } catch (_) {}
+            }
+            const supportThread = Boolean(window.LYANN_SUPPORT_USER_ID && String(contactId) === String(window.LYANN_SUPPORT_USER_ID));
+            await legacyOpenConversation(name, avatar, contactId, supportThread ? null : (options.initialNeed || null));
             const l = layout();
             if (l) {
                 l.classList.add('mobile-conversation-active', 'has-active-conversation');
@@ -361,9 +370,9 @@
             const enriched = window.LYANN_ACTIVE_CHAT_CONTACT || {};
             const active = {
                 id: contactId,
-                name: enriched.name || name,
+                name: supportThread ? 'Support LYANN' : (enriched.name || name),
                 avatar: enriched.avatar || avatar,
-                requestId: resolveRequestId(options)
+                requestId: supportThread ? null : resolveRequestId(options)
             };
             window.LYANN_ACTIVE_CHAT_CONTACT = active;
             try { localStorage.setItem('lyann_last_active_contact', JSON.stringify(active)); } catch (_) {}
@@ -457,4 +466,15 @@
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
     else boot();
+
+    let listRefreshTimer = null;
+    window.addEventListener('lyann:chat-activity', () => {
+        clearTimeout(listRefreshTimer);
+        listRefreshTimer = setTimeout(() => {
+            const shell = document.getElementById('chatModal');
+            if (!shell || !document.getElementById('chatContactsList')) return;
+            if (shell.style.display === 'none' && !shell.classList.contains('active')) return;
+            renderConversationList();
+        }, 350);
+    });
 })();

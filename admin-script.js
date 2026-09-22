@@ -3104,7 +3104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const res = await window.fetchWithAdminAuth('/v1/admin/support/threads');
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) {
-            tbody.innerHTML = adminEmpty(3, data.error || 'Inbox Aide LYANN indisponible.');
+            tbody.innerHTML = adminEmpty(3, data.error || 'Inbox Support LYANN indisponible.');
             return;
         }
         const rows = data.rows || [];
@@ -3112,7 +3112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <td><strong>${adminEscape(row.member_name)}</strong></td>
             <td>${adminEscape((row.last_message || '').slice(0, 90))}</td>
             <td><button class="admin-btn admin-btn-sm admin-btn-primary" type="button" data-support-thread="${adminEscape(row.id)}" data-support-name="${adminEscape(row.member_name)}">Ouvrir</button></td>
-        </tr>`).join('') : adminEmpty(3, 'Aucun message Aide LYANN.');
+        </tr>`).join('') : adminEmpty(3, 'Aucun message Support LYANN.');
         tbody.querySelectorAll('[data-support-thread]').forEach((btn) => {
             btn.addEventListener('click', () => window.openAdminSupportThread(btn.getAttribute('data-support-thread'), btn.getAttribute('data-support-name')));
         });
@@ -3123,7 +3123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const box = document.getElementById('supportThreadMessages');
         const hidden = document.getElementById('supportReplyConversationId');
         if (hidden) hidden.value = conversationId;
-        if (meta) meta.textContent = memberName ? `Conversation avec ${memberName}` : 'Conversation Aide LYANN';
+        if (meta) meta.textContent = memberName ? `Conversation avec ${memberName}` : 'Conversation Support LYANN';
         if (box) box.textContent = 'Chargement…';
         const res = await window.fetchWithAdminAuth(`/v1/admin/support/threads/${conversationId}`);
         const data = await res.json().catch(() => ({}));
@@ -3162,6 +3162,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         await window.openAdminSupportThread(conversationId, document.getElementById('supportThreadMeta')?.textContent?.replace(/^Conversation avec /, '') || '');
         await window.loadAdminSupportInbox();
     });
+
+    if (!window.__lyannSupportInboxPoll) {
+        window.__lyannSupportInboxPoll = setInterval(() => {
+            const section = document.getElementById('sec-chat');
+            if (!section || section.offsetParent === null) return;
+            window.loadAdminSupportInbox();
+        }, 8000);
+    }
 
     window.loadAdminSection = async function(sectionId) {
         const loaders = {
