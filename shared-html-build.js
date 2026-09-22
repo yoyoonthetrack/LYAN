@@ -3,7 +3,7 @@ const fs = require('fs');
 const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260916-5" defer></script>';
 const SHARED_RUNTIME_TAGS = [
   '<script src="sentry-init.js?v=20260916-5"></script>',
-  '<script src="surface-manager.js?v=20260916-5"></script>',
+  '<script src="surface-manager.js?v=20260922s"></script>',
   '<script src="app-router.js?v=20260916-5"></script>',
   '<script src="safety-repository.js?v=20260916-5"></script>',
   '<script src="legacy-compat.js?v=20260916-5"></script>'

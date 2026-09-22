@@ -13181,11 +13181,31 @@ html {
     scrollbar-gutter: stable;
 }
 
+html.lyann-scroll-lock,
+body.lyann-scroll-lock,
 body.modal-open,
 body.drawer-open,
-body.sheet-open {
+body.sheet-open,
+body.lyann-surface-open,
+body.lyann-messaging-open {
     overflow: hidden !important;
-    touch-action: none;
+    overscroll-behavior: none;
+}
+
+html.lyann-scroll-lock .modal-overlay.active,
+html.lyann-scroll-lock .mobile-bottom-sheet.active,
+html.lyann-scroll-lock #mobileHamburgerDrawerOverlay.active,
+html.lyann-scroll-lock .chat-messages-scroll,
+html.lyann-scroll-lock .chat-contacts-list,
+html.lyann-scroll-lock .account-v3-body,
+html.lyann-scroll-lock .modal-overlay.active .modal-card,
+html.lyann-scroll-lock .hamburger-drawer-card {
+    max-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 /* 2. UNIFIED BUTTON FAMILY */
