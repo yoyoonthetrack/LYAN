@@ -47,8 +47,21 @@
             return raw;
         }
 
+        function getSeedProfileMetadata(p) {
+            const catalog = window.LYANN_MAISON_CATALOG || [];
+            if (p && catalog.length) {
+                const match = catalog.find(m => 
+                    (p.first_name && m.first_name.toLowerCase() === p.first_name.toLowerCase() && p.last_name && m.last_name.toLowerCase() === p.last_name.toLowerCase()) ||
+                    (p.name && m.first_name && p.name.toLowerCase().includes(m.first_name.toLowerCase()) && m.last_name && p.name.toLowerCase().includes(m.last_name.substring(0, 1).toLowerCase()))
+                );
+                if (match) return match;
+            }
+            return null;
+        }
+
         function formatRadiusText(p) {
-            const raw = p.intervention_radius_km ?? p.radius ?? p.intervention_radius;
+            const seed = getSeedProfileMetadata(p);
+            const raw = seed?.intervention_radius_km ?? p.intervention_radius_km ?? p.radius ?? p.intervention_radius;
             if (raw === null || raw === undefined) return "Se déplace jusqu'à 20 km";
             const str = String(raw).toLowerCase();
             if (str.includes('toute') || str.includes('territoire') || str.includes('île') || str.includes('ile') || Number(raw) >= 50) {
@@ -62,7 +75,8 @@
         }
 
         function formatBioQuote(p, skillsText) {
-            let bio = (p.bio || p.short_bio || p.headline || '').trim();
+            const seed = getSeedProfileMetadata(p);
+            let bio = (seed?.bio || p.bio || p.short_bio || p.headline || '').trim();
             if (bio) {
                 bio = bio.replace(/^["«“'\s]+|["»”'\s]+$/g, '');
             } else {
@@ -74,18 +88,49 @@
         }
 
         function formatStatsLine(p) {
-            const rating = p.rating ? Number(p.rating).toFixed(1).replace('.', ',') : '4,9';
-            let reviewsCount = p.reviews_count || p.reviewsCount;
-            if (!reviewsCount && p.id) {
+            const seed = getSeedProfileMetadata(p);
+            const ratingNum = seed?.rating || p.rating || p.average_rating || p.avg_rating;
+            let ratingStr = '4,9';
+            if (ratingNum) {
+                ratingStr = Number(ratingNum).toFixed(1).replace('.', ',');
+            } else if (p.id) {
                 let hash = 0;
                 const str = String(p.id);
                 for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
-                reviewsCount = (Math.abs(hash) % 17) + 8;
-            } else if (!reviewsCount) {
-                reviewsCount = 17;
+                const ratings = [4.6, 4.7, 4.8, 4.9, 5.0, 4.5];
+                ratingStr = ratings[Math.abs(hash) % ratings.length].toFixed(1).replace('.', ',');
             }
-            const speed = p.response_speed || p.response_rate_text || 'Répond généralement rapidement';
-            return `⭐ ${rating} · ${reviewsCount} avis · ⚡ ${speed}`;
+
+            let reviewsCount = seed?.reviews_count ?? p.reviews_count ?? p.reviewsCount;
+            if (reviewsCount === undefined || reviewsCount === null) {
+                if (p.id) {
+                    let hash = 0;
+                    const str = String(p.id);
+                    for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
+                    reviewsCount = (Math.abs(hash) % 3) + 1;
+                } else {
+                    reviewsCount = 2;
+                }
+            }
+
+            const speedOptions = [
+                "Répond généralement rapidement",
+                "Répond en moins d'1h",
+                "Répond généralement en quelques minutes",
+                "Répond dans la journée",
+                "Répond généralement très rapidement"
+            ];
+            let speed = seed?.response_speed || p.response_speed || p.response_rate_text;
+            if (!speed && p.id) {
+                let hash = 0;
+                const str = String(p.id);
+                for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
+                speed = speedOptions[Math.abs(hash) % speedOptions.length];
+            } else if (!speed) {
+                speed = "Répond généralement rapidement";
+            }
+
+            return `⭐ ${ratingStr} · ${reviewsCount} avis · ⚡ ${speed}`;
         }
 
         function profileCard(p) {

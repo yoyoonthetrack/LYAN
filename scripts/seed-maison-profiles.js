@@ -137,7 +137,7 @@ async function seedOne(profile) {
     avatarUrl = await uploadAvatar(user.id, profile.photo);
   }
 
-  const bio = `${profile.skills.join(', ')}. Intervient autour de ${profile.city}.`;
+  const bio = profile.bio || `${profile.skills.join(', ')}. Intervient autour de ${profile.city}.`;
   const { error: updErr } = await supabase.from('profiles').update({
     first_name: profile.first_name,
     last_name: profile.last_name,
@@ -149,12 +149,29 @@ async function seedOne(profile) {
     account_type: 'seed',
     is_pro: true,
     professional_status: profile.skills[0] || null,
-    intervention_radius_km: 25,
+    intervention_radius_km: profile.intervention_radius_km || 20,
     updated_at: new Date().toISOString()
   }).eq('id', user.id);
   if (updErr) throw updErr;
 
   await syncServices(user.id, profile.skills);
+
+  if (Array.isArray(profile.reviews) && profile.reviews.length) {
+    try {
+      await supabase.from('reviews').delete().eq('target_id', user.id);
+      const reviewRows = profile.reviews.map(r => ({
+        target_id: user.id,
+        author_id: user.id,
+        rating: Math.round(r.rating || 5),
+        comment: r.comment,
+        created_at: new Date(Date.now() - (Math.floor(Math.random() * 20) + 1) * 86400000).toISOString()
+      }));
+      await supabase.from('reviews').insert(reviewRows);
+    } catch (e) {
+      console.warn(`[SEED_REVIEWS_WARN] ${profile.first_name} ${profile.last_name}:`, e.message);
+    }
+  }
+
   return { email, userId: user.id, photo: profile.photo || null, city: profile.city };
 }
 

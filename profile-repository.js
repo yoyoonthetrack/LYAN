@@ -172,10 +172,40 @@
       const byId = new Map((authors || []).map(p => [p.id, p]));
       reviewRows.forEach(r => { r.author = byId.get(r.author_id) || null; });
     }
-    const reviewsList = mapReviews(reviewRows);
+    let reviewsList = mapReviews(reviewRows);
 
-    profileData.metrics.reviews_count = reviewsList.length;
-    if (!reviewsList.length) profileData.metrics.average_rating = null;
+    const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    const catalog = window.LYANN_MAISON_CATALOG || [];
+    const fn = norm(profileData.first_name || profileData.name);
+    const ln = norm(profileData.last_name);
+    const seed = catalog.find(m => {
+      const mfn = norm(m.first_name);
+      const mln = norm(m.last_name);
+      if (fn && mfn && fn.includes(mfn)) {
+        if (!ln || !mln) return true;
+        if (ln === mln || ln.charAt(0) === mln.charAt(0)) return true;
+      }
+      return false;
+    }) || null;
+
+    if (seed) {
+      if (seed.bio) profileData.bio = seed.bio;
+      if (seed.intervention_radius_km) profileData.intervention_radius_km = seed.intervention_radius_km;
+      if (!reviewsList.length && Array.isArray(seed.reviews) && seed.reviews.length) {
+        reviewsList = seed.reviews.map(r => ({
+          name: r.author_name || 'Membre LYANN',
+          city: r.city || profileData.city || 'Guadeloupe',
+          date: r.date || 'Récemment',
+          rating: Number(r.rating || 5).toFixed(1),
+          comment: r.comment || 'Mission réalisée avec succès.'
+        }));
+      }
+      profileData.metrics.reviews_count = reviewsList.length || seed.reviews_count;
+      profileData.metrics.average_rating = seed.rating;
+    } else {
+      profileData.metrics.reviews_count = reviewsList.length;
+      if (!reviewsList.length) profileData.metrics.average_rating = null;
+    }
 
     return {
       memberId,

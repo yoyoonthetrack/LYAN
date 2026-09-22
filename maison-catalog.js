@@ -1,0 +1,812 @@
+(function () {
+    'use strict';
+    window.LYANN_MAISON_CATALOG = [
+        {
+            "id": 1,
+            "first_name": "Jocelyn",
+            "last_name": "Carbo",
+            "city": "Les Abymes",
+            "skills": ["Plomberie", "Sanitaire", "Petit bricolage", "Recherche de fuite"],
+            "bio": "« Artisan plombier expérimenté sur Les Abymes. Spécialiste recherche de fuite et réparations sanitaires d'urgence. Matériel complet. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.9,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Marie-Claire L.", "city": "Les Abymes", "rating": 5, "date": "Il y a 3 jours", "comment": "Intervention rapide un dimanche pour un chauffe-eau en panne. Travail impeccable !" },
+                { "author_name": "Gérard P.", "city": "Baie-Mahault", "rating": 5, "date": "Il y a 2 semaines", "comment": "Très pro, fuite colmatée proprement et rapidement. Je recommande." },
+                { "author_name": "Corinne D.", "city": "Pointe-à-Pitre", "rating": 4.7, "date": "Il y a 1 mois", "comment": "Souriant, efficace et tarif très raisonnable. Merci Jocelyn !" }
+            ]
+        },
+        {
+            "id": 2,
+            "first_name": "David",
+            "last_name": "Bellance",
+            "city": "Baie-Mahault",
+            "skills": ["Électricité", "Climatisation", "Installation", "Dépannage"],
+            "bio": "« Spécialiste climatisation et électricité résidentielle sur Baie-Mahault. Dépannages rapides et installations soignées. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Patrick V.", "city": "Baie-Mahault", "rating": 5, "date": "Il y a 5 jours", "comment": "Révision complète de ma clim Inverter. Très efficace et de bon conseil !" },
+                { "author_name": "Nathalie B.", "city": "Petit-Bourg", "rating": 4.6, "date": "Il y a 3 semaines", "comment": "Installation propre du tableau électrique. Très satisfait." }
+            ]
+        },
+        {
+            "id": 3,
+            "first_name": "Yolande",
+            "last_name": "Céligny",
+            "city": "Le Gosier",
+            "skills": ["Couture", "Retouches", "Cuisine", "Aide aux courses"],
+            "bio": "« Couturière et aide à domicile passionnée au Gosier. Je propose retouches, petits plats créoles et accompagnement au quotidien. »",
+            "intervention_radius_km": 15,
+            "response_speed": "Répond généralement très rapidement",
+            "rating": 5.0,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Chantal D.", "city": "Le Gosier", "rating": 5, "date": "Il y a 1 semaine", "comment": "Retouches de rideaux parfaites et un gratin de christophine délicieux !" },
+                { "author_name": "Élodie M.", "city": "Sainte-Anne", "rating": 5, "date": "Il y a 1 mois", "comment": "D'une grande gentillesse, ponctuelle et très appliquée." }
+            ]
+        },
+        {
+            "id": 4,
+            "first_name": "Chantal",
+            "last_name": "Dorville",
+            "city": "Petit-Bourg",
+            "skills": ["Aide administrative", "Accompagnement", "Courses", "Cuisine"],
+            "bio": "« Habitante engagée à Petit-Bourg pour vous épauler dans vos démarches administratives, vos courses et la préparation de repas. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond rapidement",
+            "rating": 4.7,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Alain C.", "city": "Petit-Bourg", "rating": 5, "date": "Il y a 4 jours", "comment": "Très grande aide pour remplir mes dossiers en ligne. Merci beaucoup !" },
+                { "author_name": "Sandrine T.", "city": "Capesterre-Belle-Eau", "rating": 4.4, "date": "Il y a 2 semaines", "comment": "Très attentionnée et ponctuelle pour les courses de mon père." }
+            ]
+        },
+        {
+            "id": 5,
+            "first_name": "Kévin",
+            "last_name": "Marival",
+            "city": "Sainte-Anne",
+            "skills": ["Informatique", "Wi-Fi", "Smartphones", "Installation TV"],
+            "bio": "« Passionné de tech sur Sainte-Anne. Dépannage informatique, configuration box Wi-Fi, télévisions et smartphones à domicile. »",
+            "intervention_radius_km": 30,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 4.9,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Jean-Marc B.", "city": "Sainte-Anne", "rating": 5, "date": "Il y a 2 jours", "comment": "Connexion Wi-Fi réparée et télé configurée en 30 minutes. Au top !" },
+                { "author_name": "Vanessa C.", "city": "Le Moule", "rating": 5, "date": "Il y a 1 semaine", "comment": "Très sympa, patient et pédagogue pour m'expliquer le fonctionnement." },
+                { "author_name": "Ludovic B.", "city": "Saint-François", "rating": 4.7, "date": "Il y a 3 semaines", "comment": "Problème d'ordinateur résolu très vite. Je recommande Kévin." }
+            ]
+        },
+        {
+            "id": 6,
+            "first_name": "Mélissa",
+            "last_name": "Terval",
+            "city": "Les Abymes",
+            "skills": ["Graphisme", "Réseaux sociaux", "Photographie", "Aide numérique"],
+            "bio": "« Créative aux Abymes, disponible pour vos logos, visuels réseaux sociaux, séances photos et accompagnement numérique. »",
+            "intervention_radius_km": 40,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Maëva D.", "city": "Pointe-à-Pitre", "rating": 5, "date": "Il y a 6 jours", "comment": "Super travail sur mes cartes de visite et ma page pro. Merci !" },
+                { "author_name": "Frédéric M.", "city": "Les Abymes", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Photos de très belle qualité pour mon activité. Très pro." }
+            ]
+        },
+        {
+            "id": 7,
+            "first_name": "Jean-Marc",
+            "last_name": "Bélizaire",
+            "city": "Le Moule",
+            "skills": ["Maçonnerie", "Carrelage", "Petits travaux", "Rénovation"],
+            "bio": "« Artisan maçon sérieux au Moule. Réalisation de murets, pose de carrelage, enduits et petites rénovations extérieures. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond dans la journée",
+            "rating": 4.6,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Dimitri L.", "city": "Le Moule", "rating": 5, "date": "Il y a 1 semaine", "comment": "Carrelage de ma terrasse posé avec précision. Beau travail." },
+                { "author_name": "Sylvie C.", "city": "Morne-à-l'Eau", "rating": 4.5, "date": "Il y a 3 semaines", "comment": "Réparation de mon mur de clôture solide et propre." },
+                { "author_name": "Ruddy C.", "city": "Saint-François", "rating": 4.3, "date": "Il y a 1 mois", "comment": "Bon artisan, ponctuel et de confiance." }
+            ]
+        },
+        {
+            "id": 8,
+            "first_name": "Stéphanie",
+            "last_name": "Lormel",
+            "city": "Baie-Mahault",
+            "skills": ["Aide administrative", "Bureautique", "Démarches en ligne"],
+            "bio": "« Assistante administrative expérimentée sur Baie-Mahault. Démarches CAF, Impôts, réorganisation de documents et courriers. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond généralement très rapidement",
+            "rating": 5.0,
+            "reviews_count": 1,
+            "reviews": [
+                { "author_name": "David B.", "city": "Baie-Mahault", "rating": 5, "date": "Il y a 4 jours", "comment": "Dossier administratif débloqué en une séance ! Efficacité exemplaire." }
+            ]
+        },
+        {
+            "id": 9,
+            "first_name": "Ruddy",
+            "last_name": "Cazimir",
+            "city": "Capesterre-Belle-Eau",
+            "skills": ["Jardinage", "Débroussaillage", "Taille", "Déchets verts"],
+            "bio": "« Jardinier équipé sur Capesterre-Belle-Eau. Débroussaillage de terrains, taille de haies, élagage léger et évacuation. »",
+            "intervention_radius_km": 30,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.7,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Patricia V.", "city": "Capesterre-Belle-Eau", "rating": 5, "date": "Il y a 5 jours", "comment": "Terrain de 800m2 complètement nettoyé en une matinée. Impressionnant !" },
+                { "author_name": "Willy C.", "city": "Goyave", "rating": 4.4, "date": "Il y a 2 semaines", "comment": "Bon matériel, travail rapide et soigné." }
+            ]
+        },
+        {
+            "id": 10,
+            "first_name": "Nadia",
+            "last_name": "Méloir",
+            "city": "Pointe-à-Pitre",
+            "skills": ["Ménage", "Rangement", "Préparation de repas", "Courses"],
+            "bio": "« Aide ménagère soigneuse à Pointe-à-Pitre. Entretien du domicile, rangement approfondi et cuisine familiale. »",
+            "intervention_radius_km": 10,
+            "response_speed": "Répond rapidement",
+            "rating": 4.9,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Coralie N.", "city": "Pointe-à-Pitre", "rating": 5, "date": "Il y a 3 jours", "comment": "Maison étincelante et repas prêts après son passage. Un vrai bonheur." },
+                { "author_name": "Yannick C.", "city": "Les Abymes", "rating": 5, "date": "Il y a 10 jours", "comment": "Très ponctuelle, discrète et très efficace." },
+                { "author_name": "Kévin M.", "city": "Baie-Mahault", "rating": 4.7, "date": "Il y a 3 semaines", "comment": "Service impeccable pour le ménage de fin de bail." }
+            ]
+        },
+        {
+            "id": 11,
+            "first_name": "Mickaël",
+            "last_name": "Solvet",
+            "city": "Les Abymes",
+            "skills": ["Peinture", "Enduit", "Petit bricolage", "Montage de meubles"],
+            "bio": "« Artisan peintre et bricoleur outillé sur Les Abymes. Peinture d'intérieur, préparation de murs et montage de meubles. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Isabelle M.", "city": "Les Abymes", "rating": 5, "date": "Il y a 1 semaine", "comment": "Repeint ma chambre parfaitement, aucune trace et protection nickel." },
+                { "author_name": "Steeve M.", "city": "Baie-Mahault", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Montage de mon dressing IKEA rapide et solide." }
+            ]
+        },
+        {
+            "id": 12,
+            "first_name": "Sonia",
+            "last_name": "Valtier",
+            "city": "Sainte-Rose",
+            "skills": ["Accompagnement", "Courses", "Aide quotidienne", "Démarches"],
+            "bio": "« Voisine bienveillante sur Sainte-Rose, disponible pour accompagner vos proches aux rendez-vous, faire les courses et aider au quotidien. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 5.0,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Patrick S.", "city": "Sainte-Rose", "rating": 5, "date": "Il y a 4 jours", "comment": "Formidable avec ma grand-mère. Douce, ponctuelle et très attentionnée." },
+                { "author_name": "Mylène D.", "city": "Deshaies", "rating": 5, "date": "Il y a 3 semaines", "comment": "Aide précieuse pour mes démarches et transports. Merci Sonia !" }
+            ]
+        },
+        {
+            "id": 13,
+            "first_name": "Fabrice",
+            "last_name": "Céran",
+            "city": "Morne-à-l'Eau",
+            "skills": ["Menuiserie", "Montage", "Réparations bois", "Bricolage"],
+            "bio": "« Menuisier passionné à Morne-à-l'Eau. Fabrication sur mesure, pose et réparation de portes, volets et meubles en bois. »",
+            "intervention_radius_km": 30,
+            "response_speed": "Répond dans la journée",
+            "rating": 4.7,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Sylvie C.", "city": "Morne-à-l'Eau", "rating": 5, "date": "Il y a 1 semaine", "comment": "Porte de placard réparée solidement. Un vrai savoir-faire !" },
+                { "author_name": "Magalie D.", "city": "Petit-Canal", "rating": 4.4, "date": "Il y a 1 mois", "comment": "Très bon travail de menuiserie pour notre véranda." }
+            ]
+        },
+        {
+            "id": 14,
+            "first_name": "Audrey",
+            "last_name": "Palème",
+            "city": "Le Gosier",
+            "skills": ["Anglais", "Soutien scolaire", "Français", "Aide aux devoirs"],
+            "bio": "« Enseignante diplômée au Gosier. Cours particuliers d'anglais et français, soutien scolaire du primaire au lycée. »",
+            "intervention_radius_km": 15,
+            "response_speed": "Répond généralement très rapidement",
+            "rating": 4.9,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Johanna L.", "city": "Le Gosier", "rating": 5, "date": "Il y a 2 jours", "comment": "Mon fils a repris confiance en anglais en seulement quelques séances." },
+                { "author_name": "Ronald B.", "city": "Les Abymes", "rating": 5, "date": "Il y a 2 semaines", "comment": "Excellente méthode pédagogique, très appréciée par ma fille." },
+                { "author_name": "Cindy F.", "city": "Pointe-à-Pitre", "rating": 4.7, "date": "Il y a 3 semaines", "comment": "Très professionnelle, ponctuelle et résultats visibles rapidement." }
+            ]
+        },
+        {
+            "id": 15,
+            "first_name": "Jimmy",
+            "last_name": "Lestan",
+            "city": "Baie-Mahault",
+            "skills": ["Transport d'objets", "Manutention", "Déménagement", "Utilitaire"],
+            "bio": "« Équipé d'un grand utilitaire sur Baie-Mahault. Transport de meubles, électroménager, cartons et petits déménagements. »",
+            "intervention_radius_km": 50,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Laëtitia C.", "city": "Baie-Mahault", "rating": 5, "date": "Il y a 3 jours", "comment": "Livraison d'un frigo au 2ème étage gérée parfaitement !" },
+                { "author_name": "Éric M.", "city": "Petit-Bourg", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Très réactif et ponctuel. Véhicule propre et sangles fournies." }
+            ]
+        },
+        {
+            "id": 16,
+            "first_name": "Karine",
+            "last_name": "Bellay",
+            "city": "Petit-Bourg",
+            "skills": ["Organisation", "Événementiel", "Décoration", "Aide administrative"],
+            "bio": "« Organisatrice et décoratrice d'événements à Petit-Bourg. Je vous aide à structurer mariages, anniversaires et fêtes de famille. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.6,
+            "reviews_count": 1,
+            "reviews": [
+                { "author_name": "Alain C.", "city": "Petit-Bourg", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Super conseils déco pour les 50 ans de mon épouse !" }
+            ]
+        },
+        {
+            "id": 17,
+            "first_name": "Thierry",
+            "last_name": "Néron",
+            "city": "Lamentin",
+            "skills": ["Électricité", "Petit dépannage", "Pose luminaires", "Bricolage"],
+            "bio": "« Électricien outillé au Lamentin. Petit dépannage électrique, pose de lustres, prises et disjoncteurs. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond rapidement",
+            "rating": 4.9,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Frédéric M.", "city": "Lamentin", "rating": 5, "date": "Il y a 5 jours", "comment": "Courts-circuits identifiés et réparés en un rien de temps. Merci Monsieur Thierry." },
+                { "author_name": "Stéphanie L.", "city": "Baie-Mahault", "rating": 4.8, "date": "Il y a 3 semaines", "comment": "Installation de 4 spots extérieurs très propre." }
+            ]
+        },
+        {
+            "id": 18,
+            "first_name": "Vanessa",
+            "last_name": "Cléry",
+            "city": "Saint-François",
+            "skills": ["Coiffure", "Préparation événementielle", "Courses"],
+            "bio": "« Coiffeuse à domicile passionnée sur Saint-François. Brushing, tresses, coiffures événementielles et soins du cheveu. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 5.0,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Nathalie R.", "city": "Saint-François", "rating": 5, "date": "Il y a 1 semaine", "comment": "Coiffure de soirée magnifique ! Tient parfaitement toute la nuit." },
+                { "author_name": "Jérôme T.", "city": "Sainte-Anne", "rating": 5, "date": "Il y a 1 mois", "comment": "Très douce et ponctuelle pour la coiffure de mes filles." }
+            ]
+        },
+        {
+            "id": 19,
+            "first_name": "Steeve",
+            "last_name": "Marigot",
+            "city": "Sainte-Anne",
+            "skills": ["Montage de meubles", "Manutention", "Déménagement", "Livraison"],
+            "bio": "« Jeune homme dynamique et équipé sur Sainte-Anne. Montage de meubles en kit, bras forts pour déménagement et manutention. »",
+            "intervention_radius_km": 30,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.7,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Kévin M.", "city": "Sainte-Anne", "rating": 5, "date": "Il y a 4 jours", "comment": "Canapé d'angle monté rapidement et sans bavure. Merci !" },
+                { "author_name": "Ludovic B.", "city": "Le Moule", "rating": 4.4, "date": "Il y a 2 semaines", "comment": "Coup de main efficace pour charger un camion. Très courtois." }
+            ]
+        },
+        {
+            "id": 20,
+            "first_name": "Murielle",
+            "last_name": "Télamon",
+            "city": "Le Moule",
+            "skills": ["Couture", "Repassage", "Retouches", "Aide quotidienne"],
+            "bio": "« Couturière chevronnée au Moule. Repassage soigné du linge de maison, ourlets, fermetures éclair et confections sur mesure. »",
+            "intervention_radius_km": 15,
+            "response_speed": "Répond rapidement",
+            "rating": 4.9,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Jean-Marc B.", "city": "Le Moule", "rating": 5, "date": "Il y a 3 jours", "comment": "Pantalons ourlés le jour même, travail impeccable." },
+                { "author_name": "Dimitri L.", "city": "Le Moule", "rating": 5, "date": "Il y a 2 semaines", "comment": "Panier de repassage rendu impeccable et bien plié." },
+                { "author_name": "Sylvie C.", "city": "Morne-à-l'Eau", "rating": 4.7, "date": "Il y a 1 mois", "comment": "Personne très gentille et très appliquée." }
+            ]
+        },
+        {
+            "id": 21,
+            "first_name": "Loïc",
+            "last_name": "Cidalise",
+            "city": "Les Abymes",
+            "skills": ["Informatique", "Ordinateurs", "Smartphones", "Wi-Fi"],
+            "bio": "« Technicien informatique aux Abymes. Réparation PC/Mac, nettoyage de virus, récupération de données et réseau Wi-Fi. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Mélissa T.", "city": "Les Abymes", "rating": 5, "date": "Il y a 2 jours", "comment": "Ordinateur portable sauvé après une panne de disque. Bravo !" },
+                { "author_name": "Mickaël S.", "city": "Pointe-à-Pitre", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Configuration Wi-Fi impeccable dans toute la maison." }
+            ]
+        },
+        {
+            "id": 22,
+            "first_name": "Patricia",
+            "last_name": "Vélas",
+            "city": "Capesterre-Belle-Eau",
+            "skills": ["Accompagnement", "Courses", "Cuisine", "Garde ponctuelle"],
+            "bio": "« Auxiliaire de vie à Capesterre-Belle-Eau. Accompagnement des seniors, garde ponctuelle d'enfants et repas faits maison. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond généralement très rapidement",
+            "rating": 5.0,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Ruddy C.", "city": "Capesterre-Belle-Eau", "rating": 5, "date": "Il y a 1 semaine", "comment": "S'est occupée de notre mère avec une attention et une douceur remarquables." },
+                { "author_name": "Willy C.", "city": "Goyave", "rating": 5, "date": "Il y a 3 semaines", "comment": "Cuisine succulente et personne de totale confiance." }
+            ]
+        },
+        {
+            "id": 23,
+            "first_name": "Éric",
+            "last_name": "Montrose",
+            "city": "Baie-Mahault",
+            "skills": ["Peinture", "Carrelage", "Rénovation", "Petits travaux"],
+            "bio": "« Artisan rénovateur sur Baie-Mahault. Travaux de peinture, pose de faux plafonds, carrelage et rafraîchissement d'intérieurs. »",
+            "intervention_radius_km": 30,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.7,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "David B.", "city": "Baie-Mahault", "rating": 5, "date": "Il y a 5 jours", "comment": "Salle de bain repeinte nickel. Chantier très propre en repartant." },
+                { "author_name": "Stéphanie L.", "city": "Baie-Mahault", "rating": 4.4, "date": "Il y a 3 semaines", "comment": "Bon artisan, réactif et finitions soignées." }
+            ]
+        },
+        {
+            "id": 24,
+            "first_name": "Johanna",
+            "last_name": "Lurelien",
+            "city": "Le Gosier",
+            "skills": ["Réseaux sociaux", "Création de contenu", "Photo", "Informatique"],
+            "bio": "« Community manager au Gosier. Je crée vos contenus Instagram/Facebook, réalise des shootings photos produits et forme au numérique. »",
+            "intervention_radius_km": 30,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 4.9,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Audrey P.", "city": "Le Gosier", "rating": 5, "date": "Il y a 4 jours", "comment": "Stratégie Instagram au top ! Mes demandes de cours ont doublé." },
+                { "author_name": "Cindy F.", "city": "Le Gosier", "rating": 4.8, "date": "Il y a 2 semaines", "comment": "Photos magnifiques pour mon salon. Très pro et sympa !" }
+            ]
+        },
+        {
+            "id": 25,
+            "first_name": "Patrick",
+            "last_name": "Sorel",
+            "city": "Sainte-Rose",
+            "skills": ["Jardinage", "Débroussaillage", "Clôture", "Entretien extérieur"],
+            "bio": "« Jardinier paysagiste outillé à Sainte-Rose. Tonte de pelouse, élagage de palmiers, pose de grillage et entretien d'espaces verts. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond dans la journée",
+            "rating": 4.6,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Sonia V.", "city": "Sainte-Rose", "rating": 5, "date": "Il y a 1 semaine", "comment": "Jardin impeccable et clôture solide réinstallée après la tempête." },
+                { "author_name": "Mylène D.", "city": "Sainte-Rose", "rating": 4.2, "date": "Il y a 1 mois", "comment": "Bon travail de débroussaillage sur un terrain en pente." }
+            ]
+        },
+        {
+            "id": 26,
+            "first_name": "Coralie",
+            "last_name": "Némorin",
+            "city": "Pointe-à-Pitre",
+            "skills": ["Soutien scolaire", "Français", "Aide administrative"],
+            "bio": "« Professeure de lettres à Pointe-à-Pitre. Remise à niveau en français, préparation au brevet/bac et rédaction de courriers. »",
+            "intervention_radius_km": 15,
+            "response_speed": "Répond rapidement",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Nadia M.", "city": "Pointe-à-Pitre", "rating": 5, "date": "Il y a 3 jours", "comment": "Ma fille a obtenu 16 à son devoir de français grâce aux conseils de Coralie !" },
+                { "author_name": "Yannick C.", "city": "Pointe-à-Pitre", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Très bonne pédagogie et grande écoute." }
+            ]
+        },
+        {
+            "id": 27,
+            "first_name": "Teddy",
+            "last_name": "Vilna",
+            "city": "Petit-Bourg",
+            "skills": ["Climatisation", "Électricité", "Entretien", "Dépannage"],
+            "bio": "« Frigoriste & électricien diplômé à Petit-Bourg. Nettoyage bactériologique de clim, recherche de pannes électriques et entretien. »",
+            "intervention_radius_km": 30,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.9,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Chantal D.", "city": "Petit-Bourg", "rating": 5, "date": "Il y a 2 jours", "comment": "Clim nettoyée de fond en comble, l'air est à nouveau pur et frais !" },
+                { "author_name": "Karine B.", "city": "Petit-Bourg", "rating": 5, "date": "Il y a 1 semaine", "comment": "Dépannage d'urgence sur mon disjoncteur principal. Rapide et efficace." },
+                { "author_name": "Alain C.", "city": "Petit-Bourg", "rating": 4.7, "date": "Il y a 3 semaines", "comment": "Technicien très qualifié et ponctuel." }
+            ]
+        },
+        {
+            "id": 28,
+            "first_name": "Élodie",
+            "last_name": "Carmine",
+            "city": "Les Abymes",
+            "skills": ["Garde d'animaux", "Promenade", "Courses", "Aide ponctuelle"],
+            "bio": "« Amoureuse des animaux aux Abymes. Garde à domicile de chiens et chats, promenades quotidiennes et petits services aux voisins. »",
+            "intervention_radius_km": 15,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 5.0,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Mélissa T.", "city": "Les Abymes", "rating": 5, "date": "Il y a 4 jours", "comment": "S'est occupée de mon chien pendant mon week-end. Nouvelles et photos tous les jours !" },
+                { "author_name": "Carole V.", "city": "Les Abymes", "rating": 5, "date": "Il y a 2 semaines", "comment": "Élodie est adorable et très douce avec les animaux." }
+            ]
+        },
+        {
+            "id": 29,
+            "first_name": "Christian",
+            "last_name": "Lorquin",
+            "city": "Basse-Terre",
+            "skills": ["Plomberie", "Bricolage", "Sanitaire", "Montage"],
+            "bio": "« Plombier-bricoleur d'expérience à Basse-Terre. Pose de robinetterie, raccordement citerne d'eau et réparations diverses. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond rapidement",
+            "rating": 4.7,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Joël S.", "city": "Basse-Terre", "rating": 5, "date": "Il y a 1 semaine", "comment": "Citerne raccordée parfaitement sans aucune fuite. Bravo !" },
+                { "author_name": "Cédric V.", "city": "Saint-Claude", "rating": 4.4, "date": "Il y a 3 semaines", "comment": "Artisan poli, expérimenté et d'excellent conseil." }
+            ]
+        },
+        {
+            "id": 30,
+            "first_name": "Maëva",
+            "last_name": "Delor",
+            "city": "Baie-Mahault",
+            "skills": ["Informatique", "Smartphone", "Démarches numériques", "Photo"],
+            "bio": "« Formatrice numérique sur Baie-Mahault. Prise en main de smartphone/tablette pour débutants, démarches en ligne et sauvegardes photos. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond généralement très rapidement",
+            "rating": 4.9,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Stéphanie L.", "city": "Baie-Mahault", "rating": 5, "date": "Il y a 5 jours", "comment": "Ma mère sait enfin utiliser WhatsApp et envoyer des photos ! Merci Maëva." },
+                { "author_name": "Laëtitia C.", "city": "Baie-Mahault", "rating": 4.8, "date": "Il y a 2 semaines", "comment": "Très patiente et pédagogue. Explications très claires." }
+            ]
+        },
+        {
+            "id": 31,
+            "first_name": "Ronald",
+            "last_name": "Béranger",
+            "city": "Le Gosier",
+            "skills": ["Transport", "Déménagement", "Manutention", "Livraison"],
+            "bio": "« Transporteur équipé au Gosier. Manutention lourde, livraison d'achats encombrants et débarras de locaux. »",
+            "intervention_radius_km": 40,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.8,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Audrey P.", "city": "Le Gosier", "rating": 5, "date": "Il y a 3 jours", "comment": "Électroménager transporté sans l'ombre d'une rayure. Très costaud et pro !" },
+                { "author_name": "Johanna L.", "city": "Le Gosier", "rating": 4.9, "date": "Il y a 2 semaines", "comment": "Déménagement express parfait. Équipe ponctuelle et souriante." },
+                { "author_name": "Cindy F.", "city": "Les Abymes", "rating": 4.5, "date": "Il y a 1 mois", "comment": "Service impeccable, tarif clair et sans surprise." }
+            ]
+        },
+        {
+            "id": 32,
+            "first_name": "Sylvie",
+            "last_name": "Carmasol",
+            "city": "Morne-à-l'Eau",
+            "skills": ["Cuisine", "Pâtisserie", "Courses", "Aide quotidienne"],
+            "bio": "« Cuisinière passionnée à Morne-à-l'Eau. Préparation de plats créoles traditionnels, gâteaux d'anniversaire et livraison de repas. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond rapidement",
+            "rating": 5.0,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Fabrice C.", "city": "Morne-à-l'Eau", "rating": 5, "date": "Il y a 1 semaine", "comment": "Un colombo de cabri d'exception pour nos fêtes ! Merci Sylvie !" },
+                { "author_name": "Magalie D.", "city": "Morne-à-l'Eau", "rating": 5, "date": "Il y a 3 semaines", "comment": "Ses gâteaux ananas renversés sont un vrai régal." }
+            ]
+        },
+        {
+            "id": 33,
+            "first_name": "Jérôme",
+            "last_name": "Timal",
+            "city": "Sainte-Anne",
+            "skills": ["Mécanique légère", "Batterie auto", "Dépannage", "Transport"],
+            "bio": "« Mécanicien réactif sur Sainte-Anne. Diagnostic batterie, changement de bougies, vidange à domicile et petit dépannage auto. »",
+            "intervention_radius_km": 30,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 4.9,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Kévin M.", "city": "Sainte-Anne", "rating": 5, "date": "Il y a 2 jours", "comment": "Batterie à plat un lundi matin, Jérôme est venu avec ses câbles en 15 min !" },
+                { "author_name": "Vanessa C.", "city": "Saint-François", "rating": 4.8, "date": "Il y a 2 semaines", "comment": "Vidange faite proprement à domicile. Tarif très honnête." }
+            ]
+        },
+        {
+            "id": 34,
+            "first_name": "Isabelle",
+            "last_name": "Monrose",
+            "city": "Les Abymes",
+            "skills": ["Aide administrative", "Comptabilité simple", "Démarches"],
+            "bio": "« Gestionnaire administrative aux Abymes. Déclaration d'impôts, courriers officiels et classement de dossiers. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.7,
+            "reviews_count": 1,
+            "reviews": [
+                { "author_name": "Mickaël S.", "city": "Les Abymes", "rating": 4.7, "date": "Il y a 1 semaine", "comment": "Aide précieuse pour régulariser mes dossiers d'auto-entrepreneur." }
+            ]
+        },
+        {
+            "id": 35,
+            "first_name": "Willy",
+            "last_name": "Cadet",
+            "city": "Capesterre-Belle-Eau",
+            "skills": ["Jardinage", "Élagage léger", "Débroussaillage", "Nettoyage extérieur"],
+            "bio": "« Entretien d'espaces verts à Capesterre. Taille de fruitiers, élagage de palmiers, nettoyage au karcher et débarras végétal. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond rapidement",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Ruddy C.", "city": "Capesterre-Belle-Eau", "rating": 5, "date": "Il y a 4 jours", "comment": "Manguier taillé proprement sans abîmer le toit de la maison." },
+                { "author_name": "Patricia V.", "city": "Capesterre-Belle-Eau", "rating": 4.6, "date": "Il y a 3 semaines", "comment": "Super travail au karcher sur ma terrasse en pierre." }
+            ]
+        },
+        {
+            "id": 36,
+            "first_name": "Nathalie",
+            "last_name": "Rosan",
+            "city": "Saint-François",
+            "skills": ["Couture", "Décoration", "Organisation d'événements"],
+            "bio": "« Créatrice textile à Saint-François. Confection de coussins, rideaux sur mesure, nappes d'extérieur et décoration de tables. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond généralement très rapidement",
+            "rating": 5.0,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Vanessa C.", "city": "Saint-François", "rating": 5, "date": "Il y a 1 semaine", "comment": "Coussins de carbet magnifiques et finitions irréprochables." },
+                { "author_name": "Jérôme T.", "city": "Sainte-Anne", "rating": 5, "date": "Il y a 2 semaines", "comment": "Décoration de notre repas d'anniversaire superbe. Bravo Nathalie !" }
+            ]
+        },
+        {
+            "id": 37,
+            "first_name": "Dimitri",
+            "last_name": "Létang",
+            "city": "Le Moule",
+            "skills": ["Carrelage", "Peinture", "Placo", "Rénovation"],
+            "bio": "« Artisan second œuvre au Moule. Pose de placo, joints, peinture anti-humidité et carrelage intérieur/extérieur. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond dans la journée",
+            "rating": 4.7,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Jean-Marc B.", "city": "Le Moule", "rating": 5, "date": "Il y a 5 jours", "comment": "Cloison placo posée et enduite en 2 jours. Travail très soigné." },
+                { "author_name": "Murielle T.", "city": "Le Moule", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Peinture anti-moisissure très efficace pour ma cuisine." },
+                { "author_name": "Sylvie C.", "city": "Morne-à-l'Eau", "rating": 4.5, "date": "Il y a 1 mois", "comment": "Artisan fiable et ponctuel." }
+            ]
+        },
+        {
+            "id": 38,
+            "first_name": "Sandrine",
+            "last_name": "Valmy",
+            "city": "Petit-Canal",
+            "skills": ["Accompagnement", "Courses", "Aide administrative", "Cuisine"],
+            "bio": "« Habitante dévouée à Petit-Canal. Soutien aux personnes isolées, accompagnement médical, préparation de repas et courses. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.9,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Magalie D.", "city": "Morne-à-l'Eau", "rating": 5, "date": "Il y a 1 semaine", "comment": "Accompagne mon père à ses rdv médicaux avec beaucoup d'empathie." },
+                { "author_name": "Fabrice C.", "city": "Petit-Canal", "rating": 4.8, "date": "Il y a 3 semaines", "comment": "Personne très ponctuelle, agréable et toujours souriante." }
+            ]
+        },
+        {
+            "id": 39,
+            "first_name": "Yannick",
+            "last_name": "Césaire",
+            "city": "Pointe-à-Pitre",
+            "skills": ["Menuiserie", "Bricolage", "Montage de meubles", "Réparations"],
+            "bio": "« Bricoleur et menuisier outillé à Pointe-à-Pitre. Réparation de volets en bois, serrures, montage de meubles et fixations murales. »",
+            "intervention_radius_km": 15,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Nadia M.", "city": "Pointe-à-Pitre", "rating": 5, "date": "Il y a 3 jours", "comment": "Serrure bloquée changée en 20 min un samedi matin. Un sauveur !" },
+                { "author_name": "Coralie N.", "city": "Pointe-à-Pitre", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Fixation d'étagères lourdes et télévision parfaites." }
+            ]
+        },
+        {
+            "id": 40,
+            "first_name": "Mylène",
+            "last_name": "Dorsin",
+            "city": "Sainte-Rose",
+            "skills": ["Soutien scolaire", "Anglais", "Bureautique", "Démarches numériques"],
+            "bio": "« Formatrice et enseignante à Sainte-Rose. Aide aux devoirs, cours d'anglais intensifs et initiation à la bureautique. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond rapidement",
+            "rating": 4.9,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Sonia V.", "city": "Sainte-Rose", "rating": 5, "date": "Il y a 6 jours", "comment": "Excellente prof d'anglais ! Mon fils a fait de très grands progrès." },
+                { "author_name": "Patrick S.", "city": "Sainte-Rose", "rating": 4.8, "date": "Il y a 3 semaines", "comment": "Patiente, organisée et très efficace." }
+            ]
+        },
+        {
+            "id": 41,
+            "first_name": "Joël",
+            "last_name": "Sainval",
+            "city": "Bouillante",
+            "skills": ["Maçonnerie", "Petits travaux", "Clôture", "Rénovation"],
+            "bio": "« Maçon d'expérience à Bouillante. Rénovation de terrasse, création de marches extérieures, pose de clôtures et petits coffrages. »",
+            "intervention_radius_km": 30,
+            "response_speed": "Répond dans la journée",
+            "rating": 4.6,
+            "reviews_count": 1,
+            "reviews": [
+                { "author_name": "Christian L.", "city": "Basse-Terre", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Marches en béton réalisées impeccablement sur terrain en pente." }
+            ]
+        },
+        {
+            "id": 42,
+            "first_name": "Émilie",
+            "last_name": "Nolas",
+            "city": "Les Abymes",
+            "skills": ["Photographie", "Événementiel", "Communication", "Aide numérique"],
+            "bio": "« Photographe indépendante aux Abymes. Portraits de famille, couverture d'événements, baptêmes et retouche photo. »",
+            "intervention_radius_km": 40,
+            "response_speed": "Répond généralement très rapidement",
+            "rating": 5.0,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Mélissa T.", "city": "Les Abymes", "rating": 5, "date": "Il y a 4 jours", "comment": "Photos du baptême magnifiques, lumières sublimes. Merci Émilie !" },
+                { "author_name": "Carole V.", "city": "Les Abymes", "rating": 5, "date": "Il y a 2 semaines", "comment": "Captures d'instants très naturelles. Un talent !" }
+            ]
+        },
+        {
+            "id": 43,
+            "first_name": "Frédéric",
+            "last_name": "Mornay",
+            "city": "Lamentin",
+            "skills": ["Peinture", "Enduit", "Nettoyage haute pression", "Bricolage"],
+            "bio": "« Artisan peintre et façadier au Lamentin. Nettoyage haute pression de toitures et terrasses, peinture extérieure et finitions. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Thierry N.", "city": "Lamentin", "rating": 5, "date": "Il y a 1 semaine", "comment": "Terrasse démoussée et décapée au karcher, elle est comme neuve !" },
+                { "author_name": "Stéphanie L.", "city": "Baie-Mahault", "rating": 4.6, "date": "Il y a 3 semaines", "comment": "Travail propre, ponctuel et tarif très correct." }
+            ]
+        },
+        {
+            "id": 44,
+            "first_name": "Laëtitia",
+            "last_name": "Colmar",
+            "city": "Baie-Mahault",
+            "skills": ["Garde d'enfants", "Aide aux devoirs", "Courses", "Accompagnement"],
+            "bio": "« Nounou bienveillante à Baie-Mahault. Sortie d'école, garde périscolaire, activités ludiques et préparation des repas des petits. »",
+            "intervention_radius_km": 15,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 5.0,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Jimmy L.", "city": "Baie-Mahault", "rating": 5, "date": "Il y a 2 jours", "comment": "Les enfants l'adorent ! Ponctuelle, dynamique et de confiance." },
+                { "author_name": "Maëva D.", "city": "Baie-Mahault", "rating": 5, "date": "Il y a 10 jours", "comment": "Garde du mercredi parfaite avec activités manuelles au top." },
+                { "author_name": "David B.", "city": "Baie-Mahault", "rating": 5, "date": "Il y a 3 semaines", "comment": "Recommandée les yeux fermés." }
+            ]
+        },
+        {
+            "id": 45,
+            "first_name": "Cédric",
+            "last_name": "Valton",
+            "city": "Saint-Claude",
+            "skills": ["Transport", "Utilitaire", "Manutention", "Montage de meubles"],
+            "bio": "« Habitant outillé à Saint-Claude. Petit déménagement, transport d'achats encombrants et montage de meubles à domicile. »",
+            "intervention_radius_km": 30,
+            "response_speed": "Répond rapidement",
+            "rating": 4.7,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Christian L.", "city": "Basse-Terre", "rating": 5, "date": "Il y a 5 jours", "comment": "Transport de 2 armoires lourdes géré avec brio." },
+                { "author_name": "Joël S.", "city": "Bouillante", "rating": 4.4, "date": "Il y a 2 semaines", "comment": "Ponctuel et serviable, merci Cédric." }
+            ]
+        },
+        {
+            "id": 46,
+            "first_name": "Magalie",
+            "last_name": "Déravin",
+            "city": "Morne-à-l'Eau",
+            "skills": ["Cuisine", "Pâtisserie", "Organisation", "Aide aux courses"],
+            "bio": "« Cuisinière & traiteur familial à Morne-à-l'Eau. Buffet créole, tourments d'amour, pâtisseries traditionnelles et repas de fête. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.9,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Sylvie C.", "city": "Morne-à-l'Eau", "rating": 5, "date": "Il y a 1 semaine", "comment": "Ses tourments d'amour coco et goyave sont divins !" },
+                { "author_name": "Sandrine V.", "city": "Petit-Canal", "rating": 4.8, "date": "Il y a 3 semaines", "comment": "Buffet traiteur frais, abondant et délicieux." }
+            ]
+        },
+        {
+            "id": 47,
+            "first_name": "Ludovic",
+            "last_name": "Brival",
+            "city": "Sainte-Anne",
+            "skills": ["Informatique", "Domotique", "Wi-Fi", "Installation TV"],
+            "bio": "« Technicien domotique et télécoms à Sainte-Anne. Installation de caméras connectées, répéteurs Wi-Fi et support multimédia. »",
+            "intervention_radius_km": 25,
+            "response_speed": "Répond généralement en quelques minutes",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Kévin M.", "city": "Sainte-Anne", "rating": 5, "date": "Il y a 3 jours", "comment": "Amplificateur Wi-Fi installé, désormais toute la maison capte en 5G !" },
+                { "author_name": "Steeve M.", "city": "Sainte-Anne", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Support TV mural posé solidement." }
+            ]
+        },
+        {
+            "id": 48,
+            "first_name": "Cindy",
+            "last_name": "Félon",
+            "city": "Le Gosier",
+            "skills": ["Coiffure", "Maquillage événementiel", "Aide événementielle"],
+            "bio": "« Maquilleuse et coiffeuse professionnelle au Gosier. Mises en beauté pour mariages, soirées et shootings photos. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond rapidement",
+            "rating": 5.0,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Johanna L.", "city": "Le Gosier", "rating": 5, "date": "Il y a 4 jours", "comment": "Maquillage de mariée féerique et tenue parfaite toute la journée !" },
+                { "author_name": "Audrey P.", "city": "Le Gosier", "rating": 5, "date": "Il y a 2 semaines", "comment": "Très pro, produits de qualité et grande gentillesse." }
+            ]
+        },
+        {
+            "id": 49,
+            "first_name": "Alain",
+            "last_name": "Cazéran",
+            "city": "Petit-Bourg",
+            "skills": ["Jardinage", "Entretien piscine", "Bricolage extérieur", "Nettoyage"],
+            "bio": "« Entretien de jardins et extérieurs à Petit-Bourg. Nettoyage de terrasses, traitement de piscine et petits travaux extérieurs. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond généralement très rapidement",
+            "rating": 4.9,
+            "reviews_count": 3,
+            "reviews": [
+                { "author_name": "Chantal D.", "city": "Petit-Bourg", "rating": 5, "date": "Il y a 2 jours", "comment": "Piscine redevenue bleue azur et terrasse karchérisée nickel !" },
+                { "author_name": "Teddy V.", "city": "Petit-Bourg", "rating": 5, "date": "Il y a 1 semaine", "comment": "Jardin impeccablement entretenu, matériel pro et rapide." },
+                { "author_name": "Karine B.", "city": "Petit-Bourg", "rating": 4.7, "date": "Il y a 3 semaines", "comment": "Très bon intervenant, sérieux et ponctuel." }
+            ]
+        },
+        {
+            "id": 50,
+            "first_name": "Carole",
+            "last_name": "Vélorin",
+            "city": "Les Abymes",
+            "skills": ["Aide administrative", "Courses", "Accompagnement", "Bureautique"],
+            "bio": "« Auxiliaire et assistante personnelle aux Abymes. Démarches administratives complexes, gestion du courrier et accompagnement. »",
+            "intervention_radius_km": 20,
+            "response_speed": "Répond en moins d'1h",
+            "rating": 4.8,
+            "reviews_count": 2,
+            "reviews": [
+                { "author_name": "Mélissa T.", "city": "Les Abymes", "rating": 5, "date": "Il y a 5 jours", "comment": "Aide précieuse pour le dossier de retraite de ma tante." },
+                { "author_name": "Élodie C.", "city": "Les Abymes", "rating": 4.6, "date": "Il y a 2 semaines", "comment": "Très organisée, humaine et efficace." }
+            ]
+        }
+    ];
+})();
