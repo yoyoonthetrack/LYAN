@@ -82,23 +82,48 @@ runOnDomReady(() => {
     // Canonical Native OAuth Callback URL
     const CANONICAL_NATIVE_CALLBACK = 'app.lyann.dom://google-auth';
 
-    function explainGoogleFailure(error) {
+    function explainOAuthFailure(error, providerName) {
         const raw = String(error?.message || error?.error_description || '');
         const msg = raw.toLowerCase();
         if (msg.includes('provider') || msg.includes('not enabled') || msg.includes('unsupported')) {
-            return 'La connexion Google n’est pas disponible pour le moment. Inscris-toi avec ton email et un mot de passe.';
+            return `La connexion ${providerName} n’est pas disponible pour le moment. Inscris-toi avec ton email et un mot de passe.`;
         }
         if (msg.includes('redirect') || msg.includes('invalid request')) {
-            return 'La connexion Google n’a pas pu revenir sur LYANN. Réessaie, ou utilise ton email.';
+            return `La connexion ${providerName} n’a pas pu revenir sur LYANN. Réessaie, ou utilise ton email.`;
         }
-        return 'La connexion Google n’a pas abouti. Réessaie, ou inscris-toi avec ton email et un mot de passe.';
+        return `La connexion ${providerName} n’a pas abouti. Réessaie, ou inscris-toi avec ton email et un mot de passe.`;
     }
 
-    function showGoogleFailure(error) {
-        const text = explainGoogleFailure(error);
+    function showOAuthFailure(error, providerName) {
+        const text = explainOAuthFailure(error, providerName);
         if (window.lyannAlert) window.lyannAlert(text);
         else alert(text);
     }
+
+    function explainGoogleFailure(error) {
+        return explainOAuthFailure(error, 'Google');
+    }
+
+    function showGoogleFailure(error) {
+        showOAuthFailure(error, 'Google');
+    }
+
+    function ensureAppleSignInButtons() {
+        document.querySelectorAll('.btn-google, .btn-google-auth').forEach((googleBtn) => {
+            if (googleBtn.dataset.applePaired === 'true') return;
+            if (googleBtn.previousElementSibling?.classList?.contains('btn-apple-auth')) {
+                googleBtn.dataset.applePaired = 'true';
+                return;
+            }
+            const appleBtn = document.createElement('button');
+            appleBtn.type = 'button';
+            appleBtn.className = 'btn btn-apple-auth';
+            appleBtn.innerHTML = '<i class="ph-fill ph-apple-logo" aria-hidden="true"></i> Continuer avec Apple';
+            googleBtn.parentElement?.insertBefore(appleBtn, googleBtn);
+            googleBtn.dataset.applePaired = 'true';
+        });
+    }
+    ensureAppleSignInButtons();
 
     try {
         const search = new URLSearchParams(window.location.search);
@@ -115,9 +140,11 @@ runOnDomReady(() => {
     if (!window.__googleAuthDelegatorBound__) {
         window.__googleAuthDelegatorBound__ = true;
         document.addEventListener('click', async (e) => {
-            const btn = e.target.closest('.btn-google-auth, #btnGoogleLogin, #btnGoogleSignup, #googleAuthBtn, .btn-google, #btnWelcomeGoogle');
+            const btn = e.target.closest('.btn-apple-auth, .btn-google-auth, #btnGoogleLogin, #btnGoogleSignup, #googleAuthBtn, .btn-google, #btnWelcomeGoogle');
             if (btn) {
                 e.preventDefault();
+                const provider = btn.classList.contains('btn-apple-auth') ? 'apple' : 'google';
+                const providerName = provider === 'apple' ? 'Apple' : 'Google';
                 if (btn.closest('#onboardingModal')) {
                     const accept = document.getElementById('obAcceptCgu');
                     if (!accept || !accept.checked) {
@@ -126,35 +153,32 @@ runOnDomReady(() => {
                         return;
                     }
                 }
-                console.log('[Google Auth] Initiating OAuth trigger from button:', btn.id || btn.className);
                 if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                     try {
                         const isNative = (typeof window.isNativePlatform === 'function' && window.isNativePlatform()) || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
                         const redirectUrl = isNative ? CANONICAL_NATIVE_CALLBACK : window.location.origin + '/';
-                        console.log('[Google Auth] Initiating OAuth with redirectTo:', redirectUrl);
+                        const options = {
+                            redirectTo: redirectUrl,
+                            skipBrowserRedirect: isNative
+                        };
+                        if (provider === 'google') options.queryParams = { prompt: 'select_account' };
                         const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithOAuth({
-                            provider: 'google',
-                            options: {
-                                redirectTo: redirectUrl,
-                                skipBrowserRedirect: isNative,
-                                queryParams: { prompt: 'select_account' }
-                            }
+                            provider,
+                            options
                         });
                         if (error) {
-                            console.warn("[Google Auth] Supabase Google OAuth error:", error);
-                            showGoogleFailure(error);
+                            showOAuthFailure(error, providerName);
                         } else if (isNative && data?.url) {
                             const opened = window.open(data.url, '_blank');
                             if (!opened) window.location.assign(data.url);
                         } else if (isNative) {
-                            showGoogleFailure({ message: 'redirect' });
+                            showOAuthFailure({ message: 'redirect' }, providerName);
                         }
-                    } catch(err) {
-                        console.warn("[Google Auth] Error:", err);
-                        showGoogleFailure(err);
+                    } catch (err) {
+                        showOAuthFailure(err, providerName);
                     }
                 } else {
-                    showGoogleFailure({ message: 'provider' });
+                    showOAuthFailure({ message: 'provider' }, providerName);
                 }
             }
         });

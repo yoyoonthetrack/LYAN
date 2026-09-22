@@ -4459,6 +4459,14 @@ safeDomReady(() => {
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>
                             <div class="account-divider"></div>
+                            <div class="account-touch-row" onclick="window.requestAccountDeletion()">
+                                <div class="row-icon"><i class="ph ph-trash"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Supprimer mon compte</strong>
+                                    <span class="row-subtitle">Ferme ton compte et retire tes données personnelles</span>
+                                </div>
+                            </div>
+                            <div class="account-divider"></div>
                             <div class="account-touch-row" onclick="window.openAccountModalSubView('aboutLyann')">
                                 <div class="row-icon"><i class="ph ph-info"></i></div>
                                 <div class="row-content">
@@ -4666,6 +4674,26 @@ safeDomReady(() => {
         }
         if (!document.body.classList.contains('lyann-messaging-open') && !window.LYANN_SURFACES?.current?.()) {
             document.body.style.overflow = '';
+        }
+    };
+
+    window.requestAccountDeletion = async function() {
+        const confirmed = window.lyannConfirm
+            ? await window.lyannConfirm('Supprimer ton compte LYANN ? Tes annonces, messages et profil ne seront plus accessibles. Cette action est définitive.', 'warning')
+            : window.confirm('Supprimer ton compte LYANN ? Cette action est définitive.');
+        if (!confirmed) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client?.deleteMyAccount) {
+            if (window.lyannAlert) window.lyannAlert('La suppression n’est pas disponible pour le moment. Écris à contact@lyann.app.');
+            return;
+        }
+        try {
+            await client.deleteMyAccount();
+            window.closeUserAccountModal?.();
+            if (window.NotificationService) window.NotificationService.showToast('success', 'Ton compte a été supprimé.');
+            window.location.assign('index.html');
+        } catch (err) {
+            if (window.lyannAlert) window.lyannAlert(err.message || 'La suppression n’a pas abouti. Écris à contact@lyann.app.');
         }
     };
 

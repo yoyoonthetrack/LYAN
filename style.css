@@ -2182,6 +2182,24 @@ h1, h2, h3, h4 {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
+.btn-apple-auth {
+    width: 100%;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    background: #000000;
+    color: #FFFFFF;
+    border: 0;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
 .auth-divider {
     display: flex;
     align-items: center;
@@ -16639,23 +16657,61 @@ div:has(> #cpHeadline) { display: none !important; }
     .modal-overlay.active .modal-card-large,
     .modal-overlay.active .modal-card-xl {
         max-width: min(960px, calc(100vw - 96px));
-        overflow: visible;
     }
-    .modal-overlay .modal-close-btn,
-    #chatModal .desktop-only-close-btn {
-        top: -16px !important;
-        right: -16px !important;
+    .modal-overlay .modal-close-btn {
+        top: 16px !important;
+        right: 16px !important;
         background: #fff !important;
         color: #1E293B !important;
         border: 1px solid #E2E8F0 !important;
-        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
-    }
-    #chatModal .modal-card-chat {
-        overflow: visible !important;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+        z-index: 40 !important;
     }
     #chatModal .desktop-only-close-btn {
-        display: flex !important;
+        display: none !important;
     }
+    #chatModal .chat-header-bar .chat-close-modal-btn {
+        display: inline-flex !important;
+    }
+}
+
+/* Context card stays inside the conversation column. align-items:center
+   on a column flex was centering a nowrap title wider than the pane. */
+.chat-mission-context-card {
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+.chat-context-card-info,
+.chat-context-card-header-row,
+.chat-context-card-title,
+.chat-context-card-tag {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+.chat-context-card-header-row {
+    gap: 8px !important;
+}
+.chat-context-card-header-row .chat-context-card-tag {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+.chat-context-view-link {
+    flex-shrink: 0 !important;
+}
+.chat-context-card-title {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.input-with-icon > input,
+.input-with-icon > .modal-input,
+.input-with-icon > select {
+    padding-left: 52px !important;
 }
 
 .bokantaj-photos {

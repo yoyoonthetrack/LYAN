@@ -279,6 +279,39 @@ app.post('/v1/auth/continue-signup', async (req, res) => {
     }
 });
 
+// Account deletion starts inside the app, as required for App Store review.
+app.post('/v1/auth/delete-account', async (req, res) => {
+    const authHeader = req.headers.authorization || req.headers.Authorization || '';
+    const token = String(authHeader).replace(/^Bearer\s+/i, '').trim();
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return res.status(503).json({ error: 'La suppression n’est pas disponible pour le moment. Écris à contact@lyann.app.' });
+    }
+    if (!token) {
+        return res.status(401).json({ error: 'Connecte-toi pour supprimer ton compte.' });
+    }
+    try {
+        const { data, error } = await supabaseAdmin.auth.getUser(token);
+        if (error || !data?.user?.id) {
+            return res.status(401).json({ error: 'Session expirée. Reconnecte-toi, puis réessaie.' });
+        }
+        const userId = data.user.id;
+        await supabaseAdmin.from('profiles').update({
+            first_name: 'Compte',
+            last_name: 'supprimé',
+            avatar_url: null
+        }).eq('id', userId);
+        const deleted = await supabaseAdmin.auth.admin.deleteUser(userId);
+        if (deleted.error) {
+            await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: '876000h' });
+            return res.json({ ok: true, closed: true });
+        }
+        return res.json({ ok: true });
+    } catch (err) {
+        console.error('[delete-account]', err);
+        return res.status(500).json({ error: 'La suppression n’a pas abouti. Réessaie, ou écris à contact@lyann.app.' });
+    }
+});
+
 // 1. AUTHENTICATION (POST /v1/auth/login)
 app.post('/v1/auth/login', (req, res) => {
     const { email, password } = req.body;

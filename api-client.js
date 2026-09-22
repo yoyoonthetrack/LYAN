@@ -285,6 +285,23 @@ const LYANN_API_CLIENT = {
         return res;
     },
 
+    async deleteMyAccount() {
+        if (!this.supabase) throw new Error('Supabase non initialisé');
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session?.access_token) throw new Error('Connecte-toi pour supprimer ton compte.');
+        const response = await lyannBackendFetch('/v1/auth/delete-account', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error || 'La suppression n’a pas abouti.');
+        await this.supabase.auth.signOut();
+        return body;
+    },
+
     async continueSignup(userId) {
         if (!userId) return { error: { message: 'Compte introuvable.' } };
         try {

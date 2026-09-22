@@ -77,6 +77,8 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>LYANN a besoin d'accéder à votre appareil photo pour vous permettre de prendre des photos de vos réalisations et de votre profil.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
