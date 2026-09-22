@@ -79,9 +79,28 @@
       const profilesById = new Map();
       if (contactIds.length) {
         try {
-          const { data: profiles } = await client.supabase.from('profiles').select('id,first_name,last_name,display_name,avatar_url').in('id', contactIds);
+          const { data: profiles } = await client.supabase.from('public_profiles').select('id,first_name,last_name,avatar_url').in('id', contactIds);
           for (const profile of profiles || []) profilesById.set(profile.id, profile);
         } catch (_) {}
+        const missing = contactIds.filter((id) => !profilesById.has(id));
+        if (missing.length) {
+          try {
+            const { data: ownProfiles } = await client.supabase.from('profiles').select('id,first_name,last_name,avatar_url').in('id', missing);
+            for (const profile of ownProfiles || []) profilesById.set(profile.id, profile);
+          } catch (_) {}
+        }
+      }
+
+      function contactLabel(profile, isSupport) {
+        if (isSupport) return SUPPORT_NAME;
+        if (!profile) return 'Membre LYANN';
+        if (typeof window.formatPublicName === 'function') {
+          const formatted = window.formatPublicName(profile, null, '');
+          if (formatted && formatted !== 'Lyanneur' && formatted !== 'Membre') return formatted;
+        }
+        const firstName = profile.first_name || '';
+        const lastInitial = profile.last_name ? ` ${String(profile.last_name).charAt(0)}.` : '';
+        return `${firstName}${lastInitial}`.trim() || 'Membre LYANN';
       }
 
       return conversationIds.map((conversationId) => {
@@ -91,9 +110,7 @@
         const latest = latestByConversation.get(conversationId) || null;
         const supportId = window.LYANN_SUPPORT_USER_ID;
         const isSupport = supportId && contactId === supportId;
-        const firstName = profile?.first_name || profile?.display_name || 'Membre';
-        const lastName = profile?.last_name ? ` ${String(profile.last_name).charAt(0)}.` : '';
-        const name = isSupport ? SUPPORT_NAME : (`${firstName}${lastName}`.trim() || 'Membre LYANN');
+        const name = contactLabel(profile, isSupport);
         const avatar = typeof window.getLyannAvatarUrl === 'function' ? window.getLyannAvatarUrl(profile?.avatar_url) : (profile?.avatar_url || '');
         return { conversationId, contactId, name, avatar, preview: latest?.content || (isSupport ? 'Écrivez-nous ici' : ''), lastMessageAt: latest?.created_at || null, pinned: !!isSupport };
       }).filter(Boolean).sort((a, b) => {

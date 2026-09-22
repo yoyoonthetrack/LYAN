@@ -1124,6 +1124,7 @@ async function renderMessages(passedMessages = null, options = {}) {
         `;
 
         wrapper.className = `chat-msg-bubble-wrap ${isMe ? 'sent' : 'received'}`;
+        wrapper.dataset.messageId = String(msgId);
 
         if (msg.type === 'text') {
             wrapper.innerHTML = `

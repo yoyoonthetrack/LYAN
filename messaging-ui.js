@@ -351,8 +351,9 @@
 
         ensureHydrationGuardStyle();
         const shell = modal();
-        if (shell) shell.classList.add('lyann-canonical-hydrating');
-        document.body.classList.add('lyann-messaging-transition');
+        const alreadyOpen = Boolean(shell && (shell.classList.contains('active') || shell.style.display === 'flex'));
+        if (shell && !alreadyOpen) shell.classList.add('lyann-canonical-hydrating');
+        if (!alreadyOpen) document.body.classList.add('lyann-messaging-transition');
         const main = mainArea();
         if (main) main.setAttribute('aria-busy', 'true');
 
@@ -379,7 +380,7 @@
         } finally {
             if (main) main.removeAttribute('aria-busy');
             document.body.classList.remove('lyann-messaging-transition');
-            setShellVisible(true);
+            if (!alreadyOpen) setShellVisible(true);
             if (shell) shell.classList.remove('lyann-canonical-hydrating');
         }
         return true;

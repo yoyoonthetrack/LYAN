@@ -10,7 +10,7 @@ function expect(condition, message) {
 }
 
 expect(chat.includes("const isMe = msg.sender === 'me' || msg.sender === getMyId();"), 'Message ownership must accept normalized me/them sender values.');
-expect(chat.includes('const messagesPromise = renderMessages();'), 'Messages must start rendering before request/mission context finishes.');
+expect(/const messagesPromise = renderMessages\(/.test(chat), 'Messages must start rendering before request/mission context finishes.');
 expect(chat.includes('await messagesPromise;'), 'Chat refresh must await the already-started message render.');
 
 // V2 rule: the legacy chat core is an internal hydrator only. It must prepare
