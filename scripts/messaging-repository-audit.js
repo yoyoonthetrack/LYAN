@@ -17,7 +17,8 @@ const checks = [
   ['chat reads through repository', getBlock.includes('LYANN_MESSAGING_REPOSITORY.getMessages')],
   ['chat loader no longer queries participants directly', !getBlock.includes("from('conversation_participants')")],
   ['chat loader no longer queries messages directly', !getBlock.includes("from('messages')")],
-  ['successful send invalidates message cache', chat.includes('LYANN_MESSAGING_REPOSITORY.invalidateMessages(sharedConvId)')]
+  ['successful send invalidates conversation lookup and message cache', chat.includes('invalidateConversation(userId, contactId, sharedConvId)')],
+  ['send refresh rereads messages after the conversation exists', chat.includes('await renderMessages(null, { fresh: true })')]
 ];
 
 let failed = false;

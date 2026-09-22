@@ -1175,6 +1175,150 @@ app.post('/v1/admin/ops/conversations/:id/inspect', async (req, res) => {
     }
 });
 
+let cachedSupportUserId = null;
+async function resolveSupportUserId() {
+    if (cachedSupportUserId) return cachedSupportUserId;
+    const { data, error } = await supabaseAdmin.rpc('lyann_support_user_id');
+    if (error || !data) return null;
+    cachedSupportUserId = data;
+    return data;
+}
+
+app.get('/v1/admin/support/threads', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'users.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const supportId = await resolveSupportUserId();
+        if (!supportId) {
+            return res.status(503).json({ success: false, error: 'Identité Aide LYANN indisponible. Exécutez la migration 39.' });
+        }
+        const parts = await adminSafeSelect(
+            'conversation_participants',
+            'conversation_id, user_id',
+            (q) => q.eq('user_id', supportId)
+        );
+        const conversationIds = [...new Set((parts || []).map((row) => row.conversation_id).filter(Boolean))].slice(0, 80);
+        if (!conversationIds.length) return res.json({ success: true, support_user_id: supportId, rows: [] });
+
+        const allParts = await adminSafeSelect(
+            'conversation_participants',
+            'conversation_id, user_id',
+            (q) => q.in('conversation_id', conversationIds)
+        );
+        const messages = await adminSafeSelect(
+            'messages',
+            'id, conversation_id, sender_id, content, created_at',
+            (q) => q.in('conversation_id', conversationIds).order('created_at', { ascending: false }).limit(400)
+        );
+        const latestByConv = {};
+        (messages || []).forEach((row) => {
+            if (!latestByConv[row.conversation_id]) latestByConv[row.conversation_id] = row;
+        });
+        const memberIds = (allParts || [])
+            .filter((row) => row.user_id !== supportId)
+            .map((row) => row.user_id);
+        const profiles = await adminMapProfiles(memberIds);
+        const rows = conversationIds.map((id) => {
+            const memberId = (allParts || []).find((row) => row.conversation_id === id && row.user_id !== supportId)?.user_id;
+            const latest = latestByConv[id];
+            return {
+                id,
+                member_id: memberId || null,
+                member_name: adminProfileName(profiles[memberId]),
+                last_message: latest?.content || '',
+                last_sender_id: latest?.sender_id || null,
+                updated_at: latest?.created_at || null
+            };
+        }).sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+        return res.json({ success: true, support_user_id: supportId, rows });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de charger Aide LYANN.' });
+    }
+});
+
+app.get('/v1/admin/support/threads/:id', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'users.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const supportId = await resolveSupportUserId();
+        if (!supportId) {
+            return res.status(503).json({ success: false, error: 'Identité Aide LYANN indisponible.' });
+        }
+        const { data: participant, error: partError } = await supabaseAdmin
+            .from('conversation_participants')
+            .select('user_id')
+            .eq('conversation_id', req.params.id)
+            .eq('user_id', supportId)
+            .maybeSingle();
+        if (partError) return res.status(500).json({ success: false, error: partError.message });
+        if (!participant) return res.status(403).json({ success: false, error: 'Cette conversation n’est pas une file Aide LYANN.' });
+
+        const { data: messages, error } = await supabaseAdmin
+            .from('messages')
+            .select('id, sender_id, content, created_at')
+            .eq('conversation_id', req.params.id)
+            .order('created_at', { ascending: true })
+            .limit(200);
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        const profiles = await adminMapProfiles((messages || []).map((row) => row.sender_id));
+        return res.json({
+            success: true,
+            support_user_id: supportId,
+            messages: (messages || []).map((row) => ({
+                id: row.id,
+                sender_id: row.sender_id,
+                sender_name: row.sender_id === supportId ? 'Aide LYANN' : adminProfileName(profiles[row.sender_id]),
+                from_support: row.sender_id === supportId,
+                content: row.content,
+                created_at: row.created_at
+            }))
+        });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de lire la conversation.' });
+    }
+});
+
+app.post('/v1/admin/support/reply', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'users.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    const conversationId = String(req.body?.conversation_id || '').trim();
+    const content = String(req.body?.content || '').trim();
+    if (!conversationId || content.length < 1) {
+        return res.status(400).json({ success: false, error: 'Conversation et message obligatoires.' });
+    }
+    try {
+        const supportId = await resolveSupportUserId();
+        if (!supportId) {
+            return res.status(503).json({ success: false, error: 'Identité Aide LYANN indisponible. Exécutez la migration 39.' });
+        }
+        const { data: participant, error: partError } = await supabaseAdmin
+            .from('conversation_participants')
+            .select('user_id')
+            .eq('conversation_id', conversationId)
+            .eq('user_id', supportId)
+            .maybeSingle();
+        if (partError) return res.status(500).json({ success: false, error: partError.message });
+        if (!participant) return res.status(403).json({ success: false, error: 'Réponse réservée aux conversations Aide LYANN.' });
+
+        const { data, error } = await supabaseAdmin
+            .from('messages')
+            .insert({ conversation_id: conversationId, sender_id: supportId, content })
+            .select('id, created_at')
+            .single();
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        await recordMaisonAudit(authResult.userId, 'SUPPORT_REPLY', conversationId, { message_id: data.id });
+        return res.json({ success: true, message: data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible d’envoyer la réponse.' });
+    }
+});
+
 // 5.2 ADMIN LIVE ACTIVITY STREAM (GET /v1/admin/activity)
 app.get('/v1/admin/activity', async (req, res) => {
     try {

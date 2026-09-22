@@ -40,8 +40,131 @@
         messages: { in_app: true, push: true, email: true },
         missions: { in_app: true, push: true, email: true },
         payments: { in_app: true, push: true, email: true }, // Essential
-        news: { in_app: true, push: false, email: false }
+        news: { in_app: true, push: false, email: false },
+        matching_requests: { in_app: true },
+        bokantaj: { in_app: true }
     };
+
+    function inAppPrefEnabled(prefs, key) {
+        const value = prefs?.[key];
+        if (typeof value === 'boolean') return value;
+        if (value && typeof value === 'object') return value.in_app !== false;
+        return true;
+    }
+
+    function toServerPrefs(prefs) {
+        const merged = { ...DEFAULT_PREFERENCES, ...(prefs || {}) };
+        return {
+            messages: inAppPrefEnabled(merged, 'messages'),
+            matching_requests: inAppPrefEnabled(merged, 'matching_requests') && inAppPrefEnabled(merged, 'opportunities'),
+            bokantaj: inAppPrefEnabled(merged, 'bokantaj') && inAppPrefEnabled(merged, 'news')
+        };
+    }
+
+    function fromServerPrefs(row) {
+        const flags = row && typeof row === 'object' ? row : {};
+        return {
+            ...DEFAULT_PREFERENCES,
+            messages: { in_app: flags.messages !== false, push: flags.messages !== false, email: flags.messages !== false },
+            opportunities: { in_app: flags.matching_requests !== false, push: flags.matching_requests !== false, email: flags.matching_requests !== false },
+            matching_requests: { in_app: flags.matching_requests !== false },
+            news: { in_app: flags.bokantaj !== false, push: false, email: false },
+            bokantaj: { in_app: flags.bokantaj !== false }
+        };
+    }
+
+    const SOUND_URL = 'sounds/lyann-notif.mp3';
+    const SOUND_COOLDOWN_MS = 2500;
+    let notificationAudio = null;
+    let lastChimeAt = 0;
+    let knownNotificationIds = new Set();
+    const hydratedUsers = new Set();
+
+    function ensureNotificationAudio() {
+        if (typeof window === 'undefined' || typeof Audio === 'undefined') return null;
+        if (!notificationAudio) {
+            notificationAudio = new Audio(SOUND_URL);
+            notificationAudio.preload = 'auto';
+            notificationAudio.setAttribute('playsinline', '');
+            notificationAudio.volume = 0.85;
+        }
+        return notificationAudio;
+    }
+
+    function primeNotificationSound() {
+        const el = ensureNotificationAudio();
+        if (!el) return;
+        const play = el.play();
+        if (play && typeof play.then === 'function') {
+            play.then(() => {
+                el.pause();
+                el.currentTime = 0;
+            }).catch(() => {});
+        }
+    }
+
+    function shouldSkipChime(notif) {
+        if (!notif || notif.read) return true;
+        const activeId = (typeof window !== 'undefined' && (window.LYANN_ACTIVE_CHAT_CONTACT?.id || window.LYANN_ACTIVE_CHAT_CONTACT?.contactId)) || null;
+        if (notif.type === 'NEW_MESSAGE' && activeId && String(notif.entity_id) === String(activeId)) return true;
+        return false;
+    }
+
+    function playNotificationSound() {
+        if (typeof window === 'undefined') return;
+        const now = Date.now();
+        if (now - lastChimeAt < SOUND_COOLDOWN_MS) return;
+        const el = ensureNotificationAudio();
+        if (!el) return;
+        lastChimeAt = now;
+        try {
+            el.currentTime = 0;
+            const play = el.play();
+            if (play && typeof play.catch === 'function') play.catch(() => {});
+        } catch (_) {}
+    }
+
+    function rememberNotificationIds(notifs, { chime } = {}) {
+        let shouldChime = false;
+        (notifs || []).forEach((notif) => {
+            if (!notif?.id) return;
+            if (knownNotificationIds.has(notif.id)) return;
+            knownNotificationIds.add(notif.id);
+            if (chime && !shouldSkipChime(notif)) shouldChime = true;
+        });
+        if (shouldChime) playNotificationSound();
+    }
+
+    function ingestServerNotification(row, userId, { chime } = {}) {
+        if (!row) return;
+        const mapped = mapServerNotification(row, userId);
+        const others = getAllNotifications().filter((n) => n.id !== mapped.id);
+        saveAllNotifications([mapped, ...others].slice(0, 200));
+        rememberNotificationIds([mapped], { chime: chime !== false });
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('lyann_notifications_updated', { detail: mapped }));
+        }
+        return mapped;
+    }
+
+    function mapServerNotification(row, userId) {
+        return {
+            id: row.id,
+            user_id: row.user_id || userId,
+            type: row.type,
+            title: row.title,
+            body: row.body,
+            entity_type: row.entity_type,
+            entity_id: row.entity_id,
+            read: !!row.read,
+            created_at: row.created_at,
+            cta: row.type === 'NEW_MESSAGE'
+                ? { label: 'Ouvrir la conversation' }
+                : (row.type === 'OPPORTUNITY'
+                    ? { label: 'Voir le besoin' }
+                    : (row.type === 'BOKANTAJ' ? { label: 'Voir Bokantaj' } : null))
+        };
+    }
 
     function getUserPreferences(userId) {
         if (!userId) return { ...DEFAULT_PREFERENCES };
@@ -59,7 +182,43 @@
         const current = getUserPreferences(userId);
         const updated = { ...current, ...newPrefs };
         safeStorage.setItem(`${STORAGE_KEY_PREFS}_${userId}`, JSON.stringify(updated));
+        const client = typeof window !== 'undefined' ? (window.LYANN_API_CLIENT || window.apiClient) : null;
+        if (client?.updateProfile) {
+            client.updateProfile(userId, { notification_prefs: toServerPrefs(updated) }).catch(() => {});
+        }
         return updated;
+    }
+
+    async function hydrateFromServer(userId) {
+        const client = typeof window !== 'undefined' ? (window.LYANN_API_CLIENT || window.apiClient) : null;
+        if (!client || !userId) return { notifications: getUserNotifications(userId, userId), prefs: getUserPreferences(userId) };
+
+        try {
+            if (typeof client.getProfile === 'function') {
+                const { data: profile } = await client.getProfile(userId);
+                if (profile?.notification_prefs) {
+                    const mapped = fromServerPrefs(profile.notification_prefs);
+                    safeStorage.setItem(`${STORAGE_KEY_PREFS}_${userId}`, JSON.stringify(mapped));
+                }
+            }
+        } catch (_) {}
+
+        try {
+            const { data } = await client.listMyNotifications();
+            if (Array.isArray(data)) {
+                const mapped = data.map((row) => mapServerNotification(row, userId));
+                const others = getAllNotifications().filter((n) => n.user_id !== userId);
+                saveAllNotifications([...mapped, ...others].slice(0, 200));
+                const firstLoad = !hydratedUsers.has(userId);
+                hydratedUsers.add(userId);
+                rememberNotificationIds(mapped, { chime: !firstLoad });
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('lyann_notifications_updated'));
+                }
+            }
+        } catch (_) {}
+
+        return { notifications: getUserNotifications(userId, userId), prefs: getUserPreferences(userId) };
     }
 
     // 2. GET USER NOTIFICATIONS (WITH SECURITY ACCESS CONTROL - TEST H)
@@ -215,6 +374,7 @@
 
         allNotifs.unshift(newNotif);
         saveAllNotifications(allNotifs);
+        rememberNotificationIds([newNotif], { chime: true });
 
         // Audit Log
         logDeliveryAudit({
@@ -316,6 +476,10 @@
             }
         }
         if (updatedCount > 0) saveAllNotifications(all);
+        const client = typeof window !== 'undefined' ? (window.LYANN_API_CLIENT || window.apiClient) : null;
+        if (client?.markNotificationRead && notificationId) {
+            client.markNotificationRead(notificationId).catch(() => {});
+        }
         return { success: true, updated_count: updatedCount };
     }
 
@@ -330,6 +494,10 @@
             }
         }
         if (updatedCount > 0) saveAllNotifications(all);
+        const client = typeof window !== 'undefined' ? (window.LYANN_API_CLIENT || window.apiClient) : null;
+        if (client?.markAllNotificationsRead) {
+            client.markAllNotificationsRead().catch(() => {});
+        }
         return { success: true, updated_count: updatedCount };
     }
 
@@ -396,6 +564,11 @@
     const LyannNotificationEngine = {
         getUserPreferences,
         updateUserPreferences,
+        hydrateFromServer,
+        ingestServerNotification,
+        playNotificationSound,
+        primeNotificationSound,
+        toServerPrefs,
         getUserNotifications,
         getUnreadCount,
         createNotification,

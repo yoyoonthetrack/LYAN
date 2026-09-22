@@ -23,6 +23,15 @@ function updateHeaderNotificationBadge() {
 
 function openNotificationsModal() {
     const currentUserId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
+    if (window.LyannNotificationEngine?.hydrateFromServer && currentUserId) {
+        window.LyannNotificationEngine.hydrateFromServer(currentUserId).then(() => renderNotificationsModal());
+        return;
+    }
+    renderNotificationsModal();
+}
+
+function renderNotificationsModal() {
+    const currentUserId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
     let modal = document.getElementById('notificationsModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -58,8 +67,9 @@ function openNotificationsModal() {
                 ` : notifs.map(n => {
                     const icon = n.type === 'OPPORTUNITY' ? '🤝' 
                         : (n.type === 'NEW_MESSAGE' ? '💬' 
+                        : (n.type === 'BOKANTAJ' ? '📣'
                         : (n.type.startsWith('MISSION') ? '🎯' 
-                        : (n.type.startsWith('PAYMENT') ? '💳' : '🔔')));
+                        : (n.type.startsWith('PAYMENT') ? '💳' : '🔔'))));
                     
                     const timeAgo = formatRelativeTime(n.created_at);
                     const isUnread = !n.read;
@@ -109,6 +119,8 @@ function openNotificationsModal() {
             const notifId = card.getAttribute('data-notif-id');
             const entityType = card.getAttribute('data-entity-type');
             const entityId = card.getAttribute('data-entity-id');
+            const nType = (window.LyannNotificationEngine?.getUserNotifications?.(currentUserId, currentUserId) || [])
+                .find((item) => String(item.id) === String(notifId))?.type;
 
             if (window.LyannNotificationEngine && notifId) {
                 window.LyannNotificationEngine.markAsRead(notifId, currentUserId);
@@ -130,10 +142,13 @@ function openNotificationsModal() {
             }
 
             // Deep link actions (TEST F)
-            if (entityType === 'conversation' && entityId) {
-                if (typeof window.openConversation === 'function') window.openConversation(entityId);
+            if (entityType === 'conversation' || nType === 'NEW_MESSAGE') {
+                window.LYANN_ROUTER?.go?.('messages', { contactId: entityId, name: entityId === window.LYANN_SUPPORT_USER_ID ? 'Aide LYANN' : undefined });
             } else if (entityType === 'request' && entityId) {
-                if (typeof window.openRequestDetails === 'function') window.openRequestDetails(entityId);
+                if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('mission', { requestId: entityId });
+                else if (typeof window.openRequestDetails === 'function') window.openRequestDetails(entityId);
+            } else if (entityType === 'post' || nType === 'BOKANTAJ') {
+                window.LYANN_ROUTER?.go?.('bokantaj');
             } else if (entityType === 'mission' && entityId) {
                 if (typeof window.openMissionDetails === 'function') window.openMissionDetails(entityId);
             }
@@ -155,4 +170,142 @@ function formatRelativeTime(isoString) {
     const diffHours = Math.floor(diffMin / 60);
     if (diffHours < 24) return `Il y a ${diffHours}h`;
     return date.toLocaleDateString('fr-FR');
+}
+
+function mountNotificationPreferenceControls() {
+    document.querySelectorAll('#tab-acc-settings-sec .profile-section-card').forEach((card) => {
+        const title = card.querySelector('.profile-section-title');
+        if (!title || !/Notifications/.test(title.textContent || '')) return;
+        if (card.querySelector('.lyann-pref-messages')) return;
+        card.innerHTML = `
+            <h4 class="profile-section-title">🔔 Notifications</h4>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 12px;">Choisissez ce que LYANN vous signale dans l’application.</p>
+            <label style="display:flex;align-items:center;gap:10px;font-size:0.88rem;margin-bottom:8px;">
+                <input type="checkbox" class="lyann-pref-messages"> Messages reçus
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;font-size:0.88rem;margin-bottom:8px;">
+                <input type="checkbox" class="lyann-pref-matching"> Besoins qui correspondent à mes compétences
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;font-size:0.88rem;">
+                <input type="checkbox" class="lyann-pref-bokantaj"> Nouveaux lyann sur Bokantaj
+            </label>
+        `;
+    });
+    bindNotificationPreferenceControls();
+}
+
+function bindNotificationPreferenceControls() {
+    const userId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
+    const engine = window.LyannNotificationEngine;
+    const prefs = engine && userId ? engine.getUserPreferences(userId) : null;
+    const enabled = (key) => {
+        const value = prefs?.[key];
+        if (typeof value === 'boolean') return value;
+        if (value && typeof value === 'object') return value.in_app !== false;
+        return true;
+    };
+    const persistFrom = (root) => {
+        if (!engine || !userId) return;
+        const messages = root.querySelector('.lyann-pref-messages');
+        const matching = root.querySelector('.lyann-pref-matching');
+        const bokantaj = root.querySelector('.lyann-pref-bokantaj');
+        if (!messages || !matching || !bokantaj) return;
+        engine.updateUserPreferences(userId, userId, {
+            messages: { in_app: messages.checked, push: messages.checked, email: messages.checked },
+            matching_requests: { in_app: matching.checked },
+            opportunities: { in_app: matching.checked, push: matching.checked, email: matching.checked },
+            bokantaj: { in_app: bokantaj.checked },
+            news: { in_app: bokantaj.checked, push: false, email: false }
+        });
+    };
+    document.querySelectorAll('.lyann-pref-messages').forEach((input) => {
+        const root = input.closest('.profile-section-card, .account-group-box, section') || input.parentElement;
+        const matching = root.querySelector('.lyann-pref-matching');
+        const bokantaj = root.querySelector('.lyann-pref-bokantaj');
+        input.checked = enabled('messages');
+        if (matching) matching.checked = enabled('matching_requests') && enabled('opportunities');
+        if (bokantaj) bokantaj.checked = enabled('bokantaj') && enabled('news');
+        [input, matching, bokantaj].filter(Boolean).forEach((el) => {
+            el.onchange = () => persistFrom(root);
+        });
+    });
+}
+
+async function syncLyannNotificationsFromServer() {
+    const userId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null;
+    const client = window.LYANN_API_CLIENT || window.apiClient;
+    if (client?.getSupportUserId) {
+        try { await client.getSupportUserId(); } catch (_) {}
+    }
+    if (userId && window.LyannNotificationEngine?.hydrateFromServer) {
+        await window.LyannNotificationEngine.hydrateFromServer(userId);
+    }
+    updateHeaderNotificationBadge();
+    bindNotificationPreferenceControls();
+}
+
+let lyannNotificationChannel = null;
+let lyannNotificationPoll = null;
+
+function stopLyannNotificationLiveFeed() {
+    const client = window.LYANN_API_CLIENT || window.apiClient;
+    if (lyannNotificationChannel && client?.supabase) {
+        try { client.supabase.removeChannel(lyannNotificationChannel); } catch (_) {}
+    }
+    lyannNotificationChannel = null;
+    if (lyannNotificationPoll) {
+        clearInterval(lyannNotificationPoll);
+        lyannNotificationPoll = null;
+    }
+}
+
+function startLyannNotificationLiveFeed() {
+    const userId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null;
+    const client = window.LYANN_API_CLIENT || window.apiClient;
+    stopLyannNotificationLiveFeed();
+    if (!userId || !client?.supabase) return;
+
+    lyannNotificationChannel = client.supabase
+        .channel('lyann-user-notifications')
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`
+        }, (payload) => {
+            if (window.LyannNotificationEngine?.ingestServerNotification) {
+                window.LyannNotificationEngine.ingestServerNotification(payload.new, userId, { chime: true });
+            }
+            updateHeaderNotificationBadge();
+        })
+        .subscribe();
+
+    lyannNotificationPoll = setInterval(() => {
+        if (document.hidden) return;
+        if (window.LyannNotificationEngine?.hydrateFromServer) {
+            window.LyannNotificationEngine.hydrateFromServer(userId).then(() => updateHeaderNotificationBadge());
+        }
+    }, 20000);
+}
+
+function unlockLyannNotificationSound() {
+    window.LyannNotificationEngine?.primeNotificationSound?.();
+}
+
+document.addEventListener('lyann:auth-state', (event) => {
+    mountNotificationPreferenceControls();
+    const authenticated = event.detail?.authenticated === true;
+    if (authenticated) {
+        syncLyannNotificationsFromServer().then(() => startLyannNotificationLiveFeed());
+    } else {
+        stopLyannNotificationLiveFeed();
+    }
+});
+document.addEventListener('lyann_notifications_updated', () => updateHeaderNotificationBadge());
+document.addEventListener('pointerdown', unlockLyannNotificationSound, { once: true, capture: true });
+document.addEventListener('keydown', unlockLyannNotificationSound, { once: true, capture: true });
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mountNotificationPreferenceControls);
+} else {
+    mountNotificationPreferenceControls();
 }

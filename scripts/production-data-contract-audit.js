@@ -64,7 +64,7 @@ if (!script.includes("LYANN_ROUTER?.go?.('messages'")) {
 }
 
 // Canonical router owns global account/support navigation as well as primary tabs.
-for (const route of ['home', 'explorer', 'bokantaj', 'messages', 'publish', 'mission', 'profile', 'account', 'activity', 'favorites', 'finances', 'settings', 'pricing', 'payment', 'help', 'about']) {
+for (const route of ['home', 'explorer', 'bokantaj', 'messages', 'publish', 'mission', 'profile', 'account', 'activity', 'favorites', 'finances', 'settings', 'pricing', 'payment', 'help', 'support', 'about']) {
   if (!router.includes(`register('${route}'`)) fail(`app-router.js: missing canonical ${route} route`);
 }
 if (!/openLyannDetailModal\(requestId, payload\.initialData \|\| null\)/.test(router)) {
@@ -79,6 +79,9 @@ for (const route of ['profile', 'account', 'activity', 'favorites', 'finances', 
   if (!script.includes(`data-lyann-route="${route}"`)) {
     fail(`script.js: hamburger drawer missing canonical ${route} route binding`);
   }
+}
+if (!script.includes('data-lyann-route="support"')) {
+  fail('script.js: hamburger drawer missing Aide LYANN support route');
 }
 
 if (failures.length) {

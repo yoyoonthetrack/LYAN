@@ -84,12 +84,18 @@
         if (!contactId) return null;
         const profile = profilesById.get(contactId) || null;
         const latest = latestByConversation.get(conversationId) || null;
-        const firstName = profile?.first_name || profile?.display_name || 'Membre';
-        const lastName = profile?.last_name ? ` ${String(profile.last_name).charAt(0)}.` : '';
-        const name = `${firstName}${lastName}`.trim() || 'Membre LYANN';
+        const supportId = window.LYANN_SUPPORT_USER_ID;
+        const isSupport = supportId && contactId === supportId;
+        const firstName = isSupport ? 'Aide' : (profile?.first_name || profile?.display_name || 'Membre');
+        const lastName = isSupport ? ' LYANN' : (profile?.last_name ? ` ${String(profile.last_name).charAt(0)}.` : '');
+        const name = isSupport ? 'Aide LYANN' : (`${firstName}${lastName}`.trim() || 'Membre LYANN');
         const avatar = typeof window.getLyannAvatarUrl === 'function' ? window.getLyannAvatarUrl(profile?.avatar_url) : (profile?.avatar_url || '');
-        return { conversationId, contactId, name, avatar, preview: latest?.content || '', lastMessageAt: latest?.created_at || null };
-      }).filter(Boolean).sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
+        return { conversationId, contactId, name, avatar, preview: latest?.content || (isSupport ? 'Écrivez-nous ici' : ''), lastMessageAt: latest?.created_at || null, pinned: !!isSupport };
+      }).filter(Boolean).sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0);
+      });
     };
 
     return c ? c.dedupe('chat-conversation-list', key, loader, LIST_TTL_MS) : loader();

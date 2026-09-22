@@ -509,6 +509,9 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
                     <button type="button" class="nav-msg-btn" id="btnHeaderChat" aria-label="Messagerie" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
                         <i class="ph ph-chat-circle-dots"></i>
                     </button>
+                    <button type="button" id="btnHeaderSupport" data-lyann-route="support" aria-label="Aide LYANN" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
+                        <i class="ph ph-headset"></i>
+                    </button>
                     <button type="button" class="nav-msg-btn" id="btnHeaderNotif" aria-label="Notifications" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; position: relative;">
                         <i class="ph ph-bell"></i>
                     </button>

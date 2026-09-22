@@ -237,8 +237,8 @@ function ensureMobileHamburgerDrawer() {
                         </button>
                         <div class="drawer-submenu" id="submenuHelp">
                             <a href="#" class="drawer-sub-link" data-lyann-route="help"><i class="ph ph-book-open"></i> Comment ça marche</a>
-                            <a href="pricing.html" class="drawer-sub-link"><i class="ph ph-tag"></i> Tarifs</a>
-                            <a href="about.html#support" class="drawer-sub-link"><i class="ph ph-headset"></i> Aide & support</a>
+                            <a href="pricing.html" class="drawer-sub-link" data-lyann-route="pricing"><i class="ph ph-tag"></i> Tarifs</a>
+                            <a href="#" class="drawer-sub-link" data-lyann-route="support"><i class="ph ph-headset"></i> Aide LYANN</a>
                             <a href="legal.html" class="drawer-sub-link"><i class="ph ph-scales"></i> Conditions & informations légales</a>
                             <a href="#" class="drawer-sub-link logged-in-only"><i class="ph ph-user-plus"></i> Inviter quelqu'un</a>
                             <a href="#" class="drawer-sub-link" data-lyann-route="about"><i class="ph ph-info"></i> À propos de LYANN</a>
@@ -4152,11 +4152,11 @@ safeDomReady(() => {
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>
                             <div class="account-divider"></div>
-                            <div class="account-touch-row" onclick="window.location.href='about.html#support'">
+                            <div class="account-touch-row" data-lyann-route="support" style="cursor:pointer;">
                                 <div class="row-icon"><i class="ph ph-headset"></i></div>
                                 <div class="row-content">
-                                    <strong class="row-title">Aide & support</strong>
-                                    <span class="row-subtitle">Contacter l'équipe support LYANN</span>
+                                    <strong class="row-title">Aide LYANN</strong>
+                                    <span class="row-subtitle">Écrire à l'équipe dans la messagerie</span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>
@@ -4228,13 +4228,21 @@ safeDomReady(() => {
                     <section class="account-desktop-section">
                         <h4 class="account-section-heading">PARAMÈTRES DU COMPTE</h4>
                         <div class="account-group-box">
-                            <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
+                            <div class="account-touch-row" style="align-items:flex-start;">
                                 <div class="row-icon"><i class="ph ph-bell"></i></div>
-                                <div class="row-content">
+                                <div class="row-content" style="flex:1;">
                                     <strong class="row-title">Notifications</strong>
-                                    <span class="row-subtitle">Préférences email et push</span>
+                                    <span class="row-subtitle">Choisissez ce que LYANN vous signale</span>
+                                    <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-top:10px;">
+                                        <input type="checkbox" class="lyann-pref-messages"> Messages reçus
+                                    </label>
+                                    <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-top:6px;">
+                                        <input type="checkbox" class="lyann-pref-matching"> Besoins qui correspondent à mes compétences
+                                    </label>
+                                    <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-top:6px;">
+                                        <input type="checkbox" class="lyann-pref-bokantaj"> Nouveaux lyann sur Bokantaj
+                                    </label>
                                 </div>
-                                <i class="ph ph-caret-right row-chevron"></i>
                             </div>
                             <div class="account-divider"></div>
                             <div class="account-touch-row" onclick="window.location.href='confidentialite.html'">
@@ -4442,6 +4450,8 @@ safeDomReady(() => {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
+        if (typeof mountNotificationPreferenceControls === 'function') mountNotificationPreferenceControls();
+        if (typeof bindNotificationPreferenceControls === 'function') bindNotificationPreferenceControls();
     };
 
     window.openAccountModal = function(subView = 'account') {

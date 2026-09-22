@@ -140,6 +140,14 @@ click({
 assert(calls.conversations.length === 1, 'explicit contact/message CTA must open a conversation');
 assert(calls.conversations[0]?.contactId === 'contact-123', 'message CTA must forward the contact id');
 
+window.LYANN_SUPPORT_USER_ID = 'a1e00000-1ea1-4000-8000-000000000001';
+window.LYANN_API_CLIENT = {
+  openSupportConversation: async () => ({ data: { supportUserId: window.LYANN_SUPPORT_USER_ID } }),
+  getSupportUserId: async () => window.LYANN_SUPPORT_USER_ID
+};
+click({ explicit: fakeElement({ 'data-lyann-route': 'support' }) });
+assert(window.LYANN_ROUTER.has('support'), 'Aide LYANN must be a canonical router route');
+
 click({ selector: '#tab-explorer' });
 assert(navigations.includes('results.html'), 'Explorer must remain routable through the canonical router');
 

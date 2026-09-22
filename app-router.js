@@ -57,7 +57,7 @@
   const interactionPolicy = Object.freeze({
     home: 'public', explorer: 'public', bokantaj: 'public', requestDetail: 'public',
     publicProfile: 'public', search: 'public', filters: 'public', pricing: 'public', help: 'public', about: 'public',
-    favorite: 'context', messages: 'continue', requestHelp: 'context', requestAuthor: 'context', publish: 'continue',
+    favorite: 'context', messages: 'continue', support: 'continue', requestHelp: 'context', requestAuthor: 'context', publish: 'continue',
     comment: 'context', reaction: 'context', communityPublish: 'context', proposal: 'context',
     missionAction: 'context', profile: 'continue', account: 'continue', activity: 'continue',
     favorites: 'continue', finances: 'continue', settings: 'continue', payment: 'continue'
@@ -299,6 +299,27 @@
   register('pricing', () => hardNavigate('pricing.html'));
   register('payment', () => hardNavigate('payment-portal.html'));
   register('help', () => hardNavigate('how-it-works.html'));
+  register('support', async () => {
+    if (knownLoggedOut()) return openLoginPrompt();
+    const client = window.LYANN_API_CLIENT || window.apiClient;
+    let supportId = window.LYANN_SUPPORT_USER_ID || null;
+    try {
+      const opened = await client?.openSupportConversation?.();
+      supportId = opened?.data?.supportUserId || opened?.supportUserId || await client?.getSupportUserId?.() || supportId;
+    } catch (_) {
+      supportId = await client?.getSupportUserId?.() || supportId;
+    }
+    if (!supportId) {
+      if (typeof window.showLyanToast === 'function') {
+        window.showLyanToast('L’aide LYANN n’est pas encore disponible. Réessayez après la mise à jour serveur.', 'ℹ️');
+      }
+      return false;
+    }
+    const messaging = window.LYANN_MESSAGING;
+    if (messaging) return messaging.openConversation({ contactId: supportId, name: 'Aide LYANN' });
+    const params = new URLSearchParams({ action: 'messages', contact: supportId, name: 'Aide LYANN' });
+    return hardNavigate(`feed.html?${params.toString()}`);
+  });
   register('about', () => hardNavigate('about.html'));
 
   const selectorRouteMap = [
@@ -306,7 +327,8 @@
     ['#tab-explorer', 'explorer'],
     ['#tab-bokantaj', 'bokantaj'],
     ['#tab-messages, [data-lyann-messages], .open-chat-trigger', 'messages'],
-    ['.nav-msg-btn, .btn-open-chat-direct, .btn-contact-member, .btn-help-lyann, a[href*="action=messages"], a[href*="action=openchat"]', 'messages'],
+    ['#btnHeaderSupport, [data-lyann-support]', 'support'],
+    ['.nav-msg-btn:not(#btnHeaderNotif):not(#btnHeaderSupport), .btn-open-chat-direct, .btn-contact-member, .btn-help-lyann, a[href*="action=messages"], a[href*="action=openchat"]', 'messages'],
     ['#tab-create, [data-lyann-publish], .open-request-help-trigger, .btn-trigger-wizard-shortcut, .explorer-publish, #btnLaunchNeedWizard', 'publish'],
     ['.open-account-modal-trigger, .nav-profile-btn', 'account'],
     ['#btnDashboardAvatar', 'profile']
@@ -415,7 +437,7 @@
       go('messages', { contactId, name: params.get('name') || undefined });
     } else if (action === 'publish') {
       go('publish');
-    } else if (['account', 'activity', 'favorites', 'finances', 'settings', 'profile'].includes(action)) {
+    } else if (['account', 'activity', 'favorites', 'finances', 'settings', 'profile', 'support'].includes(action)) {
       go(action);
     }
   }

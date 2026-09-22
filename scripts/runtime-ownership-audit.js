@@ -13,7 +13,7 @@ const hygiene = read('production-hygiene.js');
 const legacyWorkflow = read('.github/workflows/architecture-source-fix.yml');
 
 if (!router.includes('window.LYANN_ROUTER = api')) fail('app-router.js must own window.LYANN_ROUTER');
-if (!router.includes("register('messages'")) fail('app-router.js must own the messages route');
+if (!router.includes("register('support'")) fail('app-router.js must own the support route');
 if (!router.includes("register('publish'")) fail('app-router.js must own the publish route');
 if (!router.includes("['#tab-home', 'home']")) fail('app-router.js must own bottom navigation routing');
 

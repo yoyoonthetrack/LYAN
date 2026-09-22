@@ -622,6 +622,33 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="admin-card" style="margin-top: 20px;">
+                    <h3 style="margin-top:0;">Inbox Aide LYANN</h3>
+                    <p style="font-size:0.85rem;color:var(--admin-text-muted);">Répondez ici aux messages envoyés via Aide LYANN. L’utilisateur voit la réponse dans sa messagerie.</p>
+                    <div style="display:grid;grid-template-columns:minmax(240px,1fr) minmax(320px,1.4fr);gap:16px;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Membre</th>
+                                    <th>Dernier message</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="supportInboxTableBody">
+                                <tr><td colspan="3" class="admin-empty-cell">Chargement…</td></tr>
+                            </tbody>
+                        </table>
+                        <div>
+                            <div id="supportThreadMeta" style="font-size:0.85rem;color:var(--admin-text-muted);margin-bottom:8px;">Sélectionnez une conversation.</div>
+                            <div id="supportThreadMessages" style="min-height:180px;max-height:320px;overflow:auto;border:1px solid rgba(148,163,184,0.35);border-radius:12px;padding:12px;background:#fff;"></div>
+                            <form id="supportReplyForm" style="display:flex;gap:8px;margin-top:12px;">
+                                <input type="hidden" id="supportReplyConversationId">
+                                <input class="admin-input" id="supportReplyInput" placeholder="Répondre en tant qu’Aide LYANN…" style="flex:1;" maxlength="2000">
+                                <button type="submit" class="admin-btn admin-btn-primary">Envoyer</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- ==========================================================================

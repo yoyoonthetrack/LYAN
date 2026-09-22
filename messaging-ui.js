@@ -252,8 +252,18 @@
 
         try {
             const conversations = await withTimeout(repo.listConversations(userId, { fresh: true }), 8000, 'conversation list');
-            if (conversations.length) renderConversationRows(listContainer, conversations);
-            else setListEmptyState(listContainer); // authoritative empty state
+            const supportId = window.LYANN_SUPPORT_USER_ID || (window.LYANN_API_CLIENT && await window.LYANN_API_CLIENT.getSupportUserId());
+            let rows = conversations.slice();
+            if (supportId && !rows.some((row) => row.contactId === supportId)) {
+                rows.unshift({
+                    contactId: supportId,
+                    name: 'Aide LYANN',
+                    preview: 'Écrivez-nous ici',
+                    pinned: true
+                });
+            }
+            if (rows.length) renderConversationRows(listContainer, rows);
+            else setListEmptyState(listContainer);
         } catch (error) {
             console.warn('[MESSAGING] canonical conversation list failed', error);
             // Navigation memory is only a degraded-network fallback, never a second data source.

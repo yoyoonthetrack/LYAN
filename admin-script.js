@@ -3098,6 +3098,71 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert(messages || 'Aucun message dans cette conversation.');
     };
 
+    window.loadAdminSupportInbox = async function() {
+        const tbody = document.getElementById('supportInboxTableBody');
+        if (!tbody) return;
+        const res = await window.fetchWithAdminAuth('/v1/admin/support/threads');
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            tbody.innerHTML = adminEmpty(3, data.error || 'Inbox Aide LYANN indisponible.');
+            return;
+        }
+        const rows = data.rows || [];
+        tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+            <td><strong>${adminEscape(row.member_name)}</strong></td>
+            <td>${adminEscape((row.last_message || '').slice(0, 90))}</td>
+            <td><button class="admin-btn admin-btn-sm admin-btn-primary" type="button" data-support-thread="${adminEscape(row.id)}" data-support-name="${adminEscape(row.member_name)}">Ouvrir</button></td>
+        </tr>`).join('') : adminEmpty(3, 'Aucun message Aide LYANN.');
+        tbody.querySelectorAll('[data-support-thread]').forEach((btn) => {
+            btn.addEventListener('click', () => window.openAdminSupportThread(btn.getAttribute('data-support-thread'), btn.getAttribute('data-support-name')));
+        });
+    };
+
+    window.openAdminSupportThread = async function(conversationId, memberName) {
+        const meta = document.getElementById('supportThreadMeta');
+        const box = document.getElementById('supportThreadMessages');
+        const hidden = document.getElementById('supportReplyConversationId');
+        if (hidden) hidden.value = conversationId;
+        if (meta) meta.textContent = memberName ? `Conversation avec ${memberName}` : 'Conversation Aide LYANN';
+        if (box) box.textContent = 'Chargement…';
+        const res = await window.fetchWithAdminAuth(`/v1/admin/support/threads/${conversationId}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            if (box) box.textContent = data.error || 'Impossible de charger les messages.';
+            return;
+        }
+        if (box) {
+            box.innerHTML = (data.messages || []).length
+                ? data.messages.map((msg) => `<div style="margin-bottom:10px;${msg.from_support ? 'text-align:right;' : ''}">
+                    <div style="font-size:0.72rem;color:var(--admin-text-muted);">${adminEscape(msg.sender_name)} · ${adminDate(msg.created_at)}</div>
+                    <div style="display:inline-block;padding:8px 10px;border-radius:12px;background:${msg.from_support ? 'rgba(74,124,89,0.12)' : '#f1f5f9'};">${adminEscape(msg.content || '')}</div>
+                </div>`).join('')
+                : 'Aucun message.';
+            box.scrollTop = box.scrollHeight;
+        }
+    };
+
+    document.getElementById('supportReplyForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const conversationId = document.getElementById('supportReplyConversationId')?.value;
+        const input = document.getElementById('supportReplyInput');
+        const content = (input?.value || '').trim();
+        if (!conversationId || !content) return;
+        const res = await window.fetchWithAdminAuth('/v1/admin/support/reply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ conversation_id: conversationId, content })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Envoi impossible.');
+            return;
+        }
+        if (input) input.value = '';
+        await window.openAdminSupportThread(conversationId, document.getElementById('supportThreadMeta')?.textContent?.replace(/^Conversation avec /, '') || '');
+        await window.loadAdminSupportInbox();
+    });
+
     window.loadAdminSection = async function(sectionId) {
         const loaders = {
             'sec-overview': () => loadAdminRealData(),
@@ -3285,6 +3350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td>${adminDate(row.updated_at || row.created_at)}</td>
                     <td><button class="admin-btn admin-btn-sm admin-btn-primary" data-conversation-id="${adminEscape(row.id)}" onclick="window.inspectAdminConversation('${row.id}')">Consulter</button></td>
                 </tr>`).join('') : adminEmpty(4, 'Aucune conversation.');
+                await window.loadAdminSupportInbox();
             },
             'sec-team': async () => {
                 const data = await fetchAdminOps('team');

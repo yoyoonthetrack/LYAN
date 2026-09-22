@@ -204,11 +204,15 @@ async function addMessageToContact(contactId, msgObj) {
         if (sendErr) throw sendErr;
 
         if (window.LYANN_MESSAGING_REPOSITORY) {
-            window.LYANN_MESSAGING_REPOSITORY.invalidateMessages(sharedConvId);
+            // Opening a thread caches "no conversation yet". Invalidating only
+            // the message list leaves that empty lookup in place, so the next
+            // render paints an empty thread and the just-sent text vanishes.
+            window.LYANN_MESSAGING_REPOSITORY.invalidateConversation(userId, contactId, sharedConvId);
         }
 
         if (currentChatContact && currentChatContact.id === contactId) {
-            await renderMessages();
+            currentChatContact.conversationId = sharedConvId;
+            await renderMessages(null, { fresh: true });
         }
     } catch(e) {
         console.warn("Supabase message send failed:", e);
@@ -368,6 +372,9 @@ window.refreshChatUI = async function () {
             if (convRes && convRes.data && convRes.data.id) {
                 sharedConvId = convRes.data.id;
                 currentChatContact.conversationId = sharedConvId;
+                if (window.LYANN_MESSAGING_REPOSITORY) {
+                    window.LYANN_MESSAGING_REPOSITORY.invalidateConversation(myUserId, currentChatContact.id, sharedConvId);
+                }
             }
         } catch(e) {}
     }
@@ -962,7 +969,7 @@ function renderEmptyConversationState(container) {
 
 let chatRenderGeneration = 0;
 
-async function renderMessages(passedMessages = null) {
+async function renderMessages(passedMessages = null, options = {}) {
     const container = document.getElementById('chatMessagesContainer');
     if (!container) return;
 
@@ -978,7 +985,7 @@ async function renderMessages(passedMessages = null) {
 
     let msgs = passedMessages;
     if (!Array.isArray(msgs)) {
-        msgs = await getChatMessages(currentChatContact.id);
+        msgs = await getChatMessages(currentChatContact.id, options);
     }
 
     console.log('[CHAT FINAL ARRAY]', msgs);
@@ -2407,10 +2414,14 @@ function setupRealtime() {
 
     chatSubscription = supabase.channel('public:messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-            if (currentChatContact) {
-                // Ideally check if conversation_id matches, but for now just re-render
-                renderMessages();
+            if (!currentChatContact) return;
+            const convId = payload?.new?.conversation_id;
+            if (currentChatContact.conversationId && convId && convId !== currentChatContact.conversationId) return;
+            const userId = getMyId();
+            if (window.LYANN_MESSAGING_REPOSITORY) {
+                window.LYANN_MESSAGING_REPOSITORY.invalidateConversation(userId, currentChatContact.id, convId);
             }
+            renderMessages(null, { fresh: true });
         })
         .subscribe();
 

@@ -379,6 +379,14 @@ const LYANN_API_CLIENT = {
         if (profileData.is_pro !== undefined) safeData.is_pro = !!profileData.is_pro;
         if (profileData.is_verified !== undefined) safeData.is_verified = !!profileData.is_verified;
 
+        if (profileData.notification_prefs && typeof profileData.notification_prefs === 'object') {
+            safeData.notification_prefs = {
+                messages: profileData.notification_prefs.messages !== false,
+                matching_requests: profileData.notification_prefs.matching_requests !== false,
+                bokantaj: profileData.notification_prefs.bokantaj !== false
+            };
+        }
+
         safeData.updated_at = new Date().toISOString();
 
         console.log(`[ProfileSave] userId=${userId} step=final payloadFields=${Object.keys(safeData).join(',')} avatarChanged=${safeData.avatar_url !== undefined} saveStarted=true`);
@@ -699,6 +707,62 @@ const LYANN_API_CLIENT = {
 
         if (error) return { error };
         return { data: { id: data } };
+    },
+
+    async getSupportUserId() {
+        if (window.LYANN_SUPPORT_USER_ID) return window.LYANN_SUPPORT_USER_ID;
+        if (!this.supabase) return null;
+        const { data, error } = await this.supabase.rpc('lyann_support_user_id');
+        if (error || !data) return null;
+        window.LYANN_SUPPORT_USER_ID = data;
+        return data;
+    },
+
+    async openSupportConversation() {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const supportId = await this.getSupportUserId();
+        const opened = await this.supabase.rpc('lyann_open_support_conversation');
+        if (opened.error && supportId) {
+            const fallback = await this.getOrCreateConversation(null, supportId);
+            if (fallback.error) return { error: opened.error, supportUserId: supportId };
+            return { data: { id: fallback.data?.id, supportUserId: supportId } };
+        }
+        if (opened.error) return { error: opened.error, supportUserId: supportId };
+        return { data: { id: opened.data, supportUserId: supportId } };
+    },
+
+    async listMyNotifications() {
+        if (!this.supabase) return { data: [] };
+        const user = await this.getCurrentUser();
+        if (!user?.id) return { data: [] };
+        return await this.supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(80);
+    },
+
+    async markNotificationRead(notificationId) {
+        if (!this.supabase || !notificationId) return { error: { message: 'Notification invalide.' } };
+        const user = await this.getCurrentUser();
+        if (!user?.id) return { error: { message: 'Non authentifié.' } };
+        return await this.supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('id', notificationId)
+            .eq('user_id', user.id);
+    },
+
+    async markAllNotificationsRead() {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const user = await this.getCurrentUser();
+        if (!user?.id) return { error: { message: 'Non authentifié.' } };
+        return await this.supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('user_id', user.id)
+            .eq('read', false);
     },
 
     async initiateLyannHelp(requestId) {
