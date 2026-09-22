@@ -33,6 +33,48 @@ function isPublishedService(row) {
     return true;
 }
 
+function slugifyServiceTitle(title) {
+    return String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'service';
+}
+
+// Production `services` stores category / is_active. The later canonical shape
+// uses slug / active / pricing_model. Writes try the live production columns
+// first, then the canonical ones if PostgREST says a column is missing.
+function productionServiceInsert(userId, title, extra = {}) {
+    const row = {
+        owner_id: userId,
+        title,
+        category: extra.category || title,
+        description: extra.description || title,
+        is_active: true
+    };
+    if (extra.price_type) row.price_type = extra.price_type;
+    if (extra.base_price != null) row.base_price = extra.base_price;
+    return row;
+}
+
+function canonicalServiceInsert(userId, title, extra = {}) {
+    const row = {
+        owner_id: userId,
+        title,
+        slug: extra.slug || slugifyServiceTitle(title),
+        description: extra.description || title,
+        active: true
+    };
+    if (extra.pricing_model) row.pricing_model = extra.pricing_model;
+    if (extra.indicative_price != null) row.indicative_price = extra.indicative_price;
+    return row;
+}
+
+async function insertServicesForOwner(supabase, userId, items) {
+    const production = items.map(item => productionServiceInsert(userId, item.title, item));
+    let result = await supabase.from('services').insert(production).select();
+    if (!result.error) return result;
+    if (!isMissingColumnError(result.error)) return result;
+    const canonical = items.map(item => canonicalServiceInsert(userId, item.title, item));
+    return supabase.from('services').insert(canonical).select();
+}
+
 function presentService(row) {
     if (!row) return row;
     const category = typeof row.category === 'string' ? row.category : '';
@@ -504,12 +546,7 @@ const LYANN_API_CLIENT = {
             selectedSkills.forEach(title => {
                 const titleLower = title.toLowerCase().trim();
                 if (!existingMap.has(titleLower)) {
-                    skillsToInsert.push({
-                        owner_id: userId,
-                        title: title,
-                        slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'service',
-                        active: true
-                    });
+                    skillsToInsert.push({ title, description: title, category: title });
                 }
             });
 
@@ -531,9 +568,7 @@ const LYANN_API_CLIENT = {
 
             // Execute insertions if any
             if (skillsToInsert.length > 0) {
-                const { error: insErr } = await this.supabase
-                    .from('services')
-                    .insert(skillsToInsert);
+                const { error: insErr } = await insertServicesForOwner(this.supabase, userId, skillsToInsert);
 
                 if (insErr) {
                     console.error(`[ProfileSkillsSave]\nuserId=${userId}\nselectedCount=${selectedSkills.length}\naddedCount=0\nremovedCount=0\nresult=ERROR\nerrorCode=${insErr.code || 'INSERT_ERR'}\nerrorMessage=${insErr.message}`);
@@ -1618,19 +1653,24 @@ const LYANN_API_CLIENT = {
                               billing === '/ jour' ? 'DAILY' :
                               billing === 'Sur devis' ? 'QUOTE' : 'FLAT_RATE';
         const indicative_price = (price === 'Sur devis' || isNaN(parseFloat(price))) ? null : parseFloat(price);
-        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-        const { data, error } = await this.supabase
-            .from('services')
-            .insert({ owner_id: userId, title, slug, description, pricing_model, indicative_price, active: true })
-            .select()
-            .single();
+        const { data, error } = await insertServicesForOwner(this.supabase, userId, [{
+            title,
+            description,
+            category: title,
+            slug: slugifyServiceTitle(title),
+            pricing_model,
+            indicative_price,
+            price_type: pricing_model,
+            base_price: indicative_price
+        }]);
         if (error) throw error;
+        const row = Array.isArray(data) ? data[0] : data;
         return {
-            id: data.id,
-            title: data.title,
-            price: data.indicative_price ? data.indicative_price.toString() : 'Sur devis',
+            id: row.id,
+            title: row.title,
+            price: row.indicative_price || row.base_price ? String(row.indicative_price || row.base_price) : 'Sur devis',
             billing,
-            details: data.description || '',
+            details: row.description || '',
             status: 'Actif'
         };
     },

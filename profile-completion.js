@@ -781,7 +781,7 @@
                     if (skillsError) {
                         skillsUpdateStatus = 'ERROR';
                         console.error(`[ProfileSaveResult] profilesUpdate=SUCCESS skillsUpdate=ERROR avatarUpload=${avatarUploadStatus} errorCode=${skillsError.code || 'SKILLS_ERR'} errorMessage=${skillsError.message || 'Skills sync failed'}`);
-                        const errText = `Échec de la sauvegarde des compétences (${skillsError.code || 'ERR'}): ${skillsError.message || 'Erreur inconnue'}`;
+                        const errText = "Les compétences n’ont pas pu être enregistrées. Réessayez.";
                         if (window.lyannAlert) window.lyannAlert(errText);
                         else alert(errText);
                         nextBtn.disabled = false;
