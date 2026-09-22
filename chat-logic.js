@@ -317,6 +317,16 @@ let displayName = name;
         initialNeed = null;
     }
 
+    currentChatContact = { id: contactId, name: displayName, avatar: displayAvatar };
+    if (isLyannSupportContact(contactId)) {
+        currentChatContact.requestId = null;
+        hideChatMissionChrome();
+    }
+    const warmedMessages = window.LYANN_MESSAGING_REPOSITORY?.peekMessages?.(getMyId(), contactId);
+    if (Array.isArray(warmedMessages)) {
+        await renderMessages(warmedMessages);
+    }
+
     if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function' && contactId && isUUID(contactId) && !isLyannSupportContact(contactId)) {
         try {
             const prof = await window.LYANN_API_CLIENT.getUserProfile(contactId);
@@ -437,7 +447,7 @@ window.refreshChatUI = async function () {
         } catch(e) {}
     }
 
-    const messagesPromise = renderMessages(null, supportThread ? { fresh: true } : undefined);
+    const messagesPromise = renderMessages(null, { fresh: true });
 
     // 1. Fetch persistent request context for this conversation from request_invitations / requests
     let requestContext = null;
@@ -1055,7 +1065,7 @@ async function renderMessages(passedMessages = null, options = {}) {
 
     // Quote context is prepared by the shared messaging repository in one cached batch.
     let realQuotes = [];
-    if (window.LYANN_MESSAGING_REPOSITORY && isUUID(currentChatContact.id)) {
+    if (!Array.isArray(passedMessages) && window.LYANN_MESSAGING_REPOSITORY && isUUID(currentChatContact.id)) {
         try {
             realQuotes = await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), currentChatContact.id);
         } catch(err) {

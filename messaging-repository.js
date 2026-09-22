@@ -9,6 +9,43 @@
   const QUOTE_CONTEXT_TTL_MS = 10_000;
   const LIST_TTL_MS = 10_000;
 
+  const warm = { userId: null, conversations: null, messages: new Map(), byConversation: new Map(), at: 0 };
+  let warmPromise = null;
+
+  function bindWarmUser(userId) {
+    if (warm.userId === userId) return;
+    warm.userId = userId;
+    warm.conversations = null;
+    warm.messages = new Map();
+    warm.byConversation = new Map();
+    warm.at = 0;
+  }
+
+  function peekConversations(userId) {
+    return warm.userId === userId ? warm.conversations : null;
+  }
+
+  function peekMessages(userId, contactId) {
+    if (warm.userId !== userId || !contactId) return null;
+    return warm.messages.get(String(contactId)) || null;
+  }
+
+  function rememberMessages(userId, contactId, conversationId, rows) {
+    bindWarmUser(userId);
+    warm.messages.set(String(contactId), rows || []);
+    if (conversationId) warm.byConversation.set(String(conversationId), String(contactId));
+    warm.at = Date.now();
+  }
+
+  function forgetWarmMessages(userId, contactId, conversationId) {
+    if (conversationId && warm.byConversation.has(String(conversationId))) {
+      const mapped = warm.byConversation.get(String(conversationId));
+      warm.messages.delete(mapped);
+      warm.byConversation.delete(String(conversationId));
+    }
+    if (contactId && (!userId || warm.userId === userId)) warm.messages.delete(String(contactId));
+  }
+
   function api() { return window.LYANN_API_CLIENT || window.apiClient || null; }
   function cache() { return window.LYANN_DATA_CACHE || null; }
   function pairKey(userId, contactId) { return [String(userId || ''), String(contactId || '')].sort().join(':'); }
@@ -48,6 +85,8 @@
   async function listConversations(userId, options = {}) {
     const client = api();
     if (!client?.supabase || !userId) return [];
+    const warmedList = peekConversations(userId);
+    if (warmedList && !options.fresh) return warmedList;
     const c = cache();
     const key = String(userId);
     if (options.fresh && c) c.invalidate('chat-conversation-list', key);
@@ -103,7 +142,7 @@
         return `${firstName}${lastInitial}`.trim() || 'Membre LYANN';
       }
 
-      return conversationIds.map((conversationId) => {
+      const rows = conversationIds.map((conversationId) => {
         const contactId = contactByConversation.get(conversationId);
         if (!contactId) return null;
         const profile = profilesById.get(contactId) || null;
@@ -118,16 +157,26 @@
         if (!a.pinned && b.pinned) return 1;
         return new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0);
       });
+      bindWarmUser(userId);
+      warm.conversations = rows;
+      warm.at = Date.now();
+      return rows;
     };
 
-    return c ? c.dedupe('chat-conversation-list', key, loader, LIST_TTL_MS) : loader();
+    const listed = c ? await c.dedupe('chat-conversation-list', key, loader, LIST_TTL_MS) : await loader();
+    bindWarmUser(userId);
+    warm.conversations = listed || [];
+    warm.at = Date.now();
+    return listed || [];
   }
 
   async function getMessages(userId, contactId, options = {}) {
     const client = api();
     if (!client?.supabase || !userId || !contactId) return [];
+    const cached = peekMessages(userId, contactId);
+    if (Array.isArray(cached) && !options.fresh) return cached;
     const conversationId = await findConversationId(userId, contactId, options);
-    if (!conversationId) return [];
+    if (!conversationId) return cached || [];
     const c = cache();
     if (options.fresh && c) c.invalidate('chat-messages', conversationId);
     const loader = async () => {
@@ -135,7 +184,23 @@
       if (error) throw error;
       return (data || []).map((row) => mapMessage(row, userId));
     };
-    return c ? c.dedupe('chat-messages', conversationId, loader, MESSAGES_TTL_MS) : loader();
+    const rows = c ? await c.dedupe('chat-messages', conversationId, loader, MESSAGES_TTL_MS) : await loader();
+    rememberMessages(userId, contactId, conversationId, rows);
+    return rows;
+  }
+
+  async function warmInbox(userId) {
+    if (!userId) return [];
+    if (warmPromise) return warmPromise;
+    if (warm.userId === userId && warm.conversations && Date.now() - warm.at < 20000) return warm.conversations;
+    warmPromise = (async () => {
+      const rows = await listConversations(userId, { fresh: true });
+      const recent = [...rows].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)).slice(0, 5);
+      if (recent[0]) await getMessages(userId, recent[0].contactId, { fresh: true }).catch(() => []);
+      await Promise.all(recent.slice(1).map((row) => getMessages(userId, row.contactId, { fresh: true }).catch(() => [])));
+      return rows;
+    })().finally(() => { warmPromise = null; });
+    return warmPromise;
   }
 
   async function getQuoteContext(userId, contactId, options = {}) {
@@ -171,6 +236,7 @@
   }
 
   function invalidateConversation(userId, contactId, conversationId) {
+    forgetWarmMessages(userId, contactId, conversationId);
     const c = cache();
     if (!c) return;
     if (userId && contactId) {
@@ -181,8 +247,12 @@
     }
     if (conversationId) c.invalidate('chat-messages', conversationId);
   }
-  function invalidateMessages(conversationId) { const c = cache(); if (c && conversationId) c.invalidate('chat-messages', conversationId); }
+  function invalidateMessages(conversationId) {
+    forgetWarmMessages(null, null, conversationId);
+    const c = cache();
+    if (c && conversationId) c.invalidate('chat-messages', conversationId);
+  }
   function invalidateQuoteContext(userId, contactId) { const c = cache(); if (c && userId && contactId) c.invalidate('chat-quote-context', pairKey(userId, contactId)); }
 
-  window.LYANN_MESSAGING_REPOSITORY = { findConversationId, listConversations, getMessages, getQuoteContext, invalidateConversation, invalidateMessages, invalidateQuoteContext };
+  window.LYANN_MESSAGING_REPOSITORY = { findConversationId, listConversations, getMessages, getQuoteContext, invalidateConversation, invalidateMessages, invalidateQuoteContext, peekConversations, peekMessages, warmInbox };
 })();

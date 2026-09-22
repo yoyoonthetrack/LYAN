@@ -203,6 +203,10 @@
             const row = document.createElement('button');
             row.type = 'button';
             row.className = 'chat-contact-item';
+            row.dataset.chatMemberId = conversation.contactId || conversation.id || '';
+            row.setAttribute('data-chat-member-id', row.dataset.chatMemberId);
+            const activeId = window.LYANN_ACTIVE_CHAT_CONTACT?.id;
+            if (activeId && String(activeId) === String(row.dataset.chatMemberId)) row.classList.add('active');
             row.style.cssText = 'width:100%;border:0;background:transparent;text-align:left;';
 
             const avatarWrap = document.createElement('div');
@@ -233,6 +237,26 @@
         });
     }
 
+    function withSupportRow(rows) {
+        const list = Array.isArray(rows) ? rows.slice() : [];
+        const supportId = window.LYANN_SUPPORT_USER_ID;
+        if (supportId && !list.some((row) => row.contactId === supportId)) {
+            list.unshift({
+                contactId: supportId,
+                name: 'Support LYANN',
+                preview: 'Écrivez-nous ici',
+                pinned: true
+            });
+        }
+        return list;
+    }
+
+    function latestConversation(rows) {
+        return [...(rows || [])]
+            .filter((row) => row && row.contactId)
+            .sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0))[0] || null;
+    }
+
     async function renderConversationList() {
         const listContainer = document.getElementById('chatContactsList');
         const repo = window.LYANN_MESSAGING_REPOSITORY;
@@ -240,7 +264,10 @@
         if (!listContainer) return;
 
         const keepVisible = listContainer.querySelector('.chat-contact-item');
-        if (!keepVisible) {
+        const warmed = userId && repo?.peekConversations?.(userId);
+        if (Array.isArray(warmed) && warmed.length) {
+            renderConversationRows(listContainer, withSupportRow(warmed));
+        } else if (!keepVisible) {
             listContainer.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;">Chargement des conversations…</div>';
         }
         if (!userId) {
@@ -255,17 +282,7 @@
 
         try {
             const conversations = await withTimeout(repo.listConversations(userId, { fresh: true }), 8000, 'conversation list');
-            const supportId = window.LYANN_SUPPORT_USER_ID || (window.LYANN_API_CLIENT && await window.LYANN_API_CLIENT.getSupportUserId());
-            let rows = conversations.slice();
-            if (supportId && !rows.some((row) => row.contactId === supportId)) {
-                rows.unshift({
-                    contactId: supportId,
-                    name: 'Support LYANN',
-                    preview: 'Écrivez-nous ici',
-                    pinned: true
-                });
-            }
-            if (rows.length) renderConversationRows(listContainer, rows);
+            if (conversations.length) renderConversationRows(listContainer, withSupportRow(conversations));
             else setListEmptyState(listContainer);
         } catch (error) {
             console.warn('[MESSAGING] canonical conversation list failed', error);
@@ -301,6 +318,53 @@
         }
         document.querySelectorAll('#chatModal .chat-contacts-sidebar').forEach((node) => node.style.removeProperty('display'));
         await renderConversationList();
+    }
+
+    async function openInbox() {
+        if (!await window.LYANN_ROUTER.requireAuthForInteraction('messages')) return false;
+        document.body.classList.remove('lyann-messaging-transition');
+        registerSurfaces();
+        if (!setShellVisible(true)) {
+            window.location.href = 'feed.html?action=messages';
+            return false;
+        }
+        hideAllChildSurfaces();
+        const userId = await resolveCurrentUserId();
+        const repo = window.LYANN_MESSAGING_REPOSITORY;
+        let rows = userId && repo?.peekConversations?.(userId);
+        const listContainer = document.getElementById('chatContactsList');
+        if (Array.isArray(rows) && rows.length && listContainer) {
+            renderConversationRows(listContainer, withSupportRow(rows));
+        }
+        const refreshList = () => {
+            if (!userId || typeof repo?.listConversations !== 'function') return Promise.resolve(rows || []);
+            return repo.listConversations(userId, { fresh: true }).then((fresh) => {
+                const box = document.getElementById('chatContactsList');
+                if (box) {
+                    if (fresh.length) renderConversationRows(box, withSupportRow(fresh));
+                    else setListEmptyState(box);
+                }
+                return fresh;
+            });
+        };
+        if (!Array.isArray(rows) || !rows.length) {
+            try {
+                rows = repo?.warmInbox ? await repo.warmInbox(userId) : await refreshList();
+                if (listContainer && Array.isArray(rows)) {
+                    if (rows.length) renderConversationRows(listContainer, withSupportRow(rows));
+                    else setListEmptyState(listContainer);
+                }
+            } catch (_) {
+                rows = [];
+            }
+        } else {
+            refreshList().catch(() => {});
+        }
+        const last = latestConversation(rows);
+        if (!last) return true;
+        const l = layout();
+        if (l) l.classList.add('mobile-conversation-active', 'has-active-conversation');
+        return openConversation({ contactId: last.contactId, name: last.name, avatar: last.avatar });
     }
 
     function resolveRequestId(options = {}) {
@@ -351,15 +415,19 @@
 
         ensureHydrationGuardStyle();
         const shell = modal();
+        const viewerId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.CURRENT_USER_ID || null;
+        const warmThread = Boolean(viewerId && window.LYANN_MESSAGING_REPOSITORY?.peekMessages?.(viewerId, contactId));
         const alreadyOpen = Boolean(shell && (shell.classList.contains('active') || shell.style.display === 'flex'));
-        if (shell && !alreadyOpen) shell.classList.add('lyann-canonical-hydrating');
-        if (!alreadyOpen) document.body.classList.add('lyann-messaging-transition');
+        const revealNow = alreadyOpen || warmThread;
+        if (shell && !revealNow) shell.classList.add('lyann-canonical-hydrating');
+        if (!revealNow) document.body.classList.add('lyann-messaging-transition');
+        if (warmThread && !alreadyOpen) setShellVisible(true);
         const main = mainArea();
         if (main) main.setAttribute('aria-busy', 'true');
 
         try {
             console.log('[MESSAGING openConversation] calling legacyOpenConversation with:', name, contactId);
-            if (!window.LYANN_SUPPORT_USER_ID && window.LYANN_API_CLIENT?.getSupportUserId) {
+            if (!window.LYANN_SUPPORT_USER_ID && window.LYANN_API_CLIENT?.getSupportUserId && !warmThread) {
                 try { await window.LYANN_API_CLIENT.getSupportUserId(); } catch (_) {}
             }
             const supportThread = Boolean(window.LYANN_SUPPORT_USER_ID && String(contactId) === String(window.LYANN_SUPPORT_USER_ID));
@@ -380,7 +448,7 @@
         } finally {
             if (main) main.removeAttribute('aria-busy');
             document.body.classList.remove('lyann-messaging-transition');
-            if (!alreadyOpen) setShellVisible(true);
+            if (!alreadyOpen && !warmThread) setShellVisible(true);
             if (shell) shell.classList.remove('lyann-canonical-hydrating');
         }
         return true;
@@ -388,7 +456,7 @@
 
     async function open(options = {}) {
         const mode = options.mode || (options.contactId || options.id || options.memberId ? 'conversation' : 'list');
-        return mode === 'conversation' ? openConversation(options) : openList();
+        return mode === 'conversation' ? openConversation(options) : openInbox();
     }
 
     function backToList(event) {
@@ -440,6 +508,7 @@
         __canonical: true,
         open,
         openList,
+        openInbox,
         openConversation,
         backToList,
         close,
@@ -459,14 +528,29 @@
     window.backToChatContacts = (event) => api.backToList(event);
     window.closeLyannChatModal = (event) => api.close(event);
 
+    function warmCurrentInbox(userId) {
+        const snapshot = window.LYANN_AUTH_STATE?.getSnapshot?.() || {};
+        const id = userId || snapshot.userId;
+        if (!id) return;
+        if (!userId && snapshot.authenticated === false) return;
+        window.LYANN_API_CLIENT?.getSupportUserId?.().catch(() => {});
+        window.LYANN_MESSAGING_REPOSITORY?.warmInbox?.(id);
+    }
+
     function boot() {
         ensureHydrationGuardStyle();
         registerSurfaces();
         installFeatureInternalInterception();
+        warmCurrentInbox();
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
     else boot();
+
+    window.addEventListener('lyann:auth-ready', (event) => warmCurrentInbox(event.detail?.userId));
+    window.addEventListener('lyann:auth-state', (event) => {
+        if (event.detail?.authenticated) warmCurrentInbox(event.detail.userId);
+    });
 
     let listRefreshTimer = null;
     window.addEventListener('lyann:chat-activity', () => {

@@ -262,6 +262,7 @@
     const messaging = window.LYANN_MESSAGING;
     if (messaging) {
       if (contactId) return messaging.openConversation({ ...payload, contactId });
+      if (typeof messaging.openInbox === 'function') return messaging.openInbox();
       return messaging.openList();
     }
     const params = new URLSearchParams({ action: 'messages' });
