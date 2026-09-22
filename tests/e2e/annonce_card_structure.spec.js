@@ -144,15 +144,28 @@ test('The publishing wizard asks for a 60-character title, a date mode and a pri
     const modal = document.getElementById('modal-request-help');
     modal.classList.add('active');
     modal.style.display = 'flex';
+    window.LYANN_API_CLIENT = window.LYANN_API_CLIENT || {};
+    window.LYANN_API_CLIENT.suggestRequestTitles = async () => ({
+      titles: [
+        'Réparer une fuite sous l’évier',
+        'Plombier pour évier de cuisine',
+        'Fuite d’évier à réparer'
+      ]
+    });
   });
   const modal = page.locator('#modal-request-help');
   await expect(modal).toBeVisible();
 
   await page.locator('#wizardDescInput').fill("Bonjour, j'ai une fuite sous mon évier de cuisine, il me faudrait quelqu'un pour réparer ça ce week-end.");
   await expect(page.locator('#wizardTitleBlock')).toBeVisible();
+  await expect(page.locator('#wizardTitleChoices label')).toHaveCount(3);
+  await page.locator('#wizardTitleChoices label').first().click();
+  await expect(page.locator('#wizardTitleInput')).toBeVisible();
   await expect(page.locator('#wizardTitleInput')).toHaveAttribute('maxlength', '60');
-  await expect.poll(async () => page.locator('#wizardTitleInput').inputValue()).not.toBe('');
+  await expect(page.locator('#wizardTitleInput')).toHaveValue('Réparer une fuite sous l’évier');
   expect((await page.locator('#wizardTitleInput').inputValue()).length).toBeLessThanOrEqual(60);
+  await page.locator('#wizardTitleInput').fill('Fuite évier cuisine');
+  await expect(page.locator('#wizardTitleInput')).toHaveValue('Fuite évier cuisine');
 
   await page.locator('#wizardBtnNext').click();
   await expect(page.locator('.wizard-step[data-step="2"]')).toBeVisible();

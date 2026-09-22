@@ -1,30 +1,17 @@
 'use strict';
 
-// Suggests the short annonce title (60 characters) from the free-text need.
-// The suggestion is always a suggestion: the author reviews and can rewrite it
-// before publishing, and the server never persists anything here.
-//
-// The AI call is optional. When no provider is configured, or when the provider
-// is slow, rate-limited or malformed, a deterministic local summary is returned
-// instead so publishing is never blocked by an external dependency.
+// Suggests three short annonce titles (60 characters each) from the free-text need.
+// The titles come from the configured AI provider only: the server never invents
+// local stand-ins. The author still chooses one and may rewrite it before publishing.
+// Nothing is persisted here.
 
 const TITLE_MAX = 60;
+const TITLE_COUNT = 3;
 const DESCRIPTION_MIN = 10;
 const DESCRIPTION_MAX = 4000;
-const PROVIDER_TIMEOUT_MS = 6000;
+const PROVIDER_TIMEOUT_MS = 10000;
 const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
-
-// Openings that carry no information about the need itself.
-const LEAD_NOISE = [
-    /^(bonjour|bonsoir|salut|hello|coucou|re)\b[\s,!.:-]*/i,
-    // Longest alternatives first: "d'un" would otherwise consume "d'une".
-    /^(j['’]aurais|j['’]ai)\s+besoin\s+(d['’]une|d['’]un|des|de\s+la|du|de|d['’])\s*/i,
-    /^je\s+(cherche|recherche|voudrais|souhaite|veux)\s+(une|un|des|de\s+la|du|a|à)?\s*/i,
-    /^il\s+me\s+(faudrait|faut)\s+(un|une|des)?\s*/i,
-    /^(je\s+suis\s+à\s+la\s+recherche\s+d['’])\s*/i,
-    /^(qui\s+(peut|pourrait)\s+m['’]aider\s+(a|à)?)\s*/i
-];
 
 function squash(value) {
     return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
@@ -34,7 +21,6 @@ function capitalize(value) {
     return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 }
 
-// Cuts on a word boundary so a title never ends mid-word.
 function clampToTitle(value) {
     const text = squash(value).replace(/^["'«»“”\s]+|["'«»“”\s.,;:!?-]+$/g, '');
     if (text.length <= TITLE_MAX) return text;
@@ -44,41 +30,56 @@ function clampToTitle(value) {
     return dropDanglingWord(trimmed.replace(/[\s,;:.-]+$/, ''));
 }
 
-// Cutting on a word boundary can still leave a trailing preposition or article
-// ("... mon terrain de 500m2 à"), which reads as an unfinished sentence.
 function dropDanglingWord(value) {
     return value.replace(/\s+(a|à|de|du|des|d['’]|le|la|les|un|une|en|et|ou|pour|sur|dans|avec|chez|par)$/i, '');
 }
 
-function heuristicTitle(description) {
-    let text = squash(description);
-    let changed = true;
-    while (changed) {
-        changed = false;
-        for (const pattern of LEAD_NOISE) {
-            const stripped = text.replace(pattern, '');
-            if (stripped !== text) {
-                text = stripped;
-                changed = true;
-            }
-        }
-    }
-    // The opening clause names the need; the rest holds the details that belong to
-    // the full description shown on the annonce page. A very short opening clause
-    // ("Urgent") says nothing on its own, so it absorbs the following one.
-    const clauses = text.split(/(?<=[.!?])\s+|\s*[,;]\s*/).map(squash).filter(Boolean);
-    let summary = clauses[0] || text;
-    for (let i = 1; i < clauses.length && summary.length < 25; i += 1) {
-        summary = `${summary}, ${clauses[i]}`;
-    }
-    return capitalize(clampToTitle(summary));
+function sanitizeProviderTitle(raw) {
+    const line = squash(String(raw || ''));
+    const stripped = line
+        .replace(/^\s*(?:[-*•]|\d+[.)\-:])\s*/, '')
+        .replace(/^titre\s*\d*\s*:?\s*/i, '');
+    return capitalize(clampToTitle(stripped));
 }
 
-function sanitizeProviderTitle(raw) {
-    const firstLine = squash(String(raw || '').split('\n').find(line => squash(line)) || '');
-    // Models occasionally answer with a "Titre : ..." preamble or bullet marker.
-    const stripped = firstLine.replace(/^[-*•\d.\s]*/, '').replace(/^titre\s*:?\s*/i, '');
-    return capitalize(clampToTitle(stripped));
+function uniqueTitles(values) {
+    const seen = new Set();
+    const titles = [];
+    for (const value of values || []) {
+        const title = sanitizeProviderTitle(value);
+        const key = title.toLowerCase();
+        if (title.length < 3 || seen.has(key)) continue;
+        seen.add(key);
+        titles.push(title);
+        if (titles.length === TITLE_COUNT) break;
+    }
+    return titles;
+}
+
+function parseJsonTitles(raw) {
+    const text = String(raw || '');
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidate = fenced ? fenced[1] : text;
+    const start = candidate.search(/[\[{]/);
+    if (start < 0) return [];
+    const opening = candidate[start];
+    const closing = opening === '[' ? ']' : '}';
+    const end = candidate.lastIndexOf(closing);
+    if (end <= start) return [];
+    try {
+        const parsed = JSON.parse(candidate.slice(start, end + 1));
+        const list = Array.isArray(parsed) ? parsed : parsed.titles;
+        return Array.isArray(list) ? uniqueTitles(list) : [];
+    } catch (_) {
+        return [];
+    }
+}
+
+function parseProviderTitles(raw) {
+    const fromJson = parseJsonTitles(raw);
+    if (fromJson.length === TITLE_COUNT) return fromJson;
+    const fromLines = uniqueTitles(String(raw || '').split(/\n+/));
+    return fromLines.length >= fromJson.length ? fromLines : fromJson;
 }
 
 function providerConfig(env) {
@@ -91,7 +92,7 @@ function providerConfig(env) {
     };
 }
 
-async function requestProviderTitle(config, description, fetchImpl) {
+async function requestProviderTitles(config, description, fetchImpl) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
     try {
@@ -101,29 +102,29 @@ async function requestProviderTitle(config, description, fetchImpl) {
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
             body: JSON.stringify({
                 model: config.model,
-                temperature: 0.2,
-                max_tokens: 40,
+                temperature: 0.5,
+                max_tokens: 180,
                 messages: [
                     {
                         role: 'system',
                         content: [
-                            'Tu résumes une demande de service en un titre court en français.',
+                            'Tu proposes exactement 3 titres courts distincts, en français, pour une demande de service.',
+                            'Chaque titre reprend le besoin réel de la personne : le service et son objet.',
                             `Contraintes: ${TITLE_MAX} caractères maximum, une seule ligne, pas de guillemets,`,
                             'pas de point final, pas de prix, pas de date, pas de nom de personne.',
-                            'Garde le service demandé et son objet. Réponds uniquement par le titre.'
+                            'Le premier titre est le plus direct. Le deuxième varie l’angle. Le troisième est plus court.',
+                            'Réponds uniquement par un JSON: {"titles":["...","...","..."]}'
                         ].join(' ')
                     },
                     { role: 'user', content: description }
                 ]
             })
         });
-        if (!response.ok) return null;
+        if (!response.ok) return [];
         const payload = await response.json();
-        const title = sanitizeProviderTitle(payload?.choices?.[0]?.message?.content);
-        return title && title.length >= 3 ? title : null;
+        return parseProviderTitles(payload?.choices?.[0]?.message?.content);
     } catch (_) {
-        // Timeout, network failure or malformed payload: fall back silently.
-        return null;
+        return [];
     } finally {
         clearTimeout(timer);
     }
@@ -160,8 +161,6 @@ function createRequestSummaryHandler({ getSupabaseClient, env = process.env, fet
             return res.status(400).json({ error: 'Description invalide pour générer un titre.' });
         }
 
-        // Only a signed-in member can publish an annonce, so only a signed-in member
-        // may spend a provider call.
         let userId = null;
         try {
             const { data, error } = await getSupabaseClient(req).auth.getUser();
@@ -172,14 +171,23 @@ function createRequestSummaryHandler({ getSupabaseClient, env = process.env, fet
         if (!userId) return res.status(401).json({ error: 'Connexion requise.' });
         if (!allow(userId)) return res.status(429).json({ error: 'Trop de suggestions demandées. Réessayez dans quelques minutes.' });
 
-        const fallback = heuristicTitle(description);
         const config = providerConfig(env);
-        const suggestion = config ? await requestProviderTitle(config, description, fetchImpl) : null;
-        const title = suggestion || fallback;
+        if (!config) {
+            return res.status(503).json({ error: 'Les titres automatiques ne sont pas disponibles pour le moment.' });
+        }
+
+        let titles = await requestProviderTitles(config, description, fetchImpl);
+        if (titles.length < TITLE_COUNT) {
+            titles = await requestProviderTitles(config, description, fetchImpl);
+        }
+        if (titles.length < TITLE_COUNT) {
+            return res.status(502).json({ error: 'Les titres n’ont pas pu être proposés. Réessayez.' });
+        }
 
         return res.json({
-            title,
-            source: suggestion ? 'AI' : 'HEURISTIC',
+            titles,
+            title: titles[0],
+            source: 'AI',
             maxLength: TITLE_MAX
         });
     };
@@ -187,8 +195,9 @@ function createRequestSummaryHandler({ getSupabaseClient, env = process.env, fet
 
 module.exports = {
     createRequestSummaryHandler,
-    heuristicTitle,
     clampToTitle,
     sanitizeProviderTitle,
-    TITLE_MAX
+    parseProviderTitles,
+    TITLE_MAX,
+    TITLE_COUNT
 };

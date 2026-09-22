@@ -1808,27 +1808,32 @@ const LYANN_API_CLIENT = {
         return data;
     },
 
-    // Short title suggestion for the annonce wizard. The summary is produced
-    // server-side so a single owner decides how a description becomes a title.
-    // Returns null on any failure: the author then writes the title themselves.
-    async suggestRequestTitle(description) {
+    // Three AI titles for the annonce wizard. The server is the only owner of
+    // generation: the client never invents stand-in titles when the call fails.
+    async suggestRequestTitles(description) {
         const text = String(description || '').trim();
-        if (!this.supabase || text.length < 10) return null;
+        if (text.length < 10) return { error: 'INVALID' };
+        if (!this.supabase) return { error: 'AUTH' };
         try {
             const { data: { session } } = await this.supabase.auth.getSession();
-            if (!session?.access_token) return null;
+            if (!session?.access_token) return { error: 'AUTH' };
             const fetcher = typeof window.lyannBackendFetch === 'function' ? window.lyannBackendFetch : fetch;
             const response = await fetcher('/v1/requests/summary', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
                 body: JSON.stringify({ description: text })
             });
-            if (!response.ok) return null;
+            if (response.status === 401) return { error: 'AUTH' };
+            if (response.status === 429) return { error: 'RATE' };
+            if (!response.ok) return { error: 'UNAVAILABLE' };
             const payload = await response.json();
-            const title = typeof payload?.title === 'string' ? payload.title.trim() : '';
-            return title ? title.slice(0, LYANN_REQUEST_TITLE_MAX) : null;
+            const titles = Array.isArray(payload?.titles)
+                ? payload.titles.map(title => String(title || '').trim().slice(0, LYANN_REQUEST_TITLE_MAX)).filter(title => title.length >= 3)
+                : [];
+            if (titles.length < 3) return { error: 'UNAVAILABLE' };
+            return { titles: titles.slice(0, 3) };
         } catch (_) {
-            return null;
+            return { error: 'UNAVAILABLE' };
         }
     },
 

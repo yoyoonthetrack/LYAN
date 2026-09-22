@@ -889,13 +889,16 @@
                     <!-- Le titre court est proposé d'après la description, puis reste modifiable.
                          La description complète, elle, n'apparaît que sur la page de l'annonce. -->
                     <div id="wizardTitleBlock" hidden style="margin-top: 20px;">
-                        <label for="wizardTitleInput">Titre court de l'annonce</label>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Proposé d'après votre description. C'est ce titre que les Lyanneurs voient en premier : gardez-le court et clair.</p>
-                        <input type="text" id="wizardTitleInput" class="modal-input" maxlength="60" style="margin: 0;" placeholder="Ex: Photographe pour un anniversaire">
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 6px;">
-                            <span id="wizardTitleCounter" style="font-size: 0.8rem; color: var(--text-muted);" aria-live="polite">0 / 60</span>
-                            <button type="button" id="wizardTitleSuggest" class="btn btn-outline" style="font-size: 0.82rem; padding: 7px 12px;">Proposer un autre titre</button>
+                        <p id="wizardTitleHeading" style="font-weight: 700; margin: 0 0 4px;">Choisissez un titre</p>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Trois propositions d’après votre besoin. Choisissez-en une, puis corrigez-la si besoin. 60 caractères maximum.</p>
+                        <p id="wizardTitleStatus" class="wizard-title-status" hidden></p>
+                        <div id="wizardTitleChoices" class="wizard-title-choices" role="radiogroup" aria-labelledby="wizardTitleHeading"></div>
+                        <div id="wizardTitleEdit" hidden style="margin-top: 12px;">
+                            <label for="wizardTitleInput">Corriger le titre choisi</label>
+                            <input type="text" id="wizardTitleInput" class="modal-input" maxlength="60" style="margin: 0;" placeholder="Ex: Photographe pour un anniversaire">
+                            <span id="wizardTitleCounter" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 6px;" aria-live="polite">0 / 60</span>
                         </div>
+                        <button type="button" id="wizardTitleSuggest" class="btn btn-outline" hidden style="font-size: 0.82rem; padding: 7px 12px; margin-top: 10px;">Proposer d'autres titres</button>
                     </div>
                 </div>
 

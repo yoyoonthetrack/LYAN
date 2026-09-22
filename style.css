@@ -10915,6 +10915,48 @@ body.is-native-app .navbar.scrolled,
     display: none !important;
 }
 
+.wizard-title-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.wizard-title-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: #fff;
+    cursor: pointer;
+}
+.wizard-title-choice:has(input:checked) {
+    border-color: var(--primary);
+    background: rgba(74, 124, 89, 0.08);
+}
+.wizard-title-choice input {
+    margin-top: 4px;
+    flex-shrink: 0;
+}
+.wizard-title-choice span {
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.35;
+}
+.wizard-title-status {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+}
+.wizard-title-status.is-error {
+    color: #8A6405;
+}
+.wizard-title-status[hidden],
+#wizardTitleEdit[hidden] {
+    display: none !important;
+}
+
 .wizard-step.fade-out {
     opacity: 0;
     transform: translateX(-20px);

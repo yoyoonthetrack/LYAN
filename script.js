@@ -7126,49 +7126,101 @@ safeDomReady(() => {
     }
 
     // --- STEP 1 SHORT TITLE ENGINE ---
-    // The annonce title is a 60-character summary of the description: it is what a
-    // reader sees on every card, while the full description belongs to the annonce
-    // page. The summary is suggested by the server and stays editable; once the
-    // author types in the field, nothing overwrites their wording.
+    // The AI proposes three titles from the written need. The author picks one,
+    // then may rewrite it. The client never invents substitute titles.
     const TITLE_MAX = window.LYANN_REQUEST_TITLE_MAX || 60;
     const titleBlock = document.getElementById('wizardTitleBlock');
     const titleInput = document.getElementById('wizardTitleInput');
     const titleCounter = document.getElementById('wizardTitleCounter');
     const titleSuggestBtn = document.getElementById('wizardTitleSuggest');
+    const titleChoices = document.getElementById('wizardTitleChoices');
+    const titleStatus = document.getElementById('wizardTitleStatus');
+    const titleEdit = document.getElementById('wizardTitleEdit');
     const descriptionInput = document.getElementById('wizardDescInput');
     let titleTouched = false;
+    let titlePicked = false;
     let titleSuggestedFor = '';
     let titleTimer = null;
+    let titleRequestSeq = 0;
 
     function syncWizardTitleCounter() {
         if (titleCounter && titleInput) titleCounter.textContent = `${titleInput.value.length} / ${TITLE_MAX}`;
     }
 
-    // Plain truncation, used only when the server suggestion is unavailable: it gives
-    // the author something to edit rather than an empty required field.
-    function truncateForTitle(text) {
-        const clean = String(text || '').replace(/\s+/g, ' ').trim();
-        if (clean.length <= TITLE_MAX) return clean;
-        const cut = clean.slice(0, TITLE_MAX + 1);
-        const lastSpace = cut.lastIndexOf(' ');
-        return (lastSpace > 20 ? cut.slice(0, lastSpace) : clean.slice(0, TITLE_MAX)).trim();
+    function setWizardTitleStatus(message, isError = false) {
+        if (!titleStatus) return;
+        if (!message) {
+            titleStatus.hidden = true;
+            titleStatus.textContent = '';
+            return;
+        }
+        titleStatus.hidden = false;
+        titleStatus.textContent = message;
+        titleStatus.classList.toggle('is-error', isError);
+    }
+
+    function renderWizardTitleChoices(titles) {
+        if (!titleChoices) return;
+        titleChoices.replaceChildren();
+        titles.forEach((text, index) => {
+            const label = document.createElement('label');
+            label.className = 'wizard-title-choice';
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'wizardTitleChoice';
+            radio.value = String(index);
+            const span = document.createElement('span');
+            span.textContent = text;
+            label.append(radio, span);
+            radio.addEventListener('change', () => {
+                if (!radio.checked || !titleInput) return;
+                titleInput.value = text;
+                titlePicked = true;
+                titleTouched = false;
+                if (titleEdit) titleEdit.hidden = false;
+                syncWizardTitleCounter();
+            });
+            titleChoices.appendChild(label);
+        });
     }
 
     async function suggestWizardTitle({ force = false } = {}) {
         if (!titleInput || !descriptionInput) return;
         const description = descriptionInput.value.trim();
         if (description.length < 15) return;
-        if (!force && (titleTouched || description === titleSuggestedFor)) return;
+        if (!force && ((titlePicked || titleTouched) || description === titleSuggestedFor)) return;
         titleSuggestedFor = description;
         if (titleBlock) titleBlock.hidden = false;
-        if (titleSuggestBtn) titleSuggestBtn.disabled = true;
-        const suggestion = await window.LYANN_API_CLIENT?.suggestRequestTitle?.(description);
+        const seq = ++titleRequestSeq;
+        renderWizardTitleChoices([]);
+        if (titleSuggestBtn) {
+            titleSuggestBtn.hidden = true;
+            titleSuggestBtn.disabled = true;
+        }
+        setWizardTitleStatus('Recherche de 3 titres…');
+        const result = await window.LYANN_API_CLIENT?.suggestRequestTitles?.(description);
+        if (seq !== titleRequestSeq) return;
         if (titleSuggestBtn) titleSuggestBtn.disabled = false;
-        // The author may have started writing their own title while the suggestion
-        // was still in flight: their text wins.
-        if (!force && titleTouched) return;
-        titleInput.value = suggestion || truncateForTitle(description);
-        syncWizardTitleCounter();
+        if (!force && (titlePicked || titleTouched)) return;
+
+        if (result?.titles?.length === 3) {
+            setWizardTitleStatus('Choisissez le titre qui convient le mieux.');
+            renderWizardTitleChoices(result.titles);
+            if (titleSuggestBtn) titleSuggestBtn.hidden = false;
+            return;
+        }
+        renderWizardTitleChoices([]);
+        if (titleEdit) titleEdit.hidden = false;
+        if (titleSuggestBtn) titleSuggestBtn.hidden = false;
+        if (result?.error === 'AUTH') {
+            setWizardTitleStatus('Connectez-vous pour recevoir 3 titres proposés d’après votre besoin.', true);
+            return;
+        }
+        if (result?.error === 'RATE') {
+            setWizardTitleStatus('Trop de propositions demandées. Réessayez dans quelques minutes.', true);
+            return;
+        }
+        setWizardTitleStatus('Les titres n’ont pas pu être proposés. Réessayez, ou écrivez le vôtre.', true);
     }
     window.suggestWizardTitle = suggestWizardTitle;
 
@@ -7179,9 +7231,15 @@ safeDomReady(() => {
             titleTimer = setTimeout(() => suggestWizardTitle(), 900);
         });
     }
-    titleInput?.addEventListener('input', () => { titleTouched = true; syncWizardTitleCounter(); });
+    titleInput?.addEventListener('input', () => {
+        titleTouched = true;
+        if (titleInput.value.trim().length >= 3) titlePicked = true;
+        if (titleEdit) titleEdit.hidden = false;
+        syncWizardTitleCounter();
+    });
     titleSuggestBtn?.addEventListener('click', () => {
         titleTouched = false;
+        titlePicked = false;
         suggestWizardTitle({ force: true });
     });
 
@@ -7324,6 +7382,12 @@ safeDomReady(() => {
 
                 if (!desc) {
                     alert("Veuillez décrire votre besoin.");
+                    return;
+                }
+                const chosenTitle = (document.getElementById('wizardTitleInput')?.value || '').trim();
+                if (chosenTitle.length < 3) {
+                    alert("Choisissez un des trois titres, puis corrigez-le si besoin.");
+                    if (typeof suggestWizardTitle === 'function') suggestWizardTitle({ force: true });
                     return;
                 }
                 
