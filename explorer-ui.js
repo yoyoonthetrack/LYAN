@@ -7,7 +7,7 @@
         const repo = window.LYANN_EXPLORER_REPOSITORY;
         const escape = value => window.escapeHtmlAttr(String(value ?? ''));
         const params = new URLSearchParams(location.search);
-        let mode = params.get('mode') === 'lyanneurs' ? 'lyanneurs' : 'annonces';
+        let mode = params.get('mode') === 'annonces' ? 'annonces' : 'lyanneurs';
         let filters = { query: params.get('query') || params.get('searchInput') || '',
             category: params.get('category') || '', service: params.get('service') || '',
             area: params.get('area') ?? params.get('citySelect') ?? params.get('locationSelect') ?? '',
@@ -209,7 +209,6 @@
                 </div>
 
                 <div class="explorer-profile-actions" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: auto; padding-top: 10px;">
-                    <button class="btn btn-outline" data-action="profile" data-id="${escape(p.id)}" style="width: 100% !important; min-height: 44px; justify-content: center; font-weight: 700; border-radius: 22px; font-size: 0.9rem; box-sizing: border-box;">Voir le profil</button>
                     ${!isSelf ? `<button class="btn lyann-cta-primary" data-action="contact" data-id="${escape(p.id)}" style="width: 100% !important; min-height: 44px; justify-content: center; font-weight: 700; border-radius: 22px; font-size: 0.9rem; box-sizing: border-box;">Contacter</button>` : ''}
                 </div>
             </article>`;
@@ -246,7 +245,7 @@
                 tab.tabIndex = active ? 0 : -1;
             });
             $('explorerPanel').setAttribute('aria-labelledby', `${mode}Tab`);
-            $('explorerSearchInput').placeholder = mode === 'annonces' ? 'De quoi avez-vous besoin ?' : 'Quel service recherchez-vous ?';
+            $('explorerSearchInput').placeholder = mode === 'annonces' ? 'De quoi avez-vous besoin ?' : 'Nom, activité ou commune';
             const publishBtn = root.querySelector('.explorer-results-heading .explorer-publish');
             if (publishBtn) {
                 publishBtn.hidden = mode === 'lyanneurs';
@@ -317,6 +316,12 @@
             search();
         }
         root.addEventListener('click', event => {
+            const profileCard = event.target.closest('.explorer-profile-card');
+            if (profileCard && !event.target.closest('button, a, input, select, textarea')) {
+                const memberId = profileCard.dataset.memberId;
+                if (memberId) window.openPublicMemberProfile?.(memberId);
+                return;
+            }
             const button = event.target.closest('button');
             if (!button) return;
             if (button.dataset.mode) { mode = button.dataset.mode; search(); return; }
@@ -336,7 +341,7 @@
                     if (button.dataset.id) window.openPublicMemberProfile?.(button.dataset.id);
                     else window.LYANN_ROUTER.requireAuthForInteraction('requestAuthor', {requestId: button.closest('[data-request-id]')?.dataset.requestId});
                     break;
-                case 'contact': if (row) window.LYANN_ROUTER.go('messages', {contactId:row.id, name:row.name}); break;
+                case 'contact': if (row) window.LYANN_ROUTER.go('messages', {contactId:row.id, name:row.name, direct:true}); break;
                 case 'help':
                     if (row && row.status === 'OPEN' && (!currentUserId() || row.requester_id !== currentUserId())) {
                         window.LYANN_ROUTER.go('messages', { contactId: row.requester_id, requestId: row.id,
@@ -384,10 +389,14 @@
         });
         $('explorerFilters').addEventListener('click', event => { if (event.target === $('explorerFilters')) $('explorerFilters').close(); });
         $('explorerReset').addEventListener('click', () => { $('explorerFilters').close(); reset(); });
-        $('explorerSavedArea').addEventListener('click', () => { $('explorerArea').value = savedArea; });
+        $('explorerSavedArea').addEventListener('click', () => {
+            if (!savedArea) return;
+            filters.area = savedArea;
+            search();
+        });
         window.addEventListener('lyann_request_created', () => { mode = 'annonces'; search(true); });
         window.addEventListener('pageshow', event => { if (event.persisted) search(true); });
-        async function refreshSavedArea(id, useDefault = false) {
+        async function refreshSavedArea(id) {
             savedArea = '';
             $('explorerSavedArea').hidden = true;
             if (!id) return;
@@ -399,10 +408,8 @@
                     // The commune already collected by the profile gives a distance
                     // reference without ever prompting for device location.
                     window.LYANN_GEO?.setViewerLocation(data?.city, data?.territory);
-                    if (useDefault && !params.has('territory') && !params.has('commune') && !params.has('area') && !params.has('citySelect') && !params.has('locationSelect')) Object.assign(filters, inferGeography(data?.city, data?.territory));
                 }
                 $('explorerSavedArea').hidden = !savedArea;
-                if (useDefault && savedArea && !params.has('area') && !params.has('citySelect') && !params.has('locationSelect')) filters.area = savedArea;
             } catch (_) { /* Optional saved location must not block public discovery. */ }
         }
         (async () => {
@@ -415,7 +422,7 @@
                 search(true);
             }, {immediate:false});
             if (!params.has('territory') && !params.has('commune') && filters.area) Object.assign(filters, inferGeography(filters.area));
-            await refreshSavedArea(identity, true);
+            await refreshSavedArea(identity);
             await search();
             if (params.get('openLyann')) {
                 const request = records.find(r => r.id === params.get('openLyann'));

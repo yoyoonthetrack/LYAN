@@ -82,6 +82,35 @@ runOnDomReady(() => {
     // Canonical Native OAuth Callback URL
     const CANONICAL_NATIVE_CALLBACK = 'app.lyann.dom://google-auth';
 
+    function explainGoogleFailure(error) {
+        const raw = String(error?.message || error?.error_description || '');
+        const msg = raw.toLowerCase();
+        if (msg.includes('provider') || msg.includes('not enabled') || msg.includes('unsupported')) {
+            return 'La connexion Google n’est pas disponible pour le moment. Inscris-toi avec ton email et un mot de passe.';
+        }
+        if (msg.includes('redirect') || msg.includes('invalid request')) {
+            return 'La connexion Google n’a pas pu revenir sur LYANN. Réessaie, ou utilise ton email.';
+        }
+        return 'La connexion Google n’a pas abouti. Réessaie, ou inscris-toi avec ton email et un mot de passe.';
+    }
+
+    function showGoogleFailure(error) {
+        const text = explainGoogleFailure(error);
+        if (window.lyannAlert) window.lyannAlert(text);
+        else alert(text);
+    }
+
+    try {
+        const search = new URLSearchParams(window.location.search);
+        const hash = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+        const desc = search.get('error_description') || hash.get('error_description');
+        const code = search.get('error') || hash.get('error');
+        const haystack = `${desc || ''} ${code || ''} ${window.location.href}`.toLowerCase();
+        if ((desc || code) && (haystack.includes('oauth') || haystack.includes('google') || haystack.includes('provider'))) {
+            showGoogleFailure({ message: desc || code });
+        }
+    } catch (_) { /* A missing callback must not block the page. */ }
+
     // Google OAuth Handler (Delegated Event Listener for static & dynamic buttons)
     if (!window.__googleAuthDelegatorBound__) {
         window.__googleAuthDelegatorBound__ = true;
@@ -101,26 +130,31 @@ runOnDomReady(() => {
                 if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                     try {
                         const isNative = (typeof window.isNativePlatform === 'function' && window.isNativePlatform()) || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-                        const redirectUrl = isNative ? CANONICAL_NATIVE_CALLBACK : window.location.origin;
+                        const redirectUrl = isNative ? CANONICAL_NATIVE_CALLBACK : window.location.origin + '/';
                         console.log('[Google Auth] Initiating OAuth with redirectTo:', redirectUrl);
                         const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithOAuth({
                             provider: 'google',
-                            options: { redirectTo: redirectUrl }
+                            options: {
+                                redirectTo: redirectUrl,
+                                skipBrowserRedirect: isNative,
+                                queryParams: { prompt: 'select_account' }
+                            }
                         });
                         if (error) {
                             console.warn("[Google Auth] Supabase Google OAuth error:", error);
-                            if (window.NotificationService) {
-                                window.NotificationService.showToast('warning', 'Connexion Google : configuration du fournisseur requise dans Supabase.');
-                            } else if (window.lyannAlert) {
-                                window.lyannAlert('Connexion Google : configuration du fournisseur requise dans Supabase.');
-                            }
+                            showGoogleFailure(error);
+                        } else if (isNative && data?.url) {
+                            const opened = window.open(data.url, '_blank');
+                            if (!opened) window.location.assign(data.url);
+                        } else if (isNative) {
+                            showGoogleFailure({ message: 'redirect' });
                         }
                     } catch(err) {
                         console.warn("[Google Auth] Error:", err);
-                        if (window.lyannAlert) window.lyannAlert('Erreur lors de la connexion Google: ' + err.message);
+                        showGoogleFailure(err);
                     }
                 } else {
-                    if (window.lyannAlert) window.lyannAlert('Client Supabase indisponible pour la connexion Google.');
+                    showGoogleFailure({ message: 'provider' });
                 }
             }
         });
@@ -143,6 +177,7 @@ runOnDomReady(() => {
                             const { data: sessionData, error: sessionErr } = await window.LYANN_API_CLIENT.supabase.auth.exchangeCodeForSession(code);
                             if (sessionErr) {
                                 console.error('[NATIVE_OAUTH] exchangeCodeForSession error:', sessionErr);
+                                showGoogleFailure(sessionErr);
                             } else {
                                 console.log('[NATIVE_OAUTH] Session established via PKCE code exchange!', sessionData?.session?.user?.id);
                             }
@@ -389,6 +424,16 @@ runOnDomReady(() => {
                         );
 
                         if (error) throw error;
+
+                        if (!data?.session && data?.user?.id && typeof window.LYANN_API_CLIENT.continueSignup === 'function') {
+                            const continued = await window.LYANN_API_CLIENT.continueSignup(data.user.id);
+                            if (!continued.error) {
+                                await window.LYANN_API_CLIENT.login(onboardingData.email, onboardingData.password);
+                            }
+                        }
+                        if (typeof window.updateHeaderAuthState === 'function') {
+                            await window.updateHeaderAuthState();
+                        }
                     }
 
                     const userProfile = {
@@ -405,9 +450,11 @@ runOnDomReady(() => {
                     }
                     localStorage.setItem('lyan_user_profile', JSON.stringify(userProfile));
 
-                    // Show Email Verification Notice
-                    if (window.lyannAlert) {
-                        window.lyannAlert(`📩 Inscription enregistrée ! Un email de confirmation a été envoyé à ${onboardingData.email}. Veuillez valider votre adresse email avant de vous connecter.`);
+                    const reminder = `Compte créé. Tu peux utiliser LYANN tout de suite. Un email de confirmation a été envoyé à ${onboardingData.email} : tu pourras le valider plus tard.`;
+                    if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
+                        window.NotificationService.showToast('info', reminder);
+                    } else if (window.lyannAlert) {
+                        window.lyannAlert(reminder);
                     }
 
                     currentStep = 2;

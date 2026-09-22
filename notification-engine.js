@@ -247,7 +247,7 @@
 
     function getUnreadCount(userId, callerId) {
         const notifs = getUserNotifications(userId, callerId);
-        return notifs.filter(n => !n.read).length;
+        return notifs.filter(n => !n.read && n.type !== 'NEW_MESSAGE').length;
     }
 
     // 3. LOGGING FOR ADMIN INSPECTOR

@@ -33,6 +33,24 @@ function hideChatMissionChrome() {
     if (actionContainer) actionContainer.style.display = 'none';
 }
 
+function renderDirectThreadAction(banner) {
+    const host = banner || document.getElementById('chatMissionContextBar') || document.getElementById('chatMissionContext');
+    if (!host || !currentChatContact) return;
+    const myId = typeof getMyId === 'function' ? getMyId() : null;
+    const startedBy = currentChatContact.startedBy;
+    const iStarted = !startedBy || String(startedBy) === String(myId);
+    const label = iStarted ? 'Demander un service' : 'Faire une offre';
+    const action = iStarted ? 'DIRECT_ASK' : 'DIRECT_OFFER';
+    host.style.display = 'flex';
+    host.className = 'chat-mission-context-card';
+    host.innerHTML = `
+        <div class="chat-context-card-actions" style="display: flex; width: 100%;">
+            <button type="button" class="btn-chat-ctx primary" id="btnDirectThreadAction" style="flex: 1; justify-content: center; min-height: 40px; border-radius: 18px; font-weight: 800;">${label}</button>
+        </div>`;
+    const button = document.getElementById('btnDirectThreadAction');
+    if (button) button.onclick = (event) => { event.stopPropagation(); handleChatAction(action); };
+}
+
 window.isUserBlocked = function(idOrName) {
     if (!idOrName) return false;
     const list = window.getBlockedUsers();
@@ -274,8 +292,9 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
         try { await window.LYANN_API_CLIENT.getSupportUserId(); } catch (_) {}
     }
     
+    const openingDirect = Boolean(initialNeed && initialNeed.direct && !initialNeed.requestId);
     // Safety gate: If contactId is a request UUID, resolve the true requester_id first
-    if (contactId && isUUID(contactId) && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+    if (!openingDirect && contactId && isUUID(contactId) && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         try {
             const { data: reqData } = await window.LYANN_API_CLIENT.supabase
                 .from('requests')
@@ -322,9 +341,17 @@ let displayName = name;
         currentChatContact.requestId = null;
         hideChatMissionChrome();
     }
+    document.querySelectorAll('.chat-modal-layout').forEach(l => {
+        l.classList.add('mobile-conversation-active', 'has-active-conversation');
+    });
     const warmedMessages = window.LYANN_MESSAGING_REPOSITORY?.peekMessages?.(getMyId(), contactId);
     if (Array.isArray(warmedMessages)) {
-        await renderMessages(warmedMessages);
+        renderMessages(warmedMessages);
+    } else {
+        const container = document.getElementById('chatMessagesContainer');
+        if (container && !container.querySelector('.chat-msg-bubble')) {
+            container.innerHTML = '<div class="chat-date-separator"><span>Chargement…</span></div>';
+        }
     }
 
     if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getUserProfile === 'function' && contactId && isUUID(contactId) && !isLyannSupportContact(contactId)) {
@@ -342,6 +369,18 @@ let displayName = name;
     }
 
     currentChatContact = { id: contactId, name: displayName, avatar: displayAvatar };
+    if (openingDirect) {
+        currentChatContact.direct = true;
+        currentChatContact.requestId = null;
+        try {
+            const opened = await window.LYANN_API_CLIENT?.openDirectConversation?.(contactId);
+            currentChatContact.startedBy = opened?.started_by || getMyId();
+            if (opened?.conversation_id) currentChatContact.conversationId = opened.conversation_id;
+        } catch (err) {
+            currentChatContact.startedBy = getMyId();
+        }
+        hideChatMissionChrome();
+    }
     if (isLyannSupportContact(contactId)) {
         currentChatContact.requestId = null;
         hideChatMissionChrome();
@@ -429,9 +468,6 @@ window.refreshChatUI = async function () {
             if (opened?.data?.id) {
                 sharedConvId = opened.data.id;
                 currentChatContact.conversationId = sharedConvId;
-                if (window.LYANN_MESSAGING_REPOSITORY) {
-                    window.LYANN_MESSAGING_REPOSITORY.invalidateConversation(myUserId, currentChatContact.id, sharedConvId);
-                }
             }
         } catch (_) {}
     } else if (!sharedConvId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getOrCreateConversation === 'function' && currentChatContact.id && currentChatContact.id !== 'me') {
@@ -440,26 +476,36 @@ window.refreshChatUI = async function () {
             if (convRes && convRes.data && convRes.data.id) {
                 sharedConvId = convRes.data.id;
                 currentChatContact.conversationId = sharedConvId;
-                if (window.LYANN_MESSAGING_REPOSITORY) {
-                    window.LYANN_MESSAGING_REPOSITORY.invalidateConversation(myUserId, currentChatContact.id, sharedConvId);
-                }
             }
         } catch(e) {}
     }
 
     const messagesPromise = renderMessages(null, { fresh: true });
 
-    // 1. Fetch persistent request context for this conversation from request_invitations / requests
+    // Context and mission are independent. Load them together so the banner
+    // does not wait for a second round trip after the messages are visible.
     let requestContext = null;
+    let mission = null;
     const reqHint = (currentChatContact && currentChatContact.requestId) ? currentChatContact.requestId : null;
-    if (!supportThread && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getConversationRequestContext === 'function') {
-        requestContext = await window.LYANN_API_CLIENT.getConversationRequestContext(sharedConvId, reqHint);
+    if (!supportThread && window.LYANN_API_CLIENT) {
+        const contextPromise = typeof window.LYANN_API_CLIENT.getConversationRequestContext === 'function'
+            ? window.LYANN_API_CLIENT.getConversationRequestContext(sharedConvId, reqHint)
+            : null;
+        const missionPromise = typeof window.LYANN_API_CLIENT.getActiveMissionBetween === 'function'
+            ? window.LYANN_API_CLIENT.getActiveMissionBetween(myUserId, currentChatContact.id)
+            : null;
+        [requestContext, mission] = await Promise.all([contextPromise, missionPromise]);
     }
 
-    // 2. Fetch active mission (if any)
-    let mission = null;
-    if (!supportThread && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getActiveMissionBetween === 'function') {
-        mission = await window.LYANN_API_CLIENT.getActiveMissionBetween(myUserId, currentChatContact.id);
+    if (requestContext && requestContext.startedBy) currentChatContact.startedBy = requestContext.startedBy;
+    if (requestContext && requestContext.direct && !requestContext.request) {
+        currentChatContact.direct = true;
+        currentChatContact.requestId = null;
+        requestContext = null;
+    }
+    const privateRequest = Boolean(requestContext && requestContext.request && (requestContext.request.visibility === 'DIRECT' || requestContext.request.target_user_id));
+    if (currentChatContact?.direct && requestContext?.request && !privateRequest) {
+        requestContext = null;
     }
 
     const banner = document.getElementById('chatMissionContextBar') || document.getElementById('chatMissionContext');
@@ -467,7 +513,27 @@ window.refreshChatUI = async function () {
     const bannerMeta = document.getElementById('chatBannerMeta');
     const dropViewMission = document.getElementById('chatDropViewMission');
 
-    if (!supportThread && requestContext && requestContext.request) {
+    if (!supportThread && privateRequest && banner) {
+        currentChatContact.requestId = requestContext.requestId;
+        currentChatContact.direct = true;
+        const title = escapeSearchHtml(requestContext.request.title);
+        const mine = String(requestContext.requesterId || requestContext.request.requester_id) === String(myUserId);
+        banner.style.display = 'flex';
+        banner.className = 'chat-mission-context-card';
+        banner.innerHTML = `
+            <div class="chat-context-card-info">
+                <span class="chat-context-card-tag" style="font-weight: 800; font-size: 0.72rem; color: var(--primary, #4A7C59); text-transform: uppercase;">Demande privée</span>
+                <div class="chat-context-card-title" style="font-size: 0.88rem; font-weight: 800; color: var(--text, #1E2822); margin-top: 2px;">${title}</div>
+                <p style="margin: 4px 0 0; font-size: 0.78rem; color: var(--text-muted, #5C6E62);">${mine ? 'Envoyée uniquement à cette personne.' : 'Cette demande ne figure pas dans Explorer.'}</p>
+            </div>
+            ${mine ? '' : `<div class="chat-context-card-actions" style="display: flex; margin-top: 6px;"><button type="button" class="btn-chat-ctx primary" id="btnDirectOffer" style="flex: 1; justify-content: center; min-height: 36px; border-radius: 18px;">Faire une offre</button></div>`}
+        `;
+        const offerBtn = document.getElementById('btnDirectOffer');
+        if (offerBtn) offerBtn.onclick = (e) => { e.stopPropagation(); handleChatAction('DIRECT_OFFER'); };
+        if (dropViewMission) dropViewMission.style.display = 'none';
+        const viewMissionBtn = document.getElementById('chatViewMissionBtn');
+        if (viewMissionBtn) viewMissionBtn.style.display = 'none';
+    } else if (!supportThread && requestContext && requestContext.request) {
         currentChatContact.requestId = requestContext.requestId;
         currentChatContact.requestData = requestContext.request;
 
@@ -516,8 +582,17 @@ window.refreshChatUI = async function () {
                 };
             }
         }
-        if (dropViewMission) dropViewMission.style.display = 'flex';
-    } else if (mission) {
+        if (dropViewMission) {
+            dropViewMission.style.display = 'flex';
+            dropViewMission.dataset.requestId = requestContext.requestId;
+        }
+        const viewMissionBtn = document.getElementById('chatViewMissionBtn');
+        if (viewMissionBtn) {
+            viewMissionBtn.style.display = 'flex';
+            viewMissionBtn.dataset.requestId = requestContext.requestId;
+        }
+        window.__lyannChatRequestId = requestContext.requestId;
+    } else if (mission && !currentChatContact.direct) {
         if (banner) {
             banner.style.display = 'flex';
             banner.className = 'chat-mission-context-card';
@@ -550,6 +625,7 @@ window.refreshChatUI = async function () {
         if (dropViewMission) dropViewMission.style.display = 'flex';
     } else {
         hideChatMissionChrome();
+        if (!supportThread && currentChatContact?.direct) renderDirectThreadAction(banner);
     }
 
     // Hide floating separate actions toolbar completely (actions are integrated into the Context Card)
@@ -628,7 +704,9 @@ async function createProductionQuoteForContact(contactId, description, amount, m
     if (typeof window.LYANN_API_CLIENT.getActiveInvitationBetween !== 'function') {
         throw new Error('Proposition indisponible : un devis ne peut être créé que dans un échange lié à une invitation acceptée.');
     }
-    const activeInv = await window.LYANN_API_CLIENT.getActiveInvitationBetween(myId, contactId);
+    const activeInv = currentChatContact?.direct && typeof window.LYANN_API_CLIENT.prepareDirectOffer === 'function'
+        ? await window.LYANN_API_CLIENT.prepareDirectOffer(contactId).then((prepared) => prepared?.invitation_id ? { id: prepared.invitation_id } : null).catch((err) => { throw err; })
+        : await window.LYANN_API_CLIENT.getActiveInvitationBetween(myId, contactId);
     if (!activeInv || !activeInv.id) {
         throw new Error('Proposition indisponible : un devis ne peut être créé que dans un échange lié à une invitation acceptée.');
     }
@@ -650,6 +728,23 @@ function invalidateActiveQuoteContext() {
         window.LYANN_MESSAGING_REPOSITORY.invalidateQuoteContext(getMyId(), contact.id);
     }
 }
+
+window.lyannAwaitPaidQuote = async function lyannAwaitPaidQuote() {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    if (!contact || !contact.id) return;
+    for (let attempt = 0; attempt < 6; attempt++) {
+        invalidateActiveQuoteContext();
+        if (window.LYANN_MESSAGING_REPOSITORY && contact.conversationId) {
+            window.LYANN_MESSAGING_REPOSITORY.invalidateMessages(contact.conversationId);
+        }
+        if (typeof window.refreshChatUI === 'function') {
+            try { await window.refreshChatUI(); } catch (err) {}
+        }
+        const container = document.getElementById('chatMessagesContainer');
+        if (container && /devis accepté/i.test(container.textContent || '')) return;
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+};
 
 function isPersistedUuid(id) {
     return typeof window.isUUID === 'function'
@@ -701,6 +796,16 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         }
         return false;
     };
+
+    if (actionId === 'DIRECT_ASK') {
+        if (typeof window.openLyannWizard === 'function') {
+            window.openLyannWizard({ directContactId: contactId, directContactName: currentChatContact?.name || 'cette personne' });
+        }
+        return;
+    }
+    if (actionId === 'DIRECT_OFFER') {
+        return handleChatAction('MAKE_PROPOSAL', mission);
+    }
 
     if (actionId === 'MAKE_PROPOSAL' || actionId === 'PROPOSE_PRICE') {
         closeAllOverlays();
@@ -868,7 +973,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                 }
                 return new Promise((resolve, reject) => {
                     const script = document.createElement('script');
-                    script.src = 'lyann-stripe.js?v=20260920-card3';
+                    script.src = 'lyann-stripe.js?v=20260922v';
                     script.addEventListener('load', resolve, { once: true });
                     script.addEventListener('error', () => reject(new Error('Stripe checkout unavailable')), { once: true });
                     document.head.appendChild(script);
@@ -1041,6 +1146,26 @@ function renderEmptyConversationState(container) {
 
 let chatRenderGeneration = 0;
 
+function isQuoteAcceptedNotice(text) {
+    return String(text || '').trim().toLowerCase() === 'devis accepté';
+}
+
+function appendQuoteAcceptedNotice(container, messageId) {
+    if (!container) return;
+    if (messageId && container.querySelector(`[data-message-id="${messageId}"]`)) return;
+    const notice = document.createElement('div');
+    notice.className = 'chat-msg-card align-left';
+    notice.style.cssText = 'margin: 12px auto; max-width: 440px; width: 100%;';
+    if (messageId) notice.dataset.messageId = String(messageId);
+    notice.innerHTML = `
+        <div class="chat-card-header"><i class="ph-fill ph-check-circle" style="color:#15803d"></i> Devis accepté</div>
+        <div class="chat-card-body">
+            <div>Le paiement est validé. Le devis est accepté.</div>
+        </div>
+    `;
+    container.appendChild(notice);
+}
+
 async function renderMessages(passedMessages = null, options = {}) {
     const container = document.getElementById('chatMessagesContainer');
     if (!container) return;
@@ -1056,25 +1181,26 @@ async function renderMessages(passedMessages = null, options = {}) {
     }
 
     let msgs = passedMessages;
+    const canRefresh = !Array.isArray(passedMessages);
+    let paintedFromCache = false;
     if (!Array.isArray(msgs)) {
-        msgs = await getChatMessages(currentChatContact.id, options);
-    }
-
-    console.log('[CHAT FINAL ARRAY]', msgs);
-    console.trace('[CHAT RENDER CALL]');
-
-    // Quote context is prepared by the shared messaging repository in one cached batch.
-    let realQuotes = [];
-    if (!Array.isArray(passedMessages) && window.LYANN_MESSAGING_REPOSITORY && isUUID(currentChatContact.id)) {
-        try {
-            realQuotes = await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), currentChatContact.id);
-        } catch(err) {
-            console.warn("Erreur chargement contexte devis:", err);
+        const cached = window.LYANN_MESSAGING_REPOSITORY?.peekMessages?.(getMyId(), currentChatContact.id);
+        if (Array.isArray(cached)) {
+            msgs = cached;
+            paintedFromCache = options.fresh === true;
+        } else {
+            msgs = await getChatMessages(currentChatContact.id, options);
         }
     }
 
+    // Quotes load after the text is on screen. They must not hold the first paint.
+    let realQuotes = Array.isArray(options.quotes) ? options.quotes : [];
+
     // Ignore stale async renders. A newer refresh already owns the DOM.
     if (renderGeneration !== chatRenderGeneration) return;
+    if (!Array.isArray(passedMessages) && window.LYANN_MESSAGING_REPOSITORY?.markConversationRead && typeof getMyId === 'function' && isUUID(currentChatContact?.id)) {
+        window.LYANN_MESSAGING_REPOSITORY.markConversationRead(getMyId(), currentChatContact.id).catch(() => {});
+    }
 
     // Commit the fully prepared conversation in one DOM swap. Until this point, the old
     // messages (including an optimistic outgoing message) stay visible.
@@ -1106,7 +1232,9 @@ async function renderMessages(passedMessages = null, options = {}) {
             timeStr = isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
-        const checkIcon = isMe ? `<span class="chat-msg-status read" title="Vu"><i class="ph ph-checks"></i> Vu</span>` : '';
+        const checkIcon = !isMe ? '' : (msg.status === 'read'
+            ? `<span class="chat-msg-status read" title="Vu"><i class="ph ph-checks"></i> Vu</span>`
+            : `<span class="chat-msg-status sent" title="Envoyé"><i class="ph ph-check"></i> Envoyé</span>`);
 
         // Quoted block HTML
         let quotedHTML = '';
@@ -1136,7 +1264,10 @@ async function renderMessages(passedMessages = null, options = {}) {
         wrapper.className = `chat-msg-bubble-wrap ${isMe ? 'sent' : 'received'}`;
         wrapper.dataset.messageId = String(msgId);
 
-        if (msg.type === 'text') {
+        if (msg.type === 'text' && isQuoteAcceptedNotice(msg.text)) {
+            appendQuoteAcceptedNotice(container, msgId);
+        }
+        else if (msg.type === 'text') {
             wrapper.innerHTML = `
                 <div class="chat-msg-bubble ${isMe ? 'sent' : 'received'}">
                     ${quotedHTML}
@@ -1339,7 +1470,7 @@ async function renderMessages(passedMessages = null, options = {}) {
                     ${acceptedBadge}
                     <div style="display: flex; gap: 8px; margin-top: 12px;">
                         <button type="button" class="btn btn-primary btn-quote-pay" data-quote-pay style="flex: 1; justify-content: center; background:#2E7D32;">
-                            <i class="ph ph-lock-key"></i> Payer & Bloquer (${q.total_amount} €)
+                            <i class="ph ph-lock-key"></i> Payer & Bloquer (${pendingMs.amount} €)
                         </button>
                     </div>
                 `;
@@ -1364,7 +1495,7 @@ async function renderMessages(passedMessages = null, options = {}) {
             } else if (fundedMs) {
                 actionsHTML = `
                     <div style="font-size: 0.85rem; color: #15803d; font-weight: 700; text-align: center; margin-top: 8px; padding: 8px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
-                        <i class="ph ph-lock-key"></i> Fonds sécurisés · mission en cours
+                        <i class="ph ph-check-circle"></i> Devis accepté
                     </div>
                 `;
             } else {
@@ -1395,8 +1526,8 @@ async function renderMessages(passedMessages = null, options = {}) {
         const payBtn = quoteDiv.querySelector('[data-quote-pay]');
         if (payBtn && pendingMs && q.mission_id) {
             payBtn.addEventListener('click', () => handleChatAction('PAY_MISSION', {
-                title: q.description || 'Intervention LYANN',
-                agreed_price: Number(q.total_amount),
+                title: pendingMs.title || q.description || 'Intervention LYANN',
+                agreed_price: Number(pendingMs.amount),
                 id: q.mission_id,
                 milestoneId: pendingMs.id
             }));
@@ -1417,6 +1548,27 @@ async function renderMessages(passedMessages = null, options = {}) {
         }
         container.appendChild(quoteDiv);
     });
+
+    if (window.LYANN_MESSAGING_REPOSITORY && isUUID(currentChatContact.id)) {
+        const generation = renderGeneration;
+        const contactId = currentChatContact.id;
+        const userId = getMyId();
+        const painted = Array.isArray(msgs) ? msgs : [];
+        if (canRefresh && paintedFromCache) {
+            window.LYANN_MESSAGING_REPOSITORY.getMessages(userId, contactId, { fresh: true }).then((fresh) => {
+                if (generation !== chatRenderGeneration || currentChatContact?.id !== contactId || !Array.isArray(fresh)) return;
+                const sameLength = fresh.length === painted.length;
+                const sameTail = fresh[fresh.length - 1]?.id === painted[painted.length - 1]?.id;
+                if (!sameLength || !sameTail) renderMessages(fresh);
+            }).catch(() => {});
+        }
+        if (!realQuotes.length) {
+            window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(userId, contactId).then((quotes) => {
+                if (generation !== chatRenderGeneration || currentChatContact?.id !== contactId || !quotes?.length) return;
+                renderMessages(painted, { quotes });
+            }).catch(() => {});
+        }
+    }
 
     // Dynamic Blocked User UI Check
     const inputArea = document.querySelector('.chat-input-area');
@@ -1815,6 +1967,7 @@ document.addEventListener('touchstart', (e) => {
             closeAllOverlays();
             if (chatMilestoneDevisForm) {
                 openChatChildSurface('chatMilestoneDevisForm');
+                if (typeof window.lyannRefreshMilestoneAllocation === 'function') window.lyannRefreshMilestoneAllocation();
                 const firstRequired = chatMilestoneDevisForm.querySelector('[required]');
                 if (firstRequired) requestAnimationFrame(() => firstRequired.focus());
             }
@@ -2004,76 +2157,238 @@ document.addEventListener('touchstart', (e) => {
         });
     }
 
-    // Milestone allocation: percentage <-> amount, always reconciled to total.
+    // Milestone allocation: 30/30/40 by default, euros follow the total, either side stays editable.
+    const MILESTONE_DEFAULT_PERCENTS = [30, 30, 40];
+    const roundMilestoneMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
+    const roundMilestonePercent = (value) => Math.round((Number(value) || 0) * 100) / 100;
+
+    function milestoneTotal() {
+        return Math.max(0, parseFloat(document.getElementById('mdTotalAmount')?.value) || 0);
+    }
+
+    function milestonePercentInputs() {
+        return [1, 2, 3].map((i) => document.getElementById('mdJ' + i + 'Percent'));
+    }
+
+    function milestoneAmountInputs() {
+        return [1, 2, 3].map((i) => document.getElementById('mdJ' + i + 'Amount'));
+    }
+
+    function readMilestonePercents() {
+        return milestonePercentInputs().map((input) => Math.min(100, Math.max(0, parseFloat(input?.value) || 0)));
+    }
+
+    function readMilestoneAmounts() {
+        return milestoneAmountInputs().map((input) => Math.max(0, parseFloat(input?.value) || 0));
+    }
+
+    function ensureMilestoneAmountInput(index) {
+        const existing = document.getElementById('mdJ' + index + 'Amount');
+        if (existing) return existing;
+        const percentInput = document.getElementById('mdJ' + index + 'Percent');
+        if (!percentInput) return null;
+        const amountInput = document.createElement('input');
+        amountInput.type = 'number';
+        amountInput.id = 'mdJ' + index + 'Amount';
+        amountInput.className = 'modal-input';
+        amountInput.min = '0';
+        amountInput.step = '0.01';
+        amountInput.inputMode = 'decimal';
+        amountInput.setAttribute('aria-label', 'Montant en euros du jalon ' + index);
+        amountInput.placeholder = '0,00';
+        amountInput.style.cssText = 'flex:1.15; min-width:72px; font-size:0.8rem; height:32px; padding:2px 8px; box-sizing:border-box;';
+        const euro = document.createElement('span');
+        euro.textContent = '€';
+        euro.style.cssText = 'font-size:0.8rem; font-weight:700;';
+        const percentMark = percentInput.nextElementSibling;
+        const anchor = percentMark && percentMark.tagName === 'SPAN' ? percentMark : percentInput;
+        anchor.insertAdjacentElement('afterend', amountInput);
+        amountInput.insertAdjacentElement('afterend', euro);
+        const titleInput = document.getElementById('mdJ' + index + 'Title');
+        if (titleInput) {
+            titleInput.style.flex = '1.3';
+            titleInput.style.minWidth = '0';
+            titleInput.removeAttribute('required');
+            titleInput.placeholder = 'Titre';
+        }
+        return amountInput;
+    }
+
+    function seedMilestoneDefaults() {
+        const inputs = milestonePercentInputs();
+        if (inputs.some((input) => !input)) return;
+        if (inputs.some((input) => input.value !== '')) return;
+        inputs.forEach((input, index) => {
+            input.value = String(MILESTONE_DEFAULT_PERCENTS[index]);
+        });
+    }
+
+    function amountsFromMilestonePercents(total, percents) {
+        if (!(total > 0)) return [0, 0, 0];
+        const amounts = percents.map((percent) => roundMilestoneMoney(total * percent / 100));
+        const percentSum = roundMilestonePercent(percents.reduce((sum, percent) => sum + percent, 0));
+        if (Math.abs(percentSum - 100) <= 0.05) {
+            amounts[2] = roundMilestoneMoney(total - amounts[0] - amounts[1]);
+        }
+        return amounts;
+    }
+
+    function formatMilestonePercent(value) {
+        return roundMilestonePercent(value).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
+    }
+
+    function formatMilestoneMoney(value) {
+        return roundMilestoneMoney(value).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    }
+
+    function updateMilestoneSummary() {
+        const total = milestoneTotal();
+        const percents = readMilestonePercents();
+        const amounts = readMilestoneAmounts();
+        const percentSum = roundMilestonePercent(percents.reduce((sum, percent) => sum + percent, 0));
+        const amountSum = roundMilestoneMoney(amounts.reduce((sum, amount) => sum + amount, 0));
+        const remaining = roundMilestoneMoney(total - amountSum);
+        const pctEl = document.getElementById('mdAllocationPercentTotal');
+        const amtEl = document.getElementById('mdAllocationAmountTotal');
+        const remEl = document.getElementById('mdAllocationRemaining');
+        if (pctEl) pctEl.textContent = formatMilestonePercent(percentSum);
+        if (amtEl) amtEl.textContent = formatMilestoneMoney(amountSum);
+        if (remEl) {
+            remEl.textContent = formatMilestoneMoney(remaining);
+            remEl.style.color = Math.abs(remaining) <= 0.01 ? 'var(--primary)' : (remaining < 0 ? '#B91C1C' : '#475569');
+        }
+        const live = document.getElementById('mdAllocationLive');
+        if (!live) return;
+        const balanced = total > 0 && Math.abs(percentSum - 100) <= 0.05 && Math.abs(amountSum - total) <= 0.05;
+        live.style.color = balanced ? 'var(--primary-dark, #1B4332)' : '#B91C1C';
+        if (!(total > 0)) {
+            live.textContent = 'Saisissez le montant total : les jalons passent à 30 % / 30 % / 40 %.';
+            live.style.color = '#475569';
+            return;
+        }
+        live.textContent = balanced
+            ? 'Répartition complète : ' + formatMilestonePercent(percentSum) + ' · ' + formatMilestoneMoney(amountSum)
+            : 'Répartition : ' + formatMilestonePercent(percentSum) + ' · montants ' + formatMilestoneMoney(amountSum) + ' sur ' + formatMilestoneMoney(total);
+    }
+
+    function applyMilestoneAmountsFromPercents() {
+        const total = milestoneTotal();
+        const amounts = amountsFromMilestonePercents(total, readMilestonePercents());
+        milestoneAmountInputs().forEach((input, index) => {
+            if (!input || document.activeElement === input) return;
+            input.value = total > 0 ? amounts[index].toFixed(2) : '';
+        });
+        updateMilestoneSummary();
+    }
+
+    function rebalanceMilestones(editedIndex, source) {
+        const total = milestoneTotal();
+        const percentInputs = milestonePercentInputs();
+        const amountInputs = milestoneAmountInputs();
+        const edited = editedIndex - 1;
+        const percents = readMilestonePercents();
+        const amounts = readMilestoneAmounts();
+        const others = [0, 1, 2].filter((index) => index !== edited);
+
+        if (source === 'amount' && total > 0) {
+            percents[edited] = roundMilestonePercent(Math.min(total, amounts[edited]) / total * 100);
+        }
+        percents[edited] = Math.min(100, Math.max(0, percents[edited]));
+
+        const otherSum = others.reduce((sum, index) => sum + percents[index], 0);
+        const remaining = roundMilestonePercent(100 - percents[edited]);
+        if (otherSum <= 0) {
+            const share = roundMilestonePercent(remaining / others.length);
+            others.forEach((index, position) => {
+                percents[index] = position === others.length - 1
+                    ? roundMilestonePercent(remaining - share * (others.length - 1))
+                    : share;
+            });
+        } else {
+            let assigned = 0;
+            others.forEach((index, position) => {
+                if (position === others.length - 1) {
+                    percents[index] = roundMilestonePercent(remaining - assigned);
+                } else {
+                    percents[index] = roundMilestonePercent(remaining * percents[index] / otherSum);
+                    assigned = roundMilestonePercent(assigned + percents[index]);
+                }
+            });
+        }
+
+        percentInputs.forEach((input, index) => {
+            if (!input) return;
+            if (source === 'percent' && index === edited && document.activeElement === input) return;
+            input.value = String(percents[index]);
+        });
+
+        const computed = amountsFromMilestonePercents(total, readMilestonePercents());
+        if (source === 'amount' && total > 0) computed[edited] = roundMilestoneMoney(Math.min(total, amounts[edited]));
+        const restIndex = others[others.length - 1];
+        if (total > 0) {
+            const used = computed.reduce((sum, amount, index) => index === restIndex ? sum : sum + amount, 0);
+            computed[restIndex] = roundMilestoneMoney(total - used);
+            if (!(source === 'percent' && restIndex === edited && document.activeElement === percentInputs[restIndex])) {
+                percents[restIndex] = roundMilestonePercent(computed[restIndex] / total * 100);
+                if (percentInputs[restIndex]) percentInputs[restIndex].value = String(percents[restIndex]);
+            }
+        }
+
+        amountInputs.forEach((input, index) => {
+            if (!input || document.activeElement === input) return;
+            input.value = total > 0 ? computed[index].toFixed(2) : '';
+        });
+        updateMilestoneSummary();
+    }
+
     function initMilestoneAllocationSync() {
         const totalInput = document.getElementById('mdTotalAmount');
-        if (!totalInput || totalInput.dataset.allocationSyncBound === 'true') return;
+        const form = document.getElementById('milestoneDevisForm');
+        if (!totalInput || !form || totalInput.dataset.allocationSyncBound === 'true') return;
         totalInput.dataset.allocationSyncBound = 'true';
 
-        const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
-        const roundPercent = (value) => Math.round((Number(value) || 0) * 100) / 100;
-        const getTotal = () => Math.max(0, parseFloat(totalInput.value) || 0);
+        for (let i = 1; i <= 3; i++) ensureMilestoneAmountInput(i);
 
-        const updateSummary = () => {
-            const total = getTotal();
-            let amountSum = 0;
-            let percentSum = 0;
-            for (let i = 1; i <= 3; i++) {
-                amountSum += Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Amount')?.value) || 0);
-                percentSum += Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Percent')?.value) || 0);
-            }
-            amountSum = roundMoney(amountSum);
-            percentSum = roundPercent(percentSum);
-            const remaining = roundMoney(total - amountSum);
-            const pctEl = document.getElementById('mdAllocationPercentTotal');
-            const amtEl = document.getElementById('mdAllocationAmountTotal');
-            const remEl = document.getElementById('mdAllocationRemaining');
-            if (pctEl) pctEl.textContent = percentSum.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
-            if (amtEl) amtEl.textContent = amountSum.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-            if (remEl) {
-                remEl.textContent = remaining.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-                remEl.style.color = Math.abs(remaining) <= 0.01 ? 'var(--primary)' : (remaining < 0 ? '#B91C1C' : '#475569');
-            }
-        };
+        form.querySelectorAll('label').forEach((label) => {
+            if (label.textContent.includes('Jalons de paiement')) label.textContent = 'Jalons de paiement';
+        });
+        const hint = [...form.querySelectorAll('p')].find((paragraph) => /100\s*%/.test(paragraph.textContent));
+        if (hint) {
+            hint.innerHTML = '<i class="ph ph-info"></i> Départ proposé : 30 % / 30 % / 40 %. Un pourcentage ou un montant modifié recalcule l’autre.';
+        }
+        if (!document.getElementById('mdAllocationLive')) {
+            const live = document.createElement('p');
+            live.id = 'mdAllocationLive';
+            live.style.cssText = 'font-size:0.75rem; margin:6px 0 0; font-weight:700;';
+            if (hint) hint.insertAdjacentElement('afterend', live);
+        }
 
-        const syncFromPercent = (index) => {
-            const total = getTotal();
-            const pct = Math.min(100, Math.max(0, parseFloat(document.getElementById('mdJ' + index + 'Percent')?.value) || 0));
-            const amountInput = document.getElementById('mdJ' + index + 'Amount');
-            if (amountInput) amountInput.value = total > 0 ? roundMoney(total * pct / 100).toFixed(2) : '';
-            updateSummary();
-        };
-
-        const syncFromAmount = (index) => {
-            const total = getTotal();
-            const amount = Math.max(0, parseFloat(document.getElementById('mdJ' + index + 'Amount')?.value) || 0);
-            const pctInput = document.getElementById('mdJ' + index + 'Percent');
-            if (pctInput) pctInput.value = total > 0 ? String(roundPercent(amount / total * 100)) : '';
-            updateSummary();
-        };
+        seedMilestoneDefaults();
 
         for (let i = 1; i <= 3; i++) {
-            const pctInput = document.getElementById('mdJ' + i + 'Percent');
+            const percentInput = document.getElementById('mdJ' + i + 'Percent');
             const amountInput = document.getElementById('mdJ' + i + 'Amount');
-            if (pctInput) {
-                pctInput.step = '0.01';
-                pctInput.min = '0';
-                pctInput.max = '100';
-                pctInput.removeAttribute('required');
-                pctInput.addEventListener('input', () => syncFromPercent(i));
+            if (percentInput) {
+                percentInput.step = '0.01';
+                percentInput.min = '0';
+                percentInput.max = '100';
+                percentInput.removeAttribute('required');
+                percentInput.addEventListener('input', () => rebalanceMilestones(i, 'percent'));
             }
-            if (amountInput) amountInput.addEventListener('input', () => syncFromAmount(i));
+            if (amountInput) amountInput.addEventListener('input', () => rebalanceMilestones(i, 'amount'));
         }
 
         totalInput.addEventListener('input', () => {
-            for (let i = 1; i <= 3; i++) {
-                const pctInput = document.getElementById('mdJ' + i + 'Percent');
-                if (pctInput && pctInput.value !== '') syncFromPercent(i);
-            }
-            updateSummary();
+            seedMilestoneDefaults();
+            applyMilestoneAmountsFromPercents();
         });
-        updateSummary();
+        applyMilestoneAmountsFromPercents();
     }
+
+    window.lyannRefreshMilestoneAllocation = function lyannRefreshMilestoneAllocation() {
+        seedMilestoneDefaults();
+        applyMilestoneAmountsFromPercents();
+    };
 
     initMilestoneAllocationSync();
 
@@ -2088,41 +2403,46 @@ document.addEventListener('touchstart', (e) => {
                 const title = titleInput ? titleInput.value.trim() : '';
                 const total = totalInput ? parseFloat(totalInput.value) : 0;
 
-                const rawAmounts = [1, 2, 3].map(i => Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Amount')?.value) || 0));
-                const rawPercents = [1, 2, 3].map(i => Math.max(0, parseFloat(document.getElementById('mdJ' + i + 'Percent')?.value) || 0));
-                const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
-                const roundPercent = (value) => Math.round((Number(value) || 0) * 100) / 100;
-
-                const amounts = rawAmounts.map((amount, idx) => amount > 0 ? roundMoney(amount) : roundMoney(total * rawPercents[idx] / 100));
-                const percents = amounts.map(amount => total > 0 ? roundPercent(amount / total * 100) : 0);
-                const [p1, p2, p3] = percents;
+                seedMilestoneDefaults();
+                const rawPercents = readMilestonePercents();
+                const rawAmounts = readMilestoneAmounts();
+                const percentSum = roundMilestonePercent(rawPercents.reduce((sum, percent) => sum + percent, 0));
+                const amountSum = roundMilestoneMoney(rawAmounts.reduce((sum, amount) => sum + amount, 0));
+                let percents = rawPercents.slice();
+                let amounts = rawAmounts.slice();
 
                 if (!currentChatContact) {
                     throw new Error("Aucun contact sélectionné pour la discussion.");
                 }
 
                 if (!title || isNaN(total) || total <= 0) {
-                    if (window.lyannAlert) window.lyannAlert("Veuillez remplir tous les champs correctement.");
-                    else alert("Veuillez remplir tous les champs correctement.");
+                    if (window.lyannAlert) window.lyannAlert("Indiquez le libellé et un montant total.");
+                    else alert("Indiquez le libellé et un montant total.");
                     return;
                 }
 
-                if (p1 + p2 + p3 !== 100) {
-                    const msg = "⚠️ Erreur : La somme des pourcentages des Parties doit être exactement égale à 100%. (Actuellement : " + (p1+p2+p3) + "%)";
+                if (Math.abs(percentSum - 100) <= 0.05) {
+                    amounts = amountsFromMilestonePercents(total, percents);
+                } else if (Math.abs(amountSum - total) <= 0.05) {
+                    percents = amounts.map((amount) => roundMilestonePercent(amount / total * 100));
+                    percents[2] = roundMilestonePercent(100 - percents[0] - percents[1]);
+                    amounts = amountsFromMilestonePercents(total, percents);
+                } else {
+                    const msg = 'Les jalons doivent faire 100 % du total. Pourcentages : ' + formatMilestonePercent(percentSum) + '. Montants : ' + formatMilestoneMoney(amountSum) + ' sur ' + formatMilestoneMoney(total) + '.';
                     if (window.lyannAlert) window.lyannAlert(msg);
                     else alert(msg);
                     return;
                 }
 
-                // Montants et pourcentages restent synchronisés quelle que soit l'unité saisie.
+                milestoneAmountInputs().forEach((input, index) => {
+                    if (input) input.value = amounts[index].toFixed(2);
+                });
+                milestonePercentInputs().forEach((input, index) => {
+                    if (input) input.value = String(percents[index]);
+                });
+
                 const [m1, m2, m3] = amounts;
-                const allocatedTotal = roundMoney(m1 + m2 + m3);
-                if (Math.abs(allocatedTotal - total) > 0.01) {
-                    const msg = 'La somme des jalons doit correspondre au montant total (' + total.toFixed(2) + ' €). Montant actuellement réparti : ' + allocatedTotal.toFixed(2) + ' €.';
-                    if (window.lyannAlert) window.lyannAlert(msg);
-                    else alert(msg);
-                    return;
-                }
+                const [p1, p2, p3] = percents;
 
                 const j1Title = document.getElementById('mdJ1Title')?.value.trim() || "Jalon 1 - Préparation";
                 const j2Title = document.getElementById('mdJ2Title')?.value.trim() || "Jalon 2 - Intervention";
@@ -2144,6 +2464,16 @@ document.addEventListener('touchstart', (e) => {
                 // Clean & close
                 if (titleInput) titleInput.value = '';
                 if (totalInput) totalInput.value = '';
+                [1, 2, 3].forEach((index) => {
+                    const titleField = document.getElementById('mdJ' + index + 'Title');
+                    const percentField = document.getElementById('mdJ' + index + 'Percent');
+                    const amountField = document.getElementById('mdJ' + index + 'Amount');
+                    if (titleField) titleField.value = '';
+                    if (percentField) percentField.value = '';
+                    if (amountField) amountField.value = '';
+                });
+                seedMilestoneDefaults();
+                applyMilestoneAmountsFromPercents();
                 closeAllOverlays();
                 await refreshChatUI();
 
@@ -2176,7 +2506,7 @@ document.addEventListener('touchstart', (e) => {
                     } else {
                         await new Promise((resolve, reject) => {
                             const script = document.createElement('script');
-                            script.src = 'lyann-stripe.js?v=20260920-card3';
+                            script.src = 'lyann-stripe.js?v=20260922v';
                             script.addEventListener('load', resolve, { once: true });
                             script.addEventListener('error', () => reject(new Error('Stripe checkout unavailable')), { once: true });
                             document.head.appendChild(script);
@@ -2486,6 +2816,11 @@ function appendLiveChatMessage(row) {
 
     const mine = row.sender_id && row.sender_id === getMyId();
     const text = typeof row.content === 'string' ? row.content : '';
+    if (isQuoteAcceptedNotice(text)) {
+        appendQuoteAcceptedNotice(container, messageId);
+        container.scrollTop = container.scrollHeight;
+        return;
+    }
     if (mine) {
         const pending = [...container.querySelectorAll('[data-optimistic-status="sending"], [data-optimistic-status="sent"]')]
             .map((node) => node.closest('.chat-msg-bubble-wrap'))

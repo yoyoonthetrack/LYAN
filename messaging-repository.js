@@ -57,7 +57,7 @@
     if (raw.startsWith('{')) {
       try { txData = JSON.parse(raw); type = 'transactional'; } catch (_) { txData = null; }
     }
-    return { id: row.id, text: raw, sender: row.sender_id === userId ? 'me' : 'them', timestamp: new Date(row.created_at).getTime(), type, txData, status: 'read' };
+    return { id: row.id, text: raw, sender: row.sender_id === userId ? 'me' : 'them', timestamp: new Date(row.created_at).getTime(), type, txData, status: row.is_read ? 'read' : 'sent' };
   }
 
   async function findConversationId(userId, contactId, options = {}) {
@@ -254,5 +254,19 @@
   }
   function invalidateQuoteContext(userId, contactId) { const c = cache(); if (c && userId && contactId) c.invalidate('chat-quote-context', pairKey(userId, contactId)); }
 
-  window.LYANN_MESSAGING_REPOSITORY = { findConversationId, listConversations, getMessages, getQuoteContext, invalidateConversation, invalidateMessages, invalidateQuoteContext, peekConversations, peekMessages, warmInbox };
+  async function markConversationRead(userId, contactId) {
+    const client = api();
+    if (!client?.supabase || !userId || !contactId) return false;
+    const conversationId = await findConversationId(userId, contactId);
+    if (!conversationId) return false;
+    const { error } = await client.supabase.from('messages').update({ is_read: true }).eq('conversation_id', conversationId).neq('sender_id', userId).eq('is_read', false);
+    if (error) {
+      console.warn('[messages] read receipt', error.message);
+      return false;
+    }
+    if (typeof window.refreshMessageBadge === 'function') window.refreshMessageBadge(userId);
+    return true;
+  }
+
+  window.LYANN_MESSAGING_REPOSITORY = { findConversationId, listConversations, getMessages, getQuoteContext, invalidateConversation, invalidateMessages, invalidateQuoteContext, peekConversations, peekMessages, warmInbox, markConversationRead };
 })();

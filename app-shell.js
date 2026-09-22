@@ -94,17 +94,10 @@ async function initMobileHomeDashboard() {
         return;
     }
 
-    // Hide marketing blocks
-    const elementsToHide = [
-        document.querySelector('.hero'),
-        document.getElementById('about'),
-        document.getElementById('how-it-works'),
-        document.getElementById('testimonials'),
-        document.getElementById('join')
-    ];
-    elementsToHide.forEach(el => {
-        if (el) el.style.display = 'none';
-    });
+    if (typeof window.renderAppHomeConnectedView === 'function') {
+        window.renderAppHomeConnectedView();
+        return;
+    }
 
     // Inject Dashboard
     if (!document.getElementById('mobileDashboard')) {
@@ -267,8 +260,9 @@ async function injectMobileInterface() {
                 <i class="ph ph-broadcast"></i>
                 <span>Bokantaj</span>
             </a>
-            <button type="button" class="nav-tab" id="tab-messages" aria-label="Messages">
+            <button type="button" class="nav-tab" id="tab-messages" aria-label="Messages" style="position: relative;">
                 <i class="ph ph-chat-circle-dots"></i>
+                <span class="msg-badge-count" style="position: absolute; top: 4px; right: 18%; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 50%; align-items: center; justify-content: center; display: none;"></span>
                 <span>Messages</span>
             </button>
         `;
@@ -412,10 +406,24 @@ window.renderAppHomeConnectedView = function() {
 
     // Keep the same homepage sections as the website. Native only adds the
     // header, the bottom tabs, and the greeting.
-    mainHero.style.display = '';
+    [
+        mainHero,
+        document.querySelector('.trust-section'),
+        document.querySelector('.categories-section'),
+        document.querySelector('.talents-section'),
+        document.querySelector('.testimonials-section'),
+        document.querySelector('.feed-preview-section'),
+        document.querySelector('.cta-section'),
+        document.querySelector('.footer'),
+        document.querySelector('.lyann-footer')
+    ].forEach((el) => {
+        if (el) el.style.display = '';
+    });
 
     const heroVisual = mainHero.querySelector('.hero-visual');
     if (heroVisual) heroVisual.style.display = '';
+    const heroStory = mainHero.querySelector('.hero-story');
+    if (heroStory) heroStory.style.display = '';
 
     // Populate and display personalized greeting badge inside hero
     const greetingBadge = document.getElementById('heroGreetingBadge');
@@ -496,8 +504,9 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
                     LYANN
                 </span>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <button type="button" class="nav-msg-btn" id="btnHeaderChat" aria-label="Messagerie" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
+                    <button type="button" class="nav-msg-btn" id="btnHeaderChat" aria-label="Messagerie" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; position: relative;">
                         <i class="ph ph-chat-circle-dots"></i>
+                        <span class="msg-badge-count" style="position: absolute; top: 0; right: 0; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 50%; align-items: center; justify-content: center; display: none;"></span>
                     </button>
                     <button type="button" id="btnHeaderSupport" data-lyann-route="support" aria-label="Support LYANN" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
                         <i class="ph ph-headset"></i>

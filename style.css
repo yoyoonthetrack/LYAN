@@ -1571,10 +1571,10 @@ h1, h2, h3, h4 {
     visibility: visible;
 }
 
-.modal-card {
+    .modal-card {
     background: #FFFFFF;
     width: 100%;
-    max-width: 680px;
+    max-width: 960px;
     border-radius: var(--radius-xl);
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.6);
@@ -7139,13 +7139,16 @@ input:checked + .slider:before {
 }
 
 .chat-msg-bubble {
-    max-width: 76%;
+    max-width: 100%;
+    min-width: 0;
     padding: 12px 16px;
     border-radius: 18px;
     font-size: 1rem; /* 16px */
     line-height: 1.4;
     position: relative;
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
 }
 
 .chat-msg-bubble.received {
@@ -9914,6 +9917,11 @@ body.is-native-app .navbar {
     top: calc(16px + env(safe-area-inset-top, 0px)) !important;
 }
 
+body.is-native-app .reveal {
+    opacity: 1;
+    transform: none;
+}
+
 body.is-native-app .hero,
 body.is-native-app .results-hero-section,
 body.is-native-app .pricing-hero-section,
@@ -12226,17 +12234,21 @@ body.is-native-app .navbar.scrolled,
     position: relative;
     display: flex;
     align-items: flex-end;
-    gap: 6px;
+    width: fit-content;
+    max-width: min(78%, 520px);
+    min-width: 0;
     margin-bottom: 8px;
-    max-width: 85%;
+    align-self: flex-start;
 }
 
 .chat-msg-bubble-wrap.sent {
+    align-self: flex-end;
     margin-left: auto;
-    flex-direction: row-reverse;
 }
 
 .chat-msg-action-bar {
+    position: absolute;
+    top: 4px;
     opacity: 0;
     visibility: hidden;
     display: flex;
@@ -12250,6 +12262,9 @@ body.is-native-app .navbar.scrolled,
     transition: opacity 0.15s ease, visibility 0.15s ease;
     z-index: 10;
 }
+.chat-msg-bubble-wrap.received .chat-msg-action-bar,
+.chat-msg-bubble-wrap:not(.sent) .chat-msg-action-bar { left: calc(100% + 6px); }
+.chat-msg-bubble-wrap.sent .chat-msg-action-bar { right: calc(100% + 6px); }
 
 .chat-msg-bubble-wrap:hover .chat-msg-action-bar {
     opacity: 1;
@@ -16611,5 +16626,164 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
         padding: 40px 24px;
         text-align: center;
     }
+}
+
+/* The first profile step no longer asks for a short headline. */
+div:has(> #cpHeadline) { display: none !important; }
+
+.nav-search-icon-link { display: none !important; }
+.explorer-profile-card { cursor: pointer; }
+
+@media (min-width: 992px) {
+    .modal-overlay.active .modal-card,
+    .modal-overlay.active .modal-card-large,
+    .modal-overlay.active .modal-card-xl {
+        max-width: min(960px, calc(100vw - 96px));
+        overflow: visible;
+    }
+    .modal-overlay .modal-close-btn,
+    #chatModal .desktop-only-close-btn {
+        top: -16px !important;
+        right: -16px !important;
+        background: #fff !important;
+        color: #1E293B !important;
+        border: 1px solid #E2E8F0 !important;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
+    }
+    #chatModal .modal-card-chat {
+        overflow: visible !important;
+    }
+    #chatModal .desktop-only-close-btn {
+        display: flex !important;
+    }
+}
+
+.bokantaj-photos {
+    display: grid;
+    gap: 4px;
+    margin-top: 10px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.bokantaj-photo {
+    padding: 0;
+    border: 0;
+    background: #e8eeea;
+    cursor: pointer;
+    overflow: hidden;
+    min-height: 0;
+}
+.bokantaj-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.bokantaj-photos-1 { grid-template-columns: 1fr; }
+.bokantaj-photos-1 .bokantaj-photo { height: 280px; }
+.bokantaj-photos-2 { grid-template-columns: 1fr 1fr; }
+.bokantaj-photos-2 .bokantaj-photo { height: 220px; }
+.bokantaj-photos-3 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 140px 140px;
+}
+.bokantaj-photos-3 .bokantaj-photo:first-child {
+    grid-row: 1 / span 2;
+    height: 100%;
+}
+.bokantaj-photos-4 { grid-template-columns: 1fr 1fr; }
+.bokantaj-photos-4 .bokantaj-photo { height: 140px; }
+
+.bokantaj-carousel {
+    position: fixed;
+    inset: 0;
+    z-index: 1000002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 18, 0.92);
+    padding: 48px 64px;
+}
+.bokantaj-carousel[hidden] { display: none; }
+.bokantaj-carousel-img {
+    max-width: min(960px, 100%);
+    max-height: calc(100vh - 96px);
+    object-fit: contain;
+    border-radius: 12px;
+}
+.bokantaj-carousel-close,
+.bokantaj-carousel-nav {
+    position: absolute;
+    border: 0;
+    background: #fff;
+    color: #17231C;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.bokantaj-carousel-close { top: 16px; right: 16px; }
+.bokantaj-carousel-prev { left: 12px; }
+.bokantaj-carousel-next { right: 12px; }
+
+.lyann-post-menu { position: relative; flex-shrink: 0; }
+.lyann-post-menu summary {
+    list-style: none;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: #475569;
+    font-size: 1.3rem;
+}
+.lyann-post-menu summary::-webkit-details-marker { display: none; }
+.lyann-post-menu-panel {
+    position: absolute;
+    right: 0;
+    top: 44px;
+    z-index: 30;
+    min-width: 160px;
+    background: #fff;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+}
+.lyann-post-menu-panel button {
+    background: none;
+    border: 0;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    color: #17231C;
+    cursor: pointer;
+}
+.lyann-post-menu-panel button:hover { background: #F4F7F5; }
+.lyann-post-menu-panel .btn-delete-own-lyann,
+.lyann-post-menu-panel .btn-delete-own-post { color: #9B3A32; }
+
+.request-lifecycle-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.request-lifecycle-actions button {
+    border: 1px solid #D5DDD8;
+    background: #fff;
+    color: #17231C;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
 }
 

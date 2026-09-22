@@ -250,6 +250,35 @@ app.get(['/', '/v1', '/v1/', '/api', '/api/server'], (req, res) => {
     });
 });
 
+// Lets a just-created account enter the app before the confirmation email is opened.
+// Only a user id returned by signup, and only for 30 minutes, can be confirmed here.
+app.post('/v1/auth/continue-signup', async (req, res) => {
+    const userId = String(req.body?.userId || '');
+    if (!/^[0-9a-f-]{36}$/i.test(userId)) {
+        return res.status(400).json({ error: 'Compte introuvable.' });
+    }
+    try {
+        const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (error || !data?.user) {
+            return res.status(404).json({ error: 'Compte introuvable.' });
+        }
+        const created = new Date(data.user.created_at).getTime();
+        if (!Number.isFinite(created) || Date.now() - created > 30 * 60 * 1000) {
+            return res.status(403).json({ error: 'Ouvre le lien reçu par email pour te connecter.' });
+        }
+        if (!data.user.email_confirmed_at) {
+            const updated = await supabaseAdmin.auth.admin.updateUserById(userId, { email_confirm: true });
+            if (updated.error) {
+                return res.status(500).json({ error: 'Impossible d’ouvrir la session pour le moment.' });
+            }
+        }
+        return res.json({ ok: true });
+    } catch (err) {
+        console.error('[continue-signup]', err);
+        return res.status(500).json({ error: 'Impossible d’ouvrir la session pour le moment.' });
+    }
+});
+
 // 1. AUTHENTICATION (POST /v1/auth/login)
 app.post('/v1/auth/login', (req, res) => {
     const { email, password } = req.body;
@@ -3812,6 +3841,59 @@ app.post('/v1/payments/dispute', (req, res) => {
     });
 });
 
+async function announceAcceptedQuoteInConversation(milestoneId) {
+    if (!milestoneId) return;
+    const { data: milestone } = await supabaseAdmin
+        .from('milestones')
+        .select('id, quote_id, quotes(id, conversation_id, requester_id, provider_id, created_at)')
+        .eq('id', milestoneId)
+        .maybeSingle();
+    const quote = Array.isArray(milestone.quotes) ? milestone.quotes[0] : milestone.quotes;
+    if (!quote || !quote.id) return;
+
+    const { count } = await supabaseAdmin
+        .from('milestones')
+        .select('id', { count: 'exact', head: true })
+        .eq('quote_id', quote.id)
+        .in('status', ['FUNDED', 'IN_PROGRESS', 'COMPLETED', 'RELEASED']);
+    if (count !== 1) return;
+
+    let conversationId = quote.conversation_id || null;
+    if (!conversationId && quote.requester_id && quote.provider_id) {
+        const { data: requesterRows } = await supabaseAdmin
+            .from('conversation_participants')
+            .select('conversation_id')
+            .eq('user_id', quote.requester_id);
+        const ids = (requesterRows || []).map((row) => row.conversation_id).filter(Boolean);
+        if (ids.length) {
+            const { data: shared } = await supabaseAdmin
+                .from('conversation_participants')
+                .select('conversation_id')
+                .eq('user_id', quote.provider_id)
+                .in('conversation_id', ids)
+                .limit(1);
+            conversationId = shared && shared[0] ? shared[0].conversation_id : null;
+        }
+    }
+    if (!conversationId || !quote.requester_id) return;
+
+    const { data: existing } = await supabaseAdmin
+        .from('messages')
+        .select('id')
+        .eq('conversation_id', conversationId)
+        .eq('content', 'Devis accepté')
+        .gte('created_at', quote.created_at || '1970-01-01T00:00:00.000Z')
+        .limit(1);
+    if (existing && existing.length) return;
+
+    const { error } = await supabaseAdmin.from('messages').insert({
+        conversation_id: conversationId,
+        sender_id: quote.requester_id,
+        content: 'Devis accepté'
+    });
+    if (error) console.error('[PAYMENT CORE] Message devis accepté non enregistré:', error.message);
+}
+
 // 9. STRIPE WEBHOOK LISTENER (Server-side Source of Truth & Signed Idempotent Event Processor)
 app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/webhooks/stripe', '/api/payments/webhook', '/api/webhooks/stripe'], async (req, res) => {
     const sig = req.headers['stripe-signature'];
@@ -3874,6 +3956,8 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                             updated_at: new Date().toISOString()
                         })
                         .eq('id', payment.milestone_id);
+
+                    await announceAcceptedQuoteInConversation(payment.milestone_id);
 
                     console.log(`🔒 [PAYMENT CORE] Milestone ${payment.milestone_id} est à présent FUNDED. Transfer status: PENDING_VALIDATION.`);
                 }

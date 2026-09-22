@@ -57,7 +57,7 @@ test('Lyanneurs queries real profiles/services and opens canonical profile', asy
   await page.getByRole('button', { name: 'Rechercher', exact:true }).click();
   const card = page.locator(`#explorerResults [data-member-id="${profile.id}"]`);
   await expect(card).toBeVisible();
-  await card.getByRole('button', {name:'Voir le profil',exact:true}).click();
+  await card.locator('.explorer-quote-text, .explorer-skills-text, h2').first().click();
   await expect(page.locator('#publicMemberProfileModal')).toBeVisible();
   await expect(page.locator('#publicMemberProfileModal')).toContainText(profile.services[0].title);
   await expect(page.locator('#publicMemberProfileModal [data-lyann-route="messages"]')).toHaveAttribute('data-contact-id', profile.id);

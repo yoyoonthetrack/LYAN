@@ -225,7 +225,7 @@ function normalizeAuthError(error) {
         return { message: 'Adresse email ou mot de passe incorrect.' };
     }
     if (msg.includes('email not confirmed')) {
-        return { message: 'Veuillez confirmer votre adresse email pour continuer.' };
+        return { message: 'Ton compte est créé. Ouvre le lien reçu par email pour activer la connexion, puis réessaie.' };
     }
     if (msg.includes('rate limit') || msg.includes('too many requests')) {
         return { message: 'Trop de tentatives effectuées. Veuillez patienter quelques minutes.' };
@@ -283,6 +283,22 @@ const LYANN_API_CLIENT = {
             res.error = normalizeAuthError(res.error);
         }
         return res;
+    },
+
+    async continueSignup(userId) {
+        if (!userId) return { error: { message: 'Compte introuvable.' } };
+        try {
+            const res = await lyannBackendFetch('/v1/auth/continue-signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) return { error: { message: body.error || 'Impossible d’ouvrir la session pour le moment.' } };
+            return { data: body };
+        } catch (_) {
+            return { error: { message: 'Connexion au serveur impossible.' } };
+        }
     },
 
     async login(email, password) {
@@ -805,15 +821,17 @@ const LYANN_API_CLIENT = {
                 return null;
             }
 
-            if (data && data.request) {
+            if (data && (data.request || data.direct)) {
                 return {
                     invitationId: data.invitation_id,
                     invitationStatus: data.invitation_status,
                     requestId: data.request_id,
                     requesterId: data.requester_id,
                     helperId: data.helper_id,
-                    request: data.request,
-                    requesterProfile: data.requester_profile
+                    request: data.request || null,
+                    requesterProfile: data.requester_profile,
+                    direct: Boolean(data.direct),
+                    startedBy: data.started_by || null
                 };
             }
 
@@ -822,6 +840,34 @@ const LYANN_API_CLIENT = {
             console.error('[GET CONV REQ CTX ERR]', e);
             return null;
         }
+    },
+
+    async openDirectConversation(targetUserId) {
+        if (!this.supabase || !isUUID(targetUserId)) return null;
+        const { data, error } = await this.supabase.rpc('open_direct_conversation', { p_target_user_id: targetUserId });
+        if (error) {
+            console.warn('[DIRECT CONV]', error.message || error);
+            return null;
+        }
+        return data;
+    },
+
+    async prepareDirectOffer(otherUserId) {
+        if (!this.supabase || !isUUID(otherUserId)) return null;
+        const { data, error } = await this.supabase.rpc('prepare_direct_offer', { p_other_user: otherUserId });
+        if (error) throw error;
+        return data;
+    },
+
+    async bindConversationRequest(requestId, recipientId, visibility) {
+        if (!this.supabase || !isUUID(requestId) || !isUUID(recipientId)) return null;
+        const { data, error } = await this.supabase.rpc('bind_conversation_request', {
+            p_request_id: requestId,
+            p_recipient_id: recipientId,
+            p_visibility: visibility || 'DIRECT'
+        });
+        if (error) throw error;
+        return data;
     },
 
     // Public author identity plus the aggregate reputation shown next to a name.
@@ -1065,6 +1111,34 @@ const LYANN_API_CLIENT = {
             throw error;
         }
         return data;
+    },
+
+    async updatePost(postId, updates) {
+        if (!this.supabase) throw new Error('Supabase non initialisé');
+        const session = await this.getCurrentUser();
+        if (!session) throw new Error('Utilisateur non connecté');
+        const { data, error } = await this.supabase
+            .from('bokantaj_posts')
+            .update(updates)
+            .eq('id', postId)
+            .eq('author_id', session.id)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+
+    async deletePost(postId) {
+        if (!this.supabase) throw new Error('Supabase non initialisé');
+        const session = await this.getCurrentUser();
+        if (!session) throw new Error('Utilisateur non connecté');
+        const { error } = await this.supabase
+            .from('bokantaj_posts')
+            .delete()
+            .eq('id', postId)
+            .eq('author_id', session.id);
+        if (error) throw error;
+        return true;
     },
 
     async toggleLike(targetId, targetType = 'POST') {
@@ -1864,7 +1938,9 @@ const LYANN_API_CLIENT = {
             classification_status: payload.classification_status || 'UNCLASSIFIED',
             internal_tags: payload.internal_tags || ['#UNCLASSIFIED'],
             safety_status: payload.safety_status || 'SAFE',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            visibility: payload.visibility || 'PUBLIC',
+            target_user_id: payload.target_user_id || null
         };
 
         // Automatic background classification if taxonomy fields not pre-set
@@ -1900,7 +1976,7 @@ const LYANN_API_CLIENT = {
         // shape instead of failing in the author's face.
         if (error && isMissingColumnError(error)) {
             const legacy = { ...requestData };
-            for (const column of ['date_mode', 'scheduled_at', 'price_mode', 'budget_max']) delete legacy[column];
+            for (const column of ['date_mode', 'scheduled_at', 'price_mode', 'budget_max', 'visibility', 'target_user_id']) delete legacy[column];
             ({ data, error } = await insert(legacy));
         }
 
@@ -1966,6 +2042,17 @@ const LYANN_API_CLIENT = {
         return data || [];
     },
 
+    async getRequest(requestId) {
+        if (!this.supabase || !requestId) return null;
+        const { data, error } = await this.supabase
+            .from('requests')
+            .select('*')
+            .eq('id', requestId)
+            .maybeSingle();
+        if (error) throw error;
+        return data;
+    },
+
     async updateRequest(requestId, updates) {
         if (!this.supabase) throw new Error("Supabase non initialisé");
         const { data: { session } } = await this.supabase.auth.getSession();
@@ -1995,6 +2082,28 @@ const LYANN_API_CLIENT = {
 
         if (error) throw error;
         return true;
+    },
+
+    async applyRequestLifecycle(requestId, action) {
+        if (!this.supabase) throw new Error('Supabase non initialisé');
+        const { error } = await this.supabase.rpc('lyann_apply_request_lifecycle', {
+            p_request_id: requestId,
+            p_action: action
+        });
+        if (error) throw error;
+        return true;
+    },
+
+    async advanceRequestLifecycle() {
+        if (!this.supabase) return;
+        try {
+            const { error } = await this.supabase.rpc('lyann_advance_request_lifecycle');
+            if (error && !/PGRST202|could not find the function|42883/i.test(error.message || error.code || '')) {
+                console.warn('[LYANN] lifecycle', error.message);
+            }
+        } catch (err) {
+            console.warn('[LYANN] lifecycle', err.message);
+        }
     },
 
     async uploadRequestPhoto(file) {

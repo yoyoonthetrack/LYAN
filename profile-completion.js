@@ -252,7 +252,10 @@
                 if (lnEl && ln) lnEl.value = ln;
 
                 const hlEl = document.getElementById('cpHeadline');
-                if (hlEl && headline) hlEl.value = headline;
+                if (hlEl) {
+                    const block = hlEl.closest('div');
+                    if (block) block.remove();
+                }
 
                 const phEl = document.getElementById('cpPhone');
                 if (phEl && phone) phEl.value = phone;

@@ -21,10 +21,10 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20260922s">
+    <link rel="stylesheet" href="style.css?v=20260923a">
     <link rel="stylesheet" href="explorer.css?v=20260922g">
 </head>
-<body class="results-page" data-explorer-mode="annonces">
+<body class="results-page" data-explorer-mode="lyanneurs">
 
     <!-- ========== NAVIGATION ========== -->
     <nav class="navbar">
@@ -117,28 +117,28 @@
         </div>
     </div>
 
-    <main id="explorer" class="explorer-page" data-mode="annonces">
+    <main id="explorer" class="explorer-page" data-mode="lyanneurs">
         <header class="explorer-heading">
             <h1>Explorer</h1>
             <p>Des besoins et des talents près de chez vous</p>
         </header>
         <p class="explorer-intent-label" id="explorerIntentLabel">Deux mondes à explorer</p>
         <div class="explorer-modes explorer-worlds" role="tablist" aria-labelledby="explorerIntentLabel">
-            <button id="lyanneursTab" class="explorer-world-tab is-lyanneurs" type="button" role="tab" aria-selected="false" aria-controls="explorerPanel" data-mode="lyanneurs" tabindex="-1">
+            <button id="lyanneursTab" class="explorer-world-tab is-lyanneurs active" type="button" role="tab" aria-selected="true" aria-controls="explorerPanel" data-mode="lyanneurs">
                 <i class="ph-bold ph-users-three" aria-hidden="true"></i>
                 <span>Je cherche un Lyanneur</span>
                 <span class="sr-only">Lyanneurs</span>
             </button>
-            <button id="annoncesTab" class="explorer-world-tab is-annonces active" type="button" role="tab" aria-selected="true" aria-controls="explorerPanel" data-mode="annonces">
+            <button id="annoncesTab" class="explorer-world-tab is-annonces" type="button" role="tab" aria-selected="false" aria-controls="explorerPanel" data-mode="annonces" tabindex="-1">
                 <i class="ph-bold ph-megaphone" aria-hidden="true"></i>
                 <span>Annonces</span>
             </button>
         </div>
         <p class="explorer-swipe-hint">Glissez pour passer d’un monde à l’autre</p>
-        <section id="explorerPanel" role="tabpanel" aria-labelledby="annoncesTab">
+        <section id="explorerPanel" role="tabpanel" aria-labelledby="lyanneursTab">
             <form id="explorerSearchForm" class="explorer-search" role="search">
-                <label class="sr-only" for="explorerSearchInput">Rechercher dans les annonces</label>
-                <input id="explorerSearchInput" type="search" placeholder="De quoi avez-vous besoin ?" autocomplete="off">
+                <label class="sr-only" for="explorerSearchInput">Rechercher dans les lyanneurs</label>
+                <input id="explorerSearchInput" type="search" placeholder="Nom, activité ou commune" autocomplete="off">
                 <button type="submit" class="btn lyann-cta-primary" aria-label="Rechercher"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Rechercher</span></button>
             </form>
             <div class="explorer-tools">
@@ -1164,21 +1164,21 @@
     <script src="matching-engine.js"></script>
     <script src="sentry-init.js?v=20260916"></script>
     <script src="surface-manager.js?v=20260922s"></script>
-    <script src="app-router.js?v=20260922a"></script>
+    <script src="app-router.js?v=20260923a"></script>
     <script src="api-client.js"></script>
     <script src="session-store.js"></script>
     <script src="auth-state.js"></script>
     <script src="data-cache.js"></script>
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>
-<script src="chat-logic.js?v=20260916-JEPEUXAIDER-FIX"></script>
+<script src="chat-logic.js?v=20260923a"></script>
     <script src="ai-simulator.js"></script>
     <script src="ai-classifier.js?v=20260922c"></script>
     <script src="platform-core.js"></script>
     <script src="notification-engine.js"></script>
     <script src="notifications-ui.js"></script>
     <script src="app-shell.js"></script>
-    <script src="messaging-ui.js"></script>
+    <script src="messaging-ui.js?v=20260923a"></script>
     <script src="maison-catalog.js?v=20260922c"></script>
     <script src="profile-repository.js?v=20260922c"></script>
     <script src="annonce-format.js?v=20260922g"></script>

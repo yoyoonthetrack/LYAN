@@ -364,6 +364,11 @@
     const category = element.getAttribute('data-category') || undefined;
 
     const payload = { id: contactId || requestId, requestId, contactId, name, avatar, title, query, category };
+    if (element.getAttribute('data-direct') === 'true' && contactId && !element.getAttribute('data-request-id')) {
+      payload.direct = true;
+      payload.requestId = undefined;
+      payload.initialNeed = { direct: true };
+    }
     if (element?.classList?.contains?.('btn-help-lyann') && requestId) {
       payload.initialNeed = { requestId, requesterId: contactId, title };
     }
@@ -456,6 +461,20 @@
   // leaves a race window in Capacitor where dynamically-rendered controls can be tapped
   // before the router owns navigation.
   installCaptureNavigation();
+
+  const prefetchMainPages = () => {
+    const here = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    ['index.html', 'feed.html', 'results.html', 'how-it-works.html'].forEach((page) => {
+      if (page === here || (here === '' && page === 'index.html')) return;
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.as = 'document';
+      link.href = page;
+      document.head.appendChild(link);
+    });
+  };
+  if ('requestIdleCallback' in window) window.requestIdleCallback(prefetchMainPages, { timeout: 2500 });
+  else window.setTimeout(prefetchMainPages, 1200);
 
   async function bootLocationRoute() {
     await window.LYANN_AUTH_STATE?.ready?.();

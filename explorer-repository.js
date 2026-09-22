@@ -124,7 +124,7 @@
             const services = mode === 'annonces' ? [record] : record.services;
             const related = leaves.filter(t => services.some(s => matchesTaxonomy(s, t)));
             if ((filters.category || filters.service) && !services.some(s => selectedLeaves.some(t => matchesTaxonomy(s, t, !!filters.service)))) return false;
-            const text = normalize([record.name, record.title, record.description, record.bio,
+            const text = normalize([record.name, record.first_name, record.last_name, record.profiles?.first_name, record.profiles?.last_name, record.title, record.description, record.bio,
                 ...services.flatMap(s => [s.title, s.description, s.category]),
                 ...related.flatMap(t => [t.category, t.subcategory, ...(t.synonyms || [])])].filter(Boolean).join(' '));
             if (!terms.every(term => text.includes(term))) return false;

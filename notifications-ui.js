@@ -4,22 +4,64 @@
 function updateHeaderNotificationBadge() {
     const currentUserId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
     const badge = document.querySelector('.notif-badge-count');
-    if (!badge) return;
-    if (!currentUserId) {
-        badge.style.display = 'none';
-        return;
+    if (badge) {
+        if (!currentUserId || !window.LyannNotificationEngine) {
+            badge.style.display = 'none';
+        } else {
+            const unreadCount = window.LyannNotificationEngine.getUnreadCount(currentUserId, currentUserId);
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                badge.style.display = 'inline-flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
     }
+    refreshMessageBadge(currentUserId);
+}
 
-    if (window.LyannNotificationEngine) {
-        const unreadCount = window.LyannNotificationEngine.getUnreadCount(currentUserId, currentUserId);
-        if (unreadCount > 0) {
-            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+function paintMessageBadge(count) {
+    document.querySelectorAll('#tab-messages, #btnHeaderChat, .nav-msg-btn.open-chat-trigger').forEach((el) => {
+        if (!el.querySelector('.msg-badge-count')) {
+            if (!el.style.position) el.style.position = 'relative';
+            const span = document.createElement('span');
+            span.className = 'msg-badge-count';
+            span.style.cssText = 'position:absolute;top:2px;right:2px;background:#C95140;color:#fff;font-size:0.68rem;font-weight:700;min-width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center;display:none;';
+            el.appendChild(span);
+        }
+    });
+    document.querySelectorAll('.msg-badge-count').forEach((badge) => {
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : String(count);
             badge.style.display = 'inline-flex';
         } else {
             badge.style.display = 'none';
         }
+    });
+}
+
+async function refreshMessageBadge(currentUserId) {
+    const userId = currentUserId || window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
+    if (!userId || !window.LYANN_API_CLIENT?.supabase) {
+        paintMessageBadge(0);
+        return;
+    }
+    try {
+        const { data: parts, error: partsError } = await window.LYANN_API_CLIENT.supabase.from('conversation_participants').select('conversation_id').eq('user_id', userId);
+        if (partsError) throw partsError;
+        const ids = (parts || []).map((row) => row.conversation_id).filter(Boolean);
+        if (!ids.length) {
+            paintMessageBadge(0);
+            return;
+        }
+        const { data: unread, error } = await window.LYANN_API_CLIENT.supabase.from('messages').select('conversation_id').in('conversation_id', ids).eq('is_read', false).neq('sender_id', userId);
+        if (error) throw error;
+        paintMessageBadge(new Set((unread || []).map((row) => row.conversation_id)).size);
+    } catch (err) {
+        console.warn('[messages] badge', err?.message || err);
     }
 }
+window.refreshMessageBadge = refreshMessageBadge;
 
 function openNotificationsModal() {
     const currentUserId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
@@ -40,9 +82,9 @@ function renderNotificationsModal() {
         document.body.appendChild(modal);
     }
 
-    const notifs = window.LyannNotificationEngine 
+    const notifs = (window.LyannNotificationEngine 
         ? window.LyannNotificationEngine.getUserNotifications(currentUserId, currentUserId) 
-        : [];
+        : []).filter(n => n.type !== 'NEW_MESSAGE');
     const unreadCount = notifs.filter(n => !n.read).length;
 
     modal.innerHTML = `
@@ -62,14 +104,15 @@ function renderNotificationsModal() {
                     <div style="text-align: center; padding: 32px 16px; color: var(--text-muted);">
                         <i class="ph ph-bell-slash" style="font-size: 2.5rem; opacity: 0.5; margin-bottom: 8px;"></i>
                         <p style="margin: 0; font-weight: 600;">Rien de nouveau pour le moment.</p>
-                        <span style="font-size: 0.8rem;">Vos opportunités et messages apparaîtront ici.</span>
+                        <span style="font-size: 0.8rem;">Tes opportunités et l’activité de tes annonces apparaîtront ici.</span>
                     </div>
                 ` : notifs.map(n => {
                     const icon = n.type === 'OPPORTUNITY' ? '🤝' 
                         : (n.type === 'NEW_MESSAGE' ? '💬' 
                         : (n.type === 'BOKANTAJ' ? '📣'
+                        : (n.type === 'REQUEST_CLOSING' ? '⏳'
                         : (n.type.startsWith('MISSION') ? '🎯' 
-                        : (n.type.startsWith('PAYMENT') ? '💳' : '🔔'))));
+                        : (n.type.startsWith('PAYMENT') ? '💳' : '🔔')))));
                     
                     const timeAgo = formatRelativeTime(n.created_at);
                     const isUnread = !n.read;
@@ -84,6 +127,13 @@ function renderNotificationsModal() {
                                 </div>
                                 <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 6px 0; line-height: 1.3;">${n.body}</p>
                                 ${n.cta ? `<span style="font-size: 0.76rem; font-weight: 700; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;">${n.cta.label} &rarr;</span>` : ''}
+                                ${n.type === 'REQUEST_CLOSING' && n.entity_id ? `
+                                    <div class="request-lifecycle-actions">
+                                        <button type="button" data-lifecycle="reopen" data-request-id="${n.entity_id}">Rouvrir</button>
+                                        <button type="button" data-lifecycle="pause" data-request-id="${n.entity_id}">Mettre en pause</button>
+                                        <button type="button" data-lifecycle="leave" data-request-id="${n.entity_id}">Laisser fermer</button>
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                     `;
@@ -105,6 +155,29 @@ function renderNotificationsModal() {
         if (e.target === modal) closeModal();
     });
 
+    modal.querySelectorAll('[data-lifecycle]').forEach(btn => {
+        btn.addEventListener('click', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const client = window.LYANN_API_CLIENT || window.apiClient;
+            const requestId = btn.dataset.requestId;
+            const action = btn.dataset.lifecycle;
+            if (!client?.applyRequestLifecycle || !requestId || !action) return;
+            try {
+                await client.applyRequestLifecycle(requestId, action);
+                const notifId = btn.closest('.notif-item-card')?.getAttribute('data-notif-id');
+                if (window.LyannNotificationEngine && notifId) {
+                    window.LyannNotificationEngine.markAsRead(notifId, currentUserId);
+                }
+                const label = action === 'reopen' ? 'Annonce rouverte.' : (action === 'pause' ? 'Annonce laissée en pause.' : 'Elle se fermera à la date prévue.');
+                if (window.NotificationService) window.NotificationService.showToast('success', label);
+                closeModal();
+            } catch (err) {
+                if (window.lyannAlert) window.lyannAlert(err.message || 'Action impossible pour le moment.');
+            }
+        });
+    });
+
     document.getElementById('btnMarkAllNotifsRead')?.addEventListener('click', () => {
         if (window.LyannNotificationEngine) {
             window.LyannNotificationEngine.markAllAsRead(currentUserId);
@@ -121,6 +194,8 @@ function renderNotificationsModal() {
             const entityId = card.getAttribute('data-entity-id');
             const nType = (window.LyannNotificationEngine?.getUserNotifications?.(currentUserId, currentUserId) || [])
                 .find((item) => String(item.id) === String(notifId))?.type;
+
+            if (nType === 'REQUEST_CLOSING') return;
 
             if (window.LyannNotificationEngine && notifId) {
                 window.LyannNotificationEngine.markAsRead(notifId, currentUserId);

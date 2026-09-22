@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260916-5" defer></script>';
+const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260922w" defer></script>';
 const SHARED_RUNTIME_TAGS = [
   '<script src="sentry-init.js?v=20260916-5"></script>',
   '<script src="surface-manager.js?v=20260922s"></script>',
@@ -18,20 +18,6 @@ const SHARED_RUNTIME_ANCHORS = [
 
 function sanitizeStaticHtml(html) {
   let out = String(html || '');
-
-  out = out.replace(
-    /\n\s*<!-- ========== SECTION 5 : TALENTS DE NOS ÎLES ========== -->[\s\S]*?(?=\n\s*<!-- ========== SECTION 6 : TÉMOIGNAGES ========== -->)/,
-    '\n'
-  );
-  out = out.replace(
-    /\n\s*<!-- ========== SECTION 6 : TÉMOIGNAGES ========== -->[\s\S]*?(?=\n\s*<!-- ========== SECTION APERÇU : BOKANTAJ EN DIRECT ========== -->)/,
-    '\n'
-  );
-
-  out = out.replace(
-    /<span class="photo-category-sub">\s*\d+\s+(?:artisans?|passionnés?|électriciens?|plombiers?|accompagnateurs?)[^<]*<\/span>/gi,
-    '<span class="photo-category-sub">Explorer cette activité</span>'
-  );
 
   out = out
     .replace(/Coup de pouce/g, 'Service de confiance')

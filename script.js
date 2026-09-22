@@ -210,7 +210,7 @@ function ensureMobileHamburgerDrawer() {
                     <div class="drawer-menu-group logged-in-only">
                         <a href="#" class="drawer-direct-link" data-lyann-route="favorites">
                             <span class="drawer-accordion-label">
-                                <i class="ph ph-heart" style="color: var(--primary);"></i>
+                                <i class="ph ph-bookmark-simple" style="color: var(--primary);"></i>
                                 <span>Favoris</span>
                             </span>
                             <i class="ph ph-caret-right drawer-chevron"></i>
@@ -1067,7 +1067,7 @@ safeDomReady(() => {
 
         // Build Real Trust Metrics
         let trustItems = [];
-        if (avgRating) trustItems.push(`<span class="lyann-trust-item"><i class="ph-fill ph-star" style="color:#F59E0B;"></i> ${avgRating} (${reviewsCount})</span>`);
+        if (avgRating) trustItems.push(`<button type="button" class="lyann-trust-item lyann-trust-stars" onclick="document.getElementById('profileAvis')?.scrollIntoView({behavior:'smooth', block:'start'})" style="background:none;border:none;padding:0;cursor:pointer;font:inherit;color:inherit;"><i class="ph-fill ph-star" style="color:#F59E0B;"></i> ${avgRating} (${reviewsCount})</button>`);
         if (completedMissions > 0) trustItems.push(`<span class="lyann-trust-item"><i class="ph ph-hand-heart" style="color:#4A7C59;"></i> ${completedMissions} ${completedMissions > 1 ? 'missions' : 'mission'}</span>`);
         if (pData.member_since) trustItems.push(`<span class="lyann-trust-item"><i class="ph ph-calendar-blank"></i> Membre depuis ${window.escapeHtmlAttr(pData.member_since)}</span>`);
         if (metrics.response_rate_percent !== null && metrics.response_rate_percent !== undefined) trustItems.push(`<span class="lyann-trust-item"><i class="ph ph-lightning"></i> ${metrics.response_rate_percent}% de réponse</span>`);
@@ -1093,7 +1093,7 @@ safeDomReady(() => {
             const chatAvatarSrc = avatarSrc.replace(/'/g, "\\'");
             ctaHTML = `
                 <div class="lyann-profile-cta-group" style="display: flex; align-items: center; gap: 8px;">
-                    <button type="button" class="btn btn-primary btn-sm" data-lyann-route="messages" data-contact-id="${chatContactId}" data-contact-name="${chatContactName}"><i class="ph ph-chat-circle"></i> Contacter</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-lyann-route="messages" data-direct="true" data-contact-id="${chatContactId}" data-contact-name="${chatContactName}"><i class="ph ph-chat-circle"></i> Contacter</button>
                     <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="PROFILE" data-favorite-id="${pData.id}" data-fav-type="PROFILE" data-fav-id="${pData.id}" data-surface="profile-modal" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: 1px solid #CBD5E1; border-radius: 50%; padding: 8px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #64748B; cursor: pointer; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                         <i class="ph ph-bookmark-simple"></i>
                     </button>
@@ -1203,9 +1203,9 @@ safeDomReady(() => {
 
         // Build Reviews ("Recommandations")
         let reviewsHTML = `
-            <div class="lyann-profile-section">
+            <div class="lyann-profile-section" id="profileAvis">
                 <div class="lyann-section-header" style="margin-bottom: 10px;">
-                    <h4 class="lyann-section-title"><i class="ph ph-chat-circle-dots"></i> Recommandations (${reviewsCount})</h4>
+                    <h4 class="lyann-section-title"><i class="ph ph-star"></i> Avis (${reviewsCount})</h4>
                 </div>
         `;
         if (reviewsList && reviewsList.length > 0) {
@@ -2287,6 +2287,8 @@ safeDomReady(() => {
                 return;
             }
 
+            const client = window.LYANN_API_CLIENT || window.apiClient;
+            if (client?.advanceRequestLifecycle) client.advanceRequestLifecycle();
             const data = await window.LYANN_BOKANTAJ_REPOSITORY.load({ force: options.force === true });
             currentFlashPosts = Array.isArray(data) ? data : [];
             bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
@@ -2316,10 +2318,15 @@ safeDomReady(() => {
 
     if (flashPhotoInput) {
         flashPhotoInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files).slice(0, 3);
+            const files = Array.from(e.target.files);
+            if (files.length > 4) {
+                if (window.NotificationService) window.NotificationService.showToast('warning', '4 photos maximum par publication.');
+                else if (window.lyannAlert) window.lyannAlert('4 photos maximum par publication.');
+            }
+            const kept = files.slice(0, 4);
             attachedPhotos.forEach(url => URL.revokeObjectURL(url));
-            attachedPhotoFiles = files;
-            attachedPhotos = files.map(file => URL.createObjectURL(file));
+            attachedPhotoFiles = kept;
+            attachedPhotos = kept.map(file => URL.createObjectURL(file));
             updateMediaPreview();
         });
     }
@@ -2369,6 +2376,124 @@ safeDomReady(() => {
             flashCharCount.textContent = flashContentInput.value.length;
         });
     }
+
+    function bokantajPhotoGrid(images) {
+        const urls = (Array.isArray(images) ? images : []).filter(Boolean).slice(0, 4);
+        if (!urls.length) return '';
+        const encoded = encodeURIComponent(JSON.stringify(urls));
+        const cells = urls.map((url, index) => `
+            <button type="button" class="bokantaj-photo" data-photo-index="${index}" aria-label="Agrandir la photo ${index + 1}">
+                <img src="${window.escapeHtmlAttr(url)}" alt="">
+            </button>
+        `).join('');
+        return `<div class="bokantaj-photos bokantaj-photos-${urls.length}" data-photos="${encoded}">${cells}</div>`;
+    }
+
+    function openBokantajCarousel(urls, startIndex) {
+        const photos = (urls || []).filter(Boolean);
+        if (!photos.length) return;
+        let overlay = document.getElementById('bokantajCarousel');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'bokantajCarousel';
+            overlay.className = 'bokantaj-carousel';
+            overlay.innerHTML = `
+                <button type="button" class="bokantaj-carousel-close" data-carousel-close aria-label="Fermer">×</button>
+                <button type="button" class="bokantaj-carousel-nav bokantaj-carousel-prev" data-carousel-prev aria-label="Photo précédente">‹</button>
+                <img class="bokantaj-carousel-img" alt="">
+                <button type="button" class="bokantaj-carousel-nav bokantaj-carousel-next" data-carousel-next aria-label="Photo suivante">›</button>
+            `;
+            overlay.hidden = true;
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay || event.target.closest('[data-carousel-close]')) {
+                    overlay.hidden = true;
+                    return;
+                }
+                const list = overlay._photos || [];
+                if (!list.length) return;
+                if (event.target.closest('[data-carousel-prev]')) overlay._index = (overlay._index - 1 + list.length) % list.length;
+                if (event.target.closest('[data-carousel-next]')) overlay._index = (overlay._index + 1) % list.length;
+                const img = overlay.querySelector('.bokantaj-carousel-img');
+                if (img) img.src = list[overlay._index];
+            });
+        }
+        overlay._photos = photos;
+        overlay._index = Math.max(0, Math.min(startIndex || 0, photos.length - 1));
+        const img = overlay.querySelector('.bokantaj-carousel-img');
+        if (img) img.src = photos[overlay._index];
+        overlay.hidden = false;
+    }
+
+    window.editMyPost = async function(postId) {
+        if (!postId) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client?.updatePost) return;
+        const current = (currentFlashPosts || []).find(post => post.id === postId);
+        const content = window.lyannPrompt
+            ? await window.lyannPrompt('Texte de la publication', 'info', current?.content || '')
+            : window.prompt('Texte de la publication', current?.content || '');
+        if (content == null) return;
+        try {
+            await client.updatePost(postId, { content: String(content).trim() });
+            if (window.NotificationService) window.NotificationService.showToast('success', 'Publication mise à jour.');
+            if (typeof window.loadBokantajFeedFromSupabase === 'function') window.loadBokantajFeedFromSupabase({ force: true });
+        } catch (err) {
+            if (window.lyannAlert) window.lyannAlert(err.message || 'La modification n’a pas abouti.');
+        }
+    };
+
+    window.deleteMyPost = async function(postId) {
+        if (!postId) return;
+        const confirmed = window.lyannConfirm
+            ? await window.lyannConfirm('Supprimer cette publication ?')
+            : window.confirm('Supprimer cette publication ?');
+        if (!confirmed) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client?.deletePost) return;
+        try {
+            await client.deletePost(postId);
+            if (window.NotificationService) window.NotificationService.showToast('success', 'Publication supprimée.');
+            if (typeof window.loadBokantajFeedFromSupabase === 'function') window.loadBokantajFeedFromSupabase({ force: true });
+        } catch (err) {
+            if (window.lyannAlert) window.lyannAlert(err.message || 'La suppression n’a pas abouti.');
+        }
+    };
+
+    window.editMyAnnouncement = async function(requestId) {
+        if (!requestId) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client?.getRequest || !client?.updateRequest) return;
+        let current = null;
+        try {
+            current = await client.getRequest(requestId);
+        } catch (err) {
+            if (window.lyannAlert) window.lyannAlert(err.message || 'Annonce introuvable.');
+            return;
+        }
+        const title = window.lyannPrompt
+            ? await window.lyannPrompt('Titre de l’annonce', 'info', current?.title || '')
+            : window.prompt('Titre de l’annonce', current?.title || '');
+        if (title == null) return;
+        const description = window.lyannPrompt
+            ? await window.lyannPrompt('Description', 'info', current?.description || '')
+            : window.prompt('Description', current?.description || '');
+        if (description == null) return;
+        try {
+            await client.updateRequest(requestId, {
+                title: String(title).trim() || current?.title,
+                description: String(description).trim()
+            });
+            if (window.NotificationService) window.NotificationService.showToast('success', 'Annonce mise à jour.');
+            const session = window.LYANN_AUTH_STATE?.getSnapshot?.();
+            const userId = session?.userId || window.CURRENT_USER_ID;
+            if (userId && document.getElementById('monActiviteContainer') && typeof window.switchActivityTab === 'function') {
+                await window.switchActivityTab('requests', userId);
+            }
+        } catch (err) {
+            if (window.lyannAlert) window.lyannAlert(err.message || 'La modification n’a pas abouti.');
+        }
+    };
 
     function renderFlashFeed() {
         const feedContainer = document.getElementById('flashFeedContainer');
@@ -2467,7 +2592,8 @@ safeDomReady(() => {
                 });
             }
 
-            const currentAuthUserId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id;
+            const authSnapshot = window.LYANN_AUTH_STATE?.getSnapshot?.();
+            const currentAuthUserId = authSnapshot?.userId || window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id;
 
             // Fault Isolation: Individual item render with try/catch
             feedContainer.innerHTML = filtered.map((post, postIdx) => {
@@ -2483,13 +2609,11 @@ safeDomReady(() => {
                     const targetId = post.request_id || post.id || '';
                     const authorId = post.requester_id || post.user_id || post.author_id || post.memberId || post.created_by || '';
                     const isOwnLyann = isLyann && currentAuthUserId && (authorId === currentAuthUserId);
+                    const isOwnPost = !isLyann && currentAuthUserId && (authorId === currentAuthUserId);
                     
                     let mediaHTML = '';
-                    if (post.images && Array.isArray(post.images) && post.images.length > 0) {
-                        mediaHTML = `<div class="flash-media-box" style="margin-top: 10px; border-radius: 12px; overflow: hidden;"><img src="${post.images[0]}" alt="Media Post" class="flash-media-img" style="max-height: 320px; width: 100%; object-fit: cover;"></div>`;
-                    } else if (post.image) {
-                        mediaHTML = `<div class="flash-media-box" style="margin-top: 10px; border-radius: 12px; overflow: hidden;"><img src="${post.image}" alt="Media Post" class="flash-media-img" style="max-height: 320px; width: 100%; object-fit: cover;"></div>`;
-                    }
+                    const photoList = (post.images && post.images.length) ? post.images : (post.image ? [post.image] : []);
+                    if (photoList.length) mediaHTML = bokantajPhotoGrid(photoList);
 
                     let actionBtnHTML = '';
                     if (isLyann) {
@@ -2571,8 +2695,15 @@ safeDomReady(() => {
                             `;
                         } else {
                             ctaRowHTML = `
-                                <div class="lyann-cta-row" style="display: grid; grid-template-columns: 1fr; width: 100%; box-sizing: border-box; margin-top: 8px;">
+                                <div class="lyann-cta-row lyann-own-actions" style="display: grid; grid-template-columns: 1fr auto; gap: 10px; width: 100%; box-sizing: border-box; margin-top: 8px; align-items: center;">
                                     ${secondaryCtaHTML}
+                                    <details class="lyann-post-menu">
+                                        <summary aria-label="Actions de l'annonce"><i class="ph ph-dots-three-bold"></i></summary>
+                                        <div class="lyann-post-menu-panel">
+                                            <button type="button" class="btn-edit-own-lyann" data-request-id="${targetId}">Modifier</button>
+                                            <button type="button" class="btn-delete-own-lyann" data-request-id="${targetId}">Supprimer</button>
+                                        </div>
+                                    </details>
                                 </div>
                             `;
                         }
@@ -2590,6 +2721,14 @@ safeDomReady(() => {
                                             <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
                                         </div>
                                     </div>
+                                    ${isOwnPost ? `
+                                    <details class="lyann-post-menu">
+                                        <summary aria-label="Actions de la publication"><i class="ph ph-dots-three-bold"></i></summary>
+                                        <div class="lyann-post-menu-panel">
+                                            <button type="button" class="btn-edit-own-post" data-post-id="${targetId}">Modifier</button>
+                                            <button type="button" class="btn-delete-own-post" data-post-id="${targetId}">Supprimer</button>
+                                        </div>
+                                    </details>` : ''}
                                     <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-favorite-id="${targetId}" data-fav-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-fav-id="${targetId}" data-surface="bokantaj-feed" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                                         <i class="ph ph-bookmark-simple"></i>
                                     </button>
@@ -2903,6 +3042,20 @@ safeDomReady(() => {
             });
         });
 
+        document.querySelectorAll('.btn-edit-own-lyann, .btn-delete-own-lyann, .btn-edit-own-post, .btn-delete-own-post').forEach(btn => {
+            if (btn.dataset.listenersBound === 'true') return;
+            btn.dataset.listenersBound = 'true';
+            btn.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                btn.closest('details')?.removeAttribute('open');
+                if (btn.classList.contains('btn-delete-own-lyann')) window.deleteMyAnnouncement?.(btn.dataset.requestId);
+                else if (btn.classList.contains('btn-edit-own-lyann')) window.editMyAnnouncement?.(btn.dataset.requestId);
+                else if (btn.classList.contains('btn-delete-own-post')) window.deleteMyPost?.(btn.dataset.postId);
+                else window.editMyPost?.(btn.dataset.postId);
+            });
+        });
+
         document.querySelectorAll('.btn-open-chat-direct').forEach(btn => {
             if (btn.dataset.listenersBound === 'true') return;
             btn.dataset.listenersBound = 'true';
@@ -2942,6 +3095,16 @@ safeDomReady(() => {
                     window.openQuickProfileModal(memberId);
                 }
             };
+            feedRoot.addEventListener('click', (event) => {
+                const photo = event.target.closest('.bokantaj-photo');
+                if (!photo || !feedRoot.contains(photo)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const grid = photo.closest('.bokantaj-photos');
+                let urls = [];
+                try { urls = JSON.parse(decodeURIComponent(grid?.dataset.photos || '')); } catch (err) { urls = []; }
+                openBokantajCarousel(urls, Number(photo.dataset.photoIndex) || 0);
+            });
             feedRoot.addEventListener('click', openAuthorProfile);
             feedRoot.addEventListener('keydown', (event) => {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -3821,12 +3984,18 @@ safeDomReady(() => {
     window.getRequestStatusBadge = function(statusRaw) {
         const status = String(statusRaw || '').toUpperCase().trim();
         if (status === 'OPEN' || status === 'PUBLISHED' || status === 'ACTIVE') {
-            return { label: 'Ouvert', class: 'pill-green' };
+            return { label: 'Ouverte', class: 'pill-green' };
+        }
+        if (status === 'PAUSED' || status === 'PAUSE' || status === 'EN_PAUSE') {
+            return { label: 'En pause', class: 'pill-red' };
+        }
+        if (status === 'CLOSED' || status === 'FERMEE' || status === 'FERMÉE') {
+            return { label: 'Fermée', class: 'pill-red' };
         }
         if (status === 'IN_PROGRESS' || status === 'EN_COURS' || status === 'PENDING') {
             return { label: 'En cours', class: 'pill-red' };
         }
-        if (status === 'COMPLETED' || status === 'TERMINÉ' || status === 'CLOSED') {
+        if (status === 'COMPLETED' || status === 'TERMINÉ') {
             return { label: 'Terminé', class: 'pill-red' };
         }
         if (status === 'CANCELLED' || status === 'ANNULÉ') {
@@ -3878,7 +4047,7 @@ safeDomReady(() => {
         let tabsHTML = `
             <div class="activity-switch-tabs">
                 <button type="button" class="activity-tab-chip ${activeTab === 'requests' ? 'active' : ''}" onclick="window.switchActivityTab('requests', '${currentUserId}')">
-                    <i class="ph ph-broadcast"></i> Mes Lyanns (${reqCount})
+                    <i class="ph ph-broadcast"></i> Mes annonces (${reqCount})
                 </button>
                 <button type="button" class="activity-tab-chip ${activeTab === 'missions' ? 'active' : ''}" onclick="window.switchActivityTab('missions', '${currentUserId}')">
                     <i class="ph ph-hand-heart"></i> Mes missions (${missCount})
@@ -3894,8 +4063,9 @@ safeDomReady(() => {
         if (activeTab === 'requests') {
             if (myRequests.length > 0) {
                 const rowsHTML = myRequests.map(r => {
-                    const userNeedTitle = (r.description && r.description.trim()) ? r.description.trim() : (r.title || 'Besoin d\'aide');
-                    const categorySubtitle = (r.category && r.category.trim()) ? r.category.trim() : (r.title || 'Lyann');
+                    const titleText = (r.title && r.title.trim()) ? r.title.trim() : 'Annonce';
+                    const descriptionText = (r.description && r.description.trim() && r.description.trim() !== titleText) ? r.description.trim() : '';
+                    const categorySubtitle = (r.category && r.category.trim()) ? r.category.trim() : '';
                     
                     let locShort = (r.location || 'Guadeloupe').split('(')[0].trim();
                     
@@ -3908,23 +4078,28 @@ safeDomReady(() => {
                     }
 
                     let budgetStr = r.budget ? `${r.budget} €` : '';
-                    const statusBadge = window.getRequestStatusBadge(r.status);
 
                     return `
                         <div class="account-v3-row account-touch-row activity-card-row" onclick="window.closeUserAccountModal(); if (typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal('${r.id}'); else if (typeof window.openHelpDetailModal === 'function') window.openHelpDetailModal('${r.id}');">
                             <div class="row-icon"><i class="ph ph-broadcast"></i></div>
                             <div class="row-content" style="flex:1; min-width:0;">
                                 <strong class="row-title" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:0.95rem; line-height:1.35; color:#17231C; font-weight:700;">
-                                    ${window.escapeHtmlAttr(userNeedTitle)}
+                                    ${window.escapeHtmlAttr(titleText)}
                                 </strong>
-                                <span class="row-subtitle" style="font-size:0.82rem; color:#64748B; margin-top:4px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                    ${window.escapeHtmlAttr(categorySubtitle)} • ${window.escapeHtmlAttr(locShort)}${dateStr ? ' · ' + dateStr : ''}${budgetStr ? ' · ' + budgetStr : ''}
+                                <span class="row-subtitle" style="font-size:0.82rem; font-weight:400; color:#64748B; margin-top:4px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    ${descriptionText ? window.escapeHtmlAttr(descriptionText) + ' • ' : ''}${window.escapeHtmlAttr(categorySubtitle)}${categorySubtitle ? ' • ' : ''}${window.escapeHtmlAttr(locShort)}${dateStr ? ' · ' + dateStr : ''}${budgetStr ? ' · ' + budgetStr : ''}
                                 </span>
                             </div>
                             <div class="row-right-badge" style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; margin-left:12px;">
-                                <span class="pill-badge ${statusBadge.class}" style="font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:12px;">
-                                    ${statusBadge.label}
-                                </span>
+                                <label class="sr-only" for="annonce-status-${r.id}">Statut de l'annonce</label>
+                                <select id="annonce-status-${r.id}" class="annonce-status-select" data-request-id="${r.id}" onchange="event.stopPropagation(); window.setAnnouncementStatus('${r.id}', this.value);" onclick="event.stopPropagation();" style="font-size:0.78rem; font-weight:700; border-radius:12px; border:1px solid #E2E8F0; padding:4px 8px; background:#fff; color:#17231C;">
+                                    <option value="OPEN" ${String(r.status || 'OPEN').toUpperCase() === 'OPEN' ? 'selected' : ''}>Ouverte</option>
+                                    <option value="PAUSED" ${String(r.status || '').toUpperCase() === 'PAUSED' ? 'selected' : ''}>En pause</option>
+                                    <option value="CLOSED" ${String(r.status || '').toUpperCase() === 'CLOSED' ? 'selected' : ''}>Fermée</option>
+                                </select>
+                                <button type="button" class="activity-delete-btn" aria-label="Modifier cette annonce" onclick="event.stopPropagation(); window.editMyAnnouncement('${r.id}');">
+                                    <i class="ph ph-pencil-simple"></i>
+                                </button>
                                 <button type="button" class="activity-delete-btn" aria-label="Supprimer cette annonce" onclick="event.stopPropagation(); window.deleteMyAnnouncement('${r.id}');">
                                     <i class="ph ph-trash"></i>
                                 </button>
@@ -3938,7 +4113,7 @@ safeDomReady(() => {
                 mainListHTML = `
                     <div class="account-v3-empty" style="background:#FFFFFF; border:1px solid #EAE6DF; border-radius:18px; padding:32px 20px; text-align:center;">
                         <i class="ph ph-broadcast" style="font-size:2.2rem; color:#94A3B8; margin-bottom:10px; display:block;"></i>
-                        <h5 style="font-size:1rem; font-weight:700; color:#17231C; margin:0 0 6px 0;">Aucun Lyann publié</h5>
+                        <h5 style="font-size:1rem; font-weight:700; color:#17231C; margin:0 0 6px 0;">Aucune annonce publiée</h5>
                         <p style="font-size:0.86rem; color:#64748B; margin:0 0 16px 0;">Tu n'as encore publié aucun besoin sur LYANN.</p>
                         <button class="btn btn-primary btn-sm" onclick="window.closeUserAccountModal(); if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('publish'); else if (typeof window.openLyannWizard === 'function') window.openLyannWizard();" style="display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-plus"></i> Publier un besoin</button>
                     </div>
@@ -3998,6 +4173,23 @@ safeDomReady(() => {
                 </section>
             </div>
         `;
+    };
+
+    window.setAnnouncementStatus = async function(requestId, status) {
+        const allowed = ['OPEN', 'PAUSED', 'CLOSED'];
+        if (!requestId || !allowed.includes(status)) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client?.updateRequest) return;
+        try {
+            await client.updateRequest(requestId, { status });
+            const label = status === 'OPEN' ? 'Ouverte' : (status === 'PAUSED' ? 'En pause' : 'Fermée');
+            if (window.NotificationService) window.NotificationService.showToast('success', `Annonce ${label.toLowerCase()}.`);
+            window.LYANN_EXPLORER_REPOSITORY?.invalidate?.();
+            if (typeof window.LYANN_EXPLORER?.refresh === 'function') window.LYANN_EXPLORER.refresh();
+        } catch (err) {
+            if (window.NotificationService) window.NotificationService.showToast('warning', err.message || 'Le statut n’a pas pu être modifié.');
+            else if (window.lyannAlert) window.lyannAlert(err.message || 'Le statut n’a pas pu être modifié.');
+        }
     };
 
     window.deleteMyAnnouncement = async function(requestId) {
@@ -4405,7 +4597,7 @@ safeDomReady(() => {
                             <i class="ph ph-broadcast"></i> Mon activité
                         </button>
                         <button type="button" class="sidebar-nav-btn ${subViewName === 'favorites' ? 'active' : ''}" onclick="window.openAccountModalSubView('favorites')">
-                            <i class="ph ph-star"></i> Favoris
+                            <i class="ph ph-bookmark-simple"></i> Favoris
                         </button>
                         <button type="button" class="sidebar-nav-btn ${subViewName === 'finances' ? 'active' : ''}" onclick="window.openAccountModalSubView('finances')">
                             <i class="ph ph-credit-card"></i> Finances
@@ -6852,17 +7044,48 @@ safeDomReady(() => {
 
     window.wizardSelectedPhotos = window.wizardSelectedPhotos || [];
 
+    function syncDirectAudience() {
+        const step = modalRequestHelp.querySelector('.wizard-step[data-step="6"]');
+        if (!step) return;
+        let box = step.querySelector('#wizardDirectAudience');
+        if (!box) {
+            box = document.createElement('fieldset');
+            box.id = 'wizardDirectAudience';
+            box.style.cssText = 'border:1px solid var(--border,#E2E8F0);border-radius:12px;padding:14px;margin-top:16px;';
+            box.innerHTML = `
+                <legend style="font-weight:800;padding:0 6px;">À qui souhaitez-vous envoyer cette demande ?</legend>
+                <label style="display:flex;gap:8px;align-items:flex-start;margin:10px 0;font-weight:650;">
+                    <input type="radio" name="wizardAudience" value="person" checked>
+                    <span>Uniquement à <span id="wizardAudienceName">cette personne</span></span>
+                </label>
+                <label style="display:flex;gap:8px;align-items:flex-start;font-weight:650;">
+                    <input type="radio" name="wizardAudience" value="network">
+                    <span>À cette personne et à l’ensemble du réseau</span>
+                </label>`;
+            step.appendChild(box);
+        }
+        const active = Boolean(window._lyannDirectAskContactId);
+        box.hidden = !active;
+        const nameEl = box.querySelector('#wizardAudienceName');
+        if (nameEl) nameEl.textContent = window._lyannDirectAskContactName || 'cette personne';
+    }
+
     window.openLyannWizard = async function(prefillQuery = null) {
-        if (!await window.LYANN_ROUTER.requireAuthForInteraction('publish', { query: prefillQuery })) return;
+        const directAsk = prefillQuery && typeof prefillQuery === 'object' ? prefillQuery : null;
+        window._lyannDirectAskContactId = directAsk?.directContactId || null;
+        window._lyannDirectAskContactName = directAsk?.directContactName || '';
+        if (!await window.LYANN_ROUTER.requireAuthForInteraction('publish', { query: typeof prefillQuery === 'string' ? prefillQuery : null })) return;
         if(modalRequestHelp) {
             window.wizardSelectedPhotos = [];
             if (typeof window.renderWizardPhotoPreviews === 'function') {
                 window.renderWizardPhotoPreviews();
             }
+            if (window._lyannDirectAskContactId) modalRequestHelp.style.zIndex = '20060';
+            syncDirectAudience();
             modalRequestHelp.classList.add('active');
             document.body.style.overflow = 'hidden';
             goToStep(1);
-            if (prefillQuery && typeof prefillQuery === 'string') {
+            if (typeof prefillQuery === 'string' && prefillQuery) {
                 const wizardDescInput = document.getElementById('wizardDescInput');
                 if (wizardDescInput) {
                     wizardDescInput.value = prefillQuery;
@@ -6935,8 +7158,9 @@ safeDomReady(() => {
             if (curBtnNext) curBtnNext.style.setProperty('display', 'none', 'important');
             if (curBtnSubmit) {
                 curBtnSubmit.style.setProperty('display', 'inline-flex', 'important');
-                curBtnSubmit.innerHTML = 'PUBLIER';
+                curBtnSubmit.innerHTML = window._lyannDirectAskContactId ? 'ENVOYER' : 'PUBLIER';
             }
+            syncDirectAudience();
             
             // Populate step 6 summary
             const desc = document.getElementById('wizardDescInput')?.value || '';
@@ -7549,6 +7773,9 @@ safeDomReady(() => {
                 const taxonomy = await window.LyanAI.fetchTaxonomyFromDB({ strict: true });
                 const selectedTaxonomy = taxonomy.find(t => t.universe === document.getElementById('wizardDomain')?.value && t.category === categoryText && t.subcategory === subCatText);
                 // Call real Supabase DB API
+                const directId = window._lyannDirectAskContactId;
+                const audience = document.querySelector('#wizardDirectAudience input[name="wizardAudience"]:checked')?.value || 'person';
+                const privateOnly = Boolean(directId) && audience !== 'network';
                 const createdRequest = await window.LYANN_API_CLIENT.createRequest({
                     title: title,
                     description: desc,
@@ -7561,7 +7788,9 @@ safeDomReady(() => {
                     date_mode: schedule.date_mode,
                     scheduled_at: schedule.scheduled_at,
                     urgency: urgencyVal,
-                    status: 'OPEN'
+                    status: 'OPEN',
+                    visibility: privateOnly ? 'DIRECT' : 'PUBLIC',
+                    target_user_id: privateOnly ? directId : null
                 });
 
                 window.wizardSelectedPhotos = [];
@@ -7590,6 +7819,11 @@ safeDomReady(() => {
                 // Automatic invitation dispatch to matching candidates or targeted candidate
                 let insertedCount = 0;
                 try {
+                    if (directId && createdRequest?.id && window.LYANN_API_CLIENT.bindConversationRequest) {
+                        await window.LYANN_API_CLIENT.bindConversationRequest(createdRequest.id, directId, privateOnly ? 'DIRECT' : 'PUBLIC');
+                        insertedCount = 1;
+                    }
+                    if (!privateOnly) {
                     let recipientIds = [];
                     if (window._lyannTargetLyanneurId) {
                         recipientIds = [window._lyannTargetLyanneurId];
@@ -7603,10 +7837,12 @@ safeDomReady(() => {
                             }
                         }
                     }
+                    if (directId) recipientIds = [...new Set([directId, ...recipientIds])];
 
                     if (recipientIds.length > 0 && createdRequest && createdRequest.id) {
                         const inviteRes = await window.LYANN_API_CLIENT.sendRequestInvitations(createdRequest.id, recipientIds);
-                        insertedCount = inviteRes ? (inviteRes.inserted_count || 0) : 0;
+                        insertedCount = inviteRes ? (inviteRes.inserted_count || insertedCount) : insertedCount;
+                    }
                     }
                 } catch (inviteErr) {
                     console.warn("Notice: Invitation dispatch info:", inviteErr);
@@ -7614,8 +7850,13 @@ safeDomReady(() => {
 
                 // Show success toast
                 if (window.NotificationService) {
-                    window.NotificationService.showToast('success', "Ton besoin a été publié avec succès !");
+                    const successText = privateOnly
+                        ? 'Demande envoyée uniquement à cette personne.'
+                        : (directId ? 'Demande envoyée à cette personne et publiée dans Explorer.' : 'Ton besoin a été publié avec succès !');
+                    window.NotificationService.showToast('success', successText);
                 }
+                window._lyannDirectAskContactId = null;
+                window._lyannDirectAskContactName = '';
 
                 // Dispatch global event and update UI
                 window.dispatchEvent(new CustomEvent('lyann_request_created', { detail: createdRequest }));
@@ -8646,6 +8887,18 @@ window.lyannDeletePortfolioItem = async function(itemId) {
         }
     } catch(e) {}
 };
+
+document.addEventListener('click', (event) => {
+    const overlay = event.target?.classList?.contains('modal-overlay') ? event.target : null;
+    if (!overlay) return;
+    if (overlay.id === 'chatModal' && typeof window.closeLyannChatModal === 'function') {
+        window.closeLyannChatModal(event);
+        return;
+    }
+    const closer = overlay.querySelector(':scope > .modal-card > .modal-close-btn, :scope > .modal-close-btn, .modal-close-btn');
+    if (closer) closer.click();
+    else overlay.classList.remove('active');
+});
 
 // 4. Open Help Request with Target helper
 window.openHelpRequestWithTarget = function(targetUserId, targetName) {

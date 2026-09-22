@@ -417,21 +417,25 @@
         const shell = modal();
         const viewerId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.CURRENT_USER_ID || null;
         const warmThread = Boolean(viewerId && window.LYANN_MESSAGING_REPOSITORY?.peekMessages?.(viewerId, contactId));
-        const alreadyOpen = Boolean(shell && (shell.classList.contains('active') || shell.style.display === 'flex'));
-        const revealNow = alreadyOpen || warmThread;
-        if (shell && !revealNow) shell.classList.add('lyann-canonical-hydrating');
-        if (!revealNow) document.body.classList.add('lyann-messaging-transition');
-        if (warmThread && !alreadyOpen) setShellVisible(true);
+        const headerName = document.getElementById('chatHeaderName');
+        const headerAvatar = document.getElementById('chatHeaderAvatar');
+        if (headerName) headerName.textContent = name;
+        if (headerAvatar && avatar) headerAvatar.src = avatar;
+        const threadLayout = layout();
+        if (threadLayout) threadLayout.classList.add('mobile-conversation-active', 'has-active-conversation');
+        if (shell) shell.classList.remove('lyann-canonical-hydrating');
+        document.body.classList.remove('lyann-messaging-transition');
+        setShellVisible(true);
         const main = mainArea();
         if (main) main.setAttribute('aria-busy', 'true');
 
         try {
             console.log('[MESSAGING openConversation] calling legacyOpenConversation with:', name, contactId);
             if (!window.LYANN_SUPPORT_USER_ID && window.LYANN_API_CLIENT?.getSupportUserId && !warmThread) {
-                try { await window.LYANN_API_CLIENT.getSupportUserId(); } catch (_) {}
+                window.LYANN_API_CLIENT.getSupportUserId().catch(() => {});
             }
             const supportThread = Boolean(window.LYANN_SUPPORT_USER_ID && String(contactId) === String(window.LYANN_SUPPORT_USER_ID));
-            await legacyOpenConversation(name, avatar, contactId, supportThread ? null : (options.initialNeed || null));
+            await legacyOpenConversation(name, avatar, contactId, supportThread ? null : (options.initialNeed || (options.direct ? { direct: true } : null)));
             const l = layout();
             if (l) {
                 l.classList.add('mobile-conversation-active', 'has-active-conversation');
@@ -448,7 +452,6 @@
         } finally {
             if (main) main.removeAttribute('aria-busy');
             document.body.classList.remove('lyann-messaging-transition');
-            if (!alreadyOpen && !warmThread) setShellVisible(true);
             if (shell) shell.classList.remove('lyann-canonical-hydrating');
         }
         return true;
@@ -475,7 +478,7 @@
     function openMissionFromChat(event, source) {
         event?.preventDefault?.();
         event?.stopPropagation?.();
-        const requestId = source?.dataset?.requestId || resolveRequestId();
+        const requestId = source?.dataset?.requestId || window.__lyannChatRequestId || resolveRequestId();
         if (!requestId) {
             console.warn('[MESSAGING] no request id available for mission detail');
             return false;

@@ -183,7 +183,8 @@
                 const overlay = document.getElementById('chatCheckoutOverlay');
                 if (overlay) overlay.style.display = 'none';
             }
-            const successMessage = 'Carte confirmée par Stripe. Le séquestre LYANN sera mis à jour après confirmation serveur (webhook), pas depuis cet écran.';
+            if (typeof global.lyannAwaitPaidQuote === 'function') global.lyannAwaitPaidQuote();
+            const successMessage = 'Paiement confirmé. Devis accepté s’affiche dans la conversation.';
             if (typeof global.showToast === 'function') global.showToast(successMessage, 'success');
             else if (global.lyannAlert) {
                 Promise.resolve(global.lyannAlert(successMessage)).catch(() => {});

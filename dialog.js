@@ -60,13 +60,14 @@ window.lyannConfirm = function(message, type = 'warning') {
     });
 };
 
-window.lyannPrompt = function(message, type = 'info') {
+window.lyannPrompt = function(message, type = 'info', defaultValue = '') {
     return new Promise((resolve) => {
         showDialog({
             type: type,
             title: getTitleForType(type),
             message: message,
             showInput: true,
+            defaultValue: defaultValue || '',
             buttons: [
                 { text: 'Annuler', style: 'btn-outline', onClick: () => resolve(null) },
                 { text: 'Valider', style: 'btn-primary', onClick: (val) => resolve(val || '') }
@@ -81,7 +82,7 @@ function getTitleForType(type) {
     return 'Information';
 }
 
-function showDialog({ type, title, message, showInput, buttons }) {
+function showDialog({ type, title, message, showInput, buttons, defaultValue }) {
     ensureDialogMarkup();
 
     const overlay = document.getElementById('lyannDialogOverlay');
@@ -107,7 +108,7 @@ function showDialog({ type, title, message, showInput, buttons }) {
     // Set Input
     if (showInput) {
         inputContainer.style.display = 'block';
-        inputEl.value = '';
+        inputEl.value = defaultValue || '';
         setTimeout(() => inputEl.focus(), 100);
     } else {
         inputContainer.style.display = 'none';

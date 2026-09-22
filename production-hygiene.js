@@ -34,33 +34,16 @@
     'article'
   ].join(',');
 
-  function removeKnownDemoSections(root = document) {
-    root.querySelectorAll('.talents-section, .testimonials-section').forEach((section) => {
-      const text = section.textContent || '';
-      if (DEMO_MARKERS.some((marker) => text.includes(marker))) section.remove();
-    });
+  function removeKnownDemoSections() {
+    // Homepage talents and testimonials stay: they are the same content as the website.
   }
 
   function removeKnownDemoCards(root = document) {
-    root.querySelectorAll('img').forEach((img) => {
-      const src = (img.getAttribute('src') || '').toLowerCase();
-      const alt = img.getAttribute('alt') || '';
-      const isDemo = DEMO_IMAGE_PARTS.some((part) => src.includes(part)) || DEMO_MARKERS.some((marker) => alt.includes(marker));
-      if (!isDemo) return;
-      const card = img.closest(SAFE_CARD_SELECTORS);
-      if (card) card.remove();
-      else img.remove();
-    });
-    root.querySelectorAll('[data-member-id="200"], [data-member-id="201"], [data-member-id="212"]').forEach((el) => el.remove());
+    root.querySelectorAll('[data-demo], [data-test-fixture]').forEach((el) => el.remove());
   }
 
-  function neutralizeHardcodedCounters(root = document) {
-    root.querySelectorAll('.photo-category-sub').forEach((el) => {
-      const text = (el.textContent || '').trim();
-      if (/\b\d+\s+(artisans?|passionn[eé]s?|[ée]lectriciens?|plombiers?|accompagnateurs?)\b/i.test(text)) {
-        el.textContent = 'Explorer cette activité';
-      }
-    });
+  function neutralizeHardcodedCounters() {
+    // Keep the same category labels as the website.
   }
 
   function sanitizeTextNodes(root = document) {
