@@ -27,12 +27,27 @@
 .explorer-card>.explorer-person-zone{width:fit-content;max-width:100%}
 .explorer-person-overlay{position:absolute;inset:0;min-width:44px;min-height:44px;background:none;border:0;margin:0;padding:0;font:inherit;color:transparent;cursor:pointer;z-index:1}
 .explorer-person-overlay:hover~img{filter:brightness(.94)}
-.explorer-person-overlay:hover~span,.explorer-person-overlay:hover~div h2{text-decoration:underline}
+.explorer-person-overlay:hover~.explorer-person-name,.explorer-person-overlay:hover~div h2{text-decoration:underline}
 .explorer-person-overlay:focus-visible{outline:2px solid var(--primary,#4a7c59);outline-offset:3px;border-radius:12px}
 .explorer-card-top{display:flex;gap:10px;justify-content:space-between;align-items:start}
 .explorer-card-top .btn-fav-toggle{flex-shrink:0;background:none;border:0;font-size:1.25rem;width:44px;color:#536258;border-radius:50%}
 .explorer-meta{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:.85rem;color:#536258}
 .explorer-budget{font-weight:700;color:var(--primary-dark)}
+/* Annonce card: taxonomy and age on one line, then the short title, then one fact
+   per line. The full description belongs to the Détails surface, never the card. */
+.explorer-annonce{gap:10px}
+.explorer-annonce .explorer-card-top{align-items:flex-start}
+.explorer-annonce-taxonomy{flex:1;min-width:0;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--primary-dark,#24382b);background:#EBF3EE;border-radius:6px;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.explorer-annonce-age{flex-shrink:0;font-size:.74rem;color:#6B7A70;background:#F4F6F4;border-radius:6px;padding:4px 8px;white-space:nowrap}
+.explorer-annonce-facts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:.89rem;color:#42504a}
+.explorer-annonce-facts li{display:flex;align-items:baseline;gap:7px;min-width:0}
+.explorer-fact-icon{flex-shrink:0;width:1.15em;text-align:center;font-size:.95em}
+.explorer-annonce-facts li:last-child{font-weight:700;color:var(--primary-dark,#24382b)}
+.explorer-person-badge{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;font-size:.78rem;font-weight:700;color:#2F6B45}
+.explorer-person-rating{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;font-size:.82rem;font-weight:700;color:#8A6A18}
+.explorer-person-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Name, badge and rating share the author line and wrap together on narrow cards. */
+.explorer-annonce .explorer-person{flex-wrap:wrap;gap:6px 10px}
 .explorer-card-actions{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:4px;flex-wrap:wrap}
 .explorer-card-actions .btn{flex:1;justify-content:center;font-size:.9rem;padding:10px}
 .explorer-state{grid-column:1/-1;padding:48px 20px;text-align:center;background:#fff;border-radius:16px}

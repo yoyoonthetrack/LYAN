@@ -15,6 +15,18 @@ function isUUID(str) {
 }
 window.isUUID = isUUID;
 
+// The annonce title is a one-line summary shown on every card.
+const LYANN_REQUEST_TITLE_MAX = 60;
+window.LYANN_REQUEST_TITLE_MAX = LYANN_REQUEST_TITLE_MAX;
+
+// PostgREST reports an unknown column as 42703, or as PGRST204 when its schema
+// cache has no such field. Both mean a pending migration, not a caller mistake.
+function isMissingColumnError(error) {
+    if (!error) return false;
+    if (['42703', 'PGRST204'].includes(String(error.code))) return true;
+    return /column .* does not exist|could not find the .* column/i.test(String(error.message || ''));
+}
+
 function isPublishedService(row) {
     if (!row) return false;
     if (row.is_active === false || row.active === false) return false;
@@ -711,6 +723,18 @@ const LYANN_API_CLIENT = {
             console.error('[GET CONV REQ CTX ERR]', e);
             return null;
         }
+    },
+
+    // Public author identity plus the aggregate reputation shown next to a name.
+    // The reputation columns arrive with migration 37; until then the read degrades
+    // to the identity-only projection instead of failing.
+    async getPublicProfileWithReputation(userId) {
+        if (!this.supabase || !isUUID(userId)) return null;
+        const identity = 'id, first_name, last_name, avatar_url, city, territory';
+        const read = columns => this.supabase.from('public_profiles').select(columns).eq('id', userId).maybeSingle();
+        let { data, error } = await read(`${identity}, is_verified, is_pro_verified, average_rating, reviews_count`);
+        if (error) ({ data } = await read(identity));
+        return data || null;
     },
 
     async getUserProfile(userId) {
@@ -1723,6 +1747,13 @@ const LYANN_API_CLIENT = {
             location: payload.location || "Guadeloupe",
             budget: payload.budget !== undefined && payload.budget !== null && payload.budget !== '' ? Number(payload.budget) : null,
             urgency: payload.urgency || "Normale",
+            // Structured date and price. `budget` stays the primary amount: exact in
+            // FIXED mode, lower bound in RANGE mode, null on quote.
+            date_mode: payload.date_mode || 'FLEXIBLE',
+            scheduled_at: payload.date_mode === 'EXACT' && payload.scheduled_at ? payload.scheduled_at : null,
+            price_mode: payload.price_mode || 'QUOTE',
+            budget_max: payload.price_mode === 'RANGE' && payload.budget_max != null && payload.budget_max !== ''
+                ? Number(payload.budget_max) : null,
             status: payload.status || "OPEN",
             taxonomy_id: payload.taxonomy_id || null,
             classification_confidence: payload.classification_confidence !== undefined ? payload.classification_confidence : 1.0,
@@ -1754,11 +1785,20 @@ const LYANN_API_CLIENT = {
             }
         }
 
-        const { data, error } = await this.supabase
-            .from('requests')
-            .insert([requestData])
-            .select()
-            .single();
+        // The card shows the title on one line: keep the stored value within the
+        // budget the Explorer and the detail surface are designed for.
+        requestData.title = String(requestData.title || "Demande d'aide").slice(0, LYANN_REQUEST_TITLE_MAX);
+
+        const insert = row => this.supabase.from('requests').insert([row]).select().single();
+        let { data, error } = await insert(requestData);
+        // Migration 37 introduces the structured date and price columns. Before it is
+        // applied the table rejects them, so publishing keeps working on the legacy
+        // shape instead of failing in the author's face.
+        if (error && isMissingColumnError(error)) {
+            const legacy = { ...requestData };
+            for (const column of ['date_mode', 'scheduled_at', 'price_mode', 'budget_max']) delete legacy[column];
+            ({ data, error } = await insert(legacy));
+        }
 
         if (error) {
             console.error("Erreur création demande Supabase DB:", error);
@@ -1766,6 +1806,30 @@ const LYANN_API_CLIENT = {
         }
 
         return data;
+    },
+
+    // Short title suggestion for the annonce wizard. The summary is produced
+    // server-side so a single owner decides how a description becomes a title.
+    // Returns null on any failure: the author then writes the title themselves.
+    async suggestRequestTitle(description) {
+        const text = String(description || '').trim();
+        if (!this.supabase || text.length < 10) return null;
+        try {
+            const { data: { session } } = await this.supabase.auth.getSession();
+            if (!session?.access_token) return null;
+            const fetcher = typeof window.lyannBackendFetch === 'function' ? window.lyannBackendFetch : fetch;
+            const response = await fetcher('/v1/requests/summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                body: JSON.stringify({ description: text })
+            });
+            if (!response.ok) return null;
+            const payload = await response.json();
+            const title = typeof payload?.title === 'string' ? payload.title.trim() : '';
+            return title ? title.slice(0, LYANN_REQUEST_TITLE_MAX) : null;
+        } catch (_) {
+            return null;
+        }
     },
 
     async getRequests(filters = {}) {

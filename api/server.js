@@ -146,6 +146,11 @@ app.use((req, res, next) => {
     }
 });
 
+// Short title suggestion for the annonce wizard. Registered after body parsing and
+// scoped to signed-in callers inside the handler.
+const { createRequestSummaryHandler } = require('./request-summary');
+app.post('/v1/requests/summary', createRequestSummaryHandler({ getSupabaseClient }));
+
 // STRICT PRODUCTION MODE FINANCIAL GUARD
 if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_SECRET_KEY) {
     console.error("❌ FATAL CONFIGURATION ERROR: STRIPE_SECRET_KEY is missing under NODE_ENV=production. PAYMENT_MODE=mock is strictly forbidden in production.");

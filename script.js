@@ -6870,8 +6870,6 @@ safeDomReady(() => {
     // Requests currently have no persisted media field/bucket. Do not offer a
     // photo step that can silently discard files while reporting publication success.
     const publishedRequestSteps = [1, 2, 4, 5, 6];
-    const agreedDateOption = modalRequestHelp.querySelector('#wizardDateType option[value="date"]');
-    if (agreedDateOption) agreedDateOption.textContent = 'Date à convenir ensemble';
     const totalSteps = 6;
     const btnNext = document.getElementById('wizardBtnNext');
     const btnPrev = document.getElementById('wizardBtnPrev');
@@ -6970,8 +6968,26 @@ safeDomReady(() => {
             
             // Populate step 6 summary
             const desc = document.getElementById('wizardDescInput')?.value || '';
+            const summaryTitle = document.getElementById('wizardSummaryTitle');
+            if (summaryTitle) {
+                const chosenTitle = document.getElementById('wizardTitleInput')?.value.trim() || '';
+                summaryTitle.textContent = chosenTitle || 'Titre à renseigner';
+            }
             const summaryDesc = document.getElementById('wizardSummaryDesc');
-            if(summaryDesc) summaryDesc.textContent = desc ? `"${desc}"` : `"J'ai besoin d'aide pour..."`;
+            if(summaryDesc) summaryDesc.textContent = desc;
+
+            // The preview reuses the formatters the Explorer card uses, so the author
+            // reads exactly what will be published.
+            const annonceFormat = window.LYANN_ANNONCE_FORMAT;
+            const summaryDate = document.getElementById('wizardSummaryDate');
+            if (summaryDate && annonceFormat) {
+                const label = annonceFormat.dateLabel(readWizardSchedule()) || 'Date à renseigner';
+                summaryDate.innerHTML = `<i class="ph ph-calendar"></i> ${window.escapeHtmlAttr(label)}`;
+            }
+            const summaryPrice = document.getElementById('wizardSummaryPrice');
+            if (summaryPrice && annonceFormat) {
+                summaryPrice.innerHTML = `<i class="ph ph-currency-eur"></i> ${window.escapeHtmlAttr(annonceFormat.priceLabel(readWizardPrice()))}`;
+            }
 
             const wizardCitySelect = document.getElementById('wizardCitySelect');
             const wizardTerritorySelect = document.getElementById('wizardTerritorySelect');
@@ -7109,18 +7125,129 @@ safeDomReady(() => {
         });
     }
 
-    // --- STEP 5 BUDGET STATE ENGINE & PERSISTENCE ---
+    // --- STEP 1 SHORT TITLE ENGINE ---
+    // The annonce title is a 60-character summary of the description: it is what a
+    // reader sees on every card, while the full description belongs to the annonce
+    // page. The summary is suggested by the server and stays editable; once the
+    // author types in the field, nothing overwrites their wording.
+    const TITLE_MAX = window.LYANN_REQUEST_TITLE_MAX || 60;
+    const titleBlock = document.getElementById('wizardTitleBlock');
+    const titleInput = document.getElementById('wizardTitleInput');
+    const titleCounter = document.getElementById('wizardTitleCounter');
+    const titleSuggestBtn = document.getElementById('wizardTitleSuggest');
+    const descriptionInput = document.getElementById('wizardDescInput');
+    let titleTouched = false;
+    let titleSuggestedFor = '';
+    let titleTimer = null;
+
+    function syncWizardTitleCounter() {
+        if (titleCounter && titleInput) titleCounter.textContent = `${titleInput.value.length} / ${TITLE_MAX}`;
+    }
+
+    // Plain truncation, used only when the server suggestion is unavailable: it gives
+    // the author something to edit rather than an empty required field.
+    function truncateForTitle(text) {
+        const clean = String(text || '').replace(/\s+/g, ' ').trim();
+        if (clean.length <= TITLE_MAX) return clean;
+        const cut = clean.slice(0, TITLE_MAX + 1);
+        const lastSpace = cut.lastIndexOf(' ');
+        return (lastSpace > 20 ? cut.slice(0, lastSpace) : clean.slice(0, TITLE_MAX)).trim();
+    }
+
+    async function suggestWizardTitle({ force = false } = {}) {
+        if (!titleInput || !descriptionInput) return;
+        const description = descriptionInput.value.trim();
+        if (description.length < 15) return;
+        if (!force && (titleTouched || description === titleSuggestedFor)) return;
+        titleSuggestedFor = description;
+        if (titleBlock) titleBlock.hidden = false;
+        if (titleSuggestBtn) titleSuggestBtn.disabled = true;
+        const suggestion = await window.LYANN_API_CLIENT?.suggestRequestTitle?.(description);
+        if (titleSuggestBtn) titleSuggestBtn.disabled = false;
+        // The author may have started writing their own title while the suggestion
+        // was still in flight: their text wins.
+        if (!force && titleTouched) return;
+        titleInput.value = suggestion || truncateForTitle(description);
+        syncWizardTitleCounter();
+    }
+    window.suggestWizardTitle = suggestWizardTitle;
+
+    if (descriptionInput) {
+        descriptionInput.addEventListener('input', () => {
+            if (titleBlock && descriptionInput.value.trim().length >= 15) titleBlock.hidden = false;
+            clearTimeout(titleTimer);
+            titleTimer = setTimeout(() => suggestWizardTitle(), 900);
+        });
+    }
+    titleInput?.addEventListener('input', () => { titleTouched = true; syncWizardTitleCounter(); });
+    titleSuggestBtn?.addEventListener('click', () => {
+        titleTouched = false;
+        suggestWizardTitle({ force: true });
+    });
+
+    // --- STEP 4 DATE MODE ENGINE ---
+    // A precise date only means something with both a day and an hour, so the two
+    // fields appear together and only for that mode.
+    const dateTypeSelect = document.getElementById('wizardDateType');
+    const exactDateRow = document.getElementById('wizardExactDateRow');
+    window.updateWizardDateState = function() {
+        if (!dateTypeSelect || !exactDateRow) return;
+        exactDateRow.hidden = dateTypeSelect.value !== 'EXACT';
+    };
+    dateTypeSelect?.addEventListener('change', window.updateWizardDateState);
+    window.updateWizardDateState();
+
+    // Single reader of the date and price answers, shared by the step 6 preview and
+    // the publication payload: the author never reviews one thing and publishes another.
+    function readWizardSchedule() {
+        const mode = dateTypeSelect?.value || 'FLEXIBLE';
+        if (mode !== 'EXACT') return { date_mode: mode, scheduled_at: null };
+        const day = document.getElementById('wizardDateInput')?.value || '';
+        const time = document.getElementById('wizardTimeInput')?.value || '';
+        const parsed = day && time ? new Date(`${day}T${time}`) : null;
+        return { date_mode: 'EXACT', scheduled_at: parsed && !Number.isNaN(parsed.getTime()) ? parsed.toISOString() : null };
+    }
+
+    function readWizardPrice() {
+        const amount = id => {
+            const raw = (document.getElementById(id)?.value || '').trim();
+            const value = parseFloat(raw);
+            return raw && Number.isFinite(value) && value > 0 ? value : null;
+        };
+        const choice = window.wizardBudgetChoice || 'devis';
+        if (choice === 'fixe') return { price_mode: 'FIXED', budget: amount('wizardBudgetInput'), budget_max: null };
+        if (choice === 'fourchette') {
+            return { price_mode: 'RANGE', budget: amount('wizardBudgetMinInput'), budget_max: amount('wizardBudgetMaxInput') };
+        }
+        return { price_mode: 'QUOTE', budget: null, budget_max: null };
+    }
+
+    // --- STEP 5 PRICE MODE ENGINE & PERSISTENCE ---
     window.wizardBudgetChoice = 'devis';
     window.wizardFixedBudgetValue = '';
 
+    function setPriceFieldsEnabled(container, inputs, enabled) {
+        if (container) {
+            container.style.opacity = enabled ? '1' : '0.5';
+            container.style.pointerEvents = enabled ? 'auto' : 'none';
+        }
+        inputs.filter(Boolean).forEach(input => {
+            input.disabled = !enabled;
+            if (enabled) input.removeAttribute('disabled');
+            else input.setAttribute('disabled', 'disabled');
+            input.setAttribute('aria-disabled', String(!enabled));
+            input.style.pointerEvents = enabled ? 'auto' : 'none';
+            input.style.cursor = enabled ? 'text' : 'not-allowed';
+            if (!enabled) input.value = '';
+        });
+    }
+
     window.updateWizardBudgetState = function() {
-        const budgetRadios = document.getElementsByName('wizardBudget');
-        const wizardBudgetInputContainer = document.getElementById('wizardBudgetInputContainer');
-        const wizardBudgetInput = document.getElementById('wizardBudgetInput');
-        if (!wizardBudgetInput) return;
+        const fixedInput = document.getElementById('wizardBudgetInput');
+        if (!fixedInput) return;
 
         let currentChoice = window.wizardBudgetChoice || 'devis';
-        for (const radio of budgetRadios) {
+        for (const radio of document.getElementsByName('wizardBudget')) {
             if (radio.checked) {
                 currentChoice = radio.value;
                 break;
@@ -7128,33 +7255,12 @@ safeDomReady(() => {
         }
         window.wizardBudgetChoice = currentChoice;
 
-        if (currentChoice === 'fixe') {
-            // Enable input & container
-            wizardBudgetInput.disabled = false;
-            wizardBudgetInput.removeAttribute('disabled');
-            wizardBudgetInput.setAttribute('aria-disabled', 'false');
-            wizardBudgetInput.style.pointerEvents = 'auto';
-            wizardBudgetInput.style.cursor = 'text';
-
-            if (wizardBudgetInputContainer) {
-                wizardBudgetInputContainer.style.opacity = '1';
-                wizardBudgetInputContainer.style.pointerEvents = 'auto';
-            }
-            if (window.wizardFixedBudgetValue) {
-                wizardBudgetInput.value = window.wizardFixedBudgetValue;
-            }
-        } else {
-            // Disable input & clear
-            wizardBudgetInput.disabled = true;
-            wizardBudgetInput.setAttribute('disabled', 'disabled');
-            wizardBudgetInput.setAttribute('aria-disabled', 'true');
-            wizardBudgetInput.style.pointerEvents = 'none';
-            wizardBudgetInput.style.cursor = 'not-allowed';
-            wizardBudgetInput.value = '';
-            if (wizardBudgetInputContainer) {
-                wizardBudgetInputContainer.style.opacity = '0.5';
-                wizardBudgetInputContainer.style.pointerEvents = 'none';
-            }
+        setPriceFieldsEnabled(document.getElementById('wizardBudgetInputContainer'), [fixedInput], currentChoice === 'fixe');
+        setPriceFieldsEnabled(document.getElementById('wizardRangeInputContainer'),
+            [document.getElementById('wizardBudgetMinInput'), document.getElementById('wizardBudgetMaxInput')],
+            currentChoice === 'fourchette');
+        if (currentChoice === 'fixe' && window.wizardFixedBudgetValue) {
+            fixedInput.value = window.wizardFixedBudgetValue;
         }
     };
 
@@ -7359,37 +7465,45 @@ safeDomReady(() => {
             const citySelect = document.getElementById('wizardCitySelect');
             const cityVal = citySelect ? citySelect.value : '';
 
-            const urgencySelect = document.getElementById('wizardDateType');
-            const urgencyVal = urgencySelect ? urgencySelect.value : 'flexible';
+            // Reject the publication before any write when an answer is incomplete,
+            // and send the author back to the step that needs it.
+            const refuse = (message, step) => {
+                if (window.NotificationService) window.NotificationService.showToast('error', message);
+                else alert(message);
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'Publier mon besoin <i class="ph ph-paper-plane-right"></i>';
+                goToStep(step);
+            };
 
-            // Budget handling & validation
-            let budgetVal = null;
-            const budgetRadios = document.getElementsByName('wizardBudget');
-            let selectedBudgetChoice = 'devis';
-            for (const r of budgetRadios) {
-                if (r.checked) {
-                    selectedBudgetChoice = r.value;
-                    break;
-                }
+            const title = (document.getElementById('wizardTitleInput')?.value || '').trim().slice(0, TITLE_MAX);
+            if (title.length < 3) {
+                refuse("Donnez un titre court à votre annonce (3 à 60 caractères).", 1);
+                return;
             }
 
-            if (selectedBudgetChoice === 'fixe') {
-                const budgetInput = document.getElementById('wizardBudgetInput') || document.querySelector('#modal-request-help input[type="number"]');
-                const rawVal = (budgetInput ? budgetInput.value : window.wizardFixedBudgetValue || '').trim();
-                const numVal = parseFloat(rawVal);
-                if (!rawVal || isNaN(numVal) || numVal <= 0) {
-                    const msg = "Veuillez saisir un budget fixe valide et supérieur à 0 €.";
-                    if (window.NotificationService) window.NotificationService.showToast('error', msg);
-                    else alert(msg);
-                    btnSubmit.disabled = false;
-                    btnSubmit.innerHTML = 'Publier mon besoin <i class="ph ph-paper-plane-right"></i>';
-                    goToStep(5);
-                    return;
-                }
-                budgetVal = numVal;
+            const schedule = readWizardSchedule();
+            if (schedule.date_mode === 'EXACT' && !schedule.scheduled_at) {
+                refuse("Indiquez la date et l'heure précises de votre besoin.", 4);
+                return;
             }
 
-            const title = subCatText ? `${categoryText} - ${subCatText}` : categoryText;
+            const price = readWizardPrice();
+            if (price.price_mode === 'FIXED' && price.budget === null) {
+                refuse("Saisissez un prix fixe valide, supérieur à 0 €.", 5);
+                return;
+            }
+            if (price.price_mode === 'RANGE' && (price.budget === null || price.budget_max === null)) {
+                refuse("Saisissez les deux bornes de votre fourchette de prix.", 5);
+                return;
+            }
+            if (price.price_mode === 'RANGE' && price.budget_max < price.budget) {
+                refuse("Le prix maximum doit être supérieur ou égal au prix minimum.", 5);
+                return;
+            }
+
+            // `urgency` predates date_mode and still feeds legacy reads; keep the two
+            // consistent rather than letting them drift apart.
+            const urgencyVal = { ASAP: 'urgent', FLEXIBLE: 'flexible', EXACT: 'date', TO_AGREE: 'date' }[schedule.date_mode] || 'flexible';
             const location = `${cityVal} (${territoryVal})`;
 
             btnSubmit.disabled = true;
@@ -7405,7 +7519,11 @@ safeDomReady(() => {
                     category: categoryText,
                     taxonomy_id: selectedTaxonomy?.id || null,
                     location: location,
-                    budget: budgetVal,
+                    budget: price.budget,
+                    budget_max: price.budget_max,
+                    price_mode: price.price_mode,
+                    date_mode: schedule.date_mode,
+                    scheduled_at: schedule.scheduled_at,
                     urgency: urgencyVal,
                     status: 'OPEN'
                 });
@@ -7419,6 +7537,19 @@ safeDomReady(() => {
 
                 const descInput = document.getElementById('wizardDescInput');
                 if (descInput) descInput.value = '';
+                // Leave no answer behind: the next annonce starts from a clean wizard.
+                if (titleInput) titleInput.value = '';
+                if (titleBlock) titleBlock.hidden = true;
+                titleTouched = false;
+                titleSuggestedFor = '';
+                syncWizardTitleCounter();
+                if (dateTypeSelect) dateTypeSelect.value = 'FLEXIBLE';
+                window.updateWizardDateState();
+                window.wizardBudgetChoice = 'devis';
+                window.wizardFixedBudgetValue = '';
+                const quoteRadio = document.querySelector('input[name="wizardBudget"][value="devis"]');
+                if (quoteRadio) quoteRadio.checked = true;
+                window.updateWizardBudgetState();
 
                 // Automatic invitation dispatch to matching candidates or targeted candidate
                 let insertedCount = 0;
@@ -7668,6 +7799,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                 <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #E2E8F0; background: #FAFDFB;">
                     <div>
                         <span class="badge" id="lyannDetailBadge" style="background: rgba(74,124,89,0.12); color: var(--primary); font-weight: 700; font-size: 0.78rem; padding: 4px 10px; border-radius: 20px;">LYANN</span>
+                        <span id="lyannDetailAge" style="font-size: 0.75rem; color: #64748B;"></span>
                         <h4 id="lyannDetailTitle" style="margin: 6px 0 0 0; font-size: 1.15rem; font-weight: 800; color: #1E2822;">Besoin d'entraide</h4>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -7762,9 +7894,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
 
             if (data && !error) {
                 requestData = data;
-                const { data: publicAuthor } = await window.LYANN_API_CLIENT.supabase.from('public_profiles')
-                    .select('id, first_name, last_name, avatar_url, city, territory').eq('id', data.requester_id).maybeSingle();
-                authorProf = publicAuthor;
+                authorProf = await window.LYANN_API_CLIENT.getPublicProfileWithReputation(data.requester_id);
             }
         } catch (e) {
             console.warn("Detail Lyann Supabase error:", e);
@@ -7807,8 +7937,26 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
     const locationStr = requestData.location || authorProf?.city || 'Lieu à préciser';
     const dateStr = requestData.created_at ? new Date(requestData.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Récemment';
 
+    // The taxonomy holds the subcategory, referenced by taxonomy_id on the record.
+    let taxonomyLeaves = [];
+    try {
+        taxonomyLeaves = await window.LyanAI?.fetchTaxonomyFromDB?.({ strict: true }) || [];
+    } catch (_) {
+        taxonomyLeaves = [];
+    }
+    if (generation !== lyannDetailOpenGeneration) return;
+
     if (titleEl) titleEl.textContent = requestData.title || 'Demande d\'entraide';
-    if (badgeEl) badgeEl.textContent = `LYANN · ${requestData.category || 'Général'}`;
+    if (badgeEl) {
+        const taxonomyText = window.LYANN_ANNONCE_FORMAT?.categoryLine(requestData, taxonomyLeaves);
+        badgeEl.textContent = `LYANN · ${taxonomyText || requestData.category || 'Général'}`;
+    }
+    const ageEl = document.getElementById('lyannDetailAge');
+    if (ageEl) {
+        const age = window.LYANN_ANNONCE_FORMAT?.relativeAge(requestData.created_at);
+        ageEl.textContent = age ? `· ${age}` : '';
+        if (age) ageEl.title = `Publiée le ${dateStr}`;
+    }
     if (statusEl) statusEl.textContent = `● ${requestData.status || 'OPEN'}`;
 
     const favDetailBtn = document.getElementById('lyannDetailFavBtn');
@@ -7835,15 +7983,37 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             `;
         }
 
-        let budgetHTML = '';
-        if (requestData.budget) {
-            budgetHTML = `
-                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; margin: 14px 0; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #64748B; font-weight: 600; font-size: 0.9rem;"><i class="ph ph-wallet"></i> Budget estimé</span>
-                    <span style="font-size: 1.15rem; font-weight: 800; color: var(--primary-dark);">${requestData.budget} €</span>
+        // The detail surface reads the record through the same formatters as the
+        // Explorer card, so the two never disagree about a date or a price.
+        const annonceFormat = window.LYANN_ANNONCE_FORMAT;
+        const priceText = annonceFormat ? annonceFormat.priceLabel(requestData) : null;
+        const priceHTML = priceText ? `
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; margin: 14px 0; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                    <span style="color: #64748B; font-weight: 600; font-size: 0.9rem;"><i class="ph ph-wallet"></i> ${requestData.price_mode === 'RANGE' ? 'Fourchette annoncée' : 'Prix annoncé'}</span>
+                    <span style="font-size: 1.15rem; font-weight: 800; color: var(--primary-dark);">${window.escapeHtmlAttr(priceText)}</span>
                 </div>
-            `;
-        }
+            ` : '';
+
+        const dateText = annonceFormat ? annonceFormat.dateLabel(requestData) : null;
+        const distanceText = window.LYANN_GEO?.describeDistanceTo?.(requestData.location) || null;
+        const factRow = (icon, label, text, hint) => text ? `
+                <li${hint ? ` title="${window.escapeHtmlAttr(hint)}"` : ''} style="display: flex; align-items: baseline; gap: 8px;">
+                    <span aria-hidden="true" style="flex-shrink: 0;">${icon}</span>
+                    <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0);">${window.escapeHtmlAttr(label)} : </span>
+                    <span>${window.escapeHtmlAttr(text)}</span>
+                </li>` : '';
+        const factsHTML = `
+            <ul style="list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.93rem; color: #42504a;">
+                ${factRow('📍', 'Lieu', [locationStr, distanceText].filter(Boolean).join(' · '), distanceText ? 'Distance approximative entre communes' : '')}
+                ${factRow('🗓️', 'Date', dateText)}
+            </ul>`;
+
+        const authorBadge = annonceFormat?.verifiedLabel(authorProf);
+        const authorRating = annonceFormat?.ratingLabel(authorProf);
+        const authorMetaHTML = [
+            authorBadge ? `<span style="display: inline-flex; align-items: center; gap: 3px; font-weight: 700; color: #2F6B45;"><i class="ph-fill ph-seal-check" aria-hidden="true"></i>${window.escapeHtmlAttr(authorBadge)}</span>` : '',
+            authorRating ? `<span style="display: inline-flex; align-items: center; gap: 3px; font-weight: 700; color: #8A6A18;"><i class="ph-fill ph-star" aria-hidden="true"></i>${window.escapeHtmlAttr(authorRating)}</span>` : ''
+        ].filter(Boolean).join('');
 
         // The author header opens the canonical public profile. A heading-free overlay
         // keeps the existing markup intact; the anonymous discovery contract withholds
@@ -7861,17 +8031,17 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             <div style="position: relative; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #F1F5F9;">
                 ${authorTriggerHTML}
                 <img src="${authorAvatar}" alt="${window.escapeHtmlAttr(authorName)}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
-                <div>
+                <div style="min-width: 0;">
                     <strong style="font-size: 1rem; color: #1E2822; display: block;">${window.escapeHtmlAttr(authorName)}</strong>
-                    <span style="font-size: 0.85rem; color: #64748B;">📍 ${window.escapeHtmlAttr(locationStr)} • 🗓️ ${dateStr}</span>
+                    <span style="font-size: 0.85rem; color: #64748B; display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap;">${authorMetaHTML || `Publiée le ${dateStr}`}</span>
                 </div>
             </div>
 
-            <div style="color: #334155; font-size: 0.96rem; line-height: 1.6; white-space: pre-wrap; margin-bottom: 12px;">
-                ${window.escapeHtmlAttr(requestData.description || requestData.title || '')}
-            </div>
+            ${factsHTML}
 
-            ${budgetHTML}
+            <div style="color: #334155; font-size: 0.96rem; line-height: 1.6; white-space: pre-wrap; margin-bottom: 12px;">${window.escapeHtmlAttr(String(requestData.description || requestData.title || '').trim())}</div>
+
+            ${priceHTML}
             ${photosHTML}
         `;
 

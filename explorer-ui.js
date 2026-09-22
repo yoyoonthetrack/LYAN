@@ -13,8 +13,9 @@
             area: params.get('area') ?? params.get('citySelect') ?? params.get('locationSelect') ?? '',
             territory: params.get('territory') || '', commune: params.get('commune') || '', urgency: params.get('urgency') || '', budget: params.get('budget') || '' };
         let leaves = [], records = [], revision = 0, savedArea = '';
-        const urgencyLabel = value => ({flexible:'Flexible', urgent:'Urgent', asap:'Dès que possible', today:"Aujourd’hui", week:'Cette semaine', specific:'Date à convenir', date:'Date à convenir'}[value] || value || 'À convenir');
-        const statusLabel = value => ({OPEN:'Ouverte', ASSIGNED:'Attribuée', COMPLETED:'Terminée', CANCELLED:'Annulée', CLOSED:'Clôturée'}[value] || value || 'État non renseigné');
+        // The delay filter offers the same date modes the cards display, so a chosen
+        // option always matches what a reader sees on the results.
+        const dateModeLabel = value => window.LYANN_ANNONCE_FORMAT?.dateModeLabel(value) || value;
         const name = profile => window.formatPublicName(profile || {}, null, 'Lyanneur');
         const avatar = profile => escape(window.getLyannAvatarUrl(profile?.avatar_url));
         const currentUserId = () => window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_API_CLIENT?.getCurrentUserId?.();
@@ -30,15 +31,44 @@
             if (currentUserId()) return '';
             return `<button type="button" class="explorer-person-overlay" data-action="profile" aria-label="Se connecter pour voir le profil de ${escape(label)}"></button>`;
         }
+        const format = () => window.LYANN_ANNONCE_FORMAT;
+        // One fact per line, each icon decorative and each line labelled for
+        // screen readers. A missing fact drops its line instead of showing a filler.
+        function factLine(icon, label, text, hint) {
+            if (!text) return '';
+            return `<li${hint ? ` title="${escape(hint)}"` : ''}><span class="explorer-fact-icon" aria-hidden="true">${icon}</span><span class="sr-only">${escape(label)} : </span>${escape(text)}</li>`;
+        }
+        // Annonce locations are municipality-level, so the distance is an
+        // approximation between commune centres and is only shown when the viewer's
+        // own commune or an opted-in precise position is known.
+        function placeText(r) {
+            const place = String(r.location || '').replace(/\s*\([^)]*\)\s*/g, '').trim();
+            const distance = window.LYANN_GEO?.describeDistanceTo?.(r.location) || null;
+            return [place || 'Lieu non précisé', distance].filter(Boolean).join(' · ');
+        }
         function requestCard(r) {
             const own = Boolean(currentUserId()) && r.requester_id === currentUserId();
             const authorName = name(r.profiles);
-            return `<article class="explorer-card" data-request-id="${escape(r.id)}">
-                <div class="explorer-card-top"><span class="explorer-meta">${escape(r.category)} · ${escape(statusLabel(r.status))}</span>${favorite('REQUEST', r.id)}</div>
-                <h2>${escape(r.title)}</h2><p class="explorer-card-description">${escape(r.description)}</p>
-                <div class="explorer-meta"><span>📍 ${escape(r.location || 'Lieu à préciser')}</span><span>◷ ${escape(urgencyLabel(r.urgency))}</span></div>
-                <p class="explorer-budget">${r.budget == null ? 'Budget à convenir' : escape(Number(r.budget).toLocaleString('fr-FR')) + ' €'}</p>
-                <div class="explorer-person explorer-person-zone">${profileZoneTrigger(r.requester_id || r.profiles?.id, authorName)}<img src="${avatar(r.profiles)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><span>${escape(authorName)}${own ? ' · Votre annonce' : ''}</span></div>
+            const taxonomy = format()?.categoryLine(r, leaves);
+            const age = format()?.relativeAge(r.created_at);
+            const badge = format()?.verifiedLabel(r.profiles);
+            const rating = format()?.ratingLabel(r.profiles);
+            const distanceKnown = Boolean(window.LYANN_GEO?.referencePoint?.());
+            // The card carries the short title only; the full description the author
+            // wrote is the payload of the Détails surface.
+            return `<article class="explorer-card explorer-annonce" data-request-id="${escape(r.id)}">
+                <div class="explorer-card-top">
+                    ${taxonomy ? `<span class="explorer-annonce-taxonomy">${escape(taxonomy)}</span>` : ''}
+                    ${age ? `<span class="explorer-annonce-age">${escape(age)}</span>` : ''}
+                    ${favorite('REQUEST', r.id)}
+                </div>
+                <h2>${escape(format()?.shortTitle(r.title) || r.title)}</h2>
+                <ul class="explorer-annonce-facts">
+                    ${factLine('📍', 'Lieu', placeText(r), distanceKnown ? 'Distance approximative entre communes' : '')}
+                    ${factLine('🗓️', 'Date', format()?.dateLabel(r))}
+                    ${factLine('💰', 'Prix', format()?.priceLabel(r))}
+                </ul>
+                <div class="explorer-person explorer-person-zone">${profileZoneTrigger(r.requester_id || r.profiles?.id, authorName)}<img src="${avatar(r.profiles)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><span class="explorer-person-name">${escape(authorName)}${own ? ' · Votre annonce' : ''}</span>${badge ? `<span class="explorer-person-badge"><i class="ph-fill ph-seal-check" aria-hidden="true"></i>${escape(badge)}</span>` : ''}${rating ? `<span class="explorer-person-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(rating)}</span>` : ''}</div>
                 <div class="explorer-card-actions"><button class="btn btn-outline" data-action="detail" data-id="${escape(r.id)}">Détails</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-primary" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
             </article>`;
         }
@@ -239,7 +269,7 @@
             const chips = [];
             for (const key of ['query','category','service','area','territory','commune','urgency','budget']) {
                 if (!filters[key] || mode === 'lyanneurs' && ['area','urgency','budget'].includes(key) || mode === 'annonces' && ['territory','commune'].includes(key)) continue;
-                const label = key === 'service' ? leaves.find(t => t.id === filters.service)?.subcategory : key === 'budget' ? `Budget ≤ ${filters.budget} €` : filters[key];
+                const label = key === 'service' ? leaves.find(t => t.id === filters.service)?.subcategory : key === 'budget' ? `Budget ≤ ${filters.budget} €` : key === 'urgency' ? dateModeLabel(filters[key]) : filters[key];
                 chips.push(`<button data-remove="${key}" aria-label="Retirer le filtre ${escape(label)}">${escape(label)} ×</button>`);
             }
             $('explorerActiveFilters').innerHTML = chips.join('');
@@ -270,7 +300,7 @@
                 const [data, taxonomy] = await Promise.all([mode === 'annonces' ? repo.loadRequests({force}) : repo.load({force}), repo.taxonomy(force)]);
                 if (token !== revision) return;
                 records = data; leaves = taxonomy;
-                if (mode === 'annonces') $('explorerUrgency').innerHTML = '<option value="">Tous les délais</option>' + [...new Set(data.map(r => r.urgency).filter(Boolean))].map(u => `<option value="${escape(u)}">${escape(urgencyLabel(u))}</option>`).join('');
+                if (mode === 'annonces') $('explorerUrgency').innerHTML = '<option value="">Tous les délais</option>' + [...new Set(data.map(r => format()?.dateMode(r)).filter(Boolean))].map(u => `<option value="${escape(u)}">${escape(dateModeLabel(u))}</option>`).join('');
                 render();
             } catch (error) {
                 if (token !== revision) return;
@@ -366,6 +396,9 @@
                 if (id !== currentUserId()) return;
                 if (!error) {
                     savedArea = data?.city || data?.territory || '';
+                    // The commune already collected by the profile gives a distance
+                    // reference without ever prompting for device location.
+                    window.LYANN_GEO?.setViewerLocation(data?.city, data?.territory);
                     if (useDefault && !params.has('territory') && !params.has('commune') && !params.has('area') && !params.has('citySelect') && !params.has('locationSelect')) Object.assign(filters, inferGeography(data?.city, data?.territory));
                 }
                 $('explorerSavedArea').hidden = !savedArea;

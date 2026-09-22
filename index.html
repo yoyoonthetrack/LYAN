@@ -36,7 +36,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20260922a">
+    <link rel="stylesheet" href="style.css?v=20260922f">
     <style>html.lyann-boot-splash-skip .lyann-boot-splash{display:none!important}</style>
     <script>(function(){try{var skip=sessionStorage.getItem('lyann_boot_splash_seen')==='1'||/Playwright|HeadlessChrome/i.test(navigator.userAgent);if(skip)document.documentElement.classList.add('lyann-boot-splash-skip');}catch(e){}})();</script>
 </head>
@@ -2301,6 +2301,18 @@
                     <h4 style="font-size: 1.1rem; margin-bottom: 16px;">1. Décrivez votre besoin naturellement</h4>
                     <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Expliquez ce qu'il vous faut avec vos propres mots. Notre système comprendra.</p>
                     <textarea id="wizardDescInput" class="modal-input" style="height: 120px; font-size: 1.05rem;" placeholder="Ex: Bonjour, j'ai une fuite sous mon évier de cuisine, il me faudrait quelqu'un pour réparer ça ce week-end..."></textarea>
+
+                    <!-- Le titre court est proposé d'après la description, puis reste modifiable.
+                         La description complète, elle, n'apparaît que sur la page de l'annonce. -->
+                    <div id="wizardTitleBlock" hidden style="margin-top: 20px;">
+                        <label for="wizardTitleInput">Titre court de l'annonce</label>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Proposé d'après votre description. C'est ce titre que les Lyanneurs voient en premier : gardez-le court et clair.</p>
+                        <input type="text" id="wizardTitleInput" class="modal-input" maxlength="60" style="margin: 0;" placeholder="Ex: Photographe pour un anniversaire">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 6px;">
+                            <span id="wizardTitleCounter" style="font-size: 0.8rem; color: var(--text-muted);" aria-live="polite">0 / 60</span>
+                            <button type="button" id="wizardTitleSuggest" class="btn btn-outline" style="font-size: 0.82rem; padding: 7px 12px;">Proposer un autre titre</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ETAPE 2 : Domaine / Catégorie -->
@@ -2381,12 +2393,27 @@
                         <option value="Basse-Terre">Basse-Terre</option>
                     </select>
                     
-                    <label>Quand avez-vous besoin d'aide ?</label>
+                    <label for="wizardDateType">Quand avez-vous besoin d'aide ?</label>
                     <select class="modal-input" id="wizardDateType" style="margin-bottom: 16px;">
-                        <option value="urgent">Le plus tôt possible (Urgent)</option>
-                        <option value="flexible" selected>Dans les prochains jours (Flexible)</option>
-                        <option value="date">À une date précise</option>
+                        <option value="ASAP">Le plus tôt possible (Urgent)</option>
+                        <option value="FLEXIBLE" selected>Dans les prochains jours (Flexible)</option>
+                        <option value="EXACT">À une date et une heure précises</option>
+                        <option value="TO_AGREE">À convenir ensemble</option>
                     </select>
+
+                    <!-- Révélé uniquement en mode date précise : sans les deux champs,
+                         l'annonce ne peut pas afficher « Sam. 3 oct. · 18h ». -->
+                    <div id="wizardExactDateRow" class="wizard-exact-date-row" hidden>
+                        <div style="flex: 1 1 150px; min-width: 0;">
+                            <label for="wizardDateInput">Date</label>
+                            <input type="date" id="wizardDateInput" class="modal-input" style="margin: 0;">
+                        </div>
+                        <!-- Assez large pour un affichage 12 h avec AM/PM selon la locale du navigateur. -->
+                        <div style="flex: 0 1 170px; min-width: 150px;">
+                            <label for="wizardTimeInput">Heure</label>
+                            <input type="time" id="wizardTimeInput" class="modal-input" step="900" style="margin: 0;">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ETAPE 5 : Tarif -->
@@ -2397,17 +2424,30 @@
                     <div style="background: #F4F6F4; padding: 16px; border-radius: var(--radius-md); margin-bottom: 16px;">
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
                             <input type="radio" name="wizardBudget" value="devis" checked style="width: 20px; height: 20px;">
-                            <span style="font-weight: 600;">Recevoir des propositions (Devis)</span>
+                            <span style="font-weight: 600;">Sur devis : les Lyanneurs me proposent un prix</span>
                         </label>
+                    </div>
+
+                    <div style="background: #F4F6F4; padding: 16px; border-radius: var(--radius-md); margin-bottom: 16px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 10px;">
+                            <input type="radio" name="wizardBudget" value="fixe" style="width: 20px; height: 20px;">
+                            <span style="font-weight: 600;">Prix fixe</span>
+                        </label>
+                        <div id="wizardBudgetInputContainer" style="display: flex; align-items: center; gap: 10px; padding-left: 30px; opacity: 0.5; transition: opacity 0.2s ease;">
+                            <input type="number" id="wizardBudgetInput" class="modal-input" placeholder="Ex: 50" min="1" step="any" inputmode="decimal" style="width: 120px; margin: 0;" disabled aria-disabled="true" aria-label="Prix fixe en euros"> <span style="font-weight: 700;">€</span>
+                        </div>
                     </div>
 
                     <div style="background: #F4F6F4; padding: 16px; border-radius: var(--radius-md);">
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 10px;">
-                            <input type="radio" name="wizardBudget" value="fixe" style="width: 20px; height: 20px;">
-                            <span style="font-weight: 600;">J'ai un budget fixe</span>
+                            <input type="radio" name="wizardBudget" value="fourchette" style="width: 20px; height: 20px;">
+                            <span style="font-weight: 600;">Fourchette de prix</span>
                         </label>
-                        <div id="wizardBudgetInputContainer" style="display: flex; align-items: center; gap: 10px; padding-left: 30px; opacity: 0.5; transition: opacity 0.2s ease;">
-                            <input type="number" id="wizardBudgetInput" class="modal-input" placeholder="Ex: 50" min="1" step="any" inputmode="decimal" style="width: 120px; margin: 0;" disabled aria-disabled="true"> <span style="font-weight: 700;">€</span>
+                        <div id="wizardRangeInputContainer" style="display: flex; align-items: center; gap: 10px; padding-left: 30px; opacity: 0.5; transition: opacity 0.2s ease; flex-wrap: wrap;">
+                            <input type="number" id="wizardBudgetMinInput" class="modal-input" placeholder="Min" min="1" step="any" inputmode="decimal" style="width: 100px; margin: 0;" disabled aria-disabled="true" aria-label="Prix minimum en euros">
+                            <span style="font-weight: 700;">–</span>
+                            <input type="number" id="wizardBudgetMaxInput" class="modal-input" placeholder="Max" min="1" step="any" inputmode="decimal" style="width: 100px; margin: 0;" disabled aria-disabled="true" aria-label="Prix maximum en euros">
+                            <span style="font-weight: 700;">€</span>
                         </div>
                     </div>
                 </div>
@@ -2420,12 +2460,13 @@
                         <div style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 800; font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase;">
                             <span id="wizardSummaryCategory"><i class="ph-fill ph-wrench"></i> Catégorie à renseigner</span>
                         </div>
-                        <p id="wizardSummaryDesc" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 12px; color: var(--text);">"J'ai une fuite sous mon évier..."</p>
+                        <p id="wizardSummaryTitle" style="font-weight: 800; font-size: 1.1rem; margin-bottom: 6px; color: var(--text);">Titre à renseigner</p>
+                        <p id="wizardSummaryDesc" style="font-size: 0.9rem; line-height: 1.5; margin-bottom: 12px; color: var(--text-muted);"></p>
                         
                         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; color: var(--text-muted);">
                             <div style="display: flex; align-items: center; gap: 6px;" id="wizardSummaryCity"><i class="ph ph-map-pin"></i> Lieu à renseigner</div>
-                            <div style="display: flex; align-items: center; gap: 6px;"><i class="ph ph-calendar"></i> Flexible (Prochains jours)</div>
-                            <div style="display: flex; align-items: center; gap: 6px;"><i class="ph ph-currency-eur"></i> En attente de propositions</div>
+                            <div style="display: flex; align-items: center; gap: 6px;" id="wizardSummaryDate"><i class="ph ph-calendar"></i> Date à renseigner</div>
+                            <div style="display: flex; align-items: center; gap: 6px;" id="wizardSummaryPrice"><i class="ph ph-currency-eur"></i> Prix à renseigner</div>
                         </div>
                     </div>
                     
@@ -2462,7 +2503,10 @@
     <script src="session-store.js"></script>
     <script src="auth-state.js"></script>
     <script src="data-cache.js"></script>
-    <script src="explorer-repository.js"></script>
+    <script src="annonce-format.js?v=20260922e"></script>
+    <script src="commune-geo.js?v=20260922e"></script>
+    <script src="commune-distance.js?v=20260922e"></script>
+    <script src="explorer-repository.js?v=20260922e"></script>
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>
 <script src="chat-logic.js?v=20260916-JEPEUXAIDER-FIX"></script>
@@ -2474,7 +2518,7 @@
     <script src="messaging-ui.js"></script>
     <script src="maison-catalog.js?v=20260922c"></script>
     <script src="profile-repository.js?v=20260922c"></script>
-    <script src="script.js?v=20260922d"></script>
+    <script src="script.js?v=20260922f"></script>
     <script src="profile-completion.js?v=20260922c"></script>
 
     <!-- ========== MODAL PARCOURS COMPLÉTION DE PROFIL (#modalCompleteProfile) ========== -->

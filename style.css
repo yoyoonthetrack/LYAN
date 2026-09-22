@@ -10906,6 +10906,15 @@ body.is-native-app .navbar.scrolled,
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
+.wizard-exact-date-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.wizard-exact-date-row[hidden] {
+    display: none !important;
+}
+
 .wizard-step.fade-out {
     opacity: 0;
     transform: translateX(-20px);

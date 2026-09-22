@@ -50,6 +50,24 @@
         }, options.force);
     }
 
+    const AUTHOR_COLUMNS = 'id, first_name, last_name, avatar_url, city, territory';
+    // The verified badge and the review aggregate arrive with migration 37. Until it
+    // is applied the view rejects those columns, so the enriched projection falls
+    // back to the base one: a card without a badge, never a broken results page.
+    const AUTHOR_COLUMNS_WITH_REPUTATION = `${AUTHOR_COLUMNS}, is_verified, is_pro_verified, average_rating, reviews_count`;
+    let authorColumns = AUTHOR_COLUMNS_WITH_REPUTATION;
+
+    async function readAuthors(ids) {
+        const read = columns => client().supabase.from('public_profiles').select(columns).in('id', ids);
+        let { data, error } = await read(authorColumns);
+        if (error && authorColumns !== AUTHOR_COLUMNS) {
+            authorColumns = AUTHOR_COLUMNS;
+            ({ data, error } = await read(authorColumns));
+        }
+        if (error) throw error;
+        return data || [];
+    }
+
     async function loadRequests(options = {}) {
         // Resolve identity before choosing the cache namespace and data boundary.
         await window.LYANN_AUTH_STATE?.ready?.();
@@ -73,11 +91,7 @@
             const ids = [...new Set(requests.map(r => r.requester_id).filter(Boolean))];
             const profiles = new Map();
             for (let offset = 0; offset < ids.length; offset += 100) {
-                const { data, error } = await client().supabase.from('public_profiles')
-                    .select('id, first_name, last_name, avatar_url, city, territory')
-                    .in('id', ids.slice(offset, offset + 100));
-                if (error) throw error;
-                (data || []).forEach(p => profiles.set(p.id, p));
+                (await readAuthors(ids.slice(offset, offset + 100))).forEach(p => profiles.set(p.id, p));
             }
             return requests.map(r => ({ ...r, profiles: profiles.get(r.requester_id) || null }))
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -127,7 +141,9 @@
             }
             if (mode === 'annonces') {
                 if (record.status !== 'OPEN') return false;
-                if (filters.urgency && record.urgency !== filters.urgency) return false;
+                // The delay filter compares resolved date modes, the same value the
+                // card displays, rather than the legacy free-text urgency field.
+                if (filters.urgency && window.LYANN_ANNONCE_FORMAT?.dateMode(record) !== filters.urgency) return false;
                 if (filters.budget !== '' && (record.budget == null || Number(record.budget) > Number(filters.budget))) return false;
             }
             return true;

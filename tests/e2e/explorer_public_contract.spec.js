@@ -2,17 +2,20 @@ const { test, expect } = require('@playwright/test');
 const express = require('express');
 const { createPublicRequestsHandler } = require('../../api/public-explorer-requests');
 
-const fields = ['id','category','taxonomy_id','title','description','budget','location','urgency','created_at','requester'].sort();
+const fields = ['id','category','taxonomy_id','title','description','budget','location','urgency','created_at',
+  'date_mode','scheduled_at','price_mode','budget_max','requester'].sort();
+const requesterFields = ['avatar_url','display_name','is_verified','is_pro_verified','average_rating','reviews_count'].sort();
 function contract(body) {
   expect(Object.keys(body).sort()).toEqual(['nextOffset','requests']);
   for (const row of body.requests) {
     expect(Object.keys(row).sort()).toEqual(fields);
-    expect(Object.keys(row.requester).sort()).toEqual(['avatar_url','display_name']);
+    expect(Object.keys(row.requester).sort()).toEqual(requesterFields);
   }
 }
 // Isolated HTTP security fixtures, never inserted into Supabase or used by application runtime.
 const publicRow = { id:'test-public', category:'Ménage', taxonomy_id:null, title:'Ménage', description:'Besoin de ménage', budget:50,
   location:'42 rue privée, Les Abymes (971 - Guadeloupe)', urgency:'FLEXIBLE', created_at:'2026-09-17T00:00:00Z',
+  date_mode:'EXACT', scheduled_at:'2026-10-03T18:00:00Z', price_mode:'RANGE', budget_max:120,
   requester_id:'test-author', visibility:'PUBLIC', status:'OPEN', safety_status:'SAFE', target_user_id:null,
   classification_status:'CLASSIFIED', classification_confidence:0.9, internal_tags:['secret'], future_internal_field:'secret' };
 async function isolated(request, { rows = [publicRow], error = null, profileError = null, configured = true } = {}, query = '') {
@@ -36,7 +39,10 @@ test('Public HTTP contract is an exact recursive allowlist, never raw rows or pr
   expect(result.status).toBe(200);
   contract(result.body);
   expect(result.body.requests[0].location).toBe('Guadeloupe (971)');
-  expect(result.body.requests[0].requester).toEqual({display_name:'Alice.C', avatar_url:null});
+  // Structured date and price cross the boundary; the municipality never does.
+  expect(result.body.requests[0]).toMatchObject({date_mode:'EXACT', scheduled_at:'2026-10-03T18:00:00Z', price_mode:'RANGE', budget_max:120});
+  expect(result.body.requests[0].requester).toEqual({display_name:'Alice.C', avatar_url:null,
+    is_verified:false, is_pro_verified:false, average_rating:null, reviews_count:0});
   expect(JSON.stringify(result.body)).not.toMatch(/secret|Confidentiel|private@example|42 rue|requester_id|target_user_id|internal_tags|classification|safety_status/);
   expect(result.calls).toEqual(expect.arrayContaining([
     ['requests','eq','visibility','PUBLIC'], ['requests','eq','status','OPEN'], ['requests','eq','safety_status','SAFE'],
@@ -66,6 +72,47 @@ test('Database/configuration failures are HTTP errors without private error deta
     expect(result.status).toBe(503);
     expect(result.body).toEqual({error:'Recherche temporairement indisponible.'});
   }
+});
+
+test('Projection degrades to the pre-migration columns instead of taking discovery down', async ({request}) => {
+  // Migration 37 adds date_mode/scheduled_at/price_mode/budget_max and the author
+  // reputation columns. Before it is applied the database rejects them.
+  const legacyRow = {...publicRow};
+  for (const column of ['date_mode','scheduled_at','price_mode','budget_max']) delete legacyRow[column];
+  const selects = {requests:[], public_profiles:[]};
+  const db = { from(table) {
+    let selected = '';
+    const chain = { then(resolve) {
+      selects[table].push(selected);
+      const rejected = /date_mode|is_verified/.test(selected);
+      return Promise.resolve({
+        data: rejected ? null : table === 'requests' ? [legacyRow]
+          : [{id:'test-author', first_name:'Alice', last_name:'Confidentiel', avatar_url:null}],
+        error: rejected ? {message:'column "date_mode" does not exist'} : null
+      }).then(resolve);
+    } };
+    for (const method of ['select','eq','is','in','order','range']) {
+      chain[method] = (...args) => { if (method === 'select') selected = String(args[0]); return chain; };
+    }
+    return chain;
+  } };
+  const app = express();
+  app.get('/v1/explorer/requests', createPublicRequestsHandler(db, true));
+  const server = await new Promise(resolve => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
+  try {
+    const url = `http://127.0.0.1:${server.address().port}/v1/explorer/requests`;
+    const first = await request.get(url);
+    expect(first.status()).toBe(200);
+    const body = await first.json();
+    contract(body);
+    expect(body.requests[0]).toMatchObject({date_mode:null, scheduled_at:null, price_mode:null, budget_max:null});
+    expect(body.requests[0].requester).toMatchObject({is_verified:false, average_rating:null, reviews_count:0});
+    // The rejected projection is attempted once, then never again for this process.
+    expect(selects.requests.filter(select => select.includes('date_mode'))).toHaveLength(1);
+    expect((await request.get(url)).status()).toBe(200);
+    expect(selects.requests.filter(select => select.includes('date_mode'))).toHaveLength(1);
+    expect(selects.public_profiles.filter(select => select.includes('is_verified'))).toHaveLength(1);
+  } finally { await new Promise(resolve => server.close(resolve)); }
 });
 
 test('Caller cannot override privileged selection or eligibility; pagination stays bounded', async ({request}) => {

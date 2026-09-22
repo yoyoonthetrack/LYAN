@@ -17,6 +17,6 @@ assert(ui.includes('repo.loadRequests(') && ui.includes('repo.load('), 'Two dist
 assert(ui.includes("window.LYANN_ROUTER.go('messages'"), 'Use canonical messaging route');
 assert(ui.includes('window.openPublicMemberProfile') && ui.includes('window.openLyannDetailModal'), 'Reuse canonical detail surfaces');
 for (const state of ['LOADING','SUCCESS','EMPTY','ERROR']) assert(ui.includes(`'${state}'`), `${state} is explicit`);
-for (const file of ['session-store.js','auth-state.js','data-cache.js','explorer-repository.js','explorer-ui.js']) assert(results.includes(file), `${file} loaded`);
+for (const file of ['session-store.js','auth-state.js','data-cache.js','explorer-repository.js','explorer-ui.js','annonce-format.js']) assert(results.includes(file), `${file} loaded`);
 assert(repo.includes('window.lyannBackendFetch || fetch'), 'Anonymous explorer must resolve /v1 through lyannBackendFetch on Capacitor');
 console.log('Explorer dual-discovery architecture audit passed.');
