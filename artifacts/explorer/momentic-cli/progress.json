@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0.0",
+  "runGroupId": "08455c09-0604-4088-a7f5-c7455d34d280",
+  "status": "PASSED",
+  "totalRuns": 1,
+  "completedRuns": 1,
+  "completedSteps": 5,
+  "totalSteps": 5,
+  "startedAt": "2026-09-17T20:57:40.550Z",
+  "updatedAt": "2026-09-17T21:00:42.399Z",
+  "runs": [
+    {
+      "runId": "f334c8cf-34d3-4fc0-920b-b8196bc241c7",
+      "testId": "03-explorer-lyanneurs",
+      "testName": "03_explorer_lyanneurs",
+      "directory": "tests/momentic",
+      "status": "PASSED",
+      "completedSteps": 5,
+      "totalSteps": 5,
+      "startedAt": "2026-09-17T20:57:41.089Z",
+      "updatedAt": "2026-09-17T21:00:42.223Z"
+    }
+  ]
+}

@@ -1716,7 +1716,6 @@ const LYANN_API_CLIENT = {
 
         const requestData = {
             requester_id: authUid,
-            author_id: authUid,
             visibility: payload.visibility || 'PUBLIC',
             title: payload.title || "Demande d'aide",
             description: payload.description || "",

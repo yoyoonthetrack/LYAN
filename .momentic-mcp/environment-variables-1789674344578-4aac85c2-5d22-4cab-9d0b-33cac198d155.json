@@ -1,0 +1,8 @@
+{
+  "env": {
+    "CURRENT_URL": "http://127.0.0.1:8080/results.html?mode=lyanneurs&area=",
+    "BASE_URL": "http://127.0.0.1:8080/results.html?mode=lyanneurs&area=",
+    "ENV_NAME": "local",
+    "TEST_NAME": "03_explorer_lyanneurs"
+  }
+}

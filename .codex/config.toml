@@ -3,3 +3,6 @@
 command = "npx"
 args = [ "-y", "momentic", "mcp", "--config", "momentic.config.yaml" ]
 startup_timeout_sec = 30
+
+[mcp_servers.momentic.tools.momentic_search_docs]
+approval_mode = "approve"

@@ -8149,12 +8149,74 @@ document.addEventListener('click', (e) => {
 
 
 
+function initTestimonialSlider() {
+    const track = document.getElementById('testimonialTrack');
+    const dotsContainer = document.getElementById('sliderDots');
+    if (!track) return;
+
+    const slides = track.querySelectorAll('.testimonial-slide');
+    if (!slides.length) return;
+
+    let currentIndex = 0;
+    let autoSlideTimer = null;
+
+    if (dotsContainer) {
+        dotsContainer.innerHTML = '';
+        slides.forEach((_, idx) => {
+            const dot = document.createElement('span');
+            dot.className = `dot ${idx === 0 ? 'active' : ''}`;
+            dot.setAttribute('aria-label', `Aller au témoignage ${idx + 1}`);
+            dot.addEventListener('click', () => goToSlide(idx));
+            dotsContainer.appendChild(dot);
+        });
+    }
+
+    function goToSlide(index) {
+        currentIndex = (index + slides.length) % slides.length;
+        track.style.transform = `translateX(-${currentIndex * 100}%)`;
+        if (dotsContainer) {
+            const dots = dotsContainer.querySelectorAll('.dot');
+            dots.forEach((d, i) => d.classList.toggle('active', i === currentIndex));
+        }
+        resetAutoSlide();
+    }
+
+    function resetAutoSlide() {
+        if (autoSlideTimer) clearInterval(autoSlideTimer);
+        autoSlideTimer = setInterval(() => {
+            goToSlide(currentIndex + 1);
+        }, 6000);
+    }
+
+    resetAutoSlide();
+
+    let startX = 0;
+    let isDragging = false;
+    track.addEventListener('touchstart', e => {
+        startX = e.touches[0].clientX;
+        isDragging = true;
+    }, { passive: true });
+
+    track.addEventListener('touchend', e => {
+        if (!isDragging) return;
+        isDragging = false;
+        const endX = e.changedTouches[0].clientX;
+        const diffX = startX - endX;
+        if (Math.abs(diffX) > 40) {
+            if (diffX > 0) goToSlide(currentIndex + 1);
+            else goToSlide(currentIndex - 1);
+        }
+    }, { passive: true });
+}
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof ensureMobileHamburgerDrawer === 'function') ensureMobileHamburgerDrawer();
+        initTestimonialSlider();
     });
 } else {
     if (typeof ensureMobileHamburgerDrawer === 'function') ensureMobileHamburgerDrawer();
+    initTestimonialSlider();
 }
 
 // ==========================================================================

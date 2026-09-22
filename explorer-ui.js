@@ -35,13 +35,29 @@
         function profileCard(p) {
             const hasOffer = (p.services || []).some(s => s && (s.title || s.name));
             const place = [p.city, p.territory].filter(Boolean).join(' · ');
-            return `<article class="explorer-card" data-member-id="${escape(p.id)}">
-                <div class="explorer-card-top"><div class="explorer-person"><img src="${avatar(p)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><h2>${escape(p.name)}</h2></div>${favorite('PROFILE', p.id)}</div>
-                ${p.is_pro ? '<span class="explorer-meta">Professionnel</span>' : ''}
-                <p>${escape((p.services || []).map(s => s.title || s.name).filter(Boolean).slice(0, 3).join(' · '))}</p>
-                <p class="explorer-meta">📍 ${escape(place || 'Lieu à préciser')}</p>
-                ${p.bio ? `<p class="explorer-card-description">${escape(p.bio)}</p>` : ''}
-                <div class="explorer-card-actions"><button class="btn btn-primary" data-action="profile" data-id="${escape(p.id)}">Voir le profil</button>${p.id !== currentUserId() && hasOffer ? `<button class="btn btn-outline" data-action="contact" data-id="${escape(p.id)}">Contacter</button>` : ''}</div>
+            const badgeText = p.badge || (p.is_pro ? 'Artisan PRO' : (p.is_verified ? 'Profil Vérifié' : ''));
+            const rawSkills = Array.isArray(p.skills) && p.skills.length ? p.skills : (p.services || []).map(s => s.title || s.name).filter(Boolean);
+            const skillsText = rawSkills.slice(0, 4).join(' · ');
+            const isSelf = p.id === currentUserId();
+
+            return `<article class="explorer-card explorer-profile-card" data-member-id="${escape(p.id)}">
+                <div class="explorer-card-top">
+                    <div class="explorer-person">
+                        <img src="${avatar(p)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)">
+                        <div style="min-width: 0;">
+                            <h2 style="font-size: 1.1rem; line-height: 1.25; margin: 0; color: var(--primary-dark); font-weight: 700;">${escape(p.name)}</h2>
+                            <p class="explorer-meta" style="margin-top: 3px; font-size: 0.82rem; color: #64748B;">📍 ${escape(place || 'Guadeloupe')}</p>
+                        </div>
+                    </div>
+                    ${favorite('PROFILE', p.id)}
+                </div>
+                ${badgeText ? `<div style="margin-top: -4px;"><span class="explorer-badge-pill" style="display: inline-block; background: rgba(74, 124, 89, 0.12); color: #2D5A39; font-weight: 700; font-size: 0.75rem; padding: 3px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.02em;">${escape(badgeText)}</span></div>` : ''}
+                ${skillsText ? `<p class="explorer-skills-text" style="font-size: 0.88rem; color: #334155; font-weight: 500; margin: 4px 0 2px;"><strong>Compétences :</strong> ${escape(skillsText)}</p>` : ''}
+                ${p.bio ? `<p class="explorer-card-description" style="font-size: 0.88rem; color: #64748B; margin: 0;">${escape(p.bio)}</p>` : ''}
+                <div class="explorer-profile-actions" style="display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; margin-top: auto; padding-top: 10px;">
+                    <button class="btn btn-outline" data-action="profile" data-id="${escape(p.id)}" style="width: 100% !important; min-height: 44px; justify-content: center; font-weight: 700; border-radius: 22px; font-size: 0.9rem; box-sizing: border-box;">Voir le profil</button>
+                    ${!isSelf ? `<button class="btn lyann-cta-primary" data-action="contact" data-id="${escape(p.id)}" style="width: 100% !important; min-height: 44px; justify-content: center; font-weight: 700; border-radius: 22px; font-size: 0.9rem; box-sizing: border-box;">Contacter</button>` : ''}
+                </div>
             </article>`;
         }
         const territories = () => Object.keys(window.LYANN_TERRITORY_DATASET || {}).filter(t => /\((971|972|973|974)\)/.test(t));

@@ -1,0 +1,209 @@
+[
+  {
+    "viewport": "1440x900",
+    "name": "explorer-annonces",
+    "publish": {
+      "text": "Publier un besoin",
+      "hidden": false,
+      "visible": true
+    },
+    "paymentNav": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "explorer-lyanneurs",
+    "publish": {
+      "text": "Publier un besoin",
+      "hidden": true,
+      "visible": false
+    },
+    "emptyPublish": 0,
+    "cards": 1,
+    "servicesMissing": 0,
+    "emptyCopy": "Qa.B\n\nTaille de haie\n\n📍 Lieu à préciser\n\nVoir le profil\nContacter"
+  },
+  {
+    "viewport": "1440x900",
+    "name": "bokantaj",
+    "composer": {
+      "hidden": true,
+      "visible": false
+    },
+    "shareBtn": {
+      "text": "Partager dans le quartier",
+      "hidden": false,
+      "visible": true
+    },
+    "gif": 0,
+    "need": 0,
+    "loadingCopy": "Le Bokantaj est encore calme…\n\nSoyez parmi les premiers à partager quelque chose.\n\nPartager dans le quartier",
+    "paymentNav": 0
+  },
+  {
+    "viewport": "1440x900",
+    "name": "bokantaj-open",
+    "composerOpen": {
+      "hidden": false,
+      "visible": true
+    }
+  },
+  {
+    "viewport": "1440x900",
+    "name": "pricing",
+    "plans": [
+      {
+        "plan": "FREE",
+        "visible": true,
+        "cta": "Commencer gratuitement"
+      },
+      {
+        "plan": "PLUS",
+        "visible": false,
+        "cta": "Choisir Plus"
+      },
+      {
+        "plan": "ULTIME",
+        "visible": false,
+        "cta": "Choisir Ultime"
+      },
+      {
+        "plan": "PRO",
+        "visible": false,
+        "cta": "Choisir PRO"
+      }
+    ],
+    "showPaid": {
+      "text": "Voir les offres payantes",
+      "visible": true
+    },
+    "plansAfter": [
+      {
+        "plan": "FREE",
+        "visible": true
+      },
+      {
+        "plan": "PLUS",
+        "visible": true
+      },
+      {
+        "plan": "ULTIME",
+        "visible": true
+      },
+      {
+        "plan": "PRO",
+        "visible": true
+      }
+    ],
+    "paymentNav": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "explorer-annonces",
+    "publish": {
+      "text": "Publier un besoin",
+      "hidden": false,
+      "visible": true
+    },
+    "paymentNav": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "explorer-lyanneurs",
+    "publish": {
+      "text": "Publier un besoin",
+      "hidden": true,
+      "visible": false
+    },
+    "emptyPublish": 0,
+    "cards": 1,
+    "servicesMissing": 0,
+    "emptyCopy": "Qa.B\n\nTaille de haie\n\n📍 Lieu à préciser\n\nVoir le profil\nContacter"
+  },
+  {
+    "viewport": "390x844",
+    "name": "bokantaj",
+    "composer": {
+      "hidden": true,
+      "visible": false
+    },
+    "shareBtn": {
+      "text": "Partager dans le quartier",
+      "hidden": false,
+      "visible": true
+    },
+    "gif": 0,
+    "need": 0,
+    "loadingCopy": "Le Bokantaj est encore calme…\n\nSoyez parmi les premiers à partager quelque chose.\n\nPartager dans le quartier",
+    "paymentNav": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "bokantaj-open",
+    "composerOpen": {
+      "hidden": false,
+      "visible": true
+    }
+  },
+  {
+    "viewport": "390x844",
+    "name": "pricing",
+    "plans": [
+      {
+        "plan": "FREE",
+        "visible": true,
+        "cta": "Commencer gratuitement"
+      },
+      {
+        "plan": "PLUS",
+        "visible": false,
+        "cta": "Choisir Plus"
+      },
+      {
+        "plan": "ULTIME",
+        "visible": false,
+        "cta": "Choisir Ultime"
+      },
+      {
+        "plan": "PRO",
+        "visible": false,
+        "cta": "Choisir PRO"
+      }
+    ],
+    "showPaid": {
+      "text": "Voir les offres payantes",
+      "visible": true
+    },
+    "plansAfter": [
+      {
+        "plan": "FREE",
+        "visible": true
+      },
+      {
+        "plan": "PLUS",
+        "visible": true
+      },
+      {
+        "plan": "ULTIME",
+        "visible": true
+      },
+      {
+        "plan": "PRO",
+        "visible": true
+      }
+    ],
+    "paymentNav": 0
+  },
+  {
+    "viewport": "390x844",
+    "name": "guest-drawer",
+    "guestTitle": 1,
+    "profile": "none",
+    "account": "none",
+    "explorer": 1,
+    "hasVoirProfil": false,
+    "hasMonCompte": false,
+    "hasSeConnecter": true,
+    "hasPublier": true,
+    "snippet": "Menu\nPublier un besoin\nExplorer\nAide & LYANN\nComment ça marche\nTarifs\nAide & support\nÀ propos de LYANN\nSe connecter\nS'inscrire"
+  }
+]

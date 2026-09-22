@@ -1,0 +1,44 @@
+{
+  "gitMainBranch": "main",
+  "gitProtectedBranches": [
+    "main"
+  ],
+  "ciProvider": "none",
+  "gitCommitSha": "aeee9d7e3a85db97116ae3640885399c0d16082d",
+  "gitCommitShaShort": "aeee9d7",
+  "gitBranchName": "architecture-stabilization",
+  "gitOriginUrl": "https://github.com/yoyoonthetrack/LYAN.git",
+  "gitCommitTimestamp": "2026-09-17T18:47:12.000Z",
+  "gitCommitMessage": "fix(messaging): remove duplicate DB resolution in openConversation that caused empty chat on Je peux aider\n\nThe commits cdddebd and 231aa83 added request UUID→user UUID resolution\nand profile hydration in messaging-ui.js:openConversation that duplicated\nthe same logic already in __LYANN_CHAT_CORE_OPEN (chat-logic.js). This\ncaused 4 sequential network calls before any UI update, leaving the chat\nmodal empty (no name, no messages, no mission context).\n\nFix: openConversation now extracts contactId synchronously from options\nand delegates immediately to __LYANN_CHAT_CORE_OPEN which handles all\nresolution and hydration.",
+  "gitCommitAuthorName": "Yoyo",
+  "lastCommitOnMainSha": "d494baa38e071697b43006c5a8cf2fd9beeb041e",
+  "lastCommitOnMainTimestamp": "2026-09-10T19:47:40.000Z",
+  "githubRepository": "yoyoonthetrack/LYAN",
+  "projectName": "lyann-v1",
+  "relativeProjectDir": ".",
+  "id": "08455c09-0604-4088-a7f5-c7455d34d280",
+  "trigger": "CLI",
+  "startedAt": "2026-09-17T20:57:40.549Z",
+  "status": "PASSED",
+  "cliVersion": "3.58.1",
+  "labels": [],
+  "ai": {
+    "useMemory": true,
+    "failureRecovery": true,
+    "agentConfig": {
+      "locator": "v5",
+      "assertion": "v5",
+      "visual-assertion": "v4.0",
+      "text-extraction": "v3.0",
+      "failure-recovery": "v2.1",
+      "android-locator": "v2",
+      "ios-locator": "v2"
+    }
+  },
+  "browser": {
+    "disableSecondaryCacheResolution": true,
+    "autoExpandIframes": true
+  },
+  "updatedAt": "2026-09-17T21:00:42.399Z",
+  "finishedAt": "2026-09-17T21:00:42.399Z"
+}

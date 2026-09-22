@@ -1,0 +1,471 @@
+[
+  {
+    "context": "desktop",
+    "path": "/index.html",
+    "title": "LYANN - Le lien qui compte",
+    "h1": "Qui peut vous aider\naujourd'hui ?",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 81,
+    "bodyTextLen": 4056,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [
+      {
+        "name": "#Plomberie",
+        "w": 109,
+        "h": 27
+      },
+      {
+        "name": "#Climatisation",
+        "w": 128,
+        "h": 27
+      },
+      {
+        "name": "#Jardinage",
+        "w": 108,
+        "h": 27
+      },
+      {
+        "name": "#Bricolage",
+        "w": 106,
+        "h": 27
+      },
+      {
+        "name": "#Transport",
+        "w": 106,
+        "h": 27
+      },
+      {
+        "name": "#Électricité",
+        "w": 109,
+        "h": 27
+      },
+      {
+        "name": "#Peinture",
+        "w": 99,
+        "h": 27
+      },
+      {
+        "name": "#Ménage",
+        "w": 95,
+        "h": 27
+      }
+    ],
+    "jsErrors": []
+  },
+  {
+    "context": "desktop",
+    "path": "/feed.html",
+    "title": "LYANN — Bokantaj • Espace d'Échange du Quartier",
+    "h1": "Bienvenue dans le Bokantaj",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 1054,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [
+      {
+        "name": "Filtres avancés",
+        "w": 94,
+        "h": 36
+      }
+    ],
+    "jsErrors": []
+  },
+  {
+    "context": "desktop",
+    "path": "/results.html",
+    "title": "LYANN — Rechercher un Talent dans les DOM",
+    "h1": "Explorer",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 734,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "desktop",
+    "path": "/results.html?mode=lyanneurs",
+    "title": "LYANN — Rechercher un Talent dans les DOM",
+    "h1": "Explorer",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 1363,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "desktop",
+    "path": "/pricing.html",
+    "title": "LYANN - Nos Offres & Formules d'Abonnement",
+    "h1": "Développez votre activité avec LYANN",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 2409,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "desktop",
+    "path": "/how-it-works.html",
+    "title": "Comment fonctionne LYANN ? - Plateforme d'Entraide Locale & Services DOM",
+    "h1": "Un besoin, une compétence,\net le bon Lyanneur à proximité.",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 81,
+    "bodyTextLen": 6270,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "desktop",
+    "path": "/about.html",
+    "title": "Notre Histoire & Interview de Yoann - LYANN DOM",
+    "h1": "« Le lien est ce qui nous permet tous\nd'avancer en toute sérénité. Sé Lyann a lo",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 8529,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "desktop",
+    "path": "/payment-portal.html",
+    "title": "LYANN — Espace Paiements Sécurisés",
+    "h1": "Paiements LYANN",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 652,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "mobile",
+    "path": "/index.html",
+    "title": "LYANN - Le lien qui compte",
+    "h1": "Qui peut vous aider aujourd'hui ?",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 77,
+    "bodyTextLen": 4179,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [
+      {
+        "name": "#Plomberie",
+        "w": 115,
+        "h": 31
+      },
+      {
+        "name": "#Climatisation",
+        "w": 134,
+        "h": 31
+      },
+      {
+        "name": "#Jardinage",
+        "w": 114,
+        "h": 31
+      },
+      {
+        "name": "#Bricolage",
+        "w": 112,
+        "h": 31
+      },
+      {
+        "name": "#Transport",
+        "w": 112,
+        "h": 31
+      },
+      {
+        "name": "#Électricité",
+        "w": 115,
+        "h": 31
+      },
+      {
+        "name": "#Peinture",
+        "w": 104,
+        "h": 31
+      },
+      {
+        "name": "#Ménage",
+        "w": 101,
+        "h": 31
+      }
+    ],
+    "jsErrors": []
+  },
+  {
+    "context": "mobile",
+    "path": "/feed.html",
+    "title": "LYANN — Bokantaj • Espace d'Échange du Quartier",
+    "h1": "Bienvenue dans le Bokantaj",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 962,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [
+      {
+        "name": "Filtres avancés",
+        "w": 99,
+        "h": 36
+      }
+    ],
+    "jsErrors": []
+  },
+  {
+    "context": "mobile",
+    "path": "/results.html",
+    "title": "LYANN — Rechercher un Talent dans les DOM",
+    "h1": "Explorer",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 3613,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "mobile",
+    "path": "/results.html?mode=lyanneurs",
+    "title": "LYANN — Rechercher un Talent dans les DOM",
+    "h1": "Explorer",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 1260,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "mobile",
+    "path": "/pricing.html",
+    "title": "LYANN - Nos Offres & Formules d'Abonnement",
+    "h1": "Développez votre activité avec LYANN",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 2317,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "mobile",
+    "path": "/how-it-works.html",
+    "title": "Comment fonctionne LYANN ? - Plateforme d'Entraide Locale & Services DOM",
+    "h1": "Un besoin, une compétence, et le bon Lyanneur à proximité.",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 77,
+    "bodyTextLen": 6178,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "mobile",
+    "path": "/about.html",
+    "title": "Notre Histoire & Interview de Yoann - LYANN DOM",
+    "h1": "« Le lien est ce qui nous permet tous d'avancer en toute sérénité. Sé Lyann a lo",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 8437,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "mobile",
+    "path": "/payment-portal.html",
+    "title": "LYANN — Espace Paiements Sécurisés",
+    "h1": "Paiements LYANN",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 579,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [],
+    "jsErrors": []
+  },
+  {
+    "context": "ios-mock",
+    "path": "/index.html#welcome",
+    "title": "LYANN - Le lien qui compte",
+    "h1": "Qui peut vous aider aujourd'hui ?",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 73,
+    "bodyTextLen": 4599,
+    "welcome": true,
+    "bottomNav": true,
+    "loginOpen": false,
+    "smallTargets": [
+      {
+        "name": "#Plomberie",
+        "w": 119,
+        "h": 31
+      },
+      {
+        "name": "#Climatisation",
+        "w": 138,
+        "h": 31
+      },
+      {
+        "name": "#Jardinage",
+        "w": 117,
+        "h": 31
+      },
+      {
+        "name": "#Bricolage",
+        "w": 115,
+        "h": 31
+      },
+      {
+        "name": "#Transport",
+        "w": 116,
+        "h": 31
+      },
+      {
+        "name": "#Électricité",
+        "w": 118,
+        "h": 31
+      },
+      {
+        "name": "#Peinture",
+        "w": 108,
+        "h": 31
+      },
+      {
+        "name": "#Ménage",
+        "w": 104,
+        "h": 31
+      }
+    ]
+  },
+  {
+    "context": "ios-mock-guest",
+    "path": "/index.html#guest",
+    "title": "LYANN - Le lien qui compte",
+    "h1": "Qui peut vous aider aujourd'hui ?",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 73,
+    "bodyTextLen": 4439,
+    "welcome": false,
+    "bottomNav": true,
+    "loginOpen": false,
+    "smallTargets": [
+      {
+        "name": "#Plomberie",
+        "w": 119,
+        "h": 31
+      },
+      {
+        "name": "#Climatisation",
+        "w": 138,
+        "h": 31
+      },
+      {
+        "name": "#Jardinage",
+        "w": 117,
+        "h": 31
+      },
+      {
+        "name": "#Bricolage",
+        "w": 115,
+        "h": 31
+      },
+      {
+        "name": "#Transport",
+        "w": 116,
+        "h": 31
+      },
+      {
+        "name": "#Électricité",
+        "w": 118,
+        "h": 31
+      },
+      {
+        "name": "#Peinture",
+        "w": 108,
+        "h": 31
+      },
+      {
+        "name": "#Ménage",
+        "w": 104,
+        "h": 31
+      }
+    ]
+  },
+  {
+    "context": "auth-A",
+    "path": "/feed.html",
+    "title": "LYANN — Bokantaj • Espace d'Échange du Quartier",
+    "h1": "Bienvenue dans le Bokantaj",
+    "h1Hidden": false,
+    "overflowX": 0,
+    "navHeroOverlap": 0,
+    "bodyTextLen": 929,
+    "welcome": false,
+    "bottomNav": false,
+    "loginOpen": false,
+    "smallTargets": [
+      {
+        "name": "",
+        "w": 38,
+        "h": 38
+      },
+      {
+        "name": "Filtres avancés",
+        "w": 99,
+        "h": 36
+      }
+    ]
+  }
+]

@@ -1,0 +1,64 @@
+Name: 03_explorer_lyanneurs
+Description: Explorer dual discovery - real public profiles, service search, empty recovery and filter sheet
+
+Main Steps:
+```json
+[
+  {
+    "id": "9f6517ed-5528-4fc2-a75d-f576abd60499",
+    "type": "PRESET_ACTION",
+    "command": {
+      "type": "AI_ASSERTION",
+      "assertion": "Explorer shows Annonces and Lyanneurs tabs and a service search field"
+    },
+    "parentStepIdChain": [],
+    "index": 0
+  },
+  {
+    "id": "d6ac689e-4c8e-4980-8f9f-710e243f9033",
+    "type": "AI_ACTION_DYNAMIC",
+    "text": "Explore Lyanneurs discovery without logging in or writing data. Search for Jardinage and verify a matching service profile is shown. Open that profile and verify its services are visible, then close it. Open Filtres et zone, enter CommuneIntrouvable as the area and apply. Verify an explicit no-result message. Remove the area filter to recover the profiles. Do not send a message, publish content, add favorites or submit any business action.",
+    "version": "3",
+    "disableCache": true,
+    "parentStepIdChain": [],
+    "index": 1
+  },
+  {
+    "id": "5b44ab00-7e2e-4721-b283-f191b793e1e5",
+    "type": "PRESET_ACTION",
+    "command": {
+      "type": "TYPE",
+      "target": {
+        "type": "description",
+        "elementDescriptor": "Explorer service search field"
+      },
+      "value": "XYZ999UNKNOWN"
+    },
+    "parentStepIdChain": [],
+    "index": 2
+  },
+  {
+    "id": "532ab7a4-e8ef-472b-a084-8fb5bcec49f5",
+    "type": "PRESET_ACTION",
+    "command": {
+      "type": "CLICK",
+      "target": {
+        "type": "description",
+        "elementDescriptor": "Rechercher button in Explorer search form"
+      }
+    },
+    "parentStepIdChain": [],
+    "index": 3
+  },
+  {
+    "id": "19ef2924-10ad-4130-96f2-223c9a5348b8",
+    "type": "PRESET_ACTION",
+    "command": {
+      "type": "AI_ASSERTION",
+      "assertion": "Aucun Lyanneur trouvé pour cette recherche is visible with a recovery action"
+    },
+    "parentStepIdChain": [],
+    "index": 4
+  }
+]
+```

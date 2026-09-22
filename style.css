@@ -1105,17 +1105,20 @@ h1, h2, h3, h4 {
 
 .hero-cta-group {
     display: flex;
-    gap: 12px;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
     flex-wrap: wrap;
-    margin-top: 22px;
+    margin-top: 36px;
+    width: 100%;
 }
 
 .hero-cta-group .lyann-cta-home {
     width: auto !important;
-    min-width: 168px;
+    min-width: 175px;
     font-size: 0.98rem !important;
     min-height: 48px !important;
-    padding: 0 22px !important;
+    padding: 0 24px !important;
 }
 
 .hero-visual {
