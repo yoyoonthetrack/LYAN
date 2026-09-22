@@ -2579,7 +2579,7 @@ safeDomReady(() => {
                             <!-- HEADER NORMAL FLOW: IDENTITY (ROW 1) + CATEGORY BADGE (ROW 2) FOR ZERO OVERFLOW -->
                             <div class="flash-card-header" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; box-sizing: border-box;">
-                                    <div class="flash-author-block trigger-quick-profile" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                                    <div class="flash-author-block trigger-quick-profile" role="button" tabindex="0" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
                                         <img src="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" onerror="window.handleAvatarError(this)" alt="${window.escapeHtmlAttr(authorDisplayName)}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
                                         <div class="flash-author-info" style="line-height: 1.25; min-width: 0; flex: 1;">
                                             <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayName} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i></strong>
@@ -2922,16 +2922,31 @@ safeDomReady(() => {
             });
         });
 
-        document.querySelectorAll('.trigger-quick-profile').forEach(element => {
-            if (element.dataset.listenersBound === 'true') return;
-            element.dataset.listenersBound = 'true';
-            element.addEventListener('click', () => {
-                const memberId = element.dataset.memberId;
-                if (memberId && typeof openQuickProfileModal === 'function') {
-                    openQuickProfileModal(memberId);
+        const feedRoot = document.getElementById('flashFeedContainer');
+        if (feedRoot && feedRoot.dataset.authorProfileBound !== 'true') {
+            feedRoot.dataset.authorProfileBound = 'true';
+            const openAuthorProfile = (event) => {
+                const trigger = event.target.closest('.trigger-quick-profile');
+                if (!trigger || !feedRoot.contains(trigger)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const memberId = trigger.dataset.memberId;
+                if (!memberId) return;
+                if (typeof window.openPublicMemberProfile === 'function') {
+                    window.openPublicMemberProfile(memberId);
+                } else if (typeof window.openQuickProfileModal === 'function') {
+                    window.openQuickProfileModal(memberId);
                 }
+            };
+            feedRoot.addEventListener('click', openAuthorProfile);
+            feedRoot.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                const trigger = event.target.closest('.trigger-quick-profile');
+                if (!trigger) return;
+                event.preventDefault();
+                openAuthorProfile(event);
             });
-        });
+        }
     }
 
     if (createFlashForm) {
@@ -3321,6 +3336,7 @@ safeDomReady(() => {
             }
         }
         
+        const bioText = member.bio || member.about || member.description || '';
         if (quickProfileBio) quickProfileBio.textContent = bioText;
 
         if (quickProfileSkills) {

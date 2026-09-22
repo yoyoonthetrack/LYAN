@@ -1105,8 +1105,17 @@ h1, h2, h3, h4 {
 
 .hero-cta-group {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     flex-wrap: wrap;
+    margin-top: 22px;
+}
+
+.hero-cta-group .lyann-cta-home {
+    width: auto !important;
+    min-width: 168px;
+    font-size: 0.98rem !important;
+    min-height: 48px !important;
+    padding: 0 22px !important;
 }
 
 .hero-visual {
@@ -1363,10 +1372,15 @@ h1, h2, h3, h4 {
 }
 
 .testimonial-slide blockquote {
-    font-size: 1.3rem;
-    line-height: 1.6;
-    margin-bottom: 24px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.12rem;
+    font-weight: 500;
     font-style: italic;
+    line-height: 1.8;
+    letter-spacing: 0.015em;
+    color: #F4EFE4;
+    max-width: 38rem;
+    margin: 0 auto 24px;
 }
 
 .testimonial-author {
@@ -1380,6 +1394,7 @@ h1, h2, h3, h4 {
     width: 50px;
     height: 50px;
     border-radius: 50%;
+    object-fit: cover;
 }
 
 .slider-dots {
@@ -14355,7 +14370,7 @@ body.capacitor-native .nav-msg-btn,
    LYANN — CTA IDENTITY TOKENS (REUSABLE CONCEPTUALLY)
    ========================================================================== */
 .lyann-cta-primary {
-    background: linear-gradient(110deg, #4A7C59 0%, #6F9562 52%, #E5B345 100%) !important;
+    background: linear-gradient(110deg, #4A7C59 0%, #80A86E 42%, #E5B345 100%) !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
     font-size: 0.88rem !important;

@@ -72,6 +72,8 @@ body.results-page[data-explorer-mode=lyanneurs]{background:linear-gradient(180de
 .explorer-page .btn-primary{box-shadow:none!important;background-image:none!important}
 .explorer-page[data-mode=annonces] .btn-primary{background:#C9A24A!important;background-image:none!important;box-shadow:none!important}
 .explorer-page[data-mode=lyanneurs] .btn-primary{background:#6B9476!important;background-image:none!important;box-shadow:none!important}
+.explorer-page .lyann-cta-primary{width:auto!important;background:linear-gradient(110deg,#4A7C59 0%,#80A86E 42%,#E5B345 100%)!important;background-image:linear-gradient(110deg,#4A7C59 0%,#80A86E 42%,#E5B345 100%)!important;color:#fff!important;border:1px solid rgba(255,255,255,.25)!important;box-shadow:0 4px 14px rgba(74,124,89,.22)!important;border-radius:22px!important;font-weight:700!important}
+.explorer-search .lyann-cta-primary{flex-shrink:0;padding:0 16px!important}
 @media(max-width:640px){
 .explorer-swipe-hint{display:block}
 .explorer-world-tab{font-size:.78rem;padding:8px 6px;gap:5px}
