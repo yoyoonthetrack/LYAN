@@ -79,7 +79,7 @@ function bindHeroStoryMedia() {
     if (!video) return;
     const figure = video.closest('.hero-story');
     const still = figure && figure.querySelector('.hero-story-still');
-    const native = isNativePlatform();
+    const native = typeof isNativePlatform === 'function' && isNativePlatform();
     const src = native
         ? (video.getAttribute('data-src-native') || 'lyann-home-story-square.mp4')
         : (video.getAttribute('data-src-web') || 'lyann-home-story.mp4');
@@ -6090,71 +6090,29 @@ safeDomReady(() => {
     }
 
     // 2. Bouton & Dropdown de Notifications (dans la Navbar)
-    const navLinksContainer = document.querySelector('.nav-links');
-    if (navLinksContainer) {
+    const navHost = document.querySelector('.mobile-header-actions') || document.querySelector('.nav-links');
+    if (navHost && !document.getElementById('navNotifBtn') && !(typeof isNativePlatform === 'function' && isNativePlatform())) {
         const notifLi = document.createElement('div');
         notifLi.className = 'nav-notif-container logged-in-only';
         notifLi.style.position = 'relative';
-        notifLi.style.marginRight = '12px';
         notifLi.style.display = 'flex';
         notifLi.style.alignItems = 'center';
         notifLi.innerHTML = `
-            <button class="nav-notif-btn" id="navNotifBtn" title="Notifications" style="background: none; border: none; font-size: 1.35rem; cursor: pointer; color: var(--text); position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; transition: background 0.3s; padding: 0;">
+            <button type="button" class="nav-notif-btn" id="navNotifBtn" title="Notifications" aria-label="Notifications" style="background: rgba(74, 124, 89, 0.12); border: none; font-size: 1.3rem; cursor: pointer; color: var(--primary, #4A7C59); position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; padding: 0;">
                 <i class="ph ph-bell"></i>
-                <span class="nav-notif-badge" id="navNotifBadge" style="position: absolute; top: 4px; right: 4px; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1.5px solid white; display: none;">0</span>
+                <span class="nav-notif-badge notif-badge-count" id="navNotifBadge" style="position: absolute; top: 2px; right: 2px; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 50%; align-items: center; justify-content: center; border: 1.5px solid white; display: none;">0</span>
             </button>
-            
-            <div class="nav-notif-dropdown" id="navNotifDropdown" style="display: none; position: absolute; top: 50px; right: 0; width: 360px; max-width: 92vw; background: white; border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 1000; overflow: hidden; padding: 12px 0;">
-                <div style="padding: 0 16px 8px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-weight: 800; font-size: 0.95rem; color: var(--primary-dark);">Notifications</span>
-                    <button type="button" id="clearAllNotifsBtn" style="background: none; border: none; font-size: 0.75rem; color: var(--primary); cursor: pointer; font-weight: 700; padding: 0;">Tout effacer</button>
-                </div>
-                <div class="nav-notif-list" id="navNotifList" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column;">
-                    <div style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
-                        <i class="ph ph-bell-slash" style="font-size: 1.6rem; display: block; margin-bottom: 6px; opacity: 0.6;"></i>
-                        Aucune nouvelle notification
-                    </div>
-                </div>
-            </div>
         `;
-        
-        const profileBtn = navLinksContainer.querySelector('.open-account-modal-trigger');
-        if (profileBtn) {
-            navLinksContainer.insertBefore(notifLi, profileBtn);
-        } else {
-            navLinksContainer.appendChild(notifLi);
-        }
 
-        // Toggle dropdown listener
-        const navNotifBtn = document.getElementById('navNotifBtn');
-        const navNotifDropdown = document.getElementById('navNotifDropdown');
-        if (navNotifBtn && navNotifDropdown) {
-            navNotifBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                navNotifDropdown.style.display = navNotifDropdown.style.display === 'none' ? 'block' : 'none';
-            });
-            document.addEventListener('click', () => {
-                navNotifDropdown.style.display = 'none';
-            });
-            navNotifDropdown.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-        }
+        const profileBtn = navHost.querySelector('.nav-profile-btn, .open-account-modal-trigger');
+        if (profileBtn) navHost.insertBefore(notifLi, profileBtn);
+        else navHost.appendChild(notifLi);
 
-        // Action Effacer
-        const clearAllNotifsBtn = document.getElementById('clearAllNotifsBtn');
-        if (clearAllNotifsBtn) {
-            clearAllNotifsBtn.addEventListener('click', () => {
-                if (window.LYANN_NOTIFICATIONS && typeof window.LYANN_NOTIFICATIONS.clearLogs === 'function') {
-                    window.LYANN_NOTIFICATIONS.clearLogs();
-                } else {
-                    safeStorage.removeItem('lyann_notifications_log');
-                }
-                loadAndRenderNotifs();
-                const notif = document.getElementById('floatingChatNotif');
-                if (notif) notif.classList.remove('active');
-            });
-        }
+        document.getElementById('navNotifBtn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof openNotificationsModal === 'function') openNotificationsModal();
+        });
     }
 
     // Fonction de rendu des notifications

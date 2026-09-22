@@ -410,22 +410,12 @@ window.renderAppHomeConnectedView = function() {
     // Remove legacy appHomeView element if present to avoid duplicate action cards
     document.getElementById('appHomeView')?.remove();
 
-    // Ensure hero section remains visible
+    // Keep the same homepage sections as the website. Native only adds the
+    // header, the bottom tabs, and the greeting.
     mainHero.style.display = '';
 
-    // Hide the hero visual illustration (SVG) on native — it takes too much space
     const heroVisual = mainHero.querySelector('.hero-visual');
-    if (heroVisual) heroVisual.style.display = 'none';
-
-    // Hide web-only marketing sections on native app connected home
-    document.querySelectorAll('.trust-section, .how-section, .categories-section, .testimonials-section, .final-cta, .lyann-footer, .cta-section').forEach(sec => {
-        if (sec) sec.style.display = 'none';
-    });
-    document.querySelectorAll('#about, #how-it-works').forEach(sec => {
-        if (sec && (sec.classList.contains('trust-section') || sec.classList.contains('how-section'))) {
-            sec.style.display = 'none';
-        }
-    });
+    if (heroVisual) heroVisual.style.display = '';
 
     // Populate and display personalized greeting badge inside hero
     const greetingBadge = document.getElementById('heroGreetingBadge');
@@ -514,6 +504,7 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
                     </button>
                     <button type="button" class="nav-msg-btn" id="btnHeaderNotif" aria-label="Notifications" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; position: relative;">
                         <i class="ph ph-bell"></i>
+                        <span class="notif-badge-count" style="position: absolute; top: 0; right: 0; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 50%; align-items: center; justify-content: center; display: none;"></span>
                     </button>
                     <button type="button" class="hamburger-menu-btn" id="btnHeaderHamburger" aria-label="Menu Principal" style="background: rgba(74, 124, 89, 0.12); border: 1.5px solid rgba(74, 124, 89, 0.25); border-radius: 12px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--primary-dark); cursor: pointer; display: flex; align-items: center; justify-content: center;">
                         <i class="ph ph-list"></i>
