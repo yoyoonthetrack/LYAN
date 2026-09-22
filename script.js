@@ -7845,8 +7845,21 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             `;
         }
 
+        // The author header opens the canonical public profile. A heading-free overlay
+        // keeps the existing markup intact; the anonymous discovery contract withholds
+        // the author identifier, so no affordance is rendered without one.
+        const authorId = requestData.requester_id || authorProf?.id || '';
+        const authorNeedsSignIn = !authorId && !window.LYANN_AUTH_STATE?.isAuthenticated?.();
+        const authorTriggerStyle = 'position: absolute; inset: 0; min-width: 44px; min-height: 48px; background: none; border: 0; margin: 0; padding: 0; color: transparent; cursor: pointer; z-index: 2;';
+        const authorTriggerHTML = authorId
+            ? `<button type="button" id="lyannDetailAuthorBtn" data-member-id="${window.escapeHtmlAttr(authorId)}" aria-label="Voir le profil de ${window.escapeHtmlAttr(authorName)}" style="${authorTriggerStyle}"></button>`
+            : authorNeedsSignIn
+                ? `<button type="button" id="lyannDetailAuthorBtn" aria-label="Se connecter pour voir le profil de ${window.escapeHtmlAttr(authorName)}" style="${authorTriggerStyle}"></button>`
+                : '';
+
         bodyEl.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #F1F5F9;">
+            <div style="position: relative; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #F1F5F9;">
+                ${authorTriggerHTML}
                 <img src="${authorAvatar}" alt="${window.escapeHtmlAttr(authorName)}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
                 <div>
                     <strong style="font-size: 1rem; color: #1E2822; display: block;">${window.escapeHtmlAttr(authorName)}</strong>
@@ -7861,6 +7874,17 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             ${budgetHTML}
             ${photosHTML}
         `;
+
+        document.getElementById('lyannDetailAuthorBtn')?.addEventListener('click', (event) => {
+            const memberId = event.currentTarget.dataset.memberId;
+            if (!memberId) {
+                window.LYANN_ROUTER?.requireAuthForInteraction?.('requestAuthor', { requestId: requestData.id });
+                return;
+            }
+            // The annonce is the parent surface: replace it rather than stacking modals.
+            window.closeLyannDetailSurface('author-profile');
+            window.openPublicMemberProfile?.(memberId, 'lyannDetailAuthor');
+        });
     }
 
     if (generation !== lyannDetailOpenGeneration) return;

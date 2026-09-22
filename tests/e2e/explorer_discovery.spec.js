@@ -65,6 +65,27 @@ test('Lyanneurs queries real profiles/services and opens canonical profile', asy
   expect(telemetry.failures).toEqual([]);
 });
 
+test('Lyanneur avatar and name open the canonical profile, not only the explicit button', async ({page}) => {
+  const telemetry = observe(page);
+  await ready(page, 'lyanneurs');
+  const profile = await page.evaluate(async () => (await window.LYANN_EXPLORER_REPOSITORY.load()).find(p => p.services.length));
+  expect(profile, 'Backend must contain a public profile with an active service').toBeTruthy();
+  const trigger = page.locator(`#explorerResults [data-member-id="${profile.id}"] .explorer-person-zone`)
+    .getByRole('button', {name:/^Voir le profil de /});
+  const box = await trigger.boundingBox();
+  expect(box.width, 'Avatar and name zone stays a real touch target').toBeGreaterThanOrEqual(44);
+  expect(box.height, 'Avatar and name zone stays a real touch target').toBeGreaterThanOrEqual(44);
+  for (const position of [{x:20, y:22}, {x:box.width - 10, y:14}]) {
+    await trigger.click({position});
+    await expect(page.locator('#publicMemberProfileModal')).toBeVisible();
+    await expect(page.locator('#publicMemberProfileModal')).toContainText(profile.services[0].title);
+    await page.locator('#closePublicProfileModalBtn').click();
+    await expect(page.locator('#publicMemberProfileModal')).not.toBeVisible();
+  }
+  expect(telemetry.errors).toEqual([]);
+  expect(telemetry.failures).toEqual([]);
+});
+
 test('Both modes use the same database taxonomy and removable category filter', async ({page}) => {
   test.setTimeout(60000);
   await ready(page);

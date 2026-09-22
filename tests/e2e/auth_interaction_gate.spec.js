@@ -93,7 +93,8 @@ async function publicExplorer(page, mode='annonces') {
 }
 for (const [label,mode,selector] of [
   ['Favorite','annonces','.btn-fav-toggle'],['Contact','lyanneurs','[data-action="contact"]'],
-  ['Lyanner','annonces','[data-action="help"]'],['Publish Request','annonces','.explorer-publish']
+  ['Lyanner','annonces','[data-action="help"]'],['Publish Request','annonces','.explorer-publish'],
+  ['Annonce author','annonces','.explorer-person-overlay']
 ]) test(`Anonymous ${label} invokes the shared auth gate without a business write`, async ({page}) => {
   const writes=[];
   page.on('request',r=>{if(r.url().includes('/rest/v1/') && r.method()!=='GET')writes.push(r.url());});
@@ -144,6 +145,19 @@ test('Public Request detail by id uses the canonical public reader, without raw 
   await page.evaluate(id=>window.openLyannDetailModal(id),row.id);
   await expect(page.locator('#lyannDetailTitle')).toHaveText(row.title);
   await expect(page.locator('#loginModal')).not.toBeVisible();expect(raw).toEqual([]);
+});
+
+// The public projection withholds the author identifier, so the annonce header must
+// offer sign-in rather than a dead zone or a stacked, empty profile.
+test('Anonymous annonce author header invokes the shared auth gate, never a dead zone',async({page})=>{
+  await publicExplorer(page);
+  const card=page.locator('[data-request-id]').first();const id=await card.getAttribute('data-request-id');
+  await card.getByRole('button',{name:'Détails',exact:true}).click();
+  await expect(page.locator('#lyannDetailModal')).toBeVisible();
+  await page.locator('#lyannDetailAuthorBtn').click();
+  await expect(page.locator('#loginModal')).toBeVisible();
+  expect(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('lyann_interaction_intent')))).toMatchObject({action:'requestAuthor',payload:{requestId:id}});
+  await expect(page.locator('#publicMemberProfileModal')).not.toBeVisible();
 });
 
 test('Authentication resolving does not mistake a restored session for an anonymous visitor',async()=>{

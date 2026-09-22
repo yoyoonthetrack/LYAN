@@ -23,6 +23,12 @@
 .explorer-card-description{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:#536258}
 .explorer-person{display:flex;align-items:center;gap:10px;min-width:0;font-size:.87rem;color:#536258}
 .explorer-person img{width:40px;height:40px;object-fit:cover;border-radius:50%}
+.explorer-person-zone{position:relative}
+.explorer-card>.explorer-person-zone{width:fit-content;max-width:100%}
+.explorer-person-overlay{position:absolute;inset:0;min-width:44px;min-height:44px;background:none;border:0;margin:0;padding:0;font:inherit;color:transparent;cursor:pointer;z-index:1}
+.explorer-person-overlay:hover~img{filter:brightness(.94)}
+.explorer-person-overlay:hover~span,.explorer-person-overlay:hover~div h2{text-decoration:underline}
+.explorer-person-overlay:focus-visible{outline:2px solid var(--primary,#4a7c59);outline-offset:3px;border-radius:12px}
 .explorer-card-top{display:flex;gap:10px;justify-content:space-between;align-items:start}
 .explorer-card-top .btn-fav-toggle{flex-shrink:0;background:none;border:0;font-size:1.25rem;width:44px;color:#536258;border-radius:50%}
 .explorer-meta{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:.85rem;color:#536258}

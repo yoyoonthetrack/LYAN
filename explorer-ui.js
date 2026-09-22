@@ -21,14 +21,24 @@
         function favorite(type, id) {
             return `<button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="${type}" data-favorite-id="${escape(id)}" data-fav-type="${type}" data-fav-id="${escape(id)}" data-surface="search-explorer" aria-label="Ajouter aux favoris"><i class="ph ph-bookmark-simple" aria-hidden="true"></i></button>`;
         }
+        // The avatar and name zone opens the canonical public profile. A heading must
+        // stay a real heading, so the whole zone is covered by one overlay control
+        // instead of wrapping the markup. The anonymous discovery contract withholds
+        // the author identifier, so no affordance is rendered without one.
+        function profileZoneTrigger(memberId, label) {
+            if (memberId) return `<button type="button" class="explorer-person-overlay" data-action="profile" data-id="${escape(memberId)}" aria-label="Voir le profil de ${escape(label)}"></button>`;
+            if (currentUserId()) return '';
+            return `<button type="button" class="explorer-person-overlay" data-action="profile" aria-label="Se connecter pour voir le profil de ${escape(label)}"></button>`;
+        }
         function requestCard(r) {
             const own = Boolean(currentUserId()) && r.requester_id === currentUserId();
+            const authorName = name(r.profiles);
             return `<article class="explorer-card" data-request-id="${escape(r.id)}">
                 <div class="explorer-card-top"><span class="explorer-meta">${escape(r.category)} · ${escape(statusLabel(r.status))}</span>${favorite('REQUEST', r.id)}</div>
                 <h2>${escape(r.title)}</h2><p class="explorer-card-description">${escape(r.description)}</p>
                 <div class="explorer-meta"><span>📍 ${escape(r.location || 'Lieu à préciser')}</span><span>◷ ${escape(urgencyLabel(r.urgency))}</span></div>
                 <p class="explorer-budget">${r.budget == null ? 'Budget à convenir' : escape(Number(r.budget).toLocaleString('fr-FR')) + ' €'}</p>
-                <div class="explorer-person"><img src="${avatar(r.profiles)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><span>${escape(name(r.profiles))}${own ? ' · Votre annonce' : ''}</span></div>
+                <div class="explorer-person explorer-person-zone">${profileZoneTrigger(r.requester_id || r.profiles?.id, authorName)}<img src="${avatar(r.profiles)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><span>${escape(authorName)}${own ? ' · Votre annonce' : ''}</span></div>
                 <div class="explorer-card-actions"><button class="btn btn-outline" data-action="detail" data-id="${escape(r.id)}">Détails</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-primary" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
             </article>`;
         }
@@ -146,7 +156,8 @@
 
             return `<article class="explorer-card explorer-profile-card" data-member-id="${escape(p.id)}" style="display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 18px; border: 1px solid #D3E0D6; background: #fff;">
                 <div class="explorer-card-top" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
-                    <div class="explorer-person" style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                    <div class="explorer-person explorer-person-zone" style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                        ${profileZoneTrigger(p.id, displayName)}
                         <img src="${avatar(p)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
                         <div style="min-width: 0;">
                             <h2 style="font-size: 1.15rem; line-height: 1.25; margin: 0; color: #1F3827; font-weight: 800;">${escape(displayName)}</h2>
@@ -291,7 +302,10 @@
                 case 'retry': search(true); break;
                 case 'reset': reset(); break;
                 case 'detail': if (row) window.openLyannDetailModal(row.id, row); break;
-                case 'profile': window.openPublicMemberProfile?.(button.dataset.id); break;
+                case 'profile':
+                    if (button.dataset.id) window.openPublicMemberProfile?.(button.dataset.id);
+                    else window.LYANN_ROUTER.requireAuthForInteraction('requestAuthor', {requestId: button.closest('[data-request-id]')?.dataset.requestId});
+                    break;
                 case 'contact': if (row) window.LYANN_ROUTER.go('messages', {contactId:row.id, name:row.name}); break;
                 case 'help':
                     if (row && row.status === 'OPEN' && (!currentUserId() || row.requester_id !== currentUserId())) {

@@ -57,7 +57,7 @@
   const interactionPolicy = Object.freeze({
     home: 'public', explorer: 'public', bokantaj: 'public', requestDetail: 'public',
     publicProfile: 'public', search: 'public', filters: 'public', pricing: 'public', help: 'public', about: 'public',
-    favorite: 'context', messages: 'continue', requestHelp: 'context', publish: 'continue',
+    favorite: 'context', messages: 'continue', requestHelp: 'context', requestAuthor: 'context', publish: 'continue',
     comment: 'context', reaction: 'context', communityPublish: 'context', proposal: 'context',
     missionAction: 'context', profile: 'continue', account: 'continue', activity: 'continue',
     favorites: 'continue', finances: 'continue', settings: 'continue', payment: 'continue'
@@ -125,9 +125,9 @@
       const p = intent.payload || {};
       if (interactionPolicy[intent.action] === 'continue') {
         await go(intent.action, p);
-      } else if (intent.action === 'requestHelp' && p.requestId) {
-        // Restore the real Request. The user confirms help again; no invitation,
-        // proposal or mission is created by signing in.
+      } else if (['requestHelp', 'requestAuthor'].includes(intent.action) && p.requestId) {
+        // Restore the real Request. The user confirms help or opens the author again;
+        // no invitation, proposal or mission is created by signing in.
         await window.openLyannDetailModal?.(p.requestId);
       } else if (intent.action === 'favorite') {
         if (p.entityType === 'REQUEST') await window.openLyannDetailModal?.(p.entityId);
