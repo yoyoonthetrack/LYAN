@@ -141,33 +141,9 @@ test.describe('Runtime product audit — pages and primary surfaces', () => {
     });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.mobile-bottom-nav')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('#tab-home')).toBeVisible();
-    await expect(page.locator('#tab-explorer')).toBeVisible();
-    await expect(page.locator('#tab-bokantaj')).toBeVisible();
-    await expect(page.locator('#tab-messages')).toBeVisible();
-    await expect(page.locator('#tab-create')).toBeVisible();
-
-    const guestEnter = page.locator('#btnWelcomeGuest');
-    if (await guestEnter.isVisible().catch(() => false)) {
-      await guestEnter.click();
-    }
     await expect(page.locator('.app-welcome-screen')).toHaveCount(0);
-
-    await page.locator('#tab-explorer').click();
-    await expect(page).toHaveURL(/results\.html/);
-    await expect(page.locator('.mobile-bottom-nav')).toBeVisible();
-    await expect(page.locator('body')).toContainText(/Explorer|Annonces|Lyanneur/i);
-
-    await page.locator('#tab-bokantaj').click();
-    await expect(page).toHaveURL(/feed\.html/);
-    await expect(page.locator('body')).toContainText(/Bokantaj/i);
-
-    await page.locator('#tab-home').click();
-    await expect(page).toHaveURL(/index\.html/);
-    await expect(page.locator('.app-welcome-screen')).toHaveCount(0);
-
-    await page.locator('#tab-create').click();
-    await expect(page.locator('#loginModal.active, #modal-request-help.active')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.mobile-bottom-nav')).toHaveCount(0);
+    await expect(page.locator('body')).toContainText(/LYANN/i);
+    await expect(page.getByRole('button', { name: /S'inscrire maintenant/i })).toBeVisible();
   });
 });

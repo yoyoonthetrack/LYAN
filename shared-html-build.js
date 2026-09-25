@@ -101,8 +101,8 @@ function injectSharedStylesheet(html) {
 
 const BOOT_SPLASH_SKIP_SCRIPT = `<style>html.lyann-boot-splash-skip .lyann-boot-splash{display:none!important}</style>
     <script>(function(){try{var skip=sessionStorage.getItem('lyann_boot_splash_seen')==='1'||/Playwright|HeadlessChrome/i.test(navigator.userAgent);if(skip)document.documentElement.classList.add('lyann-boot-splash-skip');}catch(e){}})();</script>`;
-const BOOT_SPLASH_MARKUP = `<div id="lyannBootSplash" class="lyann-boot-splash" role="status" aria-label="Chargement de LYANN" style="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#FFFFFF;border:0;margin:0;padding:0;box-shadow:none;">
-  <img src="lyann-boot-logo.gif" alt="" width="88" height="88" decoding="async" style="width:88px;height:88px;border:0;outline:none;box-shadow:none;background:transparent;display:block;border-radius:0;mix-blend-mode:darken;">
+const BOOT_SPLASH_MARKUP = `<div id="lyannBootSplash" class="lyann-boot-splash" role="status" aria-label="Chargement de LYANN" style="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#F8F8F5;border:0;margin:0;padding:0;box-shadow:none;">
+  <img src="lyann-boot-logo.gif" alt="" width="132" height="132" decoding="async" style="width:132px;height:132px;border:0;outline:none;box-shadow:none;background:#F8F8F5;display:block;border-radius:0;mix-blend-mode:darken;">
 </div>
 <script>
 (function(){
@@ -140,7 +140,7 @@ function injectBootSplash(html) {
 }
 
 function enforceScriptCacheBusting(html) {
-  const version = '20260918-human-qa1';
+  const version = '20260925-logoclear';
   return String(html || '').replace(/src="([^"]+\.js)(?:\?v=[^"]*)?"/gi, (match, scriptPath) => {
     if (scriptPath.startsWith('http://') || scriptPath.startsWith('https://') || scriptPath.startsWith('//')) {
       return match;

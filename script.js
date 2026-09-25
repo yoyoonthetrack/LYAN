@@ -11,6 +11,61 @@ window.__LYANN_AUTH_REAL__ = window.__LYANN_AUTH_REAL__ || {
 // Runtime tracing retired after architecture stabilization.
 function logLyannTrace() {}
 
+// The window opened last stays in front of the one it was opened from.
+(function installLyannWindowStack() {
+    let z = 120000;
+    function shown(el) {
+        if (!el) return false;
+        if (el.classList.contains('active')) return true;
+        const display = el.style.display;
+        return display === 'flex' || display === 'block';
+    }
+    function raise(el) {
+        if (!el || !el.classList || !el.classList.contains('modal-overlay')) return;
+        if (!shown(el)) return;
+        z += 2;
+        el.style.setProperty('z-index', String(z), 'important');
+    }
+    window.lyannRaiseWindow = raise;
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList') {
+                mutation.addedNodes.forEach((node) => {
+                    if (!node || node.nodeType !== 1) return;
+                    if (node.classList?.contains('modal-overlay')) watch(node);
+                    node.querySelectorAll?.('.modal-overlay').forEach(watch);
+                });
+                return;
+            }
+            const el = mutation.target;
+            if (!el?.classList?.contains('modal-overlay')) return;
+            if (shown(el)) {
+                if (el.dataset.lyannWindowOpen !== '1') {
+                    el.dataset.lyannWindowOpen = '1';
+                    raise(el);
+                }
+            } else {
+                delete el.dataset.lyannWindowOpen;
+            }
+        });
+    });
+    function watch(el) {
+        if (!el || el.dataset.lyannWindowWatch === '1') return;
+        el.dataset.lyannWindowWatch = '1';
+        observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
+        if (shown(el)) {
+            el.dataset.lyannWindowOpen = '1';
+            raise(el);
+        }
+    }
+    function boot() {
+        document.querySelectorAll('.modal-overlay').forEach(watch);
+        observer.observe(document.body, { childList: true });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+    else boot();
+})();
+
 // === CAPACITOR MOBILE DETECTOR & DYNAMIC BRIDGE INJECTION ===
 (function() {
     const isCapacitorOrigin = window.location.origin.includes('capacitor://') || 
@@ -3742,9 +3797,8 @@ safeDomReady(() => {
                 if (isNativePlatform()) {
                     const path = window.location.pathname;
                     const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
-                    if (isHome && typeof window.renderAppHomeConnectedView === 'function') {
-                        console.log('[AUTH_TRACE] Native post-login: mounting Connected App Home');
-                        window.renderAppHomeConnectedView();
+                    if (isHome && !window.LYANN_ROUTER?.hasAuthIntent?.()) {
+                        window.location.replace('feed.html');
                     }
                 } else {
                     const currentPath = window.location.pathname;
@@ -4672,7 +4726,8 @@ safeDomReady(() => {
         if (modal) {
             modal.classList.remove('active', 'lyann-surface-active');
         }
-        if (!document.body.classList.contains('lyann-messaging-open') && !window.LYANN_SURFACES?.current?.()) {
+        const menuStillOpen = document.getElementById('mobileHamburgerDrawerOverlay')?.classList.contains('active');
+        if (!menuStillOpen && !document.body.classList.contains('lyann-messaging-open') && !window.LYANN_SURFACES?.current?.()) {
             document.body.style.overflow = '';
         }
     };
@@ -5686,8 +5741,8 @@ safeDomReady(() => {
             syncDrawerAuthState(false, null);
             if (typeof window.openLoginModal === 'function') {
                 window.openLoginModal();
-            } else if (typeof showAppWelcomeScreen === 'function') {
-                showAppWelcomeScreen();
+            } else {
+                document.querySelector('.open-login-trigger')?.click();
             }
             return null;
         }
@@ -5790,12 +5845,12 @@ safeDomReady(() => {
             if (isNativePlatform()) {
                 const path = window.location.pathname;
                 const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
+                const hasDeepLink = window.location.search && /[?&](view|action|post_id|chat)=/.test(window.location.search);
                 if (typeof window.ensureDeterministicAppHeader === 'function') {
                     window.ensureDeterministicAppHeader();
                 }
-                if (isHome && typeof window.renderAppHomeConnectedView === 'function') {
-                    console.log('[AUTH_TRACE] Mounting connected App Home for userId:', userId);
-                    window.renderAppHomeConnectedView();
+                if (isHome && !hasDeepLink && !window.LYANN_ROUTER?.hasAuthIntent?.()) {
+                    window.location.replace('feed.html');
                 }
             }
         } else {
@@ -5818,13 +5873,9 @@ safeDomReady(() => {
 
             syncDrawerAuthState(false, null);
 
-            if (isNativePlatform() && authInitializationComplete && !loginModalVisible) {
-                const path = window.location.pathname;
-                const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
-                if (isHome && typeof showAppWelcomeScreen === 'function') {
-                    showAppWelcomeScreen();
-                }
-            }
+            document.querySelectorAll('.app-welcome-screen').forEach((el) => el.remove());
+            document.querySelector('.mobile-bottom-nav')?.remove();
+            document.body.classList.remove('has-member-nav');
 
             const nameEls = document.querySelectorAll('.user-name-display, #accountUserName, #accountModalName, #drawerUserName, #profileUserName, #quickProfileName, #publicMemberName');
             nameEls.forEach(el => {
@@ -5893,6 +5944,11 @@ safeDomReady(() => {
                 window.CURRENT_USER_ID = null;
                 window.LYANN_CURRENT_USER = null;
                 await updateHeaderAuthState();
+                if (typeof isNativePlatform === 'function' && isNativePlatform()) {
+                    const path = window.location.pathname;
+                    const isHome = path.endsWith('index.html') || path.endsWith('/') || !path.includes('.html');
+                    if (!isHome) window.location.replace('index.html');
+                }
 
                 const userAccountModal = document.getElementById('userAccountModal');
                 if (userAccountModal) {
@@ -7108,9 +7164,9 @@ safeDomReady(() => {
             if (typeof window.renderWizardPhotoPreviews === 'function') {
                 window.renderWizardPhotoPreviews();
             }
-            if (window._lyannDirectAskContactId) modalRequestHelp.style.zIndex = '20060';
             syncDirectAudience();
             modalRequestHelp.classList.add('active');
+            if (typeof window.lyannRaiseWindow === 'function') window.lyannRaiseWindow(modalRequestHelp);
             document.body.style.overflow = 'hidden';
             goToStep(1);
             if (typeof prefillQuery === 'string' && prefillQuery) {
@@ -8670,9 +8726,28 @@ function initTestimonialSlider() {
         });
     }
 
+    function slideWidth() {
+        return track.parentElement?.clientWidth || track.getBoundingClientRect().width || 0;
+    }
+
+    let sizeTries = 0;
+    function sizeSlides() {
+        const width = slideWidth();
+        if (!width) {
+            if (sizeTries++ < 8) requestAnimationFrame(sizeSlides);
+            return;
+        }
+        slides.forEach((slide) => {
+            slide.style.flex = `0 0 ${width}px`;
+            slide.style.width = `${width}px`;
+            slide.style.maxWidth = `${width}px`;
+        });
+        track.style.transform = `translate3d(-${currentIndex * width}px, 0, 0)`;
+    }
+
     function goToSlide(index) {
         currentIndex = (index + slides.length) % slides.length;
-        track.style.transform = `translateX(-${currentIndex * 100}%)`;
+        sizeSlides();
         if (dotsContainer) {
             const dots = dotsContainer.querySelectorAll('.dot');
             dots.forEach((d, i) => d.classList.toggle('active', i === currentIndex));
@@ -8687,7 +8762,9 @@ function initTestimonialSlider() {
         }, 6000);
     }
 
+    sizeSlides();
     resetAutoSlide();
+    window.addEventListener('resize', sizeSlides);
 
     let startX = 0;
     let isDragging = false;

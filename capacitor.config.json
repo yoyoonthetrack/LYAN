@@ -1,5 +1,9 @@
 {
   "appId": "app.lyann.mobile",
   "appName": "LYANN",
-  "webDir": "www"
+  "webDir": "www",
+  "backgroundColor": "#FAF7F2",
+  "ios": {
+    "backgroundColor": "#FAF7F2"
+  }
 }

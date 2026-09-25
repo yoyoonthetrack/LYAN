@@ -21,20 +21,24 @@ function updateHeaderNotificationBadge() {
 }
 
 function paintMessageBadge(count) {
-    document.querySelectorAll('#tab-messages, #btnHeaderChat, .nav-msg-btn.open-chat-trigger').forEach((el) => {
+    document.querySelectorAll('#tab-messages, #btnHeaderChat, .nav-msg-btn').forEach((el) => {
+        if (el.id === 'btnHeaderNotif') return;
         if (!el.querySelector('.msg-badge-count')) {
-            if (!el.style.position) el.style.position = 'relative';
             const span = document.createElement('span');
             span.className = 'msg-badge-count';
-            span.style.cssText = 'position:absolute;top:2px;right:2px;background:#C95140;color:#fff;font-size:0.68rem;font-weight:700;min-width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center;display:none;';
+            span.setAttribute('aria-hidden', 'true');
             el.appendChild(span);
         }
     });
+    const total = Number(count) || 0;
     document.querySelectorAll('.msg-badge-count').forEach((badge) => {
-        if (count > 0) {
-            badge.textContent = count > 99 ? '99+' : String(count);
+        if (total > 0) {
+            badge.textContent = total > 99 ? '99+' : String(total);
+            badge.classList.add('is-on');
             badge.style.display = 'inline-flex';
         } else {
+            badge.textContent = '';
+            badge.classList.remove('is-on');
             badge.style.display = 'none';
         }
     });
@@ -377,6 +381,13 @@ document.addEventListener('lyann:auth-state', (event) => {
     }
 });
 document.addEventListener('lyann_notifications_updated', () => updateHeaderNotificationBadge());
+window.addEventListener('focus', () => updateHeaderNotificationBadge());
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) updateHeaderNotificationBadge();
+});
+setInterval(() => {
+    if (!document.hidden) updateHeaderNotificationBadge();
+}, 12000);
 document.addEventListener('pointerdown', unlockLyannNotificationSound, { once: true, capture: true });
 document.addEventListener('keydown', unlockLyannNotificationSound, { once: true, capture: true });
 if (document.readyState === 'loading') {

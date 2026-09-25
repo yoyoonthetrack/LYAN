@@ -2900,6 +2900,13 @@ function setupRealtime() {
             } else if (window.LYANN_MESSAGING_REPOSITORY && userId) {
                 window.LYANN_MESSAGING_REPOSITORY.invalidateConversation(userId, null, convId);
             }
+            if (row.sender_id && row.sender_id !== userId) {
+                if (openHere && window.LYANN_MESSAGING_REPOSITORY?.markConversationRead && currentChatContact?.id) {
+                    window.LYANN_MESSAGING_REPOSITORY.markConversationRead(userId, currentChatContact.id).catch(() => {});
+                } else if (typeof window.refreshMessageBadge === 'function') {
+                    window.refreshMessageBadge(userId);
+                }
+            }
             window.dispatchEvent(new CustomEvent('lyann:chat-activity'));
         })
         .subscribe();

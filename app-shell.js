@@ -27,7 +27,7 @@ function showAppWelcomeScreen() {
     screen.className = 'app-welcome-screen';
     screen.innerHTML = `
         <div class="welcome-logo-container">
-            <img src="logo-app.png" style="width: 90px; height: 90px; border-radius: 20px; box-shadow: 0 10px 25px rgba(74, 124, 89, 0.15); object-fit: cover;">
+            <img src="logo-app.png?v=20260925s" alt="" style="width: 90px; height: 90px; object-fit: contain; background: transparent;">
             <h1 class="welcome-title">Bienvenue sur<br>LYANN</h1>
             <p class="welcome-subtitle">Le réseau d'entraide locale et de confiance. Sé Lyann a lot.</p>
         </div>
@@ -57,6 +57,7 @@ function showAppWelcomeScreen() {
     `;
 
     document.body.appendChild(screen);
+    if (typeof window.ensureAppleSignInButtons === 'function') window.ensureAppleSignInButtons();
 
     // Bindings
     document.getElementById('btnWelcomeRegister')?.addEventListener('click', () => {
@@ -90,7 +91,7 @@ async function initMobileHomeDashboard() {
     if (!isLoggedIn) {
         console.log('[AUTH_REAL] App Home mounted = false');
         if (window.__LYANN_AUTH_REAL__) window.__LYANN_AUTH_REAL__.appHomeMounted = false;
-        showAppWelcomeScreen();
+        document.querySelectorAll('.app-welcome-screen').forEach((el) => el.remove());
         return;
     }
 
@@ -203,6 +204,7 @@ async function injectMobileInterface() {
     logLyannTrace("injectMobileInterface_native_detected");
 
     document.body.classList.add('is-native-app');
+    document.documentElement.classList.add('is-native-shell');
     if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.bodyIsNativeAppApplied = document.body.classList.contains('is-native-app');
 
     const path = window.location.pathname;
@@ -211,59 +213,56 @@ async function injectMobileInterface() {
     const isBokantaj = path.includes('feed.html');
     const isLoggedIn = window.LYANN_AUTH_STATE ? window.LYANN_AUTH_STATE.isAuthenticated() : document.body.classList.contains('user-is-logged-in');
 
-    // DEEP LINK CHECK: Deep links bypass Accueil App and route directly
+    // A member never stays on the marketing home. Deep links keep their target.
     const hasDeepLink = window.location.search && (
         window.location.search.includes('view=') ||
         window.location.search.includes('action=') ||
         window.location.search.includes('post_id=') ||
         window.location.search.includes('chat=')
     );
+    if (isLoggedIn && isHome && !hasDeepLink) {
+        window.location.replace('feed.html');
+        return;
+    }
+    if (!isLoggedIn) {
+        document.querySelectorAll('.app-welcome-screen').forEach((el) => el.remove());
+        if (typeof window.mountNativeGuestHome === 'function') window.mountNativeGuestHome();
+    }
 
     // Ensure deterministic native app header is applied immediately for ALL native routes
     if (typeof window.ensureDeterministicAppHeader === 'function') {
         window.ensureDeterministicAppHeader();
     }
 
-    // NATIVE APP CONNECTED HOMEPAGE: Render App Home View on index.html when logged in
-    if (isHome && isLoggedIn && !hasDeepLink) {
-        document.querySelector('.app-welcome-screen')?.remove();
-        if (typeof window.renderAppHomeConnectedView === 'function') {
-            window.renderAppHomeConnectedView();
-        }
-    } else if (isHome && !isLoggedIn && !hasDeepLink && typeof authInitializationComplete !== 'undefined' && authInitializationComplete) {
-        if (typeof showAppWelcomeScreen === 'function') {
-            showAppWelcomeScreen();
-        }
-    }
-
-    // 1. Mobile Bottom Navigation à 5 Onglets (Accueil | Explorer | + | Bokantaj | Messages)
-    if (!document.querySelector('.mobile-bottom-nav')) {
+    // 1. Member shell only. Visitors stay on the home page, without this bar.
+    if (isLoggedIn && !document.querySelector('.mobile-bottom-nav')) {
+        document.body.classList.add('has-member-nav');
         const bottomNav = document.createElement('div');
         bottomNav.className = 'mobile-bottom-nav';
 
         bottomNav.innerHTML = `
-            <a href="index.html" class="nav-tab ${isHome ? 'active' : ''}" id="tab-home">
-                <i class="ph ph-house"></i>
-                <span>Accueil</span>
+            <a href="feed.html" class="nav-tab ${isBokantaj ? 'active' : ''}" id="tab-bokantaj">
+                <i class="ph ph-broadcast"></i>
+                <span>Bokantaj</span>
             </a>
             <a href="results.html" class="nav-tab ${isExplorer ? 'active' : ''}" id="tab-explorer">
                 <i class="ph ph-magnifying-glass"></i>
                 <span>Explorer</span>
             </a>
             <div class="nav-tab nav-tab-central-item" id="tab-create-item">
-                <button type="button" class="btn-central-action" id="tab-create" aria-label="Publier">
+                <button type="button" class="btn-central-action" id="tab-create" aria-label="Créer">
                     <i class="ph ph-plus"></i>
                 </button>
-                <span class="central-tab-label">Publier</span>
+                <span class="central-tab-label">Créer</span>
             </div>
-            <a href="feed.html" class="nav-tab ${isBokantaj ? 'active' : ''}" id="tab-bokantaj">
-                <i class="ph ph-broadcast"></i>
-                <span>Bokantaj</span>
-            </a>
             <button type="button" class="nav-tab" id="tab-messages" aria-label="Messages" style="position: relative;">
                 <i class="ph ph-chat-circle-dots"></i>
                 <span class="msg-badge-count" style="position: absolute; top: 4px; right: 18%; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 50%; align-items: center; justify-content: center; display: none;"></span>
                 <span>Messages</span>
+            </button>
+            <button type="button" class="nav-tab" id="tab-profile" aria-label="Profil">
+                <i class="ph ph-user"></i>
+                <span>Profil</span>
             </button>
         `;
         document.body.appendChild(bottomNav);
@@ -277,9 +276,7 @@ async function injectMobileInterface() {
             });
         });
 
-        // Navigation handlers are intentionally not bound here. app-router.js
-        // owns Accueil / Explorer / Publier / Bokantaj / Messages consistently
-        // on Web and Capacitor. app-shell only renders the native navigation UI.
+        // Bokantaj, Explorer, Messages and Profil are owned by app-router.js.
     }
 
     // 2. Central Action Bottom Sheet (3 grandes actions)
@@ -326,6 +323,14 @@ async function injectMobileInterface() {
         if (tabCreate) {
             tabCreate.addEventListener('click', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
+                const loggedIn = document.body.classList.contains('user-is-logged-in')
+                    || window.LYANN_AUTH_STATE?.isAuthenticated?.() === true;
+                if (!loggedIn) {
+                    if (typeof window.openLoginModal === 'function') window.openLoginModal();
+                    else document.querySelector('.open-login-trigger')?.click();
+                    return;
+                }
                 backdrop.classList.add('active');
                 sheet.classList.add('active');
             });
@@ -487,20 +492,33 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
     logLyannTrace("public_header_check", { found: !!navbar });
 
     if (!navbar) return;
-    
+
+    const loggedIn = document.body.classList.contains('user-is-logged-in')
+        || window.LYANN_AUTH_STATE?.isAuthenticated?.() === true;
+    if (viewType === 'ACCUEIL' && !loggedIn) viewType = 'ACCUEIL_GUEST';
+
     // STABILIZATION V1: Sentinel — skip re-render ONLY if header is set AND native header row is present
     if (navbar.getAttribute('data-native-header-active') === viewType && navbar.querySelector('.native-header-row')) {
         return;
     }
     const container = navbar.querySelector('.nav-container') || navbar;
 
-    const isHomeOrBokantaj = (viewType === 'ACCUEIL' || viewType === 'BOKANTAJ');
+    const isPrimaryTab = (viewType === 'ACCUEIL' || viewType === 'BOKANTAJ' || viewType === 'EXPLORER');
 
-    if (isHomeOrBokantaj) {
+    if (viewType === 'ACCUEIL_GUEST') {
+        container.innerHTML = `
+            <div class="native-header-row native-header-row--guest" style="display: flex; align-items: center; justify-content: center; width: 100%; padding: 0 14px; box-sizing: border-box; height: 44px;">
+                <span class="native-header-logo" style="font-weight: 900; font-size: 1.2rem; color: var(--primary-dark); display: flex; align-items: center; gap: 8px;">
+                    <img src="logo-app.png?v=20260925s" alt="" style="width: 28px; height: 28px; object-fit: contain; background: transparent;">
+                    LYANN
+                </span>
+            </div>
+        `;
+    } else if (isPrimaryTab) {
         container.innerHTML = `
             <div class="native-header-row" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 14px; box-sizing: border-box; height: 44px;">
                 <span class="native-header-logo" style="font-weight: 900; font-size: 1.2rem; color: var(--primary-dark); display: flex; align-items: center; gap: 8px;">
-                    <img src="logo-app.png" style="width: 28px; height: 28px; border-radius: 6px; object-fit: cover;">
+                    <img src="logo-app.png?v=20260925s" alt="" style="width: 28px; height: 28px; object-fit: contain; background: transparent;">
                     LYANN
                 </span>
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -523,8 +541,7 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
         `;
     } else {
         let pageTitle = "LYANN";
-        if (viewType === 'EXPLORER') pageTitle = "Explorer";
-        else if (viewType === 'ABOUT') pageTitle = "Notre Histoire";
+        if (viewType === 'ABOUT') pageTitle = "Notre Histoire";
         else if (viewType === 'PRICING') pageTitle = "Abonnements";
         else if (viewType === 'HOW_IT_WORKS') pageTitle = "Comment ça marche";
         else if (viewType === 'PROFIL') pageTitle = "Mon Compte";
@@ -555,6 +572,13 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
 
     container.querySelector('#btnHeaderChat')?.addEventListener('click', (e) => {
         e.preventDefault();
+        const loggedIn = document.body.classList.contains('user-is-logged-in')
+            || window.LYANN_AUTH_STATE?.isAuthenticated?.() === true;
+        if (!loggedIn) {
+            if (typeof window.openLoginModal === 'function') window.openLoginModal();
+            else document.querySelector('.open-login-trigger')?.click();
+            return;
+        }
         window.openLyannMessagesModal();
     });
 

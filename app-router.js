@@ -17,11 +17,45 @@
     }
   }
 
+  let lastHardNavAt = 0;
+
+  function releasePageScrollLock() {
+    document.documentElement.classList.remove('lyann-scroll-lock');
+    document.body.classList.remove(
+      'lyann-scroll-lock',
+      'modal-open',
+      'drawer-open',
+      'sheet-open',
+      'lyann-surface-open',
+      'lyann-messaging-open'
+    );
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    document.body.style.overflow = '';
+  }
+
   function hardNavigate(target) {
     if (!target) return false;
+    const now = Date.now();
+    if (now - lastHardNavAt < 450) return false;
+    lastHardNavAt = now;
+    releasePageScrollLock();
+    document.querySelectorAll('video').forEach((video) => {
+      try { video.pause(); } catch (_) {}
+    });
     window.location.assign(target);
     return true;
   }
+
+  window.addEventListener('pageshow', () => {
+    const overlayOpen = document.querySelector(
+      '.modal-overlay.active, #mobileHamburgerDrawerOverlay.active, .hamburger-drawer-overlay.active'
+    );
+    if (!overlayOpen) releasePageScrollLock();
+  });
 
   function closeDrawer() {
     if (typeof window.closeLyannHamburgerDrawer === 'function') {
@@ -161,7 +195,9 @@
   }
 
   function openAccountSection(section = 'account') {
-    closeDrawer();
+    const nativeMenu = document.body?.classList.contains('is-native-app')
+      && document.getElementById('mobileHamburgerDrawerOverlay')?.classList.contains('active');
+    if (!nativeMenu) closeDrawer();
 
     if (knownLoggedOut()) return openLoginPrompt();
 
@@ -324,9 +360,9 @@
   register('about', () => hardNavigate('about.html'));
 
   const selectorRouteMap = [
-    ['#tab-home', 'home'],
-    ['#tab-explorer', 'explorer'],
     ['#tab-bokantaj', 'bokantaj'],
+    ['#tab-explorer', 'explorer'],
+    ['#tab-profile', 'profile'],
     ['#tab-messages, [data-lyann-messages], .open-chat-trigger', 'messages'],
     ['#btnHeaderSupport, [data-lyann-support]', 'support'],
     ['.nav-msg-btn:not(#btnHeaderNotif):not(#btnHeaderSupport), .btn-open-chat-direct, .btn-contact-member, .btn-help-lyann, a[href*="action=messages"], a[href*="action=openchat"]', 'messages'],
@@ -463,6 +499,9 @@
   installCaptureNavigation();
 
   const prefetchMainPages = () => {
+    const native = window.Capacitor?.isNativePlatform?.() === true
+      || document.body.classList.contains('is-native-app');
+    if (native) return;
     const here = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
     ['index.html', 'feed.html', 'results.html', 'how-it-works.html'].forEach((page) => {
       if (page === here || (here === '' && page === 'index.html')) return;

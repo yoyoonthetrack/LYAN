@@ -15,7 +15,8 @@ const legacyWorkflow = read('.github/workflows/architecture-source-fix.yml');
 if (!router.includes('window.LYANN_ROUTER = api')) fail('app-router.js must own window.LYANN_ROUTER');
 if (!router.includes("register('support'")) fail('app-router.js must own the support route');
 if (!router.includes("register('publish'")) fail('app-router.js must own the publish route');
-if (!router.includes("['#tab-home', 'home']")) fail('app-router.js must own bottom navigation routing');
+if (!router.includes("['#tab-bokantaj', 'bokantaj']")) fail('app-router.js must own bottom navigation routing');
+if (!router.includes("['#tab-profile', 'profile']")) fail('app-router.js must own the profile tab');
 
 if (!surfaces.includes('window.LYANN_SURFACES = api')) fail('surface-manager.js must own window.LYANN_SURFACES');
 if (!surfaces.includes("config.mode === 'major'")) fail('surface-manager.js must enforce major-surface exclusivity');

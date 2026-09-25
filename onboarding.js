@@ -123,6 +123,7 @@ runOnDomReady(() => {
             googleBtn.dataset.applePaired = 'true';
         });
     }
+    window.ensureAppleSignInButtons = ensureAppleSignInButtons;
     ensureAppleSignInButtons();
 
     try {
@@ -289,7 +290,31 @@ runOnDomReady(() => {
     };
 
     // Global toggle function
-    window.openOnboarding = function() {
+    function showJoinChooser() {
+        const chooser = document.getElementById('obJoinChooser');
+        const footer = document.getElementById('obModalFooter');
+        const progress = document.querySelector('#onboardingModal .step-indicator');
+        const bar = document.querySelector('#onboardingModal .progress-bar-track');
+        if (chooser) chooser.hidden = false;
+        if (footer) footer.style.display = 'none';
+        if (progress) progress.style.display = 'none';
+        if (bar) bar.style.display = 'none';
+        document.querySelectorAll('#onboardingModal .modal-step').forEach((step) => {
+            step.style.display = 'none';
+        });
+    }
+
+    function hideJoinChooser() {
+        const chooser = document.getElementById('obJoinChooser');
+        const progress = document.querySelector('#onboardingModal .step-indicator');
+        const bar = document.querySelector('#onboardingModal .progress-bar-track');
+        if (chooser) chooser.hidden = true;
+        if (progress) progress.style.display = '';
+        if (bar) bar.style.display = '';
+        updateStepsUI();
+    }
+
+    window.openOnboarding = function(options) {
         const loginModal = document.getElementById('loginModal');
         const passwordResetModal = document.getElementById('passwordResetModal');
         if (loginModal) loginModal.classList.remove('active');
@@ -302,8 +327,17 @@ runOnDomReady(() => {
             document.body.style.overflow = 'hidden';
             resetOnboarding();
             ensureCguAcceptRow();
+            if (options && options.chooser) showJoinChooser();
+            else hideJoinChooser();
         }
     };
+
+    document.getElementById('btnJoinEmail')?.addEventListener('click', () => hideJoinChooser());
+    document.getElementById('btnJoinHasAccount')?.addEventListener('click', () => {
+        if (onboardingModal) onboardingModal.classList.remove('active');
+        if (typeof window.openLoginModal === 'function') window.openLoginModal();
+        else document.querySelector('.open-login-trigger')?.click();
+    });
     
     if (closeOnboardingBtn) {
         closeOnboardingBtn.addEventListener('click', () => {

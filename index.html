@@ -36,13 +36,20 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20260923b">
+    <link rel="stylesheet" href="style.css?v=20260925v">
+    <script>
+        (function () {
+            var cap = window.Capacitor;
+            var native = !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+            if (native) document.documentElement.classList.add('is-native-shell');
+        })();
+    </script>
     <style>html.lyann-boot-splash-skip .lyann-boot-splash{display:none!important}</style>
     <script>(function(){try{var skip=sessionStorage.getItem('lyann_boot_splash_seen')==='1'||/Playwright|HeadlessChrome/i.test(navigator.userAgent);if(skip)document.documentElement.classList.add('lyann-boot-splash-skip');}catch(e){}})();</script>
 </head>
 <body>
-<div id="lyannBootSplash" class="lyann-boot-splash" role="status" aria-label="Chargement de LYANN" style="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#FFFFFF;border:0;margin:0;padding:0;box-shadow:none;">
-  <img src="lyann-boot-logo.gif" alt="" width="88" height="88" decoding="async" style="width:88px;height:88px;border:0;outline:none;box-shadow:none;background:transparent;display:block;border-radius:0;mix-blend-mode:darken;">
+<div id="lyannBootSplash" class="lyann-boot-splash" role="status" aria-label="Chargement de LYANN" style="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#F8F8F5;border:0;margin:0;padding:0;box-shadow:none;">
+  <img src="lyann-boot-logo.gif" alt="" width="132" height="132" decoding="async" style="width:132px;height:132px;border:0;outline:none;box-shadow:none;background:#F8F8F5;display:block;border-radius:0;mix-blend-mode:darken;">
 </div>
 <script>
 (function(){
@@ -70,7 +77,6 @@
         <div class="container nav-container">
             <a href="index.html" class="logo">
                 <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon-svg">
-<rect width="100" height="100" rx="22" fill="#FFFFFF"/>
                     <defs>
                         <linearGradient id="lyanGradient" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
                             <stop offset="0%" stop-color="#4A7C59"/>
@@ -82,7 +88,6 @@
                             <stop offset="100%" stop-color="#E5B345"/>
                         </linearGradient>
                     </defs>
-                    <rect width="100" height="100" rx="22" fill="#FFFFFF"/>
                     <!-- Roof outline -->
                     <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                     
@@ -163,6 +168,189 @@
         </div>
     </div>
 
+    <!-- Native guest landing. Hidden on the website. Horizontal slides between header and CTA. -->
+    <div id="nativeGuestHome" class="native-guest-home" hidden>
+        <div class="native-guest-pager" id="nativeGuestPager" role="region" aria-label="Présentation LYANN" tabindex="0">
+            <section class="native-guest-slide native-guest-hero" data-slide="0" aria-label="Qui peut vous aider aujourd'hui ?">
+                <div class="native-guest-slide-inner">
+                    <h1>Qui peut vous aider<br><span class="text-gradient">aujourd'hui ?</span></h1>
+                    <p>Le réseau de confiance qui relie les habitants aux talents près de chez eux dans les DOM.</p>
+                    <div id="nativeGuestVideoSlot"></div>
+                </div>
+            </section>
+
+            <section class="native-guest-slide native-guest-how" data-slide="1" aria-label="Comment ça marche ?">
+                <div class="native-guest-slide-inner">
+                    <h2>Comment ça marche ?</h2>
+                    <p class="native-guest-lead">Un service simple, sécurisé et local.</p>
+                    <ol class="native-guest-steps">
+                        <li>
+                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-pencil-simple"></i></span>
+                            <div>
+                                <strong>Publiez votre besoin</strong>
+                                <p>Décrivez simplement ce dont vous avez besoin.</p>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-chats-circle"></i></span>
+                            <div>
+                                <strong>Échangez avec un Lyanneur</strong>
+                                <p>Recevez des propositions, discutez et choisissez la bonne personne.</p>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-lock-simple"></i></span>
+                            <div>
+                                <strong>Payez en toute sécurité</strong>
+                                <p>Les fonds sont séquestrés via LYANN pendant la réalisation de la prestation.</p>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-wrench"></i></span>
+                            <div>
+                                <strong>Le travail est réalisé</strong>
+                                <p>Le Lyanneur réalise la prestation convenue.</p>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-check-circle"></i></span>
+                            <div>
+                                <strong>Vous libérez les fonds</strong>
+                                <p>Une fois la prestation terminée et validée, vous déclenchez la libération des fonds.</p>
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+            </section>
+
+            <section class="native-guest-slide native-guest-spaces" data-slide="2" aria-label="Deux espaces, une même communauté">
+                <div class="native-guest-slide-inner">
+                    <h2>Deux espaces, une même communauté</h2>
+                    <div class="native-guest-spaces-list">
+                        <article class="native-guest-space-card">
+                            <div class="native-guest-space-head">
+                                <span class="native-guest-space-icon" aria-hidden="true"><i class="ph ph-magnifying-glass"></i></span>
+                                <div>
+                                    <strong>Explorer</strong>
+                                    <p>Trouvez le bon Lyanneur, recherchez des services ou consultez des annonces.</p>
+                                </div>
+                                <i class="ph ph-arrow-right" aria-hidden="true"></i>
+                            </div>
+                            <div class="native-guest-space-cats">
+                                <div class="native-guest-cat"><i class="ph ph-drop" aria-hidden="true"></i><span>Plomberie</span></div>
+                                <div class="native-guest-cat"><i class="ph ph-lightning" aria-hidden="true"></i><span>Électricité</span></div>
+                                <div class="native-guest-cat"><i class="ph ph-plant" aria-hidden="true"></i><span>Jardinage</span></div>
+                                <div class="native-guest-cat"><i class="ph ph-sparkle" aria-hidden="true"></i><span>Beauté</span></div>
+                                <div class="native-guest-cat"><i class="ph ph-desktop" aria-hidden="true"></i><span>Informatique</span></div>
+                                <button type="button" class="native-guest-cat native-guest-cat-more" id="btnGuestMoreSkills">
+                                    <i class="ph ph-dots-three" aria-hidden="true"></i><span>Et bien d'autres</span>
+                                </button>
+                            </div>
+                        </article>
+                        <article class="native-guest-space-card">
+                            <div class="native-guest-space-head">
+                                <span class="native-guest-space-icon" aria-hidden="true"><i class="ph ph-broadcast"></i></span>
+                                <div>
+                                    <strong>Bokantaj</strong>
+                                    <p>Partagez avec la communauté. Un véritable réseau social : réalisations, conseils, questions, recommandations, disponibilités.</p>
+                                </div>
+                                <i class="ph ph-arrow-right" aria-hidden="true"></i>
+                            </div>
+                            <div class="native-guest-boka-posts">
+                                <div class="native-guest-boka-post">
+                                    <img src="guest-avocat.png" alt="Avocats à donner">
+                                    <div>
+                                        <p>Avocat à donner sur Saint-François. Contactez-moi en MP.</p>
+                                        <div class="native-guest-boka-meta">
+                                            <span><i class="ph-fill ph-heart" aria-hidden="true"></i> 12</span>
+                                            <span><i class="ph ph-chat-circle" aria-hidden="true"></i> 4</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="native-guest-boka-post">
+                                    <img src="guest-jus-canne.png" alt="Jus de canne">
+                                    <div>
+                                        <p>Le jus de canne au rond-point de La Boucan est incroyable et pas cher. En plus le monsieur est adorable ! Allez goûter ça 🥰</p>
+                                        <div class="native-guest-boka-meta">
+                                            <span><i class="ph-fill ph-heart" aria-hidden="true"></i> 18</span>
+                                            <span><i class="ph ph-chat-circle" aria-hidden="true"></i> 6</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="native-guest-slide native-guest-domains" data-slide="3" aria-label="Tous les savoir-faire ont leur place.">
+                <div class="native-guest-slide-inner">
+                    <h2>Tous les savoir-faire ont leur place.</h2>
+                    <div class="native-guest-domain-grid">
+                        <div class="native-guest-cat"><i class="ph ph-drop" aria-hidden="true"></i><span>Plomberie</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-lightning" aria-hidden="true"></i><span>Électricité</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-wind" aria-hidden="true"></i><span>Climatisation</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-plant" aria-hidden="true"></i><span>Jardinage</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-hammer" aria-hidden="true"></i><span>Maçonnerie</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-paint-brush" aria-hidden="true"></i><span>Peinture</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-ruler" aria-hidden="true"></i><span>Menuiserie</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-house" aria-hidden="true"></i><span>Toiture</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-broom" aria-hidden="true"></i><span>Ménage</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-heart" aria-hidden="true"></i><span>Aide à domicile</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-sparkle" aria-hidden="true"></i><span>Beauté</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-scissors" aria-hidden="true"></i><span>Coiffure</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-cooking-pot" aria-hidden="true"></i><span>Cuisine</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-fork-knife" aria-hidden="true"></i><span>Traiteur</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-desktop" aria-hidden="true"></i><span>Informatique</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-graduation-cap" aria-hidden="true"></i><span>Cours</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-baby" aria-hidden="true"></i><span>Garde d'enfants</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-car" aria-hidden="true"></i><span>Mécanique</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-truck" aria-hidden="true"></i><span>Déménagement</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-confetti" aria-hidden="true"></i><span>Événementiel</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-camera" aria-hidden="true"></i><span>Photo</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-music-notes" aria-hidden="true"></i><span>Musique</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-t-shirt" aria-hidden="true"></i><span>Couture</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-waves" aria-hidden="true"></i><span>Piscine</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-bug" aria-hidden="true"></i><span>Nuisibles</span></div>
+                        <div class="native-guest-cat"><i class="ph ph-anchor" aria-hidden="true"></i><span>Nautique</span></div>
+                        <button type="button" class="native-guest-cat native-guest-cat-more" id="btnGuestEvenMore">
+                            <i class="ph ph-dots-three" aria-hidden="true"></i><span>Et encore bien d'autres</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="native-guest-slide native-guest-login-slide" data-slide="4" aria-label="Bienvenue sur LYANN">
+                <div class="native-guest-slide-inner">
+                    <div class="native-guest-welcome" id="nativeGuestWelcome">
+                        <h2>Bienvenue sur<br><span class="text-gradient">LYANN</span></h2>
+                        <div class="native-guest-auth">
+                            <button type="button" class="btn btn-apple-auth"><i class="ph-fill ph-apple-logo" aria-hidden="true"></i> Continuer avec Apple</button>
+                            <button type="button" class="btn btn-google btn-google-auth" id="btnGuestGoogle">
+                                <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.66 0 6.6 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.6 42.62 14.66 48 24 48z"/></svg>
+                                Continuer avec Google
+                            </button>
+                            <div class="auth-divider"><span>ou avec votre email</span></div>
+                            <form id="nativeGuestLoginForm">
+                                <label for="nativeGuestLoginEmail">Adresse email</label>
+                                <input type="email" id="nativeGuestLoginEmail" autocomplete="username" placeholder="votre.email@exemple.com" required>
+                                <label for="nativeGuestLoginPassword">Mot de passe</label>
+                                <input type="password" id="nativeGuestLoginPassword" autocomplete="current-password" placeholder="••••••••" required>
+                                <button type="submit" class="btn btn-primary btn-lg">Se connecter</button>
+                            </form>
+                            <p class="native-guest-auth-foot">Pas encore de compte ? <button type="button" id="btnGuestSignup">S'inscrire</button></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <div class="native-guest-dots" id="nativeGuestDots" role="tablist" aria-label="Slides"></div>
+        <div class="native-guest-cta">
+            <button type="button" class="btn btn-primary btn-lg" id="btnNativeJoin">Rejoindre LYANN <i class="ph ph-arrow-right"></i></button>
+            <button type="button" class="native-guest-login" id="btnNativeLogin">Déjà un compte ? Se connecter</button>
+        </div>
+    </div>
+
     <!-- ========== SECTION 1 : HERO ========== -->
     <header class="hero">
         <!-- Decorative enlarged 3D vector elements -->
@@ -180,7 +368,7 @@
                 <div class="hero-greeting-badge logged-in-only" id="heroGreetingBadge" style="display: none; align-items: center; gap: 6px; font-weight: 700; font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 12px; background: rgba(74, 124, 89, 0.12); padding: 6px 14px; border-radius: 20px; width: fit-content;">
                     <span>Bonjour<span id="heroUserFirstName"></span> 👋</span>
                 </div>
-                <h1>Qui peut vous aider <br class="desktop-only-br"><span class="text-gradient">aujourd'hui ?</span></h1>
+                <h1>Qui peut vous aider<br><span class="text-gradient">aujourd'hui ?</span></h1>
                 <p class="hero-subtitle">Le réseau de confiance qui relie les habitants aux talents de leur quartier dans les DOM.</p>
                 <figure class="hero-story">
                     <video class="hero-story-video" autoplay muted loop playsinline poster="lyann-home-story.jpg" data-src-web="lyann-home-story.mp4?v=16x9" data-src-native="lyann-home-story-square.mp4?v=square" data-poster-web="lyann-home-story.jpg" data-poster-native="lyann-home-story-square.jpg" aria-label="Une habitante découvre une fuite sous son évier, dans sa cuisine." onerror="this.style.display='none';var still=this.nextElementSibling;if(still)still.style.display='block';"></video>
@@ -573,6 +761,179 @@
             </div>
         </div>
     </section>
+    <script>
+        window.mountNativeGuestHome = function () {
+            if (!document.documentElement.classList.contains('is-native-shell')) return;
+            if (document.body.classList.contains('user-is-logged-in')) return;
+            if (document.documentElement.dataset.nativeGuestMounted === '1') return;
+            var home = document.getElementById('nativeGuestHome');
+            if (!home) return;
+            var story = document.querySelector('.hero .hero-story');
+            var videoSlot = document.getElementById('nativeGuestVideoSlot');
+            if (story && videoSlot && !videoSlot.contains(story)) videoSlot.appendChild(story);
+            var stories = document.getElementById('testimonials');
+            var storiesSlot = document.getElementById('nativeGuestStoriesSlot');
+            if (stories && storiesSlot && !storiesSlot.contains(stories)) {
+                var title = stories.querySelector('h2');
+                if (title) title.textContent = "Ils ont trouvé bien plus qu'un service.";
+                storiesSlot.appendChild(stories);
+            }
+            var flashes = document.querySelector('.feed-preview-section .flash-feed-list');
+            var boka = document.getElementById('nativeGuestBokantajSlot');
+            if (flashes && boka && !boka.contains(flashes)) boka.appendChild(flashes);
+
+            var pager = document.getElementById('nativeGuestPager');
+            var dotsWrap = document.getElementById('nativeGuestDots');
+            var slides = pager ? Array.from(pager.querySelectorAll('.native-guest-slide')) : [];
+            if (dotsWrap && slides.length) {
+                dotsWrap.innerHTML = '';
+                slides.forEach(function (slide, index) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'native-guest-dot' + (index === 0 ? ' is-active' : '');
+                    btn.setAttribute('role', 'tab');
+                    btn.setAttribute('aria-label', 'Slide ' + (index + 1) + ' sur ' + slides.length);
+                    btn.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
+                    btn.addEventListener('click', function () {
+                        goToSlide(index);
+                    });
+                    dotsWrap.appendChild(btn);
+                });
+                var goToSlide = function (index) {
+                    if (!pager || !slides.length) return;
+                    var width = pager.clientWidth || 1;
+                    if (index < 0) index = 0;
+                    if (index >= slides.length) index = slides.length - 1;
+                    pager.scrollTo({ left: Math.round(index * width), behavior: 'smooth' });
+                };
+                var setActiveDot = function (activeIndex) {
+                    var dots = dotsWrap.querySelectorAll('.native-guest-dot');
+                    dots.forEach(function (dot, i) {
+                        var on = i === activeIndex;
+                        dot.classList.toggle('is-active', on);
+                        dot.setAttribute('aria-selected', on ? 'true' : 'false');
+                    });
+                    var onLast = activeIndex === slides.length - 1;
+                    var cta = document.querySelector('.native-guest-cta');
+                    if (cta) cta.classList.toggle('is-hidden', onLast);
+                    if (dotsWrap) dotsWrap.classList.toggle('is-hidden', onLast);
+                };
+                var nearestIndex = function () {
+                    var width = pager.clientWidth || 1;
+                    var index = Math.round(pager.scrollLeft / width);
+                    if (index < 0) index = 0;
+                    if (index >= slides.length) index = slides.length - 1;
+                    return index;
+                };
+                var syncDotsFromScroll = function () {
+                    if (!pager || !slides.length) return;
+                    setActiveDot(nearestIndex());
+                };
+                var snapLock = false;
+                var snapTimer = 0;
+                var pointerDown = false;
+                var settleSlide = function () {
+                    if (!pager || !slides.length || snapLock || pointerDown) return;
+                    var width = pager.clientWidth || 1;
+                    var index = nearestIndex();
+                    var target = Math.round(index * width);
+                    setActiveDot(index);
+                    if (Math.abs(pager.scrollLeft - target) <= 1) return;
+                    snapLock = true;
+                    pager.scrollTo({ left: target, behavior: 'smooth' });
+                    window.setTimeout(function () {
+                        if (Math.abs(pager.scrollLeft - target) > 1) pager.scrollLeft = target;
+                        snapLock = false;
+                        setActiveDot(index);
+                    }, 320);
+                };
+                var scheduleSettle = function () {
+                    window.clearTimeout(snapTimer);
+                    snapTimer = window.setTimeout(settleSlide, 80);
+                };
+                pager.addEventListener('pointerdown', function () {
+                    pointerDown = true;
+                    window.clearTimeout(snapTimer);
+                }, { passive: true });
+                pager.addEventListener('pointerup', function () {
+                    pointerDown = false;
+                    scheduleSettle();
+                }, { passive: true });
+                pager.addEventListener('pointercancel', function () {
+                    pointerDown = false;
+                    scheduleSettle();
+                }, { passive: true });
+                pager.addEventListener('scroll', function () {
+                    syncDotsFromScroll();
+                    if (!pointerDown && !snapLock) scheduleSettle();
+                }, { passive: true });
+                pager.addEventListener('scrollend', function () {
+                    if (!pointerDown) settleSlide();
+                });
+                window.addEventListener('resize', function () {
+                    if (!pager || !slides.length) return;
+                    var index = nearestIndex();
+                    pager.scrollLeft = Math.round(index * (pager.clientWidth || 1));
+                });
+                syncDotsFromScroll();
+            }
+
+            home.hidden = false;
+            document.getElementById('btnNativeJoin')?.addEventListener('click', function () {
+                if (typeof window.openOnboarding === 'function') window.openOnboarding({ chooser: true });
+            });
+            document.getElementById('btnNativeLogin')?.addEventListener('click', function () {
+                if (typeof window.openLoginModal === 'function') window.openLoginModal();
+                else document.querySelector('.open-login-trigger')?.click();
+            });
+            document.getElementById('btnGuestEvenMore')?.addEventListener('click', function () {
+                var current = document.querySelector('.native-guest-domains');
+                var index = slides.indexOf(current);
+                if (index >= 0) goToSlide(index + 1);
+            });
+            document.getElementById('nativeGuestLoginForm')?.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var email = document.getElementById('nativeGuestLoginEmail');
+                var password = document.getElementById('nativeGuestLoginPassword');
+                var loginEmail = document.getElementById('loginEmail');
+                var loginPassword = document.getElementById('loginPassword');
+                var loginForm = document.getElementById('loginForm');
+                if (loginEmail && email) loginEmail.value = email.value;
+                if (loginPassword && password) loginPassword.value = password.value;
+                if (loginForm) loginForm.requestSubmit();
+            });
+            document.getElementById('btnGuestSignup')?.addEventListener('click', function () {
+                if (typeof window.openOnboarding === 'function') window.openOnboarding({ chooser: true });
+            });
+            document.getElementById('btnGuestMoreSkills')?.addEventListener('click', function () {
+                var current = document.querySelector('.native-guest-spaces');
+                var index = slides.indexOf(current);
+                if (index >= 0) goToSlide(index + 1);
+            });
+            (function paintDomainCards() {
+                var tones = ['red', 'yellow', 'green', 'blue', 'gray'];
+                var cards = document.querySelectorAll('.native-guest-domain-grid .native-guest-cat');
+                var cols = 3;
+                var used = [];
+                cards.forEach(function (card, i) {
+                    var banned = {};
+                    if (i % cols) banned[used[i - 1]] = true;
+                    if (i >= cols) banned[used[i - cols]] = true;
+                    var choices = tones.filter(function (tone) { return !banned[tone]; });
+                    if (!choices.length) choices = tones.slice();
+                    var tone = choices[Math.floor(Math.random() * choices.length)];
+                    used[i] = tone;
+                    card.classList.add('is-tone-' + tone);
+                });
+            })();
+            document.documentElement.dataset.nativeGuestMounted = '1';
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', window.mountNativeGuestHome);
+        } else {
+            window.mountNativeGuestHome();
+        }
+    </script>
 
     <!-- ========== SECTION 7 : CTA FINAL ========== -->
     <section id="join" class="section cta-section">
@@ -603,7 +964,6 @@
                 <div class="footer-brand-col">
                     <a href="index.html" class="logo">
                         <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="100" height="100" rx="22" fill="#FFFFFF"/>
                             <defs>
                                 <linearGradient id="lyanGradientNav" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
                                     <stop offset="0%" stop-color="#4A7C59"/>
@@ -670,7 +1030,6 @@
             <div class="modal-header">
                 <div class="modal-logo">
                     <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="100" height="100" rx="22" fill="#FFFFFF"/>
                         <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                         <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
                         <circle cx="50" cy="42" r="7" fill="#709C7D"/>
@@ -690,7 +1049,20 @@
 
             <!-- Modal Body -->
             <div class="modal-body" id="obModalBody">
-                
+                <div id="obJoinChooser" hidden>
+                    <h3 class="step-title">Créer mon compte</h3>
+                    <p class="step-desc">Rejoignez le réseau de confiance près de chez vous.</p>
+                    <div class="ob-join-actions">
+                        <button type="button" class="btn btn-apple-auth"><i class="ph-fill ph-apple-logo" aria-hidden="true"></i> Continuer avec Apple</button>
+                        <button type="button" class="btn btn-google btn-google-auth" id="btnJoinGoogle">
+                            <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.66 0 6.6 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.6 42.62 14.66 48 24 48z"/></svg>
+                            Continuer avec Google
+                        </button>
+                        <button type="button" class="btn btn-outline" id="btnJoinEmail">Continuer avec e-mail</button>
+                        <button type="button" class="ob-join-login" id="btnJoinHasAccount">J'ai déjà un compte — Se connecter</button>
+                    </div>
+                </div>
+
                 <!-- STEP 1 : INFORMATIONS -->
                 <div class="modal-step active" id="obStep2">
                     <h3 class="step-title">Faisons connaissance</h3>
@@ -825,7 +1197,6 @@
                 <div class="search-window-title-block">
                     <div class="modal-logo">
                         <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="100" height="100" rx="22" fill="#FFFFFF"/>
                             <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                             <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
                             <circle cx="50" cy="42" r="7" fill="#709C7D"/>
@@ -890,7 +1261,6 @@
             <div class="modal-header">
                 <div class="modal-logo">
                     <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="100" height="100" rx="22" fill="#FFFFFF"/>
                         <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                         <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
                         <circle cx="50" cy="42" r="7" fill="#709C7D"/>
@@ -1304,7 +1674,6 @@
             <div class="modal-header">
                 <div class="modal-logo">
                     <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="100" height="100" rx="22" fill="#FFFFFF"/>
                         <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                         <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
                         <circle cx="50" cy="42" r="7" fill="#709C7D"/>

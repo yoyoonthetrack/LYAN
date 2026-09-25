@@ -46,7 +46,11 @@
             const distance = window.LYANN_GEO?.describeDistanceTo?.(r.location) || null;
             return [place || 'Lieu non précisé', distance].filter(Boolean).join(' · ');
         }
-        function requestCard(r) {
+        function typePill(kind) {
+            const label = kind === 'annonce' ? 'Annonce' : 'Profil';
+            return `<span class="explorer-type-pill is-${kind}">${label}</span>`;
+        }
+        function requestCard(r, showType = false) {
             const own = Boolean(currentUserId()) && r.requester_id === currentUserId();
             const authorName = name(r.profiles);
             const taxonomy = format()?.categoryLine(r, leaves);
@@ -58,6 +62,7 @@
             // wrote is the payload of the Détails surface.
             return `<article class="explorer-card explorer-annonce" data-request-id="${escape(r.id)}">
                 <div class="explorer-card-top">
+                    ${showType ? typePill('annonce') : ''}
                     ${taxonomy ? `<span class="explorer-annonce-taxonomy">${escape(taxonomy)}</span>` : ''}
                     ${age ? `<span class="explorer-annonce-age">${escape(age)}</span>` : ''}
                     ${favorite('REQUEST', r.id)}
@@ -69,7 +74,7 @@
                     ${factLine('💰', 'Prix', format()?.priceLabel(r))}
                 </ul>
                 <div class="explorer-person explorer-person-zone">${profileZoneTrigger(r.requester_id || r.profiles?.id, authorName)}<img src="${avatar(r.profiles)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><span class="explorer-person-name">${escape(authorName)}${own ? ' · Votre annonce' : ''}</span>${badge ? `<span class="explorer-person-badge"><i class="ph-fill ph-seal-check" aria-hidden="true"></i>${escape(badge)}</span>` : ''}${rating ? `<span class="explorer-person-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(rating)}</span>` : ''}</div>
-                <div class="explorer-card-actions"><button class="btn btn-outline" data-action="detail" data-id="${escape(r.id)}">Détails</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-primary" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
+                <div class="explorer-card-actions"><button class="btn btn-outline" data-action="detail" data-id="${escape(r.id)}">Détails</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-outline explorer-btn-lyanner" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
             </article>`;
         }
         function formatDisplayName(p) {
@@ -173,7 +178,7 @@
             return `⭐ ${ratingStr} · ${reviewsCount} avis · ⚡ ${speed}`;
         }
 
-        function profileCard(p) {
+        function profileCard(p, showType = false) {
             const displayName = formatDisplayName(p);
             const place = [p.city, p.territory].filter(Boolean).join(' · ') || 'Guadeloupe';
             const badgeText = p.badge || (p.is_pro ? 'ARTISAN PRO' : (p.is_verified || p.kyc_verified ? 'PROFIL VÉRIFIÉ' : ''));
@@ -185,6 +190,7 @@
             const isSelf = p.id === currentUserId();
 
             return `<article class="explorer-card explorer-profile-card" data-member-id="${escape(p.id)}" style="display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 18px; border: 1px solid #D3E0D6; background: #fff;">
+                ${showType ? typePill('profile') : ''}
                 <div class="explorer-card-top" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
                     <div class="explorer-person explorer-person-zone" style="display: flex; align-items: center; gap: 12px; min-width: 0;">
                         ${profileZoneTrigger(p.id, displayName)}
@@ -209,7 +215,7 @@
                 </div>
 
                 <div class="explorer-profile-actions" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: auto; padding-top: 10px;">
-                    ${!isSelf ? `<button class="btn lyann-cta-primary" data-action="contact" data-id="${escape(p.id)}" style="width: 100% !important; min-height: 44px; justify-content: center; font-weight: 700; border-radius: 22px; font-size: 0.9rem; box-sizing: border-box;">Contacter</button>` : ''}
+                    ${!isSelf ? `<button class="btn lyann-cta-primary explorer-btn-contact" data-action="contact" data-id="${escape(p.id)}" style="width: 100% !important; min-height: 44px; justify-content: center; font-weight: 700; border-radius: 22px; font-size: 0.9rem; box-sizing: border-box;">Contacter</button>` : ''}
                 </div>
             </article>`;
         }
@@ -286,6 +292,21 @@
             container.innerHTML = results.length ? results.map(mode === 'annonces' ? requestCard : profileCard).join('') : `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish">Publier un besoin</button>' : ''}</div>`;
             window.syncFavoriteButtonStates?.();
         }
+        function renderMixed(people, ads) {
+            syncControls();
+            const bits = [];
+            if (people.length) bits.push(`${people.length} profil${people.length > 1 ? 's' : ''}`);
+            if (ads.length) bits.push(`${ads.length} annonce${ads.length > 1 ? 's' : ''}`);
+            $('explorerSummary').textContent = `${bits.join(' · ') || 'Aucun résultat'} · Tous les lieux`;
+            $('explorerRanking').textContent = 'Un profil se contacte. Une annonce se lyanne.';
+            const container = $('explorerResults');
+            records = people.concat(ads);
+            container.dataset.state = records.length ? 'SUCCESS' : 'EMPTY';
+            container.innerHTML = records.length
+                ? `${people.length ? `<h3 class="explorer-mixed-title">Profils</h3>${people.map(p => profileCard(p, true)).join('')}` : ''}${ads.length ? `<h3 class="explorer-mixed-title">Annonces</h3>${ads.map(r => requestCard(r, true)).join('')}` : ''}`
+                : `<div class="explorer-state"><h2>Aucun profil ni annonce pour « ${escape(filters.query)} ».</h2><p>Essayez un autre nom.</p><button class="btn btn-outline" data-action="reset">Effacer la recherche</button></div>`;
+            window.syncFavoriteButtonStates?.();
+        }
         async function search(force = false) {
             const token = ++revision;
             syncControls();
@@ -296,6 +317,17 @@
             $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
             try {
                 await window.LYANN_AUTH_STATE?.ready?.();
+                if (String(filters.query || '').trim()) {
+                    const [profiles, requests, taxonomy] = await Promise.all([repo.load({force}), repo.loadRequests({force}), repo.taxonomy(force)]);
+                    if (token !== revision) return;
+                    leaves = taxonomy;
+                    const nameFilters = { ...filters, territory: '', commune: '', area: '', urgency: '', budget: '' };
+                    renderMixed(
+                        repo.discover(profiles, leaves, nameFilters, 'lyanneurs'),
+                        repo.discover(requests, leaves, nameFilters, 'annonces')
+                    );
+                    return;
+                }
                 const [data, taxonomy] = await Promise.all([mode === 'annonces' ? repo.loadRequests({force}) : repo.load({force}), repo.taxonomy(force)]);
                 if (token !== revision) return;
                 records = data; leaves = taxonomy;

@@ -50,8 +50,7 @@
         if (!chat || !chat.classList.contains('active')) return;
         ['lyannDetailModal', 'publicMemberProfileModal', 'quickProfileModal'].forEach((id) => {
             const child = document.getElementById(id);
-            if (!child) return;
-            child.style.setProperty('z-index', '100002', 'important');
+            if (child && typeof window.lyannRaiseWindow === 'function') window.lyannRaiseWindow(child);
         });
     }
 
@@ -86,9 +85,6 @@
         style.id = 'lyann-chat-surface-stack-style';
         style.textContent = `
             #chatModal .chat-overlay-pane { z-index: 80 !important; }
-            body.in-chat-active #lyannDetailModal,
-            body.in-chat-active #publicMemberProfileModal,
-            body.in-chat-active #quickProfileModal { z-index: 100002 !important; }
         `;
         if (!document.getElementById(style.id)) document.head.appendChild(style);
 
