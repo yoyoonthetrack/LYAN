@@ -197,44 +197,85 @@
         } catch (_) { return null; }
     }
 
+    function formatInboxTime(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        const now = new Date();
+        if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    }
+
+    function escapeInboxSelector(value) {
+        return typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(String(value)) : String(value).replace(/"/g, '');
+    }
+
+    function createConversationRow(conversation) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'chat-contact-item';
+        row.dataset.chatMemberId = conversation.contactId || conversation.id || '';
+        row.setAttribute('data-chat-member-id', row.dataset.chatMemberId);
+        if (conversation.conversationId) row.dataset.conversationId = conversation.conversationId;
+        if (conversation.pinned) row.dataset.pinned = '1';
+        if (conversation.unread) row.classList.add('is-unread');
+        const activeId = window.LYANN_ACTIVE_CHAT_CONTACT?.id;
+        if (activeId && String(activeId) === String(row.dataset.chatMemberId)) row.classList.add('active');
+        row.style.cssText = 'width:100%;border:0;background:transparent;text-align:left;';
+
+        const avatarWrap = document.createElement('div');
+        avatarWrap.className = 'chat-contact-avatar-wrap';
+        const img = document.createElement('img');
+        img.className = 'chat-contact-avatar';
+        img.alt = conversation.name || 'Contact';
+        img.src = conversation.avatar || defaultAvatar();
+        avatarWrap.appendChild(img);
+
+        const info = document.createElement('div');
+        info.className = 'chat-contact-info';
+        const nameRow = document.createElement('div');
+        nameRow.className = 'chat-contact-name-row';
+        const name = document.createElement('div');
+        name.className = 'chat-contact-name';
+        name.textContent = conversation.name || 'Membre LYANN';
+        const time = document.createElement('span');
+        time.className = 'chat-contact-time';
+        time.textContent = formatInboxTime(conversation.lastMessageAt);
+        nameRow.append(name, time);
+        const preview = document.createElement('div');
+        preview.className = 'chat-contact-preview';
+        preview.textContent = conversation.preview || 'Conversation LYANN';
+        info.append(nameRow, preview);
+        const dot = document.createElement('span');
+        dot.className = 'chat-unread-dot';
+        dot.setAttribute('aria-hidden', 'true');
+        dot.hidden = !conversation.unread;
+        row.append(avatarWrap, info, dot);
+        row.addEventListener('click', () => openConversation({
+            contactId: conversation.contactId || conversation.id,
+            name: conversation.name,
+            avatar: conversation.avatar,
+            requestId: conversation.requestId || null
+        }));
+        return row;
+    }
+
+    function bumpInboxRow(row) {
+        const list = row.parentElement;
+        if (!list) return;
+        const pinned = [...list.querySelectorAll('.chat-contact-item[data-pinned="1"]')].filter((item) => item !== row);
+        if (row.dataset.pinned === '1') {
+            list.insertBefore(row, list.firstChild);
+            return;
+        }
+        const anchor = pinned[pinned.length - 1];
+        if (anchor) anchor.after(row);
+        else list.insertBefore(row, list.firstChild);
+    }
+
     function renderConversationRows(listContainer, conversations) {
         listContainer.innerHTML = '';
-        conversations.forEach((conversation) => {
-            const row = document.createElement('button');
-            row.type = 'button';
-            row.className = 'chat-contact-item';
-            row.dataset.chatMemberId = conversation.contactId || conversation.id || '';
-            row.setAttribute('data-chat-member-id', row.dataset.chatMemberId);
-            const activeId = window.LYANN_ACTIVE_CHAT_CONTACT?.id;
-            if (activeId && String(activeId) === String(row.dataset.chatMemberId)) row.classList.add('active');
-            row.style.cssText = 'width:100%;border:0;background:transparent;text-align:left;';
-
-            const avatarWrap = document.createElement('div');
-            avatarWrap.className = 'chat-contact-avatar-wrap';
-            const img = document.createElement('img');
-            img.className = 'chat-contact-avatar';
-            img.alt = conversation.name || 'Contact';
-            img.src = conversation.avatar || defaultAvatar();
-            avatarWrap.appendChild(img);
-
-            const info = document.createElement('div');
-            info.className = 'chat-contact-info';
-            const name = document.createElement('div');
-            name.className = 'chat-contact-name';
-            name.textContent = conversation.name || 'Membre LYANN';
-            const preview = document.createElement('div');
-            preview.className = 'chat-contact-preview';
-            preview.textContent = conversation.preview || 'Conversation LYANN';
-            info.append(name, preview);
-            row.append(avatarWrap, info);
-            row.addEventListener('click', () => openConversation({
-                contactId: conversation.contactId || conversation.id,
-                name: conversation.name,
-                avatar: conversation.avatar,
-                requestId: conversation.requestId || null
-            }));
-            listContainer.appendChild(row);
-        });
+        conversations.forEach((conversation) => listContainer.appendChild(createConversationRow(conversation)));
     }
 
     function withSupportRow(rows) {
@@ -555,14 +596,53 @@
         if (event.detail?.authenticated) warmCurrentInbox(event.detail.userId);
     });
 
-    let listRefreshTimer = null;
-    window.addEventListener('lyann:chat-activity', () => {
-        clearTimeout(listRefreshTimer);
-        listRefreshTimer = setTimeout(() => {
-            const shell = document.getElementById('chatModal');
-            if (!shell || !document.getElementById('chatContactsList')) return;
-            if (shell.style.display === 'none' && !shell.classList.contains('active')) return;
-            renderConversationList();
-        }, 350);
+    window.addEventListener('lyann:chat-activity', (event) => {
+        const detail = event.detail || {};
+        const list = document.getElementById('chatContactsList');
+        if (!list || !detail.contactId) return;
+        [...list.children].forEach((child) => {
+            if (!child.classList?.contains('chat-contact-item')) child.remove();
+        });
+        const selector = escapeInboxSelector(detail.contactId);
+        let row = list.querySelector('[data-chat-member-id="' + selector + '"]');
+        if (!row) {
+            row = createConversationRow({
+                contactId: detail.contactId,
+                conversationId: detail.conversationId,
+                name: detail.name || 'Membre LYANN',
+                avatar: detail.avatar,
+                preview: detail.preview,
+                lastMessageAt: detail.lastMessageAt,
+                unread: !!detail.unread
+            });
+            list.appendChild(row);
+        } else {
+            const preview = row.querySelector('.chat-contact-preview');
+            if (preview && detail.preview) preview.textContent = detail.preview;
+            const time = row.querySelector('.chat-contact-time');
+            if (time && detail.lastMessageAt) time.textContent = formatInboxTime(detail.lastMessageAt);
+            row.classList.toggle('is-unread', !!detail.unread);
+            const dot = row.querySelector('.chat-unread-dot');
+            if (dot) dot.hidden = !detail.unread;
+            if (detail.conversationId) row.dataset.conversationId = detail.conversationId;
+        }
+        bumpInboxRow(row);
+    });
+
+    window.addEventListener('lyann:chat-read', (event) => {
+        const detail = event.detail || {};
+        const list = document.getElementById('chatContactsList');
+        if (!list) return;
+        const selector = detail.conversationId
+            ? '[data-conversation-id="' + escapeInboxSelector(detail.conversationId) + '"]'
+            : detail.contactId
+                ? '[data-chat-member-id="' + escapeInboxSelector(detail.contactId) + '"]'
+                : '';
+        if (!selector) return;
+        list.querySelectorAll(selector).forEach((row) => {
+            row.classList.remove('is-unread');
+            const dot = row.querySelector('.chat-unread-dot');
+            if (dot) dot.hidden = true;
+        });
     });
 })();

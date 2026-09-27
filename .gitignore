@@ -26,6 +26,8 @@ www/
 npm-debug.log*
 
 # Test artifacts
+test-results/
+playwright-report/
 test_load.js
 scratch/
 .vercel

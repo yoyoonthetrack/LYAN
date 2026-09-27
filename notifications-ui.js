@@ -1,7 +1,7 @@
 /** LYANN notifications UI — extracted from legacy script.js without behavior changes. */
 
 // === NOTIFICATIONS MODAL & BADGE SYSTEM ===
-function updateHeaderNotificationBadge() {
+function updateHeaderNotificationBadge(options = {}) {
     const currentUserId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
     const badge = document.querySelector('.notif-badge-count');
     if (badge) {
@@ -17,7 +17,7 @@ function updateHeaderNotificationBadge() {
             }
         }
     }
-    refreshMessageBadge(currentUserId);
+    if (options.messages !== false) refreshMessageBadge(currentUserId);
 }
 
 function paintMessageBadge(count) {
@@ -362,7 +362,7 @@ function startLyannNotificationLiveFeed() {
     lyannNotificationPoll = setInterval(() => {
         if (document.hidden) return;
         if (window.LyannNotificationEngine?.hydrateFromServer) {
-            window.LyannNotificationEngine.hydrateFromServer(userId).then(() => updateHeaderNotificationBadge());
+            window.LyannNotificationEngine.hydrateFromServer(userId).then(() => updateHeaderNotificationBadge({ messages: false }));
         }
     }, 20000);
 }
@@ -381,13 +381,10 @@ document.addEventListener('lyann:auth-state', (event) => {
     }
 });
 document.addEventListener('lyann_notifications_updated', () => updateHeaderNotificationBadge());
-window.addEventListener('focus', () => updateHeaderNotificationBadge());
+window.addEventListener('focus', () => updateHeaderNotificationBadge({ messages: false }));
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) updateHeaderNotificationBadge();
 });
-setInterval(() => {
-    if (!document.hidden) updateHeaderNotificationBadge();
-}, 12000);
 document.addEventListener('pointerdown', unlockLyannNotificationSound, { once: true, capture: true });
 document.addEventListener('keydown', unlockLyannNotificationSound, { once: true, capture: true });
 if (document.readyState === 'loading') {

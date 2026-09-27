@@ -2,11 +2,12 @@ const { test, expect } = require('@playwright/test');
 
 const USER_ID = '00000000-0000-4000-a000-000000000001';
 const CONTACT_ID = '22222222-2222-4222-a222-222222222222';
+const CONVERSATION_ID = '33333333-3333-4333-a333-333333333333';
 const REQUEST_ID = '11111111-1111-4111-a111-111111111111';
 const MESSAGE_TEXT = 'Message réel de la conversation UUID';
 
 async function installMessagingHarness(page) {
-  await page.evaluate(({ userId, contactId, messageText }) => {
+  await page.evaluate(({ userId, contactId, conversationId, messageText }) => {
     const mockUser = { id: userId, email: 'helper@lyann.app' };
     document.body.classList.remove('user-is-logged-out', 'auth-resolving');
     document.body.classList.add('user-is-logged-in', 'auth-ready');
@@ -19,7 +20,7 @@ async function installMessagingHarness(page) {
 
     window.LYANN_MESSAGING_REPOSITORY = {
       listConversations: async () => [{
-        conversationId: '33333333-3333-4333-a333-333333333333',
+        conversationId,
         contactId,
         name: 'Marie Dupont',
         avatar: '',
@@ -39,7 +40,7 @@ async function installMessagingHarness(page) {
         }];
       },
       getQuoteContext: async () => [],
-      findConversationId: async () => '33333333-3333-4333-a333-333333333333',
+      findConversationId: async () => conversationId,
       invalidateConversation() {},
       invalidateMessages() {},
       invalidateQuoteContext() {}
@@ -50,7 +51,7 @@ async function installMessagingHarness(page) {
         id: contactId, first_name: 'Marie', last_name: 'Dupont'
       });
       window.LYANN_API_CLIENT.initiateLyannHelp = async () => ({ data: null });
-      window.LYANN_API_CLIENT.getOrCreateConversation = async () => ({ data: { id: '33333333-3333-4333-a333-333333333333' } });
+      window.LYANN_API_CLIENT.getOrCreateConversation = async () => ({ data: { id: conversationId } });
       window.LYANN_API_CLIENT.getConversationRequestContext = async () => null;
       window.LYANN_API_CLIENT.getActiveMissionBetween = async () => null;
       const supabase = window.LYANN_API_CLIENT.supabase;
@@ -81,7 +82,7 @@ async function installMessagingHarness(page) {
       });
       return originalHydrator.call(this, name, avatar, contactIdArg, initialNeed);
     };
-  }, { userId: USER_ID, contactId: CONTACT_ID, messageText: MESSAGE_TEXT });
+  }, { userId: USER_ID, contactId: CONTACT_ID, conversationId: CONVERSATION_ID, messageText: MESSAGE_TEXT });
 }
 
 async function expectSingleCanonicalOpen(page, { forbiddenIds = [] } = {}) {
@@ -114,10 +115,12 @@ test.describe('Conversation list opens a single canonical conversation', () => {
       await window.LYANN_MESSAGING.openList();
     });
 
-    const row = page.locator('#chatModal .chat-contact-item').first();
+    const row = page.locator('#chatModal .chat-contact-item', { hasText: 'Marie Dupont' });
     await expect(row).toBeVisible();
-    await expect(row).toContainText('Marie Dupont');
-    await expect(row).not.toHaveAttribute('data-chat-member-id');
+    await expect(row).toHaveAttribute('data-chat-member-id', CONTACT_ID);
+    await expect(row).toHaveAttribute('data-conversation-id', CONVERSATION_ID);
+    await expect(row).not.toHaveAttribute('data-chat-member-id', 'Marie Dupont');
+    await expect(row).not.toHaveAttribute('data-chat-member-id', CONVERSATION_ID);
 
     await row.click();
 

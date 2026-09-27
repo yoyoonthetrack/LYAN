@@ -981,16 +981,91 @@ const LYANN_API_CLIENT = {
             .order('created_at', { ascending: true });
     },
 
-    async sendMessage(conversationId, senderId, content) {
+    async sendMessage(conversationId, senderId, content, extra) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const sessionRes = await this.getSession();
         const activeSenderId = sessionRes?.data?.session?.user?.id || senderId;
+        const reservedTimeline = new Set(['system', 'visit_rescheduled', 'visit_accepted', 'visit_declined', 'quote_created', 'quote_updated', 'quote_accepted', 'quote_declined', 'payment_requested', 'payment_secured', 'payment_failed', 'milestone_created', 'milestone_completed', 'milestone_approved', 'funds_released', 'mission_started', 'mission_completed', 'mission_cancelled', 'review_requested', 'review_submitted']);
+        if (extra?.messageType && reservedTimeline.has(extra.messageType)) {
+            return { error: { message: 'reserved timeline event', code: '42501' } };
+        }
+        const base = { conversation_id: conversationId, sender_id: activeSenderId, content: content ?? '' };
+        const row = { ...base };
+        if (extra?.clientMessageId) row.client_message_id = String(extra.clientMessageId);
+        if (extra?.messageType) row.message_type = extra.messageType;
+        if (extra?.entityType) row.entity_type = extra.entityType;
+        if (extra?.entityId) row.entity_id = extra.entityId;
+        if (extra?.metadata && typeof extra.metadata === 'object') row.metadata = extra.metadata;
+        if (extra?.path) {
+            row.attachment_url = extra.path;
+            row.attachment_type = extra.type || null;
+            row.attachment_name = extra.name || null;
+            row.attachment_size = Number.isFinite(Number(extra.size)) ? Number(extra.size) : null;
+            row.attachment_mime = extra.mime || null;
+        }
+        let result = await this.supabase.from('messages').insert(row).select().single();
+        if (result.error && /message_type|entity_type|entity_id|metadata/.test(result.error.message || '')) {
+            const plain = { ...base };
+            if (extra?.clientMessageId) plain.client_message_id = String(extra.clientMessageId);
+            if (extra?.path) {
+                plain.attachment_url = extra.path;
+                plain.attachment_type = extra.type || null;
+                plain.attachment_name = extra.name || null;
+                plain.attachment_size = Number.isFinite(Number(extra.size)) ? Number(extra.size) : null;
+                plain.attachment_mime = extra.mime || null;
+            }
+            result = await this.supabase.from('messages').insert(plain).select().single();
+        }
+        if (result.error && extra?.clientMessageId && /client_message_id/.test(result.error.message || '') && !extra.path) {
+            result = await this.supabase.from('messages').insert(base).select().single();
+        }
+        if (result.error && result.error.code === '23505' && extra?.clientMessageId) {
+            const existing = await this.supabase.from('messages').select('*').eq('sender_id', activeSenderId).eq('client_message_id', String(extra.clientMessageId)).maybeSingle();
+            if (existing.data) return { data: existing.data, error: null };
+        }
+        return result;
+    },
 
-        return await this.supabase
-            .from('messages')
-            .insert({ conversation_id: conversationId, sender_id: activeSenderId, content: content })
-            .select()
-            .single();
+    async respondToVisit(messageId, decision) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const { data, error } = await this.supabase.rpc('respond_to_visit', {
+            p_message_id: messageId,
+            p_decision: decision
+        });
+        if (error) return { error };
+        return { data };
+    },
+
+    async uploadChatAttachment(path, file, mime) {
+        if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const { error } = await this.supabase.storage.from('chat-attachments').upload(path, file, {
+            contentType: mime || file.type || undefined,
+            upsert: false
+        });
+        if (error) return { error };
+        return { data: { path } };
+    },
+
+    async removeChatAttachment(path) {
+        if (!this.supabase || !path) return { error: null };
+        return await this.supabase.storage.from('chat-attachments').remove([path]);
+    },
+
+    async signedChatAttachmentUrl(path) {
+        if (!path) return null;
+        if (/^https?:\/\//i.test(path) || String(path).startsWith('blob:')) return path;
+        if (!this._chatSignedUrls) this._chatSignedUrls = new Map();
+        const hit = this._chatSignedUrls.get(path);
+        if (hit && hit.exp > Date.now() + 60000) return hit.url;
+        if (!this.supabase) return null;
+        const { data, error } = await this.supabase.storage.from('chat-attachments').createSignedUrl(path, 3600);
+        if (error || !data?.signedUrl) return null;
+        this._chatSignedUrls.set(path, { url: data.signedUrl, exp: Date.now() + 3600000 });
+        return data.signedUrl;
+    },
+
+    clearSignedChatAttachmentUrl(path) {
+        this._chatSignedUrls?.delete(path);
     },
 
     async getMembers(territory = 'all', query = '') {

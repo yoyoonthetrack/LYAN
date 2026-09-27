@@ -172,6 +172,15 @@ CREATE TABLE messages (
     sender_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     content TEXT,
     attachment_url TEXT,
+    attachment_type TEXT,
+    attachment_name TEXT,
+    attachment_size BIGINT,
+    attachment_mime TEXT,
+    client_message_id TEXT,
+    message_type TEXT,
+    entity_type TEXT,
+    entity_id UUID,
+    metadata JSONB DEFAULT '{}'::jsonb,
     is_read BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );

@@ -6718,6 +6718,38 @@ input:checked + .slider:before {
     text-overflow: ellipsis;
 }
 
+.chat-contact-name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+}
+
+.chat-contact-name-row .chat-contact-name {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-contact-time {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.chat-contact-item.is-unread .chat-contact-name,
+.chat-contact-item.is-unread .chat-contact-preview {
+    font-weight: 800;
+    color: #1D2A44;
+}
+
+.chat-unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4A7C59;
+    flex-shrink: 0;
+}
+
 .chat-main-area {
     flex: 1;
     display: flex;
@@ -7741,6 +7773,59 @@ input:checked + .slider:before {
     max-height: 85vh;
     object-fit: contain;
     border-radius: 12px;
+}
+
+.chat-msg-photo-wrap {
+    max-width: 240px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(29, 42, 68, 0.06);
+    cursor: pointer;
+}
+
+.chat-msg-photo {
+    display: block;
+    max-width: 240px;
+    max-height: 280px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+.chat-msg-doc-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 180px;
+}
+
+.chat-msg-doc-name {
+    font-weight: 700;
+    word-break: break-word;
+}
+
+.chat-msg-doc-meta {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.chat-msg-doc-open,
+.chat-msg-retry {
+    margin-top: 8px;
+    border: 0;
+    background: transparent;
+    color: #2F5D45;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    min-height: 32px;
+}
+
+.chat-history-loader {
+    text-align: center;
+    color: #64748b;
+    font-size: 0.8rem;
+    padding: 8px 0;
 }
 
 /* Fix Overlay Position */
@@ -17655,6 +17740,41 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     width: 100%;
     justify-content: center;
     min-height: 48px;
+}
+
+.chat-timeline-card {
+    max-width: 440px;
+    margin: 12px 0;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border, #e2e8f0);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+.chat-timeline-title {
+    font-weight: 800;
+    color: #1d2a44;
+}
+.chat-timeline-meta,
+.chat-timeline-time,
+.chat-timeline-state {
+    margin-top: 6px;
+    color: #4c5c52;
+    font-size: 0.9rem;
+}
+.chat-timeline-amount {
+    margin-top: 8px;
+    font-weight: 800;
+    color: #1d2a44;
+}
+.chat-timeline-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+.chat-timeline-actions .btn {
+    flex: 1;
+    justify-content: center;
 }
 #obJoinChooser .btn-apple-auth {
     background: #1F3827;
