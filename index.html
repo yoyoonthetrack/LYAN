@@ -36,7 +36,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20260925v">
+    <link rel="stylesheet" href="style.css?v=20260925w">
     <script>
         (function () {
             var cap = window.Capacitor;
@@ -392,8 +392,20 @@
                       var source=document.createElement('source');
                       source.type='video/mp4';
                       source.src=src;
+                      video.muted=true;
+                      video.defaultMuted=true;
+                      video.playsInline=true;
+                      video.autoplay=true;
+                      video.setAttribute('muted','');
+                      video.setAttribute('playsinline','');
+                      video.setAttribute('webkit-playsinline','');
+                      video.setAttribute('preload','auto');
+                      video.removeAttribute('controls');
                       video.appendChild(source);
                       video.load();
+                      var kick=function(){ var pending=video.play(); if(pending&&pending.catch) pending.catch(function(){}); };
+                      video.addEventListener('canplay', kick);
+                      kick();
                     })();
                     </script>
                 </figure>
@@ -771,6 +783,7 @@
             var story = document.querySelector('.hero .hero-story');
             var videoSlot = document.getElementById('nativeGuestVideoSlot');
             if (story && videoSlot && !videoSlot.contains(story)) videoSlot.appendChild(story);
+            if (typeof window.playHeroStoryVideo === 'function') window.playHeroStoryVideo();
             var stories = document.getElementById('testimonials');
             var storiesSlot = document.getElementById('nativeGuestStoriesSlot');
             if (stories && storiesSlot && !storiesSlot.contains(stories)) {

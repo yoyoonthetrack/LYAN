@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr" data-lyann-auth-callback="1">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LYANN — Connexion Apple</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/png" href="logo-app.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="api-client.js"></script>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #F7F5F0;
+            color: #243329;
+            font-family: Outfit, system-ui, sans-serif;
+        }
+        main {
+            width: min(420px, calc(100% - 32px));
+            text-align: center;
+        }
+        p { line-height: 1.5; }
+        a { color: #4A7C59; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <main>
+        <p id="appleAuthStatus" role="status">Connexion à LYANN…</p>
+        <p><a href="index.html">Retour à l’accueil</a></p>
+    </main>
+    <script>
+    (function () {
+        var statusEl = document.getElementById('appleAuthStatus');
+        function show(text) {
+            if (statusEl) statusEl.textContent = text;
+        }
+        function appleFailureText(raw) {
+            var msg = String(raw || '').toLowerCase();
+            if (msg.indexOf('access_denied') !== -1 || msg.indexOf('cancel') !== -1 || msg.indexOf('annul') !== -1) {
+                return 'La connexion Apple a été annulée.';
+            }
+            return 'La connexion Apple n’a pas abouti. Réessaie, ou inscris-toi avec ton email.';
+        }
+        function waitForSession(client) {
+            return new Promise(function (resolve) {
+                var settled = false;
+                var subscription = null;
+                function finish(session) {
+                    if (settled) return;
+                    settled = true;
+                    if (subscription) subscription.unsubscribe();
+                    resolve(session || null);
+                }
+                var listener = client.auth.onAuthStateChange(function (event, session) {
+                    if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) finish(session);
+                });
+                subscription = listener && listener.data && listener.data.subscription;
+                client.auth.getSession().then(function (res) {
+                    if (res && res.data && res.data.session) finish(res.data.session);
+                }).catch(function () {});
+                setTimeout(function () { finish(null); }, 8000);
+            });
+        }
+        async function run() {
+            var params = new URLSearchParams(window.location.search);
+            var hash = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+            var err = params.get('error_description') || hash.get('error_description') || params.get('error') || hash.get('error');
+            if (err) {
+                show(appleFailureText(err));
+                return;
+            }
+            var client = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+            if (!client) {
+                show('La connexion Apple n’est pas disponible pour le moment.');
+                return;
+            }
+            if (!params.get('code') && !hash.get('access_token')) {
+                show('La connexion Apple n’a pas pu revenir sur LYANN. Réessaie.');
+                return;
+            }
+            var session = await waitForSession(client);
+            if (!session || !session.user) {
+                show('La connexion Apple n’a pas pu revenir sur LYANN. Réessaie.');
+                return;
+            }
+            var named = { hasRealName: true };
+            try {
+                if (typeof window.LYANN_API_CLIENT.rememberAppleIdentity === 'function') {
+                    named = await window.LYANN_API_CLIENT.rememberAppleIdentity(session.user);
+                }
+            } catch (_) {}
+            if (!named.hasRealName) {
+                try { sessionStorage.setItem('lyann_open_profile_completion', '1'); } catch (_) {}
+            }
+            window.location.replace('feed.html');
+        }
+        run().catch(function () {
+            show('La connexion Apple n’a pas abouti. Réessaie, ou inscris-toi avec ton email.');
+        });
+    })();
+    </script>
+</body>
+</html>

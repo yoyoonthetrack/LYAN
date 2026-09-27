@@ -897,6 +897,13 @@
             const raw = localStorage.getItem('lyan_user_profile');
             if (raw) updateAccountModalProfileWidgets(JSON.parse(raw));
         } catch(e) {}
+
+        try {
+            if (sessionStorage.getItem('lyann_open_profile_completion') === '1' && typeof window.openCompleteProfileModal === 'function') {
+                sessionStorage.removeItem('lyann_open_profile_completion');
+                window.openCompleteProfileModal();
+            }
+        } catch (_) {}
     }
 
     if (document.readyState === 'interactive' || document.readyState === 'complete') {

@@ -242,6 +242,37 @@ function normalizeAuthError(error) {
 // ----------------------------------------------------------------------
 // LYANN API CLIENT
 // ----------------------------------------------------------------------
+function lyannAppleNamePatch(profile, user, hints) {
+    const existingFirst = String((profile && profile.first_name) || '').trim();
+    const existingLast = String((profile && profile.last_name) || '').trim();
+    const emailLocal = String((user && user.email) || '').split('@')[0].trim();
+    const meta = (user && user.user_metadata) || {};
+    const hint = hints || {};
+    const clean = (value) => {
+        const text = String(value || '').trim();
+        if (!text || text.includes('@') || text.length > 80) return '';
+        return text;
+    };
+    let first = clean(hint.givenName || meta.given_name || meta.first_name);
+    let last = clean(hint.familyName || meta.family_name || meta.last_name);
+    const full = clean(meta.full_name || meta.name);
+    if (!first && full) {
+        const parts = full.split(/\s+/).filter(Boolean);
+        first = parts.shift() || '';
+        if (!last) last = parts.join(' ');
+    }
+    const firstIsPlaceholder = !existingFirst || (emailLocal && existingFirst.toLowerCase() === emailLocal.toLowerCase());
+    const patch = {};
+    if (first && firstIsPlaceholder) patch.first_name = first;
+    if (last && !existingLast) patch.last_name = last;
+    const resolvedFirst = patch.first_name || existingFirst;
+    const createdAt = Date.parse((profile && profile.created_at) || '');
+    const ageMs = Number.isFinite(createdAt) ? Date.now() - createdAt : null;
+    const isNewSignup = !profile || (ageMs !== null && ageMs >= 0 && ageMs < 120000);
+    const hasRealName = Boolean(resolvedFirst) && !isNewSignup;
+    return { patch, hasRealName };
+}
+
 const LYANN_API_CLIENT = {
     get supabase() {
         if (!supabaseClient && window.supabase) {
@@ -371,6 +402,24 @@ const LYANN_API_CLIENT = {
     async getProfile(userId) {
         if (!this.supabase) return { data: null };
         return await this.supabase.from('profiles').select('*').eq('id', userId).single();
+    },
+
+    async rememberAppleIdentity(user, hints) {
+        if (!this.supabase || !user || !user.id) return { hasRealName: false };
+        let profile = null;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            const res = await this.getProfile(user.id);
+            if (res && res.data) {
+                profile = res.data;
+                break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+        const decision = lyannAppleNamePatch(profile, user, hints || {});
+        if (Object.keys(decision.patch).length) {
+            await this.updateProfile(user.id, decision.patch);
+        }
+        return { hasRealName: decision.hasRealName };
     },
 
     async updateProfile(userId, profileData) {

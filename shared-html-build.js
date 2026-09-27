@@ -47,8 +47,13 @@ function injectScriptOnce(html, tag, needle) {
     : `${out}\n${tag}\n`;
 }
 
+function isAuthCallbackPage(html) {
+  return String(html || '').includes('data-lyann-auth-callback');
+}
+
 function injectSharedRuntime(html) {
   const out = String(html || '');
+  if (isAuthCallbackPage(out)) return out;
   const missingTags = SHARED_RUNTIME_TAGS.filter((tag) => {
     const match = tag.match(/src="([^"]+)"/);
     const needle = match ? match[1].split('?')[0] : tag;
@@ -83,11 +88,13 @@ function injectSharedRuntime(html) {
 }
 
 function injectProductionHygiene(html) {
+  if (isAuthCallbackPage(html)) return html;
   return injectScriptOnce(html, HYGIENE_SCRIPT_TAG, 'production-hygiene.js');
 }
 
 function injectSharedStylesheet(html) {
   let out = String(html || '');
+  if (isAuthCallbackPage(out)) return out;
   // Ignore admin pages which use admin-style.css
   if (out.includes('admin-style.css')) return out;
   if (!out.includes('style.css')) {
@@ -129,6 +136,7 @@ function injectBootSplash(html) {
   if (out.includes('admin-style.css')) return out;
   if (out.includes('id="lyannBootSplash"')) return out;
   if (out.includes('Confirmation de votre adresse email')) return out;
+  if (out.includes('data-lyann-auth-callback')) return out;
   if (out.includes('LYANN Enterprise')) return out;
   if (out.includes('</head>') && !out.includes('lyann-boot-splash-skip')) {
     out = out.replace('</head>', `    ${BOOT_SPLASH_SKIP_SCRIPT}\n</head>`);
@@ -140,7 +148,7 @@ function injectBootSplash(html) {
 }
 
 function enforceScriptCacheBusting(html) {
-  const version = '20260925-logoclear';
+  const version = '20260927-apple';
   return String(html || '').replace(/src="([^"]+\.js)(?:\?v=[^"]*)?"/gi, (match, scriptPath) => {
     if (scriptPath.startsWith('http://') || scriptPath.startsWith('https://') || scriptPath.startsWith('//')) {
       return match;

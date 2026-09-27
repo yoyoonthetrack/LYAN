@@ -155,7 +155,10 @@ function bindHeroStoryMedia() {
     }
     let source = video.querySelector('source');
     const current = source && source.getAttribute('src');
-    if (current === src) return;
+    if (current === src) {
+        playHeroStoryVideo(video);
+        return;
+    }
     if (!source) {
         source = document.createElement('source');
         source.type = 'video/mp4';
@@ -163,7 +166,44 @@ function bindHeroStoryMedia() {
     }
     source.setAttribute('src', src);
     video.load();
+    playHeroStoryVideo(video);
 }
+function playHeroStoryVideo(video) {
+    video = video || document.querySelector('.hero-story-video');
+    if (!video) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    video.loop = true;
+    video.controls = false;
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.setAttribute('preload', 'auto');
+    video.removeAttribute('controls');
+    const tryPlay = () => {
+        if (!video.paused && !video.ended) return;
+        const pending = video.play();
+        if (pending && typeof pending.catch === 'function') pending.catch(() => {});
+    };
+    tryPlay();
+    if (video.dataset.playRetry === '1') return;
+    video.dataset.playRetry = '1';
+    video.addEventListener('loadeddata', tryPlay);
+    video.addEventListener('canplay', tryPlay);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') tryPlay();
+    });
+    let tries = 0;
+    const timer = setInterval(() => {
+        tries += 1;
+        tryPlay();
+        if (tries >= 12 || (!video.paused && video.readyState >= 2)) clearInterval(timer);
+    }, 300);
+}
+window.playHeroStoryVideo = playHeroStoryVideo;
 window.bindHeroStoryMedia = bindHeroStoryMedia;
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bindHeroStoryMedia);

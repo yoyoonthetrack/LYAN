@@ -17155,6 +17155,14 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     width: 100%;
     border-radius: 20px;
 }
+.native-guest-hero video::-webkit-media-controls,
+.native-guest-hero video::-webkit-media-controls-start-playback-button,
+.native-guest-hero video::-webkit-media-controls-overlay-play-button {
+    display: none !important;
+    -webkit-appearance: none;
+    opacity: 0;
+    pointer-events: none;
+}
 /* Keep still hidden unless prefers-reduced-motion. Do not force display:block. */
 .native-guest-hero .hero-story-still {
     display: none;

@@ -10,7 +10,8 @@ const ALLOWED_PAGES = new Set([
   'pricing.html',
   'how-it-works.html',
   'about.html',
-  'confirm-signup.html'
+  'confirm-signup.html',
+  'auth-callback.html'
 ]);
 
 module.exports = function handler(req, res) {

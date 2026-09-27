@@ -82,9 +82,59 @@ runOnDomReady(() => {
     // Canonical Native OAuth Callback URL
     const CANONICAL_NATIVE_CALLBACK = 'app.lyann.dom://google-auth';
 
+    function appleWebCallbackUrl() {
+        const host = window.location.hostname;
+        if (host === 'lyann.app' || host === 'www.lyann.app') return 'https://lyann.app/auth/callback';
+        return window.location.origin + '/auth/callback';
+    }
+
+    async function startNativeAppleSignIn() {
+        const plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LyannAppleSignIn;
+        if (!plugin || typeof plugin.authorize !== 'function') {
+            showOAuthFailure({ message: 'provider' }, 'Apple');
+            return;
+        }
+        let result;
+        try {
+            result = await plugin.authorize();
+        } catch (err) {
+            showOAuthFailure(err, 'Apple');
+            return;
+        }
+        if (!result || result.canceled) {
+            showOAuthFailure({ message: 'access_denied' }, 'Apple');
+            return;
+        }
+        if (!result.identityToken || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
+            showOAuthFailure({ message: 'provider' }, 'Apple');
+            return;
+        }
+        const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithIdToken({
+            provider: 'apple',
+            token: result.identityToken,
+            nonce: result.nonce
+        });
+        if (error) {
+            showOAuthFailure(error, 'Apple');
+            return;
+        }
+        const user = data?.user || data?.session?.user;
+        const named = await window.LYANN_API_CLIENT.rememberAppleIdentity(user, {
+            givenName: result.givenName,
+            familyName: result.familyName
+        });
+        if (!named.hasRealName) {
+            try { sessionStorage.setItem('lyann_open_profile_completion', '1'); } catch (_) {}
+        }
+        if (typeof window.updateHeaderAuthState === 'function') await window.updateHeaderAuthState();
+    }
+
     function explainOAuthFailure(error, providerName) {
         const raw = String(error?.message || error?.error_description || '');
         const msg = raw.toLowerCase();
+        if (providerName === 'Apple' && (msg.includes('cancel') || msg.includes('annul') || msg.includes('access_denied'))) {
+            return 'La connexion Apple a été annulée.';
+        }
         if (msg.includes('provider') || msg.includes('not enabled') || msg.includes('unsupported')) {
             return `La connexion ${providerName} n’est pas disponible pour le moment. Inscris-toi avec ton email et un mot de passe.`;
         }
@@ -132,8 +182,9 @@ runOnDomReady(() => {
         const desc = search.get('error_description') || hash.get('error_description');
         const code = search.get('error') || hash.get('error');
         const haystack = `${desc || ''} ${code || ''} ${window.location.href}`.toLowerCase();
-        if ((desc || code) && (haystack.includes('oauth') || haystack.includes('google') || haystack.includes('provider'))) {
-            showGoogleFailure({ message: desc || code });
+        if ((desc || code) && (haystack.includes('oauth') || haystack.includes('google') || haystack.includes('apple') || haystack.includes('provider'))) {
+            const providerName = haystack.includes('apple') && !haystack.includes('google') ? 'Apple' : 'Google';
+            showOAuthFailure({ message: desc || code }, providerName);
         }
     } catch (_) { /* A missing callback must not block the page. */ }
 
@@ -157,10 +208,16 @@ runOnDomReady(() => {
                 if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                     try {
                         const isNative = (typeof window.isNativePlatform === 'function' && window.isNativePlatform()) || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-                        const redirectUrl = isNative ? CANONICAL_NATIVE_CALLBACK : window.location.origin + '/';
+                        if (provider === 'apple' && isNative) {
+                            await startNativeAppleSignIn();
+                            return;
+                        }
+                        const redirectUrl = provider === 'apple'
+                            ? appleWebCallbackUrl()
+                            : (isNative ? CANONICAL_NATIVE_CALLBACK : window.location.origin + '/');
                         const options = {
                             redirectTo: redirectUrl,
-                            skipBrowserRedirect: isNative
+                            skipBrowserRedirect: provider === 'apple' ? false : isNative
                         };
                         if (provider === 'google') options.queryParams = { prompt: 'select_account' };
                         const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithOAuth({
