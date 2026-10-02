@@ -232,7 +232,10 @@ function lazyLoadImages(html) {
   });
 }
 
+const BUILT_MARKER = 'window.LYANN_ASSET_VERSION=';
+
 function buildHtml(html) {
+  if (String(html || '').includes(BUILT_MARKER)) return String(html);
   return lazyLoadImages(enforceScriptCacheBusting(injectBootSplash(injectSharedStylesheet(injectProductionHygiene(injectSharedRuntime(injectDataCache(sanitizeStaticHtml(html))))))));
 }
 

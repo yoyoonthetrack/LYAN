@@ -1,6 +1,7 @@
 {
   "version": 2,
   "name": "lyan-app",
+  "buildCommand": "node scripts/build-web.js",
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
