@@ -134,54 +134,25 @@
 
         function formatStatsLine(p) {
             const seed = getSeedProfileMetadata(p);
-            const ratingNum = seed?.rating || p.rating || p.average_rating || p.avg_rating;
-            let ratingStr = '4,9';
-            if (ratingNum) {
-                ratingStr = Number(ratingNum).toFixed(1).replace('.', ',');
-            } else if (p.id) {
-                let hash = 0;
-                const str = String(p.id);
-                for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
-                const ratings = [4.6, 4.7, 4.8, 4.9, 5.0, 4.5];
-                ratingStr = ratings[Math.abs(hash) % ratings.length].toFixed(1).replace('.', ',');
+            const ratingNum = Number(seed?.rating ?? p.rating ?? p.average_rating ?? p.avg_rating);
+            const reviewsCount = Number(seed?.reviews_count ?? p.reviews_count ?? p.reviewsCount ?? 0);
+            const speed = seed?.response_speed || p.response_speed || p.response_rate_text || '';
+            const parts = [];
+            if (reviewsCount > 0 && ratingNum > 0) {
+                parts.push(`⭐ ${ratingNum.toFixed(1).replace('.', ',')}`, `${reviewsCount} avis`);
+            } else {
+                parts.push('Nouveau sur LYANN');
             }
-
-            let reviewsCount = seed?.reviews_count ?? p.reviews_count ?? p.reviewsCount;
-            if (reviewsCount === undefined || reviewsCount === null) {
-                if (p.id) {
-                    let hash = 0;
-                    const str = String(p.id);
-                    for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
-                    reviewsCount = (Math.abs(hash) % 3) + 1;
-                } else {
-                    reviewsCount = 2;
-                }
-            }
-
-            const speedOptions = [
-                "Répond généralement rapidement",
-                "Répond en moins d'1h",
-                "Répond généralement en quelques minutes",
-                "Répond dans la journée",
-                "Répond généralement très rapidement"
-            ];
-            let speed = seed?.response_speed || p.response_speed || p.response_rate_text;
-            if (!speed && p.id) {
-                let hash = 0;
-                const str = String(p.id);
-                for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
-                speed = speedOptions[Math.abs(hash) % speedOptions.length];
-            } else if (!speed) {
-                speed = "Répond généralement rapidement";
-            }
-
-            return `⭐ ${ratingStr} · ${reviewsCount} avis · ⚡ ${speed}`;
+            if (speed) parts.push(`⚡ ${speed}`);
+            return parts.join(' · ');
         }
 
         function profileCard(p, showType = false) {
             const displayName = formatDisplayName(p);
-            const place = [p.city, p.territory].filter(Boolean).join(' · ') || 'Guadeloupe';
-            const badgeText = p.badge || (p.is_pro ? 'ARTISAN PRO' : (p.is_verified || p.kyc_verified ? 'PROFIL VÉRIFIÉ' : ''));
+            const place = window.formatProfileLocation
+                ? window.formatProfileLocation(p.city, p.territory)
+                : ([p.city, p.territory].filter(Boolean).join(' · ') || 'Guadeloupe');
+            const badgeText = p.badge || (p.is_pro_verified ? 'PRO VÉRIFIÉ' : (p.is_verified || p.kyc_verified ? 'PROFIL VÉRIFIÉ' : ''));
             const rawSkills = Array.isArray(p.skills) && p.skills.length ? p.skills : (Array.isArray(p.intervention_zone) && p.intervention_zone.length ? p.intervention_zone : (p.services || []).map(s => s.title || s.name).filter(Boolean));
             const skillsText = rawSkills.slice(0, 4).join(' · ');
             const bioQuote = formatBioQuote(p, skillsText);

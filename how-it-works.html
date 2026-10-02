@@ -18,7 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20260925b">
@@ -137,7 +137,7 @@
 
             <!-- Illustration Officielle LYANN -->
             <div class="how-illustration-container fade-in-up" style="margin-top: 36px;">
-                <img src="how-it-works-illustration.png" alt="Comment fonctionne LYANN - Les étapes d'un Lyann réussi" class="how-illustration-img">
+                <img src="how-it-works-illustration.webp" alt="Comment fonctionne LYANN - Les étapes d'un Lyann réussi" class="how-illustration-img">
             </div>
         </div>
     </header>
@@ -245,7 +245,7 @@
                         <i class="ph-fill ph-file-text"></i>
                     </div>
                     <h3>4. Recevez une proposition claire</h3>
-                    <p>Le Lyanneur peut vous envoyer une proposition détaillée avec le montant et, lorsque la mission le nécessite, plusieurs étapes de réalisation. Vous pouvez la consulter avant de l'accepter. Aucune mission ne démarre simplement parce qu me personne vous a contacté.</p>
+                    <p>Le Lyanneur peut vous envoyer une proposition détaillée avec le montant et, lorsque la mission le nécessite, plusieurs étapes de réalisation. Vous pouvez la consulter avant de l'accepter. Aucune mission ne démarre simplement parce qu'une personne vous a contacté.</p>
                 </div>
 
                 <!-- Étape 5 -->
@@ -328,8 +328,8 @@
             <div class="charter-grid">
                 <div class="charter-card">
                     <div class="charter-icon"><i class="ph-fill ph-user-focus"></i></div>
-                    <h4>Profils & Identités Vérifiés</h4>
-                    <p>Un « Profil vérifié » indique la vérification d'identité selon les règles LYANN, permettant des échanges authentiques en toute transparence.</p>
+                    <h4>Profils transparents</h4>
+                    <p>Le badge « Profil vérifié » n'apparaît que lorsque l'identité du membre a réellement été vérifiée. Sans badge, consultez son profil, ses réalisations et ses avis avant de vous engager.</p>
                 </div>
 
                 <div class="charter-card">
@@ -449,7 +449,7 @@
                     <a href="legal.html#mentions-legales">Mentions légales</a>
                     <a href="#contact" class="open-contact-trigger">Contact</a>
                 </nav>
-                <p>&copy; 2026 LYANN. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
+                <p>&copy; 2026 LYANN, édité par YOYOOTT. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
             </div>
         </div>
     </footer>
@@ -603,13 +603,14 @@
                 <div class="auth-divider"><span>ou avec votre email</span></div>
                 <form id="loginForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
-                        <label>Adresse email</label>
-                        <input type="email" class="modal-input" placeholder="votre.email@exemple.com" required>
+                        <label for="loginEmail">Adresse email</label>
+                        <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" autocomplete="email" inputmode="email" required>
                     </div>
                     <div class="form-group">
-                        <label>Mot de passe</label>
-                        <input type="password" class="modal-input" placeholder="••••••••" required>
+                        <label for="loginPassword">Mot de passe</label>
+                        <input type="password" id="loginPassword" class="modal-input" placeholder="Votre mot de passe" autocomplete="current-password" required>
                     </div>
+                    <div class="login-options-row" style="display:flex; justify-content:flex-end; margin-top:8px;"><a href="#" class="forgot-link">Mot de passe oublié ?</a></div>
                     <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 16px;">Se connecter</button>
                 </form>
             </div>
@@ -642,7 +643,6 @@
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>
 <script src="chat-logic.js?v=20260923a"></script>
-    <script src="ai-simulator.js"></script>
     <script src="ai-classifier.js"></script>
     <script src="platform-core.js"></script>
     <script src="notification-engine.js"></script>
@@ -696,10 +696,6 @@
                 <span class="speed-dial-icon"><i class="ph ph-file-plus"></i></span>
                 Publier un besoin
             </button>
-            <a href="#" class="speed-dial-item" id="sdActionScanQR">
-                <span class="speed-dial-icon"><i class="ph ph-qr-code"></i></span>
-                Scanner un QR Code
-            </a>
         </div>
     </div>
     <!-- ========== MODAL ESPACE MON COMPTE (#userAccountModal - 6 HUBS UNIFIÉS) ========== -->
@@ -1531,14 +1527,6 @@
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
-                            </div>
-                            <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve</label>
-                                <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
-                                    <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
-                                    <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>
-                                    <option value="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80">📸 Photo 3 - Finitions et Nettoyage</option>
-                                </select>
                             </div>
                             <div style="display: flex; gap: 10px; margin-top: 8px;">
                                 <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>

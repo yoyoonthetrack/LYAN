@@ -18,7 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20260925b">
@@ -427,7 +427,7 @@
                     <a href="legal.html#mentions-legales">Mentions légales</a>
                     <a href="#contact" class="open-contact-trigger">Contact</a>
                 </nav>
-                <p>&copy; 2026 LYANN DOM. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
+                <p>&copy; 2026 LYANN, édité par YOYOOTT. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
             </div>
         </div>
     </footer>
@@ -583,13 +583,14 @@
                 <form id="loginForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="loginEmail">Adresse email</label>
-                        <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" required style="width: 100%; box-sizing: border-box;">
+                        <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" autocomplete="email" inputmode="email" required style="width: 100%; box-sizing: border-box;">
                     </div>
                     <div class="form-group" style="margin-top: 10px;">
                         <label for="loginPassword">Mot de passe</label>
-                        <input type="password" id="loginPassword" class="modal-input" placeholder="••••••••" required style="width: 100%; box-sizing: border-box;">
+                        <input type="password" id="loginPassword" class="modal-input" placeholder="Votre mot de passe" autocomplete="current-password" required style="width: 100%; box-sizing: border-box;">
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 16px;">Se connecter 🚀</button>
+                    <div class="login-options-row" style="display:flex; justify-content:flex-end; margin-top:8px;"><a href="#" class="forgot-link">Mot de passe oublié ?</a></div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 16px;">Se connecter</button>
                 </form>
             </div>
         </div>
@@ -608,7 +609,6 @@
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>
 <script src="chat-logic.js?v=20260923a"></script>
-    <script src="ai-simulator.js"></script>
     <script src="ai-classifier.js"></script>
     <script src="platform-core.js"></script>
     <script src="notification-engine.js"></script>
@@ -637,10 +637,6 @@
                 <span class="speed-dial-icon"><i class="ph ph-file-plus"></i></span>
                 Publier un besoin
             </button>
-            <a href="#" class="speed-dial-item" id="sdActionScanQR">
-                <span class="speed-dial-icon"><i class="ph ph-qr-code"></i></span>
-                Scanner un QR Code
-            </a>
         </div>
     </div>
     <!-- ========== MODAL ESPACE MON COMPTE (#userAccountModal - 6 HUBS UNIFIÉS) ========== -->
@@ -1472,14 +1468,6 @@
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
-                            </div>
-                            <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve</label>
-                                <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
-                                    <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
-                                    <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>
-                                    <option value="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80">📸 Photo 3 - Finitions et Nettoyage</option>
-                                </select>
                             </div>
                             <div style="display: flex; gap: 10px; margin-top: 8px;">
                                 <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>

@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="style.css?v=20260925c">
     
     <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Global early error handlers -->
     <script>
@@ -141,6 +141,11 @@
                 <!-- COLONNE PRINCIPALE / FLUX DE LYANNS -->
                 <main class="feed-main-column">
                     
+                    <div class="feed-guest-cta" id="feedGuestCta">
+                        <span>Découvrez les Lyanns de votre territoire. Connectez-vous pour publier, aimer et commenter.</span>
+                        <a href="#login" class="btn btn-primary open-login-trigger">Se connecter</a>
+                    </div>
+
                     <!-- BLOC COMPOSITEUR SOCIAL (BOKANTAJ V2) -->
                     <div class="flash-composer-card" id="flashComposerCard" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
                         <div class="composer-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
@@ -282,7 +287,7 @@
                     <a href="legal.html#mentions-legales">Mentions légales</a>
                     <a href="#contact" class="open-contact-trigger">Contact</a>
                 </nav>
-                <p>&copy; 2026 LYANN DOM. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
+                <p>&copy; 2026 LYANN, édité par YOYOOTT. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
             </div>
         </div>
     </footer>
@@ -345,13 +350,14 @@
                 <form id="loginForm" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="loginEmail">Adresse email</label>
-                        <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" required>
+                        <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" autocomplete="email" inputmode="email" required>
                     </div>
                     <div class="form-group">
                         <label for="loginPassword">Mot de passe</label>
-                        <input type="password" id="loginPassword" class="modal-input" placeholder="••••••••" required>
+                        <input type="password" id="loginPassword" class="modal-input" placeholder="Votre mot de passe" autocomplete="current-password" required>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px;">Se connecter 🚀</button>
+                    <div class="login-options-row" style="display:flex; justify-content:flex-end; margin-top:8px;"><a href="#" class="forgot-link">Mot de passe oublié ?</a></div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px;">Se connecter</button>
                 </form>
             </div>
         </div>
@@ -968,14 +974,6 @@
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
                             </div>
-                            <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve</label>
-                                <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
-                                    <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
-                                    <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>
-                                    <option value="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80">📸 Photo 3 - Finitions et Nettoyage</option>
-                                </select>
-                            </div>
                             <div style="display: flex; gap: 10px; margin-top: 8px;">
                                 <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
                                 <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Jalon</button>
@@ -1337,10 +1335,6 @@
                 <span class="speed-dial-icon"><i class="ph ph-file-plus"></i></span>
                 J'ai un besoin
             </button>
-            <a href="#" class="speed-dial-item" id="sdActionScanQR">
-                <span class="speed-dial-icon"><i class="ph ph-qr-code"></i></span>
-                Scanner un QR Code
-            </a>
         </div>
     </div>
     <!-- MODALE J'AI UN BESOIN (WIZARD) -->
@@ -1795,7 +1789,6 @@
     </div>
 
 
-    <script src="ai-agents.js"></script>
     <script src="payment-script.js"></script>
     <script src="notifications-service.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1819,7 +1812,6 @@
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>
 <script src="chat-logic.js?v=20260923a"></script>
-    <script src="ai-simulator.js?v=20260907-DOM-OBSERVER-FIX"></script>
     <script src="ai-classifier.js"></script>
     <script src="platform-core.js"></script>
     <script src="notification-engine.js"></script>

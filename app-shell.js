@@ -27,7 +27,7 @@ function showAppWelcomeScreen() {
     screen.className = 'app-welcome-screen';
     screen.innerHTML = `
         <div class="welcome-logo-container">
-            <img src="logo-app.png?v=20260925s" alt="" style="width: 90px; height: 90px; object-fit: contain; background: transparent;">
+            <img src="logo-app-256.png" alt="" style="width: 90px; height: 90px; object-fit: contain; background: transparent;">
             <h1 class="welcome-title">Bienvenue sur<br>LYANN</h1>
             <p class="welcome-subtitle">Le réseau d'entraide locale et de confiance. Sé Lyann a lot.</p>
         </div>
@@ -509,7 +509,7 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
         container.innerHTML = `
             <div class="native-header-row native-header-row--guest" style="display: flex; align-items: center; justify-content: center; width: 100%; padding: 0 14px; box-sizing: border-box; height: 44px;">
                 <span class="native-header-logo" style="font-weight: 900; font-size: 1.2rem; color: var(--primary-dark); display: flex; align-items: center; gap: 8px;">
-                    <img src="logo-app.png?v=20260925s" alt="" style="width: 28px; height: 28px; object-fit: contain; background: transparent;">
+                    <img src="logo-app-256.png" alt="" style="width: 28px; height: 28px; object-fit: contain; background: transparent;">
                     LYANN
                 </span>
             </div>
@@ -518,7 +518,7 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
         container.innerHTML = `
             <div class="native-header-row" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 14px; box-sizing: border-box; height: 44px;">
                 <span class="native-header-logo" style="font-weight: 900; font-size: 1.2rem; color: var(--primary-dark); display: flex; align-items: center; gap: 8px;">
-                    <img src="logo-app.png?v=20260925s" alt="" style="width: 28px; height: 28px; object-fit: contain; background: transparent;">
+                    <img src="logo-app-256.png" alt="" style="width: 28px; height: 28px; object-fit: contain; background: transparent;">
                     LYANN
                 </span>
                 <div style="display: flex; align-items: center; gap: 8px;">

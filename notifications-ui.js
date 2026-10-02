@@ -108,7 +108,7 @@ function renderNotificationsModal() {
                     <div style="text-align: center; padding: 32px 16px; color: var(--text-muted);">
                         <i class="ph ph-bell-slash" style="font-size: 2.5rem; opacity: 0.5; margin-bottom: 8px;"></i>
                         <p style="margin: 0; font-weight: 600;">Rien de nouveau pour le moment.</p>
-                        <span style="font-size: 0.8rem;">Tes opportunités et l’activité de tes annonces apparaîtront ici.</span>
+                        <span style="font-size: 0.8rem;">Vos opportunités et l’activité de vos annonces apparaîtront ici.</span>
                     </div>
                 ` : notifs.map(n => {
                     const icon = n.type === 'OPPORTUNITY' ? '🤝' 
@@ -325,6 +325,7 @@ async function syncLyannNotificationsFromServer() {
 
 let lyannNotificationChannel = null;
 let lyannNotificationPoll = null;
+let lyannNotificationChannelLive = false;
 
 function stopLyannNotificationLiveFeed() {
     const client = window.LYANN_API_CLIENT || window.apiClient;
@@ -332,6 +333,7 @@ function stopLyannNotificationLiveFeed() {
         try { client.supabase.removeChannel(lyannNotificationChannel); } catch (_) {}
     }
     lyannNotificationChannel = null;
+    lyannNotificationChannelLive = false;
     if (lyannNotificationPoll) {
         clearInterval(lyannNotificationPoll);
         lyannNotificationPoll = null;
@@ -357,14 +359,20 @@ function startLyannNotificationLiveFeed() {
             }
             updateHeaderNotificationBadge();
         })
-        .subscribe();
+        .subscribe((status) => {
+            lyannNotificationChannelLive = status === 'SUBSCRIBED';
+        });
 
+    // Realtime is the primary path; the poll only covers a channel that is down.
     lyannNotificationPoll = setInterval(() => {
-        if (document.hidden) return;
-        if (window.LyannNotificationEngine?.hydrateFromServer) {
-            window.LyannNotificationEngine.hydrateFromServer(userId).then(() => updateHeaderNotificationBadge({ messages: false }));
-        }
-    }, 20000);
+        if (document.hidden || lyannNotificationChannelLive) return;
+        hydrateLyannNotifications(userId);
+    }, 30000);
+}
+
+function hydrateLyannNotifications(userId) {
+    if (!userId || !window.LyannNotificationEngine?.hydrateFromServer) return;
+    window.LyannNotificationEngine.hydrateFromServer(userId).then(() => updateHeaderNotificationBadge({ messages: false }));
 }
 
 function unlockLyannNotificationSound() {
@@ -383,7 +391,9 @@ document.addEventListener('lyann:auth-state', (event) => {
 document.addEventListener('lyann_notifications_updated', () => updateHeaderNotificationBadge());
 window.addEventListener('focus', () => updateHeaderNotificationBadge({ messages: false }));
 document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) updateHeaderNotificationBadge();
+    if (document.hidden) return;
+    updateHeaderNotificationBadge();
+    hydrateLyannNotifications(window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null);
 });
 document.addEventListener('pointerdown', unlockLyannNotificationSound, { once: true, capture: true });
 document.addEventListener('keydown', unlockLyannNotificationSound, { once: true, capture: true });

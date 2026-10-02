@@ -33,7 +33,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20260925w">
@@ -49,7 +49,7 @@
 </head>
 <body>
 <div id="lyannBootSplash" class="lyann-boot-splash" role="status" aria-label="Chargement de LYANN" style="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#F8F8F5;border:0;margin:0;padding:0;box-shadow:none;">
-  <img src="lyann-boot-logo.gif" alt="" width="132" height="132" decoding="async" style="width:132px;height:132px;border:0;outline:none;box-shadow:none;background:#F8F8F5;display:block;border-radius:0;mix-blend-mode:darken;">
+  <img src="lyann-boot-logo.webp" alt="" width="132" height="132" decoding="async" style="width:132px;height:132px;border:0;outline:none;box-shadow:none;background:#F8F8F5;display:block;border-radius:0;mix-blend-mode:darken;">
 </div>
 <script>
 (function(){
@@ -67,7 +67,10 @@
     el.classList.add('is-done');
     setTimeout(function(){ if(el&&el.parentNode) el.remove(); }, 380);
   }
-  setTimeout(hide, 5000);
+  var shownAt=Date.now();
+  function hideWhenReady(){ setTimeout(hide, Math.max(0, 1200-(Date.now()-shownAt))); }
+  if(document.readyState==='complete') hideWhenReady(); else window.addEventListener('load', hideWhenReady, {once:true});
+  setTimeout(hide, 4000);
 })();
 </script>
 
@@ -258,7 +261,7 @@
                             </div>
                             <div class="native-guest-boka-posts">
                                 <div class="native-guest-boka-post">
-                                    <img src="guest-avocat.png" alt="Avocats à donner">
+                                    <img src="guest-avocat.webp" alt="Avocats à donner">
                                     <div>
                                         <p>Avocat à donner sur Saint-François. Contactez-moi en MP.</p>
                                         <div class="native-guest-boka-meta">
@@ -268,7 +271,7 @@
                                     </div>
                                 </div>
                                 <div class="native-guest-boka-post">
-                                    <img src="guest-jus-canne.png" alt="Jus de canne">
+                                    <img src="guest-jus-canne.webp" alt="Jus de canne">
                                     <div>
                                         <p>Le jus de canne au rond-point de La Boucan est incroyable et pas cher. En plus le monsieur est adorable ! Allez goûter ça 🥰</p>
                                         <div class="native-guest-boka-meta">
@@ -429,7 +432,7 @@
             <div class="trust-split-grid reveal delay-1">
                 <!-- Photo Humanisée Antilles -->
                 <div class="trust-image-block">
-                    <img src="caribbean-mutual-help.png" alt="Entraide et solidarité dans les Antilles - LYANN DOM" class="trust-photo">
+                    <img src="caribbean-mutual-help.webp" alt="Entraide et solidarité dans les Antilles - LYANN DOM" class="trust-photo">
                     <div class="trust-floating-badge">
                         <i class="ph-fill ph-star" style="color: #E5B345; font-size: 1.5rem;"></i>
                         <div>
@@ -505,7 +508,7 @@
             <div class="categories-photo-grid reveal delay-1">
                 <!-- 1. Climatisation -->
                 <a href="#" class="photo-category-card category-card-trigger" data-category="climatisation">
-                    <img src="clim-talent.png" alt="Climatisation et Froid DOM" class="photo-category-img">
+                    <img src="clim-talent.webp" alt="Climatisation et Froid DOM" class="photo-category-img">
                     <div class="photo-category-overlay">
                         <span class="photo-category-badge"><i class="ph-fill ph-snowflake"></i> Climatisation & Froid</span>
                         <h4 class="photo-category-title">Clim Inverter & Entretien</h4>
@@ -515,7 +518,7 @@
 
                 <!-- 2. Jardin -->
                 <a href="#" class="photo-category-card category-card-trigger" data-category="jardin">
-                    <img src="jardinage-talent.png" alt="Jardin et Espaces Verts" class="photo-category-img">
+                    <img src="jardinage-talent.webp" alt="Jardin et Espaces Verts" class="photo-category-img">
                     <div class="photo-category-overlay">
                         <span class="photo-category-badge" style="background: #EBF7EE; color: #2E4C37;"><i class="ph-fill ph-plant"></i> Jardin & Espaces Verts</span>
                         <h4 class="photo-category-title">Élagage, Taille & Entretien</h4>
@@ -545,7 +548,7 @@
 
                 <!-- 5. Aide Domicile -->
                 <a href="#" class="photo-category-card category-card-trigger" data-category="menage">
-                    <img src="senior-menage-talent.png" alt="Aide à domicile et Seniors" class="photo-category-img">
+                    <img src="senior-menage-talent.webp" alt="Aide à domicile et Seniors" class="photo-category-img">
                     <div class="photo-category-overlay">
                         <span class="photo-category-badge" style="background: #F3E8FF; color: #6B21A8;"><i class="ph-fill ph-hand-heart"></i> Entraide & Domicile</span>
                         <h4 class="photo-category-title">Aide aux Seniors & Ménage</h4>
@@ -576,7 +579,7 @@
             </div>
             
             <div class="talents-grid reveal delay-1">
-                <div class="talent-card talent-card-trigger" data-member-id="200" style="cursor: pointer;">
+                <div class="talent-card talent-card-trigger" data-explorer-query="Plomberie" role="button" tabindex="0" style="cursor: pointer;">
                     <div class="talent-photo">
                         <img src="jocelyn-cabort.png" alt="Jocelyn Cabort">
                     </div>
@@ -586,7 +589,7 @@
                     <blockquote>"Plombier chevronné à Baie-Mahault. Dépannage rapide de fuites d'eau, débouchage et installation sanitaire."</blockquote>
                 </div>
 
-                <div class="talent-card talent-card-trigger" data-member-id="201" style="cursor: pointer;">
+                <div class="talent-card talent-card-trigger" data-explorer-query="Climatisation" role="button" tabindex="0" style="cursor: pointer;">
                     <div class="talent-photo">
                         <img src="hugues-zami.png" alt="Hugues Zami">
                     </div>
@@ -596,7 +599,7 @@
                     <blockquote>"Technicien froid et électricité aux Abymes. Pose, entretien et dépannage clim avec rigueur."</blockquote>
                 </div>
 
-                <div class="talent-card talent-card-trigger" data-member-id="212" style="cursor: pointer;">
+                <div class="talent-card talent-card-trigger" data-explorer-query="Jardinage" role="button" tabindex="0" style="cursor: pointer;">
                     <div class="talent-photo">
                         <img src="wilfrid-rapon.png" alt="Wilfrid Rapon">
                     </div>
@@ -1028,7 +1031,7 @@
                     <a href="legal.html#mentions-legales">Mentions légales</a>
                     <a href="#contact" class="open-contact-trigger">Contact</a>
                 </nav>
-                <p>&copy; 2026 YOYOOTT — Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
+                <p>&copy; 2026 LYANN, édité par YOYOOTT. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
             </div>
         </div>
     </footer>
@@ -2223,14 +2226,6 @@
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
                             </div>
-                            <div>
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Photo / Vidéo de preuve</label>
-                                <select id="proofPhotoSelect" class="modal-input" style="width: 100%;">
-                                    <option value="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80">📸 Photo 1 - Travaux de Fixation / Pose</option>
-                                    <option value="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80">📸 Photo 2 - Raccordement Technique</option>
-                                    <option value="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80">📸 Photo 3 - Finitions et Nettoyage</option>
-                                </select>
-                            </div>
                             <div style="display: flex; gap: 10px; margin-top: 8px;">
                                 <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
                                 <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Jalon</button>
@@ -2634,10 +2629,6 @@
                 <span class="speed-dial-icon"><i class="ph ph-file-plus"></i></span>
                 Publier un besoin
             </button>
-            <a href="#" class="speed-dial-item" id="sdActionScanQR">
-                <span class="speed-dial-icon"><i class="ph ph-qr-code"></i></span>
-                Scanner un QR Code
-            </a>
         </div>
     </div>
 
@@ -2870,7 +2861,6 @@
         </div>
     </div>
 
-    <script src="ai-agents.js"></script>
     <script src="payment-script.js"></script>
     <script src="deal-flow-engine.js"></script>
     <script src="safety-disputes-engine.js"></script>
@@ -2895,7 +2885,6 @@
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>
 <script src="chat-logic.js?v=20260923a"></script>
-    <script src="ai-simulator.js"></script>
     <script src="ai-classifier.js?v=20260922c"></script>
     <script src="platform-core.js"></script>
     <script src="notifications-ui.js"></script>

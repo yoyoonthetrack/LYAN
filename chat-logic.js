@@ -53,41 +53,64 @@ function renderDirectThreadAction(banner) {
 
 window.isUserBlocked = function(idOrName) {
     if (!idOrName) return false;
+    if (window.LYANN_SAFETY_REPOSITORY && window.LYANN_SAFETY_REPOSITORY.isBlocked(idOrName)) return true;
     const list = window.getBlockedUsers();
     return list.some(item => (typeof item === 'string' ? item === idOrName : (item.id === idOrName || item.name === idOrName)));
 };
 
-window.blockUser = function(contactId, contactName) {
-    if (!contactId && !contactName) return;
-    const name = contactName || (currentChatContact ? currentChatContact.name : 'Ce membre');
-    const id = contactId || (currentChatContact ? currentChatContact.id : name);
+function rememberLocalBlock(id, name, blocked) {
+    let list = window.getBlockedUsers().filter(item => (typeof item === 'string' ? item !== id : item.id !== id));
+    if (blocked) list.push({ id, name, timestamp: new Date().toISOString() });
+    localStorage.setItem(BLOCKED_USERS_KEY, JSON.stringify(list));
+}
 
-    let list = window.getBlockedUsers();
-    if (!list.some(item => (typeof item === 'string' ? item === id : item.id === id))) {
-        list.push({ id, name, timestamp: new Date().toISOString() });
-        localStorage.setItem(BLOCKED_USERS_KEY, JSON.stringify(list));
+window.blockUser = async function(contactId, contactName) {
+    const name = contactName || (currentChatContact ? currentChatContact.name : 'Ce membre');
+    const id = contactId || (currentChatContact ? currentChatContact.id : null);
+    if (!id || !(typeof window.isUUID === 'function' && window.isUUID(id))) {
+        if (window.lyannAlert) window.lyannAlert('Ce membre ne peut pas être bloqué pour le moment.');
+        return false;
     }
+    try {
+        if (!window.LYANN_SAFETY_REPOSITORY) throw new Error('safety repository unavailable');
+        await window.LYANN_SAFETY_REPOSITORY.block(id);
+    } catch (err) {
+        console.warn('[SAFETY] block failed', err);
+        if (window.lyannAlert) window.lyannAlert('Le blocage n’a pas pu être enregistré. Vérifiez votre connexion et réessayez.');
+        return false;
+    }
+    rememberLocalBlock(id, name, true);
 
     if (window.lyannAlert) {
-        window.lyannAlert(`🔒 ${name} est désormais bloqué.\n\nCet utilisateur ne peut plus vous envoyer de messages ni interagir avec vos offres. Vous pouvez le débloquer à tout moment.`);
+        window.lyannAlert(`${name} est désormais bloqué. Vous ne pourrez plus échanger de messages ensemble. Vous pouvez le débloquer à tout moment depuis cette conversation.`);
     }
 
     if (typeof renderMessages === 'function') renderMessages();
     if (typeof window.renderChatContacts === 'function') window.renderChatContacts();
+    return true;
 };
 
-window.unblockUser = function(contactId) {
-    if (!contactId) return;
-    let list = window.getBlockedUsers();
-    list = list.filter(item => (typeof item === 'string' ? item !== contactId : item.id !== contactId && item.name !== contactId));
+window.unblockUser = async function(contactId) {
+    if (!contactId) return false;
+    if (typeof window.isUUID === 'function' && window.isUUID(contactId)) {
+        try {
+            if (!window.LYANN_SAFETY_REPOSITORY) throw new Error('safety repository unavailable');
+            await window.LYANN_SAFETY_REPOSITORY.unblock(contactId);
+        } catch (err) {
+            console.warn('[SAFETY] unblock failed', err);
+            if (window.lyannAlert) window.lyannAlert('Le déblocage n’a pas pu être enregistré. Réessayez dans un instant.');
+            return false;
+        }
+    }
+    rememberLocalBlock(contactId, null, false);
+    let list = window.getBlockedUsers().filter(item => (typeof item === 'string' ? item !== contactId : item.name !== contactId));
     localStorage.setItem(BLOCKED_USERS_KEY, JSON.stringify(list));
 
-    if (window.lyannAlert) {
-        window.lyannAlert(`🔓 L'utilisateur a été débloqué avec succès.`);
-    }
+    if (typeof window.lyannToast === 'function') window.lyannToast('Le membre a été débloqué.', 'success');
 
     if (typeof renderMessages === 'function') renderMessages();
     if (typeof window.renderChatContacts === 'function') window.renderChatContacts();
+    return true;
 };
 
 window.openReportModal = function(targetName = null) {
@@ -1119,19 +1142,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
     }
 
     else if (actionId === 'REQUEST_HELP') {
-        const desc = await window.lyannPrompt("De quoi avez-vous besoin ? (ex: Aide au déménagement, réparation fuite)");
-        if (!desc) return;
-        if (window.LYANN_API_CLIENT) {
-            await window.LYANN_API_CLIENT.mockCreateNeed(getMyId(), contactId, desc);
-        }
-        addMessageToContact(contactId, {
-            type: 'text',
-            sender: getMyId(),
-            text: `🤝 Demande d'aide : "${desc}"`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
-        refreshOpenBusinessCards();
-        return;
+        return handleChatAction('DIRECT_ASK', mission);
     }
 
     else if (actionId === 'DISCUSS_PRICE' || actionId === 'COUNTER_OFFER') {
@@ -1170,18 +1181,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                 return;
             }
         }
-        if (!mission || !isMissionUuid(mission.id) || !window.LYANN_API_CLIENT) {
-            return refuseUnlinkedMission('Acceptation');
-        }
-        await window.LYANN_API_CLIENT.mockAcceptPrice(mission.id, getMyId());
-        addMessageToContact(contactId, {
-            type: 'system_card',
-            cardType: 'AGREEMENT_REACHED',
-            amount: mission.agreed_price,
-            title: mission.title || 'Prestation convenue',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
-        refreshOpenBusinessCards();
+        return refuseUnlinkedMission('Acceptation');
     }
     else if (actionId === 'REJECT_QUOTE') {
         if (window.LYANN_API_CLIENT && extraData && extraData.quoteId) {

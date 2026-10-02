@@ -40,7 +40,7 @@ for (const file of productPages) {
   const html = read(file);
   if (!html.includes('<script src="script.js')) continue;
   const cacheIndex = html.indexOf('<script src="data-cache.js"></script>');
-  const repoIndex = html.indexOf('<script src="profile-repository.js"></script>');
+  const repoIndex = html.search(/<script src="profile-repository\.js(\?[^"]*)?"><\/script>/);
   const scriptIndex = html.indexOf('<script src="script.js');
   if (repoIndex === -1) fail(`${file}: profile-repository.js missing`);
   else if (cacheIndex === -1) fail(`${file}: data-cache.js missing`);

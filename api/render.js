@@ -11,7 +11,9 @@ const ALLOWED_PAGES = new Set([
   'how-it-works.html',
   'about.html',
   'confirm-signup.html',
-  'auth-callback.html'
+  'auth-callback.html',
+  'legal.html',
+  'confidentialite.html'
 ]);
 
 module.exports = function handler(req, res) {

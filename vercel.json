@@ -74,6 +74,22 @@
       "destination": "/api/render?file=confirm-signup.html"
     },
     {
+      "source": "/legal",
+      "destination": "/api/render?file=legal.html"
+    },
+    {
+      "source": "/legal.html",
+      "destination": "/api/render?file=legal.html"
+    },
+    {
+      "source": "/confidentialite",
+      "destination": "/api/render?file=confidentialite.html"
+    },
+    {
+      "source": "/confidentialite.html",
+      "destination": "/api/render?file=confidentialite.html"
+    },
+    {
       "source": "/auth/callback",
       "destination": "/api/render?file=auth-callback.html"
     },
@@ -125,6 +141,45 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(js|css)",
+      "missing": [
+        {
+          "type": "query",
+          "key": "build"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(js|css)",
+      "has": [
+        {
+          "type": "query",
+          "key": "build"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(png|jpg|jpeg|gif|webp|avif|svg|ico|mp4|webm|woff2)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800, stale-while-revalidate=2592000"
         }
       ]
     }

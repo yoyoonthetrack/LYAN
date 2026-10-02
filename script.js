@@ -11,6 +11,15 @@ window.__LYANN_AUTH_REAL__ = window.__LYANN_AUTH_REAL__ || {
 // Runtime tracing retired after architecture stabilization.
 function logLyannTrace() {}
 
+const LYANN_EN_MONTHS_FR = {
+    january: 'janvier', february: 'février', march: 'mars', april: 'avril', may: 'mai', june: 'juin',
+    july: 'juillet', august: 'août', september: 'septembre', october: 'octobre', november: 'novembre', december: 'décembre'
+};
+function formatMemberSinceFr(value) {
+    return String(value || '').replace(/[A-Za-z]+/g, (word) => LYANN_EN_MONTHS_FR[word.toLowerCase()] || word);
+}
+window.formatMemberSinceFr = formatMemberSinceFr;
+
 // The window opened last stays in front of the one it was opened from.
 (function installLyannWindowStack() {
     let z = 120000;
@@ -1164,7 +1173,7 @@ safeDomReady(() => {
         let trustItems = [];
         if (avgRating) trustItems.push(`<button type="button" class="lyann-trust-item lyann-trust-stars" onclick="document.getElementById('profileAvis')?.scrollIntoView({behavior:'smooth', block:'start'})" style="background:none;border:none;padding:0;cursor:pointer;font:inherit;color:inherit;"><i class="ph-fill ph-star" style="color:#F59E0B;"></i> ${avgRating} (${reviewsCount})</button>`);
         if (completedMissions > 0) trustItems.push(`<span class="lyann-trust-item"><i class="ph ph-hand-heart" style="color:#4A7C59;"></i> ${completedMissions} ${completedMissions > 1 ? 'missions' : 'mission'}</span>`);
-        if (pData.member_since) trustItems.push(`<span class="lyann-trust-item"><i class="ph ph-calendar-blank"></i> Membre depuis ${window.escapeHtmlAttr(pData.member_since)}</span>`);
+        if (pData.member_since) trustItems.push(`<span class="lyann-trust-item"><i class="ph ph-calendar-blank"></i> Membre depuis ${window.escapeHtmlAttr(formatMemberSinceFr(pData.member_since))}</span>`);
         if (metrics.response_rate_percent !== null && metrics.response_rate_percent !== undefined) trustItems.push(`<span class="lyann-trust-item"><i class="ph ph-lightning"></i> ${metrics.response_rate_percent}% de réponse</span>`);
 
         let trustLineHTML = '';
@@ -1782,16 +1791,64 @@ safeDomReady(() => {
         });
     });
 
-    // 2. Clic sur les cartes de talents (David, Sarah, Kevin) -> Ouvre le profil public
-    document.querySelectorAll('.talent-card-trigger').forEach(card => {
-        card.addEventListener('click', (e) => {
+    // 2. Cartes talents de l'accueil : profils réels les mieux notés, fiche publique au clic.
+    const talentsGrid = document.querySelector('.talents-grid');
+    if (talentsGrid) {
+        talentsGrid.addEventListener('click', (e) => {
+            const card = e.target.closest('.talent-card-trigger');
+            if (!card) return;
             e.preventDefault();
             const memberId = card.getAttribute('data-member-id');
-            if (memberId) {
+            if (memberId && window.isUUID && window.isUUID(memberId)) {
                 openPublicMemberProfile(memberId);
+            } else {
+                const query = card.getAttribute('data-explorer-query') || '';
+                if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('explorer', { query });
+                else window.location.href = `results.html?query=${encodeURIComponent(query)}`;
             }
         });
-    });
+        hydrateHomeTalents(talentsGrid).catch((err) => console.warn('[HOME] talents hydration skipped', err));
+    }
+
+    async function hydrateHomeTalents(grid) {
+        const client = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+        if (!client) return;
+        const { data, error } = await client
+            .from('public_profiles')
+            .select('id,first_name,last_name,city,bio,avatar_url,average_rating,reviews_count')
+            .not('avatar_url', 'is', null)
+            .limit(100);
+        if (error || !data) return;
+        const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+        const catalog = window.LYANN_MAISON_CATALOG || [];
+        const ranked = data.map((p) => {
+            const seed = catalog.find((m) => norm(m.first_name) === norm(p.first_name) && norm(m.last_name).charAt(0) === norm(p.last_name).charAt(0)) || null;
+            const rating = Number(p.average_rating) || Number(seed && seed.rating) || 0;
+            const reviews = Number(p.reviews_count) || Number(seed && seed.reviews_count) || 0;
+            const bio = String((seed && seed.bio) || p.bio || '').replace(/^«\s*|\s*»$/g, '').trim();
+            return { p, seed, rating, reviews, bio };
+        }).filter((x) => x.rating >= 4.5 && x.reviews > 0 && x.bio)
+          .sort((a, b) => (b.rating - a.rating) || (b.reviews - a.reviews))
+          .slice(0, 3);
+        if (ranked.length < 3) return;
+        const esc = window.escapeHtmlAttr;
+        grid.innerHTML = ranked.map(({ p, seed, rating: score, reviews, bio }) => {
+            const lastInitial = p.last_name ? ` ${String(p.last_name).charAt(0).toUpperCase()}.` : '';
+            const name = `${p.first_name || 'Lyanneur'}${lastInitial}`;
+            const rating = score.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            const shortBio = bio.length > 140 ? `${bio.slice(0, 137)}…` : bio;
+            const role = [((seed && seed.skills) || []).slice(0, 2).join(' & '), p.city].filter(Boolean).join(' · ');
+            const reviewsLabel = reviews;
+            return `
+                <div class="talent-card talent-card-trigger" data-member-id="${esc(p.id)}" role="button" tabindex="0" aria-label="Voir le profil de ${esc(name)}" style="cursor: pointer;">
+                    <div class="talent-photo"><img src="${esc(p.avatar_url)}" alt="${esc(name)}" loading="lazy" width="120" height="120"></div>
+                    <h3>${esc(name)}</h3>
+                    <span class="talent-role">${esc(role)}</span>
+                    <div class="talent-stars" aria-label="Note ${esc(rating)} sur 5"><i class="ph-fill ph-star" style="color:#F59E0B;"></i> ${esc(rating)} · ${esc(reviewsLabel)} avis</div>
+                    <blockquote>« ${esc(shortBio)} »</blockquote>
+                </div>`;
+        }).join('');
+    }
 
     // 3. Gestionnaire FAQ Accordéon
     document.querySelectorAll('.faq-question').forEach(btn => {
@@ -2108,7 +2165,7 @@ safeDomReady(() => {
                         <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
                             <li><i class="ph-fill ph-shield-check" style="color: #173F36;"></i> <strong>Équipes, multi-membres & collaborateurs</strong></li>
                             <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Multi-zones géographiques d'intervention</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Dashboard entreprise & export CSV</li>
+                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Tableau de bord entreprise & export CSV</li>
                             <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Support client prioritaire 7j/7</li>
                         </ul>
                     `;
@@ -2679,7 +2736,7 @@ safeDomReady(() => {
             const safeMembers = window.LYANN_MEMBERS || [];
             function safeMentions(text) {
                 if (!text) return '';
-                return String(text).replace(/@([A-Za-z0-9_À-ÿ-]+)/g, (match, username) => {
+                return window.escapeHtmlAttr(String(text)).replace(/@([A-Za-z0-9_À-ÿ-]+)/g, (match, username) => {
                     const cleanName = username.replace(/_/g, ' ');
                     const matched = safeMembers.find(m => m && m.name && m.name.toLowerCase().includes(cleanName.toLowerCase()));
                     const memberId = matched ? matched.id : 1;
@@ -2733,15 +2790,17 @@ safeDomReady(() => {
                     if (cleanCat.includes(' — ')) cleanCat = cleanCat.split(' — ')[0].trim();
                     if (cleanCat.includes(' > ')) cleanCat = cleanCat.split(' > ')[0].trim();
 
-                    const badgeText = isLyann ? `LYANN · ${cleanCat}` : (post.badge || 'PUBLICATION');
+                    const badgeIcon = !isLyann && /^ph-[a-z-]+$/.test(post.badgeIcon || '') ? `<i class="ph ${post.badgeIcon}" aria-hidden="true"></i> ` : '';
+                    const badgeText = badgeIcon + window.escapeHtmlAttr(isLyann ? `LYANN · ${cleanCat}` : (post.badge || 'PUBLICATION'));
                     
                     let authorDisplayName = post.author_name || post.authorName;
                     if ((!authorDisplayName || authorDisplayName === 'Lyanneur' || isUUID(authorDisplayName)) && authorId && isUUID(authorId) && window.LYANN_PROFILES_CACHE && window.LYANN_PROFILES_CACHE[authorId]) {
                         authorDisplayName = window.LYANN_PROFILES_CACHE[authorId].displayName;
                     }
                     if (!authorDisplayName || isUUID(authorDisplayName)) authorDisplayName = 'Lyanneur';
+                    const authorDisplayNameHtml = window.escapeHtmlAttr(authorDisplayName);
 
-                    const locationText = post.author_city || post.location || 'Guadeloupe';
+                    const locationText = window.escapeHtmlAttr(post.author_city || post.location || 'Guadeloupe');
                     const timeAgoText = post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : (post.timeAgo || 'Récemment');
                     
                     const rawTitle = (post.title || '').trim();
@@ -2764,9 +2823,9 @@ safeDomReady(() => {
                         cardBody = rawContent;
                     }
 
-                    const cardTitleHTML = cardHeadline ? `<div class="lyann-card-title" style="font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif; font-weight: 650; font-size: 1.15rem; color: #17231C; line-height: 1.3; letter-spacing: -0.015em; margin-bottom: 4px; word-break: break-word;">${cardHeadline}</div>` : '';
+                    const cardTitleHTML = cardHeadline ? `<div class="lyann-card-title" style="font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif; font-weight: 650; font-size: 1.15rem; color: #17231C; line-height: 1.3; letter-spacing: -0.015em; margin-bottom: 4px; word-break: break-word;">${window.escapeHtmlAttr(cardHeadline)}</div>` : '';
                     const cardBodyHTML = cardBody ? `<div class="lyann-card-description" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 450; font-size: 0.95rem; color: #334155; line-height: 1.5; word-break: break-word; margin-top: 2px;">${safeMentions(cardBody)}</div>` : '';
-                    const budgetHTML = (isLyann && post.budget) ? ` · Budget : ${post.budget} €` : '';
+                    const budgetHTML = (isLyann && post.budget) ? ` · Budget : ${window.escapeHtmlAttr(post.budget)} €` : '';
 
                     let hasBodyContent = cardHeadline || cardBody || mediaHTML;
                     let bodyBlockHTML = hasBodyContent ? `<div class="flash-card-body" style="margin-top: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">${cardTitleHTML}${cardBodyHTML}${mediaHTML}</div>` : '';
@@ -2812,7 +2871,7 @@ safeDomReady(() => {
                                     <div class="flash-author-block trigger-quick-profile" role="button" tabindex="0" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
                                         <img src="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" onerror="window.handleAvatarError(this)" alt="${window.escapeHtmlAttr(authorDisplayName)}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
                                         <div class="flash-author-info" style="line-height: 1.25; min-width: 0; flex: 1;">
-                                            <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayName} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i></strong>
+                                            <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayNameHtml} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i></strong>
                                             <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
                                         </div>
                                     </div>
@@ -2823,7 +2882,13 @@ safeDomReady(() => {
                                             <button type="button" class="btn-edit-own-post" data-post-id="${targetId}">Modifier</button>
                                             <button type="button" class="btn-delete-own-post" data-post-id="${targetId}">Supprimer</button>
                                         </div>
-                                    </details>` : ''}
+                                    </details>` : (!isOwnLyann && targetId ? `
+                                    <details class="lyann-post-menu">
+                                        <summary aria-label="Plus d'actions"><i class="ph ph-dots-three-bold"></i></summary>
+                                        <div class="lyann-post-menu-panel">
+                                            <button type="button" class="btn-report-feed-item" data-target-id="${targetId}" data-target-type="${targetType}">Signaler</button>
+                                        </div>
+                                    </details>` : '')}
                                     <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-favorite-id="${targetId}" data-fav-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-fav-id="${targetId}" data-surface="bokantaj-feed" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                                         <i class="ph ph-bookmark-simple"></i>
                                     </button>
@@ -3134,6 +3199,26 @@ safeDomReady(() => {
                 if (reqId && typeof window.openLyannDetailModal === 'function') {
                     window.openLyannDetailModal(reqId);
                 }
+            });
+        });
+
+        document.querySelectorAll('.btn-report-feed-item').forEach(btn => {
+            if (btn.dataset.listenersBound === 'true') return;
+            btn.dataset.listenersBound = 'true';
+            btn.addEventListener('click', async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                btn.closest('details')?.removeAttribute('open');
+                const session = window.LYANN_API_CLIENT ? await window.LYANN_API_CLIENT.getCurrentUser() : null;
+                if (!session) {
+                    if (window.LYANN_ROUTER?.requireAuthForInteraction) window.LYANN_ROUTER.requireAuthForInteraction('reaction', { id: btn.dataset.targetId });
+                    else window.lyannToast?.('Connectez-vous pour signaler un contenu.', 'info');
+                    return;
+                }
+                const ok = await window.lyannConfirm('Signaler ce contenu à l’équipe LYANN ? Il sera examiné rapidement.');
+                if (!ok) return;
+                const sent = await window.LYANN_API_CLIENT.reportContent({ targetId: btn.dataset.targetId, targetType: btn.dataset.targetType });
+                window.lyannToast(sent ? 'Merci, le contenu a été signalé.' : 'Le signalement n’a pas pu être envoyé. Réessayez.', sent ? 'success' : 'warning');
             });
         });
 
@@ -3579,7 +3664,7 @@ safeDomReady(() => {
         const avatarSrc = window.getLyannAvatarUrl(member.avatar_url || member.avatar);
         const cityText = window.formatProfileLocation(member.commune || member.city || member.locationName, member.territory);
         const roleText = member.role || (member.is_pro ? 'Professionnel' : 'Membre LYANN');
-        const badgeText = member.badge || (member.is_pro ? 'Artisan PRO' : (member.is_verified ? 'Profil Vérifié' : ''));
+        const badgeText = member.badge || (member.is_pro_verified ? 'Pro vérifié' : (member.is_verified ? 'Profil vérifié' : ''));
         const rawSkills = Array.isArray(member.skills) && member.skills.length > 0 ? member.skills : (Array.isArray(member.intervention_zone) && member.intervention_zone.length > 0 ? member.intervention_zone : (typeof member.skills === 'string' ? member.skills.split(',') : []));
         const skillsList = rawSkills.filter(Boolean);
 
@@ -3603,7 +3688,7 @@ safeDomReady(() => {
 
         if (quickProfileSkills) {
             if (skillsList.length > 0) {
-                quickProfileSkills.innerHTML = skillsList.map(s => `<span class="quick-skill-pill">${s.trim()}</span>`).join('');
+                quickProfileSkills.innerHTML = skillsList.map(s => `<span class="quick-skill-pill">${window.escapeHtmlAttr(String(s).trim())}</span>`).join('');
                 quickProfileSkills.style.display = 'flex';
             } else {
                 quickProfileSkills.style.display = 'none';
@@ -4208,7 +4293,7 @@ safeDomReady(() => {
                     <div class="account-v3-empty" style="background:#FFFFFF; border:1px solid #EAE6DF; border-radius:18px; padding:32px 20px; text-align:center;">
                         <i class="ph ph-broadcast" style="font-size:2.2rem; color:#94A3B8; margin-bottom:10px; display:block;"></i>
                         <h5 style="font-size:1rem; font-weight:700; color:#17231C; margin:0 0 6px 0;">Aucune annonce publiée</h5>
-                        <p style="font-size:0.86rem; color:#64748B; margin:0 0 16px 0;">Tu n'as encore publié aucun besoin sur LYANN.</p>
+                        <p style="font-size:0.86rem; color:#64748B; margin:0 0 16px 0;">Vous n'avez encore publié aucun besoin sur LYANN.</p>
                         <button class="btn btn-primary btn-sm" onclick="window.closeUserAccountModal(); if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('publish'); else if (typeof window.openLyannWizard === 'function') window.openLyannWizard();" style="display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-plus"></i> Publier un besoin</button>
                     </div>
                 `;
@@ -4388,18 +4473,11 @@ safeDomReady(() => {
                 <div class="account-desktop-sections">
                     <section class="account-desktop-section">
                         <div class="account-v3-balance-card" style="background: linear-gradient(135deg, #17231C 0%, #2D4A38 100%); color: white; border-radius: 20px; padding: 24px; margin-bottom: 8px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                                <div>
-                                    <span style="font-size:0.82rem; color:rgba(255,255,255,0.8); display:block;">Solde disponible</span>
-                                    <strong style="font-size:1.6rem; color:white;">Indisponible</strong>
-                                </div>
-                                <div style="text-align:right;">
-                                    <span style="font-size:0.82rem; color:rgba(255,255,255,0.8); display:block;">En cours</span>
-                                    <strong style="font-size:1.3rem; color:white;">Indisponible</strong>
-                                </div>
+                            <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+                                <i class="ph ph-shield-check" style="font-size:1.6rem;" aria-hidden="true"></i>
+                                <strong style="font-size:1.15rem; color:white;">Paiements sécurisés</strong>
                             </div>
-                            <p style="margin:0 0 14px 0; font-size:0.85rem; line-height:1.45; color:rgba(255,255,255,0.85);">Le solde Stripe n’est pas raccordé à cet écran. Aucun montant n’est affiché, et aucun versement ne peut être déclenché ici.</p>
-                            <button type="button" class="btn" id="accountWithdrawFundsBtn" disabled aria-disabled="true" style="width:100%; justify-content:center; background:rgba(255,255,255,0.16); color:rgba(255,255,255,0.7); border:none; padding:12px; font-weight:700; cursor:not-allowed;"><i class="ph ph-hand-coins"></i> Retirer mes fonds</button>
+                            <p style="margin:0; font-size:0.9rem; line-height:1.5; color:rgba(255,255,255,0.88);">Le montant de chaque mission est suivi dans sa conversation : devis, paiement, puis versement une fois la mission confirmée. Les fonds sont conservés par Stripe, notre partenaire de paiement.</p>
                         </div>
                     </section>
                     <section class="account-desktop-section">
@@ -4785,7 +4863,7 @@ safeDomReady(() => {
         try {
             await client.deleteMyAccount();
             window.closeUserAccountModal?.();
-            if (window.NotificationService) window.NotificationService.showToast('success', 'Ton compte a été supprimé.');
+            if (window.NotificationService) window.NotificationService.showToast('success', 'Votre compte a été supprimé.');
             window.location.assign('index.html');
         } catch (err) {
             if (window.lyannAlert) window.lyannAlert(err.message || 'La suppression n’a pas abouti. Écris à contact@lyann.app.');
@@ -5071,18 +5149,6 @@ safeDomReady(() => {
             });
         }
 
-        // Raccourci 4 : Scanner un QR Code
-        const sdActionScanQR = document.getElementById('sdActionScanQR');
-        if (sdActionScanQR) {
-            sdActionScanQR.addEventListener('click', (e) => {
-                e.preventDefault();
-                speedDialWrapper.classList.remove('active');
-                if (window.lyannAlert) {
-                    window.lyannAlert('Le scan QR n’est pas encore disponible.');
-                }
-            });
-        }
-
         // Raccourci 5 : Contacter un lyanneur
         const sdActionContactUser = document.getElementById('sdActionContactUser');
         if (sdActionContactUser) {
@@ -5280,11 +5346,11 @@ safeDomReady(() => {
         if (kpiRatingLabel) kpiRatingLabel.textContent = '0 avis';
         if (kpiMissionsVal) kpiMissionsVal.textContent = String(completedMissionsCount);
         if (kpiDemandesVal) kpiDemandesVal.textContent = String(requestedMissionsCount);
-        if (kpiRespTimeVal) kpiRespTimeVal.textContent = 'N/A';
-        if (kpiRevenueVal) kpiRevenueVal.textContent = 'Indisponible';
-        if (kpiExpensesVal) kpiExpensesVal.textContent = 'Indisponible';
-        if (kpiAvailBalVal) kpiAvailBalVal.textContent = 'Indisponible';
-        if (kpiPendBalVal) kpiPendBalVal.textContent = 'Indisponible';
+        if (kpiRespTimeVal) kpiRespTimeVal.textContent = '—';
+        if (kpiRevenueVal) kpiRevenueVal.textContent = '—';
+        if (kpiExpensesVal) kpiExpensesVal.textContent = '—';
+        if (kpiAvailBalVal) kpiAvailBalVal.textContent = '—';
+        if (kpiPendBalVal) kpiPendBalVal.textContent = '—';
 
         // Render Clean Empty State Containers for logged-in user with no activity
         const servicesContainer = document.getElementById('accountServicesContainer');
@@ -5962,6 +6028,10 @@ safeDomReady(() => {
                 window.__LYANN_AUTH_REAL__.userId = userId;
             }
 
+            if (event === 'PASSWORD_RECOVERY' && typeof window.openLyannPasswordRecovery === 'function') {
+                window.openLyannPasswordRecovery();
+            }
+
             if (event === 'INITIAL_SESSION') {
                 console.log('[AUTH_REAL] INITIAL_SESSION processed. sessionPresent = ' + !!session);
                 authInitializationComplete = true;
@@ -6212,6 +6282,10 @@ safeDomReady(() => {
 
     // System Toast Notification
     function showLyanToast(message, icon = '✨') {
+        if (typeof window.lyannToast === 'function') {
+            window.lyannToast(message, icon === '⚠️' || icon === '❌' ? 'warning' : 'success');
+            return;
+        }
         let toastContainer = document.getElementById('lyanToastContainer');
         if (!toastContainer) {
             toastContainer = document.createElement('div');
@@ -7976,7 +8050,7 @@ safeDomReady(() => {
                 if (window.NotificationService) {
                     const successText = privateOnly
                         ? 'Demande envoyée uniquement à cette personne.'
-                        : (directId ? 'Demande envoyée à cette personne et publiée dans Explorer.' : 'Ton besoin a été publié avec succès !');
+                        : (directId ? 'Demande envoyée à cette personne et publiée dans Explorer.' : 'Votre besoin a été publié.');
                     window.NotificationService.showToast('success', successText);
                 }
                 window._lyannDirectAskContactId = null;
@@ -8083,8 +8157,8 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
             <div style="width: 60px; height: 60px; background: rgba(74, 124, 89, 0.14); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
                 <i class="ph-fill ph-check-circle" style="font-size: 36px; color: var(--primary);"></i>
             </div>
-            <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--primary-dark); margin: 0 0 6px 0;">Ton Lyann est publié !</h3>
-            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 20px 0;">Ton besoin est maintenant publié dans Explorer → Annonces.</p>
+            <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--primary-dark); margin: 0 0 6px 0;">Votre Lyann est publié !</h3>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 20px 0;">Votre besoin est maintenant visible dans Explorer, onglet Annonces.</p>
             
             <div style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 18px; text-align: left; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
@@ -8533,24 +8607,28 @@ window.loadUserRequestsUI = async function() {
         }
 
         let html = '<div class="user-requests-grid" style="display: grid; gap: 12px; margin-top: 10px;">';
+        const esc = window.escapeHtmlAttr;
+        const statusLabels = { OPEN: 'Ouverte', IN_PROGRESS: 'En cours', ASSIGNED: 'Attribuée', COMPLETED: 'Terminée', CLOSED: 'Clôturée', CANCELLED: 'Annulée', EXPIRED: 'Expirée' };
         for (const req of requests) {
             const dateStr = req.created_at ? new Date(req.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Récemment';
-            const budgetStr = req.budget ? `${req.budget} €` : 'Sur devis';
+            const budgetStr = req.budget ? `${esc(req.budget)} €` : 'Sur devis';
+            const statusKey = String(req.status || 'OPEN').toUpperCase();
+            const statusLabel = statusLabels[statusKey] || 'Ouverte';
 
             html += `
-                <div class="request-card-item" data-id="${req.id}" style="background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div class="request-card-item" data-id="${esc(req.id)}" style="background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
                         <div>
-                            <span class="badge" style="background: #EBF3EE; color: #2D5A39; font-weight: 700; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; text-transform: uppercase;">${req.category || 'Besoin'}</span>
-                            <h5 style="margin: 6px 0 2px 0; font-size: 1.05rem; font-weight: 700;">${req.title || 'Sans titre'}</h5>
+                            <span class="badge" style="background: #EBF3EE; color: #2D5A39; font-weight: 700; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; text-transform: uppercase;">${esc(req.category || 'Besoin')}</span>
+                            <h5 style="margin: 6px 0 2px 0; font-size: 1.05rem; font-weight: 700;">${esc(req.title || 'Sans titre')}</h5>
                         </div>
                         <span style="font-weight: 800; font-size: 1.1rem; color: var(--primary, #2D5A39);">${budgetStr}</span>
                     </div>
-                    <p style="font-size: 0.9rem; color: #4a5568; margin-bottom: 12px; line-height: 1.4;">${req.description || 'Pas de description'}</p>
+                    <p style="font-size: 0.9rem; color: #4a5568; margin-bottom: 12px; line-height: 1.4;">${esc(req.description || 'Pas de description')}</p>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: #718096; border-top: 1px solid #f0f0f0; padding-top: 8px;">
-                        <span><i class="ph ph-map-pin"></i> ${req.location || 'Guadeloupe'}</span>
+                        <span><i class="ph ph-map-pin"></i> ${esc(req.location || 'Guadeloupe')}</span>
                         <span><i class="ph ph-clock"></i> ${dateStr}</span>
-                        <span class="status-pill" style="font-weight: 700; color: #2b6cb0;">● ${req.status || 'OPEN'}</span>
+                        <span class="status-pill" style="font-weight: 700; color: #2b6cb0;">● ${statusLabel}</span>
                     </div>
                 </div>
             `;

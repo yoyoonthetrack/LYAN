@@ -73,7 +73,7 @@
                 missing.scrollIntoView({ block: 'center', behavior: 'smooth' });
             }
             const message = missing === desc
-                ? 'Ajoute une description de la prestation avant d’envoyer l’offre.'
+                ? 'Ajoutez une description de la prestation avant d’envoyer l’offre.'
                 : 'Indique le montant proposé avant d’envoyer l’offre.';
             if (typeof window.showToast === 'function') window.showToast(message, 'error');
             else if (typeof window.lyannAlert === 'function') window.lyannAlert(message);

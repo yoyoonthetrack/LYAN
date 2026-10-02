@@ -1,4 +1,6 @@
 const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 
 const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260922w" defer></script>';
 const SHARED_RUNTIME_TAGS = [
@@ -109,7 +111,7 @@ function injectSharedStylesheet(html) {
 const BOOT_SPLASH_SKIP_SCRIPT = `<style>html.lyann-boot-splash-skip .lyann-boot-splash{display:none!important}</style>
     <script>(function(){try{var skip=sessionStorage.getItem('lyann_boot_splash_seen')==='1'||/Playwright|HeadlessChrome/i.test(navigator.userAgent);if(skip)document.documentElement.classList.add('lyann-boot-splash-skip');}catch(e){}})();</script>`;
 const BOOT_SPLASH_MARKUP = `<div id="lyannBootSplash" class="lyann-boot-splash" role="status" aria-label="Chargement de LYANN" style="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#F8F8F5;border:0;margin:0;padding:0;box-shadow:none;">
-  <img src="lyann-boot-logo.gif" alt="" width="132" height="132" decoding="async" style="width:132px;height:132px;border:0;outline:none;box-shadow:none;background:#F8F8F5;display:block;border-radius:0;mix-blend-mode:darken;">
+  <img src="lyann-boot-logo.webp" alt="" width="132" height="132" decoding="async" style="width:132px;height:132px;border:0;outline:none;box-shadow:none;background:#F8F8F5;display:block;border-radius:0;mix-blend-mode:darken;">
 </div>
 <script>
 (function(){
@@ -127,7 +129,10 @@ const BOOT_SPLASH_MARKUP = `<div id="lyannBootSplash" class="lyann-boot-splash" 
     el.classList.add('is-done');
     setTimeout(function(){ if(el&&el.parentNode) el.remove(); }, 380);
   }
-  setTimeout(hide, 5000);
+  var shownAt=Date.now();
+  function hideWhenReady(){ setTimeout(hide, Math.max(0, 1200-(Date.now()-shownAt))); }
+  if(document.readyState==='complete') hideWhenReady(); else window.addEventListener('load', hideWhenReady, {once:true});
+  setTimeout(hide, 4000);
 })();
 </script>`;
 
@@ -147,14 +152,38 @@ function injectBootSplash(html) {
   return out;
 }
 
+let cachedAssetVersion = null;
+function assetVersion() {
+  if (cachedAssetVersion) return cachedAssetVersion;
+  const fromEnv = process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || '';
+  if (fromEnv) {
+    cachedAssetVersion = fromEnv.replace(/[^A-Za-z0-9]/g, '').slice(-12);
+    return cachedAssetVersion;
+  }
+  const hash = crypto.createHash('sha1');
+  for (const file of fs.readdirSync(__dirname).filter((f) => /\.(js|css)$/.test(f)).sort()) {
+    hash.update(file).update(fs.readFileSync(path.join(__dirname, file)));
+  }
+  cachedAssetVersion = hash.digest('hex').slice(0, 12);
+  return cachedAssetVersion;
+}
+
+const QUIET_CONSOLE_SCRIPT = "(function(){try{var h=location.hostname,p=location.protocol;var prod=h==='lyann.app'||h==='www.lyann.app'||p==='capacitor:';if(!prod||/lyann_debug=1/.test(location.search)||localStorage.getItem('lyann_debug')==='1')return;var n=function(){};console.log=n;console.debug=n;console.info=n;}catch(e){}})();";
+
+function isRemoteAsset(assetPath) {
+  return /^(?:[a-z]+:)?\/\//i.test(assetPath) || assetPath.startsWith('data:');
+}
+
 function enforceScriptCacheBusting(html) {
-  const version = '20260927-apple';
-  return String(html || '').replace(/src="([^"]+\.js)(?:\?v=[^"]*)?"/gi, (match, scriptPath) => {
-    if (scriptPath.startsWith('http://') || scriptPath.startsWith('https://') || scriptPath.startsWith('//')) {
-      return match;
-    }
-    return `src="${scriptPath}?v=${version}"`;
-  });
+  const version = assetVersion();
+  return String(html || '')
+    .replace(/src="([^"]+\.js)(?:\?(?:v|build)=[^"]*)?"/gi, (match, scriptPath) => (
+      isRemoteAsset(scriptPath) ? match : `src="${scriptPath}?build=${version}"`
+    ))
+    .replace(/href="([^"]+\.css)(?:\?(?:v|build)=[^"]*)?"/gi, (match, stylePath) => (
+      isRemoteAsset(stylePath) ? match : `href="${stylePath}?build=${version}"`
+    ))
+    .replace('</head>', `    <script>window.LYANN_ASSET_VERSION=${JSON.stringify(version)};${QUIET_CONSOLE_SCRIPT}</script>\n</head>`);
 }
 
 function injectDataCache(html) {
@@ -194,8 +223,17 @@ function injectIsolatedSupabaseConfig(html) {
   return out.includes('</head>') ? out.replace('</head>', `${tag}</head>`) : `${tag}${out}`;
 }
 
+function lazyLoadImages(html) {
+  let seen = 0;
+  return String(html || '').replace(/<img\b([^>]*)>/gi, (tag, attrs) => {
+    seen += 1;
+    if (seen <= 4 || /\bloading=|\bfetchpriority=|logo|hero|lyannBootSplash/i.test(attrs)) return tag;
+    return `<img loading="lazy" decoding="async"${attrs}>`;
+  });
+}
+
 function buildHtml(html) {
-  return enforceScriptCacheBusting(injectBootSplash(injectSharedStylesheet(injectProductionHygiene(injectSharedRuntime(injectDataCache(sanitizeStaticHtml(html)))))));
+  return lazyLoadImages(enforceScriptCacheBusting(injectBootSplash(injectSharedStylesheet(injectProductionHygiene(injectSharedRuntime(injectDataCache(sanitizeStaticHtml(html))))))));
 }
 
 function buildHtmlFile(sourcePath, destinationPath = sourcePath) {

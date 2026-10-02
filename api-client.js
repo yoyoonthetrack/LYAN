@@ -17,6 +17,8 @@ window.isUUID = isUUID;
 
 // The annonce title is a one-line summary shown on every card.
 const LYANN_REQUEST_TITLE_MAX = 60;
+const LYANN_FEED_PAGE_SIZE = 60;
+const LEGACY_MISSION_WRITE_DISABLED = 'Cette action passe désormais par le devis sécurisé de la conversation.';
 window.LYANN_REQUEST_TITLE_MAX = LYANN_REQUEST_TITLE_MAX;
 
 // PostgREST reports an unknown column as 42703, or as PGRST204 when its schema
@@ -225,7 +227,7 @@ function normalizeAuthError(error) {
         return { message: 'Adresse email ou mot de passe incorrect.' };
     }
     if (msg.includes('email not confirmed')) {
-        return { message: 'Ton compte est créé. Ouvre le lien reçu par email pour activer la connexion, puis réessaie.' };
+        return { message: 'Votre compte est créé. Ouvrez le lien reçu par email pour activer la connexion, puis réessayez.' };
     }
     if (msg.includes('rate limit') || msg.includes('too many requests')) {
         return { message: 'Trop de tentatives effectuées. Veuillez patienter quelques minutes.' };
@@ -521,7 +523,7 @@ const LYANN_API_CLIENT = {
                     avatar_url: p.avatar_url,
                     is_verified: !!p.is_verified,
                     is_pro_verified: !!(p.is_pro && p.kyc_verified),
-                    member_since: p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '2026',
+                    member_since: p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : null,
                     skills: p.intervention_zone || [],
                     intervention_zone: p.intervention_zone || [],
                     intervention_radius_km: p.intervention_radius_km || 10,
@@ -1070,12 +1072,13 @@ const LYANN_API_CLIENT = {
 
     async getMembers(territory = 'all', query = '') {
         if (!this.supabase) return { data: [] };
-        let req = this.supabase.from('public_profiles').select('*');
+        let req = this.supabase.from('public_profiles').select('*').limit(200);
         if (territory && territory !== 'all') {
             req = req.eq('territory', territory);
         }
-        if (query) {
-            req = req.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,bio.ilike.%${query}%`);
+        const safeQuery = String(query || '').replace(/[,()*%\\:"]/g, ' ').trim().slice(0, 80);
+        if (safeQuery) {
+            req = req.or(`first_name.ilike.%${safeQuery}%,last_name.ilike.%${safeQuery}%,bio.ilike.%${safeQuery}%`);
         }
         return await req;
     },
@@ -1097,7 +1100,8 @@ const LYANN_API_CLIENT = {
             const { data: postsData, error: postsError } = await this.supabase
                 .from('bokantaj_posts')
                 .select('*')
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .limit(LYANN_FEED_PAGE_SIZE);
 
             if (postsError) throw postsError;
             const posts = postsData || [];
@@ -1137,11 +1141,16 @@ const LYANN_API_CLIENT = {
             const userLikedRequestsSet = new Set();
 
             try {
-                const { data: allLikes } = await this.supabase
-                    .from('bokantaj_likes')
-                    .select('post_id, request_id, user_id');
-
-                const sessionUser = await this.getCurrentUser();
+                const postIds = posts.map(p => p.id).filter(Boolean);
+                const [likesRes, commentsRes, sessionUser] = postIds.length
+                    ? await Promise.all([
+                        this.supabase.from('bokantaj_likes').select('post_id, request_id, user_id').in('post_id', postIds),
+                        this.supabase.from('bokantaj_comments').select('post_id, request_id').in('post_id', postIds),
+                        this.getCurrentUser()
+                    ])
+                    : [{ data: [] }, { data: [] }, null];
+                const allLikes = likesRes && likesRes.data;
+                const allComments = commentsRes && commentsRes.data;
                 const currentUserId = sessionUser ? sessionUser.id : null;
 
                 if (allLikes && Array.isArray(allLikes)) {
@@ -1160,10 +1169,6 @@ const LYANN_API_CLIENT = {
                         }
                     });
                 }
-
-                const { data: allComments } = await this.supabase
-                    .from('bokantaj_comments')
-                    .select('post_id, request_id');
 
                 if (allComments && Array.isArray(allComments)) {
                     allComments.forEach(c => {
@@ -1188,7 +1193,8 @@ const LYANN_API_CLIENT = {
                     author_name: authorName,
                     author_avatar: avatarUrl,
                     author_city: authorProf?.city || authorProf?.territory || p.territory || 'Guadeloupe',
-                    badge: p.type === 'dispo' ? '<i class="ph ph-lightning"></i> Disponibilité' : (p.type === 'besoin' ? '<i class="ph ph-magnifying-glass"></i> Besoin' : '<i class="ph ph-newspaper"></i> Info Bokantaj'),
+                    badge: p.type === 'dispo' ? 'Disponibilité' : (p.type === 'besoin' ? 'Besoin' : 'Info Bokantaj'),
+                    badgeIcon: p.type === 'dispo' ? 'ph-lightning' : (p.type === 'besoin' ? 'ph-magnifying-glass' : 'ph-newspaper'),
                     type: p.type,
                     location: p.city || p.territory || authorProf?.city || '',
                     territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
@@ -1784,68 +1790,13 @@ const LYANN_API_CLIENT = {
         return data[0];
     },
 
-    /** @deprecated Compatibility wrapper. Remote production data only. */
-    async mockProposePrice(proposerId, receiverId, amount, description) {
-        if (!isUUID(proposerId) || !isUUID(receiverId) || !this.supabase) {
-            throw new Error('Proposition impossible sans session Supabase valide.');
-        }
-        const mission = await this.getActiveMissionBetween(proposerId, receiverId);
-        if (!mission || mission.status === 'COMPLETED' || mission.status === 'CANCELLED') {
-            const { data, error } = await this.supabase.from('missions').insert({
-                requester_id: receiverId,
-                helper_id: proposerId,
-                title: description || 'Service demandé',
-                agreed_price: amount,
-                status: 'PROPOSED',
-                proposed_by: proposerId
-            }).select().single();
-            if (error) throw error;
-            return data;
-        }
-        const { data, error } = await this.supabase.from('missions').update({
-            agreed_price: amount,
-            status: 'PROPOSED',
-            proposed_by: proposerId,
-            title: description || mission.title
-        }).eq('id', mission.id).select().single();
-        if (error) throw error;
-        return data;
-    },
-
-    async mockAcceptPrice(missionId) {
-        if (!isUUID(missionId) || !this.supabase) throw new Error('Mission invalide.');
-        const { data, error } = await this.supabase.from('missions').update({ status: 'AGREED' }).eq('id', missionId).select().single();
-        if (error) throw error;
-        return data;
-    },
-
-    async mockPayMission(missionId) {
-        if (!isUUID(missionId) || !this.supabase) throw new Error('Mission invalide.');
-        const { data, error } = await this.supabase.from('missions').update({ status: 'IN_PROGRESS', payment_status: 'PAID_ESCROW' }).eq('id', missionId).select().single();
-        if (error) throw error;
-        return data;
-    },
-
-    async mockMarkMissionDone(missionId) {
-        if (!isUUID(missionId) || !this.supabase) throw new Error('Mission invalide.');
-        const { data, error } = await this.supabase.from('missions').update({ status: 'WORK_MARKED_COMPLETE' }).eq('id', missionId).select().single();
-        if (error) throw error;
-        return data;
-    },
-
-    async mockConfirmMissionCompletion(missionId) {
-        if (!isUUID(missionId) || !this.supabase) throw new Error('Mission invalide.');
-        const { data, error } = await this.supabase.from('missions').update({ status: 'COMPLETED' }).eq('id', missionId).select().single();
-        if (error) throw error;
-        return data;
-    },
-
-    async mockReportProblem(missionId) {
-        if (!isUUID(missionId) || !this.supabase) throw new Error('Mission invalide.');
-        const { data, error } = await this.supabase.from('missions').update({ status: 'DISPUTE' }).eq('id', missionId).select().single();
-        if (error) throw error;
-        return data;
-    },
+    /** @deprecated Legacy mission writers are disabled: missions only change through server RPCs. */
+    async mockProposePrice() { throw new Error(LEGACY_MISSION_WRITE_DISABLED); },
+    async mockAcceptPrice() { throw new Error(LEGACY_MISSION_WRITE_DISABLED); },
+    async mockPayMission() { throw new Error(LEGACY_MISSION_WRITE_DISABLED); },
+    async mockMarkMissionDone() { throw new Error(LEGACY_MISSION_WRITE_DISABLED); },
+    async mockConfirmMissionCompletion() { throw new Error(LEGACY_MISSION_WRITE_DISABLED); },
+    async mockReportProblem() { throw new Error(LEGACY_MISSION_WRITE_DISABLED); },
 
     // --- STATE MACHINE & ROLE-BASED ACTIONS ---
     getAvailableMissionActions(userId, mission) {

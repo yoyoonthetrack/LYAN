@@ -19,6 +19,7 @@ async function installAuthHarness(page) {
     window.getActiveSupabaseSession = async () => ({ user: mockUser });
     window.__lyannAlerts = [];
     window.lyannAlert = async (message) => { window.__lyannAlerts.push(String(message)); };
+    window.lyannToast = (message) => { window.__lyannAlerts.push(String(message)); };
     if (window.LYANN_API_CLIENT) {
       window.LYANN_API_CLIENT.getUserProfile = async () => ({
         id: userId, first_name: 'Helper', last_name: 'LYANN', email: mockUser.email
@@ -46,10 +47,10 @@ test.describe('Account honesty and previously dead actions', () => {
     });
 
     await expect(page.locator('#userAccountModal')).toBeVisible();
-    await expect(page.locator('#userAccountModal')).toContainText('Indisponible');
+    await expect(page.locator('#userAccountModal')).toContainText('Paiements sécurisés');
     await expect(page.locator('#userAccountModal')).not.toContainText('0,00 €');
     await expect(page.locator('#userAccountModal')).not.toContainText('Demande de versement transmise');
-    await expect(page.locator('#accountWithdrawFundsBtn')).toBeDisabled();
+    await expect(page.locator('#accountWithdrawFundsBtn')).toHaveCount(0);
     expect(jsErrors).toEqual([]);
   });
 

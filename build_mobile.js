@@ -69,6 +69,11 @@ for (const file of rootFiles) {
   copyFileBuilt(path.join(srcDir, file), path.join(sharedDist, file));
 }
 
+for (const dir of ['vendor']) {
+  const source = path.join(srcDir, dir);
+  if (fs.existsSync(source)) fs.cpSync(source, path.join(sharedDist, dir), { recursive: true, force: true });
+}
+
 // Capacitor consumes the exact shared artifact. No iOS/Android-specific HTML or JS mutation is allowed here.
 if (fs.existsSync(path.dirname(iosPublic))) {
   copyDirectoryExact(sharedDist, iosPublic);

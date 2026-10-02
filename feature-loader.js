@@ -26,7 +26,8 @@
 
         const promise = new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = src;
+            const version = global.LYANN_ASSET_VERSION;
+            script.src = version ? `${src.split('?')[0]}?build=${version}` : src;
             script.async = true;
             script.dataset.lyannFeature = src;
             script.addEventListener('load', () => resolve(script), { once: true });
