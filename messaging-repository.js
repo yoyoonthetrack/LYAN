@@ -422,7 +422,30 @@
         if (!byQuote.has(milestone.quote_id)) byQuote.set(milestone.quote_id, []);
         byQuote.get(milestone.quote_id).push(milestone);
       }
-      return quotes.map((quote) => ({ ...quote, milestones: byQuote.get(quote.id) || [] }));
+      const missionIds = [...new Set(quotes.map((quote) => quote.mission_id).filter(Boolean))];
+      const missionStatus = new Map();
+      if (missionIds.length) {
+        const missionResult = await client.supabase.from('missions').select('id,status').in('id', missionIds);
+        if (!missionResult.error) {
+          (missionResult.data || []).forEach((mission) => missionStatus.set(mission.id, mission.status));
+        }
+      }
+      const paymentsByQuote = new Map();
+      if (quoteIds.length) {
+        const paymentResult = await client.supabase.from('payments').select('id,quote_id,milestone_id,payment_status').in('quote_id', quoteIds);
+        if (!paymentResult.error) {
+          (paymentResult.data || []).forEach((payment) => {
+            if (!paymentsByQuote.has(payment.quote_id)) paymentsByQuote.set(payment.quote_id, []);
+            paymentsByQuote.get(payment.quote_id).push(payment);
+          });
+        }
+      }
+      return quotes.map((quote) => ({
+        ...quote,
+        mission_status: missionStatus.get(quote.mission_id) || null,
+        payments: paymentsByQuote.get(quote.id) || [],
+        milestones: byQuote.get(quote.id) || []
+      }));
     };
     return c ? c.dedupe('chat-quote-context', key, loader, QUOTE_CONTEXT_TTL_MS) : loader();
   }

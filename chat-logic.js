@@ -1570,6 +1570,23 @@ function renderTimelineCard(msg) {
             state.className = 'chat-timeline-state';
             state.textContent = quote.status === 'ACCEPTED' ? '✓ Accepté' : 'Devis refusé';
             body.appendChild(state);
+            const payment = window.LYANN_QUOTE_PAYMENT;
+            const payable = payment && payment.payableMilestoneForQuote(quote, getMyId());
+            if (payable) {
+                const actions = document.createElement('div');
+                actions.className = 'chat-timeline-actions';
+                const pay = document.createElement('button');
+                pay.type = 'button';
+                pay.className = 'btn btn-primary';
+                pay.style.background = '#2E7D32';
+                pay.textContent = payment.payButtonLabel(payable.amount);
+                pay.addEventListener('click', () => {
+                    pay.disabled = true;
+                    payment.dispatchQuotePay(quote, getMyId(), (action, payload) => handleChatAction(action, payload));
+                });
+                actions.appendChild(pay);
+                body.appendChild(actions);
+            }
         } else if (quote && quote.status === 'SENT' && quote.requester_id === getMyId()) {
             const actions = document.createElement('div');
             actions.className = 'chat-timeline-actions';
@@ -1831,7 +1848,8 @@ async function renderMessages(passedMessages = null, options = {}) {
     // Render Production Supabase Real Quote Cards
     function appendLiveQuoteCard(container, q) {
         const isMyQuote = (q.provider_id || q.helper_id) === getMyId();
-        const pendingMs = (q.milestones || []).find((m) => m && m.status === 'PENDING');
+        const payment = window.LYANN_QUOTE_PAYMENT;
+        const pendingMs = payment ? payment.payableMilestoneForQuote(q, getMyId()) : null;
         const fundedMs = (q.milestones || []).find((m) => m && (m.status === 'FUNDED' || m.status === 'IN_PROGRESS'));
         const completedMs = (q.milestones || []).find((m) => m && m.status === 'COMPLETED');
         const quoteDiv = document.createElement('div');
@@ -1889,12 +1907,12 @@ async function renderMessages(passedMessages = null, options = {}) {
                 </div>
             `;
             const providerId = q.provider_id || q.helper_id;
-            if (q.requester_id === getMyId() && pendingMs && q.mission_id) {
+            if (pendingMs) {
                 actionsHTML = `
                     ${acceptedBadge}
                     <div style="display: flex; gap: 8px; margin-top: 12px;">
                         <button type="button" class="btn btn-primary btn-quote-pay" data-quote-pay style="flex: 1; justify-content: center; background:#2E7D32;">
-                            <i class="ph ph-lock-key"></i> Payer & Bloquer (${pendingMs.amount} €)
+                            <i class="ph ph-lock-key"></i> ${payment.payButtonLabel(pendingMs.amount)}
                         </button>
                     </div>
                 `;
@@ -1950,12 +1968,9 @@ async function renderMessages(passedMessages = null, options = {}) {
         `;
         const payBtn = quoteDiv.querySelector('[data-quote-pay]');
         if (payBtn && pendingMs && q.mission_id) {
-            payBtn.addEventListener('click', () => handleChatAction('PAY_MISSION', {
-                title: pendingMs.title || q.description || 'Intervention LYANN',
-                agreed_price: Number(pendingMs.amount),
-                id: q.mission_id,
-                milestoneId: pendingMs.id
-            }));
+            payBtn.addEventListener('click', () => {
+                payment.dispatchQuotePay(q, getMyId(), (action, payload) => handleChatAction(action, payload));
+            });
         }
         const markDoneBtn = quoteDiv.querySelector('[data-quote-mark-done]');
         if (markDoneBtn && fundedMs) {
