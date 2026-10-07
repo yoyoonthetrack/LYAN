@@ -17516,74 +17516,20 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     background: #F6EED6;
     color: #C69222;
 }
-.native-guest-login-slide .native-guest-slide-inner {
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-}
-#nativeGuestChoice,
-.native-guest-login-slide .native-guest-welcome {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+.native-guest-welcome {
+    flex: none;
     margin: 0;
-    padding: 0;
+    padding: 14px 14px 12px;
     text-align: center;
-    background: none;
-    border: 0;
-    border-radius: 0;
-}
-#nativeGuestChoice[hidden],
-.native-guest-login-slide .native-guest-welcome[hidden] { display: none; }
-.native-guest-login-slide .native-guest-steps li { padding: 0; }
-.native-guest-choice {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    width: 100%;
-    height: 100%;
-    padding: 16px 18px;
-    border: 0;
-    background: transparent;
-    text-align: left;
-    font: inherit;
-    color: inherit;
-    cursor: pointer;
-}
-.native-guest-choice strong {
-    display: block;
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: var(--text);
-    margin-bottom: 4px;
-}
-.native-guest-choice-text {
-    display: block;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    line-height: 1.4;
-}
-.native-guest-login-slide .native-guest-step-emoji { font-size: 1.5rem; }
-.native-guest-login-slide .native-guest-auth {
-    flex: 1;
-    justify-content: center;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(74, 124, 89, 0.14);
+    border-radius: 18px;
 }
 @media (max-height: 760px) {
-    .native-guest-login-slide h2 { margin-bottom: 4px; }
-    .native-guest-login-slide .native-guest-auth { gap: 6px; justify-content: flex-start; }
-    .native-guest-login-slide .native-guest-lead { margin-bottom: 8px; }
+    .native-guest-login-slide .native-guest-auth { gap: 6px; }
+    .native-guest-welcome { padding: 10px 12px 8px; }
     #nativeGuestLoginForm { gap: 4px; }
     #nativeGuestLoginForm input { min-height: 40px; }
-    .native-guest-back { min-height: 36px; }
-}
-.native-guest-back {
-    border: 0;
-    background: none;
-    color: var(--text-muted);
-    font: inherit;
-    font-weight: 700;
-    min-height: 44px;
-    cursor: pointer;
 }
 .native-guest-auth {
     display: flex;

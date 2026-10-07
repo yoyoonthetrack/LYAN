@@ -269,34 +269,11 @@
 
             <section class="native-guest-slide native-guest-how native-guest-login-slide" data-slide="3" aria-label="Bienvenue sur LYANN">
                 <div class="native-guest-slide-inner">
-                    <div id="nativeGuestChoice">
-                        <h2>Bienvenue sur<br><span class="text-gradient">LYANN</span></h2>
-                        <p class="native-guest-lead">Nouveau ici, ou déjà membre ?</p>
-                        <ul class="native-guest-steps">
-                            <li>
-                                <button type="button" class="native-guest-choice" id="btnGuestSignup">
-                                    <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-user-plus"></i></span>
-                                    <span>
-                                        <strong>S'inscrire</strong>
-                                        <span class="native-guest-choice-text">Créez votre compte gratuitement, en quelques secondes.</span>
-                                    </span>
-                                </button>
-                            </li>
-                            <li>
-                                <button type="button" class="native-guest-choice" id="btnGuestShowLogin">
-                                    <span class="native-guest-step-emoji is-boka" aria-hidden="true"><i class="ph ph-sign-in"></i></span>
-                                    <span>
-                                        <strong>Se connecter</strong>
-                                        <span class="native-guest-choice-text">Vous avez déjà un compte ? Retrouvez vos échanges.</span>
-                                    </span>
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="native-guest-welcome" id="nativeGuestWelcome" hidden>
-                        <h2>Se connecter</h2>
-                        <p class="native-guest-lead">Réservé aux membres qui ont déjà un compte.</p>
+                    <h2>Bienvenue sur<br><span class="text-gradient">LYANN</span></h2>
+                    <div class="native-guest-welcome" id="nativeGuestWelcome">
                         <div class="native-guest-auth">
+                            <button type="button" class="btn btn-primary btn-lg" id="btnGuestSignup">S'inscrire</button>
+                            <p class="native-guest-auth-foot">Déjà un compte ?</p>
                             <button type="button" class="btn btn-apple-auth"><i class="ph-fill ph-apple-logo" aria-hidden="true"></i> Continuer avec Apple</button>
                             <button type="button" class="btn btn-google btn-google-auth" id="btnGuestGoogle">
                                 <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.66 0 6.6 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.6 42.62 14.66 48 24 48z"/></svg>
@@ -310,8 +287,6 @@
                                 <input type="password" id="nativeGuestLoginPassword" autocomplete="current-password" placeholder="••••••••" required>
                                 <button type="submit" class="btn btn-primary btn-lg">Se connecter</button>
                             </form>
-                            <button type="button" class="btn btn-outline" id="btnGuestSignupFromLogin">Je n'ai pas encore de compte</button>
-                            <button type="button" class="native-guest-back" id="btnGuestBackToChoice">Retour</button>
                         </div>
                     </div>
                 </div>
@@ -799,10 +774,6 @@
                         dot.classList.toggle('is-active', on);
                         dot.setAttribute('aria-selected', on ? 'true' : 'false');
                     });
-                    var onLast = activeIndex === slides.length - 1;
-                    var cta = document.querySelector('.native-guest-cta');
-                    if (cta) cta.classList.toggle('is-hidden', onLast);
-                    if (dotsWrap) dotsWrap.classList.toggle('is-hidden', onLast);
                 };
                 var nearestIndex = function () {
                     var width = pager.clientWidth || 1;
@@ -883,22 +854,8 @@
                 if (loginPassword && password) loginPassword.value = password.value;
                 if (loginForm) loginForm.requestSubmit();
             });
-            var openGuestSignup = function () {
+            document.getElementById('btnGuestSignup')?.addEventListener('click', function () {
                 if (typeof window.openOnboarding === 'function') window.openOnboarding({ chooser: true });
-            };
-            document.getElementById('btnGuestSignup')?.addEventListener('click', openGuestSignup);
-            document.getElementById('btnGuestSignupFromLogin')?.addEventListener('click', openGuestSignup);
-            document.getElementById('btnGuestShowLogin')?.addEventListener('click', function () {
-                var choice = document.getElementById('nativeGuestChoice');
-                var login = document.getElementById('nativeGuestWelcome');
-                if (choice) choice.hidden = true;
-                if (login) login.hidden = false;
-            });
-            document.getElementById('btnGuestBackToChoice')?.addEventListener('click', function () {
-                var choice = document.getElementById('nativeGuestChoice');
-                var login = document.getElementById('nativeGuestWelcome');
-                if (login) login.hidden = true;
-                if (choice) choice.hidden = false;
             });
             document.documentElement.dataset.nativeGuestMounted = '1';
         };
