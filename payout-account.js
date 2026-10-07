@@ -36,21 +36,35 @@
     }
 
     const COPY = {
-        loading: { subtitle: 'Vérification…', action: '', ready: false },
-        none: { subtitle: 'À configurer', action: 'Configurer', ready: false },
-        incomplete: { subtitle: 'Configuration à terminer', action: 'Continuer', ready: false },
-        active: { subtitle: 'Compte de versement actif', action: '', ready: true },
-        error: { subtitle: 'Impossible de vérifier votre compte de versement.', action: 'Réessayer', ready: false }
+        loading: { title: 'Compte de versement', subtitle: 'Vérification…', action: '', ready: false, intent: 'onboarding' },
+        none: { title: 'Compte de versement', subtitle: 'À configurer', action: 'Configurer', ready: false, intent: 'onboarding' },
+        incomplete: { title: 'Compte de versement', subtitle: 'Configuration à terminer', action: 'Continuer', ready: false, intent: 'onboarding' },
+        active: {
+            title: 'Compte de versement actif',
+            subtitle: 'Vos informations de versement sont configurées.',
+            action: 'Modifier',
+            ready: true,
+            intent: 'update'
+        },
+        error: { title: 'Compte de versement', subtitle: 'Impossible de vérifier votre compte de versement.', action: 'Réessayer', ready: false, intent: 'onboarding' }
     };
+
+    function payoutLinkPath(intent) {
+        return intent === 'update'
+            ? '/v1/payments/connect/express-dashboard-link'
+            : '/v1/payments/connect/onboarding-link';
+    }
 
     function renderPayoutAccount(state) {
         const view = COPY[state] || COPY.error;
         return {
             state,
+            title: view.title,
             subtitle: view.subtitle,
             actionLabel: view.action,
             actionVisible: Boolean(view.action),
-            readyVisible: view.ready
+            readyVisible: view.ready,
+            intent: view.intent
         };
     }
 
@@ -112,15 +126,28 @@
         openStripe(link.url);
     }
 
+    async function startAccountUpdate() {
+        const link = await connectRequest(payoutLinkPath('update'), {
+            method: 'POST',
+            body: '{}'
+        });
+        if (!link.url) throw new Error('api');
+        openStripe(link.url);
+    }
+
     function paint(view) {
+        const title = document.getElementById('payoutAccountTitle');
         const subtitle = document.getElementById('payoutAccountState');
         const action = document.getElementById('payoutAccountAction');
         const ready = document.getElementById('payoutAccountReady');
+        if (title) title.textContent = view.title;
         if (subtitle) subtitle.textContent = view.subtitle;
         if (action) {
             action.hidden = !view.actionVisible;
             action.textContent = view.actionLabel;
             action.disabled = false;
+            action.dataset.intent = view.intent || 'onboarding';
+            action.classList.toggle('is-payout-update', view.intent === 'update');
         }
         if (ready) ready.hidden = !view.readyVisible;
     }
@@ -151,7 +178,8 @@
             action.addEventListener('click', async () => {
                 action.disabled = true;
                 try {
-                    await startOnboarding();
+                    if (action.dataset.intent === 'update') await startAccountUpdate();
+                    else await startOnboarding();
                 } catch (error) {
                     if (error && error.code === 401 && typeof window.requireAuthSession === 'function') {
                         window.requireAuthSession('Compte de versement');
@@ -209,5 +237,5 @@
         else boot();
     }
 
-    return { payoutAccountState, payoutReturnUrls, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh };
+    return { payoutAccountState, payoutReturnUrls, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh };
 });

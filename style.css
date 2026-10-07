@@ -17681,7 +17681,27 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
 }
 .feed-guest-cta .btn { min-height: 44px; padding: 8px 18px; }
 #payoutAccountRow .row-content { flex: 1; min-width: 0; }
-#payoutAccountAction { width: auto; padding: 8px 14px; }
+#payoutAccountAction {
+    width: auto;
+    flex: none;
+    padding: 8px 14px;
+}
+#payoutAccountAction.is-payout-update {
+    width: auto !important;
+    flex: none !important;
+    min-height: 40px !important;
+    padding: 8px 16px !important;
+    border: 1.5px solid #4A7C59 !important;
+    border-radius: 999px !important;
+    background: #FFFFFF !important;
+    color: #2D5A39 !important;
+    font-size: 0.9rem !important;
+}
+#payoutAccountReady {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+}
 body.user-is-logged-out #flashComposerCard { display: none; }
 body:not(.user-is-logged-out) .feed-guest-cta { display: none; }
 
@@ -17853,4 +17873,9 @@ body:not(.user-is-logged-out) .feed-guest-cta { display: none; }
     font-size: 0.76rem;
     font-weight: 700;
     color: #4A7C59;
+}
+
+/* display:!important on components such as .btn-outline overrides the UA [hidden] rule. */
+[hidden] {
+    display: none !important;
 }

@@ -4496,7 +4496,7 @@ safeDomReady(() => {
                             <div class="account-touch-row" id="payoutAccountRow">
                                 <div class="row-icon"><i class="ph ph-bank"></i></div>
                                 <div class="row-content">
-                                    <strong class="row-title">Compte de versement</strong>
+                                    <strong class="row-title" id="payoutAccountTitle">Compte de versement</strong>
                                     <span class="row-subtitle" id="payoutAccountState">Vérification…</span>
                                 </div>
                                 <button type="button" class="btn btn-outline" id="payoutAccountAction" hidden style="min-height:44px;flex:none;">Configurer</button>

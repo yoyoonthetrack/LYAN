@@ -10,7 +10,7 @@ const SHARED_RUNTIME_TAGS = [
   '<script src="safety-repository.js?v=20260916-5"></script>',
   '<script src="legacy-compat.js?v=20260916-5"></script>',
   '<script src="pull-to-refresh.js?v=20261007a"></script>',
-  '<script src="payout-account.js?v=20261007b"></script>'
+  '<script src="payout-account.js?v=20261007c"></script>'
 ];
 const SHARED_RUNTIME_ANCHORS = [
   'sentry-init.js',
@@ -102,7 +102,7 @@ function injectSharedStylesheet(html) {
   // Ignore admin pages which use admin-style.css
   if (out.includes('admin-style.css')) return out;
   if (!out.includes('style.css')) {
-    const stylesheetTag = '    <link rel="stylesheet" href="style.css?v=20260916">';
+    const stylesheetTag = '    <link rel="stylesheet" href="style.css?v=20261007">';
     return out.includes('</head>')
       ? out.replace('</head>', `${stylesheetTag}\n</head>`)
       : `${stylesheetTag}\n${out}`;

@@ -44,6 +44,7 @@ const PRODUCTION_FINANCIAL_ROUTES = new Set([
     '/v1/payments/create-milestone-intent',
     '/v1/payments/connect/account',
     '/v1/payments/connect/onboarding-link',
+    '/v1/payments/connect/express-dashboard-link',
     '/v1/payments/connect/status',
     '/v1/payments/refund-untransferred',
     '/v1/milestones/start-work',

@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { payoutAccountState, payoutReturnUrls, readConnectParam, clearConnectParam, renderPayoutAccount } = require('../payout-account.js');
+const { payoutAccountState, payoutReturnUrls, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount } = require('../payout-account.js');
 
 const ready = {
     success: true,
@@ -42,7 +42,18 @@ test('active matches the server payable rule and ignores payouts_enabled', () =>
     assert.equal(payoutAccountState({ ...ready, ready: false, payouts_enabled: true }), 'incomplete');
     assert.equal(payoutAccountState({ ...ready, transfers_active: false }), 'incomplete');
     assert.equal(payoutAccountState({ ...ready, onboarding_completed: false }), 'incomplete');
-    assert.equal(renderPayoutAccount('active').subtitle, 'Compte de versement actif');
+    const active = renderPayoutAccount('active');
+    assert.equal(active.title, 'Compte de versement actif');
+    assert.equal(active.subtitle, 'Vos informations de versement sont configurées.');
+    assert.equal(active.actionLabel, 'Modifier');
+    assert.equal(active.actionVisible, true);
+    assert.equal(active.readyVisible, true);
+    assert.equal(active.intent, 'update');
+    assert.equal(payoutLinkPath('update'), '/v1/payments/connect/express-dashboard-link');
+    assert.equal(renderPayoutAccount('none').title, 'Compte de versement');
+    assert.equal(renderPayoutAccount('none').actionLabel, 'Configurer');
+    assert.equal(renderPayoutAccount('incomplete').actionLabel, 'Continuer');
+    assert.equal(payoutLinkPath('onboarding'), '/v1/payments/connect/onboarding-link');
 });
 
 test('return and refresh urls stay on the finances page', () => {

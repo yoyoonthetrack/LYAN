@@ -350,6 +350,36 @@ app.post('/v1/payments/connect/onboarding-link', async (req, res) => {
     }
 });
 
+app.post('/v1/payments/connect/express-dashboard-link', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) {
+            return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
+        }
+        const loaded = await loadOwnConnectAccount(user.id);
+        if (loaded.error || !loaded.profile.stripe_account_id) {
+            return res.status(409).json({ code: 'CONNECT_REQUIRED', error: 'Créez d’abord le compte Connect.' });
+        }
+        const link = await runtime.stripe.accounts.createLoginLink(loaded.profile.stripe_account_id);
+        return res.json({ success: true, url: link.url });
+    } catch (e) {
+        const message = String(e && e.message || '').replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
+        const statusCode = Number(e && (e.statusCode || e.status));
+        console.error(JSON.stringify({
+            scope: 'connect_express_dashboard_link',
+            type: e && e.type || null,
+            code: e && e.code || null,
+            param: e && e.param || null,
+            message,
+            requestId: (e && (e.requestId || e.request_id)) || null,
+            statusCode: Number.isFinite(statusCode) ? statusCode : null
+        }));
+        return res.status(500).json({ error: 'Lien de modification indisponible.' });
+    }
+});
+
 app.get('/v1/payments/connect/status', async (req, res) => {
     try {
         const user = await requireBearerUser(req);
