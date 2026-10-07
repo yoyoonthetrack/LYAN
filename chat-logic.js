@@ -1557,12 +1557,12 @@ function appendFundingAction(parent) {
 
 function repaintFundingCards(box) {
     if (!box) return;
-    box.querySelectorAll('[data-message-type="payment_secured"]').forEach((node) => {
+    box.querySelectorAll('[data-message-type="payment_secured"], [data-message-type="milestone_completed"]').forEach((node) => {
         const replacement = renderTimelineCard({
             id: node.dataset.messageId,
             createdAt: node.dataset.createdAt,
             timestamp: node.dataset.createdAt ? Date.parse(node.dataset.createdAt) : null,
-            messageType: 'payment_secured',
+            messageType: node.dataset.messageType || 'payment_secured',
             entityType: node.dataset.entityType,
             entityId: node.dataset.entityId,
             sender: 'them'
@@ -1690,6 +1690,15 @@ function renderTimelineCard(msg) {
             body.appendChild(actions);
         }
         wrapper.appendChild(body);
+    } else if (type === 'milestone_completed') {
+        const body = document.createElement('div');
+        body.className = 'chat-timeline-body';
+        const line = document.createElement('div');
+        line.className = 'chat-timeline-meta';
+        line.textContent = 'La prestation est déclarée terminée.';
+        body.appendChild(line);
+        appendFundingAction(body);
+        wrapper.appendChild(body);
     } else if (type === 'payment_secured') {
         const body = document.createElement('div');
         body.className = 'chat-timeline-body';
@@ -1737,15 +1746,15 @@ async function refreshOpenBusinessCards() {
         }
         timelineQuotes.set(String(quote.id), quote);
         (quote.milestones || []).forEach((milestone) => timelineQuotes.set('milestone:' + milestone.id, milestone));
+        if (quote.status === 'ACCEPTED') {
+            const proposeRow = document.getElementById('btnCtxPropose');
+            if (proposeRow && proposeRow.parentElement) proposeRow.parentElement.style.display = 'none';
+        }
         const covered = box.querySelector(quoteTimelineSelector(quote.id));
         if (covered) {
             box.querySelectorAll('[data-live-quote-id="' + CSS.escape(String(quote.id)) + '"]').forEach((node) => node.remove());
             repaintQuoteTimelineCards(box);
             repaintFundingCards(box);
-            const proposeRow = document.getElementById('btnCtxPropose');
-            if (proposeRow && proposeRow.parentElement && quote.status === 'ACCEPTED') {
-                proposeRow.parentElement.style.display = 'none';
-            }
             return;
         }
         applyQuoteStatusToDom(quote.id, quote.status);
@@ -3917,7 +3926,7 @@ function appendLiveChatMessage(row, options = {}) {
     if (!attachmentType && isJsonMessageContent(text)) return;
     const stick = Object.prototype.hasOwnProperty.call(options, 'stickToBottom') ? options.stickToBottom : threadIsNearBottom(container);
     if (!attachmentType && isQuoteAcceptedNotice(text)) {
-        appendQuoteAcceptedNotice(container, messageId);
+        return;
         if (stick) scrollThreadToBottom(container, !options.quiet);
         return;
     }
