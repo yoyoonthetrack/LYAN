@@ -774,6 +774,9 @@
                         dot.classList.toggle('is-active', on);
                         dot.setAttribute('aria-selected', on ? 'true' : 'false');
                     });
+                    var onLast = activeIndex === slides.length - 1;
+                    document.querySelector('.native-guest-cta')?.classList.toggle('is-hidden', onLast);
+                    dotsWrap.classList.toggle('is-last', onLast);
                 };
                 var nearestIndex = function () {
                     var width = pager.clientWidth || 1;

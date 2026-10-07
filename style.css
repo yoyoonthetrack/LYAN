@@ -17475,6 +17475,9 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     gap: 8px;
     padding: 6px 16px 4px;
 }
+.native-guest-dots.is-last {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+}
 .native-guest-dot {
     width: 8px;
     height: 8px;
