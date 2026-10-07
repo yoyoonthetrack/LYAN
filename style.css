@@ -17680,6 +17680,8 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     color: #1F3827;
 }
 .feed-guest-cta .btn { min-height: 44px; padding: 8px 18px; }
+#payoutAccountRow .row-content { flex: 1; min-width: 0; }
+#payoutAccountAction { width: auto; padding: 8px 14px; }
 body.user-is-logged-out #flashComposerCard { display: none; }
 body:not(.user-is-logged-out) .feed-guest-cta { display: none; }
 

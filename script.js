@@ -4493,12 +4493,14 @@ safeDomReady(() => {
                     <section class="account-desktop-section">
                         <h4 class="account-section-heading">MOYENS DE PAIEMENT & ABONNEMENT</h4>
                         <div class="account-group-box">
-                            <div class="account-touch-row" aria-disabled="true">
+                            <div class="account-touch-row" id="payoutAccountRow">
                                 <div class="row-icon"><i class="ph ph-bank"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">Compte de versement</strong>
-                                    <span class="row-subtitle">Le paiement se fait dans la conversation, une fois le devis accepté.</span>
+                                    <span class="row-subtitle" id="payoutAccountState">Vérification…</span>
                                 </div>
+                                <button type="button" class="btn btn-outline" id="payoutAccountAction" hidden style="min-height:44px;flex:none;">Configurer</button>
+                                <span id="payoutAccountReady" hidden><i class="ph-fill ph-check-circle" style="color:#4A7C59;font-size:1.35rem;" aria-hidden="true"></i></span>
                             </div>
                             <div class="account-divider"></div>
                             <div class="account-touch-row" onclick="window.location.href='pricing.html'">
@@ -4836,6 +4838,7 @@ safeDomReady(() => {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
+        if (subViewName === 'finances' && window.LYANN_PAYOUT_ACCOUNT) window.LYANN_PAYOUT_ACCOUNT.mount();
         if (typeof mountNotificationPreferenceControls === 'function') mountNotificationPreferenceControls();
         if (typeof bindNotificationPreferenceControls === 'function') bindNotificationPreferenceControls();
     };
