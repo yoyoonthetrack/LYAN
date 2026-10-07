@@ -267,10 +267,35 @@
                 </div>
             </section>
 
-            <section class="native-guest-slide native-guest-login-slide" data-slide="3" aria-label="Bienvenue sur LYANN">
+            <section class="native-guest-slide native-guest-how native-guest-login-slide" data-slide="3" aria-label="Bienvenue sur LYANN">
                 <div class="native-guest-slide-inner">
-                    <div class="native-guest-welcome" id="nativeGuestWelcome">
+                    <div id="nativeGuestChoice">
                         <h2>Bienvenue sur<br><span class="text-gradient">LYANN</span></h2>
+                        <p class="native-guest-lead">Nouveau ici, ou déjà membre ?</p>
+                        <ul class="native-guest-steps">
+                            <li>
+                                <button type="button" class="native-guest-choice" id="btnGuestSignup">
+                                    <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-user-plus"></i></span>
+                                    <span>
+                                        <strong>S'inscrire</strong>
+                                        <span class="native-guest-choice-text">Créez votre compte gratuitement, en quelques secondes.</span>
+                                    </span>
+                                </button>
+                            </li>
+                            <li>
+                                <button type="button" class="native-guest-choice" id="btnGuestShowLogin">
+                                    <span class="native-guest-step-emoji is-boka" aria-hidden="true"><i class="ph ph-sign-in"></i></span>
+                                    <span>
+                                        <strong>Se connecter</strong>
+                                        <span class="native-guest-choice-text">Vous avez déjà un compte ? Retrouvez vos échanges.</span>
+                                    </span>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="native-guest-welcome" id="nativeGuestWelcome" hidden>
+                        <h2>Se connecter</h2>
+                        <p class="native-guest-lead">Réservé aux membres qui ont déjà un compte.</p>
                         <div class="native-guest-auth">
                             <button type="button" class="btn btn-apple-auth"><i class="ph-fill ph-apple-logo" aria-hidden="true"></i> Continuer avec Apple</button>
                             <button type="button" class="btn btn-google btn-google-auth" id="btnGuestGoogle">
@@ -285,7 +310,8 @@
                                 <input type="password" id="nativeGuestLoginPassword" autocomplete="current-password" placeholder="••••••••" required>
                                 <button type="submit" class="btn btn-primary btn-lg">Se connecter</button>
                             </form>
-                            <p class="native-guest-auth-foot">Pas encore de compte ? <button type="button" id="btnGuestSignup">S'inscrire</button></p>
+                            <button type="button" class="btn btn-outline" id="btnGuestSignupFromLogin">Je n'ai pas encore de compte</button>
+                            <button type="button" class="native-guest-back" id="btnGuestBackToChoice">Retour</button>
                         </div>
                     </div>
                 </div>
@@ -857,8 +883,22 @@
                 if (loginPassword && password) loginPassword.value = password.value;
                 if (loginForm) loginForm.requestSubmit();
             });
-            document.getElementById('btnGuestSignup')?.addEventListener('click', function () {
+            var openGuestSignup = function () {
                 if (typeof window.openOnboarding === 'function') window.openOnboarding({ chooser: true });
+            };
+            document.getElementById('btnGuestSignup')?.addEventListener('click', openGuestSignup);
+            document.getElementById('btnGuestSignupFromLogin')?.addEventListener('click', openGuestSignup);
+            document.getElementById('btnGuestShowLogin')?.addEventListener('click', function () {
+                var choice = document.getElementById('nativeGuestChoice');
+                var login = document.getElementById('nativeGuestWelcome');
+                if (choice) choice.hidden = true;
+                if (login) login.hidden = false;
+            });
+            document.getElementById('btnGuestBackToChoice')?.addEventListener('click', function () {
+                var choice = document.getElementById('nativeGuestChoice');
+                var login = document.getElementById('nativeGuestWelcome');
+                if (login) login.hidden = true;
+                if (choice) choice.hidden = false;
             });
             document.documentElement.dataset.nativeGuestMounted = '1';
         };
