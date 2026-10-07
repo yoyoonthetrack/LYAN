@@ -298,7 +298,11 @@
             .sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0))[0] || null;
     }
 
+    let conversationListLoading = false;
     async function renderConversationList() {
+        if (conversationListLoading) return;
+        conversationListLoading = true;
+        try {
         const listContainer = document.getElementById('chatContactsList');
         const repo = window.LYANN_MESSAGING_REPOSITORY;
         const userId = await resolveCurrentUserId();
@@ -341,6 +345,9 @@
                 listContainer.innerHTML = '<div class="chat-empty-state" style="padding:48px 20px;text-align:center;"><strong>Impossible de charger les conversations.</strong><p>Vérifiez votre connexion, puis réessayez.</p><button type="button" class="btn btn-outline" id="chatRetryConversations" style="margin-top:16px;min-height:44px;">Réessayer</button></div>';
                 listContainer.querySelector('#chatRetryConversations')?.addEventListener('click', () => renderConversationList());
             }
+        }
+        } finally {
+            conversationListLoading = false;
         }
     }
 
@@ -581,10 +588,22 @@
         window.LYANN_MESSAGING_REPOSITORY?.warmInbox?.(id);
     }
 
+    function installPullToRefresh() {
+        const ptr = window.LYANN_PULL_TO_REFRESH;
+        if (!ptr || installPullToRefresh.done) return;
+        const list = document.getElementById('chatContactsList');
+        const thread = document.getElementById('chatMessagesContainer');
+        if (!list && !thread) return;
+        installPullToRefresh.done = true;
+        if (list) ptr.attach(list, () => api.renderConversationList());
+        if (thread) ptr.attach(thread, () => window.refreshChatUI?.());
+    }
+
     function boot() {
         ensureHydrationGuardStyle();
         registerSurfaces();
         installFeatureInternalInterception();
+        installPullToRefresh();
         warmCurrentInbox();
     }
 

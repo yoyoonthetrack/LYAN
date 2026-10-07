@@ -2421,11 +2421,12 @@ safeDomReady(() => {
         }
     };
 
+    let bokantajFeedLoading = false;
     window.loadBokantajFeedFromSupabase = async function(options = {}) {
+        if (bokantajFeedLoading) return;
+        bokantajFeedLoading = true;
+        const quiet = options.background === true && bokantajFeedState === 'READY' && currentFlashPosts.length > 0;
         console.log("[BOKANTAJ] init start");
-        bokantajFeedState = 'LOADING';
-        renderFlashFeed();
-
         const isExplicitDemoMode = typeof window !== 'undefined' && (
             window.LYANN_FORCE_DEMO_DATA === true ||
             (window.location && window.location.search && (
@@ -2435,6 +2436,10 @@ safeDomReady(() => {
         );
 
         try {
+            if (!quiet) {
+                bokantajFeedState = 'LOADING';
+                renderFlashFeed();
+            }
             if (!window.LYANN_BOKANTAJ_REPOSITORY) {
                 return;
             }
@@ -2456,6 +2461,7 @@ safeDomReady(() => {
         } finally {
             renderFlashFeed();
             window.renderTalentsSidebar(isExplicitDemoMode);
+            bokantajFeedLoading = false;
         }
     };
 
@@ -2466,6 +2472,10 @@ safeDomReady(() => {
         });
     } else {
         window.loadBokantajFeedFromSupabase();
+    }
+
+    if (flashFeedContainer && window.LYANN_PULL_TO_REFRESH) {
+        window.LYANN_PULL_TO_REFRESH.attach(document, () => window.loadBokantajFeedFromSupabase({ force: true, background: true }));
     }
 
     if (flashPhotoInput) {

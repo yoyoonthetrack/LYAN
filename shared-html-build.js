@@ -8,7 +8,8 @@ const SHARED_RUNTIME_TAGS = [
   '<script src="surface-manager.js?v=20260922s"></script>',
   '<script src="app-router.js?v=20260916-5"></script>',
   '<script src="safety-repository.js?v=20260916-5"></script>',
-  '<script src="legacy-compat.js?v=20260916-5"></script>'
+  '<script src="legacy-compat.js?v=20260916-5"></script>',
+  '<script src="pull-to-refresh.js?v=20261007a"></script>'
 ];
 const SHARED_RUNTIME_ANCHORS = [
   'sentry-init.js',

@@ -207,8 +207,11 @@
             const { data } = await client.listMyNotifications();
             if (Array.isArray(data)) {
                 const mapped = data.map((row) => mapServerNotification(row, userId));
+                const serverIds = new Set(mapped.map((row) => String(row.id)));
+                const localOnly = getAllNotifications().filter((n) => n.user_id === userId && n.id && !serverIds.has(String(n.id)));
                 const others = getAllNotifications().filter((n) => n.user_id !== userId);
-                saveAllNotifications([...mapped, ...others].slice(0, 200));
+                const merged = [...mapped, ...localOnly].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+                saveAllNotifications([...merged, ...others].slice(0, 200));
                 const firstLoad = !hydratedUsers.has(userId);
                 hydratedUsers.add(userId);
                 rememberNotificationIds(mapped, { chime: !firstLoad });

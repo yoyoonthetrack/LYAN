@@ -11,6 +11,17 @@ if (typeof global.WebSocket === 'undefined') {
     global.WebSocket = class WebSocket {};
 }
 const { createClient } = require('@supabase/supabase-js');
+const {
+    inspectStripeEnv,
+    connectStatus,
+    connectPayoutReady,
+    providerCanBePaid,
+    evaluateTransfer,
+    evaluateRefund,
+    applyPaymentSucceeded,
+    claimWebhookDecision,
+    safeStripeReturnUrl
+} = require('./stripe-policy');
 const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-build');
 require('dotenv').config();
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local'), override: true });
@@ -220,12 +231,126 @@ app.use((req, res, next) => {
     next();
 });
 
+function stripeRuntime() {
+    const inspected = inspectStripeEnv(process.env);
+    if (!inspected.allowsSecretUse) return { inspected, stripe: null };
+    return { inspected, stripe: require('stripe')(process.env.STRIPE_SECRET_KEY) };
+}
+
 app.get('/v1/payments/config', (req, res) => {
-    const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || '';
+    const inspected = inspectStripeEnv(process.env);
+    if (!inspected.allowsPublishableUse) {
+        return res.status(503).json({
+            success: false,
+            code: inspected.liveBlocked ? 'STRIPE_LIVE_DISABLED' : 'STRIPE_KEY_INVALID',
+            error: inspected.liveBlocked ? 'Stripe Live est désactivé.' : 'Configuration Stripe invalide.',
+            stripe_mode: inspected.mode
+        });
+    }
     res.json({
-        publishableKey,
-        stripeReady: Boolean(process.env.STRIPE_SECRET_KEY && publishableKey.startsWith('pk_'))
+        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+        stripeReady: inspected.allowsSecretUse && inspected.allowsPublishableUse,
+        stripe_mode: inspected.mode
     });
+});
+
+async function requireBearerUser(req) {
+    const authHeader = req.headers.authorization || req.headers.Authorization || '';
+    if (!authHeader.startsWith('Bearer ')) return null;
+    const token = authHeader.split(' ')[1];
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data?.user) return null;
+    return data.user;
+}
+
+async function loadOwnConnectAccount(userId) {
+    const { data: profile, error } = await supabaseAdmin
+        .from('profiles')
+        .select('id, email, stripe_account_id, account_type')
+        .eq('id', userId)
+        .maybeSingle();
+    if (error || !profile) return { error: 'Profil introuvable.' };
+    return { profile };
+}
+
+app.post('/v1/payments/connect/account', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) {
+            return res.status(503).json({ code: runtime.inspected.liveBlocked ? 'STRIPE_LIVE_DISABLED' : 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
+        }
+        const loaded = await loadOwnConnectAccount(user.id);
+        if (loaded.error) return res.status(404).json({ error: loaded.error });
+        if (loaded.profile.stripe_account_id) {
+            const account = await runtime.stripe.accounts.retrieve(loaded.profile.stripe_account_id);
+            return res.json({ success: true, created: false, ...connectStatus(account) });
+        }
+        const account = await runtime.stripe.accounts.create({
+            type: 'express',
+            country: 'FR',
+            email: loaded.profile.email || user.email || undefined,
+            capabilities: { transfers: { requested: true } }
+        });
+        const { error: saveErr } = await supabaseAdmin
+            .from('profiles')
+            .update({ stripe_account_id: account.id })
+            .eq('id', user.id)
+            .is('stripe_account_id', null);
+        if (saveErr) return res.status(500).json({ error: 'Compte Connect non enregistré.' });
+        return res.json({ success: true, created: true, ...connectStatus(account) });
+    } catch (e) {
+        console.error('Connect account error');
+        return res.status(500).json({ error: 'Création du compte Connect impossible.' });
+    }
+});
+
+app.post('/v1/payments/connect/onboarding-link', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) {
+            return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
+        }
+        const loaded = await loadOwnConnectAccount(user.id);
+        if (loaded.error || !loaded.profile.stripe_account_id) {
+            return res.status(409).json({ code: 'CONNECT_REQUIRED', error: 'Créez d’abord le compte Connect.' });
+        }
+        const link = await runtime.stripe.accountLinks.create({
+            account: loaded.profile.stripe_account_id,
+            refresh_url: safeStripeReturnUrl(req.body?.refresh_url),
+            return_url: safeStripeReturnUrl(req.body?.return_url),
+            type: 'account_onboarding'
+        });
+        return res.json({ success: true, url: link.url });
+    } catch (e) {
+        console.error('Connect onboarding link error');
+        return res.status(500).json({ error: 'Lien d’onboarding indisponible.' });
+    }
+});
+
+app.get('/v1/payments/connect/status', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const loaded = await loadOwnConnectAccount(user.id);
+        if (loaded.error) return res.status(404).json({ error: loaded.error });
+        if (!loaded.profile.stripe_account_id) {
+            return res.json({ success: true, ...connectStatus(null) });
+        }
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) {
+            return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
+        }
+        const account = await runtime.stripe.accounts.retrieve(loaded.profile.stripe_account_id);
+        const ready = connectPayoutReady(account);
+        return res.json({ success: true, ready: ready.ok, ...ready.status });
+    } catch (e) {
+        console.error('Connect status error');
+        return res.status(502).json({ code: 'CONNECT_UNAVAILABLE', error: 'Compte Connect illisible dans cet environnement Stripe.' });
+    }
 });
 
 // Root & API Version Health Check Endpoint
@@ -236,7 +361,7 @@ app.get(['/', '/v1'], (req, res) => {
         version: "1.0.0",
         mode: (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') ? "production" : (process.env.NODE_ENV || "development"),
         payment_engine: "BigInt 3% + 3% Integer Cents Canonical Engine",
-        stripe_mode: process.env.STRIPE_SECRET_KEY ? "test" : "mock"
+        stripe_mode: inspectStripeEnv(process.env).mode
     });
 });
 
@@ -2823,6 +2948,35 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
             return res.status(403).json({ error: "Seul le demandeur de la prestation peut effectuer ce paiement." });
         }
 
+        const providerIdForPay = quote.provider_id;
+        const { data: payableProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, stripe_account_id, account_type')
+            .eq('id', providerIdForPay)
+            .maybeSingle();
+        const payRuntime = stripeRuntime();
+        if (!payRuntime.stripe) {
+            return res.status(503).json({
+                code: payRuntime.inspected.liveBlocked ? 'STRIPE_LIVE_DISABLED' : 'STRIPE_CONFIG_MISSING',
+                error: 'Stripe test indisponible. Aucun encaissement n’a été créé.'
+            });
+        }
+        let payableAccount = null;
+        if (payableProfile?.stripe_account_id) {
+            try {
+                payableAccount = await payRuntime.stripe.accounts.retrieve(payableProfile.stripe_account_id);
+            } catch (_) {
+                payableAccount = null;
+            }
+        }
+        const payable = providerCanBePaid(payableProfile, payableAccount);
+        if (!payable.ok) {
+            return res.status(409).json({
+                code: payable.code,
+                error: 'Paiement refusé : le Lyanneur ne peut pas encore recevoir un versement.'
+            });
+        }
+
         // 5. Canonical Monetary Engine Calculation (BigInt 3% + 3%)
         const financials = calculateFinancialBreakdown(milestone.amount);
         const stripeIdempotencyKey = `pi_milestone_${milestone.id}`;
@@ -3328,6 +3482,10 @@ async function retryMilestoneTransfer(milestoneId) {
         return { success: false, error: "Milestone introuvable.", code: "MILESTONE_NOT_FOUND" };
     }
 
+    if (milestone.status === 'DISPUTED') {
+        return { success: false, error: "Versement interdit pendant un litige.", code: "DISPUTED" };
+    }
+
     if (milestone.status !== 'COMPLETED') {
         return { success: false, error: "La Partie doit être au statut COMPLETED.", code: "MILESTONE_NOT_COMPLETED" };
     }
@@ -3351,6 +3509,10 @@ async function retryMilestoneTransfer(milestoneId) {
     // Must be client_validated_at IS NOT NULL and payment_status = SUCCEEDED
     if (!payment.client_validated_at) {
         return { success: false, error: "Le client n'a pas encore validé cette Partie.", code: "NOT_CLIENT_VALIDATED" };
+    }
+
+    if (payment.payment_status === 'DISPUTED') {
+        return { success: false, error: "Versement interdit pendant un litige.", code: "DISPUTED" };
     }
 
     if (payment.payment_status !== 'SUCCEEDED') {
@@ -3457,7 +3619,7 @@ async function retryMilestoneTransfer(milestoneId) {
     if (process.env.STRIPE_SECRET_KEY) {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         try {
-            const transfer = await stripe.transfers.create({
+            const transferParams = {
                 amount: transferAmountCents,
                 currency: 'eur',
                 destination: stripeAccountId,
@@ -3468,7 +3630,18 @@ async function retryMilestoneTransfer(milestoneId) {
                     mission_id: payment.mission_id,
                     provider_id: providerId
                 }
-            }, {
+            };
+            if (payment.stripe_charge_id) transferParams.source_transaction = payment.stripe_charge_id;
+            const transferDecision = evaluateTransfer({
+                payment,
+                milestone,
+                providerAccountId: stripeAccountId,
+                destinationAccountId: stripeAccountId
+            });
+            if (!transferDecision.ok) {
+                return { success: false, error: "Versement refusé.", code: transferDecision.code };
+            }
+            const transfer = await stripe.transfers.create(transferParams, {
                 idempotencyKey: stripeIdempotencyKey
             });
 
@@ -3819,6 +3992,7 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
 
 // 7. LEGACY SECURE PROVIDER TRANSFER (@deprecated)
 app.post('/v1/payments/validate-and-transfer', async (req, res) => {
+    return res.status(410).json({ success: false, code: 'LEGACY_ENDPOINT_DISABLED', error: 'Cette route historique est désactivée.' });
     try {
         const { missionId, providerStripeAccountId, providerAmount, userId } = req.body;
 
@@ -3927,35 +4101,88 @@ async function announceAcceptedQuoteInConversation(milestoneId) {
     if (error) console.error('[PAYMENT CORE] Message devis accepté non enregistré:', error.message);
 }
 
+app.post('/v1/payments/refund-untransferred', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const milestoneId = req.body?.milestone_id;
+        if (!milestoneId) return res.status(400).json({ error: 'Le paramètre milestone_id est obligatoire.' });
+        const { data: milestone } = await supabaseAdmin.from('milestones').select('*, quotes(*)').eq('id', milestoneId).maybeSingle();
+        if (!milestone) return res.status(404).json({ error: 'Partie introuvable.' });
+        const { data: mission } = await supabaseAdmin.from('missions').select('id, requester_id').eq('id', milestone.quotes?.mission_id).maybeSingle();
+        if (!mission || mission.requester_id !== user.id) {
+            return res.status(403).json({ error: 'Seul le demandeur peut annuler ce paiement.' });
+        }
+        const { data: payment } = await supabaseAdmin.from('payments').select('*').eq('milestone_id', milestoneId).maybeSingle();
+        const decision = evaluateRefund(payment, milestone);
+        if (!decision.ok && decision.idempotent) {
+            return res.json({ success: true, idempotent: true, code: 'ALREADY_REFUNDED', refund_id: decision.refundId });
+        }
+        if (!decision.ok) return res.status(409).json({ code: decision.code, error: 'Remboursement impossible.' });
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
+        const refund = await runtime.stripe.refunds.create({
+            payment_intent: payment.stripe_payment_intent_id
+        }, { idempotencyKey: `re_payment_${payment.id}` });
+        const nowIso = new Date().toISOString();
+        await supabaseAdmin.from('payments').update({
+            payment_status: 'REFUNDED',
+            amount_refunded_cents: Number(payment.customer_total_cents),
+            stripe_refund_id: refund.id
+        }).eq('id', payment.id).eq('payment_status', 'SUCCEEDED');
+        await supabaseAdmin.from('milestones').update({ status: 'CANCELLED', updated_at: nowIso }).eq('id', milestone.id);
+        return res.json({ success: true, code: 'REFUNDED', refund_id: refund.id });
+    } catch (e) {
+        console.error('Refund error');
+        return res.status(500).json({ error: 'Remboursement impossible.' });
+    }
+});
+
 // 9. STRIPE WEBHOOK LISTENER (Server-side Source of Truth & Signed Idempotent Event Processor)
 app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/webhooks/stripe', '/api/payments/webhook', '/api/webhooks/stripe'], async (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const runtime = stripeRuntime();
+    if (!webhookSecret || !runtime.stripe) {
+        return res.status(503).json({ code: 'STRIPE_WEBHOOK_CONFIG_MISSING', error: 'Configuration webhook Stripe incomplète.' });
+    }
 
-    let event = req.body;
-
-    if (webhookSecret && process.env.STRIPE_SECRET_KEY) {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-        try {
-            event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-        } catch (err) {
-            console.error(`⚠️ Signature Webhook Stripe invalide:`, err.message);
-            return res.status(400).send(`Webhook Error: ${err.message}`);
-        }
+    let event;
+    try {
+        event = runtime.stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (_) {
+        return res.status(400).json({ code: 'STRIPE_SIGNATURE_INVALID', error: 'Signature Stripe invalide.' });
     }
 
     if (event && event.id) {
+        const payload = event.data ? event.data.object : {};
         const { error: eventInsertErr } = await supabaseAdmin
             .from('stripe_webhook_events')
             .insert({
                 stripe_event_id: event.id,
                 event_type: event.type,
-                payload: event.data ? event.data.object : {}
+                status: 'processing',
+                payload
             });
 
         if (eventInsertErr && eventInsertErr.code === '23505') {
-            console.log(`ℹ️ [WEBHOOK STRIPE] Événement déjà traité (Idempotent): ${event.id}`);
-            return res.json({ received: true, duplicate: true });
+            const { data: existing } = await supabaseAdmin
+                .from('stripe_webhook_events')
+                .select('status')
+                .eq('stripe_event_id', event.id)
+                .maybeSingle();
+            const claim = claimWebhookDecision(existing || { status: 'processed' });
+            if (claim.action === 'duplicate') return res.json({ received: true, duplicate: true });
+        } else if (eventInsertErr && /status/.test(eventInsertErr.message || '')) {
+            const { error: legacyErr } = await supabaseAdmin.from('stripe_webhook_events').insert({
+                stripe_event_id: event.id,
+                event_type: event.type,
+                payload
+            });
+            if (legacyErr && legacyErr.code === '23505') return res.json({ received: true, duplicate: true });
+            if (legacyErr) return res.status(500).json({ error: 'Webhook non enregistré.' });
+        } else if (eventInsertErr) {
+            return res.status(500).json({ error: 'Webhook non enregistré.' });
         }
     }
 
@@ -3972,13 +4199,17 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                     .maybeSingle();
 
                 if (payment) {
+                    const funded = applyPaymentSucceeded(payment, paymentIntent);
+                    if (!funded.ok) {
+                        throw new Error(funded.code);
+                    }
                     await supabaseAdmin
                         .from('payments')
                         .update({
-                            payment_status: 'SUCCEEDED',
-                            transfer_status: 'PENDING_VALIDATION',
+                            payment_status: funded.payment_status,
+                            transfer_status: funded.transfer_status,
                             funded_at: new Date().toISOString(),
-                            stripe_charge_id: paymentIntent.latest_charge || null
+                            stripe_charge_id: funded.stripe_charge_id
                         })
                         .eq('id', payment.id);
 
@@ -4053,10 +4284,16 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                 console.log(`ℹ️ [WEBHOOK STRIPE] Événement non géré: ${event.type}`);
         }
 
+        if (event && event.id) {
+            await supabaseAdmin.from('stripe_webhook_events').update({ status: 'processed' }).eq('stripe_event_id', event.id);
+        }
         return res.json({ received: true });
     } catch (handlerErr) {
-        console.error("Erreur traitement Webhook Stripe:", handlerErr);
-        return res.status(500).send("Erreur serveur webhook.");
+        console.error('Erreur traitement Webhook Stripe');
+        if (event && event.id) {
+            await supabaseAdmin.from('stripe_webhook_events').delete().eq('stripe_event_id', event.id);
+        }
+        return res.status(500).json({ error: 'Erreur serveur webhook.' });
     }
 });
 

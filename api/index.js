@@ -10,6 +10,7 @@
  * deleted in a later cleanup after regression validation.
  */
 const { createClient } = require('@supabase/supabase-js');
+const { inspectStripeEnv } = require('./stripe-policy');
 const app = require('./server.js');
 
 const IS_VERCEL_PRODUCTION = process.env.VERCEL_ENV === 'production';
@@ -39,7 +40,12 @@ const PRODUCTION_DISABLED_ROUTES = new Set([
 ]);
 
 const PRODUCTION_FINANCIAL_ROUTES = new Set([
+    '/v1/payments/config',
     '/v1/payments/create-milestone-intent',
+    '/v1/payments/connect/account',
+    '/v1/payments/connect/onboarding-link',
+    '/v1/payments/connect/status',
+    '/v1/payments/refund-untransferred',
     '/v1/milestones/start-work',
     '/v1/milestones/submit-completion',
     '/v1/milestones/release-payment',
@@ -190,12 +196,12 @@ module.exports = async function lyannApiGateway(req, res) {
         );
     }
 
-    if (
-        hasFinancialRoute
-        && String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_')
-        && process.env.STRIPE_LIVE_ENABLED !== 'true'
-    ) {
+    const stripeEnv = inspectStripeEnv(process.env);
+    if (hasFinancialRoute && process.env.STRIPE_LIVE_ENABLED !== 'true' && stripeEnv.liveBlocked) {
         return jsonError(res, 503, 'STRIPE_LIVE_DISABLED', 'Stripe Live est désactivé.');
+    }
+    if (hasFinancialRoute && (stripeEnv.secretKind === 'invalid' || stripeEnv.publishableKind === 'invalid')) {
+        return jsonError(res, 503, 'STRIPE_KEY_INVALID', 'Configuration Stripe invalide.');
     }
 
     // Historical mock/demo endpoints must never be callable in production.
@@ -212,18 +218,6 @@ module.exports = async function lyannApiGateway(req, res) {
     // Production must never use the historical mock Stripe branches.
     if (IS_PRODUCTION && hasFinancialRoute && !process.env.STRIPE_SECRET_KEY) {
         return jsonError(res, 503, 'STRIPE_CONFIG_MISSING', 'Configuration Stripe indisponible.');
-    }
-
-    // Stripe Live remains explicitly OFF for LYANN. A live secret accidentally
-    // placed in Vercel is rejected unless a separate intentional release flag is
-    // enabled in a future production gate.
-    if (
-        IS_PRODUCTION
-        && hasFinancialRoute
-        && String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_')
-        && process.env.STRIPE_LIVE_ENABLED !== 'true'
-    ) {
-        return jsonError(res, 503, 'STRIPE_LIVE_DISABLED', 'Stripe Live est désactivé.');
     }
 
     // Webhooks are authoritative financial inputs. In production, accepting an

@@ -278,14 +278,16 @@
                 : `<div class="explorer-state"><h2>Aucun profil ni annonce pour « ${escape(filters.query)} ».</h2><p>Essayez un autre nom.</p><button class="btn btn-outline" data-action="reset">Effacer la recherche</button></div>`;
             window.syncFavoriteButtonStates?.();
         }
-        async function search(force = false) {
+        async function search(force = false, quiet = false) {
             const token = ++revision;
             syncControls();
             $('explorerResults').setAttribute('aria-busy', 'true');
-            $('explorerResults').dataset.state = 'LOADING';
-            $('explorerResults').innerHTML = '<div class="explorer-state" role="status">Chargement…</div>';
-            $('explorerSummary').textContent = '';
-            $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
+            if (!quiet) {
+                $('explorerResults').dataset.state = 'LOADING';
+                $('explorerResults').innerHTML = '<div class="explorer-state" role="status">Chargement…</div>';
+                $('explorerSummary').textContent = '';
+                $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
+            }
             try {
                 await window.LYANN_AUTH_STATE?.ready?.();
                 if (String(filters.query || '').trim()) {
@@ -432,6 +434,13 @@
                 if (mode === 'annonces' && request) window.openLyannDetailModal(request.id, request);
             }
         })();
+        if (window.LYANN_PULL_TO_REFRESH) {
+            window.LYANN_PULL_TO_REFRESH.attach(document, () => {
+                const box = $('explorerResults');
+                if (box && box.getAttribute('aria-busy') === 'true') return;
+                return search(true, true);
+            });
+        }
         window.LYANN_EXPLORER = { refresh: () => search(true) };
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

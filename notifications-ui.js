@@ -67,75 +67,198 @@ async function refreshMessageBadge(currentUserId) {
 }
 window.refreshMessageBadge = refreshMessageBadge;
 
+let lyannNotifEscapeHandler = null;
+
+function clearNotificationEscape() {
+    if (!lyannNotifEscapeHandler) return;
+    document.removeEventListener('keydown', lyannNotifEscapeHandler);
+    lyannNotifEscapeHandler = null;
+}
+
+function lyannNotificationUserId() {
+    return window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
+}
+
+function lyannNotificationsSignedIn() {
+    return document.body.classList.contains('user-is-logged-in')
+        || window.LYANN_AUTH_STATE?.isAuthenticated?.() === true;
+}
+
+function escapeNotificationText(value) {
+    if (typeof window.escapeHtmlAttr === 'function') return window.escapeHtmlAttr(value);
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function notificationKind(type) {
+    const key = String(type || '').toUpperCase();
+    const exact = {
+        LIKE: ['J’aime', 'ph-heart'],
+        POST_LIKE: ['J’aime', 'ph-heart'],
+        BOKANTAJ_LIKE: ['J’aime', 'ph-heart'],
+        REACTION: ['J’aime', 'ph-heart'],
+        COMMENT: ['Commentaire', 'ph-chat-circle'],
+        POST_COMMENT: ['Commentaire', 'ph-chat-circle'],
+        BOKANTAJ_COMMENT: ['Commentaire', 'ph-chat-circle'],
+        OPPORTUNITY: ['Mission correspondante', 'ph-handshake'],
+        MATCHING_REQUEST: ['Mission correspondante', 'ph-handshake'],
+        QUOTE: ['Proposition de devis', 'ph-file-text'],
+        QUOTE_SENT: ['Proposition de devis', 'ph-file-text'],
+        QUOTE_PROPOSAL: ['Proposition de devis', 'ph-file-text'],
+        QUOTE_REVISED: ['Proposition de devis', 'ph-file-text'],
+        QUOTE_ACCEPTED: ['Devis accepté', 'ph-check-circle'],
+        BOKANTAJ: ['Bokantaj', 'ph-broadcast'],
+        NEW_MESSAGE: ['Message', 'ph-chat-circle-dots'],
+        REQUEST_CLOSING: ['Annonce', 'ph-clock'],
+        MILESTONE: ['Mission', 'ph-flag-checkered'],
+        MISSION_UPDATE: ['Mission', 'ph-flag-checkered'],
+        REVIEW: ['Avis', 'ph-star'],
+        SAFETY_REPORT_CONFIRMATION: ['Signalement', 'ph-warning-circle'],
+        SANCTION_NOTICE: ['Modération', 'ph-warning-circle'],
+        SYSTEM: ['LYANN', 'ph-bell']
+    };
+    if (exact[key]) return { label: exact[key][0], icon: exact[key][1] };
+    if (key.startsWith('PAYMENT')) return { label: 'Paiement', icon: 'ph-credit-card' };
+    if (key.startsWith('QUOTE')) return { label: 'Proposition de devis', icon: 'ph-file-text' };
+    if (key.startsWith('MISSION')) return { label: 'Mission', icon: 'ph-flag-checkered' };
+    if (key.includes('LIKE')) return { label: 'J’aime', icon: 'ph-heart' };
+    if (key.includes('COMMENT')) return { label: 'Commentaire', icon: 'ph-chat-circle' };
+    return null;
+}
+
+function openNotificationTarget(notif) {
+    const entityType = String(notif?.entity_type || '').toLowerCase();
+    const entityId = notif?.entity_id ? String(notif.entity_id) : '';
+    const nType = String(notif?.type || '');
+    if (nType === 'REQUEST_CLOSING') return false;
+    if ((entityType === 'conversation' || nType === 'NEW_MESSAGE') && entityId) {
+        window.LYANN_ROUTER?.go?.('messages', {
+            contactId: entityId,
+            name: entityId === window.LYANN_SUPPORT_USER_ID ? 'Support LYANN' : undefined
+        });
+        return true;
+    }
+    if (entityType === 'request' && entityId) {
+        if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('mission', { requestId: entityId });
+        else if (typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal(entityId);
+        else if (typeof window.openRequestDetails === 'function') window.openRequestDetails(entityId);
+        return true;
+    }
+    if (entityType === 'post' || entityType === 'bokantaj_post' || nType === 'BOKANTAJ') {
+        const onFeed = /feed\.html/i.test(window.location.pathname);
+        const card = entityId ? document.getElementById(entityId) : null;
+        if (onFeed && card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return true;
+        }
+        if (!onFeed) {
+            window.LYANN_ROUTER?.go?.('bokantaj');
+            return true;
+        }
+        return false;
+    }
+    if (entityType === 'mission' && entityId) {
+        if (typeof window.openMissionDetailsModal === 'function') window.openMissionDetailsModal(entityId);
+        else if (typeof window.openMissionDetails === 'function') window.openMissionDetails(entityId);
+        return true;
+    }
+    return false;
+}
+
 function openNotificationsModal() {
-    const currentUserId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
-    if (window.LyannNotificationEngine?.hydrateFromServer && currentUserId) {
-        window.LyannNotificationEngine.hydrateFromServer(currentUserId).then(() => renderNotificationsModal());
+    const currentUserId = lyannNotificationUserId();
+    if (!lyannNotificationsSignedIn() || !currentUserId) {
+        if (typeof window.openLoginModal === 'function') window.openLoginModal();
+        else document.querySelector('.open-login-trigger')?.click();
         return;
     }
     renderNotificationsModal();
+    if (window.LyannNotificationEngine?.hydrateFromServer) {
+        window.LyannNotificationEngine.hydrateFromServer(currentUserId).then(() => {
+            if (document.getElementById('notificationsModal')?.classList.contains('active')) renderNotificationsModal();
+        });
+    }
 }
 
 function renderNotificationsModal() {
-    const currentUserId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.LYANN_CURRENT_USER?.id || null;
-    let modal = document.getElementById('notificationsModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.id = 'notificationsModal';
-        document.body.appendChild(modal);
+    const currentUserId = lyannNotificationUserId();
+    if (!lyannNotificationsSignedIn() || !currentUserId) {
+        if (typeof window.openLoginModal === 'function') window.openLoginModal();
+        return;
     }
 
-    const notifs = (window.LyannNotificationEngine 
-        ? window.LyannNotificationEngine.getUserNotifications(currentUserId, currentUserId) 
-        : []).filter(n => n.type !== 'NEW_MESSAGE');
-    const unreadCount = notifs.filter(n => !n.read).length;
+    const previous = document.getElementById('notificationsModal');
+    const wasOpen = !!previous?.classList.contains('active');
+    clearNotificationEscape();
+    previous?.remove();
+
+    const modal = document.createElement('div');
+    modal.className = 'sheet-backdrop lyann-notif-backdrop';
+    modal.id = 'notificationsModal';
+    document.body.appendChild(modal);
+
+    let notifs = [];
+    try {
+        notifs = window.LyannNotificationEngine
+            ? window.LyannNotificationEngine.getUserNotifications(currentUserId, currentUserId)
+            : [];
+    } catch (_) {
+        notifs = [];
+    }
+    notifs = notifs
+        .filter((n) => n && n.user_id === currentUserId && n.type !== 'NEW_MESSAGE')
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    const unreadCount = notifs.filter((n) => !n.read).length;
 
     modal.innerHTML = `
-        <div class="modal-card modal-card-notifications" style="max-width: 520px; width: 92%; border-radius: var(--radius-xl); padding: 20px; background: #FFFFFF; margin: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3); position: relative;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border-light); padding-bottom: 12px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0; color: var(--text);">Notifications 🔔</h3>
-                    ${unreadCount > 0 ? `<span style="background: var(--primary); color: #FFF; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">${unreadCount} non lue(s)</span>` : ''}
+        <div class="lyann-notif-sheet" role="dialog" aria-modal="true" aria-labelledby="lyannNotifTitle">
+            <div class="lyann-notif-handle" aria-hidden="true"></div>
+            <div class="lyann-notif-head">
+                <div class="lyann-notif-head-row">
+                    <h3 id="lyannNotifTitle">Notifications</h3>
+                    ${unreadCount > 0 ? `<span class="lyann-notif-unread">${unreadCount} non lue${unreadCount > 1 ? 's' : ''}</span>` : ''}
+                    <button type="button" id="closeNotificationsModalBtn" class="modal-close-btn" aria-label="Fermer"><i class="ph ph-x"></i></button>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    ${unreadCount > 0 ? `<button type="button" id="btnMarkAllNotifsRead" style="background: none; border: none; font-size: 0.8rem; color: var(--primary); font-weight: 700; cursor: pointer;">Tout marquer lu</button>` : ''}
-                    <button type="button" id="closeNotificationsModalBtn" class="modal-close-btn" aria-label="Fermer" style="position: static; opacity: 1;"><i class="ph ph-x"></i></button>
-                </div>
+                ${unreadCount > 0 ? `<button type="button" id="btnMarkAllNotifsRead" class="lyann-notif-mark-all">Tout marquer lu</button>` : ''}
             </div>
-            <div class="notifications-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 55vh; overflow-y: auto;">
+            <div class="notifications-list lyann-notif-list">
                 ${notifs.length === 0 ? `
-                    <div style="text-align: center; padding: 32px 16px; color: var(--text-muted);">
-                        <i class="ph ph-bell-slash" style="font-size: 2.5rem; opacity: 0.5; margin-bottom: 8px;"></i>
-                        <p style="margin: 0; font-weight: 600;">Rien de nouveau pour le moment.</p>
-                        <span style="font-size: 0.8rem;">Vos opportunités et l’activité de vos annonces apparaîtront ici.</span>
+                    <div class="lyann-notif-empty">
+                        <i class="ph ph-bell-slash" aria-hidden="true"></i>
+                        <p>Aucune notification pour le moment.</p>
+                        <span>Les j’aime, commentaires, missions et devis apparaîtront ici.</span>
                     </div>
-                ` : notifs.map(n => {
-                    const icon = n.type === 'OPPORTUNITY' ? '🤝' 
-                        : (n.type === 'NEW_MESSAGE' ? '💬' 
-                        : (n.type === 'BOKANTAJ' ? '📣'
-                        : (n.type === 'REQUEST_CLOSING' ? '⏳'
-                        : (n.type.startsWith('MISSION') ? '🎯' 
-                        : (n.type.startsWith('PAYMENT') ? '💳' : '🔔')))));
-                    
-                    const timeAgo = formatRelativeTime(n.created_at);
+                ` : notifs.map((n) => {
+                    const kind = notificationKind(n.type);
+                    const icon = kind?.icon || 'ph-bell';
+                    const timeAgo = escapeNotificationText(formatRelativeTime(n.created_at));
                     const isUnread = !n.read;
-                    
+                    const title = escapeNotificationText(n.title || kind?.label || 'Notification');
+                    const body = escapeNotificationText(n.body || '');
+                    const cta = n.cta?.label ? escapeNotificationText(n.cta.label) : '';
+                    const notifId = escapeNotificationText(n.id);
+                    const entityType = escapeNotificationText(n.entity_type || '');
+                    const entityId = escapeNotificationText(n.entity_id || '');
                     return `
-                        <div class="notif-item-card" data-notif-id="${n.id}" data-entity-type="${n.entity_type || ''}" data-entity-id="${n.entity_id || ''}" style="display: flex; gap: 12px; padding: 12px 14px; background: ${isUnread ? 'rgba(74, 124, 89, 0.06)' : 'var(--bg-alt)'}; border-radius: var(--radius-lg); border-left: 4px solid ${isUnread ? 'var(--primary)' : 'transparent'}; cursor: pointer; transition: all 0.2s ease;">
-                            <span style="font-size: 1.4rem;">${icon}</span>
-                            <div style="flex: 1;">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px;">
-                                    <strong style="font-size: 0.88rem; color: var(--text); font-weight: 700;">${n.title}</strong>
-                                    <span style="font-size: 0.72rem; color: var(--text-muted); white-space: nowrap;">${timeAgo}</span>
+                        <div class="notif-item-card${isUnread ? ' is-unread' : ''}" role="button" tabindex="0" data-notif-id="${notifId}" data-entity-type="${entityType}" data-entity-id="${entityId}">
+                            <span class="lyann-notif-icon" aria-hidden="true"><i class="ph ${icon}"></i></span>
+                            <div class="lyann-notif-copy">
+                                ${kind ? `<span class="lyann-notif-kind">${escapeNotificationText(kind.label)}</span>` : ''}
+                                <div class="lyann-notif-title-row">
+                                    <strong>${title}</strong>
+                                    <span>${timeAgo}</span>
                                 </div>
-                                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 6px 0; line-height: 1.3;">${n.body}</p>
-                                ${n.cta ? `<span style="font-size: 0.76rem; font-weight: 700; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;">${n.cta.label} &rarr;</span>` : ''}
+                                ${body ? `<p>${body}</p>` : ''}
+                                ${cta ? `<span class="lyann-notif-cta">${cta} →</span>` : ''}
                                 ${n.type === 'REQUEST_CLOSING' && n.entity_id ? `
                                     <div class="request-lifecycle-actions">
-                                        <button type="button" data-lifecycle="reopen" data-request-id="${n.entity_id}">Rouvrir</button>
-                                        <button type="button" data-lifecycle="pause" data-request-id="${n.entity_id}">Mettre en pause</button>
-                                        <button type="button" data-lifecycle="leave" data-request-id="${n.entity_id}">Laisser fermer</button>
+                                        <button type="button" data-lifecycle="reopen" data-request-id="${entityId}">Rouvrir</button>
+                                        <button type="button" data-lifecycle="pause" data-request-id="${entityId}">Mettre en pause</button>
+                                        <button type="button" data-lifecycle="leave" data-request-id="${entityId}">Laisser fermer</button>
                                     </div>
                                 ` : ''}
                             </div>
@@ -146,17 +269,27 @@ function renderNotificationsModal() {
         </div>
     `;
 
-    const closeBtn = document.getElementById('closeNotificationsModalBtn');
     const closeModal = () => {
+        clearNotificationEscape();
         modal.classList.remove('active');
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
+        if (typeof window.unlockBodyScroll === 'function') window.unlockBodyScroll();
+        else document.body.style.overflow = '';
         updateHeaderNotificationBadge();
+        window.setTimeout(() => {
+            if (!modal.classList.contains('active')) modal.remove();
+        }, 220);
     };
+    lyannNotifEscapeHandler = (event) => {
+        if (event.key === 'Escape') closeModal();
+    };
+    document.addEventListener('keydown', lyannNotifEscapeHandler);
 
-    closeBtn?.addEventListener('click', closeModal);
+    document.getElementById('closeNotificationsModalBtn')?.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
+    });
+    modal.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
     });
 
     modal.querySelectorAll('[data-lifecycle]').forEach(btn => {
@@ -185,13 +318,18 @@ function renderNotificationsModal() {
     document.getElementById('btnMarkAllNotifsRead')?.addEventListener('click', () => {
         if (window.LyannNotificationEngine) {
             window.LyannNotificationEngine.markAllAsRead(currentUserId);
-            openNotificationsModal();
+            renderNotificationsModal();
             updateHeaderNotificationBadge();
         }
     });
 
     // Deep link action handler for item clicks
     modal.querySelectorAll('.notif-item-card').forEach(card => {
+        card.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            card.click();
+        });
         card.addEventListener('click', () => {
             const notifId = card.getAttribute('data-notif-id');
             const entityType = card.getAttribute('data-entity-type');
@@ -205,38 +343,30 @@ function renderNotificationsModal() {
                 window.LyannNotificationEngine.markAsRead(notifId, currentUserId);
             }
 
-            closeModal();
+            const notif = (window.LyannNotificationEngine?.getUserNotifications?.(currentUserId, currentUserId) || [])
+                .find((item) => String(item.id) === String(notifId));
 
-            // Closed Opportunity Handling Check (TEST G)
             if (entityType === 'request' && entityId && window.LyannNotificationEngine) {
                 const oppState = window.LyannNotificationEngine.getOpportunityState(entityId, card.getAttribute('data-request-status') || 'ACTIVE');
                 if (!oppState.available) {
-                    if (typeof window.showLyanToast === 'function') {
-                        window.showLyanToast(oppState.human_message, 'ℹ️');
-                    } else {
-                        alert(oppState.human_message);
-                    }
+                    closeModal();
+                    if (typeof window.showLyanToast === 'function') window.showLyanToast(oppState.human_message, 'ℹ️');
+                    else alert(oppState.human_message);
                     return;
                 }
             }
 
-            // Deep link actions (TEST F)
-            if (entityType === 'conversation' || nType === 'NEW_MESSAGE') {
-                window.LYANN_ROUTER?.go?.('messages', { contactId: entityId, name: entityId === window.LYANN_SUPPORT_USER_ID ? 'Support LYANN' : undefined });
-            } else if (entityType === 'request' && entityId) {
-                if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('mission', { requestId: entityId });
-                else if (typeof window.openRequestDetails === 'function') window.openRequestDetails(entityId);
-            } else if (entityType === 'post' || nType === 'BOKANTAJ') {
-                window.LYANN_ROUTER?.go?.('bokantaj');
-            } else if (entityType === 'mission' && entityId) {
-                if (typeof window.openMissionDetails === 'function') window.openMissionDetails(entityId);
-            }
+            const opened = openNotificationTarget(notif || { type: nType, entity_type: entityType, entity_id: entityId });
+            if (opened) closeModal();
+            else renderNotificationsModal();
         });
     });
 
     modal.classList.add('active');
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    if (!wasOpen) {
+        if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();
+        else document.body.style.overflow = 'hidden';
+    }
 }
 
 function formatRelativeTime(isoString) {

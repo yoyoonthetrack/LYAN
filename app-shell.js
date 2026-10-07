@@ -526,12 +526,9 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
                         <i class="ph ph-chat-circle-dots"></i>
                         <span class="msg-badge-count" style="position: absolute; top: 0; right: 0; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 50%; align-items: center; justify-content: center; display: none;"></span>
                     </button>
-                    <button type="button" id="btnHeaderSupport" data-lyann-route="support" aria-label="Support LYANN" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">
-                        <i class="ph ph-headset"></i>
-                    </button>
-                    <button type="button" class="nav-msg-btn" id="btnHeaderNotif" aria-label="Notifications" style="background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; position: relative;">
+                    <button type="button" id="btnHeaderNotif" class="header-action-btn" aria-label="Notifications" style="background: none; border: none; font-size: 1.35rem; color: var(--text); cursor: pointer; position: relative; padding: 0; flex-shrink: 0;">
                         <i class="ph ph-bell"></i>
-                        <span class="notif-badge-count" style="position: absolute; top: 0; right: 0; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 50%; align-items: center; justify-content: center; display: none;"></span>
+                        <span class="notif-badge-count" style="position: absolute; top: 4px; right: 4px; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 50%; align-items: center; justify-content: center; display: none;"></span>
                     </button>
                     <button type="button" class="hamburger-menu-btn" id="btnHeaderHamburger" aria-label="Menu Principal" style="background: rgba(74, 124, 89, 0.12); border: 1.5px solid rgba(74, 124, 89, 0.25); border-radius: 12px; width: 38px; height: 38px; font-size: 1.3rem; color: var(--primary-dark); cursor: pointer; display: flex; align-items: center; justify-content: center;">
                         <i class="ph ph-list"></i>
@@ -584,7 +581,15 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
 
     container.querySelector('#btnHeaderNotif')?.addEventListener('click', (e) => {
         e.preventDefault();
-        triggerHaptic('light');
+        e.stopPropagation();
+        if (typeof triggerHaptic === 'function') triggerHaptic('light');
+        const signedIn = document.body.classList.contains('user-is-logged-in')
+            || window.LYANN_AUTH_STATE?.isAuthenticated?.() === true;
+        if (!signedIn) {
+            if (typeof window.openLoginModal === 'function') window.openLoginModal();
+            else document.querySelector('.open-login-trigger')?.click();
+            return;
+        }
         if (typeof openNotificationsModal === 'function') openNotificationsModal();
     });
 
@@ -600,6 +605,7 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
     navbar.setAttribute('data-native-header-active', viewType);
     navbar.style.display = '';
     navbar.style.visibility = 'visible';
+    if (typeof updateHeaderNotificationBadge === 'function') updateHeaderNotificationBadge();
     if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.nativeHeaderRowCreated = !!document.querySelector('.native-header-row');
     logLyannTrace("nativeHeaderRow_created", { created: !!document.querySelector('.native-header-row') });
     console.log("⚡ [BOOT 07] native header mounted for viewType:", viewType);

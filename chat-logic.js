@@ -734,8 +734,11 @@ let displayName = name;
     await refreshChatUI();
 };
 
+let chatRefreshInFlight = false;
 window.refreshChatUI = async function () {
-    if (!currentChatContact) return;
+    if (!currentChatContact || chatRefreshInFlight) return;
+    chatRefreshInFlight = true;
+    try {
 
     if (typeof window.updateChatFavHeaderUI === 'function') {
         window.updateChatFavHeaderUI();
@@ -926,6 +929,9 @@ window.refreshChatUI = async function () {
     }
 
     await messagesPromise;
+    } finally {
+        chatRefreshInFlight = false;
+    }
 }
 
 const quoteActionLocks = new Set();
@@ -1202,7 +1208,6 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         const coPrestationTitle = document.getElementById('coPrestationTitle');
         const coDevisAmount = document.getElementById('coDevisAmount');
         const coLyannFee = document.getElementById('coLyannFee');
-        const coAssuranceFee = document.getElementById('coAssuranceFee');
         const coTotalAmount = document.getElementById('coTotalAmount');
 
         const agreedPrice = Number(mission.agreed_price);
@@ -1212,15 +1217,9 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         if (coPrestationTitle) coPrestationTitle.textContent = title;
         if (coDevisAmount) coDevisAmount.textContent = `${agreedPrice.toFixed(2)} €`;
 
-        const fee = agreedPrice * 0.03;
+        const fee = Math.round(agreedPrice * 0.03 * 100) / 100;
         if (coLyannFee) coLyannFee.textContent = `${fee.toFixed(2)} €`;
-
-        const assuranceCheck = document.getElementById('coAssuranceCheck');
-        const hasAssurance = assuranceCheck ? assuranceCheck.checked : true;
-        const prot = hasAssurance ? agreedPrice * 0.07 : 0;
-        if (coAssuranceFee) coAssuranceFee.textContent = `${prot.toFixed(2)} €`;
-
-        if (coTotalAmount) coTotalAmount.textContent = `${(agreedPrice + fee + prot).toFixed(2)} €`;
+        if (coTotalAmount) coTotalAmount.textContent = `${(agreedPrice + fee).toFixed(2)} €`;
 
         closeAllOverlays();
         const chatCheckoutOverlay = document.getElementById('chatCheckoutOverlay');
@@ -3110,22 +3109,6 @@ document.addEventListener('touchstart', (e) => {
             if (window.lyannAlert) window.lyannAlert("Merci ! Votre avis a été publié.");
             closeAllOverlays();
             refreshOpenBusinessCards();
-        });
-    }
-
-    // Recalculate total on checkout assurance checkbox toggle
-    const coAssuranceCheck = document.getElementById('coAssuranceCheck');
-    if (coAssuranceCheck) {
-        coAssuranceCheck.addEventListener('change', async () => {
-            if (!currentChatContact) return;
-            const mission = window.LYANN_API_CLIENT ? await window.LYANN_API_CLIENT.getActiveMissionBetween(getMyId(), currentChatContact.id) : null;
-            const agreedPrice = mission ? mission.agreed_price : 50;
-            const fee = agreedPrice * 0.03;
-            const prot = coAssuranceCheck.checked ? agreedPrice * 0.07 : 0;
-            const coAssuranceFee = document.getElementById('coAssuranceFee');
-            const coTotalAmount = document.getElementById('coTotalAmount');
-            if (coAssuranceFee) coAssuranceFee.textContent = `${prot.toFixed(2)} €`;
-            if (coTotalAmount) coTotalAmount.textContent = `${(agreedPrice + fee + prot).toFixed(2)} €`;
         });
     }
 
