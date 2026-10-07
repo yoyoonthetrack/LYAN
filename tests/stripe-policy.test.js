@@ -135,6 +135,7 @@ test('Accounts v2 creation and onboarding link keep the LYANN return urls', () =
     assert.equal(link.use_case.type, 'account_onboarding');
     assert.equal(link.use_case.account_onboarding.return_url, 'https://lyann.app/?action=finances&connect=return');
     assert.equal(link.use_case.account_onboarding.refresh_url, 'https://lyann.app/?action=finances&connect=refresh');
+    assert.equal('configurations' in link.use_case.account_onboarding, false);
 });
 
 test('a milestone cannot be funded when the Connect account is not ready', () => {

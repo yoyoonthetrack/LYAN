@@ -104,7 +104,6 @@ function buildAccountLinkParams(accountId, returnUrl, refreshUrl) {
         use_case: {
             type: 'account_onboarding',
             account_onboarding: {
-                configurations: ['recipient'],
                 return_url: returnUrl,
                 refresh_url: refreshUrl
             }
