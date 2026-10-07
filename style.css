@@ -7835,6 +7835,31 @@ input:checked + .slider:before {
     padding: 8px 0;
 }
 
+#chatCheckoutOverlay.chat-overlay-pane {
+    top: 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow: hidden;
+}
+#chatCheckoutOverlay > div {
+    max-height: none !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+#lyannCardPaymentElement {
+    min-height: 48px;
+    width: 100%;
+    box-sizing: border-box;
+}
+#lyannCardPaymentElement iframe {
+    width: 100% !important;
+    min-height: 24px;
+}
+
 /* Fix Overlay Position */
 .chat-overlay-pane {
     position: absolute;
@@ -8359,11 +8384,11 @@ body.user-is-logged-in #mobileHamburgerDrawer .drawer-footer.logged-in-only {
     }
 
     #chatModal .modal-card-chat {
-        width: 92% !important;
-        max-width: 1120px !important;
-        height: 84vh !important;
-        max-height: 860px !important;
-        min-height: 560px !important;
+        width: calc(100vw - 32px) !important;
+        max-width: 1440px !important;
+        height: calc(100vh - 32px) !important;
+        max-height: none !important;
+        min-height: 0 !important;
         border-radius: 24px !important;
         box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
         margin: auto !important;

@@ -18,6 +18,7 @@ const {
     shouldCreateConnectAccount,
     buildConnectAccountParams,
     buildAccountLinkParams,
+    legacyPaymentColumns,
     providerCanBePaid,
     evaluateTransfer,
     evaluateRefund,
@@ -3165,6 +3166,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                 currency: 'EUR',
                 payment_status: 'CREATED',
                 transfer_status: 'NOT_STARTED',
+                ...legacyPaymentColumns(financials),
                 metadata: {
                     milestone_id: milestone.id,
                     quote_id: quote.id,

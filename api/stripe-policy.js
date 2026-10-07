@@ -175,6 +175,14 @@ function claimWebhookDecision(existing) {
     return { action: 'duplicate' };
 }
 
+function legacyPaymentColumns(financials) {
+    return {
+        amount_gross_cents: Number(financials.customer_total_cents),
+        amount_platform_fee_cents: Number(financials.lyann_revenue_cents),
+        amount_provider_net_cents: Number(financials.provider_net_cents)
+    };
+}
+
 function safeStripeReturnUrl(value) {
     const fallback = 'https://lyann.app/';
     try {
@@ -193,6 +201,7 @@ module.exports = {
     shouldCreateConnectAccount,
     buildConnectAccountParams,
     buildAccountLinkParams,
+    legacyPaymentColumns,
     providerCanBePaid,
     evaluateTransfer,
     evaluateRefund,

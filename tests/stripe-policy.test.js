@@ -9,6 +9,7 @@ const {
     shouldCreateConnectAccount,
     buildConnectAccountParams,
     buildAccountLinkParams,
+    legacyPaymentColumns,
     providerCanBePaid,
     evaluateTransfer,
     evaluateRefund,
@@ -136,6 +137,16 @@ test('Accounts v2 creation and onboarding link keep the LYANN return urls', () =
     assert.equal(link.use_case.account_onboarding.return_url, 'https://lyann.app/?action=finances&connect=return');
     assert.equal(link.use_case.account_onboarding.refresh_url, 'https://lyann.app/?action=finances&connect=refresh');
     assert.equal('configurations' in link.use_case.account_onboarding, false);
+    const legacy = legacyPaymentColumns({
+        customer_total_cents: 1030n,
+        lyann_revenue_cents: 60n,
+        provider_net_cents: 970n
+    });
+    assert.deepEqual(legacy, {
+        amount_gross_cents: 1030,
+        amount_platform_fee_cents: 60,
+        amount_provider_net_cents: 970
+    });
 });
 
 test('a milestone cannot be funded when the Connect account is not ready', () => {
