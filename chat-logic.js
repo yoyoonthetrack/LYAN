@@ -1571,6 +1571,77 @@ function repaintFundingCards(box) {
     });
 }
 
+function renderDealRecapCard(quote) {
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    if (!payment || !quote) return null;
+    const recap = payment.dealRecap(quote);
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'chat-timeline-card';
+    wrapper.dataset.dealRecap = String(quote.id);
+    const title = document.createElement('div');
+    title.className = 'chat-timeline-title';
+    title.textContent = recap.title;
+    wrapper.appendChild(title);
+    recap.lines.forEach((line) => {
+        const row = document.createElement('div');
+        row.className = 'chat-timeline-meta';
+        row.textContent = line.label + ' · ' + line.value;
+        wrapper.appendChild(row);
+    });
+    if (payment.payableMilestoneForQuote(quote, userId)) {
+        appendPayableQuoteAction(wrapper, quote);
+        return wrapper;
+    }
+    const next = payment.nextFundingAction(quote, userId);
+    if (next && next.waiting && !recap.released) {
+        const wait = document.createElement('div');
+        wait.className = 'chat-timeline-meta';
+        wait.textContent = next.waiting;
+        wrapper.appendChild(wait);
+    }
+    if (next && next.action && next.milestone) {
+        const actions = document.createElement('div');
+        actions.className = 'chat-timeline-actions';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-primary';
+        button.style.background = '#2E7D32';
+        button.textContent = next.label;
+        button.addEventListener('click', () => {
+            button.disabled = true;
+            handleChatAction(next.action, {
+                id: next.missionId,
+                milestoneId: next.milestone.id,
+                title: next.milestone.title
+            });
+        });
+        actions.appendChild(button);
+        wrapper.appendChild(actions);
+    }
+    return wrapper;
+}
+
+function paintDealRecaps(box, quotes) {
+    if (!box) return;
+    const accepted = (quotes || []).some((quote) => quote && quote.status === 'ACCEPTED');
+    if (accepted && window.LYANN_QUOTE_PAYMENT) {
+        const hidden = window.LYANN_QUOTE_PAYMENT.hiddenTimelineTypes([], quotes);
+        box.querySelectorAll('[data-message-type]').forEach((node) => {
+            if (hidden.has(node.dataset.messageType)) node.remove();
+        });
+        box.querySelectorAll('.chat-msg-card').forEach((node) => {
+            if (String(node.textContent || '').indexOf('Le paiement est validé') !== -1) node.remove();
+        });
+    }
+    box.querySelectorAll('[data-deal-recap]').forEach((node) => node.remove());
+    (quotes || []).forEach((quote) => {
+        if (!quote || quote.status !== 'ACCEPTED') return;
+        const card = renderDealRecapCard(quote);
+        if (card) box.appendChild(card);
+    });
+}
+
 function appendPayableQuoteAction(parent, quote) {
     const payment = window.LYANN_QUOTE_PAYMENT;
     const payable = payment && payment.payableMilestoneForQuote(quote, getMyId());
@@ -1758,10 +1829,8 @@ async function refreshOpenBusinessCards() {
             return;
         }
         applyQuoteStatusToDom(quote.id, quote.status);
-        if (!box.querySelector('[data-live-quote-id="' + CSS.escape(String(quote.id)) + '"]') && typeof window.__lyannAppendLiveQuote === 'function') {
-            window.__lyannAppendLiveQuote(box, quote);
-        }
     });
+    paintDealRecaps(box, quotes);
 }
 
 async function renderMessages(passedMessages = null, options = {}) {
@@ -1841,8 +1910,10 @@ async function renderMessages(passedMessages = null, options = {}) {
         wrapper.dataset.messageId = String(msgId);
 
         const timelineType = msg.messageType || msg.type;
+        const knownQuotes = [];
+        timelineQuotes.forEach((quote) => { if (quote && quote.status) knownQuotes.push(quote); });
         const hiddenTimeline = window.LYANN_QUOTE_PAYMENT && window.LYANN_QUOTE_PAYMENT.hiddenTimelineTypes
-            ? window.LYANN_QUOTE_PAYMENT.hiddenTimelineTypes(msgs)
+            ? window.LYANN_QUOTE_PAYMENT.hiddenTimelineTypes(msgs, knownQuotes)
             : new Set();
         if (isTimelineMessage(msg)) {
             if (hiddenTimeline.has(timelineType)) return;
@@ -2133,6 +2204,7 @@ async function renderMessages(passedMessages = null, options = {}) {
                 quotes.forEach((quote) => timelineQuotes.set(String(quote.id), quote));
                 repaintQuoteTimelineCards(box);
                 repaintFundingCards(box);
+                paintDealRecaps(box, quotes);
                 box.querySelectorAll('[data-live-quote="1"]').forEach((node) => {
                     if (node.dataset.liveQuoteId && box.querySelector(quoteTimelineSelector(node.dataset.liveQuoteId))) node.remove();
                 });

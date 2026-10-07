@@ -175,6 +175,12 @@ function claimWebhookDecision(existing) {
     return { action: 'duplicate' };
 }
 
+function quoteFullyReleased(milestones) {
+    return Array.isArray(milestones)
+        && milestones.length > 0
+        && milestones.every((milestone) => milestone && (milestone.status === 'RELEASED' || milestone.status === 'CANCELLED'));
+}
+
 function legacyPaymentColumns(financials) {
     return {
         amount_gross_cents: Number(financials.customer_total_cents),
@@ -202,6 +208,7 @@ module.exports = {
     buildConnectAccountParams,
     buildAccountLinkParams,
     legacyPaymentColumns,
+    quoteFullyReleased,
     providerCanBePaid,
     evaluateTransfer,
     evaluateRefund,

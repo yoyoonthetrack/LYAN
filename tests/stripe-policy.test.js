@@ -10,6 +10,7 @@ const {
     buildConnectAccountParams,
     buildAccountLinkParams,
     legacyPaymentColumns,
+    quoteFullyReleased,
     providerCanBePaid,
     evaluateTransfer,
     evaluateRefund,
@@ -142,6 +143,8 @@ test('Accounts v2 creation and onboarding link keep the LYANN return urls', () =
         lyann_revenue_cents: 60n,
         provider_net_cents: 970n
     });
+    assert.equal(quoteFullyReleased([{ status: 'RELEASED' }]), true);
+    assert.equal(quoteFullyReleased([{ status: 'FUNDED' }]), false);
     assert.deepEqual(legacy, {
         amount_gross_cents: 1030,
         amount_platform_fee_cents: 60,

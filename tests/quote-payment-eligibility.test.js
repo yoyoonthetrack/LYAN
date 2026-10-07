@@ -11,6 +11,8 @@ const {
     dispatchQuotePay,
     hiddenTimelineTypes,
     nextFundingAction,
+    dealRecap,
+    quoteSettled,
     PAYMENT_ROUTE
 } = require('../quote-payment-eligibility.js');
 
@@ -104,15 +106,22 @@ test('the timeline card uses the same payment decision', () => {
     assert.match(source, /appendFundingAction\(body\)/);
 });
 
-test('a secured payment hides the duplicate status cards', () => {
-    const hidden = hiddenTimelineTypes([
-        { messageType: 'quote_accepted' },
-        { messageType: 'payment_requested' },
-        { messageType: 'payment_secured' }
-    ]);
-    assert.equal(hidden.has('payment_requested'), true);
+test('deal steps collapse into one recap instead of a stack of cards', () => {
+    const hidden = hiddenTimelineTypes([], [quote()]);
     assert.equal(hidden.has('quote_accepted'), true);
-    assert.equal(hidden.has('payment_secured'), false);
+    assert.equal(hidden.has('payment_requested'), true);
+    assert.equal(hidden.has('payment_secured'), true);
+    assert.equal(hidden.has('milestone_completed'), true);
+    assert.equal(hiddenTimelineTypes([], [quote({ status: 'SENT' })]).has('quote_created'), false);
+    const funded = quote();
+    funded.milestones[0].status = 'FUNDED';
+    const lines = dealRecap(funded).lines.map((line) => line.label + ' ' + line.value);
+    assert.equal(lines.includes('Devis Accepté'), true);
+    assert.equal(lines.includes('Paiement Encaissé'), true);
+    assert.equal(lines.includes('Versement Libéré'), false);
+    funded.milestones[0].status = 'RELEASED';
+    assert.equal(quoteSettled(funded.milestones), true);
+    assert.equal(dealRecap(funded).lines.some((line) => line.value === 'Fermée'), true);
 });
 
 test('release is offered to the requester only after the work is declared done', () => {

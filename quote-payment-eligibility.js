@@ -60,11 +60,50 @@
         };
     }
 
-    function hiddenTimelineTypes(messages) {
-        const types = (messages || []).map((message) => message && (message.messageType || message.type));
-        const hidden = new Set(['payment_requested']);
-        if (types.indexOf('payment_secured') !== -1) hidden.add('quote_accepted');
-        return hidden;
+    const DEAL_TIMELINE_TYPES = [
+        'quote_created',
+        'quote_updated',
+        'quote_accepted',
+        'quote_declined',
+        'payment_requested',
+        'payment_secured',
+        'payment_failed',
+        'milestone_created',
+        'milestone_completed',
+        'milestone_approved',
+        'funds_released'
+    ];
+
+    function hiddenTimelineTypes(messages, quotes) {
+        const accepted = (quotes || []).some((quote) => quote && quote.status === 'ACCEPTED');
+        if (!accepted) return new Set(['payment_requested']);
+        return new Set(DEAL_TIMELINE_TYPES);
+    }
+
+    function quoteSettled(milestones) {
+        return Array.isArray(milestones)
+            && milestones.length > 0
+            && milestones.every((milestone) => milestone && (milestone.status === 'RELEASED' || milestone.status === 'CANCELLED'));
+    }
+
+    function dealRecap(quote) {
+        const milestones = (quote && quote.milestones) || [];
+        const statuses = milestones.map((milestone) => milestone && milestone.status);
+        const released = quoteSettled(milestones);
+        const done = statuses.some((status) => status === 'COMPLETED' || status === 'VALIDATED' || status === 'RELEASED');
+        const funded = statuses.some((status) => status === 'FUNDED' || status === 'IN_PROGRESS' || done);
+        const lines = [];
+        if (quote && quote.status === 'ACCEPTED') lines.push({ label: 'Devis', value: 'Accepté' });
+        else if (quote && quote.status) lines.push({ label: 'Devis', value: String(quote.status) });
+        if (quote && quote.total_amount != null) lines.push({ label: 'Montant', value: String(quote.total_amount) + ' €' });
+        if (funded) lines.push({ label: 'Paiement', value: 'Encaissé' });
+        if (done && !released) lines.push({ label: 'Prestation', value: 'Déclarée terminée' });
+        if (released) {
+            lines.push({ label: 'Prestation', value: 'Terminée' });
+            lines.push({ label: 'Versement', value: 'Libéré' });
+            lines.push({ label: 'Annonce', value: 'Fermée' });
+        }
+        return { title: 'Récapitulatif', lines, released };
     }
 
     function nextFundingAction(quote, userId) {
@@ -117,6 +156,8 @@
         dispatchQuotePay,
         hiddenTimelineTypes,
         nextFundingAction,
+        quoteSettled,
+        dealRecap,
         PAYMENT_ROUTE
     };
 });

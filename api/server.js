@@ -19,6 +19,7 @@ const {
     buildConnectAccountParams,
     buildAccountLinkParams,
     legacyPaymentColumns,
+    quoteFullyReleased,
     providerCanBePaid,
     evaluateTransfer,
     evaluateRefund,
@@ -3525,6 +3526,29 @@ app.post('/v1/milestones/submit-completion', async (req, res) => {
  * - Lyanneur claim endpoint (POST /v1/milestones/claim-transfer)
  * - Webhook account.updated listener
  */
+async function closeRequestWhenQuoteIsSettled(quote) {
+    if (!quote || !quote.id || !quote.request_id) return;
+    const { data: milestones } = await supabaseAdmin
+        .from('milestones')
+        .select('status')
+        .eq('quote_id', quote.id);
+    if (!quoteFullyReleased(milestones)) return;
+    await supabaseAdmin
+        .from('requests')
+        .update({
+            status: 'CLOSED',
+            auto_close_at: null,
+            close_notice_sent: true
+        })
+        .eq('id', quote.request_id);
+    if (quote.mission_id) {
+        await supabaseAdmin
+            .from('missions')
+            .update({ status: 'COMPLETED', updated_at: new Date().toISOString() })
+            .eq('id', quote.mission_id);
+    }
+}
+
 async function retryMilestoneTransfer(milestoneId) {
     // 1. Fetch milestone
     const { data: milestone, error: mErr } = await supabaseAdmin
@@ -3576,6 +3600,7 @@ async function retryMilestoneTransfer(milestoneId) {
 
     // Already transferred idempotent check
     if (payment.transfer_status === 'TRANSFERRED' && payment.stripe_transfer_id) {
+        await closeRequestWhenQuoteIsSettled(quote);
         return {
             success: true,
             idempotent: true,
@@ -3720,6 +3745,7 @@ async function retryMilestoneTransfer(milestoneId) {
 
             console.log(`🎉 [LYANN TRANSFER] Transfert réussi ${transfer.id} pour Partie ${milestone.id}. Montant: ${transferAmountCents} cents.`);
 
+            await closeRequestWhenQuoteIsSettled(quote);
             return {
                 success: true,
                 status: "RELEASED",
@@ -3763,6 +3789,7 @@ async function retryMilestoneTransfer(milestoneId) {
             })
             .eq('id', milestone.id);
 
+        await closeRequestWhenQuoteIsSettled(quote);
         return {
             success: true,
             mode: 'stripe_test_mock',
