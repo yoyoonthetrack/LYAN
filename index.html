@@ -294,8 +294,8 @@
         </div>
         <div class="native-guest-dots" id="nativeGuestDots" role="tablist" aria-label="Slides"></div>
         <div class="native-guest-cta">
-            <button type="button" class="btn btn-primary btn-lg" id="btnNativeJoin">Rejoindre LYANN <i class="ph ph-arrow-right"></i></button>
-            <button type="button" class="native-guest-login" id="btnNativeLogin">Déjà un compte ? Se connecter</button>
+            <button type="button" class="btn btn-outline btn-lg" id="btnNativeLogin">Se connecter</button>
+            <button type="button" class="btn btn-primary btn-lg" id="btnNativeJoin">S'inscrire</button>
         </div>
     </div>
 
@@ -836,15 +836,15 @@
                     pager.scrollLeft = Math.round(index * (pager.clientWidth || 1));
                 });
                 syncDotsFromScroll();
+                document.getElementById('btnNativeLogin')?.addEventListener('click', function () {
+                    var last = slides.indexOf(document.querySelector('.native-guest-login-slide'));
+                    if (last >= 0) goToSlide(last);
+                });
             }
 
             home.hidden = false;
             document.getElementById('btnNativeJoin')?.addEventListener('click', function () {
-                if (typeof window.openOnboarding === 'function') window.openOnboarding({ chooser: true });
-            });
-            document.getElementById('btnNativeLogin')?.addEventListener('click', function () {
-                if (typeof window.openLoginModal === 'function') window.openLoginModal();
-                else document.querySelector('.open-login-trigger')?.click();
+                if (typeof window.openOnboarding === 'function') window.openOnboarding();
             });
             document.getElementById('nativeGuestLoginForm')?.addEventListener('submit', function (e) {
                 e.preventDefault();
@@ -858,7 +858,7 @@
                 if (loginForm) loginForm.requestSubmit();
             });
             document.getElementById('btnGuestSignup')?.addEventListener('click', function () {
-                if (typeof window.openOnboarding === 'function') window.openOnboarding({ chooser: true });
+                if (typeof window.openOnboarding === 'function') window.openOnboarding();
             });
             document.documentElement.dataset.nativeGuestMounted = '1';
         };
