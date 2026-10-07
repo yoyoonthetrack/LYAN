@@ -301,7 +301,15 @@ app.post('/v1/payments/connect/account', async (req, res) => {
         if (saveErr) return res.status(500).json({ error: 'Compte Connect non enregistré.' });
         return res.json({ success: true, created: true, ...connectStatus(account) });
     } catch (e) {
-        console.error('Connect account error');
+        const message = String(e && e.message || '').replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
+        console.error(JSON.stringify({
+            scope: 'connect_account',
+            type: e && e.type || null,
+            code: e && e.code || null,
+            param: e && e.param || null,
+            message,
+            requestId: (e && (e.requestId || e.request_id)) || null
+        }));
         return res.status(500).json({ error: 'Création du compte Connect impossible.' });
     }
 });
