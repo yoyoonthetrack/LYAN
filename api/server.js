@@ -335,7 +335,17 @@ app.post('/v1/payments/connect/onboarding-link', async (req, res) => {
         ));
         return res.json({ success: true, url: link.url });
     } catch (e) {
-        console.error('Connect onboarding link error');
+        const message = String(e && e.message || '').replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
+        const statusCode = Number(e && (e.statusCode || e.status));
+        console.error(JSON.stringify({
+            scope: 'connect_onboarding_link',
+            type: e && e.type || null,
+            code: e && e.code || null,
+            param: e && e.param || null,
+            message,
+            requestId: (e && (e.requestId || e.request_id)) || null,
+            statusCode: Number.isFinite(statusCode) ? statusCode : null
+        }));
         return res.status(500).json({ error: 'Lien d’onboarding indisponible.' });
     }
 });
