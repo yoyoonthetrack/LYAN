@@ -1,6 +1,5 @@
 @font-face{font-family:"Phosphor";src:url("./Phosphor.woff2") format("woff2");font-weight:normal;font-style:normal;font-display:block}
 .ph{font-family:"Phosphor"!important;speak:never;font-style:normal;font-weight:normal;font-variant:normal;text-transform:none;line-height:1;letter-spacing:0;-webkit-font-feature-settings:"liga";font-feature-settings:"liga";-webkit-font-variant-ligatures:discretionary-ligatures;font-variant-ligatures:discretionary-ligatures;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-.ph.ph-anchor:before{content:"\e514"}
 .ph.ph-apple-logo:before{content:"\e516"}
 .ph.ph-arrow-clockwise:before{content:"\e036"}
 .ph.ph-arrow-counter-clockwise:before{content:"\e038"}
@@ -23,13 +22,11 @@
 .ph.ph-briefcase:before{content:"\e0ee"}
 .ph.ph-broadcast:before{content:"\e0f2"}
 .ph.ph-broom:before{content:"\ec54"}
-.ph.ph-bug:before{content:"\e5f4"}
 .ph.ph-buildings:before{content:"\e102"}
 .ph.ph-calendar:before{content:"\e108"}
 .ph.ph-calendar-blank:before{content:"\e10a"}
 .ph.ph-calendar-check:before{content:"\e712"}
 .ph.ph-camera:before{content:"\e10e"}
-.ph.ph-car:before{content:"\e112"}
 .ph.ph-cards:before{content:"\e0f8"}
 .ph.ph-caret-down:before{content:"\e136"}
 .ph.ph-caret-left:before{content:"\e138"}
@@ -50,6 +47,7 @@
 .ph.ph-checks:before{content:"\e53a"}
 .ph.ph-circle-notch:before{content:"\eb44"}
 .ph.ph-clipboard:before{content:"\e196"}
+.ph.ph-clipboard-text:before{content:"\e198"}
 .ph.ph-clock:before{content:"\e19a"}
 .ph.ph-clock-afternoon:before{content:"\e19c"}
 .ph.ph-clock-counter-clockwise:before{content:"\e1a0"}
@@ -65,7 +63,6 @@
 .ph.ph-currency-eur:before{content:"\e554"}
 .ph.ph-desktop:before{content:"\e560"}
 .ph.ph-dog:before{content:"\e74a"}
-.ph.ph-dots-three:before{content:"\e1fe"}
 .ph.ph-dots-three-vertical:before{content:"\e208"}
 .ph.ph-download-simple:before{content:"\e20c"}
 .ph.ph-drop:before{content:"\e210"}
@@ -80,14 +77,12 @@
 .ph.ph-flag-checkered:before{content:"\ea38"}
 .ph.ph-floppy-disk:before{content:"\e248"}
 .ph.ph-folder-open:before{content:"\e256"}
-.ph.ph-fork-knife:before{content:"\e262"}
 .ph.ph-funnel:before{content:"\e266"}
 .ph.ph-gear:before{content:"\e270"}
 .ph.ph-git-commit:before{content:"\e27a"}
 .ph.ph-google-logo:before{content:"\e292"}
 .ph.ph-graduation-cap:before{content:"\e62c"}
 .ph.ph-grid-four:before{content:"\e296"}
-.ph.ph-hammer:before{content:"\e80e"}
 .ph.ph-hand-eye:before{content:"\ea4c"}
 .ph.ph-hand-heart:before{content:"\e810"}
 .ph.ph-hand-palm:before{content:"\e57e"}
@@ -120,7 +115,6 @@
 .ph.ph-megaphone:before{content:"\e324"}
 .ph.ph-microphone:before{content:"\e326"}
 .ph.ph-monitor:before{content:"\e32e"}
-.ph.ph-music-notes:before{content:"\e340"}
 .ph.ph-navigation-arrow:before{content:"\eade"}
 .ph.ph-newspaper:before{content:"\e344"}
 .ph.ph-newspaper-clipping:before{content:"\e346"}
@@ -148,9 +142,7 @@
 .ph.ph-robot:before{content:"\e762"}
 .ph.ph-rocket:before{content:"\e3fc"}
 .ph.ph-rocket-launch:before{content:"\e3fe"}
-.ph.ph-ruler:before{content:"\e6b8"}
 .ph.ph-scales:before{content:"\e750"}
-.ph.ph-scissors:before{content:"\eae0"}
 .ph.ph-scroll:before{content:"\eb7a"}
 .ph.ph-seal-check:before{content:"\e606"}
 .ph.ph-circle-wavy-check:before{content:"\e606"}
@@ -171,7 +163,6 @@
 .ph.ph-squares-four:before{content:"\e464"}
 .ph.ph-star:before{content:"\e46a"}
 .ph.ph-swap:before{content:"\e83c"}
-.ph.ph-t-shirt:before{content:"\e670"}
 .ph.ph-tag:before{content:"\e478"}
 .ph.ph-terminal-window:before{content:"\eae8"}
 .ph.ph-thumbs-up:before{content:"\e48e"}
@@ -197,7 +188,6 @@
 .ph.ph-warning:before{content:"\e4e0"}
 .ph.ph-warning-circle:before{content:"\e4e2"}
 .ph.ph-warning-octagon:before{content:"\e4e4"}
-.ph.ph-waves:before{content:"\e6de"}
 .ph.ph-whatsapp-logo:before{content:"\e5d0"}
 .ph.ph-wind:before{content:"\e5d2"}
 .ph.ph-wrench:before{content:"\e5d4"}
@@ -205,7 +195,6 @@
 .ph.ph-x-circle:before{content:"\e4f8"}
 @font-face{font-family:"Phosphor-Bold";src:url("./Phosphor-Bold.woff2") format("woff2");font-weight:normal;font-style:normal;font-display:block}
 .ph-bold{font-family:"Phosphor-Bold"!important;speak:never;font-style:normal;font-weight:normal;font-variant:normal;text-transform:none;line-height:1;letter-spacing:0;-webkit-font-feature-settings:"liga";font-feature-settings:"liga";-webkit-font-variant-ligatures:discretionary-ligatures;font-variant-ligatures:discretionary-ligatures;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-.ph-bold.ph-anchor:before{content:"\e514"}
 .ph-bold.ph-apple-logo:before{content:"\e516"}
 .ph-bold.ph-arrow-clockwise:before{content:"\e036"}
 .ph-bold.ph-arrow-counter-clockwise:before{content:"\e038"}
@@ -228,13 +217,11 @@
 .ph-bold.ph-briefcase:before{content:"\e0ee"}
 .ph-bold.ph-broadcast:before{content:"\e0f2"}
 .ph-bold.ph-broom:before{content:"\ec54"}
-.ph-bold.ph-bug:before{content:"\e5f4"}
 .ph-bold.ph-buildings:before{content:"\e102"}
 .ph-bold.ph-calendar:before{content:"\e108"}
 .ph-bold.ph-calendar-blank:before{content:"\e10a"}
 .ph-bold.ph-calendar-check:before{content:"\e712"}
 .ph-bold.ph-camera:before{content:"\e10e"}
-.ph-bold.ph-car:before{content:"\e112"}
 .ph-bold.ph-cards:before{content:"\e0f8"}
 .ph-bold.ph-caret-down:before{content:"\e136"}
 .ph-bold.ph-caret-left:before{content:"\e138"}
@@ -255,6 +242,7 @@
 .ph-bold.ph-checks:before{content:"\e53a"}
 .ph-bold.ph-circle-notch:before{content:"\eb44"}
 .ph-bold.ph-clipboard:before{content:"\e196"}
+.ph-bold.ph-clipboard-text:before{content:"\e198"}
 .ph-bold.ph-clock:before{content:"\e19a"}
 .ph-bold.ph-clock-afternoon:before{content:"\e19c"}
 .ph-bold.ph-clock-counter-clockwise:before{content:"\e1a0"}
@@ -270,7 +258,6 @@
 .ph-bold.ph-currency-eur:before{content:"\e554"}
 .ph-bold.ph-desktop:before{content:"\e560"}
 .ph-bold.ph-dog:before{content:"\e74a"}
-.ph-bold.ph-dots-three:before{content:"\e1fe"}
 .ph-bold.ph-dots-three-vertical:before{content:"\e208"}
 .ph-bold.ph-download-simple:before{content:"\e20c"}
 .ph-bold.ph-drop:before{content:"\e210"}
@@ -285,14 +272,12 @@
 .ph-bold.ph-flag-checkered:before{content:"\ea38"}
 .ph-bold.ph-floppy-disk:before{content:"\e248"}
 .ph-bold.ph-folder-open:before{content:"\e256"}
-.ph-bold.ph-fork-knife:before{content:"\e262"}
 .ph-bold.ph-funnel:before{content:"\e266"}
 .ph-bold.ph-gear:before{content:"\e270"}
 .ph-bold.ph-git-commit:before{content:"\e27a"}
 .ph-bold.ph-google-logo:before{content:"\e292"}
 .ph-bold.ph-graduation-cap:before{content:"\e62c"}
 .ph-bold.ph-grid-four:before{content:"\e296"}
-.ph-bold.ph-hammer:before{content:"\e80e"}
 .ph-bold.ph-hand-eye:before{content:"\ea4c"}
 .ph-bold.ph-hand-heart:before{content:"\e810"}
 .ph-bold.ph-hand-palm:before{content:"\e57e"}
@@ -325,7 +310,6 @@
 .ph-bold.ph-megaphone:before{content:"\e324"}
 .ph-bold.ph-microphone:before{content:"\e326"}
 .ph-bold.ph-monitor:before{content:"\e32e"}
-.ph-bold.ph-music-notes:before{content:"\e340"}
 .ph-bold.ph-navigation-arrow:before{content:"\eade"}
 .ph-bold.ph-newspaper:before{content:"\e344"}
 .ph-bold.ph-newspaper-clipping:before{content:"\e346"}
@@ -353,9 +337,7 @@
 .ph-bold.ph-robot:before{content:"\e762"}
 .ph-bold.ph-rocket:before{content:"\e3fc"}
 .ph-bold.ph-rocket-launch:before{content:"\e3fe"}
-.ph-bold.ph-ruler:before{content:"\e6b8"}
 .ph-bold.ph-scales:before{content:"\e750"}
-.ph-bold.ph-scissors:before{content:"\eae0"}
 .ph-bold.ph-scroll:before{content:"\eb7a"}
 .ph-bold.ph-seal-check:before{content:"\e606"}
 .ph-bold.ph-circle-wavy-check:before{content:"\e606"}
@@ -376,7 +358,6 @@
 .ph-bold.ph-squares-four:before{content:"\e464"}
 .ph-bold.ph-star:before{content:"\e46a"}
 .ph-bold.ph-swap:before{content:"\e83c"}
-.ph-bold.ph-t-shirt:before{content:"\e670"}
 .ph-bold.ph-tag:before{content:"\e478"}
 .ph-bold.ph-terminal-window:before{content:"\eae8"}
 .ph-bold.ph-thumbs-up:before{content:"\e48e"}
@@ -402,7 +383,6 @@
 .ph-bold.ph-warning:before{content:"\e4e0"}
 .ph-bold.ph-warning-circle:before{content:"\e4e2"}
 .ph-bold.ph-warning-octagon:before{content:"\e4e4"}
-.ph-bold.ph-waves:before{content:"\e6de"}
 .ph-bold.ph-whatsapp-logo:before{content:"\e5d0"}
 .ph-bold.ph-wind:before{content:"\e5d2"}
 .ph-bold.ph-wrench:before{content:"\e5d4"}
@@ -410,7 +390,6 @@
 .ph-bold.ph-x-circle:before{content:"\e4f8"}
 @font-face{font-family:"Phosphor-Fill";src:url("./Phosphor-Fill.woff2") format("woff2");font-weight:normal;font-style:normal;font-display:block}
 .ph-fill{font-family:"Phosphor-Fill"!important;speak:never;font-style:normal;font-weight:normal;font-variant:normal;text-transform:none;line-height:1;letter-spacing:0;-webkit-font-feature-settings:"liga";font-feature-settings:"liga";-webkit-font-variant-ligatures:discretionary-ligatures;font-variant-ligatures:discretionary-ligatures;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-.ph-fill.ph-anchor:before{content:"\e514"}
 .ph-fill.ph-apple-logo:before{content:"\e516"}
 .ph-fill.ph-arrow-clockwise:before{content:"\e036"}
 .ph-fill.ph-arrow-counter-clockwise:before{content:"\e038"}
@@ -433,13 +412,11 @@
 .ph-fill.ph-briefcase:before{content:"\e0ee"}
 .ph-fill.ph-broadcast:before{content:"\e0f2"}
 .ph-fill.ph-broom:before{content:"\ec54"}
-.ph-fill.ph-bug:before{content:"\e5f4"}
 .ph-fill.ph-buildings:before{content:"\e102"}
 .ph-fill.ph-calendar:before{content:"\e108"}
 .ph-fill.ph-calendar-blank:before{content:"\e10a"}
 .ph-fill.ph-calendar-check:before{content:"\e712"}
 .ph-fill.ph-camera:before{content:"\e10e"}
-.ph-fill.ph-car:before{content:"\e112"}
 .ph-fill.ph-cards:before{content:"\e0f8"}
 .ph-fill.ph-caret-down:before{content:"\e136"}
 .ph-fill.ph-caret-left:before{content:"\e138"}
@@ -460,6 +437,7 @@
 .ph-fill.ph-checks:before{content:"\e53a"}
 .ph-fill.ph-circle-notch:before{content:"\eb44"}
 .ph-fill.ph-clipboard:before{content:"\e196"}
+.ph-fill.ph-clipboard-text:before{content:"\e198"}
 .ph-fill.ph-clock:before{content:"\e19a"}
 .ph-fill.ph-clock-afternoon:before{content:"\e19c"}
 .ph-fill.ph-clock-counter-clockwise:before{content:"\e1a0"}
@@ -475,7 +453,6 @@
 .ph-fill.ph-currency-eur:before{content:"\e554"}
 .ph-fill.ph-desktop:before{content:"\e560"}
 .ph-fill.ph-dog:before{content:"\e74a"}
-.ph-fill.ph-dots-three:before{content:"\e1fe"}
 .ph-fill.ph-dots-three-vertical:before{content:"\e208"}
 .ph-fill.ph-download-simple:before{content:"\e20c"}
 .ph-fill.ph-drop:before{content:"\e210"}
@@ -490,14 +467,12 @@
 .ph-fill.ph-flag-checkered:before{content:"\ea38"}
 .ph-fill.ph-floppy-disk:before{content:"\e248"}
 .ph-fill.ph-folder-open:before{content:"\e256"}
-.ph-fill.ph-fork-knife:before{content:"\e262"}
 .ph-fill.ph-funnel:before{content:"\e266"}
 .ph-fill.ph-gear:before{content:"\e270"}
 .ph-fill.ph-git-commit:before{content:"\e27a"}
 .ph-fill.ph-google-logo:before{content:"\e292"}
 .ph-fill.ph-graduation-cap:before{content:"\e62c"}
 .ph-fill.ph-grid-four:before{content:"\e296"}
-.ph-fill.ph-hammer:before{content:"\e80e"}
 .ph-fill.ph-hand-eye:before{content:"\ea4c"}
 .ph-fill.ph-hand-heart:before{content:"\e810"}
 .ph-fill.ph-hand-palm:before{content:"\e57e"}
@@ -530,7 +505,6 @@
 .ph-fill.ph-megaphone:before{content:"\e324"}
 .ph-fill.ph-microphone:before{content:"\e326"}
 .ph-fill.ph-monitor:before{content:"\e32e"}
-.ph-fill.ph-music-notes:before{content:"\e340"}
 .ph-fill.ph-navigation-arrow:before{content:"\eade"}
 .ph-fill.ph-newspaper:before{content:"\e344"}
 .ph-fill.ph-newspaper-clipping:before{content:"\e346"}
@@ -558,9 +532,7 @@
 .ph-fill.ph-robot:before{content:"\e762"}
 .ph-fill.ph-rocket:before{content:"\e3fc"}
 .ph-fill.ph-rocket-launch:before{content:"\e3fe"}
-.ph-fill.ph-ruler:before{content:"\e6b8"}
 .ph-fill.ph-scales:before{content:"\e750"}
-.ph-fill.ph-scissors:before{content:"\eae0"}
 .ph-fill.ph-scroll:before{content:"\eb7a"}
 .ph-fill.ph-seal-check:before{content:"\e606"}
 .ph-fill.ph-circle-wavy-check:before{content:"\e606"}
@@ -581,7 +553,6 @@
 .ph-fill.ph-squares-four:before{content:"\e464"}
 .ph-fill.ph-star:before{content:"\e46a"}
 .ph-fill.ph-swap:before{content:"\e83c"}
-.ph-fill.ph-t-shirt:before{content:"\e670"}
 .ph-fill.ph-tag:before{content:"\e478"}
 .ph-fill.ph-terminal-window:before{content:"\eae8"}
 .ph-fill.ph-thumbs-up:before{content:"\e48e"}
@@ -607,7 +578,6 @@
 .ph-fill.ph-warning:before{content:"\e4e0"}
 .ph-fill.ph-warning-circle:before{content:"\e4e2"}
 .ph-fill.ph-warning-octagon:before{content:"\e4e4"}
-.ph-fill.ph-waves:before{content:"\e6de"}
 .ph-fill.ph-whatsapp-logo:before{content:"\e5d0"}
 .ph-fill.ph-wind:before{content:"\e5d2"}
 .ph-fill.ph-wrench:before{content:"\e5d4"}
