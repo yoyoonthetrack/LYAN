@@ -4,7 +4,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
     inspectStripeEnv,
+    connectStatus,
     connectPayoutReady,
+    shouldCreateConnectAccount,
+    buildConnectAccountParams,
+    buildAccountLinkParams,
     providerCanBePaid,
     evaluateTransfer,
     evaluateRefund,
@@ -71,20 +75,74 @@ test('payment is refused without a Connect account', () => {
     assert.equal(decision.code, 'CONNECT_REQUIRED');
 });
 
-test('Connect onboarding status reports the useful flags', () => {
-    const ready = connectPayoutReady({
+function v2Account(status, details) {
+    return {
         id: 'acct_test',
-        details_submitted: true,
-        charges_enabled: true,
-        payouts_enabled: true,
-        capabilities: { transfers: 'active' }
-    });
+        configuration: {
+            recipient: {
+                capabilities: {
+                    stripe_balance: {
+                        stripe_transfers: {
+                            status,
+                            status_details: details || []
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+test('no account, incomplete onboarding, pending, past due and active transfers', () => {
+    assert.equal(connectStatus(null).account_created, false);
+    assert.equal(connectPayoutReady(null).code, 'CONNECT_REQUIRED');
+
+    const pastDue = connectStatus(v2Account('restricted', [{ code: 'requirements_past_due' }]));
+    assert.equal(pastDue.account_created, true);
+    assert.equal(pastDue.onboarding_completed, false);
+    assert.equal(pastDue.transfers_active, false);
+    assert.equal(connectPayoutReady(v2Account('restricted', [{ code: 'requirements_past_due' }])).ok, false);
+
+    const pending = connectStatus(v2Account('pending', [{ code: 'requirements_pending_verification' }]));
+    assert.equal(pending.onboarding_completed, true);
+    assert.equal(pending.transfers_active, false);
+    assert.equal(connectPayoutReady(v2Account('pending', [{ code: 'requirements_pending_verification' }])).ok, false);
+
+    const active = connectPayoutReady(v2Account('active', []));
+    assert.equal(active.ok, true);
+    assert.equal(active.status.transfers_active, true);
+    assert.equal(active.status.onboarding_completed, true);
+    assert.equal(active.status.payouts_enabled, false);
+});
+
+test('a profile that already has a Connect account is not created again', () => {
+    assert.equal(shouldCreateConnectAccount({ stripe_account_id: null }), true);
+    assert.equal(shouldCreateConnectAccount({ stripe_account_id: 'acct_test' }), false);
+});
+
+test('Accounts v2 creation and onboarding link keep the LYANN return urls', () => {
+    const created = buildConnectAccountParams('membre@example.com');
+    assert.equal(created.dashboard, 'express');
+    assert.equal(created.identity.country, 'fr');
+    assert.equal(created.configuration.recipient.capabilities.stripe_balance.stripe_transfers.requested, true);
+    assert.equal(created.defaults.responsibilities.fees_collector, 'application');
+    assert.equal(created.defaults.responsibilities.losses_collector, 'application');
+    const link = buildAccountLinkParams(
+        'acct_test',
+        'https://lyann.app/?action=finances&connect=return',
+        'https://lyann.app/?action=finances&connect=refresh'
+    );
+    assert.equal(link.use_case.type, 'account_onboarding');
+    assert.equal(link.use_case.account_onboarding.return_url, 'https://lyann.app/?action=finances&connect=return');
+    assert.equal(link.use_case.account_onboarding.refresh_url, 'https://lyann.app/?action=finances&connect=refresh');
+});
+
+test('a milestone cannot be funded when the Connect account is not ready', () => {
+    const profile = { id: 'p1', account_type: 'real', stripe_account_id: 'acct_test' };
+    const pending = providerCanBePaid(profile, v2Account('pending', [{ code: 'requirements_past_due' }]));
+    assert.equal(pending.ok, false);
+    const ready = providerCanBePaid(profile, v2Account('active', []));
     assert.equal(ready.ok, true);
-    assert.equal(ready.status.onboarding_completed, true);
-    assert.equal(ready.status.transfers_active, true);
-    const incomplete = connectPayoutReady({ id: 'acct_test', details_submitted: false, payouts_enabled: false, capabilities: {} });
-    assert.equal(incomplete.ok, false);
-    assert.equal(incomplete.code, 'CONNECT_NOT_READY');
 });
 
 test('succeeded payment intent marks the milestone FUNDED only for the expected amount', () => {

@@ -5,16 +5,13 @@
 })(typeof window !== 'undefined' ? window : globalThis, function () {
     'use strict';
 
-    // Same payable rule as api/stripe-policy.js connectPayoutReady, which
-    // create-milestone-intent uses via providerCanBePaid. payouts_enabled alone
-    // is not enough.
+    // Same payable rule as connectPayoutReady: ready does not depend on payouts_enabled.
     function payoutAccountState(status) {
         if (!status || status.success === false) return 'error';
         const payable = status.ready === true
             && status.account_created === true
             && status.onboarding_completed === true
-            && status.transfers_active === true
-            && status.payouts_enabled === true;
+            && status.transfers_active === true;
         if (payable) return 'active';
         if (status.account_created === true) return 'incomplete';
         return 'none';

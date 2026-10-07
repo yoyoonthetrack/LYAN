@@ -15,6 +15,9 @@ const {
     inspectStripeEnv,
     connectStatus,
     connectPayoutReady,
+    shouldCreateConnectAccount,
+    buildConnectAccountParams,
+    buildAccountLinkParams,
     providerCanBePaid,
     evaluateTransfer,
     evaluateRefund,
@@ -283,16 +286,15 @@ app.post('/v1/payments/connect/account', async (req, res) => {
         }
         const loaded = await loadOwnConnectAccount(user.id);
         if (loaded.error) return res.status(404).json({ error: loaded.error });
-        if (loaded.profile.stripe_account_id) {
-            const account = await runtime.stripe.accounts.retrieve(loaded.profile.stripe_account_id);
+        if (!shouldCreateConnectAccount(loaded.profile)) {
+            const account = await runtime.stripe.v2.core.accounts.retrieve(loaded.profile.stripe_account_id, {
+                include: ['configuration.recipient']
+            });
             return res.json({ success: true, created: false, ...connectStatus(account) });
         }
-        const account = await runtime.stripe.accounts.create({
-            type: 'express',
-            country: 'FR',
-            email: loaded.profile.email || user.email || undefined,
-            capabilities: { transfers: { requested: true } }
-        });
+        const account = await runtime.stripe.v2.core.accounts.create(
+            buildConnectAccountParams(loaded.profile.email || user.email || undefined)
+        );
         const { error: saveErr } = await supabaseAdmin
             .from('profiles')
             .update({ stripe_account_id: account.id })
@@ -326,12 +328,11 @@ app.post('/v1/payments/connect/onboarding-link', async (req, res) => {
         if (loaded.error || !loaded.profile.stripe_account_id) {
             return res.status(409).json({ code: 'CONNECT_REQUIRED', error: 'Créez d’abord le compte Connect.' });
         }
-        const link = await runtime.stripe.accountLinks.create({
-            account: loaded.profile.stripe_account_id,
-            refresh_url: safeStripeReturnUrl(req.body?.refresh_url),
-            return_url: safeStripeReturnUrl(req.body?.return_url),
-            type: 'account_onboarding'
-        });
+        const link = await runtime.stripe.v2.core.accountLinks.create(buildAccountLinkParams(
+            loaded.profile.stripe_account_id,
+            safeStripeReturnUrl(req.body?.return_url),
+            safeStripeReturnUrl(req.body?.refresh_url)
+        ));
         return res.json({ success: true, url: link.url });
     } catch (e) {
         console.error('Connect onboarding link error');
@@ -352,7 +353,9 @@ app.get('/v1/payments/connect/status', async (req, res) => {
         if (!runtime.stripe) {
             return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
         }
-        const account = await runtime.stripe.accounts.retrieve(loaded.profile.stripe_account_id);
+        const account = await runtime.stripe.v2.core.accounts.retrieve(loaded.profile.stripe_account_id, {
+            include: ['configuration.recipient']
+        });
         const ready = connectPayoutReady(account);
         return res.json({ success: true, ready: ready.ok, ...ready.status });
     } catch (e) {
@@ -2972,7 +2975,9 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
         let payableAccount = null;
         if (payableProfile?.stripe_account_id) {
             try {
-                payableAccount = await payRuntime.stripe.accounts.retrieve(payableProfile.stripe_account_id);
+                payableAccount = await payRuntime.stripe.v2.core.accounts.retrieve(payableProfile.stripe_account_id, {
+                    include: ['configuration.recipient']
+                });
             } catch (_) {
                 payableAccount = null;
             }
@@ -3572,12 +3577,11 @@ async function retryMilestoneTransfer(milestoneId) {
     if (process.env.STRIPE_SECRET_KEY) {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         try {
-            const account = await stripe.accounts.retrieve(stripeAccountId);
-            const isTransfersActive = account.capabilities?.transfers === 'active';
-            const hasNoDisabledReason = !account.requirements?.disabled_reason;
-
-            if (!isTransfersActive || !hasNoDisabledReason) {
-                console.warn(`⚠️ [CONNECT CHECK] Compte Stripe ${stripeAccountId} non éligible aux Transferts (capabilities.transfers=${account.capabilities?.transfers}, disabled_reason=${account.requirements?.disabled_reason}).`);
+            const account = await stripe.v2.core.accounts.retrieve(stripeAccountId, {
+                include: ['configuration.recipient']
+            });
+            if (!connectPayoutReady(account).ok) {
+                console.warn('[CONNECT CHECK] Compte non éligible aux reversements.');
                 
                 await supabaseAdmin
                     .from('payments')
@@ -4257,10 +4261,12 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
             }
 
             case 'account.updated': {
-                const account = event.data.object;
-                console.log(`ℹ️ [STRIPE WEBHOOK] account.updated pour ${account.id}. Capabilities:`, account.capabilities);
-
-                if (account.capabilities?.transfers === 'active' && !account.requirements?.disabled_reason) {
+                const accountId = event.data && event.data.object && event.data.object.id;
+                if (!accountId) break;
+                const account = await runtime.stripe.v2.core.accounts.retrieve(accountId, {
+                    include: ['configuration.recipient']
+                });
+                if (connectPayoutReady(account).ok) {
                     const { data: providerProfile } = await supabaseAdmin
                         .from('profiles')
                         .select('id')

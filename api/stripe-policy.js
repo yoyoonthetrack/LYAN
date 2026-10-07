@@ -37,17 +37,25 @@ function inspectStripeEnv(env = process.env) {
     };
 }
 
+function stripeTransfersCapability(account) {
+    return account?.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers || null;
+}
+
 function connectStatus(account) {
     const created = Boolean(account && account.id);
-    const detailsSubmitted = account?.details_submitted === true;
-    const chargesEnabled = account?.charges_enabled === true;
-    const payoutsEnabled = account?.payouts_enabled === true;
-    const transfersActive = account?.capabilities?.transfers === 'active';
+    const capability = stripeTransfersCapability(account);
+    const details = Array.isArray(capability?.status_details) ? capability.status_details : [];
+    const pastDue = details.some((item) => item && item.code === 'requirements_past_due');
+    const transfersActive = capability?.status === 'active';
+    const onboardingCompleted = created
+        && Boolean(capability)
+        && capability.status !== 'unsupported'
+        && !pastDue;
     return {
         account_created: created,
-        onboarding_completed: detailsSubmitted,
-        charges_enabled: chargesEnabled,
-        payouts_enabled: payoutsEnabled,
+        onboarding_completed: onboardingCompleted,
+        charges_enabled: false,
+        payouts_enabled: false,
         transfers_active: transfersActive
     };
 }
@@ -55,10 +63,53 @@ function connectStatus(account) {
 function connectPayoutReady(account) {
     const status = connectStatus(account);
     if (!status.account_created) return { ok: false, code: 'CONNECT_REQUIRED', status };
-    if (!status.transfers_active || !status.payouts_enabled || !status.onboarding_completed) {
+    if (!(status.onboarding_completed && status.transfers_active)) {
         return { ok: false, code: 'CONNECT_NOT_READY', status };
     }
     return { ok: true, code: 'READY', status };
+}
+
+function shouldCreateConnectAccount(profile) {
+    return !profile || !profile.stripe_account_id;
+}
+
+function buildConnectAccountParams(email) {
+    return {
+        contact_email: email || undefined,
+        dashboard: 'express',
+        identity: { country: 'fr' },
+        configuration: {
+            recipient: {
+                capabilities: {
+                    stripe_balance: {
+                        stripe_transfers: { requested: true }
+                    }
+                }
+            }
+        },
+        defaults: {
+            currency: 'eur',
+            responsibilities: {
+                fees_collector: 'application',
+                losses_collector: 'application'
+            }
+        },
+        include: ['configuration.recipient']
+    };
+}
+
+function buildAccountLinkParams(accountId, returnUrl, refreshUrl) {
+    return {
+        account: accountId,
+        use_case: {
+            type: 'account_onboarding',
+            account_onboarding: {
+                configurations: ['recipient'],
+                return_url: returnUrl,
+                refresh_url: refreshUrl
+            }
+        }
+    };
 }
 
 function providerCanBePaid(profile, account) {
@@ -140,6 +191,9 @@ module.exports = {
     inspectStripeEnv,
     connectStatus,
     connectPayoutReady,
+    shouldCreateConnectAccount,
+    buildConnectAccountParams,
+    buildAccountLinkParams,
     providerCanBePaid,
     evaluateTransfer,
     evaluateRefund,

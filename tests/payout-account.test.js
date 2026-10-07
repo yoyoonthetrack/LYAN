@@ -36,9 +36,10 @@ test('incomplete onboarding is not shown as active', () => {
     assert.equal(view.actionLabel, 'Continuer');
 });
 
-test('active matches the server payable rule, not payouts alone', () => {
+test('active matches the server payable rule and ignores payouts_enabled', () => {
     assert.equal(payoutAccountState(ready), 'active');
-    assert.equal(payoutAccountState({ ...ready, ready: false }), 'incomplete');
+    assert.equal(payoutAccountState({ ...ready, payouts_enabled: false }), 'active');
+    assert.equal(payoutAccountState({ ...ready, ready: false, payouts_enabled: true }), 'incomplete');
     assert.equal(payoutAccountState({ ...ready, transfers_active: false }), 'incomplete');
     assert.equal(payoutAccountState({ ...ready, onboarding_completed: false }), 'incomplete');
     assert.equal(renderPayoutAccount('active').subtitle, 'Compte de versement actif');
