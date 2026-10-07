@@ -1513,6 +1513,44 @@ async function respondVisit(messageId, decision, button) {
     }
 }
 
+function appendPayableQuoteAction(parent, quote) {
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const payable = payment && payment.payableMilestoneForQuote(quote, getMyId());
+    if (!parent || !payable) return;
+    const actions = document.createElement('div');
+    actions.className = 'chat-timeline-actions';
+    const pay = document.createElement('button');
+    pay.type = 'button';
+    pay.className = 'btn btn-primary';
+    pay.dataset.quotePay = '1';
+    pay.style.background = '#2E7D32';
+    pay.textContent = payment.payButtonLabel(payable.amount);
+    pay.addEventListener('click', () => {
+        pay.disabled = true;
+        payment.dispatchQuotePay(quote, getMyId(), (action, payload) => handleChatAction(action, payload));
+    });
+    actions.appendChild(pay);
+    parent.appendChild(actions);
+}
+
+function repaintQuoteTimelineCards(box) {
+    if (!box) return;
+    box.querySelectorAll('[data-entity-type="quote"][data-entity-id]').forEach((node) => {
+        const quote = timelineQuotes.get(node.dataset.entityId || '');
+        if (!quote) return;
+        const replacement = renderTimelineCard({
+            id: node.dataset.messageId,
+            createdAt: node.dataset.createdAt,
+            timestamp: node.dataset.createdAt ? Date.parse(node.dataset.createdAt) : null,
+            messageType: node.dataset.messageType,
+            entityType: 'quote',
+            entityId: quote.id,
+            sender: 'them'
+        });
+        node.replaceWith(replacement);
+    });
+}
+
 function renderTimelineCard(msg) {
     const type = msg.messageType || msg.type;
     const wrapper = document.createElement('div');
@@ -1570,23 +1608,7 @@ function renderTimelineCard(msg) {
             state.className = 'chat-timeline-state';
             state.textContent = quote.status === 'ACCEPTED' ? '✓ Accepté' : 'Devis refusé';
             body.appendChild(state);
-            const payment = window.LYANN_QUOTE_PAYMENT;
-            const payable = payment && payment.payableMilestoneForQuote(quote, getMyId());
-            if (payable) {
-                const actions = document.createElement('div');
-                actions.className = 'chat-timeline-actions';
-                const pay = document.createElement('button');
-                pay.type = 'button';
-                pay.className = 'btn btn-primary';
-                pay.style.background = '#2E7D32';
-                pay.textContent = payment.payButtonLabel(payable.amount);
-                pay.addEventListener('click', () => {
-                    pay.disabled = true;
-                    payment.dispatchQuotePay(quote, getMyId(), (action, payload) => handleChatAction(action, payload));
-                });
-                actions.appendChild(pay);
-                body.appendChild(actions);
-            }
+            appendPayableQuoteAction(body, quote);
         } else if (quote && quote.status === 'SENT' && quote.requester_id === getMyId()) {
             const actions = document.createElement('div');
             actions.className = 'chat-timeline-actions';
@@ -1609,6 +1631,16 @@ function renderTimelineCard(msg) {
             actions.append(accept, decline);
             body.appendChild(actions);
         }
+        wrapper.appendChild(body);
+    } else if (type === 'quote_accepted') {
+        const quote = timelineQuotes.get(String(msg.entityId || ''));
+        const body = document.createElement('div');
+        body.className = 'chat-timeline-body';
+        const total = document.createElement('div');
+        total.className = 'chat-timeline-amount';
+        if (quote && quote.total_amount != null) total.textContent = String(quote.total_amount) + ' €';
+        body.appendChild(total);
+        appendPayableQuoteAction(body, quote);
         wrapper.appendChild(body);
     } else if (meta.title || meta.status) {
         const line = document.createElement('div');
@@ -1639,20 +1671,9 @@ async function refreshOpenBusinessCards() {
         timelineQuotes.set(String(quote.id), quote);
         (quote.milestones || []).forEach((milestone) => timelineQuotes.set('milestone:' + milestone.id, milestone));
         const covered = box.querySelector(quoteTimelineSelector(quote.id));
-        if (covered && typeof window.__lyannAppendLiveQuote !== 'function') {
-            applyQuoteStatusToDom(quote.id, quote.status);
-        }
         if (covered) {
             box.querySelectorAll('[data-live-quote-id="' + CSS.escape(String(quote.id)) + '"]').forEach((node) => node.remove());
-            const replacement = renderTimelineCard({
-                id: covered.dataset.messageId,
-                createdAt: covered.dataset.createdAt,
-                messageType: covered.dataset.messageType || 'quote_created',
-                entityType: 'quote',
-                entityId: quote.id,
-                sender: 'them'
-            });
-            covered.replaceWith(replacement);
+            repaintQuoteTimelineCards(box);
             return;
         }
         applyQuoteStatusToDom(quote.id, quote.status);
@@ -2024,20 +2045,7 @@ async function renderMessages(passedMessages = null, options = {}) {
                 if (!box) return;
                 const stick = threadIsNearBottom(box);
                 quotes.forEach((quote) => timelineQuotes.set(String(quote.id), quote));
-                box.querySelectorAll('[data-message-type="quote_created"], [data-message-type="quote_updated"]').forEach((node) => {
-                    const quote = timelineQuotes.get(node.dataset.entityId || '');
-                    if (!quote) return;
-                    const replacement = renderTimelineCard({
-                        id: node.dataset.messageId,
-                        createdAt: node.dataset.createdAt,
-                        timestamp: node.dataset.createdAt ? Date.parse(node.dataset.createdAt) : null,
-                        messageType: node.dataset.messageType,
-                        entityType: 'quote',
-                        entityId: quote.id,
-                        sender: 'them'
-                    });
-                    node.replaceWith(replacement);
-                });
+                repaintQuoteTimelineCards(box);
                 box.querySelectorAll('[data-live-quote="1"]').forEach((node) => {
                     if (node.dataset.liveQuoteId && box.querySelector(quoteTimelineSelector(node.dataset.liveQuoteId))) node.remove();
                 });

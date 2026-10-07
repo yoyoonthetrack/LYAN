@@ -34,7 +34,8 @@
         if (String(quote.requester_id) !== String(userId)) return null;
         if (quote.status !== 'ACCEPTED') return null;
         if (!quote.mission_id) return null;
-        if (!PAYABLE_MISSION_STATUSES.has(missionStatusOf(quote))) return null;
+        const missionStatus = missionStatusOf(quote);
+        if (missionStatus && !PAYABLE_MISSION_STATUSES.has(missionStatus)) return null;
         const pending = (quote.milestones || []).find((milestone) => {
             if (!milestone || milestone.status !== 'PENDING') return false;
             const amount = Number(milestone.amount);

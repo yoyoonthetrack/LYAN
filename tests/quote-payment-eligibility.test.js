@@ -48,6 +48,9 @@ test('the provider never sees the payment action', () => {
 test('a mission that cannot be paid stays closed', () => {
     assert.equal(payableMilestoneForQuote(quote({ mission_status: 'CANCELLED' }), requester), null);
     assert.equal(payableMilestoneForQuote(quote({ mission_id: null }), requester), null);
+    const knownOnlyById = quote();
+    delete knownOnlyById.mission_status;
+    assert.equal(payableMilestoneForQuote(knownOnlyById, requester).id, 'milestone-1');
 });
 
 test('a sent quote is not payable', () => {
@@ -90,6 +93,8 @@ test('a click dispatches one PAY_MISSION and never the legacy intent route', () 
 test('the timeline card uses the same payment decision', () => {
     const source = fs.readFileSync(path.join(__dirname, '../chat-logic.js'), 'utf8');
     assert.match(source, /payableMilestoneForQuote\(quote, getMyId\(\)\)/);
+    assert.match(source, /type === 'quote_accepted'/);
+    assert.match(source, /repaintQuoteTimelineCards\(box\)/);
     assert.match(source, /dispatchQuotePay\(quote, getMyId\(\), \(action, payload\) => handleChatAction\(action, payload\)\)/);
     assert.equal(source.includes("'/v1/payments/create-intent'"), false);
     assert.equal(source.includes('"/v1/payments/create-intent"'), false);
