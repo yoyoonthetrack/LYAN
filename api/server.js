@@ -4102,57 +4102,9 @@ app.post('/v1/payments/dispute', (req, res) => {
     });
 });
 
-async function announceAcceptedQuoteInConversation(milestoneId) {
-    if (!milestoneId) return;
-    const { data: milestone } = await supabaseAdmin
-        .from('milestones')
-        .select('id, quote_id, quotes(id, conversation_id, requester_id, provider_id, created_at)')
-        .eq('id', milestoneId)
-        .maybeSingle();
-    const quote = Array.isArray(milestone.quotes) ? milestone.quotes[0] : milestone.quotes;
-    if (!quote || !quote.id) return;
-
-    const { count } = await supabaseAdmin
-        .from('milestones')
-        .select('id', { count: 'exact', head: true })
-        .eq('quote_id', quote.id)
-        .in('status', ['FUNDED', 'IN_PROGRESS', 'COMPLETED', 'RELEASED']);
-    if (count !== 1) return;
-
-    let conversationId = quote.conversation_id || null;
-    if (!conversationId && quote.requester_id && quote.provider_id) {
-        const { data: requesterRows } = await supabaseAdmin
-            .from('conversation_participants')
-            .select('conversation_id')
-            .eq('user_id', quote.requester_id);
-        const ids = (requesterRows || []).map((row) => row.conversation_id).filter(Boolean);
-        if (ids.length) {
-            const { data: shared } = await supabaseAdmin
-                .from('conversation_participants')
-                .select('conversation_id')
-                .eq('user_id', quote.provider_id)
-                .in('conversation_id', ids)
-                .limit(1);
-            conversationId = shared && shared[0] ? shared[0].conversation_id : null;
-        }
-    }
-    if (!conversationId || !quote.requester_id) return;
-
-    const { data: existing } = await supabaseAdmin
-        .from('messages')
-        .select('id')
-        .eq('conversation_id', conversationId)
-        .eq('content', 'Devis accepté')
-        .gte('created_at', quote.created_at || '1970-01-01T00:00:00.000Z')
-        .limit(1);
-    if (existing && existing.length) return;
-
-    const { error } = await supabaseAdmin.from('messages').insert({
-        conversation_id: conversationId,
-        sender_id: quote.requester_id,
-        content: 'Devis accepté'
-    });
-    if (error) console.error('[PAYMENT CORE] Message devis accepté non enregistré:', error.message);
+async function announceAcceptedQuoteInConversation() {
+    // Quote and payment timeline events already describe the step.
+    // A second text message only repeated "Devis accepté".
 }
 
 app.post('/v1/payments/refund-untransferred', async (req, res) => {

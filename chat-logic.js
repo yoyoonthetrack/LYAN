@@ -1513,6 +1513,64 @@ async function respondVisit(messageId, decision, button) {
     }
 }
 
+function fundingActionForOpenQuotes() {
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!payment || !userId) return null;
+    let found = null;
+    timelineQuotes.forEach((quote) => {
+        if (found || !quote || !quote.milestones) return;
+        const next = payment.nextFundingAction(quote, userId);
+        if (next) found = next;
+    });
+    return found;
+}
+
+function appendFundingAction(parent) {
+    const next = fundingActionForOpenQuotes();
+    if (!next || !parent) return;
+    if (next.waiting) {
+        const line = document.createElement('div');
+        line.className = 'chat-timeline-meta';
+        line.textContent = next.waiting;
+        parent.appendChild(line);
+    }
+    if (!next.action || !next.milestone) return;
+    const actions = document.createElement('div');
+    actions.className = 'chat-timeline-actions';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-primary';
+    button.style.background = '#2E7D32';
+    button.textContent = next.label;
+    button.addEventListener('click', () => {
+        button.disabled = true;
+        handleChatAction(next.action, {
+            id: next.missionId,
+            milestoneId: next.milestone.id,
+            title: next.milestone.title
+        });
+    });
+    actions.appendChild(button);
+    parent.appendChild(actions);
+}
+
+function repaintFundingCards(box) {
+    if (!box) return;
+    box.querySelectorAll('[data-message-type="payment_secured"]').forEach((node) => {
+        const replacement = renderTimelineCard({
+            id: node.dataset.messageId,
+            createdAt: node.dataset.createdAt,
+            timestamp: node.dataset.createdAt ? Date.parse(node.dataset.createdAt) : null,
+            messageType: 'payment_secured',
+            entityType: node.dataset.entityType,
+            entityId: node.dataset.entityId,
+            sender: 'them'
+        });
+        node.replaceWith(replacement);
+    });
+}
+
 function appendPayableQuoteAction(parent, quote) {
     const payment = window.LYANN_QUOTE_PAYMENT;
     const payable = payment && payment.payableMilestoneForQuote(quote, getMyId());
@@ -1632,6 +1690,15 @@ function renderTimelineCard(msg) {
             body.appendChild(actions);
         }
         wrapper.appendChild(body);
+    } else if (type === 'payment_secured') {
+        const body = document.createElement('div');
+        body.className = 'chat-timeline-body';
+        const line = document.createElement('div');
+        line.className = 'chat-timeline-meta';
+        line.textContent = 'Le montant est encaissé.';
+        body.appendChild(line);
+        appendFundingAction(body);
+        wrapper.appendChild(body);
     } else if (type === 'quote_accepted') {
         const quote = timelineQuotes.get(String(msg.entityId || ''));
         const body = document.createElement('div');
@@ -1674,6 +1741,11 @@ async function refreshOpenBusinessCards() {
         if (covered) {
             box.querySelectorAll('[data-live-quote-id="' + CSS.escape(String(quote.id)) + '"]').forEach((node) => node.remove());
             repaintQuoteTimelineCards(box);
+            repaintFundingCards(box);
+            const proposeRow = document.getElementById('btnCtxPropose');
+            if (proposeRow && proposeRow.parentElement && quote.status === 'ACCEPTED') {
+                proposeRow.parentElement.style.display = 'none';
+            }
             return;
         }
         applyQuoteStatusToDom(quote.id, quote.status);
@@ -1759,12 +1831,17 @@ async function renderMessages(passedMessages = null, options = {}) {
         wrapper.className = `chat-msg-bubble-wrap ${isMe ? 'sent' : 'received'}`;
         wrapper.dataset.messageId = String(msgId);
 
+        const timelineType = msg.messageType || msg.type;
+        const hiddenTimeline = window.LYANN_QUOTE_PAYMENT && window.LYANN_QUOTE_PAYMENT.hiddenTimelineTypes
+            ? window.LYANN_QUOTE_PAYMENT.hiddenTimelineTypes(msgs)
+            : new Set();
         if (isTimelineMessage(msg)) {
+            if (hiddenTimeline.has(timelineType)) return;
             const node = renderTimelineCard(msg);
             if (node) container.appendChild(node);
         }
         else if (msg.type === 'text' && isQuoteAcceptedNotice(msg.text)) {
-            appendQuoteAcceptedNotice(container, msgId);
+            return;
         }
         else if (msg.type === 'text' || msg.type === 'photo' || msg.type === 'document') {
             const node = createThreadBubble(msg, { timeStr, isMe, authorName, msgId });
@@ -2046,6 +2123,7 @@ async function renderMessages(passedMessages = null, options = {}) {
                 const stick = threadIsNearBottom(box);
                 quotes.forEach((quote) => timelineQuotes.set(String(quote.id), quote));
                 repaintQuoteTimelineCards(box);
+                repaintFundingCards(box);
                 box.querySelectorAll('[data-live-quote="1"]').forEach((node) => {
                     if (node.dataset.liveQuoteId && box.querySelector(quoteTimelineSelector(node.dataset.liveQuoteId))) node.remove();
                 });

@@ -60,6 +60,48 @@
         };
     }
 
+    function hiddenTimelineTypes(messages) {
+        const types = (messages || []).map((message) => message && (message.messageType || message.type));
+        const hidden = new Set(['payment_requested']);
+        if (types.indexOf('payment_secured') !== -1) hidden.add('quote_accepted');
+        return hidden;
+    }
+
+    function nextFundingAction(quote, userId) {
+        if (!quote || !userId) return null;
+        const milestones = quote.milestones || [];
+        const isRequester = String(quote.requester_id) === String(userId);
+        const isProvider = String(quote.provider_id || quote.helper_id) === String(userId);
+        const completed = milestones.find((milestone) => milestone && milestone.status === 'COMPLETED');
+        const funded = milestones.find((milestone) => milestone && (milestone.status === 'FUNDED' || milestone.status === 'IN_PROGRESS'));
+        if (isRequester && completed) {
+            return {
+                action: 'CONFIRM_DONE',
+                label: 'Libérer les fonds',
+                milestone: completed,
+                missionId: quote.mission_id
+            };
+        }
+        if (isProvider && funded && !completed) {
+            return {
+                action: 'MARK_DONE',
+                label: 'J’ai terminé',
+                milestone: funded,
+                missionId: quote.mission_id
+            };
+        }
+        if (isRequester && funded) {
+            return {
+                action: null,
+                waiting: 'Fonds sécurisés. Vous pourrez les libérer quand la prestation sera déclarée terminée.'
+            };
+        }
+        if (isProvider && completed) {
+            return { action: null, waiting: 'En attente de la validation du demandeur.' };
+        }
+        return null;
+    }
+
     function dispatchQuotePay(quote, userId, dispatch) {
         const milestone = payableMilestoneForQuote(quote, userId);
         if (!milestone || typeof dispatch !== 'function') return null;
@@ -73,6 +115,8 @@
         payButtonLabel,
         payMissionPayload,
         dispatchQuotePay,
+        hiddenTimelineTypes,
+        nextFundingAction,
         PAYMENT_ROUTE
     };
 });

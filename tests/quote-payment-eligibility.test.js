@@ -9,6 +9,8 @@ const {
     payButtonLabel,
     payMissionPayload,
     dispatchQuotePay,
+    hiddenTimelineTypes,
+    nextFundingAction,
     PAYMENT_ROUTE
 } = require('../quote-payment-eligibility.js');
 
@@ -98,4 +100,30 @@ test('the timeline card uses the same payment decision', () => {
     assert.match(source, /dispatchQuotePay\(quote, getMyId\(\), \(action, payload\) => handleChatAction\(action, payload\)\)/);
     assert.equal(source.includes("'/v1/payments/create-intent'"), false);
     assert.equal(source.includes('"/v1/payments/create-intent"'), false);
+    assert.match(source, /Libérer les fonds|nextFundingAction|appendFundingAction/);
+});
+
+test('a secured payment hides the duplicate status cards', () => {
+    const hidden = hiddenTimelineTypes([
+        { messageType: 'quote_accepted' },
+        { messageType: 'payment_requested' },
+        { messageType: 'payment_secured' }
+    ]);
+    assert.equal(hidden.has('payment_requested'), true);
+    assert.equal(hidden.has('quote_accepted'), true);
+    assert.equal(hidden.has('payment_secured'), false);
+});
+
+test('release is offered to the requester only after the work is declared done', () => {
+    const funded = quote();
+    funded.milestones[0].status = 'FUNDED';
+    assert.equal(nextFundingAction(funded, requester).action, null);
+    assert.equal(nextFundingAction(funded, provider).action, 'MARK_DONE');
+    assert.equal(nextFundingAction(funded, provider).label, 'J’ai terminé');
+    const done = quote();
+    done.milestones[0].status = 'COMPLETED';
+    const release = nextFundingAction(done, requester);
+    assert.equal(release.action, 'CONFIRM_DONE');
+    assert.equal(release.label, 'Libérer les fonds');
+    assert.equal(nextFundingAction(done, provider).action, null);
 });
