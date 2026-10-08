@@ -9,6 +9,9 @@ const {
     shouldCreateConnectAccount,
     buildConnectAccountParams,
     buildAccountLinkParams,
+    calculateMilestonePricing,
+    paymentAmountSnapshot,
+    resumePaymentDecision,
     legacyPaymentColumns,
     quoteFullyReleased,
     providerCanBePaid,
@@ -143,6 +146,7 @@ test('Accounts v2 creation and onboarding link keep the LYANN return urls', () =
         lyann_revenue_cents: 60n,
         provider_net_cents: 970n
     });
+    assert.equal(Number(calculateMilestonePricing('10.00').customer_fee_cents), 149);
     assert.equal(quoteFullyReleased([{ status: 'RELEASED' }]), true);
     assert.equal(quoteFullyReleased([{ status: 'FUNDED' }]), false);
     assert.deepEqual(legacy, {
@@ -229,4 +233,92 @@ test('a transferred payment cannot be refunded by the pre-transfer route', () =>
 test('onboarding return urls stay on LYANN', () => {
     assert.equal(safeStripeReturnUrl('https://lyann.app/feed'), 'https://lyann.app/feed');
     assert.equal(safeStripeReturnUrl('https://evil.example/steal'), 'https://lyann.app/');
+});
+
+function expectPricing(amount, customerFee, providerFee) {
+    const price = calculateMilestonePricing(amount);
+    const service = Number(price.service_amount_cents);
+    assert.equal(Number(price.customer_fee_cents), customerFee);
+    assert.equal(Number(price.provider_fee_cents), providerFee);
+    assert.equal(Number(price.customer_total_cents), service + customerFee);
+    assert.equal(Number(price.provider_net_cents), service - providerFee);
+    assert.equal(Number(price.lyann_revenue_cents), customerFee + providerFee);
+}
+
+test('customer protection is 3 percent with a 1.49 euro minimum and provider commission stays 3 percent', () => {
+    expectPricing('10.00', 149, 30);
+    expectPricing('20.00', 149, 60);
+    expectPricing('49.49', 149, 148);
+    expectPricing('49.50', 149, 149);
+    expectPricing('50.00', 150, 150);
+    expectPricing('100.00', 300, 300);
+    expectPricing('500.00', 1500, 1500);
+});
+
+test('three milestones are priced separately, so the minimum applies to each payment', () => {
+    const parts = ['10.00', '20.00', '70.00'].map((amount) => calculateMilestonePricing(amount));
+    assert.deepEqual(parts.map((part) => Number(part.customer_fee_cents)), [149, 149, 210]);
+    assert.equal(parts.reduce((sum, part) => sum + Number(part.customer_fee_cents), 0), 508);
+    assert.equal(Number(calculateMilestonePricing('100.00').customer_fee_cents), 300);
+});
+
+test('an already succeeded payment keeps its old cents and is never repriced', () => {
+    const oldPayment = {
+        payment_status: 'SUCCEEDED',
+        transfer_status: 'TRANSFERRED',
+        stripe_payment_intent_id: 'pi_old',
+        stripe_transfer_id: 'tr_old',
+        service_amount_cents: 1000,
+        customer_fee_cents: 30,
+        customer_total_cents: 1030,
+        provider_fee_cents: 30,
+        provider_net_cents: 970,
+        lyann_revenue_cents: 60
+    };
+    assert.equal(resumePaymentDecision(oldPayment).action, 'refuse');
+    assert.equal(paymentAmountSnapshot(oldPayment).customer_total_cents, 1030);
+    assert.equal(Number(calculateMilestonePricing('10.00').customer_total_cents), 1149);
+    const funded = { ...oldPayment, payment_status: 'SUCCEEDED', transfer_status: 'PENDING_VALIDATION', stripe_transfer_id: null };
+    assert.equal(resumePaymentDecision(funded).action, 'refuse');
+});
+
+test('a CREATED payment with a PaymentIntent is reused and a second click does not create another one', () => {
+    const created = {
+        payment_status: 'CREATED',
+        transfer_status: 'NOT_STARTED',
+        stripe_payment_intent_id: 'pi_existing',
+        service_amount_cents: 1000,
+        customer_fee_cents: 30,
+        customer_total_cents: 1030,
+        provider_fee_cents: 30,
+        provider_net_cents: 970,
+        lyann_revenue_cents: 60
+    };
+    assert.equal(resumePaymentDecision(created).action, 'reuse');
+    assert.equal(resumePaymentDecision(created).action, 'reuse');
+    assert.equal(paymentAmountSnapshot(created).customer_fee_cents, 30);
+    const orphan = { ...created, stripe_payment_intent_id: null };
+    assert.equal(resumePaymentDecision(orphan).action, 'attach');
+    assert.equal(paymentAmountSnapshot(orphan).customer_total_cents, 1030);
+});
+
+test('a full refund before transfer uses the stored total, not the new tariff', () => {
+    const stored = {
+        payment_status: 'SUCCEEDED',
+        transfer_status: 'PENDING_VALIDATION',
+        stripe_refund_id: null,
+        customer_total_cents: 1030,
+        customer_fee_cents: 30
+    };
+    assert.equal(evaluateRefund(stored, { status: 'FUNDED' }).ok, true);
+    assert.equal(stored.customer_total_cents, 1030);
+    assert.notEqual(stored.customer_total_cents, Number(calculateMilestonePricing('10.00').customer_total_cents));
+});
+
+test('checkout displays server amounts and does not recompute 3 percent', () => {
+    const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '../chat-logic.js'), 'utf8');
+    assert.equal(source.includes('agreedPrice * 0.03'), false);
+    assert.match(source, /amounts\.customer_total_cents/);
+    assert.match(source, /amounts\.customer_fee_cents/);
+    assert.match(source, /amounts\.service_amount_cents/);
 });

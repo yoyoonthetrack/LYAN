@@ -18,6 +18,9 @@ const {
     shouldCreateConnectAccount,
     buildConnectAccountParams,
     buildAccountLinkParams,
+    calculateMilestonePricing,
+    paymentAmountSnapshot,
+    resumePaymentDecision,
     legacyPaymentColumns,
     quoteFullyReleased,
     providerCanBePaid,
@@ -175,44 +178,7 @@ if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_SECRET_KEY) {
     }
 }
 
-/**
- * CANONICAL MONETARY CALCULATION ENGINE (BigInt 3% + 3%)
- * Guarantees exact integer cents calculations and accounting invariants.
- */
-function calculateFinancialBreakdown(amountStr) {
-    const numStr = String(amountStr).trim();
-    const parts = numStr.split('.');
-    const euros = BigInt(parts[0] || '0');
-    const centsPart = (parts[1] || '').padEnd(2, '0').slice(0, 2);
-    const cents = BigInt(centsPart);
-    const service_amount_cents = euros * 100n + cents;
-
-    if (service_amount_cents <= 0n) {
-        throw new Error("Le montant de la partie doit être supérieur à 0 centime.");
-    }
-
-    // 3% client fee and 3% provider fee with standard BigInt half-up rounding: (val * 3 + 50) / 100
-    const customer_fee_cents = (service_amount_cents * 3n + 50n) / 100n;
-    const provider_fee_cents = (service_amount_cents * 3n + 50n) / 100n;
-
-    const customer_total_cents = service_amount_cents + customer_fee_cents;
-    const provider_net_cents = service_amount_cents - provider_fee_cents;
-    const lyann_revenue_cents = customer_fee_cents + provider_fee_cents;
-
-    // Validate Accounting Invariants
-    if (customer_total_cents !== service_amount_cents + customer_fee_cents) throw new Error("Invariant customer_total violé");
-    if (provider_net_cents !== service_amount_cents - provider_fee_cents) throw new Error("Invariant provider_net violé");
-    if (lyann_revenue_cents !== customer_fee_cents + provider_fee_cents) throw new Error("Invariant lyann_revenue violé");
-
-    return {
-        service_amount_cents,
-        customer_fee_cents,
-        customer_total_cents,
-        provider_fee_cents,
-        provider_net_cents,
-        lyann_revenue_cents
-    };
-}
+const PAYMENT_AMOUNT_COLUMNS = 'id, payment_status, transfer_status, stripe_payment_intent_id, stripe_transfer_id, service_amount_cents, customer_fee_cents, customer_total_cents, provider_fee_cents, provider_net_cents, lyann_revenue_cents';
 
 const MEMBERS_DB = [
     { id: 200, name: "Jocelyn Cabort", age: 52, role: "Plomberie & Fuites d'eau PRO", city: "Baie-Mahault", locationName: "Guadeloupe (971)", territoryKey: "guadeloupe", rating: "5.0", avatar: "jocelyn-cabort.png", badge: "PRO VÉRIFIÉ", kycVerified: true },
@@ -3032,120 +2998,103 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
             });
         }
 
-        // 5. Canonical Monetary Engine Calculation (BigInt 3% + 3%)
-        const financials = calculateFinancialBreakdown(milestone.amount);
+        // 5. New payments use the current tariff. An existing row keeps the cents already stored.
+        const financials = calculateMilestonePricing(milestone.amount);
         const stripeIdempotencyKey = `pi_milestone_${milestone.id}`;
 
         // 6. Idempotency Check & Recoverable State Analysis (V1.1)
         const { data: existingPayment } = await supabaseAdmin
             .from('payments')
-            .select('id, payment_status, stripe_payment_intent_id')
+            .select(PAYMENT_AMOUNT_COLUMNS)
             .eq('milestone_id', milestone_id)
-            .in('payment_status', ['CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED'])
+            .in('payment_status', ['CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED'])
             .maybeSingle();
 
-        if (existingPayment) {
-            // CAS D: Payment already secured or in terminal state
-            if (['SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED'].includes(existingPayment.payment_status)) {
-                return res.status(409).json({
-                    error: "Le paiement de cette Partie est déjà sécurisé.",
-                    code: "PAIEMENT_DEJA_SECURISE"
+        const paymentDecision = resumePaymentDecision(existingPayment);
+        if (paymentDecision.action === 'refuse') {
+            return res.status(409).json({
+                error: "Le paiement de cette Partie est déjà sécurisé.",
+                code: paymentDecision.code
+            });
+        }
+
+        if (paymentDecision.action === 'reuse') {
+            const frozen = paymentAmountSnapshot(existingPayment);
+            if (process.env.STRIPE_SECRET_KEY) {
+                const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+                const intent = await stripe.paymentIntents.retrieve(existingPayment.stripe_payment_intent_id);
+                return res.json({
+                    success: true,
+                    recovered: true,
+                    payment_id: existingPayment.id,
+                    payment_intent_id: intent.id,
+                    client_secret: intent.client_secret,
+                    amounts: frozen
                 });
             }
+            return res.json({
+                success: true,
+                recovered: true,
+                mode: 'stripe_test_mock',
+                payment_id: existingPayment.id,
+                payment_intent_id: existingPayment.stripe_payment_intent_id,
+                client_secret: `${existingPayment.stripe_payment_intent_id}_secret_test`,
+                amounts: frozen
+            });
+        }
 
-            // CAS A & CAS C: Existing payment (CREATED, REQUIRES_ACTION, PROCESSING) WITH stripe_payment_intent_id
-            if (existingPayment.stripe_payment_intent_id) {
-                if (process.env.STRIPE_SECRET_KEY) {
-                    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-                    const intent = await stripe.paymentIntents.retrieve(existingPayment.stripe_payment_intent_id);
-                    return res.json({
-                        success: true,
-                        recovered: true,
-                        payment_id: existingPayment.id,
-                        payment_intent_id: intent.id,
-                        client_secret: intent.client_secret,
-                        amounts: {
-                            service_amount_cents: Number(financials.service_amount_cents),
-                            customer_fee_cents: Number(financials.customer_fee_cents),
-                            customer_total_cents: Number(financials.customer_total_cents)
-                        }
-                    });
-                } else {
-                    return res.json({
-                        success: true,
-                        recovered: true,
-                        mode: 'stripe_test_mock',
-                        payment_id: existingPayment.id,
-                        payment_intent_id: existingPayment.stripe_payment_intent_id,
-                        client_secret: `${existingPayment.stripe_payment_intent_id}_secret_test`,
-                        amounts: {
-                            service_amount_cents: Number(financials.service_amount_cents),
-                            customer_fee_cents: Number(financials.customer_fee_cents),
-                            customer_total_cents: Number(financials.customer_total_cents)
-                        }
-                    });
-                }
+        if (paymentDecision.action === 'attach') {
+            const frozen = paymentAmountSnapshot(existingPayment);
+            if (!Number.isFinite(frozen.customer_total_cents) || frozen.customer_total_cents <= 0) {
+                return res.status(409).json({
+                    error: "Le paiement de cette Partie est déjà enregistré.",
+                    code: "PAIEMENT_MONTANT_FIGE"
+                });
             }
-
-            // CAS B: Existing payment in CREATED status BUT stripe_payment_intent_id IS NULL (Stripe call failed previously)
-            if (existingPayment.payment_status === 'CREATED' && !existingPayment.stripe_payment_intent_id) {
-                if (process.env.STRIPE_SECRET_KEY) {
-                    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-                    const paymentIntent = await stripe.paymentIntents.create({
-                        amount: Number(financials.customer_total_cents),
-                        currency: 'eur',
-                        automatic_payment_methods: { enabled: true },
-                        metadata: {
-                            payment_id: existingPayment.id,
-                            milestone_id: milestone.id,
-                            quote_id: quote.id,
-                            mission_id: mission.id,
-                            requester_id: mission.requester_id,
-                            provider_id: quote.provider_id
-                        }
-                    }, {
-                        idempotencyKey: stripeIdempotencyKey
-                    });
-
-                    await supabaseAdmin
-                        .from('payments')
-                        .update({ stripe_payment_intent_id: paymentIntent.id })
-                        .eq('id', existingPayment.id);
-
-                    return res.json({
-                        success: true,
-                        recovered_orphan: true,
+            if (process.env.STRIPE_SECRET_KEY) {
+                const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: frozen.customer_total_cents,
+                    currency: 'eur',
+                    automatic_payment_methods: { enabled: true },
+                    metadata: {
                         payment_id: existingPayment.id,
-                        payment_intent_id: paymentIntent.id,
-                        client_secret: paymentIntent.client_secret,
-                        amounts: {
-                            service_amount_cents: Number(financials.service_amount_cents),
-                            customer_fee_cents: Number(financials.customer_fee_cents),
-                            customer_total_cents: Number(financials.customer_total_cents)
-                        }
-                    });
-                } else {
-                    const mockIntentId = `pi_test_${Date.now()}`;
-                    await supabaseAdmin
-                        .from('payments')
-                        .update({ stripe_payment_intent_id: mockIntentId })
-                        .eq('id', existingPayment.id);
-
-                    return res.json({
-                        success: true,
-                        recovered_orphan: true,
-                        mode: 'stripe_test_mock',
-                        payment_id: existingPayment.id,
-                        payment_intent_id: mockIntentId,
-                        client_secret: `${mockIntentId}_secret_test`,
-                        amounts: {
-                            service_amount_cents: Number(financials.service_amount_cents),
-                            customer_fee_cents: Number(financials.customer_fee_cents),
-                            customer_total_cents: Number(financials.customer_total_cents)
-                        }
-                    });
-                }
+                        milestone_id: milestone.id,
+                        quote_id: quote.id,
+                        mission_id: mission.id,
+                        requester_id: mission.requester_id,
+                        provider_id: quote.provider_id
+                    }
+                }, {
+                    idempotencyKey: stripeIdempotencyKey
+                });
+                await supabaseAdmin
+                    .from('payments')
+                    .update({ stripe_payment_intent_id: paymentIntent.id })
+                    .eq('id', existingPayment.id);
+                return res.json({
+                    success: true,
+                    recovered_orphan: true,
+                    payment_id: existingPayment.id,
+                    payment_intent_id: paymentIntent.id,
+                    client_secret: paymentIntent.client_secret,
+                    amounts: frozen
+                });
             }
+            const mockIntentId = `pi_test_${existingPayment.id}`;
+            await supabaseAdmin
+                .from('payments')
+                .update({ stripe_payment_intent_id: mockIntentId })
+                .eq('id', existingPayment.id);
+            return res.json({
+                success: true,
+                recovered_orphan: true,
+                mode: 'stripe_test_mock',
+                payment_id: existingPayment.id,
+                payment_intent_id: mockIntentId,
+                client_secret: `${mockIntentId}_secret_test`,
+                amounts: frozen
+            });
         }
 
         // 7. Insert payment record into public.payments (payment_status = CREATED, transfer_status = NOT_STARTED)
@@ -3183,11 +3132,12 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
             if (insertErr.code === '23505') { // Concurrency catch: DB partial unique index constraint
                 const { data: concPayment } = await supabaseAdmin
                     .from('payments')
-                    .select('id, payment_status, stripe_payment_intent_id')
+                    .select(PAYMENT_AMOUNT_COLUMNS)
                     .eq('milestone_id', milestone_id)
                     .single();
 
                 if (concPayment && concPayment.stripe_payment_intent_id) {
+                    const frozen = paymentAmountSnapshot(concPayment);
                     if (process.env.STRIPE_SECRET_KEY) {
                         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
                         const intent = await stripe.paymentIntents.retrieve(concPayment.stripe_payment_intent_id);
@@ -3197,11 +3147,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                             payment_id: concPayment.id,
                             payment_intent_id: intent.id,
                             client_secret: intent.client_secret,
-                            amounts: {
-                                service_amount_cents: Number(financials.service_amount_cents),
-                                customer_fee_cents: Number(financials.customer_fee_cents),
-                                customer_total_cents: Number(financials.customer_total_cents)
-                            }
+                            amounts: frozen
                         });
                     }
                 }
@@ -3245,11 +3191,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                 payment_id: paymentRecord.id,
                 payment_intent_id: paymentIntent.id,
                 client_secret: paymentIntent.client_secret,
-                amounts: {
-                    service_amount_cents: Number(financials.service_amount_cents),
-                    customer_fee_cents: Number(financials.customer_fee_cents),
-                    customer_total_cents: Number(financials.customer_total_cents)
-                }
+                amounts: paymentAmountSnapshot(financials)
             });
         } else {
             // Test Mode Fallback if STRIPE_SECRET_KEY is not defined in non-prod
@@ -3265,11 +3207,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                 payment_id: paymentRecord.id,
                 payment_intent_id: mockIntentId,
                 client_secret: `${mockIntentId}_secret_test`,
-                amounts: {
-                    service_amount_cents: Number(financials.service_amount_cents),
-                    customer_fee_cents: Number(financials.customer_fee_cents),
-                    customer_total_cents: Number(financials.customer_total_cents)
-                }
+                amounts: paymentAmountSnapshot(financials)
             });
         }
 

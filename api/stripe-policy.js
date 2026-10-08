@@ -181,6 +181,70 @@ function quoteFullyReleased(milestones) {
         && milestones.every((milestone) => milestone && (milestone.status === 'RELEASED' || milestone.status === 'CANCELLED'));
 }
 
+const CUSTOMER_FEE_MINIMUM_CENTS = 149n;
+const SETTLED_PAYMENT_STATUSES = new Set(['SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED']);
+
+function serviceCentsFromAmount(amount) {
+    const numStr = String(amount == null ? '' : amount).trim();
+    const parts = numStr.split('.');
+    const euros = BigInt(parts[0] || '0');
+    const centsPart = (parts[1] || '').padEnd(2, '0').slice(0, 2);
+    const cents = BigInt(centsPart || '0');
+    return euros * 100n + cents;
+}
+
+function halfUpPercent(cents, percent) {
+    return (cents * BigInt(percent) + 50n) / 100n;
+}
+
+function calculateMilestonePricing(amount) {
+    const service_amount_cents = typeof amount === 'bigint' ? amount : serviceCentsFromAmount(amount);
+    if (service_amount_cents <= 0n) {
+        throw new Error('Le montant de la partie doit être supérieur à 0 centime.');
+    }
+    const provider_fee_cents = halfUpPercent(service_amount_cents, 3);
+    const customer_fee_cents = (() => {
+        const raw = halfUpPercent(service_amount_cents, 3);
+        return raw > CUSTOMER_FEE_MINIMUM_CENTS ? raw : CUSTOMER_FEE_MINIMUM_CENTS;
+    })();
+    const customer_total_cents = service_amount_cents + customer_fee_cents;
+    const provider_net_cents = service_amount_cents - provider_fee_cents;
+    const lyann_revenue_cents = customer_fee_cents + provider_fee_cents;
+    return {
+        service_amount_cents,
+        customer_fee_cents,
+        customer_total_cents,
+        provider_fee_cents,
+        provider_net_cents,
+        lyann_revenue_cents
+    };
+}
+
+function paymentAmountSnapshot(source) {
+    if (!source) return null;
+    return {
+        service_amount_cents: Number(source.service_amount_cents),
+        customer_fee_cents: Number(source.customer_fee_cents),
+        customer_total_cents: Number(source.customer_total_cents),
+        provider_fee_cents: Number(source.provider_fee_cents),
+        provider_net_cents: Number(source.provider_net_cents),
+        lyann_revenue_cents: Number(source.lyann_revenue_cents)
+    };
+}
+
+function resumePaymentDecision(payment) {
+    if (!payment) return { action: 'create' };
+    const settled = SETTLED_PAYMENT_STATUSES.has(payment.payment_status)
+        || payment.transfer_status === 'TRANSFERRED'
+        || Boolean(payment.stripe_transfer_id);
+    if (settled) return { action: 'refuse', code: 'PAIEMENT_DEJA_SECURISE' };
+    if (payment.stripe_payment_intent_id) return { action: 'reuse', code: 'EXISTING_INTENT' };
+    if (payment.payment_status === 'CREATED' || payment.payment_status === 'REQUIRES_ACTION' || payment.payment_status === 'PROCESSING') {
+        return { action: 'attach', code: 'ORPHAN_CREATED' };
+    }
+    return { action: 'refuse', code: 'PAIEMENT_DEJA_SECURISE' };
+}
+
 function legacyPaymentColumns(financials) {
     return {
         amount_gross_cents: Number(financials.customer_total_cents),
@@ -207,6 +271,9 @@ module.exports = {
     shouldCreateConnectAccount,
     buildConnectAccountParams,
     buildAccountLinkParams,
+    calculateMilestonePricing,
+    paymentAmountSnapshot,
+    resumePaymentDecision,
     legacyPaymentColumns,
     quoteFullyReleased,
     providerCanBePaid,

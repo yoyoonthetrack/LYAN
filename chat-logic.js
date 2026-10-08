@@ -1210,16 +1210,11 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         const coLyannFee = document.getElementById('coLyannFee');
         const coTotalAmount = document.getElementById('coTotalAmount');
 
-        const agreedPrice = Number(mission.agreed_price);
         const title = mission.title || 'Intervention LYANN';
-        if (!Number.isFinite(agreedPrice)) return refuseUnlinkedMission('Paiement');
-
         if (coPrestationTitle) coPrestationTitle.textContent = title;
-        if (coDevisAmount) coDevisAmount.textContent = `${agreedPrice.toFixed(2)} €`;
-
-        const fee = Math.round(agreedPrice * 0.03 * 100) / 100;
-        if (coLyannFee) coLyannFee.textContent = `${fee.toFixed(2)} €`;
-        if (coTotalAmount) coTotalAmount.textContent = `${(agreedPrice + fee).toFixed(2)} €`;
+        if (coDevisAmount) coDevisAmount.textContent = '…';
+        if (coLyannFee) coLyannFee.textContent = '…';
+        if (coTotalAmount) coTotalAmount.textContent = '…';
 
         closeAllOverlays();
         const chatCheckoutOverlay = document.getElementById('chatCheckoutOverlay');
@@ -1249,6 +1244,8 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
             const prepareStripe = () => {
                 if (!window.LYANN_STRIPE || typeof window.LYANN_STRIPE.prepareCheckout !== 'function') return;
                 window.LYANN_STRIPE.prepareCheckout(milestoneId).then((prepared) => {
+                    const amounts = prepared && prepared.data && prepared.data.amounts;
+                    if (amounts) applyServerCheckoutAmounts(amounts);
                     if (prepared && prepared.error) notifyActionUnavailable(prepared.error);
                 }).catch((err) => {
                     notifyActionUnavailable({ message: err && err.message ? err.message : 'Paiement indisponible.' });
@@ -1412,6 +1409,17 @@ function renderEmptyConversationState(container) {
 }
 
 let chatRenderGeneration = 0;
+
+function applyServerCheckoutAmounts(amounts) {
+    if (!amounts) return;
+    const euros = (cents) => (Number(cents) / 100).toFixed(2) + ' €';
+    const base = document.getElementById('coDevisAmount');
+    const fee = document.getElementById('coLyannFee');
+    const total = document.getElementById('coTotalAmount');
+    if (base && amounts.service_amount_cents != null) base.textContent = euros(amounts.service_amount_cents);
+    if (fee && amounts.customer_fee_cents != null) fee.textContent = euros(amounts.customer_fee_cents);
+    if (total && amounts.customer_total_cents != null) total.textContent = euros(amounts.customer_total_cents);
+}
 
 function isQuoteAcceptedNotice(text) {
     return String(text || '').trim().toLowerCase() === 'devis accepté';
