@@ -119,7 +119,8 @@ function notificationKind(type) {
         REVIEW: ['Avis', 'ph-star'],
         SAFETY_REPORT_CONFIRMATION: ['Signalement', 'ph-warning-circle'],
         SANCTION_NOTICE: ['Modération', 'ph-warning-circle'],
-        SYSTEM: ['LYANN', 'ph-bell']
+        SYSTEM: ['LYANN', 'ph-bell'],
+        PAYOUT_READY: ['Compte de versement', 'ph-bank']
     };
     if (exact[key]) return { label: exact[key][0], icon: exact[key][1] };
     if (key.startsWith('PAYMENT')) return { label: 'Paiement', icon: 'ph-credit-card' };

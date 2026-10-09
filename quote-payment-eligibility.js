@@ -76,8 +76,13 @@
 
     function hiddenTimelineTypes(messages, quotes) {
         const accepted = (quotes || []).some((quote) => quote && quote.status === 'ACCEPTED');
-        if (!accepted) return new Set(['payment_requested']);
-        return new Set(DEAL_TIMELINE_TYPES);
+        if (!accepted) return new Set();
+        const hidden = new Set(DEAL_TIMELINE_TYPES);
+        // These two cards stay: the payment request without its raw status,
+        // and the secured-funds note for the Lyanneur.
+        hidden.delete('payment_requested');
+        hidden.delete('payment_secured');
+        return hidden;
     }
 
     function quoteSettled(milestones) {
@@ -141,6 +146,15 @@
         return null;
     }
 
+    function providerFundsSecuredNote(name) {
+        const who = String(name || '').replace(/[\r\n\t]+/g, ' ').trim() || 'votre interlocuteur';
+        return [
+            'Vous pouvez dès maintenant prendre rendez-vous avec ' + who + ' afin d’effectuer votre mission.',
+            'Une fois votre mission réalisée, ' + who + ' libèrera vos fonds, qui vous seront versés immédiatement.',
+            'Nous comptons sur vous pour mener cette mission avec soin. Merci de votre confiance.'
+        ];
+    }
+
     function dispatchQuotePay(quote, userId, dispatch) {
         const milestone = payableMilestoneForQuote(quote, userId);
         if (!milestone || typeof dispatch !== 'function') return null;
@@ -156,6 +170,7 @@
         dispatchQuotePay,
         hiddenTimelineTypes,
         nextFundingAction,
+        providerFundsSecuredNote,
         quoteSettled,
         dealRecap,
         PAYMENT_ROUTE

@@ -1204,6 +1204,12 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
     }
 
     else if (actionId === 'PAY_MISSION') {
+        const payingQuote = quoteForPayAction(extraData);
+        if (payingQuote && payoutBlocksPayment(payingQuote)) {
+            const prompt = payoutPromptForQuote(payingQuote);
+            chatToast(prompt && prompt.title ? prompt.title : 'Le compte de versement n’est pas encore prêt.');
+            return;
+        }
         if (!mission || !isMissionUuid(mission.id)) return refuseUnlinkedMission('Paiement');
         const coPrestationTitle = document.getElementById('coPrestationTitle');
         const coDevisAmount = document.getElementById('coDevisAmount');
@@ -1601,6 +1607,7 @@ function renderDealRecapCard(quote) {
         appendPayableQuoteAction(wrapper, quote);
         return wrapper;
     }
+    appendPayoutPrompt(wrapper, quote);
     const next = payment.nextFundingAction(quote, userId);
     if (next && next.waiting && !recap.released) {
         const wait = document.createElement('div');
@@ -1630,7 +1637,7 @@ function renderDealRecapCard(quote) {
     return wrapper;
 }
 
-function paintDealRecaps(box, quotes) {
+function paintDealRecaps(box, quotes, options) {
     if (!box) return;
     const accepted = (quotes || []).some((quote) => quote && quote.status === 'ACCEPTED');
     if (accepted && window.LYANN_QUOTE_PAYMENT) {
@@ -1648,9 +1655,186 @@ function paintDealRecaps(box, quotes) {
         const card = renderDealRecapCard(quote);
         if (card) box.appendChild(card);
     });
+    if (!options || !options.skipWatch) watchPayoutReadiness(quotes);
+}
+
+const payoutReadinessByUser = new Map();
+const payoutReadinessPending = new Map();
+let payoutWatchSerial = 0;
+
+function rememberPayoutReady(providerId) {
+    if (!providerId) return;
+    payoutReadinessByUser.set(String(providerId), 'active');
+}
+
+function notePayoutReadyMessage(msg) {
+    const meta = msg && msg.metadata;
+    if (meta && meta.kind === 'payout_ready') rememberPayoutReady(meta.provider_id);
+}
+
+function payoutPromptForQuote(quote) {
+    const prompts = window.LYANN_PAYOUT_PROMPT;
+    if (!prompts || !quote || !prompts.quoteStillNeedsPayout(quote)) return null;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    const providerId = quote.provider_id || quote.helper_id;
+    const role = String(providerId) === String(userId) ? 'provider' : (String(quote.requester_id) === String(userId) ? 'requester' : '');
+    if (!role) return null;
+    const contactName = currentChatContact && currentChatContact.name ? currentChatContact.name : '';
+    return prompts.payoutPrompt({
+        role,
+        status: quote.status,
+        readiness: payoutReadinessByUser.get(String(providerId || '')) || 'unknown',
+        providerName: role === 'requester' ? contactName : '',
+        requesterName: role === 'provider' ? contactName : ''
+    });
+}
+
+function payoutBlocksPayment(quote) {
+    const prompt = payoutPromptForQuote(quote);
+    return !!(prompt && prompt.blockPay);
+}
+
+function quotesWithCurrentContact() {
+    const contactId = currentChatContact && currentChatContact.id;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    const list = [];
+    timelineQuotes.forEach((quote) => {
+        if (!quote || !quote.id || !quote.status) return;
+        const providerId = quote.provider_id || quote.helper_id;
+        const involved = String(providerId) === String(userId) || String(quote.requester_id) === String(userId);
+        const withContact = contactId && (String(providerId) === String(contactId) || String(quote.requester_id) === String(contactId));
+        if (involved && withContact) list.push(quote);
+    });
+    return list;
+}
+
+function ensurePayoutReadiness(userId) {
+    const key = String(userId || '');
+    if (!key) return Promise.resolve('unknown');
+    if (payoutReadinessByUser.has(key)) return Promise.resolve(payoutReadinessByUser.get(key));
+    if (payoutReadinessPending.has(key)) return payoutReadinessPending.get(key);
+    const payout = window.LYANN_PAYOUT_ACCOUNT;
+    if (!payout || typeof payout.fetchReadiness !== 'function') return Promise.resolve('unknown');
+    const job = payout.fetchReadiness(key).then((state) => {
+        payoutReadinessByUser.set(key, state || 'error');
+        payoutReadinessPending.delete(key);
+        return payoutReadinessByUser.get(key);
+    }).catch(() => {
+        payoutReadinessByUser.set(key, 'error');
+        payoutReadinessPending.delete(key);
+        return 'error';
+    });
+    payoutReadinessPending.set(key, job);
+    return job;
+}
+
+function refreshPayoutReadiness(userId) {
+    const key = String(userId || '');
+    payoutReadinessByUser.delete(key);
+    payoutReadinessPending.delete(key);
+    return ensurePayoutReadiness(key).then((state) => {
+        const box = document.getElementById('chatMessagesContainer');
+        if (box) {
+            repaintQuoteTimelineCards(box);
+            paintDealRecaps(box, quotesWithCurrentContact(), { skipWatch: true });
+        }
+        return state;
+    });
+}
+
+function appendPayoutPrompt(parent, quote) {
+    if (!parent || !quote) return;
+    if (parent.querySelector('[data-payout-prompt="' + CSS.escape(String(quote.id)) + '"]')) return;
+    const prompt = payoutPromptForQuote(quote);
+    if (!prompt) return;
+    const box = document.createElement('div');
+    box.className = 'chat-payout-prompt';
+    box.dataset.payoutPrompt = String(quote.id);
+    const title = document.createElement('p');
+    title.className = 'chat-payout-prompt-title';
+    title.textContent = prompt.title;
+    box.appendChild(title);
+    if (prompt.body) {
+        const body = document.createElement('p');
+        body.textContent = prompt.body;
+        box.appendChild(body);
+    }
+    if (prompt.action) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-primary';
+        button.textContent = prompt.action;
+        button.addEventListener('click', () => {
+            button.disabled = true;
+            const providerId = quote.provider_id || quote.helper_id;
+            const run = prompt.intent === 'retry'
+                ? refreshPayoutReadiness(providerId)
+                : (window.LYANN_PAYOUT_ACCOUNT && window.LYANN_PAYOUT_ACCOUNT.beginPayoutSetup
+                    ? window.LYANN_PAYOUT_ACCOUNT.beginPayoutSetup()
+                    : Promise.reject());
+            Promise.resolve(run()).catch(() => { button.disabled = false; });
+        });
+        box.appendChild(button);
+    }
+    parent.appendChild(box);
+}
+
+function watchPayoutReadiness(quotes) {
+    const contactId = currentChatContact && currentChatContact.id;
+    const missing = [];
+    (quotes || []).forEach((quote) => {
+        if (!window.LYANN_PAYOUT_PROMPT || !window.LYANN_PAYOUT_PROMPT.quoteStillNeedsPayout(quote)) return;
+        const providerId = quote.provider_id || quote.helper_id;
+        if (providerId && !payoutReadinessByUser.has(String(providerId))) missing.push(String(providerId));
+    });
+    if (!missing.length) return;
+    const serial = ++payoutWatchSerial;
+    Promise.all([...new Set(missing)].map((id) => ensurePayoutReadiness(id))).then(() => {
+        if (serial !== payoutWatchSerial) return;
+        if (!currentChatContact || currentChatContact.id !== contactId) return;
+        const box = document.getElementById('chatMessagesContainer');
+        if (!box) return;
+        const current = quotesWithCurrentContact();
+        repaintQuoteTimelineCards(box);
+        paintDealRecaps(box, current, { skipWatch: true });
+        if (typeof window.__lyannAppendLiveQuote === 'function') {
+            box.querySelectorAll('[data-live-quote="1"]').forEach((node) => node.remove());
+            current.forEach((quote) => window.__lyannAppendLiveQuote(box, quote));
+        }
+    }).catch(() => {});
+}
+
+function isPayoutReadyNotice(msg) {
+    return !!(msg && msg.metadata && msg.metadata.kind === 'payout_ready');
+}
+
+function renderPayoutReadyNotice(msg) {
+    const node = document.createElement('div');
+    node.className = 'chat-payout-ready';
+    if (msg.id) node.dataset.messageId = String(msg.id);
+    if (msg.createdAt) node.dataset.createdAt = String(msg.createdAt);
+    const text = document.createElement('p');
+    text.textContent = msg.text || '';
+    node.appendChild(text);
+    return node;
+}
+
+function quoteForPayAction(extraData) {
+    let found = null;
+    timelineQuotes.forEach((quote) => {
+        if (found || !quote || !quote.id) return;
+        const milestoneId = extraData && extraData.milestoneId;
+        if (milestoneId && (quote.milestones || []).some((milestone) => milestone && milestone.id === milestoneId)) found = quote;
+        else if (!milestoneId && extraData && quote.mission_id && quote.mission_id === extraData.id) found = quote;
+    });
+    return found;
 }
 
 function appendPayableQuoteAction(parent, quote) {
+    if (payoutBlocksPayment(quote)) {
+        appendPayoutPrompt(parent, quote);
+        return;
+    }
     const payment = window.LYANN_QUOTE_PAYMENT;
     const payable = payment && payment.payableMilestoneForQuote(quote, getMyId());
     if (!parent || !payable) return;
@@ -1768,6 +1952,7 @@ function renderTimelineCard(msg) {
             actions.append(accept, decline);
             body.appendChild(actions);
         }
+        if (quote && quote.status !== 'ACCEPTED') appendPayoutPrompt(body, quote);
         wrapper.appendChild(body);
     } else if (type === 'milestone_completed') {
         const body = document.createElement('div');
@@ -1778,6 +1963,8 @@ function renderTimelineCard(msg) {
         body.appendChild(line);
         appendFundingAction(body);
         wrapper.appendChild(body);
+    } else if (type === 'payment_requested') {
+        // The title is enough. The raw status (CREATED) stays off the card.
     } else if (type === 'payment_secured') {
         const body = document.createElement('div');
         body.className = 'chat-timeline-body';
@@ -1785,6 +1972,21 @@ function renderTimelineCard(msg) {
         line.className = 'chat-timeline-meta';
         line.textContent = 'Le montant est encaissé.';
         body.appendChild(line);
+        const userId = typeof getMyId === 'function' ? getMyId() : null;
+        let viewerIsProvider = false;
+        timelineQuotes.forEach((quote) => {
+            if (!viewerIsProvider && quote && String(quote.provider_id || quote.helper_id) === String(userId)) viewerIsProvider = true;
+        });
+        const note = window.LYANN_QUOTE_PAYMENT && window.LYANN_QUOTE_PAYMENT.providerFundsSecuredNote;
+        if (viewerIsProvider && note) {
+            const contactName = currentChatContact && currentChatContact.name;
+            note(contactName).forEach((sentence) => {
+                const paragraph = document.createElement('div');
+                paragraph.className = 'chat-timeline-meta';
+                paragraph.textContent = sentence;
+                body.appendChild(paragraph);
+            });
+        }
         appendFundingAction(body);
         wrapper.appendChild(body);
     } else if (type === 'quote_accepted') {
@@ -1917,6 +2119,7 @@ async function renderMessages(passedMessages = null, options = {}) {
         wrapper.className = `chat-msg-bubble-wrap ${isMe ? 'sent' : 'received'}`;
         wrapper.dataset.messageId = String(msgId);
 
+        notePayoutReadyMessage(msg);
         const timelineType = msg.messageType || msg.type;
         const knownQuotes = [];
         timelineQuotes.forEach((quote) => { if (quote && quote.status) knownQuotes.push(quote); });
@@ -1930,6 +2133,9 @@ async function renderMessages(passedMessages = null, options = {}) {
         }
         else if (msg.type === 'text' && isQuoteAcceptedNotice(msg.text)) {
             return;
+        }
+        else if (isPayoutReadyNotice(msg)) {
+            container.appendChild(renderPayoutReadyNotice(msg));
         }
         else if (msg.type === 'text' || msg.type === 'photo' || msg.type === 'document') {
             const node = createThreadBubble(msg, { timeStr, isMe, authorName, msgId });
@@ -2152,6 +2358,11 @@ async function renderMessages(passedMessages = null, options = {}) {
             ${milestonesHTML}
             ${actionsHTML}
         `;
+        if (payoutBlocksPayment(q)) {
+            const pay = quoteDiv.querySelector('[data-quote-pay]');
+            if (pay && pay.parentElement) pay.parentElement.remove();
+        }
+        appendPayoutPrompt(quoteDiv, q);
         const payBtn = quoteDiv.querySelector('[data-quote-pay]');
         if (payBtn && pendingMs && q.mission_id) {
             payBtn.addEventListener('click', () => {
@@ -2198,7 +2409,9 @@ async function renderMessages(passedMessages = null, options = {}) {
                         attachment_url: msg.attachmentPath || msg.photoUrl || '',
                         attachment_name: msg.attachmentName || msg.docName || '',
                         attachment_size: msg.attachmentSize,
-                        attachment_mime: msg.attachmentMime || ''
+                        attachment_mime: msg.attachmentMime || '',
+                        message_type: msg.messageType || null,
+                        metadata: msg.metadata || null
                     }, { stickToBottom: stick, quiet: true });
                 });
             }).catch(() => {});
@@ -4007,6 +4220,23 @@ function appendLiveChatMessage(row, options = {}) {
     const stick = Object.prototype.hasOwnProperty.call(options, 'stickToBottom') ? options.stickToBottom : threadIsNearBottom(container);
     if (!attachmentType && isQuoteAcceptedNotice(text)) {
         return;
+    }
+    if (row.metadata && row.metadata.kind === 'payout_ready') {
+        rememberPayoutReady(row.metadata.provider_id || row.sender_id);
+        container.querySelector('.chat-empty-state')?.remove();
+        const notice = renderPayoutReadyNotice({
+            id: row.id,
+            text: text,
+            createdAt: row.created_at || null
+        });
+        if (notice.dataset.messageId && container.querySelector(chatMessageSelector(notice.dataset.messageId))) return;
+        placeThreadNode(container, notice);
+        const box = container;
+        queueMicrotask(() => {
+            if (!box.isConnected) return;
+            repaintQuoteTimelineCards(box);
+            paintDealRecaps(box, quotesWithCurrentContact(), { skipWatch: true });
+        });
         if (stick) scrollThreadToBottom(container, !options.quiet);
         return;
     }

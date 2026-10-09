@@ -8445,7 +8445,10 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         ageEl.textContent = age ? `· ${age}` : '';
         if (age) ageEl.title = `Publiée le ${dateStr}`;
     }
-    if (statusEl) statusEl.textContent = `● ${requestData.status || 'OPEN'}`;
+    if (statusEl) {
+        const statusBadge = window.getRequestStatusBadge?.(requestData.status);
+        statusEl.textContent = statusBadge?.label || 'Ouverte';
+    }
 
     const favDetailBtn = document.getElementById('lyannDetailFavBtn');
     if (favDetailBtn && requestData.id) {
@@ -8549,12 +8552,14 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
     if (footerEl) {
         if (isOwnLyann) {
             footerEl.innerHTML = `
-                <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn" style="flex: 1; justify-content: center;">Fermer</button>
-                <button type="button" class="btn btn-primary" id="btnManageMyLyann" style="flex: 2; justify-content: center; font-weight: 800;">
+                <button type="button" class="btn btn-primary" id="btnManageMyLyann">
                     <i class="ph ph-note-pencil"></i> Gérer mon annonce
                 </button>
+                <div class="lyann-detail-secondary">
+                    <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn">Fermer</button>
+                    <button type="button" class="btn btn-outline activity-delete-btn" id="btnDeleteMyAnnouncement"><i class="ph ph-trash"></i> Supprimer</button>
+                </div>
             `;
-            footerEl.style.flexWrap = 'wrap';
             bindLyannDetailFooterClose();
             document.getElementById('btnManageMyLyann')?.addEventListener('click', () => {
                 window.closeLyannDetailSurface('manage');
@@ -8562,14 +8567,7 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
                     window.openAccountModalSubView('activity');
                 }
             });
-            const deleteOwnBtn = document.createElement('button');
-            deleteOwnBtn.type = 'button';
-            deleteOwnBtn.className = 'btn btn-outline activity-delete-btn';
-            deleteOwnBtn.id = 'btnDeleteMyAnnouncement';
-            deleteOwnBtn.style.cssText = 'flex: 1; justify-content: center; color: #C45C4A; border-color: rgba(196,92,74,0.35);';
-            deleteOwnBtn.innerHTML = '<i class="ph ph-trash"></i> Supprimer';
-            footerEl.appendChild(deleteOwnBtn);
-            deleteOwnBtn.addEventListener('click', () => {
+            document.getElementById('btnDeleteMyAnnouncement')?.addEventListener('click', () => {
                 window.deleteMyAnnouncement(requestData.id);
             });
         } else if (requestData.status !== 'OPEN') {
@@ -8580,10 +8578,10 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             bindLyannDetailFooterClose();
         } else {
             footerEl.innerHTML = `
-                <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn" style="flex: 1; justify-content: center;">Fermer</button>
-                <button type="button" class="btn btn-primary" id="btnHelpLyannFromModal" style="flex: 2; justify-content: center; font-weight: 800;">
+                <button type="button" class="btn btn-primary" id="btnHelpLyannFromModal">
                     <i class="ph ph-handshake"></i> Lyanner
                 </button>
+                <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn">Fermer</button>
             `;
             bindLyannDetailFooterClose();
             document.getElementById('btnHelpLyannFromModal')?.addEventListener('click', () => {

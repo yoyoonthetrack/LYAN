@@ -115,6 +115,28 @@
         window.location.assign(url);
     }
 
+    async function fetchReadiness(userId) {
+        const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+        const session = supabase ? await supabase.auth.getSession() : null;
+        const mine = session && session.data && session.data.session && session.data.session.user && session.data.session.user.id;
+        const path = mine && String(userId) === String(mine)
+            ? '/v1/payments/connect/status'
+            : '/v1/payments/connect/peer-status?user_id=' + encodeURIComponent(String(userId || ''));
+        const body = await connectRequest(path);
+        return payoutAccountState(body);
+    }
+
+    async function beginPayoutSetup() {
+        try {
+            await startOnboarding();
+        } catch (error) {
+            if (error && error.code === 401 && typeof window.requireAuthSession === 'function') {
+                window.requireAuthSession('Compte de versement');
+            }
+            throw error;
+        }
+    }
+
     async function startOnboarding() {
         const status = await connectRequest('/v1/payments/connect/status');
         if (!status.account_created) await connectRequest('/v1/payments/connect/account', { method: 'POST', body: '{}' });
@@ -237,5 +259,5 @@
         else boot();
     }
 
-    return { payoutAccountState, payoutReturnUrls, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh };
+    return { payoutAccountState, payoutReturnUrls, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh, fetchReadiness, beginPayoutSetup };
 });

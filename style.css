@@ -17674,6 +17674,43 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     flex: 1;
     justify-content: center;
 }
+.chat-payout-prompt {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #f4f7f4;
+    border: 1px solid #d5e3d8;
+}
+.chat-payout-prompt p {
+    margin: 0 0 8px;
+    color: #1d2a44;
+    font-size: 0.92rem;
+    line-height: 1.4;
+}
+.chat-payout-prompt-title {
+    font-weight: 700;
+}
+.chat-payout-prompt .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+}
+.chat-payout-ready {
+    max-width: 440px;
+    margin: 12px auto;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    text-align: center;
+}
+.chat-payout-ready p {
+    margin: 0;
+    color: #14532d;
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
 #obJoinChooser .btn-apple-auth {
     background: #1F3827;
     color: #FFFFFF;
@@ -17892,6 +17929,88 @@ body:not(.user-is-logged-out) .feed-guest-cta { display: none; }
     margin: 4px 0 0;
     line-height: 1.35;
 }
+#lyannDetailModal .lyann-detail-card {
+    width: min(520px, calc(100vw - 28px)) !important;
+    max-width: 520px !important;
+    max-height: min(86dvh, 740px);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+#lyannDetailModal .lyann-detail-header {
+    padding: 16px 16px 14px;
+    border-bottom: 1px solid #E6E1D6;
+}
+#lyannDetailModal .lyann-detail-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+#lyannDetailModal .lyann-detail-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: calc(100% - 52px);
+    margin: 0;
+    background: rgba(74, 124, 89, 0.12);
+    color: #2D5A39;
+    font-weight: 800;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    padding: 6px 10px;
+    border-radius: 999px;
+}
+#lyannDetailModal .modal-close-btn {
+    position: static;
+    flex: none;
+    width: 40px;
+    height: 40px;
+}
+#lyannDetailModal #lyannDetailTitle {
+    margin: 14px 0 0;
+    font-size: 1.28rem;
+    line-height: 1.25;
+    font-weight: 800;
+    color: #1E2822;
+}
+#lyannDetailModal .lyann-detail-status {
+    display: inline-flex;
+    margin-top: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #EBF3EE;
+    color: #2D5A39;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+#lyannDetailModal #lyannDetailBody {
+    padding: 16px 16px 8px;
+    overflow-y: auto;
+}
+#lyannDetailModal #lyannDetailFooter {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid #E6E1D6;
+    background: #FBF9F4;
+}
+#lyannDetailModal #lyannDetailFooter .btn {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+}
+#lyannDetailModal .lyann-detail-secondary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+#lyannDetailModal .activity-delete-btn {
+    color: #C45C4A;
+    border-color: rgba(196, 92, 74, 0.35);
+}
+
 .lyann-notif-cta {
     display: inline-flex;
     margin-top: 6px;

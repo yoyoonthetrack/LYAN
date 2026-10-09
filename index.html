@@ -2796,6 +2796,7 @@
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>
 <script src="quote-payment-eligibility.js?v=20261007d"></script>
+<script src="payout-prompt.js?v=20261009a"></script>
 <script src="chat-logic.js?v=20261007d"></script>
     <script src="ai-classifier.js?v=20260922c"></script>
     <script src="platform-core.js"></script>
@@ -2974,18 +2975,16 @@
             </div>
     <!-- ========== MODAL FICHE DÉTAILLÉE LYANN ========== -->
     <div class="modal-overlay" id="lyannDetailModal" style="display: none;">
-        <div class="modal-card modal-card-xl" style="max-width: 620px; border-radius: var(--radius-xl);">
-            <button class="modal-close-btn" id="closeLyannDetailModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
-            <div class="modal-header" style="padding-bottom: 14px; border-bottom: 1px solid #E2E8F0;">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                    <span class="flash-badge-default" id="lyannDetailBadge" style="background: rgba(74, 124, 89, 0.12); color: #4A7C59; font-weight: 800; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem;">
+        <div class="modal-card modal-card-xl lyann-detail-card">
+            <div class="modal-header lyann-detail-header">
+                <div class="lyann-detail-top">
+                    <span class="flash-badge-default lyann-detail-kicker" id="lyannDetailBadge">
                         <i class="ph ph-hand-heart"></i> LYANN
                     </span>
-                    <span id="lyannDetailStatus" style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">● OPEN</span>
+                    <button class="modal-close-btn" id="closeLyannDetailModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
                 </div>
-                <h3 class="step-title" id="lyannDetailTitle" style="font-size: 1.35rem; margin-top: 10px; font-weight: 800; color: #1E2822;">
-                    Titre du Lyann
-                </h3>
+                <h3 class="step-title" id="lyannDetailTitle">Titre du Lyann</h3>
+                <span id="lyannDetailStatus" class="lyann-detail-status">Ouverte</span>
             </div>
             <div class="modal-body" id="lyannDetailBody" style="padding: 18px 0; font-size: 0.95rem; line-height: 1.6;">
                 <!-- Dynamically populated by script.js -->

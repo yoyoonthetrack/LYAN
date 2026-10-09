@@ -30,6 +30,7 @@ const {
     claimWebhookDecision,
     safeStripeReturnUrl
 } = require('./stripe-policy');
+const { quoteStillNeedsPayout, payoutReadyCopy } = require('../payout-prompt');
 const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-build');
 require('dotenv').config();
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local'), override: true });
@@ -348,6 +349,131 @@ app.post('/v1/payments/connect/express-dashboard-link', async (req, res) => {
     }
 });
 
+async function conversationIdForQuote(quote) {
+    if (quote && quote.conversation_id) return quote.conversation_id;
+    if (!quote || !quote.request_invitation_id) return null;
+    const { data } = await supabaseAdmin
+        .from('request_invitations')
+        .select('conversation_id')
+        .eq('id', quote.request_invitation_id)
+        .maybeSingle();
+    return data && data.conversation_id ? data.conversation_id : null;
+}
+
+async function notifyPayoutReady(requesterId, providerId, copy) {
+    const entityId = String(providerId);
+    const { error } = await supabaseAdmin.rpc('lyann_insert_notification', {
+        p_user_id: requesterId,
+        p_type: 'PAYOUT_READY',
+        p_title: copy.notificationTitle,
+        p_body: copy.notificationBody,
+        p_entity_type: 'conversation',
+        p_entity_id: entityId
+    });
+    if (!error) return;
+    const existing = await supabaseAdmin
+        .from('notifications')
+        .select('id')
+        .eq('user_id', requesterId)
+        .eq('type', 'PAYOUT_READY')
+        .eq('entity_id', entityId)
+        .maybeSingle();
+    if (existing.data) return;
+    await supabaseAdmin.from('notifications').insert({
+        user_id: requesterId,
+        type: 'PAYOUT_READY',
+        title: copy.notificationTitle,
+        body: copy.notificationBody,
+        entity_type: 'conversation',
+        entity_id: entityId
+    });
+}
+
+async function announcePayoutReady(providerId) {
+    try {
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, first_name')
+            .eq('id', providerId)
+            .maybeSingle();
+        if (!profile) return;
+        const { data: quotes, error } = await supabaseAdmin
+            .from('quotes')
+            .select('id, status, requester_id, provider_id, conversation_id, request_invitation_id')
+            .eq('provider_id', providerId)
+            .in('status', ['SENT', 'ACCEPTED'])
+            .order('created_at', { ascending: false })
+            .limit(40);
+        if (error || !quotes || !quotes.length) return;
+        const quoteIds = quotes.map((quote) => quote.id);
+        const [milestones, payments] = await Promise.all([
+            supabaseAdmin.from('milestones').select('quote_id, status').in('quote_id', quoteIds),
+            supabaseAdmin.from('payments').select('quote_id, payment_status').in('quote_id', quoteIds)
+        ]);
+        const milestonesByQuote = new Map();
+        (milestones.data || []).forEach((row) => {
+            if (!milestonesByQuote.has(row.quote_id)) milestonesByQuote.set(row.quote_id, []);
+            milestonesByQuote.get(row.quote_id).push(row);
+        });
+        const paymentsByQuote = new Map();
+        (payments.data || []).forEach((row) => {
+            if (!paymentsByQuote.has(row.quote_id)) paymentsByQuote.set(row.quote_id, []);
+            paymentsByQuote.get(row.quote_id).push(row);
+        });
+        const waiting = quotes.filter((quote) => quoteStillNeedsPayout({
+            ...quote,
+            milestones: milestonesByQuote.get(quote.id) || [],
+            payments: paymentsByQuote.get(quote.id) || []
+        }));
+        if (!waiting.length) return;
+        const copy = payoutReadyCopy(profile.first_name);
+        const conversations = new Map();
+        for (const quote of waiting) {
+            if (!quote.requester_id || quote.requester_id === providerId) continue;
+            const conversationId = await conversationIdForQuote(quote);
+            if (!conversationId) continue;
+            if (!conversations.has(conversationId)) conversations.set(conversationId, new Set());
+            conversations.get(conversationId).add(quote.requester_id);
+        }
+        for (const [conversationId, requesterIds] of conversations) {
+            const inserted = await supabaseAdmin.from('messages').insert({
+                conversation_id: conversationId,
+                sender_id: providerId,
+                content: copy.message,
+                message_type: 'text',
+                metadata: { kind: 'payout_ready', provider_id: providerId },
+                client_message_id: 'payout-ready:' + conversationId,
+                is_read: false
+            }).select('id').maybeSingle();
+            if (inserted.error && inserted.error.code !== '23505') {
+                console.error(JSON.stringify({ scope: 'payout_ready_announce', code: inserted.error.code || null }));
+            }
+            for (const requesterId of requesterIds) {
+                await notifyPayoutReady(requesterId, providerId, copy);
+            }
+        }
+    } catch (error) {
+        console.error(JSON.stringify({ scope: 'payout_ready_announce', code: error && error.code || null }));
+    }
+}
+
+async function sharesConversation(userId, otherId) {
+    const { data: mine, error } = await supabaseAdmin
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId);
+    if (error || !mine || !mine.length) return false;
+    const ids = mine.map((row) => row.conversation_id).filter(Boolean);
+    if (!ids.length) return false;
+    const { data: match } = await supabaseAdmin
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', otherId)
+        .in('conversation_id', ids)
+        .limit(1);
+    return Boolean(match && match.length);
+}
+
 app.get('/v1/payments/connect/status', async (req, res) => {
     try {
         const user = await requireBearerUser(req);
@@ -365,10 +491,42 @@ app.get('/v1/payments/connect/status', async (req, res) => {
             include: ['configuration.recipient']
         });
         const ready = connectPayoutReady(account);
+        if (ready.ok) await announcePayoutReady(user.id);
         return res.json({ success: true, ready: ready.ok, ...ready.status });
     } catch (e) {
         console.error('Connect status error');
         return res.status(502).json({ code: 'CONNECT_UNAVAILABLE', error: 'Compte Connect illisible dans cet environnement Stripe.' });
+    }
+});
+
+app.get('/v1/payments/connect/peer-status', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const otherId = String(req.query.user_id || '');
+        if (!/^[0-9a-f-]{36}$/i.test(otherId) || otherId === user.id) {
+            return res.status(404).json({ error: 'Introuvable.' });
+        }
+        const allowed = await sharesConversation(user.id, otherId);
+        if (!allowed) return res.status(404).json({ error: 'Introuvable.' });
+        const loaded = await loadOwnConnectAccount(otherId);
+        if (loaded.error) return res.status(404).json({ error: 'Introuvable.' });
+        if (!loaded.profile.stripe_account_id) {
+            return res.json({ success: true, ready: false, ...connectStatus(null) });
+        }
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) {
+            return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
+        }
+        const account = await runtime.stripe.v2.core.accounts.retrieve(loaded.profile.stripe_account_id, {
+            include: ['configuration.recipient']
+        });
+        const ready = providerCanBePaid(loaded.profile, account);
+        const status = ready.status || connectStatus(null);
+        return res.json({ success: true, ready: ready.ok === true, ...status });
+    } catch (e) {
+        console.error(JSON.stringify({ scope: 'connect_peer_status', code: e && e.code || null }));
+        return res.status(502).json({ code: 'CONNECT_UNAVAILABLE', error: 'Compte de versement illisible.' });
     }
 });
 
@@ -4233,6 +4391,7 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                         .maybeSingle();
 
                     if (providerProfile) {
+                        await announcePayoutReady(providerProfile.id);
                         const { data: pendingPayments } = await supabaseAdmin
                             .from('payments')
                             .select('milestone_id, provider_net_cents')

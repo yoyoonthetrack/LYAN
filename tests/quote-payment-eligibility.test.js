@@ -11,6 +11,7 @@ const {
     dispatchQuotePay,
     hiddenTimelineTypes,
     nextFundingAction,
+    providerFundsSecuredNote,
     dealRecap,
     quoteSettled,
     PAYMENT_ROUTE
@@ -109,9 +110,10 @@ test('the timeline card uses the same payment decision', () => {
 test('deal steps collapse into one recap instead of a stack of cards', () => {
     const hidden = hiddenTimelineTypes([], [quote()]);
     assert.equal(hidden.has('quote_accepted'), true);
-    assert.equal(hidden.has('payment_requested'), true);
-    assert.equal(hidden.has('payment_secured'), true);
+    assert.equal(hidden.has('payment_requested'), false);
+    assert.equal(hidden.has('payment_secured'), false);
     assert.equal(hidden.has('milestone_completed'), true);
+    assert.equal(hiddenTimelineTypes([], [quote({ status: 'SENT' })]).has('payment_requested'), false);
     assert.equal(hiddenTimelineTypes([], [quote({ status: 'SENT' })]).has('quote_created'), false);
     const funded = quote();
     funded.milestones[0].status = 'FUNDED';
@@ -122,6 +124,19 @@ test('deal steps collapse into one recap instead of a stack of cards', () => {
     funded.milestones[0].status = 'RELEASED';
     assert.equal(quoteSettled(funded.milestones), true);
     assert.equal(dealRecap(funded).lines.some((line) => line.value === 'Fermée'), true);
+});
+
+test('secured funds tell the Lyanneur to meet the requester by name', () => {
+    const lines = providerFundsSecuredNote('Yoann.D');
+    assert.equal(lines.length, 3);
+    assert.equal(lines[0], 'Vous pouvez dès maintenant prendre rendez-vous avec Yoann.D afin d’effectuer votre mission.');
+    assert.equal(lines[1], 'Une fois votre mission réalisée, Yoann.D libèrera vos fonds, qui vous seront versés immédiatement.');
+    assert.match(lines[2], /^Nous comptons sur vous/);
+    const source = fs.readFileSync(path.join(__dirname, '../chat-logic.js'), 'utf8');
+    assert.match(source, /type === 'payment_requested'/);
+    assert.match(source, /providerFundsSecuredNote/);
+    const requested = source.slice(source.indexOf("type === 'payment_requested'"), source.indexOf("type === 'payment_secured'"));
+    assert.equal(requested.includes('meta.status'), false);
 });
 
 test('release is offered to the requester only after the work is declared done', () => {
