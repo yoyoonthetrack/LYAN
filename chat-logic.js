@@ -1779,6 +1779,16 @@ function appendPayoutPrompt(parent, quote) {
     parent.appendChild(box);
 }
 
+window.addEventListener('lyann:payout-readiness', (event) => {
+    const state = event && event.detail && event.detail.state;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    if (userId && state) payoutReadinessByUser.set(String(userId), state);
+    const box = document.getElementById('chatMessagesContainer');
+    if (!box || !currentChatContact) return;
+    repaintQuoteTimelineCards(box);
+    paintDealRecaps(box, quotesWithCurrentContact(), { skipWatch: true });
+});
+
 function watchPayoutReadiness(quotes) {
     const contactId = currentChatContact && currentChatContact.id;
     const missing = [];

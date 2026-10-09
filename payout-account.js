@@ -232,13 +232,22 @@
         });
     }
 
+    async function resumeSetup() {
+        let pending = '';
+        try { pending = sessionStorage.getItem('lyann_payout_setup') || ''; } catch (_) {}
+        if (pending !== '1') return null;
+        if (typeof window.openAccountModalSubView === 'function') {
+            try { await window.openAccountModalSubView('finances'); } catch (_) {}
+        }
+        const state = await refresh();
+        try {
+            window.dispatchEvent(new CustomEvent('lyann:payout-readiness', { detail: { state: state || 'error' } }));
+        } catch (_) {}
+        return state;
+    }
+
     function watchAppReturn() {
-        const resume = () => {
-            let pending = '';
-            try { pending = sessionStorage.getItem('lyann_payout_setup') || ''; } catch (_) {}
-            if (pending !== '1') return;
-            if (document.getElementById('payoutAccountState')) refresh();
-        };
+        const resume = () => { resumeSetup(); };
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) resume();
         });
@@ -259,5 +268,5 @@
         else boot();
     }
 
-    return { payoutAccountState, payoutReturnUrls, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh, fetchReadiness, beginPayoutSetup };
+    return { payoutAccountState, payoutReturnUrls, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh, fetchReadiness, beginPayoutSetup, resumeSetup };
 });

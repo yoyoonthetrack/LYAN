@@ -4437,6 +4437,7 @@ safeDomReady(() => {
         const displayName = window.formatPublicName(userProf, null, 'Membre LYANN');
         const safeDisplayName = window.escapeHtmlAttr(displayName);
         const userEmail = window.escapeHtmlAttr(userProf?.email || (window.LYANN_CURRENT_USER ? window.LYANN_CURRENT_USER.email : ''));
+        const userPhone = window.escapeHtmlAttr(userProf?.phone || '');
         const avatarSrc = window.escapeHtmlAttr(window.resolveLyannAvatarSrc(userProf?.avatar_url));
         const userTerritory = window.escapeHtmlAttr(userProf?.territory || userProf?.city || 'Guadeloupe (971)');
 
@@ -4735,7 +4736,7 @@ safeDomReady(() => {
                                 <div class="row-icon"><i class="ph ph-phone"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">Téléphone</strong>
-                                    <span class="row-subtitle">Vérification SMS bientôt disponible</span>
+                                    <span class="row-subtitle">${userPhone || 'Non renseigné'}</span>
                                 </div>
                             </div>
                         </div>
@@ -5397,10 +5398,7 @@ safeDomReady(() => {
             const userPhone = profileData?.phone || forcedSession?.user?.phone || '';
             kycList.innerHTML = `
                 <li>${isEmailConf}</li>
-                <li style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                    <span>📱 Numéro mobile : ${userPhone ? window.escapeHtmlAttr(userPhone) : 'Non renseigné'}</span>
-                    <span class="kyc-badge-deferred" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; background: #F1F5F9; color: #64748B; font-weight: 600;">Vérification SMS bientôt disponible</span>
-                </li>
+                <li>📱 Numéro mobile : ${userPhone ? window.escapeHtmlAttr(userPhone) : 'Non renseigné'}</li>
                 <li>⏳ Pièce d'identité non transmise</li>
             `;
         }
