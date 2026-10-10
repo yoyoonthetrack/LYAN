@@ -17030,6 +17030,44 @@ div:has(> #cpHeadline) { display: none !important; }
     justify-content: flex-start;
     align-items: stretch;
 }
+.chat-main-area { position: relative; }
+.chat-bottom-refresh {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 8px;
+    z-index: 4;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+.chat-bottom-refresh-pill {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid rgba(74, 124, 89, 0.28);
+    box-shadow: 0 2px 8px rgba(36, 56, 43, 0.1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+}
+.chat-bottom-refresh-spin {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(74, 124, 89, 0.25);
+    border-top-color: #4A7C59;
+    box-sizing: border-box;
+}
+.chat-bottom-refresh.is-refreshing .chat-bottom-refresh-spin {
+    animation: chat-bottom-refresh-spin 0.7s linear infinite;
+}
+@keyframes chat-bottom-refresh-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .chat-bottom-refresh.is-refreshing .chat-bottom-refresh-spin { animation: none; }
+}
 #chatMessagesContainer > *,
 .chat-messages-scroll > * {
     flex: 0 0 auto;

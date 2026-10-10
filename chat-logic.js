@@ -216,6 +216,22 @@ function threadIsNearBottom(container) {
     return container.scrollHeight - container.scrollTop - container.clientHeight <= CHAT_NEAR_BOTTOM_PX;
 }
 
+function bottomRefreshGesture(input) {
+    const nearBottom = Boolean(input && input.nearBottom);
+    const dy = Number(input && input.dy) || 0;
+    const dx = Number(input && input.dx) || 0;
+    const pulling = Boolean(input && input.pulling);
+    const up = -dy;
+    if (!nearBottom) return { pull: false, refresh: false, block: false };
+    if (!pulling) {
+        if (up < 12) return { pull: false, refresh: false, block: false };
+        if (Math.abs(dx) > up) return { pull: false, refresh: false, block: false };
+        return { pull: true, refresh: false, block: false };
+    }
+    const distance = Math.min(88, up);
+    return { pull: true, refresh: distance >= 72, block: distance > 18 };
+}
+
 function scrollThreadToBottom(container, smooth) {
     if (!container) return;
     const top = container.scrollHeight;
@@ -1789,6 +1805,8 @@ function syncMissionJump(visible) {
 
 function paintDealRecaps(box, quotes, options) {
     if (!box) return;
+    const stick = threadIsNearBottom(box);
+    const previousTop = box.scrollTop;
     const payment = window.LYANN_QUOTE_PAYMENT;
     const board = payment && payment.missionBoard ? payment.missionBoard(quotes) : { active: [], history: [] };
     const tracked = (quotes || []).filter((quote) => quote && (quote.status === 'SENT' || quote.status === 'ACCEPTED' || quote.status === 'REJECTED'));
@@ -1810,6 +1828,8 @@ function paintDealRecaps(box, quotes, options) {
     const history = renderMissionHistory(board.history);
     if (history) box.appendChild(history);
     syncMissionJump(board.active.length > 0 || board.history.length > 0);
+    if (stick) scrollThreadToBottom(box, false);
+    else box.scrollTop = previousTop;
     if (!options || !options.skipWatch) watchPayoutReadiness(quotes);
 }
 
@@ -4502,6 +4522,123 @@ async function catchUpOpenThread(reason) {
     })().finally(() => { catchUpPromise = null; });
     return catchUpPromise;
 }
+
+let bottomRefreshPromise = null;
+
+async function refreshOpenThreadFromBottom() {
+    if (bottomRefreshPromise) return bottomRefreshPromise;
+    const contactId = currentChatContact && currentChatContact.id;
+    const container = document.getElementById('chatMessagesContainer');
+    if (!contactId || !container) return null;
+    bottomRefreshPromise = (async () => {
+        await catchUpOpenThread('manual');
+        await refreshOpenBusinessCards();
+        const box = document.getElementById('chatMessagesContainer');
+        if (box && currentChatContact && currentChatContact.id === contactId) scrollThreadToBottom(box, false);
+    })().finally(() => { bottomRefreshPromise = null; });
+    return bottomRefreshPromise;
+}
+
+function attachBottomChatRefresh() {
+    const container = document.getElementById('chatMessagesContainer');
+    if (!container || container.dataset.bottomRefresh === '1') return;
+    container.dataset.bottomRefresh = '1';
+    const indicator = document.createElement('div');
+    indicator.className = 'chat-bottom-refresh';
+    indicator.setAttribute('aria-hidden', 'true');
+    indicator.innerHTML = '<span class="chat-bottom-refresh-pill"><span class="chat-bottom-refresh-spin"></span></span>';
+    const pill = indicator.querySelector('.chat-bottom-refresh-pill');
+    container.parentElement && container.parentElement.appendChild(indicator);
+    let startX = 0;
+    let startY = 0;
+    let pulling = false;
+    let lastUp = 0;
+    let refreshing = false;
+    function paint(distance, busy) {
+        indicator.classList.toggle('is-refreshing', busy);
+        pill.style.opacity = busy ? '1' : String(Math.min(1, distance / 36));
+        pill.style.transform = 'translateY(' + (busy ? -28 : -Math.min(distance, 36)) + 'px)';
+    }
+    function resetPaint() {
+        indicator.classList.remove('is-refreshing');
+        pill.style.opacity = '0';
+        pill.style.transform = 'translateY(0)';
+    }
+    container.addEventListener('touchstart', (event) => {
+        if (refreshing || !event.touches || event.touches.length !== 1) return;
+        const target = event.target;
+        if (target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]')) return;
+        if (!threadIsNearBottom(container)) return;
+        startX = event.touches[0].clientX;
+        startY = event.touches[0].clientY;
+        pulling = false;
+        lastUp = 0;
+    }, { passive: true });
+    container.addEventListener('touchmove', (event) => {
+        if (refreshing || !event.touches || event.touches.length !== 1) return;
+        const gesture = bottomRefreshGesture({
+            nearBottom: threadIsNearBottom(container),
+            dy: event.touches[0].clientY - startY,
+            dx: event.touches[0].clientX - startX,
+            pulling: pulling
+        });
+        if (!gesture.pull) {
+            pulling = false;
+            lastUp = 0;
+            resetPaint();
+            return;
+        }
+        pulling = true;
+        lastUp = Math.max(0, startY - event.touches[0].clientY);
+        paint(lastUp, false);
+        if (gesture.block && event.cancelable) event.preventDefault();
+    }, { passive: false });
+    container.addEventListener('touchend', () => {
+        const gesture = bottomRefreshGesture({
+            nearBottom: threadIsNearBottom(container),
+            dy: -lastUp,
+            dx: 0,
+            pulling: pulling
+        });
+        const should = gesture.refresh && !refreshing;
+        pulling = false;
+        lastUp = 0;
+        if (!should) {
+            resetPaint();
+            return;
+        }
+        refreshing = true;
+        paint(72, true);
+        Promise.resolve(refreshOpenThreadFromBottom()).finally(() => {
+            refreshing = false;
+            resetPaint();
+        });
+    });
+    container.addEventListener('touchcancel', () => {
+        pulling = false;
+        lastUp = 0;
+        resetPaint();
+    });
+    let wheelPull = 0;
+    container.addEventListener('wheel', (event) => {
+        if (refreshing || !threadIsNearBottom(container) || event.deltaY <= 0) {
+            wheelPull = 0;
+            return;
+        }
+        wheelPull += event.deltaY;
+        if (wheelPull < 160) return;
+        wheelPull = 0;
+        refreshing = true;
+        paint(72, true);
+        Promise.resolve(refreshOpenThreadFromBottom()).finally(() => {
+            refreshing = false;
+            resetPaint();
+        });
+    }, { passive: true });
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attachBottomChatRefresh);
+else attachBottomChatRefresh();
 
 async function noteChatPreview(userId, row, contactId) {
     const unread = !!(row.sender_id && row.sender_id !== userId && !contactId);
