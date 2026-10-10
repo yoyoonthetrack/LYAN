@@ -17674,6 +17674,124 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     flex: 1;
     justify-content: center;
 }
+.chat-mission-card {
+    max-width: 440px;
+    margin: 12px 0;
+    padding: 16px;
+    border: 1.5px solid #e3e9e5;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(36, 56, 43, 0.06);
+}
+.chat-mission-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+}
+.chat-mission-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.3;
+    color: #1d2a44;
+}
+.chat-mission-head strong {
+    flex: none;
+    color: #1d2a44;
+}
+.chat-mission-status {
+    margin: 8px 0 0;
+    font-weight: 700;
+    color: #35583f;
+}
+.chat-mission-steps {
+    display: flex;
+    gap: 6px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+.chat-mission-steps li {
+    flex: 1;
+    min-height: 28px;
+    padding-top: 6px;
+    border-top: 3px solid #e4e0d8;
+    color: #7b8a82;
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+.chat-mission-steps li[data-state="done"] {
+    border-top-color: #4A7C59;
+    color: #35583f;
+}
+.chat-mission-steps li[data-state="current"] {
+    border-top-color: #C9A24A;
+    color: #1E2822;
+    font-weight: 700;
+}
+.chat-mission-context {
+    margin: 12px 0 0;
+    color: #42504a;
+    font-size: 0.92rem;
+    line-height: 1.4;
+}
+.chat-mission-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+.chat-mission-actions .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+}
+.chat-mission-details {
+    margin-top: 12px;
+}
+.chat-mission-details summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: #35583f;
+    font-weight: 700;
+}
+.chat-mission-jump {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    margin-top: 2px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 999px;
+    background: #F3F7F4;
+    color: #35583F;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.chat-mission-jump[hidden] { display: none !important; }
+.chat-mission-history {
+    max-width: 440px;
+    margin: 8px 0 12px;
+    color: #5C6B62;
+    font-size: 0.88rem;
+}
+.chat-mission-history summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 700;
+    color: #35583F;
+}
+.chat-mission-history p {
+    margin: 0;
+    padding: 8px 0;
+    border-top: 1px solid #e3e9e5;
+}
 .chat-payout-prompt {
     margin-top: 12px;
     padding: 12px 14px;

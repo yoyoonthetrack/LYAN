@@ -12,6 +12,8 @@ const {
     hiddenTimelineTypes,
     nextFundingAction,
     providerFundsSecuredNote,
+    missionCard,
+    missionBoard,
     dealRecap,
     quoteSettled,
     PAYMENT_ROUTE
@@ -110,11 +112,11 @@ test('the timeline card uses the same payment decision', () => {
 test('deal steps collapse into one recap instead of a stack of cards', () => {
     const hidden = hiddenTimelineTypes([], [quote()]);
     assert.equal(hidden.has('quote_accepted'), true);
-    assert.equal(hidden.has('payment_requested'), false);
-    assert.equal(hidden.has('payment_secured'), false);
+    assert.equal(hidden.has('payment_requested'), true);
+    assert.equal(hidden.has('payment_secured'), true);
     assert.equal(hidden.has('milestone_completed'), true);
-    assert.equal(hiddenTimelineTypes([], [quote({ status: 'SENT' })]).has('payment_requested'), false);
-    assert.equal(hiddenTimelineTypes([], [quote({ status: 'SENT' })]).has('quote_created'), false);
+    assert.equal(hiddenTimelineTypes([], [quote({ status: 'SENT' })]).has('quote_created'), true);
+    assert.equal(hiddenTimelineTypes([], []).has('quote_created'), false);
     const funded = quote();
     funded.milestones[0].status = 'FUNDED';
     const lines = dealRecap(funded).lines.map((line) => line.label + ' ' + line.value);
@@ -124,6 +126,78 @@ test('deal steps collapse into one recap instead of a stack of cards', () => {
     funded.milestones[0].status = 'RELEASED';
     assert.equal(quoteSettled(funded.milestones), true);
     assert.equal(dealRecap(funded).lines.some((line) => line.value === 'Fermée'), true);
+});
+
+test('successive quotes keep one active card and do not mix two missions', () => {
+    const refused = quote({ id: 'old', status: 'REJECTED', created_at: '2026-10-01T10:00:00Z', mission_id: null });
+    const again = quote({ id: 'new', status: 'SENT', created_at: '2026-10-02T10:00:00Z', mission_id: null });
+    const afterRefusal = missionBoard([refused, again]);
+    assert.deepEqual(afterRefusal.active.map((item) => item.id), ['new']);
+    assert.deepEqual(afterRefusal.history.map((item) => item.id), ['old']);
+    const older = quote({ id: 'sent-1', status: 'SENT', created_at: '2026-10-01T10:00:00Z' });
+    const newer = quote({ id: 'sent-2', status: 'SENT', created_at: '2026-10-03T10:00:00Z' });
+    const proposals = missionBoard([older, newer]);
+    assert.deepEqual(proposals.active.map((item) => item.id), ['sent-2']);
+    assert.deepEqual(proposals.history.map((item) => item.id), ['sent-1']);
+    const openMission = quote({ id: 'job-a', status: 'ACCEPTED', mission_id: 'mission-a', created_at: '2026-10-04T10:00:00Z' });
+    const otherMission = quote({ id: 'job-b', status: 'ACCEPTED', mission_id: 'mission-b', created_at: '2026-10-05T10:00:00Z' });
+    otherMission.milestones[0].status = 'FUNDED';
+    const both = missionBoard([openMission, otherMission]);
+    assert.deepEqual(both.active.map((item) => item.mission_id), ['mission-a', 'mission-b']);
+    const finished = quote({ id: 'done', status: 'ACCEPTED', mission_id: 'mission-done', created_at: '2026-10-01T10:00:00Z' });
+    finished.milestones[0].status = 'RELEASED';
+    const closedOnly = missionBoard([finished]);
+    assert.deepEqual(closedOnly.active.map((item) => item.id), ['done']);
+    const providerCard = missionCard(openMission, provider, 'active');
+    assert.equal(providerCard.actions.some((action) => action.id === 'pay' || action.id === 'release' || action.id === 'accept'), false);
+    const requesterCard = missionCard(otherMission, requester, 'active');
+    assert.equal(requesterCard.actions.some((action) => action.id === 'done' || action.id === 'setup'), false);
+    const release = missionCard(Object.assign(quote(), { milestones: [{ id: 'c', status: 'COMPLETED', amount: 10 }] }), requester, 'active');
+    assert.equal(release.actions[0].confirm, true);
+    assert.equal(release.actions[0].id, 'release');
+});
+
+test('one mission card replaces the stack and keeps a single primary action', () => {
+    const sent = missionCard(quote({ status: 'SENT', total_amount: 100, description: 'Haie' }), requester, 'active');
+    assert.equal(sent.status, 'Devis reçu');
+    assert.deepEqual(sent.actions.map((action) => action.label), ['Accepter le devis', 'Refuser']);
+    const waiting = missionCard(quote({ status: 'SENT' }), provider, 'none');
+    assert.equal(waiting.status, 'Devis envoyé');
+    assert.equal(waiting.actions.length, 0);
+    assert.match(waiting.context, /En attente de la réponse/);
+    const blocked = missionCard(quote({ total_amount: 100 }), requester, 'none');
+    assert.match(blocked.context, /compte de versement/);
+    assert.equal(blocked.actions.length, 0);
+    const pay = missionCard(quote({ total_amount: 100 }), requester, 'active');
+    assert.equal(pay.status, 'Devis accepté');
+    assert.equal(pay.actions.length, 1);
+    assert.equal(pay.actions[0].label, 'Sécuriser le paiement');
+    const funded = quote();
+    funded.milestones[0].status = 'FUNDED';
+    const doing = missionCard(funded, provider, 'active');
+    assert.equal(doing.status, 'Paiement sécurisé');
+    assert.equal(doing.actions[0].label, 'Déclarer la prestation terminée');
+    assert.equal(missionCard(funded, requester, 'active').actions.length, 0);
+    const done = quote();
+    done.milestones[0].status = 'COMPLETED';
+    const check = missionCard(done, requester, 'active');
+    assert.equal(check.status, 'Prestation à valider');
+    assert.equal(check.actions[0].confirm, true);
+    const released = quote();
+    released.milestones[0].status = 'RELEASED';
+    const closed = missionCard(released, provider, 'active');
+    assert.equal(closed.status, 'Prestation clôturée');
+    assert.equal(closed.actions.length, 0);
+    assert.match(closed.context, /compte de versement/);
+    const two = quote({
+        milestones: [
+            { id: 'a', title: 'Un', status: 'FUNDED', amount: 10 },
+            { id: 'b', title: 'Deux', status: 'PENDING', amount: 20 }
+        ]
+    });
+    const mixed = missionCard(two, provider, 'active');
+    assert.equal(mixed.actions.length, 1);
+    assert.equal(mixed.details.find((line) => line.id === 'b').action, null);
 });
 
 test('secured funds tell the Lyanneur to meet the requester by name', () => {

@@ -74,15 +74,178 @@
         'funds_released'
     ];
 
+    function isDealTimeline(type) {
+        return DEAL_TIMELINE_TYPES.indexOf(type) !== -1;
+    }
+
     function hiddenTimelineTypes(messages, quotes) {
-        const accepted = (quotes || []).some((quote) => quote && quote.status === 'ACCEPTED');
-        if (!accepted) return new Set();
-        const hidden = new Set(DEAL_TIMELINE_TYPES);
-        // These two cards stay: the payment request without its raw status,
-        // and the secured-funds note for the Lyanneur.
-        hidden.delete('payment_requested');
-        hidden.delete('payment_secured');
-        return hidden;
+        const tracked = (quotes || []).some((quote) => quote && (quote.status === 'SENT' || quote.status === 'ACCEPTED' || quote.status === 'REJECTED'));
+        if (!tracked) return new Set();
+        return new Set(DEAL_TIMELINE_TYPES);
+    }
+
+    const STEP_LABELS = ['Devis', 'Paiement', 'Prestation', 'Validation'];
+
+    function milestonePhase(quote, milestone) {
+        if (!quote || quote.status === 'REJECTED') return 'closed';
+        if (quote.status === 'SENT') return 'devis';
+        const status = milestone && milestone.status;
+        if (status === 'RELEASED' || status === 'VALIDATED') return 'done';
+        if (status === 'COMPLETED') return 'validation';
+        if (status === 'FUNDED' || status === 'IN_PROGRESS') return 'prestation';
+        return 'paiement';
+    }
+
+    function missionPhase(quote) {
+        if (!quote || quote.status === 'REJECTED') return 'closed';
+        if (quote.status === 'SENT') return 'devis';
+        const milestones = (quote.milestones || []).filter((milestone) => milestone && milestone.status !== 'CANCELLED');
+        if (!milestones.length) return 'paiement';
+        const open = milestones.find((milestone) => milestonePhase(quote, milestone) !== 'done');
+        return open ? milestonePhase(quote, open) : 'closed';
+    }
+
+    function stepStates(phase) {
+        const order = ['devis', 'paiement', 'prestation', 'validation', 'closed'];
+        const index = order.indexOf(phase);
+        return STEP_LABELS.map((label, step) => ({
+            label,
+            state: phase === 'closed' || step < index ? 'done' : step === index ? 'current' : 'todo'
+        }));
+    }
+
+    function euros(amount) {
+        const value = Number(amount);
+        if (!Number.isFinite(value)) return '';
+        return (Math.round(value * 100) / 100).toLocaleString('fr-FR') + ' €';
+    }
+
+    function missionCard(quote, userId, readiness) {
+        if (!quote || !userId) return null;
+        if (quote.status !== 'SENT' && quote.status !== 'ACCEPTED' && quote.status !== 'REJECTED') return null;
+        const providerId = quote.provider_id || quote.helper_id;
+        const role = String(providerId) === String(userId) ? 'provider' : (String(quote.requester_id) === String(userId) ? 'requester' : '');
+        if (!role) return null;
+        const phase = missionPhase(quote);
+        const title = String(quote.description || (quote.milestones && quote.milestones[0] && quote.milestones[0].title) || 'Prestation').trim();
+        const amount = euros(quote.total_amount);
+        const ready = readiness === 'active';
+        const payoutBlocked = !ready && (readiness === 'none' || readiness === 'incomplete' || readiness === 'unknown' || readiness === 'error' || !readiness);
+        const milestones = (quote.milestones || []).filter((milestone) => milestone && milestone.status !== 'CANCELLED');
+        let status = 'Devis accepté';
+        let context = '';
+        const actions = [];
+        if (quote.status === 'REJECTED') {
+            status = 'Devis refusé';
+            context = 'Ce devis n’a pas été retenu.';
+        } else if (phase === 'devis') {
+            status = role === 'requester' ? 'Devis reçu' : 'Devis envoyé';
+            if (role === 'requester') {
+                actions.push({ id: 'accept', label: 'Accepter le devis' });
+                actions.push({ id: 'decline', label: 'Refuser', tone: 'secondary' });
+            } else {
+                context = 'En attente de la réponse du demandeur.';
+            }
+        } else if (quote.status === 'ACCEPTED') {
+            const payoutWait = phase === 'paiement' && payoutBlocked;
+            if (payoutWait && role === 'provider') {
+                status = 'Devis accepté';
+                context = 'Configurez votre compte de versement pour recevoir vos paiements.';
+                if (readiness !== 'unknown') actions.push({ id: 'setup', label: 'Configurer mon compte' });
+            } else if (payoutWait) {
+                status = 'Devis accepté';
+                context = 'Le Lyanneur doit finaliser son compte de versement avant le paiement.';
+            } else {
+                if (phase === 'paiement') {
+                    status = 'Devis accepté';
+                    context = role === 'provider' ? 'En attente du paiement du demandeur.' : 'Vous pouvez maintenant sécuriser le paiement.';
+                } else if (phase === 'prestation') {
+                    status = 'Paiement sécurisé';
+                    context = 'Le paiement est sécurisé par LYANN. La prestation peut commencer.';
+                } else if (phase === 'validation') {
+                    status = 'Prestation à valider';
+                    context = role === 'requester'
+                        ? 'Le Lyanneur a déclaré la prestation terminée. Vérifiez le travail avant de confirmer.'
+                        : 'En attente de la validation du demandeur.';
+                } else if (phase === 'closed') {
+                    status = 'Prestation clôturée';
+                    context = role === 'provider'
+                        ? 'Le paiement a été libéré vers votre compte de versement.'
+                        : 'Votre validation est confirmée. Le paiement a été libéré.';
+                }
+                milestones.forEach((milestone) => {
+                    const step = milestonePhase(quote, milestone);
+                    if (step === 'paiement' && role === 'requester' && milestone.status === 'PENDING' && !milestoneSettled(quote, milestone)) {
+                        actions.push({ id: 'pay', label: 'Sécuriser le paiement', milestoneId: milestone.id });
+                    }
+                    if (step === 'prestation' && role === 'provider') {
+                        actions.push({ id: 'done', label: 'Déclarer la prestation terminée', milestoneId: milestone.id });
+                    }
+                    if (step === 'validation' && role === 'requester') {
+                        actions.push({ id: 'release', label: 'Valider et libérer le paiement', milestoneId: milestone.id, confirm: true });
+                    }
+                });
+            }
+        } else if (phase === 'paiement' && payoutBlocked) {
+            status = 'Devis accepté';
+        } else {
+            status = 'Prestation clôturée';
+            context = role === 'provider'
+                ? 'Le paiement a été libéré vers votre compte de versement.'
+                : 'Votre validation est confirmée. Le paiement a été libéré.';
+        }
+        const headerActions = [];
+        actions.forEach((action) => {
+            if (!action.milestoneId || !headerActions.some((item) => item.milestoneId)) headerActions.push(action);
+        });
+        const details = milestones.map((milestone) => {
+            const own = actions.find((action) => action.milestoneId === milestone.id);
+            const inHeader = headerActions.some((action) => action.milestoneId === milestone.id);
+            return {
+                id: milestone.id,
+                title: milestone.title || 'Jalon',
+                amount: euros(milestone.amount),
+                status: milestone.status,
+                action: own && !inHeader ? own : null
+            };
+        });
+        return {
+            quoteId: quote.id,
+            missionId: quote.mission_id || null,
+            title,
+            amount,
+            status,
+            context,
+            steps: stepStates(phase),
+            actions: headerActions,
+            details,
+            closed: phase === 'closed' || quote.status === 'REJECTED'
+        };
+    }
+
+    function quoteTime(quote) {
+        return Date.parse((quote && (quote.created_at || quote.updated_at)) || '') || 0;
+    }
+
+    function missionBoard(quotes) {
+        const list = (quotes || []).filter((quote) => quote && (quote.status === 'SENT' || quote.status === 'ACCEPTED' || quote.status === 'REJECTED'));
+        const sorted = list.slice().sort((a, b) => quoteTime(a) - quoteTime(b));
+        const active = [];
+        const history = [];
+        sorted.forEach((quote) => {
+            if (quote.status === 'ACCEPTED' && missionPhase(quote) !== 'closed') active.push(quote);
+            else if (quote.status !== 'SENT') history.push(quote);
+        });
+        const sent = sorted.filter((quote) => quote.status === 'SENT');
+        sent.forEach((quote, index) => {
+            if (index === sent.length - 1) active.push(quote);
+            else history.push(quote);
+        });
+        if (!active.length && history.length) {
+            history.sort((a, b) => quoteTime(a) - quoteTime(b));
+            active.push(history.pop());
+        }
+        return { active, history };
     }
 
     function quoteSettled(milestones) {
@@ -169,6 +332,9 @@
         payMissionPayload,
         dispatchQuotePay,
         hiddenTimelineTypes,
+        isDealTimeline,
+        missionCard,
+        missionBoard,
         nextFundingAction,
         providerFundsSecuredNote,
         quoteSettled,
