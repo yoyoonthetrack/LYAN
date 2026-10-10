@@ -249,34 +249,83 @@ function initializeNativeFeatures() {
 
 async function setupNativePushNotifications() {
     const push = getNativePlugin('PushNotifications');
-    if (push) {
-        try {
-            let perm = await push.checkPermissions();
-            if (perm.receive !== 'granted') {
-                perm = await push.requestPermissions();
-            }
-            if (perm.receive === 'granted') {
-                await push.register();
-                
-                push.addListener('registration', (token) => {
-                    console.log('📲 Device Token registered:', token.value);
-                });
-                
-                push.addListener('registrationError', (err) => {
-                    console.error('📲 Device Token registration error:', err);
-                });
-                
-                push.addListener('pushNotificationReceived', (notification) => {
-                    console.log('📲 Notification received:', notification);
-                    if (window.lyannAlert) {
-                        window.lyannAlert(`🔔 ${notification.title}: ${notification.body}`);
-                    }
-                });
-            }
-        } catch(e) {
-            console.warn("Push setup failed or not supported in simulator/browser:", e);
-        }
+    if (!push) return;
+    window.LYANN_PUSH = {
+        deactivate: deactivatePushDevice
+    };
+    try {
+        let perm = await push.checkPermissions();
+        if (perm.receive === 'denied') return;
+        if (perm.receive !== 'granted') perm = await push.requestPermissions();
+        if (perm.receive !== 'granted') return;
+        await push.register();
+        push.addListener('registration', (event) => {
+            registerPushDevice(event && event.value).catch(() => {});
+        });
+        push.addListener('registrationError', () => {
+            console.warn('Push registration failed');
+        });
+    } catch (error) {
+        console.warn('Push setup failed');
     }
+}
+
+function pushInstallationId() {
+    const key = 'lyann_install_id';
+    try {
+        const existing = localStorage.getItem(key);
+        if (existing && /^[0-9a-f-]{36}$/i.test(existing)) return existing;
+        const created = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : '';
+        if (!created) return '';
+        localStorage.setItem(key, created);
+        return created;
+    } catch (_) {
+        return '';
+    }
+}
+
+function pushEnvironment() {
+    const debug = window.Capacitor && window.Capacitor.DEBUG;
+    return debug ? 'sandbox' : 'production';
+}
+
+async function pushAuthHeader() {
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    const session = supabase ? await supabase.auth.getSession() : null;
+    const token = session && session.data && session.data.session && session.data.session.access_token;
+    if (!token) return null;
+    return { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+}
+
+async function registerPushDevice(deviceToken) {
+    const installationId = pushInstallationId();
+    if (!installationId || !deviceToken) return;
+    const headers = await pushAuthHeader();
+    if (!headers) return;
+    const fetcher = window.lyannBackendFetch || window.fetch.bind(window);
+    await fetcher('/v1/notifications/devices', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            installation_id: installationId,
+            token: deviceToken,
+            apns_environment: pushEnvironment(),
+            platform: 'ios'
+        })
+    });
+}
+
+async function deactivatePushDevice() {
+    const installationId = pushInstallationId();
+    if (!installationId) return;
+    const headers = await pushAuthHeader();
+    if (!headers) return;
+    const fetcher = window.lyannBackendFetch || window.fetch.bind(window);
+    await fetcher('/v1/notifications/devices/deactivate', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ installation_id: installationId })
+    });
 }
 
 // === HAPTIC VIBRATION UTILITY ===

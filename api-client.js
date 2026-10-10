@@ -367,6 +367,9 @@ const LYANN_API_CLIENT = {
 
     async logout() {
         if (!this.supabase) return { error: null };
+        if (window.LYANN_PUSH && typeof window.LYANN_PUSH.deactivate === 'function') {
+            try { await window.LYANN_PUSH.deactivate(); } catch (_) {}
+        }
         return await this.supabase.auth.signOut();
     },
 

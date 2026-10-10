@@ -31,6 +31,12 @@ const {
     safeStripeReturnUrl
 } = require('./stripe-policy');
 const { quoteStillNeedsPayout, payoutReadyCopy } = require('../payout-prompt');
+const {
+    buildTestPayload,
+    testSendAllowed,
+    validDeviceRegistration
+} = require('./apns');
+const { apnsConfig, sendApns } = require('./apns-send');
 const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-build');
 require('dotenv').config();
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local'), override: true });
@@ -234,6 +240,76 @@ async function requireBearerUser(req) {
     if (error || !data?.user) return null;
     return data.user;
 }
+
+const recentPushTests = new Map();
+
+app.post('/v1/notifications/devices', async (req, res) => {
+    const user = await requireBearerUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+    const registration = validDeviceRegistration(req.body || {});
+    if (!registration.ok) return res.status(400).json({ code: registration.code, error: 'Appareil invalide.' });
+    const { error } = await supabaseAdmin.from('device_push_tokens').upsert({
+        user_id: user.id,
+        installation_id: registration.installationId,
+        token: registration.token,
+        platform: registration.platform,
+        apns_environment: registration.environment,
+        active: true,
+        updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,installation_id' });
+    if (error) return res.status(500).json({ error: 'Enregistrement impossible.' });
+    return res.json({ success: true });
+});
+
+app.post('/v1/notifications/devices/deactivate', async (req, res) => {
+    const user = await requireBearerUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+    const installationId = String(req.body && req.body.installation_id || '');
+    if (!/^[0-9a-f-]{36}$/i.test(installationId)) return res.status(400).json({ error: 'Appareil invalide.' });
+    const { error } = await supabaseAdmin.from('device_push_tokens').update({
+        active: false,
+        updated_at: new Date().toISOString()
+    }).eq('user_id', user.id).eq('installation_id', installationId);
+    if (error) return res.status(500).json({ error: 'Désactivation impossible.' });
+    return res.json({ success: true });
+});
+
+app.post('/v1/notifications/push-test', async (req, res) => {
+    const user = await requireBearerUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+    const allowed = testSendAllowed({
+        enabled: process.env.PUSH_TEST_ENABLED === 'true',
+        allowUserId: process.env.PUSH_TEST_USER_ID || '',
+        callerId: user.id
+    });
+    if (!allowed.ok) return res.status(403).json({ code: allowed.code, error: 'Notification de test désactivée.' });
+    const config = apnsConfig(process.env);
+    if (!config) return res.status(503).json({ code: 'APNS_NOT_CONFIGURED', error: 'APNs n’est pas configuré.' });
+    const installationId = String(req.body && req.body.installation_id || '');
+    let query = supabaseAdmin.from('device_push_tokens').select('id, token, apns_environment, installation_id').eq('user_id', user.id).eq('active', true);
+    if (installationId) query = query.eq('installation_id', installationId);
+    const { data: devices, error } = await query.limit(1);
+    if (error) return res.status(500).json({ error: 'Appareil illisible.' });
+    const device = devices && devices[0];
+    if (!device) return res.status(404).json({ error: 'Aucun appareil actif.' });
+    const cooldownKey = user.id + ':' + device.installation_id;
+    if (Date.now() - (recentPushTests.get(cooldownKey) || 0) < 60000) {
+        return res.status(429).json({ code: 'PUSH_TEST_COOLDOWN', error: 'Un essai vient déjà d’être envoyé.' });
+    }
+    recentPushTests.set(cooldownKey, Date.now());
+    const result = await sendApns({
+        config,
+        deviceToken: device.token,
+        environment: device.apns_environment,
+        payload: buildTestPayload()
+    });
+    if (result.deactivate) {
+        await supabaseAdmin.from('device_push_tokens').update({ active: false, updated_at: new Date().toISOString() }).eq('id', device.id);
+    }
+    console.log(JSON.stringify({ scope: 'apns_test', code: result.code, status: result.status, deactivate: result.deactivate }));
+    if (!result.ok) return res.status(502).json({ code: result.code, error: 'Envoi impossible.' });
+    return res.json({ success: true });
+});
 
 async function loadOwnConnectAccount(userId) {
     const { data: profile, error } = await supabaseAdmin
