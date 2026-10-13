@@ -40,7 +40,7 @@
         if (document.getElementById('lyannMessagingHydrationGuard')) return;
         const style = document.createElement('style');
         style.id = 'lyannMessagingHydrationGuard';
-        style.textContent = '#chatModal.lyann-canonical-hydrating{visibility:hidden!important;opacity:0!important;pointer-events:none!important;}';
+        style.textContent = '#chatModal.lyann-canonical-hydrating .chat-thread-pending{opacity:1}';
         document.head.appendChild(style);
     }
 
@@ -210,6 +210,14 @@
         return typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(String(value)) : String(value).replace(/"/g, '');
     }
 
+    function inboxQuoteLabel(status) {
+        if (status === 'COMPLETED') return 'Terminé';
+        if (status === 'SENT' || status === 'VIEWED' || status === 'REVISED') return 'En attente';
+        if (status === 'ACCEPTED') return 'Accepté';
+        if (status === 'REJECTED' || status === 'DECLINED') return 'Refusé';
+        return '';
+    }
+
     function createConversationRow(conversation) {
         const row = document.createElement('button');
         row.type = 'button';
@@ -218,18 +226,30 @@
         row.setAttribute('data-chat-member-id', row.dataset.chatMemberId);
         if (conversation.conversationId) row.dataset.conversationId = conversation.conversationId;
         if (conversation.pinned) row.dataset.pinned = '1';
+        row.dataset.unread = conversation.unread ? '1' : '0';
+        row.dataset.annonce = conversation.hasAnnonce ? '1' : '0';
+        row.dataset.devis = conversation.hasDevis ? '1' : '0';
+        row.dataset.favorite = window.isContactFavorite?.(conversation.contactId || conversation.id) ? '1' : '0';
         if (conversation.unread) row.classList.add('is-unread');
         const activeId = window.LYANN_ACTIVE_CHAT_CONTACT?.id;
         if (activeId && String(activeId) === String(row.dataset.chatMemberId)) row.classList.add('active');
-        row.style.cssText = 'width:100%;border:0;background:transparent;text-align:left;';
-
+        row.style.cssText = '';
         const avatarWrap = document.createElement('div');
         avatarWrap.className = 'chat-contact-avatar-wrap';
-        const img = document.createElement('img');
-        img.className = 'chat-contact-avatar';
-        img.alt = conversation.name || 'Contact';
-        img.src = conversation.avatar || defaultAvatar();
-        avatarWrap.appendChild(img);
+        if (conversation.isSupport) {
+            avatarWrap.classList.add('is-support');
+            const mark = document.createElement('img');
+            mark.className = 'chat-contact-avatar lyann-support-mark';
+            mark.alt = '';
+            mark.src = 'logo-app-256.png';
+            avatarWrap.appendChild(mark);
+        } else {
+            const img = document.createElement('img');
+            img.className = 'chat-contact-avatar';
+            img.alt = conversation.name || 'Contact';
+            img.src = conversation.avatar || defaultAvatar();
+            avatarWrap.appendChild(img);
+        }
 
         const info = document.createElement('div');
         info.className = 'chat-contact-info';
@@ -238,18 +258,60 @@
         const name = document.createElement('div');
         name.className = 'chat-contact-name';
         name.textContent = conversation.name || 'Membre LYANN';
+        nameRow.appendChild(name);
+        if (conversation.isSupport) {
+            const support = document.createElement('span');
+            support.className = 'lyann-inbox-role';
+            support.textContent = 'Support officiel';
+            nameRow.appendChild(support);
+        } else {
+            if (conversation.isProVerified) {
+                const pro = document.createElement('span');
+                pro.className = 'lyann-inbox-role';
+                pro.textContent = 'Pro';
+                nameRow.appendChild(pro);
+            }
+            if (conversation.isVerified) {
+                const verified = document.createElement('span');
+                verified.className = 'lyann-inbox-role is-verified';
+                verified.textContent = 'Vérifié';
+                nameRow.appendChild(verified);
+            }
+        }
         const time = document.createElement('span');
         time.className = 'chat-contact-time';
         time.textContent = formatInboxTime(conversation.lastMessageAt);
-        nameRow.append(name, time);
-        const preview = document.createElement('div');
-        preview.className = 'chat-contact-preview';
-        preview.textContent = conversation.preview || 'Conversation LYANN';
-        info.append(nameRow, preview);
+        nameRow.appendChild(time);
+        info.appendChild(nameRow);
+        if (conversation.preview) {
+            const preview = document.createElement('div');
+            preview.className = 'chat-contact-preview';
+            preview.textContent = conversation.preview;
+            info.appendChild(preview);
+        }
+        const quoteLabel = inboxQuoteLabel(conversation.quoteStatus);
+        if (conversation.annonceTitle || quoteLabel) {
+            const context = document.createElement('div');
+            context.className = 'lyann-inbox-context';
+            if (conversation.annonceTitle) {
+                const annonce = document.createElement('span');
+                annonce.textContent = conversation.annonceTitle;
+                context.appendChild(annonce);
+            }
+            if (quoteLabel) {
+                const quote = document.createElement('span');
+                quote.textContent = 'Devis · ' + quoteLabel;
+                context.appendChild(quote);
+            }
+            info.appendChild(context);
+        }
+        row.dataset.context = [conversation.annonceTitle || '', quoteLabel || ''].join(' ').toLowerCase();
         const dot = document.createElement('span');
-        dot.className = 'chat-unread-dot';
+        dot.className = 'chat-unread-dot lyann-inbox-unread';
         dot.setAttribute('aria-hidden', 'true');
-        dot.hidden = !conversation.unread;
+        const unreadCount = Number(conversation.unreadCount) || 0;
+        dot.hidden = unreadCount < 1;
+        if (unreadCount) dot.textContent = String(unreadCount);
         row.append(avatarWrap, info, dot);
         row.addEventListener('click', () => openConversation({
             contactId: conversation.contactId || conversation.id,
@@ -276,6 +338,7 @@
     function renderConversationRows(listContainer, conversations) {
         listContainer.innerHTML = '';
         conversations.forEach((conversation) => listContainer.appendChild(createConversationRow(conversation)));
+        applyInboxView();
     }
 
     function withSupportRow(rows) {
@@ -285,8 +348,9 @@
             list.unshift({
                 contactId: supportId,
                 name: 'Support LYANN',
-                preview: 'Écrivez-nous ici',
-                pinned: true
+                preview: 'Écrivez-nous ici pour toute question ou aide sur l’application.',
+                pinned: true,
+                isSupport: true
             });
         }
         return list;
@@ -351,21 +415,65 @@
         }
     }
 
-    async function openList() {
+    function syncInboxNavOffset() {
+        const nav = document.querySelector('.navbar');
+        if (!nav) return;
+        const bottom = Math.ceil(nav.getBoundingClientRect().bottom);
+        if (bottom > 0) document.documentElement.style.setProperty('--lyann-inbox-nav-offset', bottom + 'px');
+    }
+
+    let inboxScrollTop = 0;
+    let threadHistoryPushed = false;
+    let threadBackLock = 0;
+
+    function captureInboxScroll() {
+        const list = document.getElementById('chatContactsList');
+        if (list) inboxScrollTop = list.scrollTop;
+    }
+
+    function noteThreadHistory(contactId) {
+        const state = { lyannMessaging: 'thread', contactId: String(contactId || '') };
+        if (threadHistoryPushed) {
+            history.replaceState(state, '');
+            return;
+        }
+        history.pushState(state, '');
+        threadHistoryPushed = true;
+    }
+
+    async function openList(options = {}) {
         if (!await window.LYANN_ROUTER.requireAuthForInteraction('messages')) return false;
+        window.__lyannOpenToken = (window.__lyannOpenToken || 0) + 1;
         document.body.classList.remove('lyann-messaging-transition');
         registerSurfaces();
         if (!setShellVisible(true)) {
             window.location.href = 'feed.html?action=messages';
             return;
         }
+        document.body.classList.remove('in-chat-active', 'chat-conversation-open');
+        document.body.classList.add('chat-list-open');
+        syncInboxNavOffset();
+        requestAnimationFrame(syncInboxNavOffset);
+        document.querySelectorAll('.mobile-bottom-nav .nav-tab').forEach((tab) => {
+            const selected = tab.id === 'tab-messages';
+            tab.classList.toggle('active', selected);
+            tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+            if (selected) tab.setAttribute('aria-current', 'page');
+            else tab.removeAttribute('aria-current');
+        });
         hideAllChildSurfaces();
         const l = layout();
         if (l) {
             l.classList.remove('mobile-conversation-active', 'has-active-conversation');
         }
         document.querySelectorAll('#chatModal .chat-contacts-sidebar').forEach((node) => node.style.removeProperty('display'));
-        await renderConversationList();
+        const list = document.getElementById('chatContactsList');
+        const keepRows = options.restore && list && list.querySelector('.chat-contact-item');
+        if (!keepRows) await renderConversationList();
+        else {
+            applyInboxView();
+            list.scrollTop = inboxScrollTop;
+        }
     }
 
     async function openInbox() {
@@ -463,6 +571,9 @@
 
         ensureHydrationGuardStyle();
         const shell = modal();
+        const openToken = (window.__lyannOpenToken = (window.__lyannOpenToken || 0) + 1);
+        const openedAt = performance.now();
+        captureInboxScroll();
         const viewerId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.CURRENT_USER_ID || null;
         const warmThread = Boolean(viewerId && window.LYANN_MESSAGING_REPOSITORY?.peekMessages?.(viewerId, contactId));
         const headerName = document.getElementById('chatHeaderName');
@@ -471,11 +582,15 @@
         if (headerAvatar && avatar) headerAvatar.src = avatar;
         const threadLayout = layout();
         if (threadLayout) threadLayout.classList.add('mobile-conversation-active', 'has-active-conversation');
-        if (shell) shell.classList.remove('lyann-canonical-hydrating');
+        document.querySelectorAll('#chatModal .chat-main-area, #chatModal .chat-main-pane').forEach((node) => node.style.removeProperty('display'));
+        document.body.classList.add('in-chat-active', 'chat-conversation-open');
+        document.body.classList.remove('chat-list-open');
+        if (shell) shell.classList.add('lyann-canonical-hydrating');
         document.body.classList.remove('lyann-messaging-transition');
-        setShellVisible(true);
+        noteThreadHistory(contactId);
         const main = mainArea();
         if (main) main.setAttribute('aria-busy', 'true');
+        window.__LYANN_THREAD_TIMING = { shellMs: Math.round(performance.now() - openedAt), warm: warmThread };
 
         try {
             console.log('[MESSAGING openConversation] calling legacyOpenConversation with:', name, contactId);
@@ -484,6 +599,7 @@
             }
             const supportThread = Boolean(window.LYANN_SUPPORT_USER_ID && String(contactId) === String(window.LYANN_SUPPORT_USER_ID));
             await legacyOpenConversation(name, avatar, contactId, supportThread ? null : (options.initialNeed || (options.direct ? { direct: true } : null)));
+            if (openToken !== window.__lyannOpenToken || !document.body.classList.contains('chat-conversation-open')) return true;
             const l = layout();
             if (l) {
                 l.classList.add('mobile-conversation-active', 'has-active-conversation');
@@ -500,6 +616,7 @@
         } finally {
             if (main) main.removeAttribute('aria-busy');
             document.body.classList.remove('lyann-messaging-transition');
+            setShellVisible(true);
             if (shell) shell.classList.remove('lyann-canonical-hydrating');
         }
         return true;
@@ -513,15 +630,72 @@
     function backToList(event) {
         event?.preventDefault?.();
         event?.stopPropagation?.();
-        return openList();
+        const now = Date.now();
+        if (now - threadBackLock < 350) return false;
+        threadBackLock = now;
+        const pushed = threadHistoryPushed;
+        threadHistoryPushed = false;
+        const shown = openList({ restore: true });
+        if (pushed) history.back();
+        return shown;
     }
 
     function close(event) {
         event?.preventDefault?.();
         event?.stopPropagation?.();
         hideAllChildSurfaces();
+        document.body.classList.remove('chat-list-open', 'chat-conversation-open');
         return setShellVisible(false);
     }
+
+    let inboxFilter = 'all';
+    function applyInboxView() {
+        const query = (document.getElementById('chatSearchInput')?.value || '').trim().toLowerCase();
+        const items = [...document.querySelectorAll('#chatContactsList .chat-contact-item')];
+        let visible = 0;
+        items.forEach((item) => {
+            const name = item.querySelector('.chat-contact-name')?.textContent.toLowerCase() || '';
+            const preview = item.querySelector('.chat-contact-preview')?.textContent.toLowerCase() || '';
+            const context = item.dataset.context || '';
+            const matchesQuery = !query || name.includes(query) || preview.includes(query) || context.includes(query);
+            const memberId = item.dataset.chatMemberId;
+            let matchesFilter = true;
+            if (inboxFilter === 'unread') matchesFilter = item.dataset.unread === '1';
+            else if (inboxFilter === 'annonces') matchesFilter = item.dataset.annonce === '1';
+            else if (inboxFilter === 'devis') matchesFilter = item.dataset.devis === '1';
+            else if (inboxFilter === 'favoris') matchesFilter = item.dataset.favorite === '1' || !!window.isContactFavorite?.(memberId);
+            const show = matchesQuery && matchesFilter;
+            item.hidden = !show;
+            if (show) visible += 1;
+        });
+        const list = document.getElementById('chatContactsList');
+        if (!list) return;
+        let note = list.querySelector('.lyann-inbox-filter-empty');
+        if (!note) {
+            note = document.createElement('p');
+            note.className = 'lyann-inbox-filter-empty';
+            list.appendChild(note);
+        }
+        note.hidden = visible > 0 || !items.length;
+        note.textContent = query ? 'Aucune conversation ne correspond à votre recherche.' : 'Aucune conversation dans ce filtre.';
+    }
+    window.applyLyannInboxView = applyInboxView;
+    document.addEventListener('click', (event) => {
+        const pill = event.target.closest('.lyann-inbox-pill');
+        if (pill) {
+            inboxFilter = pill.dataset.inboxFilter || 'all';
+            document.querySelectorAll('.lyann-inbox-pill').forEach((node) => {
+                const on = node === pill;
+                node.classList.toggle('is-active', on);
+                node.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            applyInboxView();
+            return;
+        }
+        if (event.target.closest('.lyann-inbox-compose')) {
+            window.location.href = 'results.html?mode=lyanneurs';
+        }
+    });
 
     function openMissionFromChat(event, source) {
         event?.preventDefault?.();
@@ -605,6 +779,29 @@
         installFeatureInternalInterception();
         installPullToRefresh();
         warmCurrentInbox();
+        window.addEventListener('resize', () => {
+            if (document.body.classList.contains('chat-list-open')) syncInboxNavOffset();
+        });
+        window.addEventListener('popstate', () => {
+            if (!threadHistoryPushed) return;
+            threadHistoryPushed = false;
+            threadBackLock = Date.now();
+            if (document.body.classList.contains('chat-conversation-open')) openList({ restore: true });
+        });
+        const threadSurface = document.getElementById('chatModal');
+        let edgeStart = null;
+        threadSurface?.addEventListener('touchstart', (event) => {
+            if (!document.body.classList.contains('chat-conversation-open')) return;
+            const touch = event.changedTouches && event.changedTouches[0];
+            edgeStart = touch && touch.clientX <= 28 ? touch.clientX : null;
+        }, { passive: true });
+        threadSurface?.addEventListener('touchend', (event) => {
+            if (edgeStart == null) return;
+            const touch = event.changedTouches && event.changedTouches[0];
+            const dx = touch ? touch.clientX - edgeStart : 0;
+            edgeStart = null;
+            if (dx > 72) backToList(event);
+        }, { passive: true });
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
@@ -637,15 +834,37 @@
             list.appendChild(row);
         } else {
             const preview = row.querySelector('.chat-contact-preview');
-            if (preview && detail.preview) preview.textContent = detail.preview;
+            if (detail.preview) {
+                if (preview) preview.textContent = detail.preview;
+                else {
+                    const info = row.querySelector('.chat-contact-info');
+                    const node = document.createElement('div');
+                    node.className = 'chat-contact-preview';
+                    node.textContent = detail.preview;
+                    info?.appendChild(node);
+                }
+            }
             const time = row.querySelector('.chat-contact-time');
             if (time && detail.lastMessageAt) time.textContent = formatInboxTime(detail.lastMessageAt);
-            row.classList.toggle('is-unread', !!detail.unread);
-            const dot = row.querySelector('.chat-unread-dot');
-            if (dot) dot.hidden = !detail.unread;
+            if (Object.prototype.hasOwnProperty.call(detail, 'unread')) {
+                row.dataset.unread = detail.unread ? '1' : '0';
+                row.classList.toggle('is-unread', !!detail.unread);
+                const dot = row.querySelector('.chat-unread-dot');
+                if (dot) {
+                    if (detail.unread) {
+                        const next = (Number(dot.textContent) || 0) + 1;
+                        dot.textContent = String(next);
+                        dot.hidden = false;
+                    } else {
+                        dot.textContent = '';
+                        dot.hidden = true;
+                    }
+                }
+            }
             if (detail.conversationId) row.dataset.conversationId = detail.conversationId;
         }
         bumpInboxRow(row);
+        applyInboxView();
     });
 
     window.addEventListener('lyann:chat-read', (event) => {
@@ -660,8 +879,38 @@
         if (!selector) return;
         list.querySelectorAll(selector).forEach((row) => {
             row.classList.remove('is-unread');
+            row.dataset.unread = '0';
             const dot = row.querySelector('.chat-unread-dot');
-            if (dot) dot.hidden = true;
+            if (dot) {
+                dot.hidden = true;
+                dot.textContent = '';
+            }
         });
+        applyInboxView();
+    });
+
+    window.addEventListener('lyann:quote-status', (event) => {
+        const detail = event.detail || {};
+        const label = inboxQuoteLabel(detail.status);
+        if (!detail.contactId || !label) return;
+        const selector = '[data-chat-member-id="' + escapeInboxSelector(detail.contactId) + '"]';
+        document.querySelectorAll('#chatContactsList ' + selector).forEach((row) => {
+            row.dataset.devis = '1';
+            let context = row.querySelector('.lyann-inbox-context');
+            if (!context) {
+                context = document.createElement('div');
+                context.className = 'lyann-inbox-context';
+                row.querySelector('.chat-contact-info')?.appendChild(context);
+            }
+            let quote = context.querySelector('[data-quote-status]');
+            if (!quote) {
+                quote = document.createElement('span');
+                quote.dataset.quoteStatus = '1';
+                context.appendChild(quote);
+            }
+            quote.textContent = 'Devis · ' + label;
+            row.dataset.context = ((row.dataset.context || '') + ' ' + label).toLowerCase();
+        });
+        applyInboxView();
     });
 })();

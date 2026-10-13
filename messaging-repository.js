@@ -21,6 +21,14 @@
     warm.at = 0;
   }
 
+  function releaseWarmCache() {
+    warm.userId = null;
+    warm.conversations = null;
+    warm.messages = new Map();
+    warm.byConversation = new Map();
+    warm.at = 0;
+  }
+
   function peekConversations(userId) {
     return warm.userId === userId ? warm.conversations : null;
   }
@@ -79,6 +87,7 @@
     if (TIMELINE_PREVIEW[messageType]) return TIMELINE_PREVIEW[messageType];
     const attachmentType = row.attachment_type || row.attachmentType || '';
     if (attachmentType === 'photo') return '📷 Photo';
+    if (attachmentType === 'video') return '🎬 Vidéo';
     if (attachmentType === 'document') {
       const name = String(row.attachment_name || row.attachmentName || '').replace(/[\r\n\t]+/g, ' ').trim();
       return name ? ('📄 ' + name.slice(0, 80)) : '📄 Document';
@@ -132,7 +141,7 @@
     const attachmentType = row.attachment_type || '';
     const messageType = row.message_type || '';
     if (messageType && messageType !== 'text') type = messageType;
-    else if (attachmentType === 'photo' || attachmentType === 'document') type = attachmentType;
+    else if (attachmentType === 'photo' || attachmentType === 'video' || attachmentType === 'document') type = attachmentType;
     else if (raw.startsWith('{')) {
       try { txData = JSON.parse(raw); type = 'transactional'; } catch (_) { txData = null; }
     }
@@ -150,7 +159,7 @@
       attachmentName: row.attachment_name || '',
       attachmentSize: row.attachment_size,
       attachmentMime: row.attachment_mime || '',
-      messageType: messageType || (attachmentType === 'photo' || attachmentType === 'document' ? attachmentType : 'text'),
+      messageType: messageType || (attachmentType === 'photo' || attachmentType === 'video' || attachmentType === 'document' ? attachmentType : 'text'),
       entityType: row.entity_type || '',
       entityId: row.entity_id || '',
       metadata: row.metadata && typeof row.metadata === 'object' ? row.metadata : {}
@@ -194,13 +203,14 @@
       const conversationIds = [...new Set((mine || []).map((row) => row.conversation_id).filter(Boolean))];
       if (!conversationIds.length) return [];
 
-      const [participantResult, messageResult] = await Promise.all([
+      const [participantResult, messageResult, conversationMeta] = await Promise.all([
         client.supabase.from('conversation_participants').select('conversation_id,user_id').in('conversation_id', conversationIds),
-        client.supabase.from('messages').select('id,conversation_id,sender_id,content,created_at,is_read,attachment_type,attachment_name,message_type').in('conversation_id', conversationIds).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(Math.min(conversationIds.length * 4, 160))
+        client.supabase.from('messages').select('id,conversation_id,sender_id,content,created_at,is_read,attachment_type,attachment_name,message_type,entity_type').in('conversation_id', conversationIds).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(Math.min(conversationIds.length * 4, 160)),
+        client.supabase.from('conversations').select('id,mission_id,context_mode').in('id', conversationIds)
       ]);
       if (participantResult.error) throw participantResult.error;
       let messageRows = messageResult.data || [];
-      if (messageResult.error && /attachment_type|attachment_name|message_type/.test(messageResult.error.message || '')) {
+      if (messageResult.error && /attachment_type|attachment_name|message_type|entity_type/.test(messageResult.error.message || '')) {
         const fallback = await client.supabase.from('messages').select('id,conversation_id,sender_id,content,created_at,is_read').in('conversation_id', conversationIds).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(Math.min(conversationIds.length * 4, 160));
         if (fallback.error) throw fallback.error;
         messageRows = fallback.data || [];
@@ -212,28 +222,99 @@
         if (row.user_id && row.user_id !== userId && !contactByConversation.has(row.conversation_id)) contactByConversation.set(row.conversation_id, row.user_id);
       }
       const unreadConversations = new Set();
+      const unreadCounts = new Map();
+      const annonceIds = new Set();
+      const devisIds = new Set();
       for (const row of messageRows) {
         const current = latestByConversation.get(row.conversation_id);
         const newer = !current || String(row.created_at || '') > String(current.created_at || '') || (row.created_at === current.created_at && String(row.id) > String(current.id));
         if (newer) latestByConversation.set(row.conversation_id, row);
-        if (row.is_read === false && row.sender_id && row.sender_id !== userId) unreadConversations.add(row.conversation_id);
+        if (row.is_read === false && row.sender_id && row.sender_id !== userId) {
+          unreadConversations.add(row.conversation_id);
+          unreadCounts.set(row.conversation_id, (unreadCounts.get(row.conversation_id) || 0) + 1);
+        }
+        const messageType = row.message_type || '';
+        const entity = String(row.entity_type || '').toLowerCase();
+        if (messageType.indexOf('quote') === 0 || entity === 'quote') devisIds.add(row.conversation_id);
+        if (messageType.indexOf('visit_') === 0 || entity === 'request' || entity === 'mission') annonceIds.add(row.conversation_id);
         if (!contactByConversation.has(row.conversation_id) && row.sender_id && row.sender_id !== userId) contactByConversation.set(row.conversation_id, row.sender_id);
       }
 
       const contactIds = [...new Set([...contactByConversation.values()].filter(Boolean))];
       const profilesById = new Map();
+      async function loadProfiles(select) {
+        const { data, error } = await client.supabase.from('public_profiles').select(select).in('id', contactIds);
+        if (error) return null;
+        return data || [];
+      }
       if (contactIds.length) {
         try {
-          const { data: profiles } = await client.supabase.from('public_profiles').select('id,first_name,last_name,avatar_url').in('id', contactIds);
-          for (const profile of profiles || []) profilesById.set(profile.id, profile);
+          const detailed = await loadProfiles('id,first_name,last_name,avatar_url,is_pro_verified,is_verified');
+          const profiles = detailed || await loadProfiles('id,first_name,last_name,avatar_url') || [];
+          for (const profile of profiles) profilesById.set(profile.id, profile);
         } catch (_) {}
         const missing = contactIds.filter((id) => !profilesById.has(id));
         if (missing.length) {
           try {
-            const { data: ownProfiles } = await client.supabase.from('profiles').select('id,first_name,last_name,avatar_url').in('id', missing);
+            const { data: ownProfiles } = await client.supabase.from('profiles').select('id,first_name,last_name,avatar_url,is_pro_verified,is_verified').in('id', missing);
             for (const profile of ownProfiles || []) profilesById.set(profile.id, profile);
           } catch (_) {}
         }
+      }
+
+      const invitationByConversation = new Map();
+      try {
+        const invitationResult = await client.supabase.from('request_invitations').select('id,conversation_id,request_id').in('conversation_id', conversationIds);
+        if (!invitationResult.error) {
+          for (const invitation of invitationResult.data || []) {
+            if (invitation.conversation_id) invitationByConversation.set(invitation.conversation_id, invitation);
+          }
+        }
+      } catch (_) {}
+      const requestTitle = new Map();
+      const requestIds = [...new Set([...invitationByConversation.values()].map((item) => item.request_id).filter(Boolean))];
+      if (requestIds.length) {
+        try {
+          const requestResult = await client.supabase.from('requests').select('id,title').in('id', requestIds);
+          if (!requestResult.error) {
+            for (const request of requestResult.data || []) requestTitle.set(request.id, request.title || '');
+          }
+        } catch (_) {}
+      }
+      const quoteStatusByInvitation = new Map();
+      const invitationIds = [...invitationByConversation.values()].map((item) => item.id).filter(Boolean);
+      if (invitationIds.length) {
+        try {
+          const quoteResult = await client.supabase.from('quotes').select('request_invitation_id,status,created_at').in('request_invitation_id', invitationIds).order('created_at', { ascending: false });
+          if (!quoteResult.error) {
+            for (const quote of quoteResult.data || []) {
+              if (quote.request_invitation_id && !quoteStatusByInvitation.has(quote.request_invitation_id)) {
+                quoteStatusByInvitation.set(quote.request_invitation_id, quote.status);
+              }
+            }
+          }
+        } catch (_) {}
+      }
+      try {
+        const unreadResult = await client.supabase.from('messages').select('conversation_id').in('conversation_id', conversationIds).eq('is_read', false).neq('sender_id', userId);
+        if (!unreadResult.error && Array.isArray(unreadResult.data)) {
+          unreadCounts.clear();
+          for (const row of unreadResult.data) {
+            unreadConversations.add(row.conversation_id);
+            unreadCounts.set(row.conversation_id, (unreadCounts.get(row.conversation_id) || 0) + 1);
+          }
+        }
+      } catch (_) {}
+
+      const missionStatus = new Map();
+      const missionIds = conversationMeta.error ? [] : [...new Set((conversationMeta.data || []).map((item) => item.mission_id).filter(Boolean))];
+      if (missionIds.length) {
+        try {
+          const missionResult = await client.supabase.from('missions').select('id,status').in('id', missionIds);
+          if (!missionResult.error) {
+            for (const mission of missionResult.data || []) missionStatus.set(mission.id, mission.status);
+          }
+        } catch (_) {}
       }
 
       function contactLabel(profile, isSupport) {
@@ -257,8 +338,30 @@
         const isSupport = supportId && contactId === supportId;
         const name = contactLabel(profile, isSupport);
         const avatar = typeof window.getLyannAvatarUrl === 'function' ? window.getLyannAvatarUrl(profile?.avatar_url) : (profile?.avatar_url || '');
-        const preview = latest ? formatMessagePreview(latest) : (isSupport ? 'Écrivez-nous ici' : '');
-        return { conversationId, contactId, name, avatar, preview, lastMessageAt: latest?.created_at || null, pinned: !!isSupport, unread: unreadConversations.has(conversationId) };
+        const preview = latest ? formatMessagePreview(latest) : (isSupport ? 'Écrivez-nous ici pour toute question ou aide sur l\'application.' : '');
+        const meta = conversationMeta.error ? null : (conversationMeta.data || []).find((item) => item.id === conversationId);
+        const invitation = invitationByConversation.get(conversationId) || null;
+        const annonceTitle = invitation ? (requestTitle.get(invitation.request_id) || '') : '';
+        const rawQuote = invitation ? (quoteStatusByInvitation.get(invitation.id) || '') : '';
+        const quoteStatus = rawQuote && meta?.mission_id && missionStatus.get(meta.mission_id) === 'COMPLETED'
+          ? 'COMPLETED'
+          : rawQuote;
+        const hasAnnonce = Boolean(annonceTitle) || Boolean(meta?.mission_id) || (meta?.context_mode && meta.context_mode !== 'direct') || annonceIds.has(conversationId);
+        const hasDevis = Boolean(quoteStatus) || devisIds.has(conversationId);
+        return {
+          conversationId, contactId, name, avatar, preview,
+          lastMessageAt: latest?.created_at || null,
+          pinned: !!isSupport,
+          isSupport: !!isSupport,
+          unread: unreadConversations.has(conversationId),
+          unreadCount: unreadCounts.get(conversationId) || 0,
+          hasAnnonce, hasDevis, annonceTitle,
+          quoteStatus,
+          attachmentType: latest?.attachment_type || '',
+          attachmentName: latest?.attachment_name || '',
+          isProVerified: profile?.is_pro_verified === true,
+          isVerified: profile?.is_verified === true
+        };
       }).filter(Boolean).sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
@@ -331,7 +434,13 @@
     const payload = extra && typeof extra === 'object' ? { content, ...extra } : { content };
     row.preview = formatMessagePreview(payload);
     row.lastMessageAt = createdAt || new Date().toISOString();
-    if (extra && Object.prototype.hasOwnProperty.call(extra, 'unread')) row.unread = !!extra.unread;
+    if (extra && Object.prototype.hasOwnProperty.call(extra, 'unread')) {
+      row.unread = !!extra.unread;
+      row.unreadCount = extra.unread ? (Number(row.unreadCount) || 0) + 1 : 0;
+    }
+    if (payload.attachment_type) row.attachmentType = payload.attachment_type;
+    const messageType = payload.message_type || payload.messageType || '';
+    if (String(messageType).indexOf('quote') === 0) row.hasDevis = true;
     sortWarmConversations();
     return row;
   }
@@ -430,6 +539,20 @@
           (missionResult.data || []).forEach((mission) => missionStatus.set(mission.id, mission.status));
         }
       }
+      const revisionsByQuote = new Map();
+      if (quoteIds.length) {
+        const revisionResult = await client.supabase
+          .from('quote_revisions')
+          .select('quote_id, version, description, total_amount, milestones, created_at')
+          .in('quote_id', quoteIds)
+          .order('version', { ascending: false });
+        if (!revisionResult.error) {
+          (revisionResult.data || []).forEach((revision) => {
+            if (!revisionsByQuote.has(revision.quote_id)) revisionsByQuote.set(revision.quote_id, []);
+            revisionsByQuote.get(revision.quote_id).push(revision);
+          });
+        }
+      }
       const paymentsByQuote = new Map();
       if (quoteIds.length) {
         const paymentResult = await client.supabase.from('payments').select('id,quote_id,milestone_id,payment_status').in('quote_id', quoteIds);
@@ -440,12 +563,18 @@
           });
         }
       }
-      return quotes.map((quote) => ({
-        ...quote,
-        mission_status: missionStatus.get(quote.mission_id) || null,
-        payments: paymentsByQuote.get(quote.id) || [],
-        milestones: byQuote.get(quote.id) || []
-      }));
+      return quotes.map((quote) => {
+        const currentVersion = Number(quote.version) || 1;
+        const history = revisionsByQuote.get(quote.id) || [];
+        const previousRevision = history.find((revision) => Number(revision.version) < currentVersion) || null;
+        return {
+          ...quote,
+          mission_status: missionStatus.get(quote.mission_id) || null,
+          payments: paymentsByQuote.get(quote.id) || [],
+          milestones: byQuote.get(quote.id) || [],
+          previousRevision
+        };
+      });
     };
     return c ? c.dedupe('chat-quote-context', key, loader, QUOTE_CONTEXT_TTL_MS) : loader();
   }
@@ -481,7 +610,10 @@
     }
     if (Array.isArray(warm.conversations)) {
       warm.conversations.forEach((item) => {
-        if (item.conversationId === conversationId || item.contactId === contactId) item.unread = false;
+        if (item.conversationId === conversationId || item.contactId === contactId) {
+          item.unread = false;
+          item.unreadCount = 0;
+        }
       });
     }
     window.dispatchEvent(new CustomEvent('lyann:chat-read', { detail: { userId, contactId, conversationId } }));
@@ -489,5 +621,5 @@
     return true;
   }
 
-  window.LYANN_MESSAGING_REPOSITORY = { findConversationId, listConversations, getMessages, getQuoteContext, invalidateConversation, invalidateMessages, invalidateQuoteContext, peekConversations, peekMessages, warmInbox, markConversationRead, noteIncomingPreview, ensureInboxConversation, formatMessagePreview };
+  window.LYANN_MESSAGING_REPOSITORY = { findConversationId, listConversations, getMessages, getQuoteContext, invalidateConversation, invalidateMessages, invalidateQuoteContext, peekConversations, peekMessages, warmInbox, markConversationRead, noteIncomingPreview, ensureInboxConversation, formatMessagePreview, releaseWarmCache };
 })();

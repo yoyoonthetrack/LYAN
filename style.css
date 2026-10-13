@@ -5619,7 +5619,7 @@ input:checked + .slider:before {
    LE LAKOU - ÉCHOS & LYANNS DU QUARTIER (feed.html)
    ========================================================================== */
 .feed-page {
-    background: var(--bg);
+    background: #FFF2E4;
 }
 
 .nav-live-dot {
@@ -6783,6 +6783,11 @@ input:checked + .slider:before {
 #chatTrackingOverlay.chat-overlay-pane {
     justify-content: flex-start;
     top: 73px; /* Just below header */
+    color: #1B4332;
+    background: #FFFFFF;
+}
+#trackingMilestonesList {
+    color: #1B4332;
 }
 .role-pill {
     padding: 3px 12px;
@@ -7667,7 +7672,7 @@ input:checked + .slider:before {
     bottom: 0;
     background: rgba(0,0,0,0.5);
     backdrop-filter: blur(4px);
-    z-index: 10000;
+    z-index: 1000003;
     display: flex;
     align-items: flex-end;
     animation: fadeInNotif 0.2s ease-out;
@@ -10106,7 +10111,7 @@ body.is-native-app .legal-hero {
 }
 
 body.is-native-app .feed-hero-section {
-    padding-top: calc(90px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: calc(70px + env(safe-area-inset-top, 0px)) !important;
 }
 
 body.is-native-app .speed-dial-wrapper {
@@ -10670,7 +10675,7 @@ body.hide-bottom-nav {
     border-top: 1px solid rgba(0, 0, 0, 0.06);
     display: none;
     justify-content: space-between;
-    align-items: center;
+    align-items: stretch;
     height: calc(var(--m-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
     padding-bottom: env(safe-area-inset-bottom, 0px);
     padding-left: 0;
@@ -10695,14 +10700,21 @@ body.is-native-app.has-member-nav .mobile-bottom-nav {
 }
 
 body.is-native-app.has-member-nav {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    /* 20px clears the bar shadow so a scrolled action sits fully above it. */
+    padding-bottom: calc(var(--m-bottom-nav-height) + 20px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+html:has(body.is-native-app.has-member-nav) {
+    scroll-padding-bottom: calc(var(--m-bottom-nav-height) + 20px + env(safe-area-inset-bottom, 0px));
 }
 
 .nav-tab {
     flex: 1 1 20% !important;
+    align-self: stretch !important;
     width: 20% !important;
     max-width: 20% !important;
     min-width: 0 !important;
+    min-height: 44px;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -11721,9 +11733,28 @@ body.is-native-app .navbar.scrolled,
     transition: background 0.2s ease, color 0.2s ease;
 }
 
-.drawer-direct-link:hover {
-    background: rgba(74, 124, 89, 0.08);
-    color: var(--primary-dark);
+.drawer-direct-link {
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.drawer-direct-link:hover,
+.drawer-direct-link.active {
+    background: rgba(74, 124, 89, 0.12);
+    color: #2D5A39;
+}
+
+.drawer-direct-link.active {
+    box-shadow: inset 3px 0 0 #4A7C59;
+}
+
+.drawer-primary-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(74, 124, 89, 0.16);
 }
 
 /* Pied de page du menu drawer */
@@ -11994,6 +12025,56 @@ body.is-native-app .navbar.scrolled,
 }
 
 /* Attachment Menu Dropdown Popup */
+.chat-input-area { overflow: visible; flex-wrap: wrap; }
+.chat-attach-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 0 100%;
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: #FFFFFF;
+    border: 1px solid #E6E1D6;
+    border-radius: 14px;
+    box-sizing: border-box;
+}
+.chat-attach-preview img,
+.chat-attach-preview video {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 10px;
+    background: #111;
+}
+.chat-attach-progress {
+    flex: 1;
+    height: 6px;
+    background: #E7E1D6;
+    border-radius: 99px;
+    overflow: hidden;
+}
+.chat-attach-progress > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: #4A7C59;
+}
+.chat-msg-video {
+    width: min(260px, 70vw);
+    max-height: 360px;
+    border-radius: 14px;
+    background: #111;
+    object-fit: contain;
+}
+.bokantaj-video {
+    width: 100%;
+    min-height: 180px;
+    max-height: 70vh;
+    background: #111;
+    border-radius: 16px;
+    object-fit: contain;
+}
 .chat-attach-menu {
     position: absolute;
     bottom: 64px;
@@ -12006,7 +12087,7 @@ body.is-native-app .navbar.scrolled,
     display: flex;
     flex-direction: column;
     gap: 4px;
-    z-index: 100;
+    z-index: 1000002;
     min-width: 200px;
     animation: fadeInAttach 0.15s ease-out;
 }
@@ -12649,8 +12730,18 @@ body.is-native-app .navbar.scrolled,
 }
 
 .lyann-profile-hero-details {
-    flex: 1;
-    min-width: 0;
+    flex: 1 1 10rem;
+    min-width: min(100%, 10rem);
+    max-width: 100%;
+}
+
+.lyann-profile-display-name,
+.lyann-profile-location {
+    max-width: 100%;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    writing-mode: horizontal-tb;
 }
 
 .lyann-profile-name-row {
@@ -16664,15 +16755,29 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
 
 @media (max-width: 768px) {
   /* Messaging is a top-level app screen, never a modal sitting above another screen. */
-  body.lyann-messaging-open .mobile-bottom-nav,
+  body.lyann-messaging-open.chat-conversation-open .mobile-bottom-nav,
   body.lyann-messaging-open .speed-dial-wrapper,
   body.lyann-messaging-open #backToTopBtn {
     display: none !important;
   }
 
-  body.lyann-messaging-open #chatModal {
+  body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) .mobile-bottom-nav {
+    display: flex !important;
+    z-index: 21000 !important;
+  }
+
+  body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay {
+    bottom: calc(var(--m-bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px)) !important;
+    height: auto !important;
+  }
+
+  body.lyann-messaging-open #chatModal.modal-overlay {
     position: fixed !important;
     inset: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
     width: 100vw !important;
     height: 100dvh !important;
     max-width: 100vw !important;
@@ -16683,6 +16788,7 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
     align-items: stretch !important;
     justify-content: stretch !important;
     background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     border-radius: 0 !important;
@@ -16690,18 +16796,58 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
     z-index: 20000 !important;
   }
 
-  /* Native iOS: reserve the system-status/Dynamic-Island zone at the top, but
-     keep the messaging surface itself full-width and flush to the bottom. */
-  body.is-native-app.lyann-messaging-open #chatModal {
-    top: max(env(safe-area-inset-top, 0px), 54px) !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: calc(100dvh - max(env(safe-area-inset-top, 0px), 54px)) !important;
-    max-height: calc(100dvh - max(env(safe-area-inset-top, 0px), 54px)) !important;
-    padding: 0 !important;
+  /* Native iOS keeps the same opaque surface. The safe area is padding inside
+     the header, so the page behind never shows through the status bar. */
+  body.is-native-app.lyann-messaging-open #chatModal.modal-overlay {
+    top: 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+  }
+
+  body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay,
+  body.is-native-app.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay {
+    top: 0 !important;
+    right: 0 !important;
+    left: 0 !important;
+    bottom: calc(var(--m-bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px)) !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  html body.keyboard-open.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay.active {
+    bottom: 0 !important;
+    height: auto !important;
+  }
+
+  /* The list keeps the same navbar as the other tabs: logo, menu, notifications. */
+  body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) .navbar,
+  body.is-native-app.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) .navbar,
+  body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) .navbar.scrolled {
+    z-index: 20500 !important;
+    background: #F1F8F3 !important;
+    background-color: #F1F8F3 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    border-bottom-color: transparent !important;
+    pointer-events: auto !important;
+  }
+
+  body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay,
+  body.is-native-app.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay {
+    top: var(--lyann-inbox-nav-offset, calc(76px + env(safe-area-inset-top, 0px))) !important;
+    background: #F1F8F3 !important;
+    background-color: #F1F8F3 !important;
+  }
+
+  body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal .lyann-inbox-brand {
+    display: none !important;
+  }
+
+  body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal .chat-sidebar-header.lyann-inbox-header {
+    padding: 2px 20px 2px !important;
   }
 
   body.lyann-messaging-open #chatModal > .modal-card,
@@ -16723,10 +16869,17 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
 
   body.lyann-messaging-open #chatModal .chat-sidebar-header,
   body.lyann-messaging-open #chatModal .chat-header-bar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 40 !important;
+    flex: 0 0 auto !important;
     min-height: 64px !important;
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: 10px !important;
     background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   
@@ -18179,3 +18332,576 @@ body:not(.user-is-logged-out) .feed-guest-cta { display: none; }
 [hidden] {
     display: none !important;
 }
+
+/* Account identity must stay a horizontal line. A flex sibling with min-width:auto
+   was squeezing the name column down to one character. */
+.identity-avatar-wrap {
+    position: relative !important;
+    flex: 0 0 auto !important;
+}
+
+.identity-strip {
+    flex-wrap: wrap !important;
+    align-items: center !important;
+}
+
+.identity-strip-text,
+.sidebar-user-info,
+.drawer-user-info,
+.account-header-titles,
+.account-touch-row .row-content {
+    flex: 1 1 10rem !important;
+    min-width: 8rem !important;
+    max-width: 100% !important;
+}
+
+.identity-display-name,
+.identity-location,
+.identity-territory,
+.sidebar-user-name,
+.sidebar-user-location,
+.drawer-user-name,
+.account-main-title,
+.account-main-subtitle,
+.account-touch-row .row-title,
+.account-touch-row .row-subtitle,
+.lyann-profile-display-name,
+.lyann-profile-location {
+    width: auto !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    line-height: 1.35 !important;
+}
+
+.identity-display-name,
+.sidebar-user-name,
+.drawer-user-name,
+.account-main-title,
+.lyann-profile-display-name {
+    display: block !important;
+}
+
+.identity-location,
+.identity-territory,
+.sidebar-user-location {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    margin-top: 4px !important;
+    color: #4A7C59 !important;
+    font-weight: 600 !important;
+}
+
+.identity-location > i,
+.identity-territory > i,
+.sidebar-user-location > i {
+    flex: 0 0 auto !important;
+    line-height: 1.35 !important;
+}
+
+.identity-edit-btn {
+    flex: 1 1 auto !important;
+    margin-left: auto !important;
+    white-space: normal !important;
+    max-width: 100% !important;
+}
+
+@media (max-width: 640px) {
+    .identity-edit-btn {
+        flex: 1 1 100% !important;
+        margin-left: 0 !important;
+    }
+}
+
+/* Inbox list — mint field, white cards, filters */
+#chatModal .chat-contacts-sidebar {
+    position: relative;
+    background: #F1F8F3 !important;
+    border-right: 0 !important;
+}
+body.lyann-messaging-open #chatModal .chat-sidebar-header.lyann-inbox-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    height: auto !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 6px !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border-bottom: 0 !important;
+}
+#chatModal .lyann-inbox-brand,
+#chatModal .lyann-inbox-title,
+#chatModal .lyann-inbox-subtitle {
+    position: static !important;
+    display: block !important;
+    width: auto !important;
+    max-width: 100%;
+    height: auto !important;
+}
+#chatModal .lyann-inbox-brand { display: flex !important; align-items: center !important; gap: 8px !important; }
+#chatModal .chat-contacts-sidebar > .chat-search-wrapper {
+    width: auto !important;
+    max-width: calc(100% - 32px) !important;
+    margin: 12px 16px 8px !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: 0 !important;
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+}
+body.keyboard-open.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay,
+body.keyboard-open.is-native-app.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay {
+    bottom: 0 !important;
+    height: auto !important;
+}
+#chatModal .lyann-inbox-header .chat-close-modal-btn { display: none !important; }
+#chatModal .lyann-inbox-brand { display: flex; align-items: center; gap: 8px; }
+#chatModal .lyann-inbox-mark { width: 34px; height: 34px; display: block; }
+#chatModal .lyann-inbox-word { font-weight: 800; letter-spacing: 0.04em; color: #3E7A52; font-size: 1.05rem; }
+#chatModal .lyann-inbox-title { margin: 8px 0 0; font-size: 1.85rem; line-height: 1.05; font-weight: 800; letter-spacing: -0.03em; color: #17231c; }
+#chatModal .lyann-inbox-subtitle { margin: 4px 0 0; max-width: 22rem; color: #3d5144; font-size: 0.92rem; font-weight: 500; line-height: 1.3; }
+#chatModal .lyann-inbox-motifs { position: absolute; inset: 0; pointer-events: none; color: #5f9a74; opacity: 0.1; }
+#chatModal .lyann-inbox-motif { position: absolute; }
+#chatModal .lyann-inbox-motif.is-leaf { width: 64px; height: 64px; top: 6px; right: 8px; transform: rotate(16deg); }
+#chatModal .lyann-inbox-motif.is-bubble { width: 30px; height: 30px; top: 8px; right: 78px; }
+#chatModal .lyann-inbox-motif.is-share { width: 26px; height: 26px; top: 42px; right: 18px; }
+#chatModal .chat-search-wrapper { margin: 12px 16px 8px; position: relative; z-index: 1; }
+#chatModal .chat-search-wrapper .chat-search-input {
+    background: #fff !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    min-height: 48px;
+    box-shadow: 0 1px 0 rgba(36, 56, 43, 0.04);
+}
+#chatModal .lyann-inbox-filters {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 16px 10px;
+    scrollbar-width: none;
+    position: relative;
+    z-index: 1;
+}
+#chatModal .lyann-inbox-filters::-webkit-scrollbar { height: 0; }
+#chatModal .lyann-inbox-pill {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 0;
+    background: #fff;
+    color: #24352b;
+    border-radius: 999px;
+    min-height: 32px;
+    padding: 4px 10px;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+#chatModal .lyann-inbox-pill i { font-size: 0.95rem; opacity: 0.8; }
+#chatModal .lyann-inbox-pill.is-active { background: #3f7d52; color: #fff; }
+#chatModal .lyann-inbox-pill.is-active i { opacity: 1; }
+#chatModal .chat-contacts-list { padding: 2px 12px 96px; background: transparent; position: relative; z-index: 1; }
+#chatModal .chat-contact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 10px 12px;
+    min-height: 0 !important;
+    border: 0;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 6px 16px rgba(47, 84, 58, 0.05);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+#chatModal .chat-contact-avatar,
+#chatModal .chat-contact-avatar-wrap.is-support {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+}
+#chatModal .chat-contact-avatar-wrap.is-support {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border: 1px solid #d7e6dc;
+}
+#chatModal .chat-contact-avatar-wrap.is-support svg { width: 30px; height: 30px; }
+#chatModal .chat-contact-info { min-width: 0; flex: 1; }
+#chatModal .chat-contact-name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#chatModal .chat-contact-name { font-weight: 650; color: #17231c; min-width: 0; }
+#chatModal .chat-contact-item.is-unread .chat-contact-name { font-weight: 800; }
+#chatModal .chat-contact-preview {
+    color: #6b7c72;
+    font-size: 0.86rem;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+#chatModal .chat-contact-item.is-unread .chat-contact-preview { color: #24352b; font-weight: 650; }
+#chatModal .chat-contact-time { margin-left: auto; color: #8a9a90; font-size: 0.75rem; font-weight: 600; flex: 0 0 auto; }
+#chatModal .lyann-inbox-role {
+    flex: 0 0 auto;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #3f7d52;
+    background: #e7f3eb;
+    border-radius: 999px;
+    padding: 2px 6px;
+}
+#chatModal .lyann-inbox-context {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+    color: #5d6f64;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+#chatModal .lyann-inbox-context span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#chatModal .lyann-inbox-unread {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #3f7d52;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+#chatModal .lyann-inbox-compose {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    z-index: 3;
+    width: 56px;
+    height: 56px;
+    border: 0;
+    border-radius: 50%;
+    background: #3f7d52;
+    color: #fff;
+    font-size: 1.4rem;
+    box-shadow: 0 10px 24px rgba(63, 125, 82, 0.28);
+    cursor: pointer;
+}
+#chatModal .lyann-inbox-filter-empty { text-align: center; color: #5d6f64; padding: 28px 12px; }
+@media (max-width: 900px) {
+    body.chat-list-open:not(.keyboard-open) #chatModal.modal-overlay.active {
+        bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+        height: auto;
+    }
+    body.chat-list-open .mobile-bottom-nav { z-index: 6500; }
+    body.chat-conversation-open #chatModal.modal-overlay.active { bottom: 0; }
+}
+
+#chatModal .chat-contact-avatar-wrap.is-support .lyann-support-mark,
+#chatModal .chat-header-avatar[src="logo-app-256.png"] {
+    object-fit: contain;
+    background: #fff;
+    padding: 4px;
+    box-sizing: border-box;
+}
+#chatModal .chat-messages-scroll { padding: 8px 12px 12px !important; }
+#chatModal .chat-msg-bubble { padding: 8px 12px; }
+#chatModal .chat-msg-bubble-wrap { margin: 0 0 8px; }
+#chatModal .chat-msg-time { margin-top: 2px; font-size: 0.68rem; }
+#chatModal .chat-msg-status { font-size: 0.68rem; font-weight: 700; }
+#chatModal .chat-empty-state.is-compact {
+    height: auto;
+    justify-content: flex-start;
+    padding: 28px 8px 8px;
+}
+#chatModal .chat-empty-state.is-compact .chat-empty-title {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #17231c;
+}
+#chatModal .chat-empty-state.is-compact p { margin: 0; color: #5d6f64; font-size: 0.9rem; }
+#chatActionsBottomSheet .lyann-attach-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+#chatActionsBottomSheet .lyann-attach-grid .chat-bs-action-btn {
+    min-height: 88px;
+    padding: 14px 8px;
+    border-radius: 18px;
+    background: #F1F8F3;
+}
+#chatActionsBottomSheet .lyann-attach-grid .chat-bs-icon-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    background: #fff;
+    color: #3f7d52;
+    font-size: 1.45rem;
+}
+
+/* Devis flow: center the whole block when it fits, scroll when it does not. */
+#chatModal #chatActionChoicesOverlay.chat-overlay-pane,
+#chatModal #chatDirectPriceForm.chat-overlay-pane,
+#chatModal #chatMilestoneDevisForm.chat-overlay-pane {
+    justify-content: center;
+    justify-content: safe center;
+    align-items: center;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 20px 16px max(20px, env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+}
+#chatModal #chatActionChoicesOverlay.chat-overlay-pane > *,
+#chatModal #chatDirectPriceForm.chat-overlay-pane > form,
+#chatModal #chatMilestoneDevisForm.chat-overlay-pane > form {
+    width: min(100%, 520px);
+    max-width: 520px;
+    flex: 0 0 auto;
+    margin-top: 0;
+    margin-bottom: 0;
+    box-sizing: border-box;
+}
+#chatModal #chatMilestoneDevisForm.chat-overlay-pane > form {
+    max-height: none !important;
+    overflow: visible !important;
+}
+#chatModal #chatDirectPriceForm input,
+#chatModal #chatDirectPriceForm textarea,
+#chatModal #chatMilestoneDevisForm input,
+#chatModal #chatMilestoneDevisForm textarea {
+    scroll-margin-block: 28px;
+}
+body.keyboard-open #chatModal #chatDirectPriceForm.chat-overlay-pane,
+body.keyboard-open #chatModal #chatMilestoneDevisForm.chat-overlay-pane {
+    justify-content: flex-start;
+    padding-top: 16px;
+}
+
+#lyannDetailModal.modal-overlay.active,
+#lyannDetailModal.modal-overlay.lyann-surface-active {
+    z-index: 24000 !important;
+}
+.lyann-commune-picker {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 48px;
+    text-align: left;
+    cursor: pointer;
+    background: #fff;
+}
+.lyann-commune-drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 25000;
+    display: flex;
+    align-items: flex-end;
+    background: rgba(24, 34, 28, 0.55);
+}
+.lyann-commune-drawer[hidden] { display: none; }
+.lyann-commune-card {
+    width: 100%;
+    max-height: min(78dvh, 640px);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 24px 24px 0 0;
+    padding: 12px 16px max(16px, env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+}
+.lyann-commune-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+}
+.lyann-commune-head h3 { margin: 0; flex: 1; font-size: 1.05rem; }
+.lyann-commune-back,
+.lyann-commune-close {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 12px;
+    background: #F1F8F3;
+    color: #17231c;
+    cursor: pointer;
+}
+.lyann-commune-list { overflow: auto; padding: 8px 0 4px; }
+.lyann-commune-row {
+    width: 100%;
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    border: 0;
+    border-bottom: 1px solid #edf3ee;
+    background: transparent;
+    text-align: left;
+    padding: 8px 4px;
+    font: inherit;
+    color: #17231c;
+    cursor: pointer;
+}
+.lyann-commune-row span { font-size: 0.78rem; color: #5d6f64; }
+
+/* Conversation as a page inside Messages: mint field, compact header, short slide. */
+.chat-thread-pending {
+    margin: 28px auto;
+    color: #5d6f64;
+    font-size: 0.92rem;
+    text-align: center;
+}
+#chatModal .chat-header-bar .chat-close-modal-btn,
+#chatModal .chat-header-bar .close-chat-modal-trigger {
+    display: none !important;
+}
+body.lyann-messaging-open #chatModal.modal-overlay:has(.chat-modal-layout.mobile-conversation-active) {
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    z-index: 22000 !important;
+}
+body.lyann-messaging-open:has(#chatModal .chat-modal-layout.mobile-conversation-active) .mobile-bottom-nav,
+body.lyann-messaging-open:has(#chatModal .chat-modal-layout.mobile-conversation-active) .navbar {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+body.chat-conversation-open.lyann-messaging-open #chatModal .chat-header-bar {
+    background: #F1F8F3 !important;
+    background-color: #F1F8F3 !important;
+    min-height: 52px !important;
+    border-bottom: 0 !important;
+}
+body.chat-conversation-open #chatModal .chat-main-area,
+body.chat-conversation-open #chatModal .chat-messages-scroll {
+    background: #F1F8F3 !important;
+    background-color: #F1F8F3 !important;
+}
+body.chat-conversation-open #chatModal .chat-msg-bubble.received {
+    background: #ffffff !important;
+    color: #17231c !important;
+    border: 0 !important;
+}
+body.chat-conversation-open #chatModal .chat-msg-bubble.sent {
+    background: #3f7d52 !important;
+    color: #ffffff !important;
+}
+#chatModal .lyann-thread-context {
+    min-height: 52px;
+    height: auto;
+    margin: 0 12px 8px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 16px;
+    background: #fff;
+    gap: 10px;
+    box-shadow: 0 1px 0 rgba(36, 56, 43, 0.04);
+}
+.lyann-thread-context-kicker {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #3f7d52;
+}
+.lyann-thread-context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+.lyann-thread-context-primary {
+    border: 0;
+    background: #3f7d52;
+    color: #fff;
+    border-radius: 999px;
+    min-height: 36px;
+    padding: 0 12px;
+    font-weight: 800;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+.lyann-thread-context-open {
+    border: 0;
+    background: transparent;
+    color: #3f7d52;
+    font-weight: 800;
+    font-size: 0.85rem;
+    min-height: 36px;
+    padding: 0 4px;
+    cursor: pointer;
+}
+html body.keyboard-open.chat-conversation-open #chatModal.modal-overlay,
+html body.keyboard-open.chat-conversation-open #chatModal.modal-overlay.active {
+    top: var(--lyann-vv-offset, 0px) !important;
+    height: var(--lyann-vv-height, 100dvh) !important;
+    bottom: auto !important;
+    max-height: none !important;
+}
+@media (max-width: 768px) {
+    #chatModal .chat-modal-layout:not(.mobile-conversation-active) .chat-main-area {
+        display: flex !important;
+        visibility: hidden;
+        pointer-events: none;
+        position: absolute;
+        inset: 0;
+        transform: translateX(100%);
+        transition: transform 200ms ease;
+        z-index: 2;
+        background: #F1F8F3 !important;
+    }
+    #chatModal .chat-modal-layout.mobile-conversation-active .chat-contacts-sidebar {
+        display: flex !important;
+        position: relative !important;
+        z-index: 1 !important;
+    }
+    #chatModal .chat-modal-layout.mobile-conversation-active .chat-sidebar-header {
+        z-index: 1 !important;
+    }
+    #chatModal .chat-modal-layout.mobile-conversation-active .chat-main-area {
+        display: flex !important;
+        visibility: visible;
+        pointer-events: auto;
+        position: absolute;
+        inset: 0;
+        transform: translateX(0);
+        transition: transform 200ms ease;
+        z-index: 5 !important;
+        width: 100% !important;
+        background: #F1F8F3 !important;
+    }
+}
+#chatModal #chatViewMissionBtn {
+    display: none !important;
+}
+

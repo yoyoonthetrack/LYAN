@@ -917,8 +917,9 @@ const LYANN_API_CLIENT = {
         if (!this.supabase || !isUUID(targetUserId)) return null;
         const { data, error } = await this.supabase.rpc('open_direct_conversation', { p_target_user_id: targetUserId });
         if (error) {
-            console.warn('[DIRECT CONV]', error.message || error);
-            return null;
+            const failure = new Error(error.message || 'Conversation indisponible');
+            failure.code = error.code || error.hint || '';
+            throw failure;
         }
         return data;
     },
@@ -1041,14 +1042,48 @@ const LYANN_API_CLIENT = {
         return { data };
     },
 
-    async uploadChatAttachment(path, file, mime) {
+    async uploadChatAttachment(path, file, mime, hooks) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
-        const { error } = await this.supabase.storage.from('chat-attachments').upload(path, file, {
-            contentType: mime || file.type || undefined,
-            upsert: false
+        const onProgress = hooks && hooks.onProgress;
+        const signal = hooks && hooks.signal;
+        if (!onProgress && !signal) {
+            const { error } = await this.supabase.storage.from('chat-attachments').upload(path, file, {
+                contentType: mime || file.type || undefined,
+                upsert: false
+            });
+            if (error) return { error };
+            return { data: { path } };
+        }
+        const session = await this.supabase.auth.getSession();
+        const token = session && session.data && session.data.session && session.data.session.access_token;
+        const base = String(this.supabase.supabaseUrl || (typeof getLyannSupabaseUrl === 'function' ? getLyannSupabaseUrl() : '')).replace(/\/$/, '');
+        const apiKey = this.supabase.supabaseKey || (typeof getLyannSupabaseAnonKey === 'function' ? getLyannSupabaseAnonKey() : '');
+        if (!token || !base || !apiKey) return { error: { message: 'Connexion requise pour envoyer le fichier.' } };
+        return await new Promise((resolve) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', base + '/storage/v1/object/chat-attachments/' + path.split('/').map(encodeURIComponent).join('/'));
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhr.setRequestHeader('apikey', apiKey);
+            xhr.setRequestHeader('Content-Type', mime || file.type || 'application/octet-stream');
+            xhr.setRequestHeader('x-upsert', 'false');
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total);
+            };
+            if (signal) {
+                if (signal.aborted) {
+                    resolve({ error: { message: 'Envoi annulé.', cancelled: true } });
+                    return;
+                }
+                signal.addEventListener('abort', () => xhr.abort(), { once: true });
+            }
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) resolve({ data: { path } });
+                else resolve({ error: { message: 'Le fichier n’a pas pu être envoyé.' } });
+            };
+            xhr.onerror = () => resolve({ error: { message: 'Réseau indisponible.' } });
+            xhr.onabort = () => resolve({ error: { message: 'Envoi annulé.', cancelled: true } });
+            xhr.send(file);
         });
-        if (error) return { error };
-        return { data: { path } };
     },
 
     async removeChatAttachment(path) {
@@ -1458,19 +1493,24 @@ const LYANN_API_CLIENT = {
     // Gets the active mission between two users
     
     async getActiveMissionBetween(userId1, userId2) {
-        if (!isUUID(userId1) || !isUUID(userId2) || !this.supabase) return null;
+        const missions = await this.listMissionsBetween(userId1, userId2);
+        return missions[0] || null;
+    },
+
+    async listMissionsBetween(userId1, userId2) {
+        if (!isUUID(userId1) || !isUUID(userId2) || !this.supabase) return [];
         try {
             const { data, error } = await this.supabase
                 .from('missions')
                 .select('*')
                 .or(`and(requester_id.eq.${userId1},helper_id.eq.${userId2}),and(requester_id.eq.${userId2},helper_id.eq.${userId1})`)
                 .order('created_at', { ascending: false })
-                .limit(1);
+                .limit(20);
             if (error) throw error;
-            return data && data.length > 0 ? data[0] : null;
+            return Array.isArray(data) ? data : [];
         } catch (error) {
-            console.error('[MISSIONS] active mission query failed', error);
-            return null;
+            console.error('[MISSIONS] pair mission query failed', error);
+            return [];
         }
     },
 
@@ -1492,11 +1532,35 @@ const LYANN_API_CLIENT = {
         return data;
     },
 
-    async acceptRequestQuote(quoteId) {
-        if (!this.supabase) throw new Error("Supabase non disponible.");
-        const { data, error } = await this.supabase.rpc('accept_request_quote', {
-            p_quote_id: quoteId
+    async reviseSentQuote(quoteId, description, validUntil, milestonesJson, expectedVersion) {
+        if (!this.supabase) throw new Error('Supabase non disponible.');
+        const { data, error } = await this.supabase.rpc('revise_sent_quote', {
+            p_quote_id: quoteId,
+            p_description: description || null,
+            p_valid_until: validUntil || null,
+            p_milestones_json: milestonesJson || [],
+            p_expected_version: expectedVersion
         });
+        if (error) throw error;
+        return data;
+    },
+
+    async acceptRequestQuote(quoteId, expectedVersion) {
+        if (!this.supabase) throw new Error("Supabase non disponible.");
+        const planner = window.LYANN_QUOTE_REVISION;
+        const plan = planner && typeof planner.planQuoteAcceptance === 'function'
+            ? planner.planQuoteAcceptance(expectedVersion)
+            : { ok: Number.isInteger(Number(expectedVersion)) && Number(expectedVersion) >= 1, version: Number(expectedVersion), message: 'Rechargez le devis avant de l’accepter.' };
+        if (!plan.ok) throw new Error(plan.message || 'Rechargez le devis avant de l’accepter.');
+        const version = plan.version;
+        let { data, error } = await this.supabase.rpc('accept_request_quote', {
+            p_quote_id: quoteId,
+            p_expected_version: version
+        });
+        if (error && planner && typeof planner.acceptSignatureFallback === 'function') {
+            const next = planner.acceptSignatureFallback(error, version);
+            if (next.message) throw new Error(next.message);
+        }
         if (error) throw error;
         return data;
     },
@@ -1780,6 +1844,20 @@ const LYANN_API_CLIENT = {
         return data[0];
     },
 
+    async getAcceptedInvitationForRequest(requestId, userA, userB) {
+        if (!this.supabase || !isUUID(requestId) || !isUUID(userA) || !isUUID(userB)) return null;
+        const { data, error } = await this.supabase
+            .from('request_invitations')
+            .select('id, request_id, status, requester_id, recipient_id')
+            .eq('request_id', requestId)
+            .eq('status', 'ACCEPTED')
+            .eq('recipient_id', userA)
+            .eq('requester_id', userB);
+        if (error || !Array.isArray(data)) return null;
+        if (data.length !== 1) return { ambiguous: data.length > 1 };
+        return data[0];
+    },
+
     async getActiveInvitationBetween(user1, user2) {
         if (!this.supabase || !isUUID(user1) || !isUUID(user2)) return null;
         const { data, error } = await this.supabase
@@ -1987,7 +2065,7 @@ const LYANN_API_CLIENT = {
             const membersList = (typeof window.isExplicitDemoMode === 'function' && window.isExplicitDemoMode()) ? (window.LYANN_MEMBERS || []) : [];
             return window.LyannMatchingEngine.dispatchTargetedNeedNotifications(needData, membersList, batchSize);
         }
-        return { dispatched_count: 0, fallback_message: "Votre besoin est bien publié dans Explorer → Annonces." };
+        return { dispatched_count: 0, fallback_message: "Votre besoin est bien publié dans les Annonces." };
     },
 
     // --- REAL HELP REQUESTS API (requests table) ---

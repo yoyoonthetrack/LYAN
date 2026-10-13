@@ -244,6 +244,22 @@ if (document.readyState === 'loading') {
     const LYANN_MEMBERS = [];
     window.LYANN_MEMBERS = LYANN_MEMBERS;
 
+function syncDrawerNavigation(overlay) {
+    if (!overlay) return;
+    const path = (window.location.pathname || '').split('/').pop() || 'index.html';
+    const mode = new URLSearchParams(window.location.search).get('mode') || '';
+    const onResults = path === 'results.html' || path === 'results';
+    const current = onResults
+        ? (mode === 'annonces' ? 'annonces' : 'lyanneurs')
+        : ((path === 'feed.html' || path === 'feed') ? 'bokantaj' : '');
+    overlay.querySelectorAll('[data-drawer-nav]').forEach((link) => {
+        const on = link.getAttribute('data-drawer-nav') === current;
+        link.classList.toggle('active', on);
+        if (on) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
+    });
+}
+
 function ensureMobileHamburgerDrawer() {
     let overlay = document.getElementById('mobileHamburgerDrawerOverlay');
     if (!overlay) {
@@ -271,21 +287,49 @@ function ensureMobileHamburgerDrawer() {
 
                 <div class="drawer-body">
 
+                    <nav class="drawer-primary-nav" aria-label="Navigation principale">
+                        <a href="feed.html" class="drawer-direct-link" data-lyann-route="bokantaj" data-drawer-nav="bokantaj">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-broadcast" aria-hidden="true"></i>
+                                <span>Bokantaj</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
+                        </a>
+                        <a href="results.html?mode=lyanneurs" class="drawer-direct-link" data-lyann-route="lyanneurs" data-drawer-nav="lyanneurs">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-users-three" aria-hidden="true"></i>
+                                <span>Lyanneurs</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
+                        </a>
+                        <a href="results.html?mode=annonces" class="drawer-direct-link" data-lyann-route="annonces" data-drawer-nav="annonces">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-list" aria-hidden="true"></i>
+                                <span>Annonces</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
+                        </a>
+                        <a href="#" class="drawer-direct-link" data-lyann-route="messages" data-drawer-nav="messages">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-chat-circle-dots" aria-hidden="true"></i>
+                                <span>Messages</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
+                        </a>
+                        <a href="#" class="drawer-direct-link" data-lyann-route="profile" data-drawer-nav="profil">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-user-circle" aria-hidden="true"></i>
+                                <span>Profil</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
+                        </a>
+                    </nav>
+
                     <div class="drawer-menu-group">
                         <a href="#" class="drawer-direct-link" data-lyann-route="publish">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-plus-circle"></i>
                                 <span>Publier un besoin</span>
-                            </span>
-                            <i class="ph ph-caret-right drawer-chevron"></i>
-                        </a>
-                    </div>
-
-                    <div class="drawer-menu-group">
-                        <a href="results.html" class="drawer-direct-link" data-lyann-route="explorer">
-                            <span class="drawer-accordion-label">
-                                <i class="ph ph-magnifying-glass"></i>
-                                <span>Explorer</span>
                             </span>
                             <i class="ph ph-caret-right drawer-chevron"></i>
                         </a>
@@ -382,6 +426,7 @@ function ensureMobileHamburgerDrawer() {
         document.body.appendChild(overlay);
     }
     initDrawerEvents(overlay);
+    syncDrawerNavigation(overlay);
 }
 
 window.openLyannHamburgerDrawer = function() {
@@ -686,6 +731,13 @@ safeDomReady(() => {
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
                 isKeyboardOpen = true;
                 document.body.classList.add('keyboard-open');
+                const inbox = document.getElementById('chatModal');
+                const inThread = document.body.classList.contains('chat-conversation-open');
+                if (inbox && document.body.classList.contains('chat-list-open') && !inThread) {
+                    inbox.style.setProperty('bottom', '0px', 'important');
+                    inbox.style.setProperty('height', 'auto', 'important');
+                }
+                if (inThread) return;
 
                 // Smooth scroll active field to center of viewport with 16px breathing room
                 setTimeout(() => {
@@ -704,6 +756,8 @@ safeDomReady(() => {
                     if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
                         isKeyboardOpen = false;
                         document.body.classList.remove('keyboard-open');
+                        document.getElementById('chatModal')?.style.removeProperty('bottom');
+                        document.getElementById('chatModal')?.style.removeProperty('height');
                     }
                 }, 150);
             }
@@ -712,12 +766,39 @@ safeDomReady(() => {
         // VisualViewport API support for iOS Safari & Android WebViews
         if (window.visualViewport) {
             let originalHeight = window.visualViewport.height;
+            const pinThreadToViewport = () => {
+                const viewport = window.visualViewport;
+                const keyboard = window.innerHeight - viewport.height - viewport.offsetTop > 80;
+                document.documentElement.style.setProperty('--lyann-vv-height', viewport.height + 'px');
+                document.documentElement.style.setProperty('--lyann-vv-offset', viewport.offsetTop + 'px');
+                if (keyboard) {
+                    document.body.classList.add('keyboard-open');
+                    const thread = document.getElementById('chatMessagesContainer');
+                    if (thread && document.body.classList.contains('chat-conversation-open')) {
+                        const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 180;
+                        if (nearBottom) thread.scrollTop = thread.scrollHeight;
+                    }
+                } else if (!isKeyboardOpen) {
+                    document.body.classList.remove('keyboard-open');
+                    document.getElementById('chatModal')?.style.removeProperty('bottom');
+                    document.getElementById('chatModal')?.style.removeProperty('height');
+                }
+            };
+            window.visualViewport.addEventListener('resize', pinThreadToViewport);
+            window.visualViewport.addEventListener('scroll', pinThreadToViewport);
             window.visualViewport.addEventListener('resize', () => {
                 const currentHeight = window.visualViewport.height;
                 if (currentHeight < originalHeight * 0.8) {
                     document.body.classList.add('keyboard-open');
+                    const inbox = document.getElementById('chatModal');
+                    if (inbox && document.body.classList.contains('chat-list-open') && !document.body.classList.contains('chat-conversation-open')) {
+                        inbox.style.setProperty('bottom', '0px', 'important');
+                        inbox.style.setProperty('height', 'auto', 'important');
+                    }
                 } else if (currentHeight >= originalHeight * 0.95 && !isKeyboardOpen) {
                     document.body.classList.remove('keyboard-open');
+                    document.getElementById('chatModal')?.style.removeProperty('bottom');
+                    document.getElementById('chatModal')?.style.removeProperty('height');
                 }
             });
         }
@@ -1233,8 +1314,9 @@ safeDomReady(() => {
         if (allSkills.length > 0) {
             servicesHTML = `
                 <div class="lyann-profile-section">
-                    <div class="lyann-section-header">
+                    <div class="lyann-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Je peux aider pour</h4>
+                        ${isSelf ? '<button type="button" class="btn btn-outline btn-sm" id="btnAddNewServiceHub">Ajouter un service</button>' : ''}
                     </div>
                     <div class="lyann-skills-flex" style="display: flex; flex-wrap: wrap; gap: 8px;">
                         ${allSkills.map(s => `<span class="lyann-service-tag" style="background: rgba(74, 124, 89, 0.1); color: #1F3827; font-weight: 600; font-size: 0.84rem; padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(74, 124, 89, 0.2);"><i class="ph ph-check" style="font-size: 0.8rem; margin-right: 4px;"></i> ${window.escapeHtmlAttr(s)}</span>`).join('')}
@@ -1244,8 +1326,9 @@ safeDomReady(() => {
         } else if (isSelf) {
             servicesHTML = `
                 <div class="lyann-profile-section">
-                    <div class="lyann-section-header">
+                    <div class="lyann-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Je peux aider pour</h4>
+                        <button type="button" class="btn btn-outline btn-sm" id="btnAddNewServiceHub">Ajouter un service</button>
                     </div>
                     <div class="lyann-zero-data" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="cursor:pointer; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 16px; text-align: center;">
                         <span class="lyann-zero-data-title" style="font-size: 0.88rem; color: #475569; font-weight: 600;"><i class="ph ph-plus-circle"></i> Ajoute les compétences pour lesquelles tu peux aider</span>
@@ -2495,11 +2578,14 @@ safeDomReady(() => {
 
     if (flashVideoInput) {
         flashVideoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
+            const file = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (!file) return;
                 attachedVideo = URL.createObjectURL(file);
-                updateMediaPreview();
-            }
+            attachedPhotos.forEach(url => URL.revokeObjectURL(url));
+            attachedPhotos = [];
+            attachedPhotoFiles = [];
+            updateMediaPreview();
         });
     }
 
@@ -2521,12 +2607,17 @@ safeDomReady(() => {
         } else if (attachedVideo) {
             if (mediaUploadBadge) {
                 mediaUploadBadge.style.display = 'inline';
-                mediaUploadBadge.textContent = `🎥 Vidéo 30s jointe`;
+                mediaUploadBadge.textContent = 'Vidéo jointe';
             }
             const vid = document.createElement('video');
             vid.src = attachedVideo;
             vid.className = 'flash-media-preview-thumb';
             vid.controls = true;
+            vid.playsInline = true;
+            vid.muted = true;
+            vid.setAttribute('playsinline', '');
+            vid.style.width = '96px';
+            vid.style.height = '96px';
             flashMediaPreviewContainer.appendChild(vid);
         } else {
             if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
@@ -3705,12 +3796,88 @@ safeDomReady(() => {
             }
         }
 
+        syncQuickProfileSafety(member, displayName);
+
         if (quickProfileModal) {
             quickProfileModal.classList.add('active');
             quickProfileModal.style.display = 'flex';
         }
         document.body.style.overflow = 'hidden';
     };
+
+    function quickMemberId(member) {
+        const id = member && (member.id || member.user_id);
+        const ok = typeof window.isUUID === 'function'
+            ? window.isUUID(id)
+            : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ''));
+        return ok ? id : null;
+    }
+
+    function ensureQuickProfileSafety() {
+        if (!quickProfileModal || document.getElementById('quickProfileSafety')) return;
+        const body = quickProfileModal.querySelector('.quick-profile-body');
+        if (!body) return;
+        const row = document.createElement('div');
+        row.id = 'quickProfileSafety';
+        row.style.cssText = 'display:flex; justify-content:center; gap:8px; margin-top:12px;';
+        const blockBtn = document.createElement('button');
+        blockBtn.type = 'button';
+        blockBtn.id = 'quickBlockUserBtn';
+        blockBtn.className = 'btn btn-outline';
+        blockBtn.style.cssText = 'min-height:44px; color:#991B1B; border-color:#FECACA;';
+        blockBtn.textContent = 'Bloquer';
+        const reportBtn = document.createElement('button');
+        reportBtn.type = 'button';
+        reportBtn.id = 'quickReportUserBtn';
+        reportBtn.className = 'btn btn-outline';
+        reportBtn.style.cssText = 'min-height:44px;';
+        reportBtn.textContent = 'Signaler';
+        row.append(blockBtn, reportBtn);
+        body.appendChild(row);
+        blockBtn.addEventListener('click', async () => {
+            const member = currentQuickMember;
+            const id = quickMemberId(member);
+            if (!id || typeof window.blockUser !== 'function') return;
+            const name = window.formatPublicName ? window.formatPublicName(member, null, 'ce membre') : 'ce membre';
+            const blocked = window.isUserBlocked && window.isUserBlocked(id);
+            if (blocked) {
+                const ok = window.lyannConfirm ? await window.lyannConfirm(`Débloquer ${name} ? Vous pourrez à nouveau vous écrire.`) : true;
+                if (!ok) return;
+                const done = await window.unblockUser(id);
+                if (done) blockBtn.textContent = 'Bloquer';
+                return;
+            }
+            const ok = window.lyannConfirm
+                ? await window.lyannConfirm(`Bloquer ${name} ? Cette personne ne sera pas prévenue. Vous ne pourrez plus vous écrire. Les missions et paiements déjà en cours restent suivis.`)
+                : true;
+            if (!ok || typeof window.blockUser !== 'function') return;
+            const done = await window.blockUser(id, name);
+            if (done) blockBtn.textContent = 'Débloquer';
+        });
+        reportBtn.addEventListener('click', () => {
+            const member = currentQuickMember;
+            const id = quickMemberId(member);
+            const name = window.formatPublicName ? window.formatPublicName(member, null, 'ce membre') : 'ce membre';
+            if (typeof window.openReportModal === 'function') window.openReportModal(name, id, { source: 'profile' });
+        });
+    }
+
+    function syncQuickProfileSafety(member, displayName) {
+        ensureQuickProfileSafety();
+        const row = document.getElementById('quickProfileSafety');
+        const id = quickMemberId(member);
+        const myId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.CURRENT_USER_ID || null;
+        if (!row) return;
+        if (!id || (myId && String(id) === String(myId))) {
+            row.style.display = 'none';
+            return;
+        }
+        row.style.display = 'flex';
+        const blockBtn = document.getElementById('quickBlockUserBtn');
+        if (blockBtn) blockBtn.textContent = window.isUserBlocked && window.isUserBlocked(id) ? 'Débloquer' : 'Bloquer';
+        const reportBtn = document.getElementById('quickReportUserBtn');
+        if (reportBtn) reportBtn.setAttribute('aria-label', `Signaler ${displayName || 'ce membre'}`);
+    }
 
     if (quickStartChatBtn) {
         quickStartChatBtn.addEventListener('click', async () => {
@@ -3742,9 +3909,16 @@ safeDomReady(() => {
             if (quickProfileModal) quickProfileModal.classList.remove('active');
             const bookingModal = document.getElementById('bookingModal');
             const targetNameEl = document.getElementById('bookingTargetMemberName');
-            if (targetNameEl && currentQuickMember) {
-                targetNameEl.textContent = `Réserver avec ${currentQuickMember.name}`;
+            const memberId = currentQuickMember && (currentQuickMember.id || currentQuickMember.user_id);
+            if (bookingModal) {
+                if (memberId) bookingModal.dataset.targetUserId = memberId;
+                else delete bookingModal.dataset.targetUserId;
+                if (currentQuickMember && currentQuickMember.name) bookingModal.dataset.targetUserName = currentQuickMember.name;
             }
+            if (targetNameEl && currentQuickMember) {
+                targetNameEl.textContent = `Proposer une mission à ${currentQuickMember.name}`;
+            }
+            if (typeof window.installBookingCommunePicker === 'function') window.installBookingCommunePicker();
             if (bookingModal) bookingModal.classList.add('active');
         });
     }
@@ -4044,6 +4218,104 @@ safeDomReady(() => {
         });
     }
 
+    window.installBookingCommunePicker = function installBookingCommunePicker() {
+        const input = document.getElementById('bookingLocation');
+        if (!input || input.dataset.communeDrawer === '1') return;
+        input.dataset.communeDrawer = '1';
+        input.type = 'hidden';
+        input.removeAttribute('required');
+        const fieldLabel = document.querySelector('label[for="bookingLocation"]');
+        if (fieldLabel) fieldLabel.textContent = 'Commune';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.id = 'bookingCommunePicker';
+        button.className = 'modal-input lyann-commune-picker';
+        button.textContent = input.value || 'Choisir une île, puis une commune';
+        input.after(button);
+        button.addEventListener('click', () => openBookingCommuneDrawer(input, button));
+    };
+    window.resetBookingCommunePicker = function resetBookingCommunePicker() {
+        const input = document.getElementById('bookingLocation');
+        const button = document.getElementById('bookingCommunePicker');
+        if (input) input.value = '';
+        if (button) button.textContent = 'Choisir une île, puis une commune';
+    };
+    function openBookingCommuneDrawer(input, button) {
+        const dataset = window.LYANN_TERRITORY_DATASET || {};
+        let sheet = document.getElementById('lyannCommuneDrawer');
+        if (!sheet) {
+            sheet = document.createElement('div');
+            sheet.id = 'lyannCommuneDrawer';
+            sheet.className = 'lyann-commune-drawer';
+            sheet.innerHTML = '<div class="lyann-commune-card" role="dialog" aria-modal="true" aria-labelledby="lyannCommuneTitle"><div class="lyann-commune-head"><button type="button" class="lyann-commune-back" hidden aria-label="Retour aux îles"><i class="ph ph-arrow-left"></i></button><h3 id="lyannCommuneTitle">Choisir une île</h3><button type="button" class="lyann-commune-close" aria-label="Fermer"><i class="ph ph-x"></i></button></div><div class="lyann-commune-list"></div></div>';
+            sheet.addEventListener('click', (event) => {
+                if (event.target === sheet || event.target.closest('.lyann-commune-close')) sheet.hidden = true;
+            });
+            document.body.appendChild(sheet);
+        }
+        const list = sheet.querySelector('.lyann-commune-list');
+        const title = sheet.querySelector('#lyannCommuneTitle');
+        const back = sheet.querySelector('.lyann-commune-back');
+        const names = {
+            'Guadeloupe (971)': 'Guadeloupe',
+            'Martinique (972)': 'Martinique',
+            'Guyane (973)': 'Guyane',
+            'La Réunion (974)': 'La Réunion'
+        };
+        const islands = Object.keys(names).map((territory) => {
+            const seen = new Set();
+            const communes = [];
+            Object.values(dataset[territory] || {}).forEach((group) => {
+                (group || []).forEach((commune) => {
+                    if (seen.has(commune)) return;
+                    seen.add(commune);
+                    communes.push(commune);
+                });
+            });
+            return { island: names[territory], communes };
+        });
+        function showIslands() {
+            title.textContent = 'Choisir une île';
+            back.hidden = true;
+            list.innerHTML = '';
+            islands.forEach((entry) => {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'lyann-commune-row';
+                row.innerHTML = '<strong></strong><span></span>';
+                row.querySelector('strong').textContent = entry.island;
+                row.querySelector('span').textContent = entry.communes.length + ' communes';
+                row.addEventListener('click', () => showCommunes(entry));
+                list.appendChild(row);
+            });
+        }
+        function showCommunes(entry) {
+            title.textContent = entry.island;
+            back.hidden = false;
+            list.innerHTML = '';
+            entry.communes.forEach((commune) => {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'lyann-commune-row';
+                row.textContent = commune;
+                row.addEventListener('click', () => {
+                    const label = commune + ' · ' + entry.island;
+                    input.value = label;
+                    button.textContent = label;
+                    sheet.hidden = true;
+                });
+                list.appendChild(row);
+            });
+        }
+        back.onclick = (event) => {
+            event.stopPropagation();
+            showIslands();
+        };
+        showIslands();
+        sheet.hidden = false;
+    }
+    if (document.getElementById('bookingLocation')) window.installBookingCommunePicker();
+
     // Modal Booking (Prise de RDV)
     const bookingModal = document.getElementById('bookingModal');
     const closeBookingModalBtn = document.getElementById('closeBookingModalBtn');
@@ -4067,40 +4339,82 @@ safeDomReady(() => {
     }
 
     if (bookingForm) {
-        bookingForm.addEventListener('submit', (e) => {
+        bookingForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const targetNameEl = document.getElementById('bookingTargetMemberName');
-            let providerName = 'Prestataire LYANN';
-            if (targetNameEl && targetNameEl.textContent) {
-                providerName = targetNameEl.textContent.replace('Proposer une mission à ', '').replace('Réserver avec ', '');
+            const submitBtn = bookingForm.querySelector('button[type="submit"]');
+            if (submitBtn && submitBtn.dataset.sending === '1') return;
+            const memberId = bookingModal && bookingModal.dataset.targetUserId;
+            const memberName = (bookingModal && bookingModal.dataset.targetUserName) || 'cette personne';
+            const commune = (document.getElementById('bookingLocation')?.value || '').trim();
+            const notes = (document.getElementById('bookingNotes')?.value || '').trim();
+            const serviceSelect = document.getElementById('bookingServiceType');
+            const service = serviceSelect ? (serviceSelect.options[serviceSelect.selectedIndex]?.text || '').replace(/^[^\p{L}]+/u, '').trim() : 'Mission';
+            const dateValue = document.getElementById('bookingDate')?.value || '';
+            const slot = document.getElementById('bookingTimeSlot')?.value || '';
+            const uuid = (value) => typeof window.isUUID === 'function'
+                ? window.isUUID(value)
+                : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ''));
+            if (!commune) {
+                if (window.lyannAlert) window.lyannAlert('Choisissez la commune de la mission.');
+                return;
             }
-
-            // Déclencher les notifications de réservation via Twilio & SendGrid
-            if (window.LYANN_NOTIFICATIONS) {
-                // Notifier le prestataire par SMS
-                window.LYANN_NOTIFICATIONS.sendSMS(
-                    '+590690001122', 
-                    providerName, 
-                    `Bonjour ${providerName}, vous avez reçu une nouvelle demande de réservation. Connectez-vous à LYANN pour y répondre.`
-                );
-
-                // Notifier le prestataire par Email
-                window.LYANN_NOTIFICATIONS.sendEmail(
-                    'prestataire@lyann-dom.com',
-                    providerName,
-                    '🤝 Nouvelle demande de réservation sur LYANN DOM',
-                    `
-                    <p>Une nouvelle demande de rendez-vous a été déposée pour votre activité.</p>
-                    <p><strong>Détails du client :</strong> Client LYANN (Guadeloupe)</p>
-                    <p>Rendez-vous dans votre Espace Prestataire sur LYANN DOM pour envoyer votre devis par jalon et sécuriser le paiement.</p>
-                    `
-                );
+            if (!uuid(memberId)) {
+                if (window.lyannAlert) window.lyannAlert('Cette personne ne peut pas recevoir de mission pour le moment.');
+                return;
             }
-
-            window.lyannAlert('🎉 Votre demande de réservation et de devis a été transmise avec succès ! Vous recevrez une confirmation sous 2h.');
-            if (bookingModal) bookingModal.classList.remove('active');
-            bookingForm.reset();
+            if (!notes) {
+                if (window.lyannAlert) window.lyannAlert('Décrivez la mission.');
+                return;
+            }
+            if (submitBtn) {
+                submitBtn.dataset.sending = '1';
+                submitBtn.disabled = true;
+            }
+            try {
+                const created = await window.LYANN_API_CLIENT.createRequest({
+                    title: service.slice(0, 60) || 'Mission',
+                    description: [notes, slot ? `Créneau : ${slot}` : ''].filter(Boolean).join('\n'),
+                    category: service || 'Général',
+                    location: commune,
+                    visibility: 'DIRECT',
+                    target_user_id: memberId,
+                    date_mode: dateValue ? 'EXACT' : 'FLEXIBLE',
+                    scheduled_at: dateValue ? new Date(dateValue + 'T12:00:00').toISOString() : null,
+                    price_mode: 'QUOTE',
+                    urgency: 'flexible',
+                    status: 'OPEN'
+                });
+                if (created && created.id) {
+                    try {
+                        await window.LYANN_API_CLIENT.bindConversationRequest(created.id, memberId, 'DIRECT');
+                    } catch (bindErr) {
+                        console.warn('[MISSION] lien conversation', bindErr);
+                    }
+                }
+                if (bookingModal) bookingModal.classList.remove('active');
+                bookingForm.reset();
+                if (typeof window.resetBookingCommunePicker === 'function') window.resetBookingCommunePicker();
+                if (window.lyannAlert) window.lyannAlert('La mission a été créée.');
+                if (created && created.id && window.LYANN_MESSAGING) {
+                    await window.LYANN_MESSAGING.openConversation({
+                        contactId: memberId,
+                        name: memberName,
+                        requestId: created.id,
+                        initialNeed: { requestId: created.id, requesterId: window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null, title: service }
+                    });
+                }
+            } catch (err) {
+                console.error('[MISSION] création', err);
+                const message = window.lyannSanitizeUserMessage
+                    ? window.lyannSanitizeUserMessage(err && err.message)
+                    : 'La mission n’a pas pu être créée. Réessayez.';
+                if (window.lyannAlert) window.lyannAlert(message);
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    delete submitBtn.dataset.sending;
+                }
+            }
         });
     }
 
@@ -4123,50 +4437,106 @@ safeDomReady(() => {
         });
     }
 
+    if (reportForm && !document.getElementById('reportEvidence')) {
+        const field = document.createElement('div');
+        field.className = 'form-group';
+        const label = document.createElement('label');
+        label.htmlFor = 'reportEvidence';
+        label.textContent = 'Captures ou preuves, facultatif';
+        const input = document.createElement('input');
+        input.id = 'reportEvidence';
+        input.type = 'file';
+        input.accept = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
+        input.multiple = true;
+        input.className = 'modal-input';
+        const hint = document.createElement('p');
+        hint.style.cssText = 'margin:6px 0 0; font-size:0.78rem; color:var(--text-muted);';
+        hint.textContent = 'Jusqu’à 4 images. Elles restent privées et ne sont pas montrées à la personne signalée.';
+        field.append(label, input, hint);
+        const submitButton = reportForm.querySelector('button[type="submit"]');
+        if (submitButton) reportForm.insertBefore(field, submitButton);
+        else reportForm.appendChild(field);
+    }
+
     if (reportForm) {
-        reportForm.addEventListener('submit', (e) => {
+        reportForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const submitButton = reportForm.querySelector('button[type="submit"]');
+            if (submitButton && submitButton.dataset.sending === '1') return;
             const reasonSelect = document.getElementById('reportReason');
             const detailsInput = document.getElementById('reportDetails');
-            const reasonVal = reasonSelect ? reasonSelect.value : 'inapproprie';
-            const detailsVal = detailsInput ? detailsInput.value : '';
-            
-            const targetUser = (reportModal && reportModal.getAttribute('data-target-user')) ? reportModal.getAttribute('data-target-user') : 'Membre Signalé';
-            
+            const reasonVal = reasonSelect ? reasonSelect.value : 'autre';
+            const detailsVal = detailsInput ? detailsInput.value.trim() : '';
             const reasonLabels = {
-                'inapproprie': 'Propos inappropriés / Harcèlement',
-                'fausse_info': 'Profil inexact / Faux profil',
-                'spam': 'Démarchage abusif / Spam',
-                'fraude': 'Arnaque / Suspicion de fraude',
-                'autre': 'Autre problème de sérénité'
+                'inapproprie': 'Propos inappropriés ou harcèlement',
+                'fausse_info': 'Profil inexact ou faux profil',
+                'spam': 'Démarchage abusif ou spam',
+                'fraude': 'Arnaque ou suspicion de fraude',
+                'autre': 'Autre problème'
             };
-            
-            const newReport = {
-                id: 'REP-' + Math.floor(100000 + Math.random() * 900000),
-                reporterName: 'Utilisateur Connecté',
-                targetName: targetUser,
-                reason: reasonVal,
-                reasonLabel: reasonLabels[reasonVal] || 'Signalement de litige',
-                details: detailsVal || 'Aucune précision fournie',
-                timestamp: new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                status: 'En cours'
-            };
-            
+            const targetId = reportModal ? reportModal.getAttribute('data-target-user-id') : '';
+            const targetName = reportModal ? (reportModal.getAttribute('data-target-user') || 'ce membre') : 'ce membre';
+            const conversationId = reportModal ? reportModal.getAttribute('data-conversation-id') : '';
+            const conversationOk = typeof window.isUUID === 'function'
+                ? window.isUUID(conversationId)
+                : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(conversationId || ''));
+            const source = reportModal && reportModal.getAttribute('data-report-source') === 'conversation' ? 'conversation' : 'profile';
+            const uuidOk = typeof window.isUUID === 'function' ? window.isUUID(targetId) : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(targetId || ''));
+            if (!uuidOk || !window.LYANN_SAFETY_REPOSITORY) {
+                if (window.lyannAlert) window.lyannAlert('Choisissez le profil ou la conversation à signaler, puis réessayez.');
+                return;
+            }
+            if (detailsVal.length < 8) {
+                if (window.lyannAlert) window.lyannAlert('Décrivez brièvement ce qui s’est passé.');
+                return;
+            }
+            if (submitButton) {
+                submitButton.dataset.sending = '1';
+                submitButton.disabled = true;
+            }
             try {
-                const existing = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]');
-                existing.unshift(newReport);
-                localStorage.setItem('LYANN_REPORTS', JSON.stringify(existing));
-            } catch(err) {}
-
-            if (window.lyannAlert) {
-                window.lyannAlert(`🛡️ Votre signalement concernant ${targetUser} a été transmis à l'équipe de modération LYANN. Merci de contribuer à la sérénité du réseau !`);
+                const saved = await window.LYANN_SAFETY_REPOSITORY.report(
+                    targetId,
+                    reasonLabels[reasonVal] || 'Autre problème',
+                    detailsVal,
+                    { source, conversationId: conversationOk ? conversationId : null }
+                );
+                const reference = saved && saved.id ? String(saved.id).slice(0, 8) : '';
+                const evidenceInput = document.getElementById('reportEvidence');
+                const evidenceFiles = evidenceInput && evidenceInput.files ? Array.from(evidenceInput.files).slice(0, 4) : [];
+                let evidenceNote = '';
+                if (evidenceFiles.length && saved && saved.id && window.LYANN_SAFETY_REPOSITORY.attachReportEvidence) {
+                    try {
+                        await window.LYANN_SAFETY_REPOSITORY.attachReportEvidence(saved.id, evidenceFiles);
+                    } catch (evidenceError) {
+                        console.warn('[SAFETY] evidence upload failed', evidenceError);
+                        evidenceNote = ' Le signalement est transmis, mais les preuves n’ont pas pu être jointes.';
+                    }
+                }
+                if (window.lyannAlert) {
+                    window.lyannAlert((reference
+                        ? `Signalement transmis. Référence ${reference}. L’équipe de modération l’examinera. ${targetName} n’est pas prévenu.`
+                        : `Signalement transmis. L’équipe de modération l’examinera. ${targetName} n’est pas prévenu.`) + evidenceNote);
+                }
+                if (reportModal) {
+                    reportModal.classList.remove('active');
+                    reportModal.style.display = 'none';
+                    reportModal.removeAttribute('data-target-user-id');
+                    reportModal.removeAttribute('data-conversation-id');
+                }
+                reportForm.reset();
+            } catch (err) {
+                const message = err && err.message ? String(err.message) : '';
+                const friendly = /déjà en cours|limite de signalements|Signalement invalide/i.test(message)
+                    ? message
+                    : 'Le signalement n’a pas pu être transmis. Réessayez.';
+                if (window.lyannAlert) window.lyannAlert(friendly);
+            } finally {
+                if (submitButton) {
+                    submitButton.dataset.sending = '0';
+                    submitButton.disabled = false;
+                }
             }
-            if (reportModal) {
-                reportModal.classList.remove('active');
-                reportModal.style.display = 'none';
-            }
-            reportForm.reset();
-            window.dispatchEvent(new CustomEvent('lyann_report_added', { detail: newReport }));
         });
     }
 
@@ -4384,8 +4754,8 @@ safeDomReady(() => {
     window.deleteMyAnnouncement = async function(requestId) {
         if (!requestId) return;
         const confirmed = window.lyannConfirm
-            ? await window.lyannConfirm('Supprimer cette annonce ? Elle ne sera plus visible dans Explorer.')
-            : window.confirm('Supprimer cette annonce ? Elle ne sera plus visible dans Explorer.');
+            ? await window.lyannConfirm('Supprimer cette annonce ? Elle ne sera plus visible dans les Annonces.')
+            : window.confirm('Supprimer cette annonce ? Elle ne sera plus visible dans les Annonces.');
         if (!confirmed) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
         if (!client || typeof client.deleteRequest !== 'function') {
@@ -4413,6 +4783,56 @@ safeDomReady(() => {
         if (!container) return;
         const html = await window.renderMonActiviteSubView(userId, tabName);
         container.outerHTML = html;
+    };
+
+    window.renderBlockedAccounts = async function() {
+        const host = document.getElementById('blockedAccountsList');
+        if (!host) return;
+        host.textContent = 'Chargement…';
+        try {
+            if (!window.LYANN_SAFETY_REPOSITORY || typeof window.LYANN_SAFETY_REPOSITORY.listBlockedProfiles !== 'function') {
+                host.textContent = 'La liste des comptes bloqués est indisponible.';
+                return;
+            }
+            const rows = await window.LYANN_SAFETY_REPOSITORY.listBlockedProfiles();
+            host.replaceChildren();
+            if (!rows.length) {
+                const empty = document.createElement('p');
+                empty.style.cssText = 'margin:8px 0 0; font-size:0.85rem; color:var(--text-muted);';
+                empty.textContent = 'Aucun compte bloqué.';
+                host.appendChild(empty);
+                return;
+            }
+            rows.forEach((profile) => {
+                const line = document.createElement('div');
+                line.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:8px;';
+                const name = document.createElement('span');
+                name.style.cssText = 'font-size:0.9rem; font-weight:700;';
+                name.textContent = window.formatPublicName ? window.formatPublicName(profile, null, 'Membre LYANN') : 'Membre LYANN';
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-outline btn-sm';
+                button.style.minHeight = '40px';
+                button.textContent = 'Débloquer';
+                button.addEventListener('click', async () => {
+                    const label = name.textContent || 'ce membre';
+                    const ok = window.lyannConfirm ? await window.lyannConfirm(`Débloquer ${label} ? Vous pourrez à nouveau vous écrire.`) : true;
+                    if (!ok || typeof window.unblockUser !== 'function') return;
+                    button.disabled = true;
+                    const done = await window.unblockUser(profile.id);
+                    if (!done) {
+                        button.disabled = false;
+                        return;
+                    }
+                    window.renderBlockedAccounts();
+                });
+                line.append(name, button);
+                host.appendChild(line);
+            });
+        } catch (err) {
+            console.warn('[SAFETY] blocked list failed', err);
+            host.textContent = 'Les comptes bloqués n’ont pas pu être chargés.';
+        }
     };
 
     window.openAccountModalSubView = async function(subViewName = 'account') {
@@ -4623,6 +5043,15 @@ safeDomReady(() => {
                                     <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-top:6px;">
                                         <input type="checkbox" class="lyann-pref-bokantaj"> Nouveaux lyann sur Bokantaj
                                     </label>
+                                </div>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" style="align-items:flex-start;">
+                                <div class="row-icon"><i class="ph ph-prohibit"></i></div>
+                                <div class="row-content" style="flex:1;">
+                                    <strong class="row-title">Comptes bloqués</strong>
+                                    <span class="row-subtitle">Ces personnes ne sont pas prévenues. Les missions déjà en cours restent suivies.</span>
+                                    <div id="blockedAccountsList" style="margin-top:10px;"></div>
                                 </div>
                             </div>
                             <div class="account-divider"></div>
@@ -4840,6 +5269,7 @@ safeDomReady(() => {
             document.body.style.overflow = 'hidden';
         }
         if (subViewName === 'finances' && window.LYANN_PAYOUT_ACCOUNT) window.LYANN_PAYOUT_ACCOUNT.mount();
+        if (subViewName === 'settings' && typeof window.renderBlockedAccounts === 'function') window.renderBlockedAccounts();
         if (typeof mountNotificationPreferenceControls === 'function') mountNotificationPreferenceControls();
         if (typeof bindNotificationPreferenceControls === 'function') bindNotificationPreferenceControls();
     };
@@ -6059,6 +6489,12 @@ safeDomReady(() => {
                     window.CURRENT_USER_ID = session.user.id;
                 }
                 await updateHeaderAuthState();
+                if (window.LYANN_PUSH && typeof window.LYANN_PUSH.sync === 'function') {
+                    window.LYANN_PUSH.sync();
+                }
+                if (window.LYANN_PUSH && typeof window.LYANN_PUSH.openPending === 'function') {
+                    window.LYANN_PUSH.openPending();
+                }
             } else if (event === 'SIGNED_OUT') {
                 console.log('[AUTH_REAL] SIGNED_OUT explicitly processed.');
                 authInitializationComplete = true;
@@ -7316,6 +7752,15 @@ safeDomReady(() => {
         }, 300);
     }
 
+    if (window.location.search.includes('action=new-post')) {
+        setTimeout(() => {
+            const flashInput = document.getElementById('flashContentInput');
+            if (!flashInput) return;
+            flashInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            flashInput.focus();
+        }, 300);
+    }
+
     if(closeBtn) {
         closeBtn.addEventListener('click', () => {
             modalRequestHelp.classList.remove('active');
@@ -8061,7 +8506,7 @@ safeDomReady(() => {
                 if (window.NotificationService) {
                     const successText = privateOnly
                         ? 'Demande envoyée uniquement à cette personne.'
-                        : (directId ? 'Demande envoyée à cette personne et publiée dans Explorer.' : 'Votre besoin a été publié.');
+                        : (directId ? 'Demande envoyée à cette personne et publiée dans les Annonces.' : 'Votre besoin a été publié.');
                     window.NotificationService.showToast('success', successText);
                 }
                 window._lyannDirectAskContactId = null;
@@ -8161,7 +8606,7 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
     const countNum = Number(insertedCount) || 0;
     const notificationMsg = countNum > 0
         ? `Nous l'avons également partagé à <strong>${countNum} Lyanneur${countNum > 1 ? 's' : ''}</strong> correspondant à ton besoin.`
-        : `Ton besoin est maintenant visible dans Explorer → Annonces. Aucun Lyanneur direct n'a encore été notifié.`;
+        : `Ton besoin est maintenant visible dans Annonces. Aucun Lyanneur direct n'a encore été notifié.`;
 
     stepPost.innerHTML = `
         <div style="text-align: center; padding: 10px 0;">
@@ -8169,7 +8614,7 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
                 <i class="ph-fill ph-check-circle" style="font-size: 36px; color: var(--primary);"></i>
             </div>
             <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--primary-dark); margin: 0 0 6px 0;">Votre Lyann est publié !</h3>
-            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 20px 0;">Votre besoin est maintenant visible dans Explorer, onglet Annonces.</p>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 20px 0;">Votre besoin est maintenant visible dans Annonces.</p>
             
             <div style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 18px; text-align: left; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">

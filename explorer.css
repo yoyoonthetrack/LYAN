@@ -17,7 +17,8 @@
 .explorer-results-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:24px 0 16px}
 .explorer-results-heading p{font-size:.9rem;color:#56665c}
 .explorer-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
-.explorer-card{background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px #24382b0a;display:flex;flex-direction:column;gap:12px;min-width:0;overflow-wrap:anywhere;border:1px solid #e3e9e5}
+.explorer-card{background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px #24382b0a;display:flex;flex-direction:column;gap:12px;min-width:0;overflow-wrap:anywhere;border:1px solid #e3e9e5;scroll-margin-top:calc(96px + env(safe-area-inset-top, 0px));scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
+.explorer-card h2,.explorer-card .explorer-quote-text,.explorer-card .explorer-skills-text{scroll-margin-top:calc(96px + env(safe-area-inset-top, 0px));scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
 .explorer-card h2{font-size:1.14rem;line-height:1.35;margin:0;color:var(--primary-dark)}
 .explorer-card p{margin:0;font-size:.92rem;line-height:1.5}
 .explorer-card-description{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:#536258}
@@ -25,7 +26,7 @@
 .explorer-person img{width:40px;height:40px;object-fit:cover;border-radius:50%}
 .explorer-person-zone{position:relative}
 .explorer-card>.explorer-person-zone{width:fit-content;max-width:100%}
-.explorer-person-overlay{position:absolute;inset:0;min-width:44px;min-height:44px;background:none;border:0;margin:0;padding:0;font:inherit;color:transparent;cursor:pointer;z-index:1}
+.explorer-person-overlay{position:absolute;top:0;left:0;width:44px;height:44px;min-width:44px;min-height:44px;background:none;border:0;margin:0;padding:0;font:inherit;color:transparent;cursor:pointer;z-index:1}
 .explorer-person-overlay:hover~img{filter:brightness(.94)}
 .explorer-person-overlay:hover~.explorer-person-name,.explorer-person-overlay:hover~div h2{text-decoration:underline}
 .explorer-person-overlay:focus-visible{outline:2px solid var(--primary,#4a7c59);outline-offset:3px;border-radius:12px}
@@ -37,7 +38,7 @@
    per line. The full description belongs to the Détails surface, never the card. */
 .explorer-annonce{gap:10px}
 .explorer-annonce .explorer-card-top{align-items:flex-start}
-.explorer-annonce-taxonomy{flex:1;min-width:0;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--primary-dark,#24382b);background:#EBF3EE;border-radius:6px;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.explorer-annonce-taxonomy{flex:1;min-width:0;max-width:100%;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--primary-dark,#24382b);background:#EBF3EE;border-radius:6px;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .explorer-annonce-age{flex-shrink:0;font-size:.74rem;color:#6B7A70;background:#F4F6F4;border-radius:6px;padding:4px 8px;white-space:nowrap}
 .explorer-annonce-facts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:.89rem;color:#42504a}
 .explorer-annonce-facts li{display:flex;align-items:baseline;gap:7px;min-width:0}
@@ -83,9 +84,9 @@
 .explorer-world-tab.is-lyanneurs.active{background:#E8F1EA;border-color:#C9D9CE;color:#35583F}
 .explorer-page[data-mode=annonces] .explorer-world-tab.is-annonces[aria-selected=true],
 .explorer-world-tab.is-annonces.active{background:#F6EEDD;border-color:#E5D4B0;color:#7A5C14}
-body.results-page{transition:background .45s ease}
-body.results-page[data-explorer-mode=annonces]{background:linear-gradient(180deg,#F8F3E8 0%,#FAF7F2 42%,#FAF7F2 100%)}
-body.results-page[data-explorer-mode=lyanneurs]{background:linear-gradient(180deg,#EEF4EF 0%,#FAF7F2 42%,#FAF7F2 100%)}
+body.results-page{transition:none}
+body.results-page[data-explorer-mode=annonces]{background:#FFF8E9}
+body.results-page[data-explorer-mode=lyanneurs]{background:#EFF7F0}
 .explorer-page[data-mode=annonces] .explorer-heading h1{color:#6F5A2A}
 .explorer-page[data-mode=lyanneurs] .explorer-heading h1{color:#35583F}
 .explorer-page[data-mode=annonces] .explorer-card{border-color:#E8DCC4}
@@ -98,6 +99,12 @@ body.results-page[data-explorer-mode=lyanneurs]{background:linear-gradient(180de
 .explorer-card-actions.explorer-profile-actions{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:8px!important;width:100%!important}
 .explorer-card-actions.explorer-profile-actions .btn{width:100%!important;min-width:100%!important;flex:none!important;box-sizing:border-box!important}
 .explorer-search .lyann-cta-primary{flex-shrink:0;padding:0 16px!important}
+body.is-native-app.has-member-nav .explorer-profile-actions .btn,
+body.is-native-app.has-member-nav .explorer-card-actions .btn{scroll-margin-bottom:calc(var(--m-bottom-nav-height, 72px) + 20px + env(safe-area-inset-bottom, 0px))}
+@media(max-width:420px){
+.explorer-page[data-mode=annonces] .explorer-results-heading{flex-direction:column;align-items:stretch;gap:10px}
+.explorer-page[data-mode=annonces] .explorer-results-heading .explorer-publish.lyann-cta-primary{width:100%!important;justify-content:center;white-space:nowrap}
+}
 @media(max-width:640px){
 .explorer-swipe-hint{display:block}
 .explorer-world-tab{font-size:.78rem;padding:8px 6px;gap:5px}

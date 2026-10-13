@@ -283,14 +283,18 @@
   };
 
   register('home', () => hardNavigate('index.html'));
-  register('explorer', (payload = {}) => {
+  function openExplorer(mode, payload = {}) {
     const params = new URLSearchParams();
+    if (mode) params.set('mode', mode);
+    else if (payload.mode) params.set('mode', payload.mode);
     if (payload.query) params.set('query', payload.query);
-    if (payload.mode) params.set('mode', payload.mode);
     if (payload.category) params.set('category', payload.category);
     const suffix = params.toString();
     return hardNavigate(`results.html${suffix ? `?${suffix}` : ''}`);
-  });
+  }
+  register('explorer', (payload = {}) => openExplorer(payload.mode || '', payload));
+  register('lyanneurs', (payload = {}) => openExplorer('lyanneurs', payload));
+  register('annonces', (payload = {}) => openExplorer('annonces', payload));
   register('bokantaj', () => hardNavigate('feed.html'));
   register('messages', (payload = {}) => {
     if (knownLoggedOut()) return openLoginPrompt();
@@ -298,7 +302,6 @@
     const messaging = window.LYANN_MESSAGING;
     if (messaging) {
       if (contactId) return messaging.openConversation({ ...payload, contactId });
-      if (typeof messaging.openInbox === 'function') return messaging.openInbox();
       return messaging.openList();
     }
     const params = new URLSearchParams({ action: 'messages' });
@@ -361,12 +364,14 @@
 
   const selectorRouteMap = [
     ['#tab-bokantaj', 'bokantaj'],
+    ['#tab-lyanneurs', 'lyanneurs'],
+    ['#tab-annonces', 'annonces'],
     ['#tab-explorer', 'explorer'],
     ['#tab-profile', 'profile'],
     ['#tab-messages, [data-lyann-messages], .open-chat-trigger', 'messages'],
     ['#btnHeaderSupport, [data-lyann-support]', 'support'],
     ['.nav-msg-btn:not(#btnHeaderNotif):not(#btnHeaderSupport), .btn-open-chat-direct, .btn-contact-member, .btn-help-lyann, a[href*="action=messages"], a[href*="action=openchat"]', 'messages'],
-    ['#tab-create, [data-lyann-publish], .open-request-help-trigger, .btn-trigger-wizard-shortcut, .explorer-publish, #btnLaunchNeedWizard', 'publish'],
+    ['[data-lyann-publish], .open-request-help-trigger, .btn-trigger-wizard-shortcut, .explorer-publish, #btnLaunchNeedWizard', 'publish'],
     ['.open-account-modal-trigger, .nav-profile-btn', 'account'],
     ['#btnDashboardAvatar', 'profile']
   ];

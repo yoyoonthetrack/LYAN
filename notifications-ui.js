@@ -136,6 +136,17 @@ function openNotificationTarget(notif) {
     const entityId = notif?.entity_id ? String(notif.entity_id) : '';
     const nType = String(notif?.type || '');
     if (nType === 'REQUEST_CLOSING') return false;
+    if (nType === 'PAYOUT_READY') {
+        window.LYANN_ROUTER?.go?.('finances');
+        return true;
+    }
+    if (nType === 'QUOTE_RECEIVED' || nType === 'MISSION_ACCEPTED' || nType === 'WORK_TO_VALIDATE') {
+        const contactId = entityId.split(':')[0];
+        if (contactId && window.LYANN_ROUTER) {
+            window.LYANN_ROUTER.go('messages', { contactId });
+            return true;
+        }
+    }
     if ((entityType === 'conversation' || nType === 'NEW_MESSAGE') && entityId) {
         window.LYANN_ROUTER?.go?.('messages', {
             contactId: entityId,

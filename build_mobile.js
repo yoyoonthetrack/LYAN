@@ -9,7 +9,23 @@ const iosPublic = path.join(__dirname, 'ios', 'App', 'App', 'public');
 const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'assets', 'public');
 
 const ROOT_EXTENSIONS = new Set(['.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.webp', '.gif', '.mp4']);
-const EXCLUDED_ROOT_FILES = new Set(['shared-html-build.js']);
+// Never ship tooling, secrets-adjacent configs, harnesses or local tests into www/iOS public.
+const EXCLUDED_ROOT_FILES = new Set([
+  'shared-html-build.js',
+  'build_mobile.js',
+  'watch.js',
+  'server.js',
+  'playwright.config.js',
+  'package.json',
+  'package-lock.json',
+  'capacitor.config.json',
+  'vercel.json',
+  '.mcp.json',
+  'test_audit_parity.js',
+  'test_invitation_flow_full.js',
+  'test_load.js'
+]);
+const EXCLUDED_ROOT_PREFIXES = ['test_', 'scratch'];
 
 function resetDir(dir) {
   if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
@@ -62,6 +78,8 @@ resetDir(sharedDist);
 
 const rootFiles = fs.readdirSync(srcDir)
   .filter((file) => !EXCLUDED_ROOT_FILES.has(file))
+  .filter((file) => !EXCLUDED_ROOT_PREFIXES.some((prefix) => file.startsWith(prefix)))
+  .filter((file) => !file.endsWith('.test.js'))
   .filter((file) => ROOT_EXTENSIONS.has(path.extname(file).toLowerCase()))
   .filter((file) => fs.statSync(path.join(srcDir, file)).isFile());
 
@@ -69,7 +87,7 @@ for (const file of rootFiles) {
   copyFileBuilt(path.join(srcDir, file), path.join(sharedDist, file));
 }
 
-for (const dir of ['vendor']) {
+for (const dir of ['vendor', 'assets']) {
   const source = path.join(srcDir, dir);
   if (fs.existsSync(source)) fs.cpSync(source, path.join(sharedDist, dir), { recursive: true, force: true });
 }
