@@ -445,6 +445,12 @@ window.openLyannHamburgerDrawer = function() {
 
     const overlay = document.getElementById('mobileHamburgerDrawerOverlay');
     if (overlay) {
+        // Always re-parent to <body> so messaging (z 9000) cannot cover the drawer.
+        if (overlay.parentElement !== document.body) document.body.appendChild(overlay);
+        else document.body.appendChild(overlay);
+        overlay.style.setProperty('z-index', '2147483000', 'important');
+        const card = overlay.querySelector('.hamburger-drawer-card') || document.getElementById('mobileHamburgerDrawer');
+        if (card) card.style.setProperty('z-index', '2147483001', 'important');
         overlay.classList.add('active');
         document.body.classList.add('drawer-open');
         document.body.style.overflow = 'hidden';
@@ -2465,6 +2471,7 @@ safeDomReady(() => {
     let attachedPhotos = [];
     let attachedPhotoFiles = [];
     let attachedVideo = null;
+    let attachedVideoFile = null;
     let bokantajFeedState = 'LOADING'; // 'LOADING' | 'ERROR' | 'EMPTY' | 'READY'
 
     const flashFeedContainer = document.getElementById('flashFeedContainer');
@@ -2581,7 +2588,9 @@ safeDomReady(() => {
             const file = e.target.files && e.target.files[0];
             e.target.value = '';
             if (!file) return;
-                attachedVideo = URL.createObjectURL(file);
+            if (attachedVideo) URL.revokeObjectURL(attachedVideo);
+            attachedVideoFile = file;
+            attachedVideo = URL.createObjectURL(file);
             attachedPhotos.forEach(url => URL.revokeObjectURL(url));
             attachedPhotos = [];
             attachedPhotoFiles = [];
@@ -2867,6 +2876,10 @@ safeDomReady(() => {
                     let mediaHTML = '';
                     const photoList = (post.images && post.images.length) ? post.images : (post.image ? [post.image] : []);
                     if (photoList.length) mediaHTML = bokantajPhotoGrid(photoList);
+                    const videoList = Array.isArray(post.videos) ? post.videos.filter(Boolean) : [];
+                    if (videoList.length) {
+                        mediaHTML += videoList.map((url) => `<video class="bokantaj-video" controls playsinline preload="metadata" src="${window.escapeHtmlAttr(url)}"></video>`).join('');
+                    }
 
                     let actionBtnHTML = '';
                     if (isLyann) {
@@ -3376,6 +3389,16 @@ safeDomReady(() => {
                     window.openQuickProfileModal(memberId);
                 }
             };
+            feedRoot.addEventListener('error', (event) => {
+                const video = event.target;
+                if (!video || video.tagName !== 'VIDEO' || !video.classList.contains('bokantaj-video')) return;
+                if (video.dataset.playbackError === '1') return;
+                video.dataset.playbackError = '1';
+                const note = document.createElement('p');
+                note.className = 'bokantaj-video-error';
+                note.textContent = 'Cette vidéo ne peut pas être lue sur cet appareil.';
+                video.after(note);
+            }, true);
             feedRoot.addEventListener('click', (event) => {
                 const photo = event.target.closest('.bokantaj-photo');
                 if (!photo || !feedRoot.contains(photo)) return;
@@ -3424,6 +3447,10 @@ safeDomReady(() => {
                 if (!window.LYANN_API_CLIENT?.createPost) throw new Error('Publication indisponible');
                 const mediaUrls = [];
                 for (const file of attachedPhotoFiles) mediaUrls.push(await window.LYANN_API_CLIENT.uploadPostPhoto(file));
+                if (submitBtn && attachedVideoFile) submitBtn.textContent = 'Envoi de la vidéo…';
+                if (attachedVideoFile && window.LYANN_API_CLIENT.uploadPostVideo) {
+                    mediaUrls.push(await window.LYANN_API_CLIENT.uploadPostVideo(attachedVideoFile));
+                }
                 if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.createPost === 'function') {
                     await window.LYANN_API_CLIENT.createPost({
                         content: text,
@@ -3437,7 +3464,9 @@ safeDomReady(() => {
                 attachedPhotos.forEach(url => URL.revokeObjectURL(url));
                 attachedPhotos = [];
                 attachedPhotoFiles = [];
+                if (attachedVideo) URL.revokeObjectURL(attachedVideo);
                 attachedVideo = null;
+                attachedVideoFile = null;
                 if (flashMediaPreviewContainer) flashMediaPreviewContainer.innerHTML = '';
                 if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
 
@@ -3915,8 +3944,12 @@ safeDomReady(() => {
                 else delete bookingModal.dataset.targetUserId;
                 if (currentQuickMember && currentQuickMember.name) bookingModal.dataset.targetUserName = currentQuickMember.name;
             }
-            if (targetNameEl && currentQuickMember) {
-                targetNameEl.textContent = `Proposer une mission à ${currentQuickMember.name}`;
+            if (currentQuickMember) {
+                const bookingName = window.formatPublicName
+                    ? window.formatPublicName(currentQuickMember, null, currentQuickMember.name || currentQuickMember.full_name || 'ce Lyanneur')
+                    : (currentQuickMember.name || currentQuickMember.full_name || 'ce Lyanneur');
+                if (bookingModal) bookingModal.dataset.targetUserName = bookingName;
+                if (targetNameEl) targetNameEl.textContent = `Proposer une mission à ${bookingName}`;
             }
             if (typeof window.installBookingCommunePicker === 'function') window.installBookingCommunePicker();
             if (bookingModal) bookingModal.classList.add('active');
@@ -4220,19 +4253,41 @@ safeDomReady(() => {
 
     window.installBookingCommunePicker = function installBookingCommunePicker() {
         const input = document.getElementById('bookingLocation');
-        if (!input || input.dataset.communeDrawer === '1') return;
+        if (!input) return;
+        if (input.dataset.communeDrawer === '1') {
+            const existing = document.getElementById('bookingCommunePicker');
+            if (existing && !existing.dataset.bound) {
+                existing.dataset.bound = '1';
+                existing.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openBookingCommuneDrawer(input, existing);
+                });
+            }
+            return;
+        }
         input.dataset.communeDrawer = '1';
         input.type = 'hidden';
         input.removeAttribute('required');
         const fieldLabel = document.querySelector('label[for="bookingLocation"]');
         if (fieldLabel) fieldLabel.textContent = 'Commune';
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.id = 'bookingCommunePicker';
-        button.className = 'modal-input lyann-commune-picker';
+        let button = document.getElementById('bookingCommunePicker');
+        if (!button) {
+            button = document.createElement('button');
+            button.type = 'button';
+            button.id = 'bookingCommunePicker';
+            button.className = 'modal-input lyann-commune-picker';
+            input.after(button);
+        }
         button.textContent = input.value || 'Choisir une île, puis une commune';
-        input.after(button);
-        button.addEventListener('click', () => openBookingCommuneDrawer(input, button));
+        if (!button.dataset.bound) {
+            button.dataset.bound = '1';
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                openBookingCommuneDrawer(input, button);
+            });
+        }
     };
     window.resetBookingCommunePicker = function resetBookingCommunePicker() {
         const input = document.getElementById('bookingLocation');
@@ -4240,8 +4295,38 @@ safeDomReady(() => {
         if (input) input.value = '';
         if (button) button.textContent = 'Choisir une île, puis une commune';
     };
-    function openBookingCommuneDrawer(input, button) {
+    function resolveBookingTerritoryContext() {
         const dataset = window.LYANN_TERRITORY_DATASET || {};
+        let profile = window.LYANN_CURRENT_USER_PROFILE || window.LYANN_CURRENT_USER || {};
+        try {
+            if (!profile.territory && !profile.city) {
+                const raw = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_profile') : null)
+                    || localStorage.getItem('lyan_user_profile');
+                if (raw) profile = Object.assign({}, profile, JSON.parse(raw));
+            }
+        } catch (_) {}
+        const profileTerritory = String(profile.territory || profile.location || '').trim();
+        const profileCity = String(profile.city || profile.commune || '').trim();
+        const matched = typeof window.findTerritoryAndIslandForCommune === 'function'
+            ? window.findTerritoryAndIslandForCommune(profileCity)
+            : null;
+        let territoryKey = matched && matched.territory;
+        if (!territoryKey && profileTerritory) {
+            territoryKey = Object.keys(dataset).find((key) => key === profileTerritory || key.startsWith(profileTerritory) || profileTerritory.includes(key.replace(/\s*\(\d+\)\s*$/, '').trim()));
+        }
+        if (!territoryKey || !dataset[territoryKey]) territoryKey = 'Guadeloupe (971)';
+        const islands = Object.keys(dataset[territoryKey] || {}).map((island) => ({
+            island,
+            territory: territoryKey,
+            communes: [...new Set(dataset[territoryKey][island] || [])]
+        }));
+        const preferredIsland = matched && matched.island
+            || islands.find((entry) => entry.communes.some((c) => c.toLowerCase() === profileCity.toLowerCase()))?.island
+            || null;
+        return { territoryKey, islands, preferredIsland };
+    }
+    function openBookingCommuneDrawer(input, button) {
+        const context = resolveBookingTerritoryContext();
         let sheet = document.getElementById('lyannCommuneDrawer');
         if (!sheet) {
             sheet = document.createElement('div');
@@ -4256,41 +4341,32 @@ safeDomReady(() => {
         const list = sheet.querySelector('.lyann-commune-list');
         const title = sheet.querySelector('#lyannCommuneTitle');
         const back = sheet.querySelector('.lyann-commune-back');
-        const names = {
-            'Guadeloupe (971)': 'Guadeloupe',
-            'Martinique (972)': 'Martinique',
-            'Guyane (973)': 'Guyane',
-            'La Réunion (974)': 'La Réunion'
-        };
-        const islands = Object.keys(names).map((territory) => {
-            const seen = new Set();
-            const communes = [];
-            Object.values(dataset[territory] || {}).forEach((group) => {
-                (group || []).forEach((commune) => {
-                    if (seen.has(commune)) return;
-                    seen.add(commune);
-                    communes.push(commune);
-                });
-            });
-            return { island: names[territory], communes };
-        });
+        const islands = context.islands;
         function showIslands() {
             title.textContent = 'Choisir une île';
             back.hidden = true;
             list.innerHTML = '';
+            if (!islands.length) {
+                const empty = document.createElement('p');
+                empty.className = 'lyann-commune-empty';
+                empty.textContent = 'Aucune île disponible pour le moment.';
+                list.appendChild(empty);
+                return;
+            }
             islands.forEach((entry) => {
                 const row = document.createElement('button');
                 row.type = 'button';
-                row.className = 'lyann-commune-row';
+                row.className = 'lyann-commune-row' + (entry.island === context.preferredIsland ? ' is-preferred' : '');
                 row.innerHTML = '<strong></strong><span></span>';
                 row.querySelector('strong').textContent = entry.island;
-                row.querySelector('span').textContent = entry.communes.length + ' communes';
+                row.querySelector('span').textContent = entry.communes.length + ' communes'
+                    + (entry.island === context.preferredIsland ? ' · Votre zone' : '');
                 row.addEventListener('click', () => showCommunes(entry));
                 list.appendChild(row);
             });
         }
         function showCommunes(entry) {
-            title.textContent = entry.island;
+            title.textContent = 'Choisir une commune · ' + entry.island;
             back.hidden = false;
             list.innerHTML = '';
             entry.communes.forEach((commune) => {
@@ -4299,7 +4375,8 @@ safeDomReady(() => {
                 row.className = 'lyann-commune-row';
                 row.textContent = commune;
                 row.addEventListener('click', () => {
-                    const label = commune + ' · ' + entry.island;
+                    const shortTerritory = String(entry.territory || '').replace(/\s*\(\d+\)\s*$/, '').trim();
+                    const label = commune + ' · ' + entry.island + (shortTerritory ? ' · ' + shortTerritory : '');
                     input.value = label;
                     button.textContent = label;
                     sheet.hidden = true;
@@ -4311,8 +4388,12 @@ safeDomReady(() => {
             event.stopPropagation();
             showIslands();
         };
-        showIslands();
+        // Prefill: jump straight to communes of the user's island when known.
+        const preferred = islands.find((entry) => entry.island === context.preferredIsland);
+        if (preferred) showCommunes(preferred);
+        else showIslands();
         sheet.hidden = false;
+        sheet.style.display = 'flex';
     }
     if (document.getElementById('bookingLocation')) window.installBookingCommunePicker();
 
@@ -4327,7 +4408,12 @@ safeDomReady(() => {
             e.preventDefault();
             const memberName = btn.dataset.memberName || 'ce Lyanneur';
             const targetNameEl = document.getElementById('bookingTargetMemberName');
+            if (bookingModal) {
+                if (btn.dataset.memberId) bookingModal.dataset.targetUserId = btn.dataset.memberId;
+                bookingModal.dataset.targetUserName = memberName;
+            }
             if (targetNameEl) targetNameEl.textContent = `Proposer une mission à ${memberName}`;
+            if (typeof window.installBookingCommunePicker === 'function') window.installBookingCommunePicker();
             if (bookingModal) bookingModal.classList.add('active');
         });
     });
@@ -5282,11 +5368,12 @@ safeDomReady(() => {
     window.closeUserAccountModal = function() {
         if (window.LYANN_SURFACES?.isOpen?.('account')) {
             window.LYANN_SURFACES.close('account', { reason: 'close' });
-            return;
         }
         const modal = document.getElementById('userAccountModal');
         if (modal) {
             modal.classList.remove('active', 'lyann-surface-active');
+            modal.style.setProperty('display', 'none', 'important');
+            modal.setAttribute('aria-hidden', 'true');
         }
         const menuStillOpen = document.getElementById('mobileHamburgerDrawerOverlay')?.classList.contains('active');
         if (!menuStillOpen && !document.body.classList.contains('lyann-messaging-open') && !window.LYANN_SURFACES?.current?.()) {

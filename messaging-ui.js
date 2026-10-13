@@ -106,12 +106,36 @@
         return null;
     }
 
+    function dismissAccountChrome() {
+        try {
+            if (window.LYANN_SURFACES?.isOpen?.('account')) {
+                window.LYANN_SURFACES.close('account', { reason: 'messaging' });
+            }
+        } catch (_) { /* ignore */ }
+        try {
+            if (typeof window.closeUserAccountModal === 'function') window.closeUserAccountModal();
+        } catch (_) { /* ignore */ }
+        const account = document.getElementById('userAccountModal');
+        if (account) {
+            account.classList.remove('active', 'lyann-surface-active');
+            account.style.setProperty('display', 'none', 'important');
+            account.setAttribute('aria-hidden', 'true');
+        }
+        const hamburger = document.getElementById('mobileHamburgerDrawerOverlay');
+        if (hamburger?.classList.contains('active')) {
+            hamburger.classList.remove('active');
+            hamburger.setAttribute('aria-hidden', 'true');
+        }
+    }
+
     function setShellVisible(visible) {
         const manager = surfaces();
         const el = modal();
         if (visible) {
             document.body.classList.add('in-chat-active', 'lyann-messaging-open');
             document.body.style.overflow = 'hidden';
+            // Mon Compte / menu must never frame the inbox (card-over-account bug).
+            dismissAccountChrome();
             if (el) {
                 el.classList.add('active', 'lyann-surface-active');
                 el.style.setProperty('display', 'flex', 'important');
@@ -121,6 +145,8 @@
                 if (!manager.getElement(CHAT_SURFACE)) registerSurfaces();
                 manager.open(CHAT_SURFACE);
             }
+            // Surfaces.open closes other majors, but re-assert account is gone after.
+            dismissAccountChrome();
         } else {
             if (el) {
                 el.classList.remove('active', 'lyann-surface-active');

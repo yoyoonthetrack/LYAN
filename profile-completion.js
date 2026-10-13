@@ -77,6 +77,7 @@
         }
         return null;
     }
+    window.findTerritoryAndIslandForCommune = findTerritoryAndIslandForCommune;
 
     function initProfileCompletion() {
         const modal = document.getElementById('modalCompleteProfile');

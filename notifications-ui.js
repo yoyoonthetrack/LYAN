@@ -374,6 +374,10 @@ function renderNotificationsModal() {
         });
     });
 
+    // Keep notifications above messaging / account chrome (portal to body + max z-index).
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    else document.body.appendChild(modal);
+    modal.style.setProperty('z-index', '2147483002', 'important');
     modal.classList.add('active');
     if (!wasOpen) {
         if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();

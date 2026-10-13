@@ -100,6 +100,8 @@ function paintCompactThreadBanner(banner, { kicker, title, meta, requestId, onOp
         viewMissionBtn.style.display = 'none';
         if (requestId) viewMissionBtn.dataset.requestId = requestId;
     }
+    // Banner already carries mission context — keep header jump from overlapping it.
+    syncMissionJump(false);
 }
 
 function hideChatMissionChrome() {
@@ -179,9 +181,38 @@ function setThreadMenuAction(id, label, icon, run, visible) {
     };
 }
 
-function scrollToThreadQuote() {
-    const node = document.querySelector('#chatMessagesContainer [data-live-quote], #chatMessagesContainer .chat-timeline-card, #chatMessagesContainer .chat-msg-card');
-    if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+function scrollToThreadQuote(quoteId) {
+    const box = document.getElementById('chatMessagesContainer');
+    if (!box) return;
+    const pendingId = quoteId || (() => {
+        let found = null;
+        if (typeof timelineQuotes !== 'undefined' && timelineQuotes) {
+            timelineQuotes.forEach((quote) => {
+                if (found || !quote || !quote.id || quote.id.toString().startsWith('milestone:')) return;
+                if (['SENT', 'VIEWED', 'REVISED'].includes(String(quote.status || ''))) found = quote.id;
+            });
+        }
+        return found;
+    })();
+    let node = null;
+    if (pendingId) {
+        node = box.querySelector(quoteTimelineSelector(pendingId))
+            || box.querySelector('[data-live-quote-id="' + CSS.escape(String(pendingId)) + '"]');
+    }
+    if (!node) {
+        node = box.querySelector('[data-entity-type="quote"][data-entity-id], [data-live-quote="1"], [data-live-quote-id]');
+    }
+    if (!node && pendingId && typeof window.__lyannAppendLiveQuote === 'function' && typeof timelineQuotes !== 'undefined') {
+        const quote = timelineQuotes.get(String(pendingId));
+        if (quote) {
+            window.__lyannAppendLiveQuote(box, quote);
+            node = box.querySelector('[data-live-quote-id="' + CSS.escape(String(pendingId)) + '"]');
+        }
+    }
+    if (!node || typeof node.scrollIntoView !== 'function') return;
+    node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    node.classList.add('lyann-quote-highlight');
+    window.setTimeout(() => node.classList.remove('lyann-quote-highlight'), 1600);
 }
 
 function openMissionTracking(mission) {
@@ -243,7 +274,7 @@ function threadPrimaryAction(requestContext, mission, quotes, myUserId) {
         return { id: 'lyannThreadPrimaryAction', label: 'Suivi', run: () => openMissionTracking(mission) };
     }
     if (pending) {
-        return { id: 'lyannThreadPrimaryAction', label: 'Voir le devis', run: () => scrollToThreadQuote() };
+        return { id: 'lyannThreadPrimaryAction', label: 'Voir le devis', run: () => scrollToThreadQuote(pending.id) };
     }
     if (request && !mine) {
         return {
@@ -2291,6 +2322,10 @@ function renderMissionHistory(quotes) {
 function syncMissionJump(visible) {
     const info = document.querySelector('#chatModal .chat-header-info') || document.querySelector('.chat-header-info');
     if (!info) return;
+    const banner = document.getElementById('chatMissionContextBar') || document.getElementById('chatMissionContext');
+    const bannerOpen = !!(banner && banner.style.display !== 'none' && banner.classList.contains('lyann-thread-context'));
+    // Compact mission banner already occupies the slot under the header.
+    if (bannerOpen) visible = false;
     let button = document.getElementById('chatMissionJump');
     if (!visible) {
         if (button) button.hidden = true;
@@ -2979,14 +3014,17 @@ async function renderMessages(passedMessages = null, options = {}) {
 
     // Render Production Supabase Real Quote Cards
     function appendLiveQuoteCard(container, q) {
-        if (q && (q.status === 'SENT' || q.status === 'ACCEPTED' || q.status === 'REJECTED')) return;
+        if (!q || !q.id || !container) return;
+        // Timeline message cards already cover the quote — avoid a duplicate live card.
+        if (container.querySelector(quoteTimelineSelector(q.id))) return;
+        const status = String(q.status || '');
+        if (!['SENT', 'VIEWED', 'REVISED', 'ACCEPTED'].includes(status)) return;
         const isMyQuote = (q.provider_id || q.helper_id) === getMyId();
         const payment = window.LYANN_QUOTE_PAYMENT;
         const pendingMs = payment ? payment.payableMilestoneForQuote(q, getMyId()) : null;
         const fundedMs = (q.milestones || []).find((m) => m && (m.status === 'FUNDED' || m.status === 'IN_PROGRESS'));
         const completedMs = (q.milestones || []).find((m) => m && m.status === 'COMPLETED');
         const quoteDiv = document.createElement('div');
-        if (container.querySelector(quoteTimelineSelector(q.id))) return;
         quoteDiv.dataset.liveQuote = '1';
         quoteDiv.dataset.liveQuoteId = q.id;
         quoteDiv.className = `chat-msg-card ${isMyQuote ? 'align-right' : 'align-left'}`;
