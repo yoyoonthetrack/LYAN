@@ -3067,6 +3067,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.loadAdminSection('sec-requests');
     };
 
+    window.adminViewReportEvidence = async function(reportId) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/reports/${reportId}/evidence`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Preuves indisponibles.');
+            return;
+        }
+        const files = data.files || [];
+        if (!files.length) {
+            alert('Aucune preuve jointe.');
+            return;
+        }
+        files.forEach((file) => window.open(file.url, '_blank', 'noopener'));
+    };
+
     window.adminUpdateReport = async function(reportId, source, status) {
         const res = await window.fetchWithAdminAuth(`/v1/admin/ops/reports/${reportId}`, {
             method: 'POST',
@@ -3332,6 +3347,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td>${adminDate(row.created_at)}</td>
                     <td>${adminBadge(row.status)}</td>
                     <td>
+                        ${row.source === 'user' && row.evidence_count ? `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminViewReportEvidence('${row.id}')">Preuves (${row.evidence_count})</button>` : ''}
+                        ${row.source === 'user' && row.status === 'OPEN' ? `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminUpdateReport('${row.id}','user','IN_REVIEW')">Prendre en charge</button>` : ''}
                         <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminUpdateReport('${row.id}','${row.source}','RESOLVED')">Classer</button>
                     </td>
                 </tr>`).join('') : adminEmpty(8, 'Aucun signalement.');

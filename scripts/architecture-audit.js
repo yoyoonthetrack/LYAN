@@ -21,6 +21,11 @@ const warnings = [];
 function fail(message) { failures.push(message); }
 function warn(message) { warnings.push(message); }
 function read(file) { return fs.readFileSync(path.join(root, file), 'utf8'); }
+function scriptTagIndex(source, fileName) {
+  const escaped = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = String(source || '').match(new RegExp(`<script\\s+src=["']${escaped}(?:\\?[^"']*)?["']`, 'i'));
+  return match ? match.index : Infinity;
+}
 function indexOfOrInfinity(source, needle) {
   const i = source.indexOf(needle);
   return i === -1 ? Number.POSITIVE_INFINITY : i;
@@ -57,9 +62,9 @@ for (const file of productPages) {
   }
 
   if (html.includes('<script src="script.js')) {
-    const platformCore = indexOfOrInfinity(html, '<script src="platform-core.js"></script>');
-    const notificationsUi = indexOfOrInfinity(html, '<script src="notifications-ui.js"></script>');
-    const appShell = indexOfOrInfinity(html, '<script src="app-shell.js"></script>');
+    const platformCore = scriptTagIndex(html, 'platform-core.js');
+    const notificationsUi = scriptTagIndex(html, 'notifications-ui.js');
+    const appShell = scriptTagIndex(html, 'app-shell.js');
     const legacyScript = indexOfOrInfinity(html, '<script src="script.js');
     if (!Number.isFinite(platformCore) || !Number.isFinite(notificationsUi) || !Number.isFinite(appShell)) {
       fail(`${file}: extracted platform/notification/app shell domains are missing before script.js`);
