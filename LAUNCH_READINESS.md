@@ -16,11 +16,7 @@ Une publication réelle est en ligne sur Bokantaj Staging : LYANN Trafik, « Poi
 
 Deux brouillons attendent dans l’administration : LYANN Actu, sur la sortie de redressement de Pointe-à-Pitre (RCI, 17 octobre 2026), et LYANN Rimèd, sur une page des Jardins de Nini. Rimèd reste en validation humaine. Ces textes ont été préparés pour l’essai, sans appel de modèle payant.
 
-Le premier appel AI Gateway a répondu HTTP 401. Il utilisait le jeton OIDC du fichier local, expiré le 16 septembre 2026, et rattaché au projet Production `lyan`, pas à Staging. Un jeton frais du projet `lyann-staging-preview` obtient HTTP 200 sur la liste des modèles, sans génération. L’audience acceptée est `https://vercel.com/yoyo-d85d`. Aucune clé n’a été créée et aucune completion n’a été demandée.
-
-La publication Trafik a été approuvée par le script de test, pas par un administrateur identifié. `approved_by` reste vide. Ce n’est pas une validation éditoriale humaine.
-
-La génération reste éteinte tant que `LYANN_EDITORIAL_AI_ENABLED` n’est pas `1` sur Staging. OIDC n’a pas de plafond de 5 USD. Une clé dédiée pourrait porter ce plafond, sans remise à zéro, pendant 30 jours, sans rechargement, uniquement sur le projet Staging. Elle n’est pas créée.
+Le budget AI Gateway du seul projet `lyann-staging-preview` est de 5 USD, période `none`, actif, sans rechargement. Le budget d’équipe et celui de Production n’ont pas été modifiés. Deux brouillons `openai/gpt-4o-mini` sont en attente : Actu (356 + 94 tokens) et Rimèd (341 + 83 tokens). Le compteur du budget indique 0,00021075 USD. La validation humaine n’est pas faite. Le post Trafik du script n’est plus visible ; sa tâche reste en attente. `LYANN_EDITORIAL_AI_ENABLED` n’est pas posé sur Vercel, donc aucune autre génération ne part.
 
 Canal 10, Harold Luce / LHN Média et Chikanos ne sont pas branchés : l’adresse exacte du compte reste à confirmer. Gwada Connexion n’est pas collecté.
 

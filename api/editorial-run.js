@@ -80,7 +80,7 @@ async function rewriteDraft(draft, fetchImpl) {
                         'Tu ne recopies pas le titre seul. Tu reformules les faits avec tes mots, sans changer le sens.',
                         'Tu n’écris pas le nom du média ni une formule « selon » le média. Tu gardes l’attribution si le fait est une décision, une déclaration ou une accusation.',
                         'Tu n’inventes aucun fait, chiffre, date ou citation. Pas d’emoji, pas de créole forcé, pas de question artificielle.',
-                        'Si le sujet touche la santé, tu ne donnes ni dosage, ni promesse de guérison.'
+                        'Si le sujet touche la santé, tu distingues l’usage traditionnel de la connaissance médicale établie. Tu ne donnes ni dosage, ni promesse de guérison.'
                     ].join(' ')
                 },
                 {
@@ -94,7 +94,14 @@ async function rewriteDraft(draft, fetchImpl) {
     const payload = await response.json();
     const text = acceptRewrittenText(payload?.choices?.[0]?.message?.content, draft);
     if (!text) return { ok: false, reason: 'réponse du modèle refusée' };
-    return { ok: true, text };
+    const usage = payload && payload.usage ? payload.usage : {};
+    return {
+        ok: true,
+        text,
+        model: config.model,
+        promptTokens: usage.prompt_tokens || 0,
+        completionTokens: usage.completion_tokens || 0
+    };
 }
 
 async function itemsFromSource(source, fetchText) {
@@ -124,11 +131,14 @@ async function itemsFromSource(source, fetchText) {
 async function existingSourceUrls(supabase, agentId) {
     const { data, error } = await supabase
         .from('lyann_agent_tasks')
-        .select('metadata')
+        .select('metadata, status')
         .eq('agent_id', agentId)
         .limit(200);
     if (error) throw error;
-    return new Set((data || []).map((row) => row.metadata && row.metadata.source_url).filter(Boolean));
+    return new Set((data || [])
+        .filter((row) => row.status !== 'CANCELLED')
+        .map((row) => row.metadata && row.metadata.source_url)
+        .filter(Boolean));
 }
 
 async function collectEditorial(supabase, options = {}) {
@@ -199,7 +209,10 @@ async function collectEditorial(supabase, options = {}) {
                         validation_status: draft.validationStatus,
                         proposed_text: rewritten.text,
                         profile_id: agent.linked_profile_id,
-                        generator: 'model'
+                        generator: 'model',
+                        model: rewritten.model,
+                        prompt_tokens: rewritten.promptTokens,
+                        completion_tokens: rewritten.completionTokens
                     }
                 }).select('id').single();
                 if (insertError) throw insertError;
