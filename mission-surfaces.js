@@ -104,20 +104,42 @@
     }
 
     function openChild(id) {
-        if (typeof window.openChatChildSurface === 'function') window.openChatChildSurface(id);
-        else {
-            const node = document.getElementById(id);
-            if (node) node.style.display = 'flex';
+        const messaging = window.LYANN_MESSAGING;
+        if (messaging && typeof messaging.openChildSurface === 'function') {
+            messaging.openChildSurface(id);
+            return;
         }
+        if (typeof window.openChatChildSurface === 'function') {
+            window.openChatChildSurface(id);
+            return;
+        }
+        const node = document.getElementById(id);
+        if (!node) return;
+        node.classList.add('is-open');
+        node.style.display = 'flex';
     }
 
     function closePicker() {
         const overlay = document.getElementById(PICKER_ID);
-        if (!overlay) return;
-        overlay.classList.remove('is-open');
-        overlay.style.display = 'none';
-        if (typeof window.closeChatChildSurface === 'function' && !dossierOverlayOpen()) {
-            window.closeChatChildSurface(PICKER_ID);
+        if (overlay) {
+            overlay.classList.remove('is-open');
+            overlay.style.setProperty('display', 'none', 'important');
+        }
+        const main = document.querySelector('#chatModal .chat-main-area');
+        if (main && !dossierOverlayOpen()) {
+            main.classList.remove('lyann-child-surface-open', 'chat-child-surface-active');
+            delete main.dataset.lyannChildSurface;
+            document.body.classList.remove('lyann-messaging-child-open');
+            main.querySelectorAll('#chatMessagesContainer, .chat-input-area, #chatReplyBar').forEach((node) => {
+                node.style.removeProperty('display');
+            });
+        }
+        if (!dossierOverlayOpen() && window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.hideAllChildSurfaces === 'function') {
+            window.LYANN_MESSAGING.hideAllChildSurfaces();
+        }
+        const thread = document.getElementById('chatMessagesContainer');
+        if (thread && !thread.querySelector('.chat-msg-bubble-wrap') && typeof window.refreshChatUI === 'function') {
+            window.refreshChatUI();
         }
     }
 
@@ -227,7 +249,10 @@
         const heading = overlay && overlay.querySelector('h4');
         if (heading) heading.innerHTML = 'Dossier de mission';
         const exit = overlay && overlay.querySelector('#btnExitTracking');
-        if (exit) exit.textContent = 'Retour au chat';
+        if (exit) {
+            exit.textContent = 'Retour au chat';
+            exit.setAttribute('aria-label', 'Fermer le dossier');
+        }
         if (!list) return;
         list.replaceChildren();
         if (!dossier) {

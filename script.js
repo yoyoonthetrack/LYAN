@@ -4975,7 +4975,8 @@ safeDomReady(() => {
                 contactId: contactId,
                 requestId: requestId || null,
                 invitationId: invitationId || null,
-                missionId: missionId || null
+                missionId: missionId || null,
+                consult: true
             });
             if (typeof window.openMissionDossier === 'function' && requestId) {
                 window.openMissionDossier({ requestId, invitationId, missionId });

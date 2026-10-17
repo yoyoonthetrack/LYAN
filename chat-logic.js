@@ -1382,8 +1382,11 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
         localStorage.setItem('lyann_last_active_contact', JSON.stringify({ id: contactId, name: displayName, avatar: displayAvatar }));
     } catch(e) {}
 
-    // Link conversation to request in DB safely via initiateLyannHelp (Step 17.4 Security Gate)
-    if (!isLyannSupportContact(contactId) && initialNeed && initialNeed.requestId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.initiateLyannHelp === 'function') {
+    // An existing mission or invitation is already linked. Calling initiate here
+    // asks to create a new proposal and toasts “n’accepte plus de nouvelles
+    // propositions” when the demandeur only opens a finished dossier.
+    const consultingExistingDeal = Boolean(initialNeed && (initialNeed.consult || initialNeed.invitationId || initialNeed.missionId));
+    if (!consultingExistingDeal && !isLyannSupportContact(contactId) && initialNeed && initialNeed.requestId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.initiateLyannHelp === 'function') {
         try {
             const helpRes = await window.LYANN_API_CLIENT.initiateLyannHelp(initialNeed.requestId);
             if (helpRes && helpRes.error) {

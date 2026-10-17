@@ -100,13 +100,32 @@ Bundle `ios-mvbw21dt-794541`. La liste des conversations s’est affichée à tr
 | Notification individuelle | PARTIEL. La carte « Proposition de devis » est atteignable. Le rappel groupé n’a pas été ouvert |
 | Reprise après le bouton principal | La capture montre l’écran d’accueil iOS. La session après fermeture complète reste celle déjà prouvée |
 
+## Phase 8.4 — mesures, retour au fil, iPhone
+
+Bundle `ios-mvbx5rhh-35b11e`, Staging `tdktfbtqceldlaeqjtow`, API locale `http://172.20.10.2:8098`. Signature automatique, équipe `WLV4WC47U2`, identifiant `app.lyann.mobile`.
+
+Chargement de la liste, un lancement à froid, session déjà en mémoire : session 0 ms, requête 2 192 ms, rendu 3 ms, 3 lignes, total 2 195 ms. Le bouton Messages apparaît 4,4 s après le lancement. Une réponse de liste plus ancienne est ignorée dès qu’un message local met la ligne à jour (`inboxRenderGeneration`). Le rendu d’un fil plus ancien est déjà ignoré si l’interlocuteur a changé.
+
+| Parcours | Résultat |
+|---|---|
+| Deuxième fil, Support LYANN | PASS |
+| Retour de la liste des missions vers le fil | PASS. Le compositeur et les messages de Qa A. reviennent |
+| Dossier depuis le fil, Jalons neufs, côté Lyanneur | PASS. 7,76 € et 11,64 € à recevoir, versement bancaire non confirmé. Pas de toast de nouvelle proposition |
+| Retour du dossier au fil | PASS |
+| Rappel groupé | NON TESTÉ. Aucune carte « missions — » dans le panneau de QA B |
+| Reprise par le bouton principal de l’iPhone | La capture a montré l’écran d’accueil. La session après fermeture complète reste prouvée plus haut |
+
+Ouvrir un dossier déjà lié ne lance plus `initiate_lyann_help_conversation`. Cette fonction sert à créer une proposition. Fermer la liste des missions retire l’état qui cachait les messages et le champ de saisie.
+
+Installation sur l’iPhone, sans TestFlight : brancher le téléphone, lui faire confiance, ouvrir `ios/App/App.xcodeproj`, schéma App, destination le téléphone, puis Run. Ne pas archiver et ne pas envoyer à App Store Connect. Le téléphone doit être sur le même réseau que le Mac pour joindre l’API `8098`. La messagerie et les missions passent par Supabase en HTTPS.
+
 ## iPhone physique — seulement ce que le simulateur ne couvre pas
 
 - Ouvrir le lien de confirmation d’un compte créé avec une adresse réellement lue. Google et Apple.
 - Connect de QA A : captcha Stripe, IBAN de test `FR1420041010050500013M02606`, code téléphone `000000`. Ne pas utiliser Stripe Live. Ne pas valider le versement de la mission inversée tant que Connect n’est pas actif.
-- Installer le bundle sur l’iPhone, sans TestFlight tant que ce n’est pas demandé.
+- Installer ce bundle avec Xcode, schéma App, sans archive ni TestFlight.
 - Notification push réelle, retour depuis la page Stripe, et un lien qui quitte l’application.
-- Ouvrir une conversation et envoyer un message. Ouvrir l’onglet Mes missions puis un dossier.
+- Un rappel groupé, s’il apparaît, doit ouvrir la liste filtrée des missions.
 
 À reporter : paiement groupé de plusieurs jalons, abonnements payants, confirmation bancaire.
 

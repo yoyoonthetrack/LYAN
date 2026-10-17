@@ -129,6 +129,161 @@ final class LyannSmokeUITests: XCTestCase {
         note(resumed ? "resumed" : "resume-failed")
     }
 
+    func testReturnFromMissionPicker() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["Messages"].waitForExistence(timeout: 25))
+        app.buttons["Messages"].firstMatch.tap()
+        let row = app.buttons["Ouvrir la conversation avec Qa A."]
+        XCTAssertTrue(row.waitForExistence(timeout: 15))
+        row.tap()
+        XCTAssertTrue(app.textViews["Écrivez un message..."].waitForExistence(timeout: 10))
+        let missions = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Missions")).firstMatch
+        XCTAssertTrue(missions.waitForExistence(timeout: 8))
+        missions.tap()
+        let back = app.buttons["Retour au chat"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 6))
+        back.tap()
+        let composer = app.textViews["Écrivez un message..."]
+        let visible = composer.waitForExistence(timeout: 6) && composer.isHittable
+        save(app, "110-back-chat")
+        note(visible ? "composer-restored" : "composer-hidden")
+        XCTAssertTrue(visible, "Le fil reste vide après Retour au chat")
+        let done = app.buttons["Terminées"].firstMatch
+        if app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Missions")).firstMatch.isHittable {
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Missions")).firstMatch.tap()
+        }
+        if done.waitForExistence(timeout: 4), done.isHittable { done.tap(); sleep(1) }
+        let jalons = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Jalons neufs")).firstMatch
+        if jalons.waitForExistence(timeout: 4), jalons.isHittable {
+            jalons.tap()
+            sleep(2)
+            save(app, "111-dossier-from-chat")
+            let toast = app.staticTexts["Cette demande n’accepte plus de nouvelles propositions pour le moment."].exists
+            note(toast ? "toast-on-consult" : "no-toast-on-consult")
+            let closeDossier = app.buttons["Fermer le dossier"].firstMatch
+            if closeDossier.waitForExistence(timeout: 4), closeDossier.isHittable { closeDossier.tap() }
+            note(app.textViews["Écrivez un message..."].waitForExistence(timeout: 6) ? "dossier-back-chat" : "dossier-back-lost")
+            save(app, "112-after-dossier")
+        } else {
+            note("jalons-not-in-b-picker")
+        }
+    }
+
+    func testPhase84ThreadsDossierAndToast() throws {
+        let app = XCUIApplication()
+        let started = Date()
+        app.launch()
+        XCTAssertTrue(app.buttons["Messages"].waitForExistence(timeout: 30))
+        note("launch-ms \(Int(Date().timeIntervalSince(started) * 1000))")
+        let inboxAt = Date()
+        app.buttons["Messages"].firstMatch.tap()
+        let qaA = app.buttons["Ouvrir la conversation avec Qa A."]
+        let qaL = app.buttons["Ouvrir la conversation avec Qa L."]
+        let listed = qaA.waitForExistence(timeout: 12) || qaL.waitForExistence(timeout: 4)
+        note("inbox-ms \(Int(Date().timeIntervalSince(inboxAt) * 1000)) listed=\(listed)")
+        let trace = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "inbox session=")).firstMatch
+        if trace.exists { note(trace.label) }
+        save(app, "100-inbox")
+        XCTAssertTrue(listed, "Liste absente")
+
+        let first = qaA.exists ? qaA : qaL
+        let support = app.buttons["Ouvrir la conversation avec Support LYANN"].firstMatch
+        let other: XCUIElement? = support.exists
+            ? support
+            : app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Ouvrir la conversation avec")).allElementsBoundByIndex.first { $0.label != first.label }
+        first.tap()
+        XCTAssertTrue(app.textViews["Écrivez un message..."].waitForExistence(timeout: 10))
+        save(app, "101-thread-a")
+        if app.buttons["Retour"].firstMatch.isHittable { app.buttons["Retour"].firstMatch.tap() }
+        if let other, other.waitForExistence(timeout: 6) {
+            other.tap()
+            _ = app.textViews["Écrivez un message..."].waitForExistence(timeout: 8)
+            save(app, "102-thread-b")
+            note("switched-thread")
+            if app.buttons["Retour"].firstMatch.isHittable { app.buttons["Retour"].firstMatch.tap() }
+        } else {
+            note("second-thread-missing")
+        }
+        save(app, "103-back-list")
+        if first.waitForExistence(timeout: 6) { first.tap() }
+        let dossierEntry = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Missions")).firstMatch
+        if dossierEntry.waitForExistence(timeout: 6), dossierEntry.isHittable {
+            dossierEntry.tap()
+            sleep(2)
+            save(app, "104-from-thread")
+            let backChat = app.buttons["Retour au chat"].firstMatch
+            if backChat.waitForExistence(timeout: 6), backChat.isHittable {
+                backChat.tap()
+                note(app.textViews["Écrivez un message..."].waitForExistence(timeout: 6) ? "back-to-chat" : "back-to-chat-lost")
+                save(app, "105-back-chat")
+            } else {
+                note("retour-chat-missing")
+            }
+        } else {
+            note("dossier-entry-missing")
+            save(app, "104-from-thread")
+        }
+
+        if app.buttons["Notifications"].firstMatch.waitForExistence(timeout: 4), app.buttons["Notifications"].firstMatch.isHittable {
+            app.buttons["Notifications"].firstMatch.tap()
+            let grouped = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "missions —")).firstMatch
+            if grouped.waitForExistence(timeout: 4), grouped.isHittable {
+                grouped.tap()
+                sleep(2)
+                save(app, "106-grouped")
+                note(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "mission")).firstMatch.exists ? "grouped-opened" : "grouped-empty")
+            } else {
+                note("grouped-absent")
+                save(app, "106-grouped")
+            }
+        }
+
+        XCUIDevice.shared.press(.home)
+        sleep(1)
+        app.activate()
+        let back = app.buttons["Messages"].waitForExistence(timeout: 12) || app.buttons["Profil"].waitForExistence(timeout: 4)
+        save(app, "107-resume")
+        note(back ? "resume-app" : "resume-home")
+
+        if app.buttons["Menu Principal"].firstMatch.waitForExistence(timeout: 4), app.buttons["Menu Principal"].firstMatch.isHittable {
+            app.buttons["Menu Principal"].firstMatch.tap()
+            let logout = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Se déconnecter")).firstMatch
+            if logout.waitForExistence(timeout: 4) { logout.tap() }
+        }
+        if app.buttons["Confirmer"].waitForExistence(timeout: 2) { app.buttons["Confirmer"].firstMatch.tap() }
+        if app.buttons["Se connecter"].waitForExistence(timeout: 10) {
+            app.buttons["Se connecter"].firstMatch.tap()
+            let email = app.textFields["Adresse email de connexion"]
+            let password = app.secureTextFields["Mot de passe de connexion"]
+            if email.waitForExistence(timeout: 6), password.waitForExistence(timeout: 4) {
+                email.tap(); email.typeText(ProcessInfo.processInfo.environment["LYANN_E2E_QA_A_EMAIL"] ?? "")
+                password.tap(); password.typeText(ProcessInfo.processInfo.environment["LYANN_E2E_QA_A_PASSWORD"] ?? "")
+                app.buttons["Valider la connexion"].firstMatch.tap()
+            }
+        }
+        if app.buttons["Menu Principal"].waitForExistence(timeout: 20), app.buttons["Menu Principal"].firstMatch.isHittable {
+            app.buttons["Menu Principal"].firstMatch.tap()
+            if app.links["Ouvrir Mon activité"].waitForExistence(timeout: 5) { app.links["Ouvrir Mon activité"].firstMatch.tap() }
+            let missions = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Mes missions")).firstMatch
+            if missions.waitForExistence(timeout: 8) { missions.tap() }
+            let done = app.buttons["Terminées"].firstMatch
+            if done.waitForExistence(timeout: 5), done.isHittable { done.tap(); sleep(1) }
+            let jalons = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Jalons neufs")).firstMatch
+            if jalons.waitForExistence(timeout: 6) {
+                jalons.tap()
+                sleep(3)
+                save(app, "108-finished-dossier")
+                let toast = app.staticTexts["Cette demande n’accepte plus de nouvelles propositions pour le moment."].exists
+                note(toast ? "toast-still-shown" : "toast-absent")
+                note(app.staticTexts["Dossier de mission"].exists ? "dossier-visible" : "dossier-not-visible")
+            } else {
+                note("jalons-not-found-as-a")
+                save(app, "108-finished-dossier")
+            }
+        }
+    }
+
     func testReceiveAsQaB() throws {
         let app = XCUIApplication()
         let token = (try? String(contentsOf: URL(fileURLWithPath: "/tmp/lyann-ios-msg.txt"), encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

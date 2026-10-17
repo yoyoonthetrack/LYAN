@@ -437,9 +437,12 @@
         if (conversationListLoading) return;
         conversationListLoading = true;
         try {
+        const startedAt = performance.now();
         const listContainer = document.getElementById('chatContactsList');
         const repo = window.LYANN_MESSAGING_REPOSITORY;
+        const sessionAt = performance.now();
         const userId = await resolveCurrentUserId();
+        const sessionMs = Math.round(performance.now() - sessionAt);
         if (!listContainer) return;
 
         const keepVisible = listContainer.querySelector('.chat-contact-item');
@@ -460,18 +463,51 @@
         }
 
         const generation = ++inboxRenderGeneration;
+        let paintedThisGeneration = false;
+        const queryAt = performance.now();
         const pending = repo.listConversations(userId, { fresh: true });
+        const publishTrace = (extra) => {
+            const trace = Object.assign({
+                sessionMs,
+                rows: 0,
+                totalMs: Math.round(performance.now() - startedAt)
+            }, extra);
+            window.__lyannInboxTrace = trace;
+            console.info('[INBOX_TRACE]', JSON.stringify(trace));
+            let node = document.getElementById('lyannInboxTrace');
+            if (!node) {
+                node = document.createElement('p');
+                node.id = 'lyannInboxTrace';
+                node.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);';
+                document.body.appendChild(node);
+            }
+            node.textContent = 'inbox session=' + trace.sessionMs + ' query=' + (trace.queryMs ?? '-') + ' paint=' + (trace.paintMs ?? '-') + ' rows=' + trace.rows + ' total=' + trace.totalMs + (trace.dropped ? ' dropped' : '') + (trace.failed ? ' failed' : '');
+        };
         const paintInbox = (conversations) => {
-            if (generation !== inboxRenderGeneration) return;
+            if (generation !== inboxRenderGeneration) return false;
+            if (paintedThisGeneration) return true;
             const box = document.getElementById('chatContactsList');
-            if (!box || !Array.isArray(conversations)) return;
+            if (!box || !Array.isArray(conversations)) return false;
+            paintedThisGeneration = true;
+            const paintAt = performance.now();
             if (conversations.length) renderConversationRows(box, withSupportRow(conversations));
             else setListEmptyState(box);
             if (typeof window.bindInboxChatFanouts === 'function') {
                 window.bindInboxChatFanouts((conversations || []).map((row) => row && row.conversationId).filter(Boolean));
             }
+            publishTrace({
+                queryMs: Math.round(paintAt - queryAt),
+                paintMs: Math.round(performance.now() - paintAt),
+                rows: conversations.length
+            });
+            return true;
         };
-        pending.then(paintInbox).catch(() => {});
+        pending.then((conversations) => {
+            const painted = paintInbox(conversations);
+            if (!painted) publishTrace({ queryMs: Math.round(performance.now() - queryAt), dropped: true, rows: Array.isArray(conversations) ? conversations.length : 0 });
+        }).catch((error) => {
+            publishTrace({ queryMs: Math.round(performance.now() - queryAt), failed: true, error: String(error && error.message || error).slice(0, 80) });
+        });
         try {
             paintInbox(await withTimeout(pending, 15000, 'conversation list'));
         } catch (error) {
@@ -705,7 +741,8 @@
                             invitationId: options.invitationId || null,
                             missionId: options.missionId || null,
                             requesterId: options.requesterId || null,
-                            title: options.title || null
+                            title: options.title || null,
+                            consult: options.consult === true
                         }
                         : null)
                     || (options.direct ? { direct: true } : null));
@@ -928,6 +965,7 @@
     });
 
     window.addEventListener('lyann:chat-activity', (event) => {
+        inboxRenderGeneration += 1;
         const detail = event.detail || {};
         const list = document.getElementById('chatContactsList');
         if (!list || (!detail.contactId && !detail.conversationId)) return;
