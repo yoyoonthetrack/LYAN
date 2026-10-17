@@ -1447,7 +1447,7 @@ safeDomReady(() => {
         `;
         if (reviewsList && reviewsList.length > 0) {
             reviewsHTML += reviewsList.map(r => `
-                <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:14px; padding:12px 16px; margin-bottom:10px;">
+                <div style="background:#FAF7F2; border:1px solid #E4DDD2; border-radius:14px; padding:12px 16px; margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <div style="width:32px; height:32px; border-radius:50%; background:#E6EFE9; color:#2D6A4F; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">${window.escapeHtmlAttr(r.name ? r.name.charAt(0) : 'M')}</div>
@@ -1491,6 +1491,7 @@ safeDomReady(() => {
                             <div class="lyann-profile-location">
                                 <i class="ph ph-map-pin"></i> ${window.escapeHtmlAttr(formattedLocation)}
                             </div>
+                            ${(pData.primary_activity || pData.headline) ? `<p class="lyann-profile-activity">${window.escapeHtmlAttr(pData.primary_activity || pData.headline)}</p>` : ''}
                             ${trustLineHTML}
                             ${pData.bio ? `<p class="lyann-profile-bio" style="font-size:0.9rem; color:#3F4A42; margin:8px 0; line-height:1.45;">${window.escapeHtmlAttr(pData.bio)}</p>` : (isSelf ? '<p class="lyann-profile-bio" style="font-size:0.9rem; color:#6B7280; margin:8px 0;">Une courte présentation rassure les voisins.</p>' : '')}
                             ${ctaHTML}
@@ -4726,6 +4727,16 @@ safeDomReady(() => {
                 try {
                     const { data: quotes } = await client.supabase.from('quotes').select('*').in('request_invitation_id', invitationIds);
                     if (quotes) myDossierQuotes = quotes;
+                    const quoteIds = myDossierQuotes.map((row) => row.id).filter(Boolean);
+                    if (quoteIds.length) {
+                        const { data: steps } = await client.supabase.from('milestones').select('id,quote_id,status,title,amount').in('quote_id', quoteIds);
+                        const byQuote = new Map();
+                        (steps || []).forEach((step) => {
+                            if (!byQuote.has(step.quote_id)) byQuote.set(step.quote_id, []);
+                            byQuote.get(step.quote_id).push(step);
+                        });
+                        myDossierQuotes = myDossierQuotes.map((row) => Object.assign({}, row, { milestones: byQuote.get(row.id) || [] }));
+                    }
                 } catch(e) {}
             }
             if (requestIds.length) {

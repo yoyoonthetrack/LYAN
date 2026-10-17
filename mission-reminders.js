@@ -90,7 +90,7 @@
         });
     }
 
-    function reminderCandidates(input) {
+    function missionActions(input) {
         const userId = input && input.userId;
         const quotes = (input && input.quotes) || [];
         const readiness = (input && input.readiness) || {};
@@ -127,14 +127,36 @@
         });
         const priority = { payout_setup: 0, payment_due: 1, client_validation: 2, declare_done: 3, quote_reply: 4, inactive: 5 };
         list.sort((a, b) => (priority[a.kind] - priority[b.kind]) || String(b.updatedAt).localeCompare(String(a.updatedAt)));
-        const counts = {};
-        const balanced = [];
-        list.forEach((item) => {
-            counts[item.kind] = (counts[item.kind] || 0) + 1;
-            if (counts[item.kind] > 3 || balanced.length >= 8) return;
-            balanced.push(item);
+        return list;
+    }
+
+    function groupedReminders(actions) {
+        const groups = new Map();
+        (actions || []).forEach((item) => {
+            if (!groups.has(item.kind)) groups.set(item.kind, []);
+            groups.get(item.kind).push(item);
         });
-        return balanced;
+        return [...groups.values()].map((items) => {
+            if (items.length === 1) return items[0];
+            const shown = items.slice(0, 2).map((item) => {
+                const match = String(item.body || '').match(/«([^»]+)»/);
+                return match ? match[1] : item.title;
+            });
+            const rest = items.length - shown.length;
+            return {
+                kind: items[0].kind,
+                entityId: 'group:' + items[0].kind,
+                requestId: null,
+                invitationId: null,
+                contactId: null,
+                title: items.length + ' missions — ' + items[0].title.toLowerCase(),
+                body: shown.join(' · ') + (rest > 0 ? ' · et ' + rest + ' autre' + (rest > 1 ? 's' : '') : '') + '. Toutes restent dans Missions.',
+                type: items[0].type,
+                grouped: true,
+                count: items.length,
+                actions: items
+            };
+        });
     }
 
     function reminderKey(kind, entityId) {
@@ -181,5 +203,9 @@
         return data;
     }
 
-    return { reminderCandidates, visibleReminders, remindersEnabled, loadContext };
+    function reminderCandidates(input) {
+        return groupedReminders(missionActions(input));
+    }
+
+    return { missionActions, groupedReminders, reminderCandidates, visibleReminders, remindersEnabled, loadContext };
 });

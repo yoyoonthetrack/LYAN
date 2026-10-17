@@ -71,13 +71,19 @@
         return { code: 'discussing', label: 'En discussion' };
     }
 
-    function nextActionLabel(statusCode, roleCode) {
+    function nextActionLabel(statusCode, roleCode, quote) {
         if (statusCode === 'quote_pending' && roleCode === 'requester') return 'À vous de répondre au devis';
         if (statusCode === 'quote_pending' && roleCode === 'lyanneur') return 'En attente du demandeur';
-        if (statusCode === 'in_progress') return 'Mission en cours';
         if (statusCode === 'discussing' && roleCode === 'lyanneur') return 'Proposer un devis';
         if (statusCode === 'discussing' && roleCode === 'requester') return 'En attente d’un devis';
         if (statusCode === 'dispute') return 'Litige en cours';
+        const steps = quote && Array.isArray(quote.milestones) ? quote.milestones : [];
+        const stepStatus = (row) => String(row && row.status || '').toUpperCase();
+        if (steps.some((row) => stepStatus(row) === 'COMPLETED') && roleCode === 'requester') return 'Valider la prestation';
+        if (steps.some((row) => stepStatus(row) === 'FUNDED' || stepStatus(row) === 'IN_PROGRESS') && roleCode === 'lyanneur') return 'Déclarer la prestation terminée';
+        if (steps.some((row) => stepStatus(row) === 'PENDING') && roleCode === 'requester') return 'Sécuriser le paiement';
+        if (steps.some((row) => stepStatus(row) === 'PENDING') && roleCode === 'lyanneur') return 'En attente du paiement';
+        if (statusCode === 'in_progress') return 'Mission en cours';
         return '';
     }
 
@@ -171,7 +177,7 @@
             roleLabel: role.label,
             statusCode: status.code,
             statusLabel: status.label,
-            nextAction: nextActionLabel(status.code, role.code),
+            nextAction: nextActionLabel(status.code, role.code, retained || quotes[0] || null),
             quotes: quotes,
             retainedQuote: retained,
             mission: input && input.mission || null,

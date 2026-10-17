@@ -304,6 +304,7 @@ function renderNotificationsModal() {
                 request_id: item.requestId,
                 invitation_id: item.invitationId,
                 contact_id: item.contactId,
+                grouped: item.grouped === true,
                 read: false,
                 created_at: new Date().toISOString(),
                 cta: { label: 'Ouvrir le dossier' }
@@ -345,8 +346,9 @@ function renderNotificationsModal() {
                     const requestId = escapeNotificationText(n.request_id || '');
                     const invitationId = escapeNotificationText(n.invitation_id || '');
                     const contactId = escapeNotificationText(n.contact_id || '');
+                    const grouped = n.grouped ? '1' : '';
                     return `
-                        <div class="notif-item-card${isUnread ? ' is-unread' : ''}" role="button" tabindex="0" data-notif-id="${notifId}" data-notif-type="${notifType}" data-entity-type="${entityType}" data-entity-id="${entityId}" data-request-id="${requestId}" data-invitation-id="${invitationId}" data-contact-id="${contactId}">
+                        <div class="notif-item-card${isUnread ? ' is-unread' : ''}" role="button" tabindex="0" data-notif-id="${notifId}" data-notif-type="${notifType}" data-entity-type="${entityType}" data-entity-id="${entityId}" data-request-id="${requestId}" data-invitation-id="${invitationId}" data-contact-id="${contactId}" data-grouped="${grouped}">
                             <span class="lyann-notif-icon" aria-hidden="true"><i class="ph ${icon}"></i></span>
                             <div class="lyann-notif-copy">
                                 ${kind ? `<span class="lyann-notif-kind">${escapeNotificationText(kind.label)}</span>` : ''}
@@ -439,6 +441,18 @@ function renderNotificationsModal() {
             const nType = card.getAttribute('data-notif-type')
                 || (window.LyannNotificationEngine?.getUserNotifications?.(currentUserId, currentUserId) || [])
                     .find((item) => String(item.id) === String(notifId))?.type;
+
+            if (String(nType || '').indexOf('REMINDER_') === 0 && card.getAttribute('data-grouped') === '1') {
+                closeModal();
+                const userId = currentUserId;
+                const openMissions = window.openAccountModalSubView
+                    ? window.openAccountModalSubView('activity')
+                    : Promise.resolve();
+                Promise.resolve(openMissions).then(() => {
+                    if (typeof window.switchActivityTab === 'function') window.switchActivityTab('missions', userId);
+                }).catch(() => {});
+                return;
+            }
 
             if (String(nType || '').indexOf('REMINDER_') === 0) {
                 const requestId = card.getAttribute('data-request-id');

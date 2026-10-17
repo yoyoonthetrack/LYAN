@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { reminderCandidates, visibleReminders } = require('../mission-reminders.js');
+const { missionActions, reminderCandidates, visibleReminders } = require('../mission-reminders.js');
 
 const me = 'user-a';
 const other = 'user-b';
@@ -99,10 +99,15 @@ test('the payout reminder stays ahead of older quote replies', () => {
         quotes.push({ id: 'sent-' + i, status: 'SENT', requester_id: me, provider_id: other, updated_at: '2026-10-01T08:00:00Z' });
     }
     quotes.push({ id: 'gain', status: 'ACCEPTED', provider_id: me, requester_id: other, updated_at: '2026-10-17T11:00:00Z' });
+    const actions = missionActions({ userId: me, now, readiness: { [me]: 'incomplete' }, quotes });
+    assert.equal(actions.filter((item) => item.kind === 'quote_reply').length, 8);
+    assert.equal(actions.filter((item) => item.kind === 'payout_setup').length, 1);
     const items = reminderCandidates({ userId: me, now, readiness: { [me]: 'incomplete' }, quotes });
     assert.equal(items[0].kind, 'payout_setup');
-    assert.ok(items.filter((item) => item.kind === 'quote_reply').length <= 3);
-    assert.ok(items.length <= 8);
+    const group = items.find((item) => item.kind === 'quote_reply');
+    assert.equal(group.grouped, true);
+    assert.equal(group.count, 8);
+    assert.match(group.body, /Toutes restent dans Missions/);
 });
 
 test('two missions between the same people stay distinct and point at the other person', () => {

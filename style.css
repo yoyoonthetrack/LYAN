@@ -13321,8 +13321,8 @@ body.is-native-app .navbar.scrolled,
 
 /* Hero & Identity Section */
 .lyann-profile-hero {
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
+    background: #FAF7F2;
+    border: 1px solid #E4DDD2;
     border-radius: 20px;
     padding: 24px;
     margin-bottom: 20px;
@@ -13421,12 +13421,27 @@ body.is-native-app .navbar.scrolled,
     .lyann-profile-name-row {
         justify-content: center;
     }
+    .lyann-profile-cta-group {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .lyann-profile-cta-group .btn {
+        min-height: 44px;
+    }
+}
+
+.lyann-profile-activity {
+    margin: 2px 0 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #3F5C49;
 }
 
 .lyann-profile-display-name {
     font-size: 1.45rem;
     font-weight: 800;
-    color: #1D2A44;
+    color: #1F3827;
     margin: 0;
     line-height: 1.25;
 }

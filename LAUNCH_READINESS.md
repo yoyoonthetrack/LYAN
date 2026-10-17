@@ -110,7 +110,9 @@ Ne pas contourner le captcha ni accepter les conditions à la place de QA A.
 
 ### Rappels, profils, dossier
 
-Les rappels nomment la mission, ouvrent la conversation puis le dossier, et disparaissent quand l’état change. Deux missions entre les mêmes personnes restent distinctes. Le dossier affiche les centimes serveur, les frais et l’attente de validation, selon le rôle de cette mission.
+Les notifications regroupent les rappels du même type. La liste Missions, elle, garde chaque mission et son action réelle (répondre, payer, déclarer, valider). Rien n’est retiré de Missions pour alléger les notifications. Le dossier affiche les centimes serveur, les frais et l’attente de validation, selon le rôle de cette mission.
+
+Inscription d’un nouveau compte : NON TESTÉ. Staging refuse `@lyann.invalid` et `@example.com`, et les règles d’email n’ont pas été assouplies. Il faut une adresse valide et contrôlée.
 
 ### Manques classés, non développés
 

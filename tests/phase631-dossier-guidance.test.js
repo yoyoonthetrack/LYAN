@@ -35,6 +35,9 @@ test('6.31 nextActionLabel never substitutes a fake pay or open-dossier CTA', ()
     assert.equal(dossier.nextActionLabel('quote_accepted', 'requester'), '');
     assert.equal(dossier.nextActionLabel('quote_accepted', 'lyanneur'), '');
     assert.equal(dossier.nextActionLabel('done', 'requester'), '');
+    assert.equal(dossier.nextActionLabel('quote_accepted', 'requester', { milestones: [{ status: 'PENDING' }] }), 'Sécuriser le paiement');
+    assert.equal(dossier.nextActionLabel('in_progress', 'lyanneur', { milestones: [{ status: 'FUNDED' }] }), 'Déclarer la prestation terminée');
+    assert.equal(dossier.nextActionLabel('in_progress', 'requester', { milestones: [{ status: 'COMPLETED' }] }), 'Valider la prestation');
     assert.doesNotMatch(dossier.nextActionLabel('discussing', 'lyanneur'), /Ouvrir le dossier|Paiement dans le dossier/);
 });
 
