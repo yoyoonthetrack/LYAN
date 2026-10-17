@@ -18,7 +18,7 @@ Deux brouillons attendent dans l’administration : LYANN Actu, sur la sortie de
 
 Le budget AI Gateway du seul projet `lyann-staging-preview` est de 5 USD, période `none`, actif, sans rechargement. Le budget d’équipe et celui de Production n’ont pas été modifiés. Deux brouillons `openai/gpt-4o-mini` sont en attente : Actu (356 + 94 tokens) et Rimèd (341 + 83 tokens). Le compteur du budget indique 0,00021075 USD. Trafik est aussi en attente, sans approbateur. Aucun des trois n’est publié. Le budget de 5 USD reste inchangé. `LYANN_EDITORIAL_AI_ENABLED` n’est pas posé, donc aucune nouvelle génération ne part.
 
-La rédaction exige désormais d’extraire les faits, puis d’écrire en conservant chiffres, dates et décisions. Un contrôle refuse un texte qui efface un montant, une promesse de soin, ou une formule de remplissage. La publication n’aboutit que si un administrateur identifié approuve. Une correction est historisée avant la publication. Le domaine Staging servait encore `3988299` avant ce correctif.
+La rédaction exige désormais d’extraire les faits, puis d’écrire en conservant chiffres, dates et décisions. Un contrôle refuse un texte qui efface un montant, une promesse de soin, ou une formule de remplissage. La publication n’aboutit que si un administrateur identifié approuve. Une correction est historisée avant la publication. Le domaine Staging sert maintenant `dpl_3M9gSrQU6jrNmXAXfdirYNC2Uk9K`, qui contient ce correctif. Auparavant il servait encore `3988299`.
 
 Canal 10, Harold Luce / LHN Média et Chikanos ne sont pas branchés : l’adresse exacte du compte reste à confirmer. Gwada Connexion n’est pas collecté.
 
