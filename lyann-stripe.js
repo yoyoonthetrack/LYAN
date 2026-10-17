@@ -131,6 +131,9 @@
                 setPaymentError(message);
                 return { error: { message }, data: payload };
             }
+            if (payload.amounts && typeof global.applyServerCheckoutAmounts === 'function') {
+                global.applyServerCheckoutAmounts(payload.amounts);
+            }
             try {
                 const stripeSdk = await getStripe();
                 clientSecret = payload.client_secret;

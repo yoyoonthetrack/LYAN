@@ -48,6 +48,7 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 
 - Grille : frais client = 3 % avec minimum **1,49 €** (`CUSTOMER_FEE_MINIMUM_CENTS = 149`). Pour 18 € : 1 800 + 149 = 1 949 centimes. Commission Lyanneur 3 % = 54 centimes. Net 17,46 €. Revenu LYANN 2,03 €.
 - PASS : écran **18.00 € / 1.49 € / 19.49 €**, carte prête.
+- Les montants serveur s’affichent dès la réponse de l’intention, avant le chargement de Stripe.js. Le libellé d’attente est « Calcul… », plus un « … » muet. Pendant la vérification du compte de versement, le dossier explique que les actions arrivent ensuite.
 - L’iframe Stripe n’a pas accepté la saisie automatique. Confirmation faite par l’API Stripe Test sur l’intention réelle `pi_3URLut…` (`pm_card_visa`, `livemode: false`, montant 1949). Ce n’est pas une écriture directe en base.
 - PASS : webhook signé `payment_intent.succeeded` → HTTP 200. Rejeu du même événement → `duplicate: true`.
 - PASS : paiement `SUCCEEDED`, transfert `PENDING_VALIDATION` (pas de virement). Jalon `FUNDED`, montant 18.

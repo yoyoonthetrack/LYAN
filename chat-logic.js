@@ -2500,9 +2500,9 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
 
                     const title = mission.title || 'Intervention LYANN';
                     if (coPrestationTitle) coPrestationTitle.textContent = title;
-                    if (coDevisAmount) coDevisAmount.textContent = '…';
-                    if (coLyannFee) coLyannFee.textContent = '…';
-                    if (coTotalAmount) coTotalAmount.textContent = '…';
+                    if (coDevisAmount) coDevisAmount.textContent = 'Calcul…';
+                    if (coLyannFee) coLyannFee.textContent = 'Calcul…';
+                    if (coTotalAmount) coTotalAmount.textContent = 'Calcul…';
 
                     closeAllOverlays();
                     const chatCheckoutOverlay = document.getElementById('chatCheckoutOverlay');
@@ -2744,7 +2744,9 @@ let chatRenderGeneration = 0;
 function clearCheckoutAmountPlaceholders() {
     ['coDevisAmount', 'coLyannFee', 'coTotalAmount'].forEach((id) => {
         const node = document.getElementById(id);
-        if (node && node.textContent.trim() === '…') node.textContent = '—';
+        if (!node) return;
+        const text = node.textContent.trim();
+        if (text === '…' || text === 'Calcul…') node.textContent = '—';
     });
 }
 
@@ -2758,6 +2760,7 @@ function applyServerCheckoutAmounts(amounts) {
     if (fee && amounts.customer_fee_cents != null) fee.textContent = euros(amounts.customer_fee_cents);
     if (total && amounts.customer_total_cents != null) total.textContent = euros(amounts.customer_total_cents);
 }
+window.applyServerCheckoutAmounts = applyServerCheckoutAmounts;
 
 function isQuoteAcceptedNotice(text) {
     return String(text || '').trim().toLowerCase() === 'devis accepté';
@@ -3305,7 +3308,12 @@ function paintDossierActions(host, dossier, quotes) {
         button.addEventListener('click', () => handleChatAction('REPORT_PROBLEM', { milestoneId: milestone && milestone.id }));
         wrap.appendChild(button);
     }
-    if (!wrap.querySelector('button') && !nextHost) {
+    if (checking && !wrap.querySelector('button')) {
+        const wait = document.createElement('p');
+        wait.className = 'chat-dossier-wait';
+        wait.textContent = 'Vérification du compte de versement. Les actions s’affichent dès que cet état est connu.';
+        wrap.appendChild(wait);
+    } else if (!wrap.querySelector('button') && !nextHost) {
         const wait = document.createElement('p');
         wait.className = 'chat-dossier-wait';
         wait.textContent = nextCopy || 'Le chat reste disponible pour cette mission.';
