@@ -22,7 +22,7 @@
     
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261017pale">
-    <link rel="stylesheet" href="explorer.css?v=20261012d">
+    <link rel="stylesheet" href="explorer.css?v=20261017kb">
     <link rel="stylesheet" href="universe-header.css?v=20261017pale">
 </head>
 <body class="results-page" data-explorer-mode="lyanneurs">
@@ -159,15 +159,17 @@
             </form>
             <form method="dialog" id="explorerFilterForm">
                 <div class="explorer-sheet-heading"><h2 id="explorerFilterTitle">Affiner la recherche</h2><button type="button" id="explorerFiltersClose" aria-label="Fermer les filtres">×</button></div>
-                <label>Service / sous-catégorie<select id="explorerService"><option value="">Tous les services</option></select></label>
-                <label id="explorerAreaLabel">Commune ou territoire<input id="explorerArea" type="text" placeholder="Ex. Le Gosier, Guadeloupe" autocomplete="address-level2"></label>
-                <div id="explorerProfileGeography"><label>Territoire<select id="explorerTerritory"></select></label><label>Commune<select id="explorerCommune"></select></label></div>
-                <p class="explorer-hint">Recherche par lieu renseigné. La distance affichée est approximative, calculée entre votre commune et celle de l'annonce.</p>
-                <button type="button" id="explorerSavedArea" class="btn btn-outline" hidden>Utiliser mon lieu de profil</button>
-                <div id="explorerRequestFilters">
-                    <label>Délai<select id="explorerUrgency"><option value="">Tous les délais</option></select></label>
-                    <label>Budget maximum (€)<input id="explorerBudget" type="number" min="0" step="1" placeholder="Sans limite"></label>
-                    <p class="explorer-hint">Avec un budget maximum, seules les annonces au budget renseigné sont affichées.</p>
+                <div class="explorer-sheet-body">
+                    <label>Service / sous-catégorie<select id="explorerService"><option value="">Tous les services</option></select></label>
+                    <label id="explorerAreaLabel">Commune ou territoire<input id="explorerArea" type="text" placeholder="Ex. Le Gosier, Guadeloupe" autocomplete="address-level2"></label>
+                    <div id="explorerProfileGeography"><label>Territoire<select id="explorerTerritory"></select></label><label>Commune<select id="explorerCommune"></select></label></div>
+                    <p class="explorer-hint">Recherche par lieu renseigné. La distance affichée est approximative, calculée entre votre commune et celle de l'annonce.</p>
+                    <button type="button" id="explorerSavedArea" class="btn btn-outline" hidden>Utiliser mon lieu de profil</button>
+                    <div id="explorerRequestFilters">
+                        <label>Délai<select id="explorerUrgency"><option value="">Tous les délais</option></select></label>
+                        <label>Budget maximum (€)<input id="explorerBudget" type="number" min="0" step="1" placeholder="Sans limite"></label>
+                        <p class="explorer-hint">Avec un budget maximum, seules les annonces au budget renseigné sont affichées.</p>
+                    </div>
                 </div>
                 <div class="explorer-sheet-actions"><button type="button" id="explorerReset" class="btn btn-outline">Réinitialiser</button><button value="apply" class="btn btn-primary">Afficher les résultats</button></div>
             </form>
@@ -1182,7 +1184,7 @@
     <script src="commune-distance.js?v=20260922e"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="explorer-ui.js?v=20261017pills" defer></script>
-    <script src="script.js?v=20261015f"></script>
+    <script src="script.js?v=20261017kb"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->
     <div class="speed-dial-wrapper" id="speedDialWrapper">

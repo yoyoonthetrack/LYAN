@@ -761,11 +761,19 @@ safeDomReady(() => {
     (function initKeyboardAvoidanceEngine() {
         let isKeyboardOpen = false;
 
+        const publishVisualViewport = () => {
+            if (!window.visualViewport) return;
+            document.documentElement.style.setProperty('--lyann-vv-height', window.visualViewport.height + 'px');
+            document.documentElement.style.setProperty('--lyann-vv-offset', window.visualViewport.offsetTop + 'px');
+        };
+
         document.addEventListener('focusin', (e) => {
             const tag = e.target.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
                 isKeyboardOpen = true;
                 document.body.classList.add('keyboard-open');
+                publishVisualViewport();
+                setTimeout(publishVisualViewport, 300);
                 const inbox = document.getElementById('chatModal');
                 const inThread = document.body.classList.contains('chat-conversation-open');
                 if (inbox && document.body.classList.contains('chat-list-open') && !inThread) {
@@ -773,6 +781,23 @@ safeDomReady(() => {
                     inbox.style.setProperty('height', 'auto', 'important');
                 }
                 if (inThread) return;
+
+                const filterSheet = e.target.closest && e.target.closest('#explorerFilters');
+                if (filterSheet) {
+                    setTimeout(() => {
+                        const scroller = e.target.closest('.explorer-sheet-body');
+                        if (!scroller) return;
+                        const field = e.target.closest('label') || e.target;
+                        const fieldRect = field.getBoundingClientRect();
+                        const scrollerRect = scroller.getBoundingClientRect();
+                        if (fieldRect.top < scrollerRect.top + 8) {
+                            scroller.scrollTop -= scrollerRect.top + 8 - fieldRect.top;
+                        } else if (fieldRect.bottom > scrollerRect.bottom - 8) {
+                            scroller.scrollTop += fieldRect.bottom - (scrollerRect.bottom - 8);
+                        }
+                    }, 150);
+                    return;
+                }
 
                 // Smooth scroll active field to center of viewport with 16px breathing room
                 setTimeout(() => {

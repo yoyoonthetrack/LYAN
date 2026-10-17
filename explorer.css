@@ -122,3 +122,116 @@ body.is-native-app.has-member-nav .explorer-card-actions .btn{scroll-margin-bott
     flex: none !important;
     box-sizing: border-box !important;
 }
+
+/* Phone, keyboard closed: bottom sheet stays within 90dvh and the actions stay on screen. */
+@media (max-width: 600px) {
+    body:not(.keyboard-open) #explorerFilters.explorer-filter-sheet {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        height: fit-content;
+        max-height: 90dvh;
+        margin: auto 0 0;
+        top: auto;
+        bottom: 0;
+    }
+    body:not(.keyboard-open) #explorerFilters .explorer-search-dock,
+    body:not(.keyboard-open) #explorerFilters .explorer-sheet-heading,
+    body:not(.keyboard-open) #explorerFilters .explorer-sheet-actions {
+        flex: 0 0 auto;
+    }
+    body:not(.keyboard-open) #explorerFilters #explorerFilterForm {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+        margin: 0;
+    }
+    body:not(.keyboard-open) #explorerFilters .explorer-sheet-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Annonces filter sheet: fill the visual viewport above the keyboard.
+   Wide desktop keeps the centered dialog; the native app follows the keyboard in landscape too. */
+body.is-native-app.keyboard-open #explorerFilters.explorer-filter-sheet,
+body.keyboard-open #explorerFilters.explorer-filter-sheet {
+    position: fixed;
+    top: var(--lyann-vv-offset, 0px);
+    right: 0;
+    left: 0;
+    bottom: auto;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    height: var(--lyann-vv-height, 90dvh);
+    max-height: var(--lyann-vv-height, 90dvh);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 20px 20px 0 0;
+    padding: 12px 16px 12px;
+}
+@media (min-width: 601px) {
+    body.keyboard-open:not(.is-native-app) #explorerFilters.explorer-filter-sheet {
+        position: fixed;
+        inset: 0;
+        margin: auto;
+        width: calc(100% - 32px);
+        max-width: 480px;
+        height: fit-content;
+        max-height: 85dvh;
+        display: block;
+        overflow: auto;
+        border-radius: 20px;
+        padding: 24px;
+    }
+}
+body.is-native-app.keyboard-open #explorerFilters .explorer-search-dock,
+body.keyboard-open #explorerFilters .explorer-search-dock,
+body.is-native-app.keyboard-open #explorerFilters .explorer-sheet-heading,
+body.keyboard-open #explorerFilters .explorer-sheet-heading,
+body.is-native-app.keyboard-open #explorerFilters .explorer-sheet-actions,
+body.keyboard-open #explorerFilters .explorer-sheet-actions {
+    flex: 0 0 auto;
+}
+body.is-native-app.keyboard-open #explorerFilters #explorerFilterForm,
+body.keyboard-open #explorerFilters #explorerFilterForm {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    margin: 0;
+}
+body.is-native-app.keyboard-open #explorerFilters .explorer-sheet-body,
+body.keyboard-open #explorerFilters .explorer-sheet-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+body.is-native-app.keyboard-open #explorerFilters .explorer-sheet-actions,
+body.keyboard-open #explorerFilters .explorer-sheet-actions {
+    margin-top: 12px;
+    padding-top: 8px;
+    background: #fff;
+}
+@media (min-width: 601px) {
+    body.keyboard-open:not(.is-native-app) #explorerFilters #explorerFilterForm,
+    body.keyboard-open:not(.is-native-app) #explorerFilters .explorer-sheet-body {
+        display: block;
+        flex: none;
+        min-height: 0;
+        overflow: visible;
+    }
+    body.keyboard-open:not(.is-native-app) #explorerFilters .explorer-sheet-actions {
+        margin-top: 24px;
+        padding-top: 0;
+    }
+}
