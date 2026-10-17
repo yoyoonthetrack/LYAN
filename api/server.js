@@ -1507,11 +1507,34 @@ app.post('/v1/admin/editorial/proposals/:id/publish', async (req, res) => {
         const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', req.params.id).maybeSingle();
         if (error) throw error;
         if (!task) return res.status(404).json({ success: false, error: 'Proposition introuvable.' });
-        const postId = await publishEditorialTask(supabaseAdmin, task, req.body?.content);
+        const postId = await publishEditorialTask(supabaseAdmin, task, req.body?.content, {
+            userId: authResult.userId,
+            actor: 'admin'
+        });
         return res.json({ success: true, post_id: postId });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Publication impossible.' });
     }
+});
+
+app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
+    const authResult = await verifyAdminPermission(req);
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const next = String(req.body?.content || '').trim();
+    if (!next) return res.status(400).json({ success: false, error: 'Le texte corrigé est vide.' });
+    const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('instruction, metadata, approval_status').eq('id', req.params.id).maybeSingle();
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    if (!task || task.approval_status !== 'PENDING') return res.status(409).json({ success: false, error: 'Ce brouillon n’est plus modifiable.' });
+    const now = new Date().toISOString();
+    const revisions = Array.isArray(task.metadata && task.metadata.revisions) ? task.metadata.revisions.slice() : [];
+    revisions.push({ at: now, by: authResult.userId, previous: task.instruction, next });
+    const { error: updateError } = await supabaseAdmin.from('lyann_agent_tasks').update({
+        instruction: next,
+        updated_at: now,
+        metadata: Object.assign({}, task.metadata, { revisions })
+    }).eq('id', req.params.id);
+    if (updateError) return res.status(500).json({ success: false, error: updateError.message });
+    return res.json({ success: true });
 });
 
 app.post('/v1/admin/editorial/proposals/:id/reject', async (req, res) => {

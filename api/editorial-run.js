@@ -10,7 +10,9 @@ const {
     parseEventJsonLd,
     isFresh,
     matchesTerms,
-    acceptRewrittenText
+    acceptRewrittenText,
+    reviewEditorialText,
+    assertHumanApproval
 } = require('./editorial-engine');
 const STAGING_PROJECT_ID = 'prj_FHIKUKYa8IwpiitigUma4gTtTF6q';
 const PRODUCTION_PROJECT_ID = 'prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM';
@@ -61,39 +63,50 @@ async function fetchText(url) {
     return response.text();
 }
 
-async function rewriteDraft(draft, fetchImpl) {
-    const config = providerConfig(process.env);
-    if (!config || config.error) return { ok: false, reason: config && config.error || 'clé IA absente' };
+async function completeOnce(config, messages, fetchImpl) {
     const response = await fetchImpl(`${config.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
         body: JSON.stringify({
             model: config.model,
             temperature: 0.2,
-            max_tokens: 280,
-            messages: [
-                {
-                    role: 'system',
-                    content: [
-                        'Tu rédiges un court texte original en français courant, entre 50 et 100 mots.',
-                        'Tu n’utilises que les faits fournis. Tu n’ajoutes aucun chiffre, lieu, date ou conseil absent du texte source.',
-                        'Tu ne recopies pas le titre seul. Tu reformules les faits avec tes mots, sans changer le sens.',
-                        'Tu n’écris pas le nom du média ni une formule « selon » le média. Tu gardes l’attribution si le fait est une décision, une déclaration ou une accusation.',
-                        'Tu n’inventes aucun fait, chiffre, date ou citation. Pas d’emoji, pas de créole forcé, pas de question artificielle.',
-                        'Si le sujet touche la santé, tu distingues l’usage traditionnel de la connaissance médicale établie. Tu ne donnes ni dosage, ni promesse de guérison.'
-                    ].join(' ')
-                },
-                {
-                    role: 'user',
-                    content: `Source: ${draft.sourceName}\nURL: ${draft.sourceUrl}\nTitre: ${draft.subject}\nFaits: ${draft.facts}`
-                }
-            ]
+            max_tokens: 320,
+            messages
         })
     });
     if (!response.ok) return { ok: false, reason: `modèle indisponible (${response.status})` };
-    const payload = await response.json();
+    return { ok: true, payload: await response.json() };
+}
+
+async function rewriteDraft(draft, fetchImpl) {
+    const config = providerConfig(process.env);
+    if (!config || config.error) return { ok: false, reason: config && config.error || 'clé IA absente' };
+    const extracted = await completeOnce(config, [
+        { role: 'system', content: 'Extrais uniquement les faits vérifiables. Réponds en JSON: {"faits":["qui","quoi","où","quand","chiffres","décision","réserves"]}. N’invente rien.' },
+        { role: 'user', content: draft.facts }
+    ], fetchImpl);
+    if (!extracted.ok) return extracted;
+    const factList = extracted.payload?.choices?.[0]?.message?.content || '';
+    if (!/"faits"\s*:/.test(factList)) return { ok: false, reason: 'extraction refusée' };
+    const written = await completeOnce(config, [
+        {
+            role: 'system',
+            content: [
+                'Tu rédiges un court texte original en français courant, entre 50 et 100 mots.',
+                'Conserve chaque chiffre, date, lieu, acteur et décision présents dans les faits. Ne les remplace pas par une formule vague.',
+                'Tu n’inventes aucun fait. Pas d’emoji, pas de créole forcé, pas de question, pas de conclusion artificielle.',
+                'Tu n’écris pas le nom du média. Tu gardes l’attribution si le fait est une décision, une déclaration ou une accusation.',
+                'Si le sujet touche la santé, parle d’usage traditionnel, pas d’efficacité établie. Aucun dosage ni promesse.'
+            ].join(' ')
+        },
+        { role: 'user', content: `Faits extraits:\n${factList}\n\nFaits source:\n${draft.facts}` }
+    ], fetchImpl);
+    if (!written.ok) return written;
+    const payload = written.payload;
     const text = acceptRewrittenText(payload?.choices?.[0]?.message?.content, draft);
     if (!text) return { ok: false, reason: 'réponse du modèle refusée' };
+    const review = reviewEditorialText({ text, facts: draft.facts, healthReview: draft.healthReview });
+    if (!review.ok) return { ok: false, reason: review.reasons.join(' ; ') };
     const usage = payload && payload.usage ? payload.usage : {};
     return {
         ok: true,
@@ -230,7 +243,9 @@ async function collectEditorial(supabase, options = {}) {
     return { created, skipped, diagnoses };
 }
 
-async function publishEditorialTask(supabase, task, editorText) {
+async function publishEditorialTask(supabase, task, editorText, approver) {
+    const approval = assertHumanApproval(approver);
+    if (!approval.ok) throw new Error(approval.reason);
     const metadata = task.metadata || {};
     if (!metadata.editorial) throw new Error('Cette tâche n’est pas une proposition éditoriale.');
     if (metadata.validation_status === 'HUMAN_REQUIRED' && !editorText) {
@@ -254,12 +269,24 @@ async function publishEditorialTask(supabase, task, editorText) {
         media_urls: []
     }).select('id').single();
     if (error) throw error;
+    const now = new Date().toISOString();
+    const revisions = Array.isArray(metadata.revisions) ? metadata.revisions.slice() : [];
+    if (body !== String(task.instruction || '').trim()) {
+        revisions.push({ at: now, by: approver.userId, previous: task.instruction, next: body });
+    }
     await supabase.from('lyann_agent_tasks').update({
         status: 'COMPLETED',
         approval_status: 'APPROVED',
-        instruction: content,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        approved_by: approver.userId,
+        instruction: body,
+        completed_at: now,
+        updated_at: now,
+        metadata: Object.assign({}, metadata, {
+            revisions,
+            approved_at: now,
+            approval_actor: 'admin',
+            human_validation: true
+        })
     }).eq('id', task.id);
     return post.id;
 }

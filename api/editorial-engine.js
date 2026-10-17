@@ -199,6 +199,40 @@ function matchesTerms(item, terms) {
     return terms.some((term) => blob.includes(String(term).toLowerCase()));
 }
 
+function essentialFacts(facts) {
+    const text = String(facts || '');
+    const years = text.match(/\b(?:19|20)\d{2}\b/g) || [];
+    const amounts = text.match(/\d+(?:[.,]\d+)?\s*millions?(?:\s*d['’]euros)?|\d+(?:[.,]\d+)?\s*(?:€|euros?)/gi) || [];
+    return [...new Set([...years, ...amounts])];
+}
+
+function factAppears(text, token) {
+    const compact = (value) => String(value || '').toLowerCase().replace(/[\s\u00a0]/g, '').replace(/euros?/g, '€').replace(/d['’]/g, '');
+    return compact(text).includes(compact(token));
+}
+
+function reviewEditorialText(input) {
+    const text = String(input && input.text || '').trim();
+    const facts = String(input && input.facts || '').trim();
+    const reasons = [];
+    if (facts.length < 40) reasons.push('faits insuffisants');
+    if (!text) reasons.push('texte vide');
+    for (const token of essentialFacts(facts)) {
+        if (!factAppears(text, token)) reasons.push('fait essentiel absent: ' + token);
+    }
+    if (/il est important de noter|en conclusion|n['’]hésitez pas/i.test(text)) reasons.push('formule de remplissage');
+    if (input && input.healthReview && /soulage|gu[ée]rit|efficace|b[ée]n[ée]fiques?|apais|soigne|dosage|pr[ée]paration/i.test(text)) {
+        reasons.push('affirmation thérapeutique insuffisamment fondée');
+    }
+    return { ok: reasons.length === 0, reasons };
+}
+
+function assertHumanApproval(approver) {
+    if (!approver || !approver.userId) return { ok: false, reason: 'validation humaine requise' };
+    if (approver.actor === 'script-de-test') return { ok: false, reason: 'un script ne peut pas approuver' };
+    return { ok: true };
+}
+
 function acceptRewrittenText(raw, draft) {
     const text = String(raw || '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
     const words = text.split(/\s+/).filter(Boolean);
@@ -223,5 +257,8 @@ module.exports = {
     parseEventJsonLd,
     isFresh,
     matchesTerms,
-    acceptRewrittenText
+    acceptRewrittenText,
+    essentialFacts,
+    reviewEditorialText,
+    assertHumanApproval
 };

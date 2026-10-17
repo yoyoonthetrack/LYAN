@@ -3016,6 +3016,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p><a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a></p>
                     <textarea class="admin-input editorial-text" rows="5" style="width:100%;">${maisonEsc(item.instruction || '')}</textarea>
                     <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button type="button" class="admin-btn admin-btn-secondary editorial-save">Enregistrer la correction</button>
                         <button type="button" class="admin-btn admin-btn-primary editorial-publish">Publier</button>
                         <button type="button" class="admin-btn admin-btn-danger editorial-reject">Rejeter</button>
                     </div>
@@ -3031,6 +3032,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             });
             listEl.querySelectorAll('[data-proposal]').forEach((card) => {
+                card.querySelector('.editorial-save')?.addEventListener('click', async () => {
+                    await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/revise`, {
+                        method: 'POST',
+                        body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
+                    });
+                    await loadEditorialDesk();
+                });
                 card.querySelector('.editorial-publish')?.addEventListener('click', async () => {
                     await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/publish`, {
                         method: 'POST',

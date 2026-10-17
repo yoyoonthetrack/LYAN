@@ -56,13 +56,30 @@ assert.strictEqual(rimed.validationStatus, 'HUMAN_REQUIRED');
 assert.strictEqual(canCollect({ status: 'SUSPENDED', maxPerDay: 4 }, 0), false);
 assert.strictEqual(canCollect({ status: 'ACTIVE', maxPerDay: 1 }, 1), false);
 assert.ok(limitWords('un deux trois', 2).startsWith('un deux'));
-const { classifyFeed, acceptRewrittenText } = require('../api/editorial-engine');
+const { classifyFeed, acceptRewrittenText, reviewEditorialText, assertHumanApproval } = require('../api/editorial-engine');
 assert.strictEqual(classifyFeed('<rss><channel><item/></channel></rss>', 'rss'), 'flux vide');
 assert.strictEqual(classifyFeed('<html></html>', 'rss'), 'flux invalide');
 assert.strictEqual(acceptRewrittenText('Pointe-à-Pitre', { subject: 'Pointe-à-Pitre', sourceUrl: 'https://rci.fm/a' }), '');
 const longEnough = 'La commune retrouve un budget en excédent après des années de redressement. Le texte reste factuel et ne reprend pas le lien du média dans le corps. '.repeat(3);
 assert.ok(acceptRewrittenText(longEnough, { subject: 'Autre titre', sourceUrl: 'https://rci.fm/a' }));
 assert.strictEqual(acceptRewrittenText(longEnough + ' https://rci.fm/a', { subject: 'Autre', sourceUrl: 'https://rci.fm/a' }), '');
+const actuFacts = 'Déficit cumulé supérieur à 77 millions d’euros fin 2018. Excédent de 7,28 millions d’euros à la clôture de 2025.';
+assert.strictEqual(reviewEditorialText({
+    text: 'La commune retrouve un équilibre après un déficit important et présente un excédent.',
+    facts: actuFacts
+}).ok, false);
+assert.strictEqual(reviewEditorialText({
+    text: 'Fin 2018, le déficit cumulé dépassait 77 millions d’euros. En 2025, l’excédent atteint 7,28 millions d’euros.',
+    facts: actuFacts
+}).ok, true);
+assert.strictEqual(reviewEditorialText({
+    text: 'Ces plantes soulagent les douleurs grâce à leurs propriétés bénéfiques.',
+    facts: 'Le bois d’Inde et la consoude sont cités, avec des précautions, sans dosage.',
+    healthReview: true
+}).ok, false);
+assert.strictEqual(assertHumanApproval(null).ok, false);
+assert.strictEqual(assertHumanApproval({ userId: 'admin', actor: 'script-de-test' }).ok, false);
+assert.strictEqual(assertHumanApproval({ userId: 'admin', actor: 'admin' }).ok, true);
 
 const { providerConfig } = require('../api/editorial-run');
 function fakeJwt(payload) {
