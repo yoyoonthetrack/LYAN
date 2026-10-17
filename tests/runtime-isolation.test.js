@@ -25,6 +25,9 @@ test('staging can publish from its own site, production cannot', () => {
         SUPABASE_URL: 'https://gzispjfoywklpqatjyop.supabase.co'
     }), false);
     assert.equal(browserOriginAllowed('https://evil.example', staging), false);
+    assert.equal(browserOriginAllowed('capacitor://localhost', staging), true);
+    assert.equal(browserOriginAllowed('ionic://localhost', staging), true);
+    assert.equal(browserOriginAllowed('https://attacker.lyann.app', staging), false);
 });
 
 test('an unscoped local process is not treated as a hosted environment', () => {
