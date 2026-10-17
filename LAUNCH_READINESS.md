@@ -16,7 +16,11 @@ Une publication réelle est en ligne sur Bokantaj Staging : LYANN Trafik, « Poi
 
 Deux brouillons attendent dans l’administration : LYANN Actu, sur la sortie de redressement de Pointe-à-Pitre (RCI, 17 octobre 2026), et LYANN Rimèd, sur une page des Jardins de Nini. Rimèd reste en validation humaine. Ces textes ont été préparés pour l’essai, sans appel de modèle payant.
 
-Le passage Vercel AI Gateway refuse le jeton OIDC déjà présent. Il demande une clé `AI_GATEWAY_API_KEY`. Aucune clé n’a été créée et aucune dépense n’a été engagée. Le plafond d’essai d’environ 5 € reste à autoriser.
+Le premier appel AI Gateway a répondu HTTP 401. Il utilisait le jeton OIDC du fichier local, expiré le 16 septembre 2026, et rattaché au projet Production `lyan`, pas à Staging. Un jeton frais du projet `lyann-staging-preview` obtient HTTP 200 sur la liste des modèles, sans génération. L’audience acceptée est `https://vercel.com/yoyo-d85d`. Aucune clé n’a été créée et aucune completion n’a été demandée.
+
+La publication Trafik a été approuvée par le script de test, pas par un administrateur identifié. `approved_by` reste vide. Ce n’est pas une validation éditoriale humaine.
+
+La génération reste éteinte tant que `LYANN_EDITORIAL_AI_ENABLED` n’est pas `1` sur Staging. OIDC n’a pas de plafond de 5 USD. Une clé dédiée pourrait porter ce plafond, sans remise à zéro, pendant 30 jours, sans rechargement, uniquement sur le projet Staging. Elle n’est pas créée.
 
 Canal 10, Harold Luce / LHN Média et Chikanos ne sont pas branchés : l’adresse exacte du compte reste à confirmer. Gwada Connexion n’est pas collecté.
 

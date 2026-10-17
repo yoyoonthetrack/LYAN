@@ -64,4 +64,26 @@ const longEnough = 'La commune retrouve un budget en excédent après des année
 assert.ok(acceptRewrittenText(longEnough, { subject: 'Autre titre', sourceUrl: 'https://rci.fm/a' }));
 assert.strictEqual(acceptRewrittenText(longEnough + ' https://rci.fm/a', { subject: 'Autre', sourceUrl: 'https://rci.fm/a' }), '');
 
+const { providerConfig } = require('../api/editorial-run');
+function fakeJwt(payload) {
+    return `e30.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.e30`;
+}
+const future = Math.floor(Date.now() / 1000) + 3600;
+const past = Math.floor(Date.now() / 1000) - 3600;
+assert.strictEqual(providerConfig({
+    VERCEL_OIDC_TOKEN: fakeJwt({ project_id: 'prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM', exp: future }),
+    LYANN_EDITORIAL_AI_ENABLED: '1'
+}).error, 'oidc-production-refused');
+assert.strictEqual(providerConfig({
+    VERCEL_OIDC_TOKEN: fakeJwt({ project_id: 'prj_FHIKUKYa8IwpiitigUma4gTtTF6q', exp: past }),
+    LYANN_EDITORIAL_AI_ENABLED: '1'
+}).error, 'oidc-expired');
+assert.strictEqual(providerConfig({
+    VERCEL_OIDC_TOKEN: fakeJwt({ project_id: 'prj_FHIKUKYa8IwpiitigUma4gTtTF6q', exp: future })
+}).error, 'spend-not-authorized');
+assert.strictEqual(providerConfig({
+    VERCEL_OIDC_TOKEN: fakeJwt({ project_id: 'prj_FHIKUKYa8IwpiitigUma4gTtTF6q', exp: future }),
+    LYANN_EDITORIAL_AI_ENABLED: '1'
+}).mode, 'oidc');
+
 console.log('editorial-engine: sources, doublon logique, santé et suspension');

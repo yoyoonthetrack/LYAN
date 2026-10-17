@@ -12,13 +12,43 @@ const {
     matchesTerms,
     acceptRewrittenText
 } = require('./editorial-engine');
+const STAGING_PROJECT_ID = 'prj_FHIKUKYa8IwpiitigUma4gTtTF6q';
+const PRODUCTION_PROJECT_ID = 'prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM';
+
+function oidcClaims(token) {
+    try {
+        const payload = JSON.parse(Buffer.from(String(token || '').split('.')[1], 'base64url').toString('utf8'));
+        return {
+            projectId: payload.project_id || '',
+            environment: payload.environment || '',
+            exp: Number(payload.exp) || 0
+        };
+    } catch (_) {
+        return null;
+    }
+}
+
 function providerConfig(env) {
-    const apiKey = env.LYANN_AI_API_KEY;
-    if (!apiKey) return null;
+    if (env.LYANN_AI_API_KEY) {
+        return {
+            mode: 'api-key',
+            apiKey: env.LYANN_AI_API_KEY,
+            baseUrl: (env.LYANN_AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, ''),
+            model: env.LYANN_AI_MODEL || 'gpt-4o-mini'
+        };
+    }
+    const token = env.VERCEL_OIDC_TOKEN || '';
+    const claims = oidcClaims(token);
+    if (!claims) return { error: 'oidc-absent' };
+    if (claims.projectId === PRODUCTION_PROJECT_ID) return { error: 'oidc-production-refused' };
+    if (claims.projectId !== STAGING_PROJECT_ID) return { error: 'oidc-wrong-project' };
+    if (claims.exp * 1000 <= Date.now()) return { error: 'oidc-expired' };
+    if (env.LYANN_EDITORIAL_AI_ENABLED !== '1') return { error: 'spend-not-authorized' };
     return {
-        apiKey,
-        baseUrl: (env.LYANN_AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, ''),
-        model: env.LYANN_AI_MODEL || 'gpt-4o-mini'
+        mode: 'oidc',
+        apiKey: token,
+        baseUrl: 'https://ai-gateway.vercel.sh/v1',
+        model: env.LYANN_AI_MODEL || 'openai/gpt-4o-mini'
     };
 }
 
@@ -33,7 +63,7 @@ async function fetchText(url) {
 
 async function rewriteDraft(draft, fetchImpl) {
     const config = providerConfig(process.env);
-    if (!config) return { ok: false, reason: 'clé IA absente' };
+    if (!config || config.error) return { ok: false, reason: config && config.error || 'clé IA absente' };
     const response = await fetchImpl(`${config.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
@@ -221,4 +251,4 @@ async function publishEditorialTask(supabase, task, editorText) {
     return post.id;
 }
 
-module.exports = { collectEditorial, publishEditorialTask };
+module.exports = { collectEditorial, publishEditorialTask, providerConfig, oidcClaims };
