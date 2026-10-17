@@ -92,6 +92,8 @@ DECLARE
     v_mission_id uuid;
     v_version int;
 BEGIN
+    -- PostgREST retries SQLSTATE 40001 until the HTTP call dies. A business refusal must not use it.
+    PERFORM set_config('lock_timeout', '4s', true);
     v_my_id := auth.uid();
     IF v_my_id IS NULL THEN
         RAISE EXCEPTION 'Non authentifié' USING ERRCODE = '42501';
@@ -120,7 +122,7 @@ BEGIN
     v_version := COALESCE(v_quote_record.version, 1);
     IF p_expected_version IS DISTINCT FROM v_version THEN
         RAISE EXCEPTION 'Ce devis a changé. Rechargez-le avant d’accepter la nouvelle version.'
-            USING ERRCODE = '40001';
+            USING ERRCODE = 'P0001';
     END IF;
 
     IF v_quote_record.valid_until IS NOT NULL AND v_quote_record.valid_until < now() THEN
@@ -144,7 +146,7 @@ BEGIN
           AND status != 'CANCELLED'
     ) THEN
         RAISE EXCEPTION 'Une mission a déjà été créée et acceptée pour cette invitation'
-            USING ERRCODE = '40001';
+            USING ERRCODE = 'P0001';
     END IF;
 
     UPDATE public.quotes
@@ -155,7 +157,7 @@ BEGIN
       AND COALESCE(version, 1) = v_version;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Ce devis a changé. Rechargez-le avant d’accepter la nouvelle version.'
-            USING ERRCODE = '40001';
+            USING ERRCODE = 'P0001';
     END IF;
 
     BEGIN
@@ -176,7 +178,7 @@ BEGIN
         RETURNING id INTO v_mission_id;
     EXCEPTION WHEN unique_violation THEN
         RAISE EXCEPTION 'Une mission active a déjà été créée pour cette invitation'
-            USING ERRCODE = '40001';
+            USING ERRCODE = 'P0001';
     END;
 
     UPDATE public.quotes SET mission_id = v_mission_id WHERE id = p_quote_id;
@@ -203,6 +205,7 @@ AS $$
 DECLARE
     v_version int;
 BEGIN
+    PERFORM set_config('lock_timeout', '4s', true);
     SELECT COALESCE(version, 1) INTO v_version
     FROM public.quotes
     WHERE id = p_quote_id
@@ -212,7 +215,7 @@ BEGIN
     END IF;
     IF v_version > 1 THEN
         RAISE EXCEPTION 'Ce devis a été modifié. Mettez à jour LYANN pour accepter la nouvelle version.'
-            USING ERRCODE = '40001';
+            USING ERRCODE = 'P0001';
     END IF;
     RETURN public.accept_request_quote(p_quote_id, v_version);
 END;

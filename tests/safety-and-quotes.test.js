@@ -157,7 +157,7 @@ test('accepting a quote sends the displayed version and never falls back to the 
     assert.doesNotMatch(call, /stripe|createPayment|paymentIntents/i);
     const chat = fs.readFileSync(path.join(__dirname, '..', 'chat-logic.js'), 'utf8');
     const accept = chat.slice(chat.indexOf('window.handleAcceptQuote'), chat.indexOf('window.handleRejectQuote'));
-    assert.match(accept, /quoteActionLocks.has\(quoteId\)/);
+    assert.match(accept, /quoteActionLocks.has\(String\(quoteId\)\)/);
     assert.match(accept, /planQuoteAcceptance/);
     assert.match(accept, /acceptRequestQuote\(quoteId, acceptance.version\)/);
 });
@@ -271,6 +271,7 @@ test('the local migration protects accepted quotes, payments and new conversatio
     assert.match(followUp, /AND status = 'SENT'/);
     assert.match(followUp, /COALESCE\(version, 1\) = v_version/);
     assert.match(followUp, /p_expected_version IS DISTINCT FROM v_version/);
+    assert.match(followUp, /Rechargez-le avant d’accepter la nouvelle version\.'\s+USING ERRCODE = 'P0001'/);
     assert.match(followUp, /is_blocked_between\(v_quote_record\.provider_id, v_quote_record\.requester_id\)/);
     assert.match(followUp, /OLD\.status = 'SENT' AND NEW\.status = 'ACCEPTED'/);
     assert.match(followUp, /Ce devis ne peut plus être accepté/);

@@ -4,7 +4,7 @@
 
 Verdict : **NO-GO** pour un lancement public. La candidate Web est le commit `d35ba7a`. Elle a été exécutée sur Staging `tdktfbtqceldlaeqjtow` et Stripe Test. Elle ne prouve pas le comportement de Production.
 
-Bundle iOS recopié depuis les mêmes sources : `ios-mvbtlu3o-3fab5f`, 215 fichiers, identique à `www/`. Backend injecté : aucun. Xcode 27.1 est présent. Le simulateur refuse de démarrer : CoreSimulator 1171.7.0 est plus ancien que celui attendu par Xcode (1174.9.2). Aucun binaire iPhone n’a été produit. Pas de TestFlight.
+Bundle iOS `ios-mvbtwtzs-734a82`, identique à `www/`, backend Staging `http://172.20.10.2:8098`. Le service simulateur a été réaligné sur le framework 1174.9.2. Build Debug installé et lancé sur iPhone 17 (iOS 26.5) : l’accueil s’affiche, avec « Se connecter » et « S’inscrire ». Les taps suivants n’ont pas été automatisés. Pas de TestFlight.
 
 | Sujet | Résultat |
 |---|---|
@@ -22,7 +22,7 @@ Bundle iOS recopié depuis les mêmes sources : `ios-mvbtlu3o-3fab5f`, 215 fichi
 | Inscription réelle, Google, Apple | NON TESTÉ. Action humaine : créer le compte avec une adresse lue, puis ouvrir le lien Supabase |
 | Connect de QA A | BLOQUÉ humain. Captcha Stripe. Le compte ne peut pas encore recevoir |
 | Safari | NON TESTÉ |
-| App iOS installée de ce commit | NON TESTÉ |
+| App iOS de ce commit sur simulateur iPhone 17 | PASS lancement accueil. Connexion, annonces, chat et missions NON TESTÉS (pas de pilotage tactile) |
 | Production (migrations, RLS, webhooks, lyann.app) | NON MODIFIÉE. Audit code seulement |
 
 Risque financier : un transfert Stripe Test n’est pas un virement reçu. Les remboursements ne s’exécutent pas. Un jalon à 8 € coûte 1,49 € de frais, soit 2,98 € pour deux petits jalons.
@@ -157,7 +157,7 @@ Le minimum de 1,49 € s’applique à chaque jalon. Pour 8 € + 12 €, les fr
 
 Libération : le transfert après validation du demandeur est le chemin normal (`release-payment`, idempotence `tr_milestone_<id>`, montant = net Lyanneur). Les mécanismes désactivés sont les remboursements et reversements après transfert ; ils ne sont pas appelés ici. Stripe du serveur : mode test. QA B qui valide est refusé. QA A a libéré Taille : transfert test `livemode: false`, 7,76 €, second appel idempotent. Évacuation, Préparation et Plantation ont suivi le même chemin (nets 11,64 €, 19,40 €, 29,10 €). Les quatre jalons sont RELEASED. Les missions « Jalons neufs » et « Devis par jalons » sont COMPLETED. Ce n’est pas un versement bancaire confirmé.
 
-Version : un devis révisé passe en version 2 et reste SENT, sans mission, quand l’ancienne version est présentée. Le message HTTP exact de ce refus n’a pas été lu (`fetch failed`). L’acceptation de la version 2 crée une seule mission AGREED. Le Lyanneur ne peut pas accepter. Safari, l’app iOS installée et une inscription avec une adresse réelle restent NON TESTÉ. Pas de TestFlight.
+Version : PostgREST réessayait le code SQL 40001 jusqu’à couper l’appel. Le refus métier utilise maintenant P0001. Vérifié : HTTP 400 en 2,6 s, corps « Ce devis a changé. Rechargez-le avant d’accepter la nouvelle version. », devis resté SENT version 2, aucune mission. Deux acceptations simultanées de la version courante : une HTTP 200, l’autre HTTP 400 « statut actuel: ACCEPTED », une seule mission. Safari et une inscription avec une adresse réelle restent NON TESTÉ. Pas de TestFlight.
 
 ### Manques classés, non développés
 
