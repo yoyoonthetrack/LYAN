@@ -2724,7 +2724,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    const maisonEsc = (value) => String(value || '')
+    const maisonEsc = (value) => String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
