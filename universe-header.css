@@ -508,7 +508,7 @@ body[data-explorer-mode="lyanneurs"] .lyanneurs-header-art {
     display: block;
     width: 100%;
     height: auto;
-    opacity: 0.9;
+    opacity: 0.78;
     border-radius: 18px;
 }
 body[data-explorer-mode="annonces"] .lyann-universe-frame,
@@ -541,6 +541,26 @@ body.is-native-app[data-explorer-mode="lyanneurs"] .lyanneurs-header-art {
     margin-left: calc(50% - 50vw);
     border-radius: 0;
 }
+body[data-explorer-mode="lyanneurs"] .explorer-page .lyann-pills {
+    flex-wrap: wrap;
+    overflow: visible;
+    mask-image: none;
+    -webkit-mask-image: none;
+    gap: 6px;
+    padding: 0;
+}
+body[data-explorer-mode="lyanneurs"] .lyann-pill {
+    min-height: 30px;
+    padding: 3px 9px;
+    font-size: 0.74rem;
+}
+@media (max-width: 767px) {
+    .explorer-page .explorer-tools { margin: 8px 0 0 !important; }
+    .explorer-page .explorer-results-heading { margin: 2px 0 8px !important; }
+    .explorer-page .explorer-active-filters:empty { display: none; }
+}
+body.is-native-app .explorer-page .explorer-tools { margin: 8px 0 0 !important; }
+body.is-native-app .explorer-page .explorer-results-heading { margin: 2px 0 8px !important; }
 @media (min-width: 768px) {
     #bokantajFilterSheetModal.mobile-bottom-sheet {
         align-items: center !important;

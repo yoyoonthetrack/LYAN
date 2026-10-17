@@ -250,7 +250,15 @@
             if (publishBtn) publishBtn.hidden = mode === 'lyanneurs';
             root.querySelector('label[for="explorerSearchInput"]').textContent = `Rechercher dans les ${mode}`;
             $('explorerSearchInput').value = filters.query;
-            $('explorerCategory').innerHTML = '<option value="">Toutes les catégories</option>' + [...new Set(leaves.map(t => t.category))].sort((a,b) => a.localeCompare(b,'fr')).map(c => `<option value="${escape(c)}">${escape(c)}</option>`).join('');
+            const fold = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const tradeFirst = ['plomb', 'electr', 'macon', 'menuis', 'peint', 'clim', 'jardin', 'couvr', 'carrel', 'serrur', 'chauff', 'bricol'];
+            const rank = label => {
+                const name = fold(label);
+                const index = tradeFirst.findIndex(key => name.includes(key));
+                return index === -1 ? tradeFirst.length : index;
+            };
+            const categories = [...new Set(leaves.map(t => t.category))].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, 'fr'));
+            $('explorerCategory').innerHTML = '<option value="">Toutes les catégories</option>' + categories.map(c => `<option value="${escape(c)}">${escape(c)}</option>`).join('');
             $('explorerCategory').value = filters.category;
             renderCategoryPills();
             $('explorerRequestFilters').hidden = mode !== 'annonces';
