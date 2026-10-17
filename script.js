@@ -5152,7 +5152,7 @@ safeDomReady(() => {
             hosts.forEach((host) => { host.textContent = 'Connectez-vous pour voir vos gains et vos dépenses.'; });
             return;
         }
-        const columns = 'id, created_at, requester_id, provider_id, payment_status, transfer_status, stripe_transfer_id, service_amount_cents, customer_total_cents, provider_net_cents';
+        const columns = 'id, created_at, requester_id, provider_id, payment_status, transfer_status, stripe_transfer_id, service_amount_cents, customer_fee_cents, customer_total_cents, provider_fee_cents, provider_net_cents';
         const { data, error } = await client.from('payments').select(columns).or('requester_id.eq.' + userId + ',provider_id.eq.' + userId).order('created_at', { ascending: false });
         if (error) {
             hosts.forEach((host) => { host.textContent = 'Vos mouvements n’ont pas pu être chargés.'; });
@@ -5161,6 +5161,20 @@ safeDomReady(() => {
         const lines = policy.ledgerLines(userId, data || []);
         hosts.forEach((host) => paintUnifiedFinance(host, lines, host.dataset.filter || 'all'));
     };
+
+    function financeLineDetail(line) {
+        if (line.kind === 'expense') {
+            const parts = [];
+            if (line.serviceCents != null) parts.push('prestation ' + eurosFromCents(line.serviceCents));
+            if (line.customerFeeCents != null) parts.push('frais payés ' + eurosFromCents(line.customerFeeCents));
+            return parts.join(' · ') || 'Dépense';
+        }
+        const parts = [];
+        if (line.serviceCents != null) parts.push('brut ' + eurosFromCents(line.serviceCents));
+        if (line.providerFeeCents != null) parts.push('commission ' + eurosFromCents(line.providerFeeCents));
+        if (line.netCents != null) parts.push('net ' + eurosFromCents(line.netCents));
+        return parts.join(' · ') || 'Gain';
+    }
 
     function paintUnifiedFinance(host, lines, filter) {
         const shown = lines.filter((line) => filter === 'all' || (filter === 'gains' ? line.kind === 'gain' : line.kind === 'expense'));
@@ -5172,8 +5186,8 @@ safeDomReady(() => {
             ['expenses', 'Dépenses']
         ].map(([id, label]) => '<button type="button" data-finance-filter="' + id + '" class="btn ' + (filter === id ? 'btn-primary' : 'btn-outline') + '" style="min-height:36px;">' + label + '</button>').join('');
         const rows = shown.length
-            ? shown.map((line) => '<article style="padding:12px 0;border-top:1px solid #E2E8F0;"><strong>' + (line.kind === 'gain' ? 'Gain' : 'Dépense') + '</strong> · ' + eurosFromCents(line.cents) + '<p style="margin:4px 0 0;color:#64748B;font-size:0.85rem;">' + line.label + '</p></article>').join('')
-            : '<p style="color:#64748B;">Pas encore de mouvement. Une mission payée ou réalisée apparaîtra ici, sans mélange des gains et des dépenses.</p>';
+            ? shown.map((line) => '<article style="padding:12px 0;border-top:1px solid #E2E8F0;"><strong>' + (line.kind === 'gain' ? 'Gain' : 'Dépense') + '</strong> · ' + eurosFromCents(line.cents) + '<p style="margin:4px 0 0;color:#64748B;font-size:0.85rem;">' + financeLineDetail(line) + '</p><p style="margin:2px 0 0;color:#64748B;font-size:0.85rem;">' + line.label + '</p></article>').join('')
+            : '<p style="color:#64748B;">' + (lines.length ? (filter === 'gains' ? 'Pas encore de gain.' : 'Pas encore de dépense.') : 'Pas encore de mouvement. Une mission payée ou réalisée apparaîtra ici, sans mélange des gains et des dépenses.') + '</p>';
         host.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' + filters + '</div>'
             + '<p style="font-size:0.88rem;margin:0 0 8px;">À recevoir : <strong>' + eurosFromCents(gainWaiting) + '</strong>. Dépenses sécurisées : <strong>' + eurosFromCents(spent) + '</strong>. Ces deux montants ne se compensent pas.</p>'
             + rows;

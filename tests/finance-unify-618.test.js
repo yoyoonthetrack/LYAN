@@ -83,9 +83,9 @@ test('6.18 portal no longer mounts a parallel lab by default', () => {
 test('phase 7 ledger keeps gains and expenses on one account without a net balance', () => {
     const me = 'user-1';
     const lines = policy.ledgerLines(me, [
-        { id: 'p1', requester_id: 'other', provider_id: me, payment_status: 'SUCCEEDED', transfer_status: 'PENDING_VALIDATION', provider_net_cents: 1746 },
+        { id: 'p1', requester_id: 'other', provider_id: me, payment_status: 'SUCCEEDED', transfer_status: 'PENDING_VALIDATION', service_amount_cents: 1800, provider_fee_cents: 54, provider_net_cents: 1746 },
         { id: 'p1', requester_id: 'other', provider_id: me, payment_status: 'SUCCEEDED', provider_net_cents: 1 },
-        { id: 'p2', requester_id: me, provider_id: 'other', payment_status: 'SUCCEEDED', customer_total_cents: 1949 },
+        { id: 'p2', requester_id: me, provider_id: 'other', payment_status: 'SUCCEEDED', service_amount_cents: 1800, customer_fee_cents: 149, customer_total_cents: 1949 },
         { id: 'p3', requester_id: 'stranger', provider_id: 'nope', payment_status: 'SUCCEEDED', customer_total_cents: 100 }
     ]);
     assert.equal(lines.length, 2);
@@ -93,6 +93,10 @@ test('phase 7 ledger keeps gains and expenses on one account without a net balan
     assert.equal(lines[0].label, 'À recevoir — versement pas encore confirmé');
     assert.equal(lines[1].kind, 'expense');
     assert.equal(lines[1].label, 'Paiement sécurisé');
+    assert.equal(lines[0].serviceCents, 1800);
+    assert.equal(lines[0].netCents, 1746);
+    assert.equal(lines[1].customerFeeCents, 149);
+    assert.equal(lines[1].cents, 1949);
     assert.equal(typeof policy.netAvailableBalance, 'undefined');
 });
 

@@ -287,19 +287,31 @@
             if (!isGain && !isExpense) return;
             seen.add(String(pay.id));
             const kind = isGain ? 'gain' : 'expense';
-            const raw = kind === 'gain'
-                ? (pay.provider_net_cents != null ? pay.provider_net_cents : pay.service_amount_cents)
-                : pay.customer_total_cents;
-            const amount = Number(raw);
+            const service = finiteCents(pay.service_amount_cents);
+            const customerFee = finiteCents(pay.customer_fee_cents);
+            const customerTotal = finiteCents(pay.customer_total_cents);
+            const providerFee = finiteCents(pay.provider_fee_cents);
+            const providerNet = finiteCents(pay.provider_net_cents);
+            const amount = kind === 'gain' ? (providerNet != null ? providerNet : service) : customerTotal;
             lines.push({
                 id: String(pay.id),
                 kind: kind,
-                cents: Number.isFinite(amount) ? amount : null,
+                cents: amount,
+                serviceCents: service,
+                customerFeeCents: customerFee,
+                customerTotalCents: customerTotal,
+                providerFeeCents: providerFee,
+                netCents: providerNet,
                 label: ledgerStatus(pay, kind),
                 at: pay.created_at || null
             });
         });
         return lines;
+    }
+
+    function finiteCents(value) {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
     }
 
     function ledgerStatus(pay, kind) {

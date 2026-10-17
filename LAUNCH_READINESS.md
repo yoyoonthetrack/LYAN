@@ -90,7 +90,7 @@ Les pages restent des documents HTML distincts. Le fond entre deux pages est le 
 
 ## Phase 7 — un seul compte
 
-Un utilisateur peut demander et réaliser en même temps. L’onglet Finances agrège les deux sans solde net : filtres Tout, Gains, Dépenses. Le faux « Solde disponible » et le bouton « Virement instantané » ont été retirés. Le compte Stripe Connect sert à recevoir un versement, il ne change pas le rôle.
+Un utilisateur peut demander et réaliser en même temps. L’onglet Finances agrège les deux sans solde net : filtres Tout, Gains, Dépenses. Une dépense affiche la prestation et les frais payés. Un gain affiche le brut, la commission et le net. Un transfert Stripe n’est pas un virement bancaire reçu. QA A (demandeur) : 19,49 € sécurisés dont 1,49 € de frais, et des remboursements. QA B (Lyanneur des mêmes missions) : 17,46 € à recevoir sur 18,00 € brut. Aucun des deux comptes de test n’a les deux côtés à la fois ; le mélange est couvert par le test unitaire.
 
 ## Git
 
