@@ -19529,7 +19529,7 @@ body.keyboard-open #chatModal #chatMilestoneDevisForm.chat-overlay-pane {
 .lyann-commune-drawer {
     position: fixed;
     inset: 0;
-    z-index: 32000;
+    z-index: 2147483020;
     display: flex;
     align-items: flex-end;
     background: rgba(24, 34, 28, 0.55);

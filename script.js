@@ -4617,6 +4617,8 @@ safeDomReady(() => {
             });
             document.body.appendChild(sheet);
         }
+        document.body.appendChild(sheet);
+        sheet.style.zIndex = '2147483020';
         const list = sheet.querySelector('.lyann-commune-list');
         const title = sheet.querySelector('#lyannCommuneTitle');
         const back = sheet.querySelector('.lyann-commune-back');
