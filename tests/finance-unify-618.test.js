@@ -145,6 +145,21 @@ test('dossier summary uses server cents and the role on that mission', () => {
     assert.equal(policy.dossierSummary('stranger', quote), '');
 });
 
+test('fee forecast applies the 1.49 euro floor to each milestone', () => {
+    const { calculateMilestonePricing } = require('../api/stripe-policy');
+    [8, 12, 20, 30].forEach((amount) => {
+        const shown = policy.forecastMilestoneCharge(amount);
+        const server = calculateMilestonePricing(amount);
+        assert.equal(shown.customerFeeCents, Number(server.customer_fee_cents));
+        assert.equal(shown.customerTotalCents, Number(server.customer_total_cents));
+        assert.equal(shown.providerNetCents, Number(server.provider_net_cents));
+    });
+    const quote = policy.forecastQuoteCharges([{ title: 'Taille', amount: 8 }, { title: 'Évacuation', amount: 12 }]);
+    assert.equal(quote.customerFeeCents, 298);
+    assert.equal(quote.customerTotalCents, 2298);
+    assert.equal(quote.minimumCount, 2);
+});
+
 test('6.18 engines stay off', () => {
     assert.equal(postTransferFinancialExecutionEnabled(), false);
     assert.equal(preTransferRefundExecutionEnabled(), false);

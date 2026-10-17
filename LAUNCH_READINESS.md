@@ -118,9 +118,11 @@ Un rappel groupé ouvre Missions filtré sur cette action. Vérifié : « 7 miss
 
 Devis par jalons : l’acceptation depuis le dossier ne trouvait pas la version du devis, donc la confirmation ne s’ouvrait pas. Elle utilise maintenant la version déjà chargée. « [CAMPAGNE-J2] Devis par jalons » est accepté, version 1, jalons 20 € et 30 €. Un devis neuf « Jalons neufs » (8 € puis 12 €) est aussi accepté.
 
-Paiements Stripe Test, `livemode: false`, sans transfert : Préparation 20 € → 21,49 € (frais 1,49 €, net Lyanneur 19,40 €), Taille 8 € → 9,49 € (net 7,76 €), Évacuation 12 € → 13,49 € (net 11,64 €). Plantation 30 € reste impayée. Le minimum de 1,49 € s’applique à chaque jalon, pas au devis. Un second encaissement sur un jalon déjà FUNDED est refusé. Le webhook en double est ignoré. Taille est déclarée terminée, transfert encore `PENDING_VALIDATION`, aucun `stripe_transfer_id`. « Valider et libérer le paiement » n’a pas été cliqué : ce chemin crée un transfert Stripe même si l’exécution post-transfert est désactivée.
+Le minimum de 1,49 € s’applique à chaque jalon. Pour 8 € + 12 €, les frais sont 2,98 € et le total à régler 22,98 €. La confirmation d’acceptation le dit maintenant avant de créer la mission. Un paiement groupé de plusieurs jalons n’est pas développé.
 
-Une seconde acceptation du devis déjà accepté est refusée. L’appel avec une version obsolète n’a pas atteint Supabase (`fetch failed`) ; le devis visé est resté SENT, version 1. Safari et le build iOS installé restent NON TESTÉ. Pas de TestFlight.
+Libération : le transfert après validation du demandeur est le chemin normal (`release-payment`, idempotence `tr_milestone_<id>`, montant = net Lyanneur). Les mécanismes désactivés sont les remboursements et reversements après transfert ; ils ne sont pas appelés ici. Stripe du serveur : mode test. QA B qui valide est refusé. QA A a libéré Taille : transfert test `livemode: false`, 7,76 €, second appel idempotent. Évacuation, Préparation et Plantation ont suivi le même chemin (nets 11,64 €, 19,40 €, 29,10 €). Les quatre jalons sont RELEASED. Les missions « Jalons neufs » et « Devis par jalons » sont COMPLETED. Ce n’est pas un versement bancaire confirmé.
+
+Version : un devis révisé passe en version 2 et reste SENT, sans mission, quand l’ancienne version est présentée. Le message HTTP exact de ce refus n’a pas été lu (`fetch failed`). L’acceptation de la version 2 crée une seule mission AGREED. Le Lyanneur ne peut pas accepter. Safari, l’app iOS installée et une inscription avec une adresse réelle restent NON TESTÉ. Pas de TestFlight.
 
 ### Manques classés, non développés
 

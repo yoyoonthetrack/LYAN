@@ -386,11 +386,50 @@
         return 'Paiement en cours';
     }
 
+    function halfUpPercent(cents, percent) {
+        return Math.floor((cents * percent + 50) / 100);
+    }
+
+    function forecastMilestoneCharge(amount) {
+        const euros = Number(amount);
+        if (!Number.isFinite(euros) || euros <= 0) return null;
+        const serviceCents = Math.round(euros * 100);
+        const providerFeeCents = halfUpPercent(serviceCents, 3);
+        const rawCustomerFee = halfUpPercent(serviceCents, 3);
+        const customerFeeCents = rawCustomerFee > 149 ? rawCustomerFee : 149;
+        return {
+            serviceCents: serviceCents,
+            customerFeeCents: customerFeeCents,
+            customerTotalCents: serviceCents + customerFeeCents,
+            providerFeeCents: providerFeeCents,
+            providerNetCents: serviceCents - providerFeeCents,
+            minimumApplied: rawCustomerFee < 149
+        };
+    }
+
+    function forecastQuoteCharges(milestones) {
+        const lines = (milestones || []).map((milestone) => {
+            const charge = forecastMilestoneCharge(milestone && milestone.amount);
+            if (!charge) return null;
+            return Object.assign({ title: (milestone && milestone.title) || 'Jalon' }, charge);
+        }).filter(Boolean);
+        return lines.reduce((sum, line) => {
+            sum.lines.push(line);
+            sum.serviceCents += line.serviceCents;
+            sum.customerFeeCents += line.customerFeeCents;
+            sum.customerTotalCents += line.customerTotalCents;
+            sum.minimumCount += line.minimumApplied ? 1 : 0;
+            return sum;
+        }, { lines: [], serviceCents: 0, customerFeeCents: 0, customerTotalCents: 0, minimumCount: 0 });
+    }
+
     const api = {
         cents: cents,
         ledgerLines: ledgerLines,
         dossierMoney: dossierMoney,
         dossierSummary: dossierSummary,
+        forecastMilestoneCharge: forecastMilestoneCharge,
+        forecastQuoteCharges: forecastQuoteCharges,
         classifyFinanceDisplay: classifyFinanceDisplay,
         policyCopy: policyCopy,
         fundLabel: fundLabel,

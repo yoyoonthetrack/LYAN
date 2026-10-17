@@ -1821,9 +1821,16 @@ window.handleAcceptQuote = async function(quoteId, sourceQuote) {
                 if (!acceptance.ok) {
                     throw new Error(acceptance.message || 'Rechargez le devis avant de l’accepter.');
                 }
+                const forecast = window.LYANN_FINANCE_POLICY_UI && typeof window.LYANN_FINANCE_POLICY_UI.forecastQuoteCharges === 'function'
+                    ? window.LYANN_FINANCE_POLICY_UI.forecastQuoteCharges(knownVersion && knownVersion.milestones)
+                    : null;
+                const eurosLabel = (cents) => (Number(cents) / 100).toFixed(2).replace('.', ',') + ' €';
                 const amount = knownVersion && knownVersion.total_amount != null ? knownVersion.total_amount + ' €' : 'le montant affiché';
+                const feeSentence = forecast && forecast.lines.length
+                    ? ' Prestation ' + eurosLabel(forecast.serviceCents) + '. Frais de protection ' + eurosLabel(forecast.customerFeeCents) + (forecast.minimumCount ? ' (minimum 1,49 € par jalon).' : '.') + ' Total à régler ' + eurosLabel(forecast.customerTotalCents) + '.'
+                    : '';
                 if (window.lyannConfirm) {
-                    const ok = await window.lyannConfirm(`Accepter la version ${acceptance.version} à ${amount} ? Une mission sera créée. Une version plus ancienne ne peut plus être acceptée.`);
+                    const ok = await window.lyannConfirm('Accepter la version ' + acceptance.version + ' à ' + amount + ' ?' + feeSentence + ' Une mission sera créée. Une version plus ancienne ne peut plus être acceptée.');
                     if (!ok) {
                         const abort = new Error('__deal_mutation_cancelled__');
                         abort.dealMutationCancelled = true;
