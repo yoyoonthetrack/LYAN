@@ -179,11 +179,5 @@
       ]
     }
   ],
-  "ignoreCommand": "node scripts/vercel-staging-ignore.js",
-  "crons": [
-    {
-      "path": "/v1/editorial/collect",
-      "schedule": "0 11 * * *"
-    }
-  ]
+  "ignoreCommand": "node scripts/vercel-staging-ignore.js"
 }

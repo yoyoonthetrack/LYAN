@@ -1,0 +1,13 @@
+{
+  "timezone": "America/Guadeloupe",
+  "enabled": false,
+  "reason": "Les trois passages quotidiens restent éteints tant que le back-office n’est pas validé.",
+  "passes": [
+    { "local": "07:00", "utc": "11:00", "cron": "0 11 * * *" },
+    { "local": "12:00", "utc": "16:00", "cron": "0 16 * * *" },
+    { "local": "18:00", "utc": "22:00", "cron": "0 22 * * *" }
+  ],
+  "agents": 5,
+  "maxProposalsPerPass": 5,
+  "maxProposalsPerDay": 15
+}

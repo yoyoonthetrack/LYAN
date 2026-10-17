@@ -163,6 +163,10 @@
             <a href="#" class="admin-nav-item active" data-section="sec-overview">
                 <div class="admin-nav-item-left"><i class="ph-bold ph-chart-line-up"></i> <span>Vue d'ensemble</span></div>
             </a>
+            <a href="#comptes-editoriaux" class="admin-nav-item" data-section="sec-editorial">
+                <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Comptes éditoriaux</span></div>
+                <span class="admin-nav-badge" id="sidebarEditorialBadge">—</span>
+            </a>
 
             <div class="admin-nav-section-title">COMMUNAUTÉ</div>
             <a href="#" class="admin-nav-item" data-section="sec-users">
@@ -178,9 +182,6 @@
             <a href="#" class="admin-nav-item" data-section="sec-agents" style="background: rgba(74, 124, 89, 0.15); border: 1px solid rgba(74, 124, 89, 0.3);">
                 <div class="admin-nav-item-left"><i class="ph-bold ph-robot" style="color: #E5B345;"></i> <span style="color: #E5B345; font-weight: 800;">Agents LYANN</span></div>
                 <span class="admin-nav-badge success" id="sidebarAgentBadge">—</span>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-editorial">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Comptes éditoriaux</span></div>
             </a>
             <a href="#" class="admin-nav-item" data-section="sec-mika" style="padding-left: 28px; background: rgba(229, 179, 69, 0.08); border-left: 3px solid #E5B345;">
                 <div class="admin-nav-item-left"><i class="ph-bold ph-lightning" style="color: #E5B345;"></i> <span style="color: #E5B345; font-weight: 700;">Mika Control Room</span></div>
@@ -1135,6 +1136,7 @@
                         <button type="button" class="admin-btn admin-btn-primary" id="editorialCollectBtn">Préparer les propositions</button>
                     </div>
                 </div>
+                <div id="editorialSummary" class="admin-grid-3" style="margin-bottom: 16px;"></div>
                 <div id="editorialBots" class="admin-grid-3" style="margin-bottom: 20px;"></div>
                 <div id="editorialProposals" class="admin-card"></div>
             </section>
@@ -1746,6 +1748,7 @@
                 <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-overview\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-chart-line-up"></i> BI & Tableau de Bord</div>
                 <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-users\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-users"></i> Utilisateurs & KYC</div>
                 <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-finances\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-bank"></i> Finances & Stripe Connect</div>
+                <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-editorial\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-newspaper"></i> Comptes éditoriaux</div>
                 <div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\'sec-agents\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-robot"></i> Agents LYANN</div>
             </div>
         </div>

@@ -1425,7 +1425,7 @@ async function actOnMaisonQuote(req, res, action) {
 }
 
 const { collectEditorial, publishEditorialTask } = require('./editorial-run');
-const { EDITORIAL_BOTS, EDITORIAL_BADGE } = require('./editorial-engine');
+const { EDITORIAL_BOTS, EDITORIAL_BADGE, reviewEditorialText } = require('./editorial-engine');
 
 function editorialAuthorized(req) {
     const expected = String(process.env.EDITORIAL_CRON_SECRET || process.env.CRON_SECRET || '');
@@ -1497,7 +1497,18 @@ app.get('/v1/admin/editorial/proposals', async (req, res) => {
     if (error) return res.status(500).json({ success: false, error: error.message });
     const names = {};
     (agents || []).forEach((agent) => { names[agent.id] = agent.agent_name; });
-    return res.json({ success: true, proposals: (data || []).map((row) => ({ ...row, agent_name: names[row.agent_id] })) });
+    return res.json({
+        success: true,
+        proposals: (data || []).map((row) => {
+            const bot = EDITORIAL_BOTS.find((item) => item.slug === (row.metadata && row.metadata.slug) || item.name === names[row.agent_id]);
+            const review = reviewEditorialText({
+                text: row.instruction,
+                facts: (row.metadata && row.metadata.facts) || '',
+                healthReview: Boolean(bot && bot.healthReview)
+            });
+            return { ...row, agent_name: names[row.agent_id], controls: review };
+        })
+    });
 });
 
 app.post('/v1/admin/editorial/proposals/:id/publish', async (req, res) => {
@@ -1507,6 +1518,16 @@ app.post('/v1/admin/editorial/proposals/:id/publish', async (req, res) => {
         const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', req.params.id).maybeSingle();
         if (error) throw error;
         if (!task) return res.status(404).json({ success: false, error: 'Proposition introuvable.' });
+        const text = String(req.body?.content || task.instruction || '');
+        const bot = EDITORIAL_BOTS.find((item) => item.slug === (task.metadata && task.metadata.slug) || item.name === task.agent_name);
+        const review = reviewEditorialText({
+            text,
+            facts: (task.metadata && task.metadata.facts) || '',
+            healthReview: Boolean(bot && bot.healthReview) || (task.metadata && task.metadata.validation_status === 'HUMAN_REQUIRED')
+        });
+        if (!review.ok) {
+            return res.status(409).json({ success: false, error: 'Publication refusée : ' + review.reasons.join(' ; ') });
+        }
         const postId = await publishEditorialTask(supabaseAdmin, task, req.body?.content, {
             userId: authResult.userId,
             actor: 'admin'
@@ -1528,17 +1549,10 @@ app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
     const now = new Date().toISOString();
     const revisions = Array.isArray(task.metadata && task.metadata.revisions) ? task.metadata.revisions.slice() : [];
     revisions.push({ at: now, by: authResult.userId, previous: task.instruction, next });
-    const { reviewEditorialText } = require('./editorial-engine');
-    const review = reviewEditorialText({
-        text: next,
-        title: task.metadata && (task.metadata.subject || ''),
-        facts: task.metadata && task.metadata.facts || '',
-        healthReview: task.metadata && task.metadata.validation_status === 'HUMAN_REQUIRED'
-    });
     const { error: updateError } = await supabaseAdmin.from('lyann_agent_tasks').update({
         instruction: next,
         updated_at: now,
-        metadata: Object.assign({}, task.metadata, { revisions, checks: review })
+        metadata: Object.assign({}, task.metadata, { revisions })
     }).eq('id', req.params.id);
     if (updateError) return res.status(500).json({ success: false, error: updateError.message });
     return res.json({ success: true });

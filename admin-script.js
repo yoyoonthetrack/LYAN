@@ -550,6 +550,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (targetSectionId === 'sec-maison' && typeof window.loadMaisonStudio === 'function') {
                     window.loadMaisonStudio();
                 }
+                if (targetSectionId === 'sec-editorial' && typeof window.openEditorialDesk === 'function') {
+                    window.openEditorialDesk();
+                }
                 if (typeof window.loadAdminSection === 'function') {
                     window.loadAdminSection(targetSectionId);
                 }
@@ -3000,28 +3003,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const bots = await maisonJson('/v1/admin/editorial/bots');
             const proposals = await maisonJson('/v1/admin/editorial/proposals');
+            const rows = proposals.proposals || [];
+            const pending = rows.filter((item) => item.approval_status === 'PENDING' && item.status !== 'CANCELLED');
+            const approved = rows.filter((item) => item.approval_status === 'APPROVED');
+            const rejected = rows.filter((item) => item.approval_status === 'REJECTED' || item.status === 'CANCELLED');
+            const badge = document.getElementById('sidebarEditorialBadge');
+            if (badge) badge.textContent = String(pending.length);
+            const summary = document.getElementById('editorialSummary');
+            if (summary) {
+                summary.innerHTML = [
+                    ['En attente', pending.length],
+                    ['Validées', approved.length],
+                    ['Refusées', rejected.length],
+                    ['Agents', (bots.bots || []).length],
+                    ['Prochain passage', 'Désactivé'],
+                    ['Budget', '5 USD, sans remise à zéro']
+                ].map(([label, value]) => `<div class="admin-card" style="padding:12px;"><div class="maison-muted">${maisonEsc(label)}</div><strong>${maisonEsc(value)}</strong></div>`).join('');
+            }
             botsEl.innerHTML = (bots.bots || []).map((bot) => `
                 <article class="admin-card" style="padding:14px;">
                     <img src="${maisonEsc(bot.profile?.avatar_url || '')}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">
                     <h3 style="margin:8px 0 4px;">${maisonEsc(bot.agent_name)}</h3>
-                    <p class="maison-muted">${maisonEsc(bot.badge || '')} · ${maisonEsc(bot.personality || '')}</p>
-                    <p class="maison-muted">${(bot.sources || []).map((source) => maisonEsc(source.name)).join(' · ')}</p>
+                    <p class="maison-muted">${maisonEsc(bot.status || '')} · ${maisonEsc(bot.badge || '')}</p>
+                    <p class="maison-muted">Sources : ${(bot.sources || []).map((source) => maisonEsc(source.name)).join(' · ') || '—'}</p>
+                    <p class="maison-muted">Maximum : ${maisonEsc(bot.maxPerDay || '—')} / jour · passages préparés 07:00, 12:00, 18:00 (non activés)</p>
                     <button type="button" class="admin-btn admin-btn-secondary" data-editorial-status="${maisonEsc(bot.id)}" data-next="${bot.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED'}">${bot.status === 'SUSPENDED' ? 'Réactiver' : 'Suspendre'}</button>
                 </article>
             `).join('') || '<p class="maison-muted">Aucun compte éditorial.</p>';
-            listEl.innerHTML = `<h3 style="margin-top:0;">Propositions</h3>` + ((proposals.proposals || []).map((item) => `
+            const visible = pending.concat(approved, rejected);
+            listEl.innerHTML = `<h3 style="margin-top:0;">Propositions</h3>` + (visible.map((item) => `
                 <article class="admin-card" style="padding:12px; margin-bottom:10px;" data-proposal="${maisonEsc(item.id)}">
                     <strong>${maisonEsc(item.agent_name || '')}</strong>
-                    <span class="maison-muted"> · ${maisonEsc(item.approval_status || '')} · ${maisonEsc(item.metadata?.validation_status || '')}</span>
-                    <p class="maison-muted">${maisonEsc(item.metadata?.generation_label || 'Brouillon')} · validation humaine : ${item.approved_by ? 'oui' : 'en attente'}</p>
-                    <p><a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a></p>
-                    <p class="maison-muted">Faits extraits : ${maisonEsc(item.metadata?.extracted_facts || item.metadata?.facts || '')}</p>
-                    <p class="maison-muted">Contrôle : ${item.metadata?.checks?.ok === false ? maisonEsc((item.metadata.checks.reasons || []).join(' ; ')) : 'accepté'}</p>
-                    <textarea class="admin-input editorial-text" rows="5" style="width:100%;">${maisonEsc(item.instruction || '')}</textarea>
-                    <div style="display:flex; gap:8px; margin-top:8px;">
-                        <button type="button" class="admin-btn admin-btn-secondary editorial-save">Enregistrer la correction</button>
-                        <button type="button" class="admin-btn admin-btn-primary editorial-publish">Publier</button>
-                        <button type="button" class="admin-btn admin-btn-danger editorial-reject">Rejeter</button>
+                    <span class="maison-muted"> · ${maisonEsc(item.title || '')}</span>
+                    <p class="maison-muted">Statut : ${maisonEsc(item.approval_status || '')}${item.metadata?.human_validation ? '' : ' · pas encore validé par un administrateur'}</p>
+                    <p>Source : <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a>${item.metadata?.original_published_at ? ` · ${maisonEsc(item.metadata.original_published_at)}` : ''}</p>
+                    <p class="maison-muted">Faits : ${maisonEsc(item.metadata?.facts || '—')}</p>
+                    <p class="maison-muted">Contrôle : ${(item.controls && item.controls.ok) ? 'conforme' : maisonEsc((item.controls && item.controls.reasons || []).join(' · ') || 'non vérifié')}</p>
+                    <textarea class="admin-input editorial-text" rows="6" style="width:100%;">${maisonEsc(item.instruction || '')}</textarea>
+                    <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                        <button type="button" class="admin-btn admin-btn-secondary editorial-save">Modifier</button>
+                        <button type="button" class="admin-btn admin-btn-danger editorial-reject">Refuser</button>
+                        <button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider et publier</button>
                     </div>
                 </article>
             `).join('') || '<p class="maison-muted">Aucune proposition pour le moment.</p>');
@@ -3036,26 +3058,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             listEl.querySelectorAll('[data-proposal]').forEach((card) => {
                 card.querySelector('.editorial-save')?.addEventListener('click', async () => {
-                    try {
-                        await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/revise`, {
-                            method: 'POST',
-                            body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
-                        });
-                        await loadEditorialDesk();
-                    } catch (err) {
-                        alert(err.message);
-                    }
+                    await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/revise`, {
+                        method: 'POST',
+                        body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
+                    });
+                    await loadEditorialDesk();
                 });
                 card.querySelector('.editorial-publish')?.addEventListener('click', async () => {
-                    try {
-                        await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/publish`, {
-                            method: 'POST',
-                            body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
-                        });
-                        await loadEditorialDesk();
-                    } catch (err) {
-                        alert(err.message);
-                    }
+                    await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/publish`, {
+                        method: 'POST',
+                        body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
+                    });
+                    await loadEditorialDesk();
                 });
                 card.querySelector('.editorial-reject')?.addEventListener('click', async () => {
                     await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/reject`, { method: 'POST', body: '{}' });
@@ -3078,9 +3092,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (button) button.disabled = false;
         }
     });
+    window.openEditorialDesk = loadEditorialDesk;
     document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.addEventListener('click', () => {
         loadEditorialDesk();
     });
+    if (window.location.hash === '#comptes-editoriaux') {
+        document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.click();
+    }
 
     window.loadAdminRealData = loadAdminRealData;
 
