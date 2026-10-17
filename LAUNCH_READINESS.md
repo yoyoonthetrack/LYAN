@@ -11,7 +11,7 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 
 | Cas | État devis | Demandeur QA A | Lyanneur QA B |
 |---|---|---|---|
-| Tarif Direct | payé, jalon FUNDED | Vous demandez | Lyanneur voit « Déclarer la prestation terminée » |
+| Tarif Direct | jalon COMPLETED, paiement SUCCEEDED | QA A doit valider | prestation déclarée terminée |
 | Devis par jalons | SENT | Accepter / Refuser visibles | en attente du demandeur |
 | Devis à refuser | REJECTED | « Ce devis n’a pas été retenu. » | — |
 
@@ -22,19 +22,22 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 - PASS : connexion QA A et QA B sur `http://127.0.0.1:8098`.
 - PASS : mauvais mot de passe refusé (message console « Adresse email ou mot de passe incorrect. »).
 - PASS : étape 1 d’inscription. Un formulaire vide dit « Veuillez indiquer votre prénom. » Le mot de passe n’annonce plus 6 caractères puis 8 : la règle unique est 8. Compte non créé.
-- NON TESTÉ : vérification email, mot de passe oublié jusqu’au mail, suppression de compte.
+- BLOQUÉ : création d’un compte neuf. Staging refuse `campagne.j2…@lyann.invalid` et `@example.com` (« Email address is invalid »). Pas de session, pas de profil, pas de reconnexion. Google et Apple non rejoués.
+- NON TESTÉ : mot de passe oublié jusqu’au mail, suppression de compte.
 
 ### 2. Annonces, Bokantaj, recherche
 
 - PASS : page Annonces et champ « De quoi avez-vous besoin ? ».
 - PASS : trois annonces `[CAMPAGNE-J2]` créées par l’API Staging, sans toucher aux fixtures.
-- NON TESTÉ : wizard complet dans le navigateur, Bokantaj, filtres de résultats jusqu’à une carte cliquée.
+- PASS : QA B a publié `[CAMPAGNE-J2] Lyann visible …` (`1d50e769-2290-4bec-9006-e1a9fb488d3b`). QA A le voit dans le fil. Un premier Lyann de campagne a été supprimé par son auteur. Modification du texte non rejouée.
+- NON TESTÉ : wizard complet dans le navigateur, filtres de résultats jusqu’à une carte cliquée.
 
 ### 3. Messagerie et notifications
 
 - PASS : message `J2AUDIT-1792196974110` envoyé par B et lu par A.
 - PASS : en-tête « Qa A. » / « Qa L. » (profil public).
-- NON TESTÉ : cloche de notifications ouverte et lue, pièces jointes, coupure réseau.
+- PASS : la cloche ouvre le panneau. Exemple lu : « Mission acceptée », « Proposition de devis », 28 non lues.
+- NON TESTÉ : clic d’une notification jusqu’à sa destination, pièces jointes, coupure réseau.
 
 ### 4. Devis et missions
 
@@ -54,7 +57,9 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 - PASS : paiement `SUCCEEDED`, transfert `PENDING_VALIDATION` (pas de virement). Jalon `FUNDED`, montant 18.
 - PASS : second `create-milestone-intent` refusé : « Cette Partie n'est pas payable (statut actuel: FUNDED). »
 - PASS après rechargement : QA A voit « Le paiement est sécurisé ». QA B, après la vérification du compte, voit « Déclarer la prestation terminée ».
-- NON TESTÉ : clic « Déclarer la prestation terminée » jusqu’à un jalon COMPLETED, puis libération. Le virement après transfert reste désactivé.
+- PASS : QA B a déclaré la prestation. Réponse serveur : « Prestation réalisée — en attente de validation du client. » Jalon `COMPLETED`.
+- PASS : QA A voit « Le Lyanneur a déclaré la prestation terminée. Vérifiez le travail avant de confirmer. » Actions : « Valider et libérer le paiement », « Signaler un problème ».
+- NON EXÉCUTÉ : le clic Valider. Cette route enregistre la validation puis appelle le versement Stripe. Le compte Connect du Lyanneur est payable, donc le clic créerait un transfert Stripe Test. Les moteurs post-transfert restent désactivés ; ce chemin de libération ne les consulte pas. Le clic n’a pas été fait.
 
 ### 6. Paramètres, abonnements, navigation
 
@@ -72,7 +77,7 @@ Les pages restent des documents HTML distincts. Le fond entre deux pages est le 
 
 ### 8. Lancement
 
-- NO-GO pour une ouverture publique. Le paiement test de la campagne est enregistré et visible des deux côtés. Il reste l’inscription complète, Bokantaj publié, les notifications lues, la fin de mission et un build iPhone du même commit. Pas de déploiement.
+- NO-GO pour une ouverture publique. Le paiement test et la déclaration de fin sont faits. Il reste la validation sans transfert, un compte neuf (bloqué par la politique email Staging), le clic jusqu’à la cible d’une notification, et un iPhone du même commit. Pas de déploiement.
 
 ## Corrections dans cet arbre
 
