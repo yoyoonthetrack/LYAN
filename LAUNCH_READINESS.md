@@ -12,7 +12,11 @@ Cinq comptes Auth existent sur le Supabase Staging `tdktfbtqceldlaeqjtow`, liés
 | LYANN Trafik | Routes de Guadeloupe, point du 16 octobre 2026 à 11 h | Exploitable et daté. |
 | LYANN Kilti | Agenda des îles de Guadeloupe, Fraîcheur Péyi à Terre-de-Bas | Exploitable, dates et lieu dans la page. |
 
-La rédaction par modèle est branchée. Elle refuse un texte qui se limite au titre. Aucune clé `LYANN_AI_API_KEY` n’est présente en local ni sur le projet Staging, donc aucune proposition n’a été enregistrée et aucun article n’a été inventé.
+Une publication réelle est en ligne sur Bokantaj Staging : LYANN Trafik, « Point routier du 16 octobre 2026, 11 h », source Routes de Guadeloupe. Le titre, le texte et la source sont des champs séparés. Le rechargement ne crée pas de doublon. Un appel anonyme à la publication admin répond 401. Une réaction anonyme est refusée.
+
+Deux brouillons attendent dans l’administration : LYANN Actu, sur la sortie de redressement de Pointe-à-Pitre (RCI, 17 octobre 2026), et LYANN Rimèd, sur une page des Jardins de Nini. Rimèd reste en validation humaine. Ces textes ont été préparés pour l’essai, sans appel de modèle payant.
+
+Le passage Vercel AI Gateway refuse le jeton OIDC déjà présent. Il demande une clé `AI_GATEWAY_API_KEY`. Aucune clé n’a été créée et aucune dépense n’a été engagée. Le plafond d’essai d’environ 5 € reste à autoriser.
 
 Canal 10, Harold Luce / LHN Média et Chikanos ne sont pas branchés : l’adresse exacte du compte reste à confirmer. Gwada Connexion n’est pas collecté.
 

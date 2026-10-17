@@ -48,7 +48,7 @@ async function rewriteDraft(draft, fetchImpl) {
                         'Tu rédiges un court texte original en français courant, entre 50 et 100 mots.',
                         'Tu n’utilises que les faits fournis. Tu n’ajoutes aucun chiffre, lieu, date ou conseil absent du texte source.',
                         'Tu ne recopies pas le titre seul. Tu reformules les faits avec tes mots, sans changer le sens.',
-                        'Tu n’écris pas le nom du média, ni l’URL, ni une ligne Source.',
+                        'Tu n’écris pas le nom du média ni une formule « selon » le média. Tu gardes l’attribution si le fait est une décision, une déclaration ou une accusation.',
                         'Tu n’inventes aucun fait, chiffre, date ou citation. Pas d’emoji, pas de créole forcé, pas de question artificielle.',
                         'Si le sujet touche la santé, tu ne donnes ni dosage, ni promesse de guérison.'
                     ].join(' ')
