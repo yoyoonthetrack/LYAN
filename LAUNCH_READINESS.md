@@ -21,7 +21,7 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 
 - PASS : connexion QA A et QA B sur `http://127.0.0.1:8098`.
 - PASS : mauvais mot de passe refusé (message console « Adresse email ou mot de passe incorrect. »).
-- PASS : étape 1 d’inscription (Apple, Google, prénom). Compte non créé.
+- PASS : étape 1 d’inscription. Un formulaire vide dit « Veuillez indiquer votre prénom. » Le mot de passe n’annonce plus 6 caractères puis 8 : la règle unique est 8. Compte non créé.
 - NON TESTÉ : vérification email, mot de passe oublié jusqu’au mail, suppression de compte.
 
 ### 2. Annonces, Bokantaj, recherche

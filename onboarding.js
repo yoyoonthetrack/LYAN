@@ -471,9 +471,9 @@ runOnDomReady(() => {
                     return;
                 }
 
-                if (!pw || pw.length < 6) {
-                    if (window.lyannAlert) window.lyannAlert('Le mot de passe doit contenir au moins 6 caractères.');
-                    else alert('Le mot de passe doit contenir au moins 6 caractères.');
+                if (!pw || pw.length < 8) {
+                    if (window.lyannAlert) window.lyannAlert('Le mot de passe doit comporter au moins 8 caractères.');
+                    else alert('Le mot de passe doit comporter au moins 8 caractères.');
                     if (pwEl) pwEl.focus();
                     return;
                 }
@@ -489,13 +489,6 @@ runOnDomReady(() => {
                 // Check duplicate email
                 const users = getRegisteredUsers();
                 const duplicate = users.find(u => u.email.toLowerCase() === em.toLowerCase());
-                if (pw.length < 8) {
-                    if (window.lyannAlert) window.lyannAlert('Le mot de passe doit comporter au moins 8 caractères.');
-                    else alert('Le mot de passe doit comporter au moins 8 caractères.');
-                    if (pwEl) pwEl.focus();
-                    return;
-                }
-
                 if (duplicate) {
                     if (window.lyannAlert) window.lyannAlert(`L'adresse email ${em} est déjà enregistrée. Veuillez vous connecter.`);
                     else alert(`L'adresse email ${em} est déjà enregistrée. Veuillez vous connecter.`);
