@@ -44,6 +44,16 @@ function quote(overrides = {}) {
     };
 }
 
+test('an unfinished Stripe intent can be reopened by the requester', () => {
+    const started = quote({
+        payments: [{ id: 'pay-1', milestone_id: 'milestone-1', payment_status: 'CREATED' }]
+    });
+    const view = missionCard(started, requester, 'active');
+    assert.equal(view.primaryAction && view.primaryAction.label, 'Finaliser le paiement');
+    assert.equal(view.primaryAction.milestoneId, 'milestone-1');
+    assert.equal(missionCard(started, provider, 'active').actions.length, 0);
+});
+
 test('requester with an accepted pending milestone can pay', () => {
     const milestone = payableMilestoneForQuote(quote(), requester);
     assert.equal(milestone && milestone.id, 'milestone-1');

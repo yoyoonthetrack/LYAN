@@ -116,12 +116,12 @@
         }
 
         preparing = (async () => {
-            const stripeSdk = await getStripe();
             const result = await global.LYANN_API_CLIENT.createMilestonePaymentIntent(milestoneId);
             if (result && result.error) {
-                setPaymentError(humanizeCheckoutError(result.error) || 'Paiement indisponible.');
+                const message = humanizeCheckoutError(result.error) || 'Paiement indisponible.';
+                setPaymentError(message);
                 setPayReady(false);
-                return { error: { message: humanizeCheckoutError(result.error) } };
+                return { error: { message }, data: result.data || null };
             }
             const payload = result && result.data ? result.data : {};
             const mockIntent = payload.mode === 'stripe_test_mock'
@@ -129,29 +129,37 @@
             if (mockIntent || !payload.client_secret) {
                 const message = 'Paiement indisponible : Stripe test n’est pas configuré sur ce serveur (STRIPE_SECRET_KEY). Aucun versement n’a été confirmé.';
                 setPaymentError(message);
-                return { error: { message } };
+                return { error: { message }, data: payload };
             }
-            clientSecret = payload.client_secret;
-            paymentIntentId = payload.payment_intent_id || null;
-            const elements = stripeSdk.elements();
-            cardElement = elements.create('card', {
-                hidePostalCode: true,
-                style: {
-                    base: {
-                        fontSize: '16px',
-                        color: '#1F3827',
-                        fontFamily: 'system-ui, sans-serif',
-                        '::placeholder': { color: '#8A9A8E' }
+            try {
+                const stripeSdk = await getStripe();
+                clientSecret = payload.client_secret;
+                paymentIntentId = payload.payment_intent_id || null;
+                const elements = stripeSdk.elements();
+                cardElement = elements.create('card', {
+                    hidePostalCode: true,
+                    style: {
+                        base: {
+                            fontSize: '16px',
+                            color: '#1F3827',
+                            fontFamily: 'system-ui, sans-serif',
+                            '::placeholder': { color: '#8A9A8E' }
+                        }
                     }
-                }
-            });
-            cardElement.mount(mount);
-            cardElement.on('change', (event) => {
-                setPaymentError(event.error ? event.error.message : '');
-                if (mount) mount.dataset.complete = event.complete ? 'true' : 'false';
-            });
-            setPayReady(true);
-            return { data: payload };
+                });
+                cardElement.mount(mount);
+                cardElement.on('change', (event) => {
+                    setPaymentError(event.error ? event.error.message : '');
+                    if (mount) mount.dataset.complete = event.complete ? 'true' : 'false';
+                });
+                setPayReady(true);
+                return { data: payload };
+            } catch (err) {
+                const message = humanizeCheckoutError(err);
+                setPaymentError(message);
+                setPayReady(false);
+                return { data: payload, error: { message } };
+            }
         })();
 
         try {

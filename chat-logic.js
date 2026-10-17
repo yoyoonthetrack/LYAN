@@ -2550,7 +2550,8 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                     }
                     const amounts = prepared && prepared.data && prepared.data.amounts;
                     if (amounts) applyServerCheckoutAmounts(amounts);
-                    if (prepared && prepared.error) throw prepared.error;
+                    else clearCheckoutAmountPlaceholders();
+                    if (prepared && prepared.error && !(prepared.data && prepared.data.client_secret)) throw prepared.error;
                     return prepared;
                 }
             });
@@ -2739,6 +2740,13 @@ function renderEmptyConversationState(container) {
 }
 
 let chatRenderGeneration = 0;
+
+function clearCheckoutAmountPlaceholders() {
+    ['coDevisAmount', 'coLyannFee', 'coTotalAmount'].forEach((id) => {
+        const node = document.getElementById(id);
+        if (node && node.textContent.trim() === '…') node.textContent = '—';
+    });
+}
 
 function applyServerCheckoutAmounts(amounts) {
     if (!amounts) return;

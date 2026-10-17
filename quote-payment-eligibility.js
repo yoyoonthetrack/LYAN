@@ -290,6 +290,9 @@
                         context = role === 'requester'
                             ? 'Finalisez le paiement sécurisé pour bloquer les fonds.'
                             : 'Le demandeur a initié le paiement. Les fonds ne sont pas encore confirmés.';
+                        if (role === 'requester' && openMilestone) {
+                            actions.push({ id: 'pay', label: 'Finaliser le paiement', milestoneId: openMilestone.id });
+                        }
                     } else {
                         status = 'Devis accepté';
                         actorToAct = 'requester';

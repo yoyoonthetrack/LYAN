@@ -46,10 +46,11 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 
 ### 5. Stripe Test
 
-- PASS partiel : « Sécuriser le paiement » apparaît après la vérification du compte (~3 s) sur `[CAMPAGNE-J2] Tarif Direct`.
-- PASS partiel : le clic ouvre « Paiement Sécurisé LYANN » (`display: flex`) avec la ligne Tonte.
-- FAIL : les montants restent « … » (travaux, frais, total). Carte non saisie. Aucun paiement confirmé.
-- Politique : `preTransferRefundExecutionEnabled` et `postTransferFinancialExecutionEnabled` retournent `false`. Non contournés.
+- Le serveur, pour le jalon Tonte à 18 €, répond `service_amount_cents=1800`, `customer_fee_cents=149`, `customer_total_cents=1949`. 1800 + 149 = 1949.
+- PASS : après chargement de Stripe.js, l’écran affiche **18.00 €**, **1.49 €**, **19.49 €**. Le champ carte passe à `ready=true`.
+- Les « … » étaient l’état de chargement. Les montants n’arrivent qu’après l’intention Stripe, pas avant. Un paiement déjà créé (`CREATED`) n’avait plus de bouton : le dossier dit maintenant « Finaliser le paiement » et rouvre le checkout.
+- NON TESTÉ : saisie de la carte 4242 et confirmation. Le second essai n’a pas atteint l’iframe dans le délai. Aucun paiement SUCCEEDED.
+- Politique : remboursements et virements après transfert restent désactivés. Non contournés.
 
 ### 6. Paramètres, abonnements, navigation
 
@@ -63,7 +64,7 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 
 ### 8. Lancement
 
-- NO-GO. Le paiement test n’affiche pas les montants et n’est pas confirmé. Bokantaj, notifications et inscription complète ne sont pas exécutés. Le code n’est pas déployé.
+- NO-GO. Les montants du checkout sont corrects, le paiement carte n’est pas confirmé. Bokantaj, notifications et inscription complète ne sont pas exécutés. Pas de déploiement.
 
 ## Corrections dans cet arbre
 
@@ -71,6 +72,8 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 - Nom du fil via `getPublicProfileWithReputation`.
 - Devis accepté sans jalon actif : pas d’invitation à payer.
 - Le paiement accepte un `milestoneId` même si `mission_id` n’est pas encore sur le devis.
+- Le checkout affiche les centimes renvoyés par `create-milestone-intent` même si le champ carte échoue ensuite.
+- Un paiement `CREATED` se rouvre avec « Finaliser le paiement ».
 
 ## Git
 

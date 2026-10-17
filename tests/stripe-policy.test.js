@@ -227,6 +227,11 @@ test('Accounts v2 creation and onboarding link keep the LYANN return urls', () =
         provider_net_cents: 970n
     });
     assert.equal(Number(calculateMilestonePricing('10.00').customer_fee_cents), 149);
+    const direct18 = calculateMilestonePricing(18);
+    assert.equal(Number(direct18.service_amount_cents), 1800);
+    assert.equal(Number(direct18.customer_fee_cents), 149);
+    assert.equal(Number(direct18.customer_total_cents), 1949);
+    assert.equal(Number(direct18.service_amount_cents) + Number(direct18.customer_fee_cents), Number(direct18.customer_total_cents));
     assert.equal(quoteFullyReleased([{ status: 'RELEASED' }]), true);
     assert.equal(quoteFullyReleased([{ status: 'FUNDED' }]), false);
     assert.deepEqual(legacy, {
