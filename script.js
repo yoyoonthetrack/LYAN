@@ -5121,6 +5121,72 @@ safeDomReady(() => {
         }
     };
 
+    function ensureFinancePolicy() {
+        if (window.LYANN_FINANCE_POLICY_UI && typeof window.LYANN_FINANCE_POLICY_UI.ledgerLines === 'function') {
+            return Promise.resolve();
+        }
+        return new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = 'finance-policy-ui.js';
+            script.onload = () => resolve();
+            script.onerror = () => resolve();
+            document.head.appendChild(script);
+        });
+    }
+
+    function eurosFromCents(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 'Montant indisponible';
+        return (n / 100).toFixed(2).replace('.', ',') + ' €';
+    }
+
+    window.mountUnifiedFinance = async function () {
+        const hosts = document.querySelectorAll('[data-unified-finance], #lyannUnifiedFinanceHub');
+        if (!hosts.length) return;
+        hosts.forEach((host) => { host.textContent = 'Chargement de vos mouvements…'; });
+        await ensureFinancePolicy();
+        const policy = window.LYANN_FINANCE_POLICY_UI;
+        const userId = window.CURRENT_USER_ID || window.LYANN_AUTH_STATE?.getSnapshot?.()?.userId;
+        const client = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+        if (!policy || !userId || !client) {
+            hosts.forEach((host) => { host.textContent = 'Connectez-vous pour voir vos gains et vos dépenses.'; });
+            return;
+        }
+        const columns = 'id, created_at, requester_id, provider_id, payment_status, transfer_status, stripe_transfer_id, service_amount_cents, customer_total_cents, provider_net_cents';
+        const { data, error } = await client.from('payments').select(columns).or('requester_id.eq.' + userId + ',provider_id.eq.' + userId).order('created_at', { ascending: false });
+        if (error) {
+            hosts.forEach((host) => { host.textContent = 'Vos mouvements n’ont pas pu être chargés.'; });
+            return;
+        }
+        const lines = policy.ledgerLines(userId, data || []);
+        hosts.forEach((host) => paintUnifiedFinance(host, lines, host.dataset.filter || 'all'));
+    };
+
+    function paintUnifiedFinance(host, lines, filter) {
+        const shown = lines.filter((line) => filter === 'all' || (filter === 'gains' ? line.kind === 'gain' : line.kind === 'expense'));
+        const gainWaiting = lines.filter((line) => line.kind === 'gain' && line.cents != null && /À recevoir/.test(line.label)).reduce((sum, line) => sum + line.cents, 0);
+        const spent = lines.filter((line) => line.kind === 'expense' && line.cents != null && line.label === 'Paiement sécurisé').reduce((sum, line) => sum + line.cents, 0);
+        const filters = [
+            ['all', 'Tout'],
+            ['gains', 'Gains'],
+            ['expenses', 'Dépenses']
+        ].map(([id, label]) => '<button type="button" data-finance-filter="' + id + '" class="btn ' + (filter === id ? 'btn-primary' : 'btn-outline') + '" style="min-height:36px;">' + label + '</button>').join('');
+        const rows = shown.length
+            ? shown.map((line) => '<article style="padding:12px 0;border-top:1px solid #E2E8F0;"><strong>' + (line.kind === 'gain' ? 'Gain' : 'Dépense') + '</strong> · ' + eurosFromCents(line.cents) + '<p style="margin:4px 0 0;color:#64748B;font-size:0.85rem;">' + line.label + '</p></article>').join('')
+            : '<p style="color:#64748B;">Pas encore de mouvement. Une mission payée ou réalisée apparaîtra ici, sans mélange des gains et des dépenses.</p>';
+        host.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' + filters + '</div>'
+            + '<p style="font-size:0.88rem;margin:0 0 8px;">À recevoir : <strong>' + eurosFromCents(gainWaiting) + '</strong>. Dépenses sécurisées : <strong>' + eurosFromCents(spent) + '</strong>. Ces deux montants ne se compensent pas.</p>'
+            + rows;
+        host.dataset.filter = filter;
+        host.querySelectorAll('[data-finance-filter]').forEach((button) => {
+            button.addEventListener('click', () => paintUnifiedFinance(host, lines, button.getAttribute('data-finance-filter')));
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (document.querySelector('[data-unified-finance]')) window.mountUnifiedFinance();
+    });
+
     window.openAccountModalSubView = async function(subViewName = 'account') {
         const session = await window.requireAuthSession(`Mon compte (${subViewName})`);
         if (!session || !session.user) return;
@@ -5185,7 +5251,7 @@ safeDomReady(() => {
             }, 50);
         } else if (subViewName === 'finances') {
             titleText = 'Finances';
-            subtitleText = 'Solde, versements et formule LYANN.';
+            subtitleText = 'Gains et dépenses de vos missions, sur le même compte.';
             subViewContent = `
                 <div class="account-desktop-sections">
                     <section class="account-desktop-section">
@@ -5194,8 +5260,9 @@ safeDomReady(() => {
                                 <i class="ph ph-shield-check" style="font-size:1.6rem;" aria-hidden="true"></i>
                                 <strong style="font-size:1.15rem; color:white;">Paiements sécurisés</strong>
                             </div>
-                            <p style="margin:0; font-size:0.9rem; line-height:1.5; color:rgba(255,255,255,0.88);">Le montant de chaque mission est suivi dans sa conversation : devis, paiement, puis versement une fois la mission confirmée. Les fonds sont conservés par Stripe, notre partenaire de paiement.</p>
+                            <p style="margin:0; font-size:0.9rem; line-height:1.5; color:rgba(255,255,255,0.88);">Même compte pour demander et réaliser. Les gains et les dépenses restent séparés : rien n’est présenté comme un solde disponible.</p>
                         </div>
+                        <div class="lyann-unified-finance" data-unified-finance style="margin-top:12px;"></div>
                         <div class="account-group-box" style="margin-top:12px;">
                             <button type="button" class="account-touch-row" style="width:100%;text-align:left;background:transparent;border:0;cursor:pointer;" onclick="window.openAccountModalSubView('activity').then(() => window.switchActivityTab('missions', window.CURRENT_USER_ID || window.LYANN_AUTH_STATE?.getSnapshot?.()?.userId));">
                                 <div class="row-icon"><i class="ph ph-briefcase"></i></div>
@@ -5567,7 +5634,10 @@ safeDomReady(() => {
         if (typeof window.paintMyMissionsList === 'function' && document.getElementById('myMissionsResults')) {
             window.paintMyMissionsList(currentUserId);
         }
-        if (subViewName === 'finances' && window.LYANN_PAYOUT_ACCOUNT) window.LYANN_PAYOUT_ACCOUNT.mount();
+        if (subViewName === 'finances') {
+            if (window.LYANN_PAYOUT_ACCOUNT) window.LYANN_PAYOUT_ACCOUNT.mount();
+            if (typeof window.mountUnifiedFinance === 'function') window.mountUnifiedFinance();
+        }
         if (subViewName === 'settings' && typeof window.renderBlockedAccounts === 'function') window.renderBlockedAccounts();
         if (typeof mountNotificationPreferenceControls === 'function') mountNotificationPreferenceControls();
         if (typeof bindNotificationPreferenceControls === 'function') bindNotificationPreferenceControls();

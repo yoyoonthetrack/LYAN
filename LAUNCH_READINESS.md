@@ -88,6 +88,10 @@ Les pages restent des documents HTML distincts. Le fond entre deux pages est le 
 - Le checkout affiche les centimes renvoyés par `create-milestone-intent` même si le champ carte échoue ensuite.
 - Un paiement `CREATED` se rouvre avec « Finaliser le paiement ».
 
+## Phase 7 — un seul compte
+
+Un utilisateur peut demander et réaliser en même temps. L’onglet Finances agrège les deux sans solde net : filtres Tout, Gains, Dépenses. Le faux « Solde disponible » et le bouton « Virement instantané » ont été retirés. Le compte Stripe Connect sert à recevoir un versement, il ne change pas le rôle.
+
 ## Git
 
 Les artefacts (`artifacts/`, y compris `isolated.env`) et les fichiers `.env*` ne sont pas commités. Ils contiennent des clés.

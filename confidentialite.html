@@ -1022,18 +1022,9 @@
                 <!-- HUB 4 : FINANCES & PAIEMENTS -->
                 <div class="account-tab-content" id="tab-acc-finances">
                     <div class="profile-section-card">
-                        <h4 class="profile-section-title">💳 Tableau de Bord Stripe Connect & Solde</h4>
-                        <div class="profile-dashboard-grid" style="margin-bottom: 16px;">
-                            <div class="profile-kpi-card" style="background: #E8F5E9;">
-                                <span class="profile-kpi-val" id="accountKpiAvailableBalance" style="color: #2E7D32;">0,00 €</span>
-                                <span class="profile-kpi-label">Solde disponible</span>
-                            </div>
-                            <div class="profile-kpi-card" style="background: #FFF8E1;">
-                                <span class="profile-kpi-val" id="accountKpiPendingBalance" style="color: #D4A843;">0,00 €</span>
-                                <span class="profile-kpi-label">Paiements en cours</span>
-                            </div>
-                        </div>
-                        <button class="btn btn-primary" id="btnInstantPayoutHub">Virement instantané vers mon IBAN 🏦</button>
+                        <h4 class="profile-section-title">Activité financière</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">Un seul compte. Les gains et les dépenses restent séparés.</p>
+                        <div id="lyannUnifiedFinanceHub" data-unified-finance></div>
                     </div>
 
                     <div class="profile-section-card">

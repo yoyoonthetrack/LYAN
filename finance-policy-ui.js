@@ -275,8 +275,53 @@
         };
     }
 
+    // Phase 7 — one account. A payment is a gain or an expense, never both, never a net "available" balance.
+    function ledgerLines(userId, payments) {
+        const me = String(userId || '');
+        const seen = new Set();
+        const lines = [];
+        (payments || []).forEach((pay) => {
+            if (!pay || !pay.id || seen.has(String(pay.id))) return;
+            const isGain = String(pay.provider_id || '') === me;
+            const isExpense = String(pay.requester_id || '') === me;
+            if (!isGain && !isExpense) return;
+            seen.add(String(pay.id));
+            const kind = isGain ? 'gain' : 'expense';
+            const raw = kind === 'gain'
+                ? (pay.provider_net_cents != null ? pay.provider_net_cents : pay.service_amount_cents)
+                : pay.customer_total_cents;
+            const amount = Number(raw);
+            lines.push({
+                id: String(pay.id),
+                kind: kind,
+                cents: Number.isFinite(amount) ? amount : null,
+                label: ledgerStatus(pay, kind),
+                at: pay.created_at || null
+            });
+        });
+        return lines;
+    }
+
+    function ledgerStatus(pay, kind) {
+        const paymentStatus = String(pay.payment_status || '');
+        const transferStatus = String(pay.transfer_status || '');
+        if (paymentStatus === 'REFUNDED') return 'Remboursé';
+        if (paymentStatus === 'DISPUTED') return 'Litige — fonds bloqués';
+        if (kind === 'gain') {
+            if (paymentStatus !== 'SUCCEEDED') return 'Gain attendu — paiement pas encore sécurisé';
+            if (transferStatus === 'TRANSFERRED' || pay.stripe_transfer_id) {
+                return 'Transfert Stripe créé — versement bancaire non confirmé';
+            }
+            return 'À recevoir — versement pas encore confirmé';
+        }
+        if (paymentStatus === 'SUCCEEDED') return 'Paiement sécurisé';
+        if (paymentStatus === 'FAILED') return 'Paiement échoué';
+        return 'Paiement en cours';
+    }
+
     const api = {
         cents: cents,
+        ledgerLines: ledgerLines,
         classifyFinanceDisplay: classifyFinanceDisplay,
         policyCopy: policyCopy,
         fundLabel: fundLabel,

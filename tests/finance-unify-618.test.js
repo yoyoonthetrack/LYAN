@@ -80,6 +80,22 @@ test('6.18 portal no longer mounts a parallel lab by default', () => {
     assert.match(shared, /finance-desk\.css/);
 });
 
+test('phase 7 ledger keeps gains and expenses on one account without a net balance', () => {
+    const me = 'user-1';
+    const lines = policy.ledgerLines(me, [
+        { id: 'p1', requester_id: 'other', provider_id: me, payment_status: 'SUCCEEDED', transfer_status: 'PENDING_VALIDATION', provider_net_cents: 1746 },
+        { id: 'p1', requester_id: 'other', provider_id: me, payment_status: 'SUCCEEDED', provider_net_cents: 1 },
+        { id: 'p2', requester_id: me, provider_id: 'other', payment_status: 'SUCCEEDED', customer_total_cents: 1949 },
+        { id: 'p3', requester_id: 'stranger', provider_id: 'nope', payment_status: 'SUCCEEDED', customer_total_cents: 100 }
+    ]);
+    assert.equal(lines.length, 2);
+    assert.equal(lines[0].kind, 'gain');
+    assert.equal(lines[0].label, 'À recevoir — versement pas encore confirmé');
+    assert.equal(lines[1].kind, 'expense');
+    assert.equal(lines[1].label, 'Paiement sécurisé');
+    assert.equal(typeof policy.netAvailableBalance, 'undefined');
+});
+
 test('6.18 engines stay off', () => {
     assert.equal(postTransferFinancialExecutionEnabled(), false);
     assert.equal(preTransferRefundExecutionEnabled(), false);
