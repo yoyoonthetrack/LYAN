@@ -1343,7 +1343,7 @@ const LYANN_API_CLIENT = {
                 try {
                     const { data: pubProfs } = await this.supabase
                         .from('public_profiles')
-                        .select('id, first_name, last_name, avatar_url, city, territory')
+                        .select('id, first_name, last_name, avatar_url, city, territory, bio')
                         .in('id', authorIds);
                     if (pubProfs && Array.isArray(pubProfs)) {
                         pubProfs.forEach(p => { profilesMap[p.id] = p; });
@@ -1430,6 +1430,11 @@ const LYANN_API_CLIENT = {
                     territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
                     created_at: p.created_at,
                     content: p.content,
+                    title: p.headline || '',
+                    source_name: p.source_name || '',
+                    source_url: p.source_url || '',
+                    source_published_at: p.source_published_at || '',
+                    editorial: /Compte éditorial LYANN/i.test(authorProf?.bio || ''),
                     images: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
                     videos: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
                     likes: (postLikesCountMap[p.id] !== undefined) ? postLikesCountMap[p.id] : (p.likes_count || 0),

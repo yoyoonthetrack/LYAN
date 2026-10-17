@@ -1,6 +1,6 @@
 'use strict';
 
-const EDITORIAL_BADGE = 'Compte éditorial IA LYANN';
+const EDITORIAL_BADGE = 'Compte éditorial LYANN';
 
 const EDITORIAL_BOTS = [
     {
@@ -116,11 +116,10 @@ function draftFromSource(item, bot) {
     const body = limitWords(stripTags(facts), 90);
     if (!body || !item.url) return null;
     const ambiguous = /peut-être|rumeur|non confirmé|selon certaines sources/i.test(body);
-    const text = `${body}\n\nSource : ${item.sourceName}. ${item.url}`;
     return {
         subject: item.title,
         facts: body,
-        proposedText: text,
+        proposedText: body,
         sourceName: item.sourceName,
         sourceUrl: item.url,
         originalPublishedAt: item.publishedAt || null,
@@ -204,7 +203,8 @@ function acceptRewrittenText(raw, draft) {
     const text = String(raw || '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
     const words = text.split(/\s+/).filter(Boolean);
     if (words.length < 40 || words.length > 120) return '';
-    if (!draft.sourceUrl || !text.includes(draft.sourceUrl)) return '';
+    if (draft.sourceUrl && text.includes(draft.sourceUrl)) return '';
+    if (/source\s*:/i.test(text)) return '';
     if (text.trim() === String(draft.subject || '').trim()) return '';
     return text;
 }

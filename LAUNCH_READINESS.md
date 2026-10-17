@@ -2,7 +2,7 @@
 
 ## Phase 10 — Comptes éditoriaux Bokantaj
 
-Cinq comptes Auth existent sur le Supabase Staging `tdktfbtqceldlaeqjtow`, liés à `lyann_agents`, sans rôle admin et sans compte Stripe. Leur biographie commence par « Compte éditorial IA LYANN ». Production n’a pas été modifié.
+Cinq comptes Auth existent sur le Supabase Staging `tdktfbtqceldlaeqjtow`, liés à `lyann_agents`, sans rôle admin et sans compte Stripe. Leur biographie publique commence par « Compte éditorial LYANN ». La mention « IA » reste hors de l’interface publique. La source d’un post est un champ séparé, pas une ligne dans le texte. Production n’a pas été modifié.
 
 | Compte | Collecte au 17 octobre 2026 | Statut |
 |---|---|---|

@@ -30,8 +30,9 @@ const draft = draftFromSource({
     sourceName: 'Routes de Guadeloupe',
     territory: 'guadeloupe'
 }, EDITORIAL_BOTS.find((bot) => bot.slug === 'lyann-trafik'));
-assert.match(draft.proposedText, /Source : Routes de Guadeloupe/);
-assert.match(draft.proposedText, /https:\/\/example.com\/route/);
+assert.doesNotMatch(draft.proposedText, /Source\s*:/i);
+assert.doesNotMatch(draft.proposedText, /https:\/\/example.com\/route/);
+assert.strictEqual(draft.sourceName, 'Routes de Guadeloupe');
 assert.strictEqual(draftFromSource({ title: 'Sans lien', url: '', summary: 'Rien' }, EDITORIAL_BOTS[0]), null);
 
 const second = draftFromSource({
@@ -59,5 +60,8 @@ const { classifyFeed, acceptRewrittenText } = require('../api/editorial-engine')
 assert.strictEqual(classifyFeed('<rss><channel><item/></channel></rss>', 'rss'), 'flux vide');
 assert.strictEqual(classifyFeed('<html></html>', 'rss'), 'flux invalide');
 assert.strictEqual(acceptRewrittenText('Pointe-à-Pitre', { subject: 'Pointe-à-Pitre', sourceUrl: 'https://rci.fm/a' }), '');
+const longEnough = 'La commune retrouve un budget en excédent après des années de redressement. Le texte reste factuel et ne reprend pas le lien du média dans le corps. '.repeat(3);
+assert.ok(acceptRewrittenText(longEnough, { subject: 'Autre titre', sourceUrl: 'https://rci.fm/a' }));
+assert.strictEqual(acceptRewrittenText(longEnough + ' https://rci.fm/a', { subject: 'Autre', sourceUrl: 'https://rci.fm/a' }), '');
 
 console.log('editorial-engine: sources, doublon logique, santé et suspension');

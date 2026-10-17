@@ -1213,6 +1213,7 @@ safeDomReady(() => {
             if (profileOrFirstName.email === 'aide@lyann.app' || supportName === 'aide lyann' || supportName === 'support lyann') {
                 return 'Support LYANN';
             }
+            if (fn.toUpperCase() === 'LYANN' && ln) return `LYANN ${ln}`;
         } else {
             fn = (profileOrFirstName || '').trim();
             ln = (lastName || '').trim();
@@ -2970,10 +2971,13 @@ safeDomReady(() => {
 
                     const cardTitleHTML = cardHeadline ? `<div class="lyann-card-title" style="font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif; font-weight: 650; font-size: 1.15rem; color: #17231C; line-height: 1.3; letter-spacing: -0.015em; margin-bottom: 4px; word-break: break-word;">${window.escapeHtmlAttr(cardHeadline)}</div>` : '';
                     const cardBodyHTML = cardBody ? `<div class="lyann-card-description" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 450; font-size: 0.95rem; color: #334155; line-height: 1.5; word-break: break-word; margin-top: 2px;">${safeMentions(cardBody)}</div>` : '';
+                    const sourceDate = post.source_published_at ? new Date(post.source_published_at) : null;
+                    const sourceDateText = sourceDate && !Number.isNaN(sourceDate.getTime()) ? sourceDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                    const sourceHTML = post.source_url ? `<p class="lyann-post-source" style="margin:8px 0 0; font-size:0.75rem; color:#64748B;">Source · <a href="${window.escapeHtmlAttr(post.source_url)}" target="_blank" rel="noopener noreferrer">${window.escapeHtmlAttr(post.source_name || 'Publication originale')}</a>${sourceDateText ? ` · ${window.escapeHtmlAttr(sourceDateText)}` : ''}</p>` : '';
                     const budgetHTML = (isLyann && post.budget) ? ` · Budget : ${window.escapeHtmlAttr(post.budget)} €` : '';
 
                     let hasBodyContent = cardHeadline || cardBody || mediaHTML;
-                    let bodyBlockHTML = hasBodyContent ? `<div class="flash-card-body" style="margin-top: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">${cardTitleHTML}${cardBodyHTML}${mediaHTML}</div>` : '';
+                    let bodyBlockHTML = hasBodyContent || sourceHTML ? `<div class="flash-card-body" style="margin-top: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">${cardTitleHTML}${cardBodyHTML}${mediaHTML}${sourceHTML}</div>` : '';
 
                     let ctaRowHTML = '';
 
@@ -3016,7 +3020,8 @@ safeDomReady(() => {
                                     <div class="flash-author-block trigger-quick-profile" role="button" tabindex="0" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
                                         <img src="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" onerror="window.handleAvatarError(this)" alt="${window.escapeHtmlAttr(authorDisplayName)}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
                                         <div class="flash-author-info" style="line-height: 1.25; min-width: 0; flex: 1;">
-                                            <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayNameHtml} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i></strong>
+                                            <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayNameHtml}${post.editorial ? '' : ' <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i>'}</strong>
+                                            ${post.editorial ? '<span style="display:block; font-size:0.72rem; font-weight:650; color:#35583F;">Compte éditorial LYANN</span>' : ''}
                                             <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
                                         </div>
                                     </div>

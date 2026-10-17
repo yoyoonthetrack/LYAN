@@ -47,8 +47,9 @@ async function rewriteDraft(draft, fetchImpl) {
                     content: [
                         'Tu rédiges un court texte original en français courant, entre 50 et 100 mots.',
                         'Tu n’utilises que les faits fournis. Tu n’ajoutes aucun chiffre, lieu, date ou conseil absent du texte source.',
-                        'Tu ne recopies pas le titre seul. Tu gardes un ton factuel, sans emoji et sans question artificielle.',
-                        'Tu termines par la ligne exacte: Source : NOM. URL',
+                        'Tu ne recopies pas le titre seul. Tu reformules les faits avec tes mots, sans changer le sens.',
+                        'Tu n’écris pas le nom du média, ni l’URL, ni une ligne Source.',
+                        'Tu n’inventes aucun fait, chiffre, date ou citation. Pas d’emoji, pas de créole forcé, pas de question artificielle.',
                         'Si le sujet touche la santé, tu ne donnes ni dosage, ni promesse de guérison.'
                     ].join(' ')
                 },
@@ -196,10 +197,15 @@ async function publishEditorialTask(supabase, task, editorText) {
     if (!agent || agent.status === 'SUSPENDED') throw new Error('Ce compte éditorial est suspendu.');
     const content = String(editorText || task.instruction || '').trim();
     if (!content || !metadata.source_url) throw new Error('La proposition n’a pas de source.');
+    const body = content.replace(/\n*Source\s*:[\s\S]*$/i, '').trim();
     const { data: post, error } = await supabase.from('bokantaj_posts').insert({
         author_id: agent.linked_profile_id,
         type: 'info',
-        content,
+        headline: metadata.subject || task.title || null,
+        content: body,
+        source_name: metadata.source_name || null,
+        source_url: metadata.source_url || null,
+        source_published_at: metadata.original_published_at || null,
         city: null,
         territory: metadata.territory || null,
         media_urls: []
