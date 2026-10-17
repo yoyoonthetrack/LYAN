@@ -3013,7 +3013,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <article class="admin-card" style="padding:12px; margin-bottom:10px;" data-proposal="${maisonEsc(item.id)}">
                     <strong>${maisonEsc(item.agent_name || '')}</strong>
                     <span class="maison-muted"> · ${maisonEsc(item.approval_status || '')} · ${maisonEsc(item.metadata?.validation_status || '')}</span>
+                    <p class="maison-muted">${maisonEsc(item.metadata?.generation_label || 'Brouillon')} · validation humaine : ${item.approved_by ? 'oui' : 'en attente'}</p>
                     <p><a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a></p>
+                    <p class="maison-muted">Faits : ${maisonEsc(item.metadata?.facts || '')}</p>
+                    <p class="maison-muted">Contrôle : ${item.metadata?.checks?.ok === false ? maisonEsc((item.metadata.checks.reasons || []).join(' ; ')) : 'accepté'}</p>
                     <textarea class="admin-input editorial-text" rows="5" style="width:100%;">${maisonEsc(item.instruction || '')}</textarea>
                     <div style="display:flex; gap:8px; margin-top:8px;">
                         <button type="button" class="admin-btn admin-btn-secondary editorial-save">Enregistrer la correction</button>

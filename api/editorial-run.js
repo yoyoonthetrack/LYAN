@@ -63,7 +63,7 @@ async function fetchText(url) {
     return response.text();
 }
 
-async function completeOnce(config, messages, fetchImpl) {
+async function completeOnce(config, messages, fetchImpl = globalThis.fetch) {
     const response = await fetchImpl(`${config.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
@@ -76,6 +76,19 @@ async function completeOnce(config, messages, fetchImpl) {
     });
     if (!response.ok) return { ok: false, reason: `modèle indisponible (${response.status})` };
     return { ok: true, payload: await response.json() };
+}
+
+function parseDraftAnswer(raw) {
+    const value = String(raw || '').trim();
+    const start = value.indexOf('{');
+    const end = value.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+        try {
+            const data = JSON.parse(value.slice(start, end + 1));
+            if (data && data.texte) return { title: String(data.titre || '').trim(), text: String(data.texte).trim() };
+        } catch (_) {}
+    }
+    return { title: '', text: value };
 }
 
 async function rewriteDraft(draft, fetchImpl) {
@@ -96,24 +109,34 @@ async function rewriteDraft(draft, fetchImpl) {
                 'Conserve chaque chiffre, date, lieu, acteur et décision présents dans les faits. Ne les remplace pas par une formule vague.',
                 'Tu n’inventes aucun fait. Pas d’emoji, pas de créole forcé, pas de question, pas de conclusion artificielle.',
                 'Tu n’écris pas le nom du média. Tu gardes l’attribution si le fait est une décision, une déclaration ou une accusation.',
-                'Si le sujet touche la santé, parle d’usage traditionnel, pas d’efficacité établie. Aucun dosage ni promesse.'
+                'Si le sujet touche la santé, parle d’un usage traditionnel ou d’une description botanique, jamais d’une efficacité établie. Aucun dosage ni promesse.',
+                'Réponds uniquement en JSON: {"titre":"...","texte":"..."}.'
             ].join(' ')
         },
         { role: 'user', content: `Faits extraits:\n${factList}\n\nFaits source:\n${draft.facts}` }
     ], fetchImpl);
     if (!written.ok) return written;
     const payload = written.payload;
-    const text = acceptRewrittenText(payload?.choices?.[0]?.message?.content, draft);
-    if (!text) return { ok: false, reason: 'réponse du modèle refusée' };
-    const review = reviewEditorialText({ text, facts: draft.facts, healthReview: draft.healthReview });
-    if (!review.ok) return { ok: false, reason: review.reasons.join(' ; ') };
+    const parsedDraft = parseDraftAnswer(payload?.choices?.[0]?.message?.content);
+    const text = acceptRewrittenText(parsedDraft.text, draft);
     const usage = payload && payload.usage ? payload.usage : {};
-    return {
-        ok: true,
-        text,
+    const usageFields = {
         model: config.model,
         promptTokens: usage.prompt_tokens || 0,
         completionTokens: usage.completion_tokens || 0
+    };
+    if (!text) return { ok: false, reason: 'réponse du modèle refusée', extractedFacts: factList, ...usageFields };
+    const review = reviewEditorialText({ text, title: parsedDraft.title, facts: draft.facts, healthReview: draft.healthReview });
+    if (!review.ok) {
+        return { ok: false, reason: review.reasons.join(' ; '), text, title: parsedDraft.title, extractedFacts: factList, review, ...usageFields };
+    }
+    return {
+        ok: true,
+        text,
+        title: parsedDraft.title,
+        extractedFacts: factList,
+        review,
+        ...usageFields
     };
 }
 
@@ -256,6 +279,13 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
     const content = String(editorText || task.instruction || '').trim();
     if (!content || !metadata.source_url) throw new Error('La proposition n’a pas de source.');
     const body = content.replace(/\n*Source\s*:[\s\S]*$/i, '').trim();
+    const review = reviewEditorialText({
+        text: body,
+        title: metadata.subject || task.title || '',
+        facts: metadata.facts || '',
+        healthReview: metadata.validation_status === 'HUMAN_REQUIRED' || metadata.healthReview === true
+    });
+    if (!review.ok) throw new Error('Contrôle éditorial : ' + review.reasons.join(' ; '));
     const { data: post, error } = await supabase.from('bokantaj_posts').insert({
         author_id: agent.linked_profile_id,
         type: 'info',
@@ -291,4 +321,4 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
     return post.id;
 }
 
-module.exports = { collectEditorial, publishEditorialTask, providerConfig, oidcClaims };
+module.exports = { collectEditorial, publishEditorialTask, providerConfig, oidcClaims, rewriteDraft };

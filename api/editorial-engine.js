@@ -201,9 +201,15 @@ function matchesTerms(item, terms) {
 
 function essentialFacts(facts) {
     const text = String(facts || '');
-    const years = text.match(/\b(?:19|20)\d{2}\b/g) || [];
     const amounts = text.match(/\d+(?:[.,]\d+)?\s*millions?(?:\s*d['’]euros)?|\d+(?:[.,]\d+)?\s*(?:€|euros?)/gi) || [];
-    return [...new Set([...years, ...amounts])];
+    const years = [];
+    const yearRe = /\b(?:19|20)\d{2}\b/g;
+    let match;
+    while ((match = yearRe.exec(text))) {
+        const around = text.slice(Math.max(0, match.index - 28), match.index + match[0].length + 28);
+        if (/\d+(?:[.,]\d+)?\s*millions?|\d+\s*(?:€|euros?)/i.test(around)) years.push(match[0]);
+    }
+    return [...new Set([...amounts, ...years])];
 }
 
 function factAppears(text, token) {
@@ -211,8 +217,22 @@ function factAppears(text, token) {
     return compact(text).includes(compact(token));
 }
 
+function hasMedicalPromise(value) {
+    const text = String(value || '');
+    const claim = /soulage\w*|gu[ée]rit\w*|soigne\w*|apais\w*|efficac\w*|b[ée]n[ée]fiqu\w*/gi;
+    let match;
+    while ((match = claim.exec(text))) {
+        if (/^gu[ée]rit-tout/i.test(text.slice(match.index))) continue;
+        const before = text.slice(Math.max(0, match.index - 28), match.index).toLowerCase();
+        if (/\bne\b|\bpas\b|\baucun|\bsans\b|\bni\b/.test(before)) continue;
+        return true;
+    }
+    return /\bdosage\s+de\b|\bprenez\b/i.test(text);
+}
+
 function reviewEditorialText(input) {
     const text = String(input && input.text || '').trim();
+    const title = String(input && input.title || '').trim();
     const facts = String(input && input.facts || '').trim();
     const reasons = [];
     if (facts.length < 40) reasons.push('faits insuffisants');
@@ -220,8 +240,8 @@ function reviewEditorialText(input) {
     for (const token of essentialFacts(facts)) {
         if (!factAppears(text, token)) reasons.push('fait essentiel absent: ' + token);
     }
-    if (/il est important de noter|en conclusion|n['’]hésitez pas/i.test(text)) reasons.push('formule de remplissage');
-    if (input && input.healthReview && /soulage|gu[ée]rit|efficace|b[ée]n[ée]fiques?|apais|soigne|dosage|pr[ée]paration/i.test(text)) {
+    if (/il est important de|en conclusion|n['’]hésitez pas/i.test(text)) reasons.push('formule de remplissage');
+    if (input && input.healthReview && (hasMedicalPromise(text) || hasMedicalPromise(title))) {
         reasons.push('affirmation thérapeutique insuffisamment fondée');
     }
     return { ok: reasons.length === 0, reasons };
@@ -259,6 +279,7 @@ module.exports = {
     matchesTerms,
     acceptRewrittenText,
     essentialFacts,
+    hasMedicalPromise,
     reviewEditorialText,
     assertHumanApproval
 };

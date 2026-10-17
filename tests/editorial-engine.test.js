@@ -77,6 +77,22 @@ assert.strictEqual(reviewEditorialText({
     facts: 'Le bois d’Inde et la consoude sont cités, avec des précautions, sans dosage.',
     healthReview: true
 }).ok, false);
+assert.strictEqual(reviewEditorialText({
+    text: 'La page ne promet pas que ces plantes soulagent. Elle signale des précautions et ne donne aucun dosage.',
+    title: 'Plantes citées dans le jardin créole',
+    facts: 'Le bois d’Inde et la consoude sont cités, avec des précautions, sans dosage.',
+    healthReview: true
+}).ok, true);
+assert.strictEqual(reviewEditorialText({
+    text: 'Le bois d’Inde, le guérit-tout, le desmodium et la consoude sont cités comme plantes du jardin créole. La page rappelle des précautions et ne donne pas de préparation.',
+    title: 'Plantes du jardin créole',
+    facts: 'Le bois d’Inde, le guérit-tout, le desmodium et la consoude sont cités, avec des précautions, sans dosage.',
+    healthReview: true
+}).ok, true);
+assert.strictEqual(reviewEditorialText({
+    text: 'Le budget est en excédent de 7,28 millions d’euros en 2025, après un déficit de 77 millions d’euros fin 2018.',
+    facts: 'En 1998 la commune existait déjà. Déficit de 77 millions d’euros fin 2018. Excédent de 7,28 millions d’euros en 2025.',
+}).ok, true);
 assert.strictEqual(assertHumanApproval(null).ok, false);
 assert.strictEqual(assertHumanApproval({ userId: 'admin', actor: 'script-de-test' }).ok, false);
 assert.strictEqual(assertHumanApproval({ userId: 'admin', actor: 'admin' }).ok, true);

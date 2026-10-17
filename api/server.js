@@ -1528,10 +1528,17 @@ app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
     const now = new Date().toISOString();
     const revisions = Array.isArray(task.metadata && task.metadata.revisions) ? task.metadata.revisions.slice() : [];
     revisions.push({ at: now, by: authResult.userId, previous: task.instruction, next });
+    const { reviewEditorialText } = require('./editorial-engine');
+    const review = reviewEditorialText({
+        text: next,
+        title: task.metadata && (task.metadata.subject || ''),
+        facts: task.metadata && task.metadata.facts || '',
+        healthReview: task.metadata && task.metadata.validation_status === 'HUMAN_REQUIRED'
+    });
     const { error: updateError } = await supabaseAdmin.from('lyann_agent_tasks').update({
         instruction: next,
         updated_at: now,
-        metadata: Object.assign({}, task.metadata, { revisions })
+        metadata: Object.assign({}, task.metadata, { revisions, checks: review })
     }).eq('id', req.params.id);
     if (updateError) return res.status(500).json({ success: false, error: updateError.message });
     return res.json({ success: true });
