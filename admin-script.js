@@ -3015,7 +3015,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="maison-muted"> · ${maisonEsc(item.approval_status || '')} · ${maisonEsc(item.metadata?.validation_status || '')}</span>
                     <p class="maison-muted">${maisonEsc(item.metadata?.generation_label || 'Brouillon')} · validation humaine : ${item.approved_by ? 'oui' : 'en attente'}</p>
                     <p><a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a></p>
-                    <p class="maison-muted">Faits : ${maisonEsc(item.metadata?.facts || '')}</p>
+                    <p class="maison-muted">Faits extraits : ${maisonEsc(item.metadata?.extracted_facts || item.metadata?.facts || '')}</p>
                     <p class="maison-muted">Contrôle : ${item.metadata?.checks?.ok === false ? maisonEsc((item.metadata.checks.reasons || []).join(' ; ')) : 'accepté'}</p>
                     <textarea class="admin-input editorial-text" rows="5" style="width:100%;">${maisonEsc(item.instruction || '')}</textarea>
                     <div style="display:flex; gap:8px; margin-top:8px;">
@@ -3036,18 +3036,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             listEl.querySelectorAll('[data-proposal]').forEach((card) => {
                 card.querySelector('.editorial-save')?.addEventListener('click', async () => {
-                    await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/revise`, {
-                        method: 'POST',
-                        body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
-                    });
-                    await loadEditorialDesk();
+                    try {
+                        await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/revise`, {
+                            method: 'POST',
+                            body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
+                        });
+                        await loadEditorialDesk();
+                    } catch (err) {
+                        alert(err.message);
+                    }
                 });
                 card.querySelector('.editorial-publish')?.addEventListener('click', async () => {
-                    await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/publish`, {
-                        method: 'POST',
-                        body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
-                    });
-                    await loadEditorialDesk();
+                    try {
+                        await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/publish`, {
+                            method: 'POST',
+                            body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
+                        });
+                        await loadEditorialDesk();
+                    } catch (err) {
+                        alert(err.message);
+                    }
                 });
                 card.querySelector('.editorial-reject')?.addEventListener('click', async () => {
                     await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/reject`, { method: 'POST', body: '{}' });
