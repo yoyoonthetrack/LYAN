@@ -13429,6 +13429,10 @@ body.is-native-app .navbar.scrolled,
     .lyann-profile-cta-group .btn {
         min-height: 44px;
     }
+    .lyann-profile-section {
+        padding: 16px;
+        margin-bottom: 14px;
+    }
 }
 
 .lyann-profile-activity {
@@ -13620,8 +13624,8 @@ body.is-native-app .navbar.scrolled,
 
 /* Sections Styling */
 .lyann-profile-section {
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
+    background: #FFFCF8;
+    border: 1px solid #E4DDD2;
     border-radius: 20px;
     padding: 22px;
     margin-bottom: 20px;
@@ -13638,7 +13642,7 @@ body.is-native-app .navbar.scrolled,
 .lyann-section-title {
     font-size: 1.1rem;
     font-weight: 800;
-    color: #1D2A44;
+    color: #1F3827;
     display: flex;
     align-items: center;
     gap: 8px;

@@ -112,7 +112,11 @@ Ne pas contourner le captcha ni accepter les conditions à la place de QA A.
 
 Les notifications regroupent les rappels du même type. La liste Missions, elle, garde chaque mission et son action réelle (répondre, payer, déclarer, valider). Rien n’est retiré de Missions pour alléger les notifications. Le dossier affiche les centimes serveur, les frais et l’attente de validation, selon le rôle de cette mission.
 
-Inscription d’un nouveau compte : NON TESTÉ. Staging refuse `@lyann.invalid` et `@example.com`, et les règles d’email n’ont pas été assouplies. Il faut une adresse valide et contrôlée.
+Inscription d’un nouveau compte : NON TESTÉ jusqu’à une adresse réelle. Parcours prévu, sans assouplir Auth : ouvrir « Créer un compte », prénom, une adresse que tu lis, mot de passe d’au moins 8 caractères. Staging refuse `@lyann.invalid` et `@example.com`. Supabase envoie ensuite le lien de confirmation. Action à faire de ton côté : ouvrir ce lien. Aucun compte n’est marqué confirmé par contournement.
+
+Un rappel groupé ouvre Missions filtré sur cette action. Vérifié : « 7 missions — un paiement peut être sécurisé » affiche 7 lignes et « 7 missions · paiements à sécuriser ». Le filtre ne survit pas au rechargement. Un rappel d’une seule mission ouvre son dossier. Les rappels ne gonflent pas le compteur de non lues (62 hors rappels).
+
+Devis par jalons « [CAMPAGNE-J2] Devis par jalons » : les boutons Accepter et Refuser sont là. Le clic sur Accepter n’a pas abouti dans ce passage (la confirmation n’est pas apparue, le devis est resté en attente). NON PASS. Safari et le build iOS installé restent NON TESTÉ. Pas de TestFlight.
 
 ### Manques classés, non développés
 

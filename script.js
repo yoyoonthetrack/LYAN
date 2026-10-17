@@ -5005,8 +5005,9 @@ safeDomReady(() => {
         window.__lyannMyDossiers = source;
         const query = window.__lyannMissionQuery || '';
         const filter = window.__lyannMissionBucket || 'open';
+        const action = window.__lyannMissionAction || '';
         const filtered = (dossierApi && typeof dossierApi.filterDossiers === 'function')
-            ? dossierApi.filterDossiers(source, { query, bucket: filter })
+            ? dossierApi.filterDossiers(source, { query, bucket: filter, action: action })
             : source.filter((row) => {
                 const hay = [row.title, row.statusLabel, row.roleLabel, row.nextAction].join(' ').toLowerCase();
                 if (query && hay.indexOf(String(query).toLowerCase()) === -1) return false;
@@ -5018,6 +5019,33 @@ safeDomReady(() => {
         const search = document.getElementById('myMissionsSearch');
         if (search && search.value !== query) search.value = query;
         list.replaceChildren();
+        if (action) {
+            const labels = {
+                quote_reply: 'devis à traiter',
+                payment_due: 'paiements à sécuriser',
+                client_validation: 'prestations à valider',
+                declare_done: 'prestations à déclarer terminées',
+                payout_setup: 'comptes de versement à terminer',
+                payment_wait: 'paiements en attente'
+            };
+            const note = document.createElement('div');
+            note.setAttribute('data-mission-action-filter', action);
+            note.style.cssText = 'padding:12px 14px;margin:0 0 8px;background:#FAF7F2;border:1px solid #E4DDD2;border-radius:14px;';
+            const line = document.createElement('p');
+            line.style.cssText = 'margin:0 0 8px;font-size:0.88rem;color:#3F5C49;';
+            line.textContent = filtered.length + ' mission' + (filtered.length > 1 ? 's' : '') + ' · ' + (labels[action] || 'cette action');
+            const clear = document.createElement('button');
+            clear.type = 'button';
+            clear.className = 'btn btn-outline btn-sm';
+            clear.textContent = 'Voir toutes les missions';
+            clear.addEventListener('click', () => {
+                window.__lyannMissionAction = '';
+                window.paintMyMissionsList(userId);
+            });
+            note.appendChild(line);
+            note.appendChild(clear);
+            list.appendChild(note);
+        }
         if (!filtered.length) {
             const empty = document.createElement('p');
             empty.className = 'finance-muted';

@@ -311,7 +311,7 @@ function renderNotificationsModal() {
         }));
         notifs = reminders.concat(view.persisted);
     }
-    const unreadCount = notifs.filter((n) => !n.read).length;
+    const unreadCount = notifs.filter((n) => !n.read && String(n.type || '').indexOf('REMINDER_') !== 0).length;
 
     modal.innerHTML = `
         <div class="lyann-notif-sheet" role="dialog" aria-modal="true" aria-labelledby="lyannNotifTitle">
@@ -445,6 +445,9 @@ function renderNotificationsModal() {
             if (String(nType || '').indexOf('REMINDER_') === 0 && card.getAttribute('data-grouped') === '1') {
                 closeModal();
                 const userId = currentUserId;
+                window.__lyannMissionAction = String(nType).replace(/^REMINDER_/, '').toLowerCase();
+                window.__lyannMissionBucket = 'open';
+                window.__lyannMissionQuery = '';
                 const openMissions = window.openAccountModalSubView
                     ? window.openAccountModalSubView('activity')
                     : Promise.resolve();

@@ -238,15 +238,27 @@
         });
     }
 
+    function missionActionKind(row) {
+        const label = str(row && row.nextAction);
+        if (label === 'À vous de répondre au devis') return 'quote_reply';
+        if (label === 'Sécuriser le paiement') return 'payment_due';
+        if (label === 'Valider la prestation') return 'client_validation';
+        if (label === 'Déclarer la prestation terminée') return 'declare_done';
+        if (label === 'En attente du paiement') return 'payment_wait';
+        return '';
+    }
+
     function filterDossiers(list, options) {
         const query = str(options && options.query).trim().toLowerCase();
         const bucket = str(options && options.bucket) || 'open';
+        const action = str(options && options.action);
         return sortDossiers(uniqueDossiers(list)).filter((row) => {
             const group = dossierBucket(row);
             if (bucket === 'open' && group === 'done') return false;
             if (bucket === 'active' || bucket === 'waiting' || bucket === 'done') {
                 if (group !== bucket) return false;
             }
+            if (action && missionActionKind(row) !== action) return false;
             if (!query) return true;
             const hay = [row.title, row.statusLabel, row.roleLabel, row.nextAction].map(str).join(' ').toLowerCase();
             return hay.indexOf(query) !== -1;
@@ -471,6 +483,7 @@
         createDossierSession,
         quoteRequestId,
         dossierBucket,
+        missionActionKind,
         sortDossiers,
         filterDossiers,
         uniqueDossiers,
