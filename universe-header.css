@@ -491,6 +491,16 @@ body.feed-page .bokantaj-header-art {
         border-radius: 16px;
     }
 }
+body.is-native-app.feed-page .feed-hero-section.lyann-universe-header > .container {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: none;
+    width: 100%;
+}
+body.is-native-app.feed-page .bokantaj-header-art {
+    width: 100%;
+    border-radius: 0;
+}
 @media (min-width: 768px) {
     #bokantajFilterSheetModal.mobile-bottom-sheet {
         align-items: center !important;
