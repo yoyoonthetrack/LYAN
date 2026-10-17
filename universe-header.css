@@ -483,7 +483,6 @@ body.feed-page .bokantaj-header-art {
     width: 100%;
     height: auto;
     border-radius: 18px;
-    opacity: 0.9;
     filter: none;
 }
 @media (max-width: 767px) {
@@ -508,7 +507,6 @@ body[data-explorer-mode="lyanneurs"] .lyanneurs-header-art {
     display: block;
     width: 100%;
     height: auto;
-    opacity: 0.78;
     border-radius: 18px;
 }
 body[data-explorer-mode="annonces"] .lyann-universe-frame,
