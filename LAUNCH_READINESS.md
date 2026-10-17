@@ -119,6 +119,20 @@ Ouvrir un dossier déjà lié ne lance plus `initiate_lyann_help_conversation`. 
 
 Installation sur l’iPhone, sans TestFlight : brancher le téléphone, lui faire confiance, ouvrir `ios/App/App.xcodeproj`, schéma App, destination le téléphone, puis Run. Ne pas archiver et ne pas envoyer à App Store Connect. Le téléphone doit être sur le même réseau que le Mac pour joindre l’API `8098`. La messagerie et les missions passent par Supabase en HTTPS.
 
+## Phase 8.6 — iPhone et retours externes
+
+Le binaire local embarque Staging `tdktfbtqceldlaeqjtow`, la clé `anon`, et `http://172.20.10.2:8098`. Cette adresse est celle du Mac sur le partage de connexion. Elle sert au test personnel. Elle n’est pas une API de bêta.
+
+Dépendent du port 8098 : paiement, Connect, libération, litige, suppression de compte, poursuite d’inscription. Le grand livre Finances, l’auth, les annonces, le chat et les missions lisent Supabase en HTTPS. Si le Mac est éteint ou le téléphone quitte ce réseau, ces lectures restent possibles et les routes 8098 échouent sans écrire. CORS du serveur de développement accepte toute origine. Ce n’est pas acceptable pour plusieurs utilisateurs. Le pare-feu macOS est aujourd’hui désactivé ; ce n’est pas un prérequis. ATS n’a pas été ouvert globalement.
+
+`capacitor://localhost` n’est pas un Universal Link et ne rouvre pas l’app depuis Safari ou Stripe. L’app n’envoie plus cette adresse comme `return_url`. Sur une installation native, démarrer Connect est refusé avec un message, et le compte n’est pas marqué actif. Le serveur Staging réécrit encore `lyann.app` vers `127.0.0.1:8098`. Un lien reçu vers lyann.app est ignoré tant que le verrou n’est pas Production. Un retour `connect=return` ne fait que relire l’état chez Stripe via `/v1/payments/connect/status`.
+
+La confirmation d’e-mail native demande `app.lyann.dom://confirm-signup`. Google demande `app.lyann.dom://google-auth`. Ces schémas sont déclarés. Ils ne fonctionnent que si le projet Staging les autorise. Aucun Associated Domain n’est posé : un Universal Link HTTPS exigerait un fichier sur un domaine, donc une autorisation et un hébergement qui ne sont pas faits.
+
+Connect sur iPhone : **bloqué** tant que le retour n’est pas rejoué depuis Safari vers l’app installée. Le premier test physique ne fait aucun paiement.
+
+iPhone apparié : « iPhone de yoann », identifiant `00008140-00112D0C2684801C`. Build Debug signé pour `iphoneos`, profil « iOS Team Provisioning Profile: app.lyann.mobile », équipe `WLV4WC47U2`, bundle `app.lyann.mobile`, Sign in with Apple, push `development`. Bundle embarqué `ios-mvbxxlmf-19cde7`. Pas d’Associated Domains. L’app Debug a été installée sur cet iPhone. Les dix contrôles du premier test n’ont pas encore été observés. Connect sur iPhone reste bloqué.
+
 ## Phase 8.5 — installation iPhone
 
 Commit `00d96c7`, puis le correctif de retour natif. Bundle local `ios-mvbxq3t8-77ddd5`, identique à `www/`. Verrou Supabase `tdktfbtqceldlaeqjtow`. Clé embarquée : rôle `anon`, pas de `service_role`, pas de `sk_live`. Stripe du processus sur 8098 : `test`.

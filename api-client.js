@@ -466,7 +466,9 @@ const LYANN_API_CLIENT = {
             password,
             options: {
                 data: metadata,
-                emailRedirectTo: window.location.origin + '/confirm-signup.html'
+                emailRedirectTo: isCapacitorRuntime()
+                    ? 'app.lyann.dom://confirm-signup'
+                    : window.location.origin + '/confirm-signup.html'
             }
         });
         if (res.error) {

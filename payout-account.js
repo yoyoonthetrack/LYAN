@@ -25,10 +25,9 @@
         try {
             const url = new URL(String(href || ''));
             if (url.protocol === 'capacitor:' || url.protocol === 'ionic:') {
-                const base = url.protocol + '//' + (url.host || 'localhost') + '/feed.html';
                 return {
-                    return_url: base + '?action=finances&connect=return',
-                    refresh_url: base + '?action=finances&connect=refresh'
+                    blocked: true,
+                    reason: 'NATIVE_RETURN_UNAVAILABLE'
                 };
             }
             if (url.hostname === '127.0.0.1' && String(url.port || '') === '8098') {
@@ -275,11 +274,19 @@
     }
 
     async function startOnboarding() {
+        const urls = payoutReturnUrls();
+        if (urls.blocked) {
+            const subtitle = document.getElementById('payoutAccountState');
+            if (subtitle) subtitle.textContent = 'Le retour depuis Stripe n’est pas encore relié à cette installation. Le compte n’est pas activé.';
+            const error = new Error('native-return');
+            error.code = 'NATIVE_RETURN_UNAVAILABLE';
+            throw error;
+        }
         const status = await connectRequest('/v1/payments/connect/status');
         if (!status.account_created) await connectRequest('/v1/payments/connect/account', { method: 'POST', body: '{}' });
         const link = await connectRequest('/v1/payments/connect/onboarding-link', {
             method: 'POST',
-            body: JSON.stringify(payoutReturnUrls())
+            body: JSON.stringify({ return_url: urls.return_url, refresh_url: urls.refresh_url })
         });
         if (!link.url) throw new Error('api');
         await openStripe(link.url);
@@ -350,6 +357,30 @@
         return refresh();
     }
 
+    function stagingLock() {
+        return typeof window !== 'undefined' ? String(window.LYANN_SUPABASE_LOCK || '') : '';
+    }
+
+    function handleExternalReturn(rawUrl) {
+        let url;
+        try {
+            const normalized = String(rawUrl || '').replace(/^app\.lyann\.dom:\/\//i, 'https://app.lyann.dom/');
+            url = new URL(normalized);
+        } catch (_) {
+            return Promise.resolve({ ok: false, code: 'BAD_URL' });
+        }
+        const host = String(url.hostname || '').toLowerCase();
+        const lock = stagingLock();
+        if ((host === 'lyann.app' || host === 'www.lyann.app') && lock && lock !== 'gzispjfoywklpqatjyop') {
+            return Promise.resolve({ ok: false, code: 'PRODUCTION_URL_IGNORED' });
+        }
+        const connect = url.searchParams.get('connect');
+        if (connect !== 'return' && connect !== 'refresh') {
+            return Promise.resolve({ ok: false, code: 'IGNORED' });
+        }
+        return refresh().then((state) => ({ ok: true, code: 'CONNECT_REFRESHED', state: state || 'error' }));
+    }
+
     function consumeReturn() {
         const mode = readConnectParam(window.location.search);
         if (!mode) return;
@@ -416,5 +447,5 @@
         else boot();
     }
 
-    return { payoutAccountState, payoutReturnUrls, payoutReturnUrlsFromLocation, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh, fetchReadiness, beginPayoutSetup, resumeSetup, rememberPayoutReturn, readPayoutReturn, clearPayoutReturn, simulateConnect, connectSimulationBody, readConnectSimulation };
+    return { payoutAccountState, payoutReturnUrls, payoutReturnUrlsFromLocation, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh, fetchReadiness, beginPayoutSetup, resumeSetup, rememberPayoutReturn, readPayoutReturn, clearPayoutReturn, simulateConnect, connectSimulationBody, readConnectSimulation, handleExternalReturn };
 });

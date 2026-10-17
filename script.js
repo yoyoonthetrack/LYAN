@@ -7340,7 +7340,9 @@ safeDomReady(() => {
                     type: 'signup',
                     email: email,
                     options: {
-                        emailRedirectTo: window.location.origin + '/confirm-signup.html'
+                        emailRedirectTo: (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+                            ? 'app.lyann.dom://confirm-signup'
+                            : window.location.origin + '/confirm-signup.html'
                     }
                 });
                 if (error) {
