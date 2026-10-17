@@ -2129,6 +2129,34 @@ function isStagingV2ReturnEnv(env) {
     return envSupabaseRef(env) === STAGING_V2_REF;
 }
 
+function stagingPublicOrigin(env) {
+    const raw = String((env && env.LYANN_STAGING_PUBLIC_ORIGIN) || '').trim().replace(/\/$/, '');
+    if (!raw) return '';
+    try {
+        const url = new URL(raw);
+        const host = url.hostname.toLowerCase();
+        if (url.protocol !== 'https:') return '';
+        if (host === 'lyann.app' || host === 'www.lyann.app' || host === 'admin.lyann.app') return '';
+        return url.origin;
+    } catch (_) {
+        return '';
+    }
+}
+
+function stagingBrowserOriginAllowed(origin, env) {
+    if (!origin) return true;
+    const allowed = new Set([
+        'capacitor://localhost',
+        'ionic://localhost',
+        'http://localhost',
+        'https://localhost',
+        'http://127.0.0.1:8098'
+    ]);
+    const pub = stagingPublicOrigin(env);
+    if (pub) allowed.add(pub);
+    return allowed.has(String(origin));
+}
+
 function safeStripeReturnUrl(value, env) {
     const runtime = env || {};
     if (isStagingV2ReturnEnv(runtime)) {
@@ -2137,6 +2165,11 @@ function safeStripeReturnUrl(value, env) {
             if (url.hostname === 'lyann.app' || url.hostname === 'www.lyann.app') {
                 const mode = url.searchParams.get('connect') === 'refresh' ? 'refresh' : 'return';
                 return 'http://127.0.0.1:8098/feed.html?action=finances&connect=' + mode;
+            }
+            const pub = stagingPublicOrigin(runtime);
+            if (pub && url.origin === pub && (url.pathname === '/' || url.pathname === '/feed.html')) {
+                const connect = url.searchParams.get('connect');
+                if (!connect || connect === 'return' || connect === 'refresh') return url.toString();
             }
             const port = url.port || (url.protocol === 'http:' ? '80' : '443');
             const localOk = url.protocol === 'http:' && url.hostname === '127.0.0.1' && port === '8098';
@@ -2282,6 +2315,8 @@ module.exports = {
     shouldFallbackWebhookPayloadColumn,
     claimWebhookDecision,
     safeStripeReturnUrl,
+    stagingPublicOrigin,
+    stagingBrowserOriginAllowed,
     STAGING_V2_REF,
     PRODUCTION_REF,
     STAGING_RETURN_FALLBACK,

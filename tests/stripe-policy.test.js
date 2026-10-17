@@ -58,6 +58,8 @@ const {
     shouldFallbackWebhookPayloadColumn,
     claimWebhookDecision,
     safeStripeReturnUrl,
+    stagingPublicOrigin,
+    stagingBrowserOriginAllowed,
     POST_TRANSFER_REVERSAL_STATUSES,
     POST_TRANSFER_REFUND_STATUSES,
     postTransferFinancialExecutionEnabled,
@@ -843,6 +845,16 @@ test('staging V2 return urls allow only 127.0.0.1:8098 and refuse lyann.app', ()
     assert.equal(safeStripeReturnUrl('http://127.0.0.1:8080/feed.html', STAGING_ENV), 'http://127.0.0.1:8098/feed.html?action=finances&connect=return');
     assert.equal(safeStripeReturnUrl('http://localhost:8098/feed.html', STAGING_ENV), 'http://127.0.0.1:8098/feed.html?action=finances&connect=return');
     assert.equal(safeStripeReturnUrl('https://evil.example/steal', STAGING_ENV), 'http://127.0.0.1:8098/feed.html?action=finances&connect=return');
+    const withHost = Object.assign({}, STAGING_ENV, { LYANN_STAGING_PUBLIC_ORIGIN: 'https://staging.lyann.app' });
+    assert.equal(
+        safeStripeReturnUrl('https://staging.lyann.app/feed.html?action=finances&connect=return', withHost),
+        'https://staging.lyann.app/feed.html?action=finances&connect=return'
+    );
+    assert.equal(safeStripeReturnUrl('https://lyann.app/feed', withHost), 'http://127.0.0.1:8098/feed.html?action=finances&connect=return');
+    assert.equal(stagingPublicOrigin({ LYANN_STAGING_PUBLIC_ORIGIN: 'https://lyann.app' }), '');
+    assert.equal(stagingBrowserOriginAllowed('https://evil.example', withHost), false);
+    assert.equal(stagingBrowserOriginAllowed('capacitor://localhost', withHost), true);
+    assert.equal(stagingBrowserOriginAllowed('https://staging.lyann.app', withHost), true);
 });
 
 function expectPricing(amount, customerFee, providerFee) {

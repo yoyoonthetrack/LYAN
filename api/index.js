@@ -10,12 +10,23 @@
  * deleted in a later cleanup after regression validation.
  */
 const { createClient } = require('@supabase/supabase-js');
-const { inspectStripeEnv } = require('./stripe-policy');
+const { inspectStripeEnv, stagingBrowserOriginAllowed } = require('./stripe-policy');
 const app = require('./server.js');
 
 const IS_VERCEL_PRODUCTION = process.env.VERCEL_ENV === 'production';
 const IS_PRODUCTION = IS_VERCEL_PRODUCTION || process.env.NODE_ENV === 'production';
 const LYANN_PRODUCTION_SUPABASE_HOST = 'gzispjfoywklpqatjyop.supabase.co';
+const LYANN_STAGING_SUPABASE_HOST = 'tdktfbtqceldlaeqjtow.supabase.co';
+
+function isStagingSupabaseConfigured() {
+    const url = process.env.SUPABASE_URL || process.env.LYANN_SUPABASE_URL;
+    if (!url) return false;
+    try {
+        return new URL(url).hostname === LYANN_STAGING_SUPABASE_HOST;
+    } catch (e) {
+        return false;
+    }
+}
 
 const ALLOWED_WEB_ORIGINS = new Set([
     'https://lyann.app',
@@ -184,6 +195,10 @@ module.exports = async function lyannApiGateway(req, res) {
         return jsonError(res, 403, 'ORIGIN_NOT_ALLOWED', 'Origine non autorisée.');
     }
 
+    if (!IS_VERCEL_PRODUCTION && isStagingSupabaseConfigured() && origin && !stagingBrowserOriginAllowed(origin, process.env)) {
+        return jsonError(res, 403, 'STAGING_ORIGIN_NOT_ALLOWED', 'Origine non autorisée pour Staging.');
+    }
+
     // Let legitimate browser preflights reach Express CORS only after the
     // production origin allowlist above has accepted them.
     if (req.method === 'OPTIONS') {
@@ -225,7 +240,7 @@ module.exports = async function lyannApiGateway(req, res) {
 
     // Webhooks are authoritative financial inputs. In production, accepting an
     // unsigned body because a secret is missing is forbidden: fail closed.
-    if (IS_PRODUCTION && hasStripeWebhook) {
+    if ((IS_PRODUCTION || isStagingSupabaseConfigured()) && hasStripeWebhook) {
         if (!process.env.STRIPE_WEBHOOK_SECRET) {
             return jsonError(res, 503, 'STRIPE_WEBHOOK_CONFIG_MISSING', 'Configuration webhook Stripe incomplète.');
         }

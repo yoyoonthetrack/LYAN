@@ -119,6 +119,35 @@ Ouvrir un dossier déjà lié ne lance plus `initiate_lyann_help_conversation`. 
 
 Installation sur l’iPhone, sans TestFlight : brancher le téléphone, lui faire confiance, ouvrir `ios/App/App.xcodeproj`, schéma App, destination le téléphone, puis Run. Ne pas archiver et ne pas envoyer à App Store Connect. Le téléphone doit être sur le même réseau que le Mac pour joindre l’API `8098`. La messagerie et les missions passent par Supabase en HTTPS.
 
+## Phase 8.7 — bêta sans le Mac
+
+Architecture proposée, non déployée : un projet Vercel distinct, ou un déploiement Preview, sur `https://staging.lyann.app`. Il réutilise `api/index.js` et `vercel.json`. Il ne partage pas le projet Production `lyann.app`.
+
+| Environnement | Cible |
+|---|---|
+| Web Production | `https://lyann.app` |
+| Web Staging | `https://staging.lyann.app` (à créer) |
+| API Production | `https://lyann.app/v1` |
+| API Staging | `https://staging.lyann.app/v1` (à créer) |
+| Supabase Production | `gzispjfoywklpqatjyop` |
+| Supabase Staging | `tdktfbtqceldlaeqjtow` |
+| Stripe Live | interdit tant que `STRIPE_LIVE_ENABLED` n’est pas true |
+| Stripe Test | clés `sk_test` / `pk_test` uniquement côté serveur |
+| iOS développement | Debug, `app.lyann.mobile`, installé par Xcode |
+| iOS distribution | non créé. Pas de TestFlight |
+
+Secrets serveur uniquement : `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`. Le téléphone ne reçoit que la clé `anon`. Le modèle est dans `config/staging-api.env.example`.
+
+Le gateway refuse une origine de navigateur inconnue quand Supabase est Staging. Il exige la signature webhook Stripe sur Staging comme en Production. Un hôte public `https://staging.lyann.app` peut servir de retour Connect. `lyann.app` reste réécrit vers la boucle locale. Connect sur iPhone reste bloqué.
+
+Universal Link : modèle `config/apple-app-site-association.staging.json`, application `WLV4WC47U2.app.lyann.mobile`. Il ne sera servi qu’après autorisation, sur le domaine Staging, en `https://staging.lyann.app/.well-known/apple-app-site-association`. Les Associated Domains ne sont pas ajoutés au build actuel.
+
+Sans paiement, une bêta peut utiliser Supabase Staging seul : compte, annonces, chat, missions, grand livre. Les paiements, Connect, la libération et les webhooks exigent l’API HTTPS et le retour prouvé.
+
+Pour passer du test personnel à la bêta : autoriser le domaine et le projet Vercel Staging, y poser les secrets de test, déployer, ajouter l’URL de redirection `app.lyann.dom://confirm-signup` dans Supabase Staging, publier le fichier d’association, rejouer un retour Safari vers l’app, puis seulement rouvrir Connect. Le retour arrière est de retirer le domaine vers le déploiement précédent, ou de retirer `LYANN_STAGING_PUBLIC_ORIGIN`.
+
+Le serveur local reste sur toutes les interfaces, port 8098, le temps de l’essai iPhone. Il ne doit pas rester allumé ensuite. CORS y est encore ouvert. Ce n’est pas l’API de la bêta.
+
 ## Phase 8.6 — iPhone et retours externes
 
 Le binaire local embarque Staging `tdktfbtqceldlaeqjtow`, la clé `anon`, et `http://172.20.10.2:8098`. Cette adresse est celle du Mac sur le partage de connexion. Elle sert au test personnel. Elle n’est pas une API de bêta.
