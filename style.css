@@ -17,8 +17,8 @@
 
     --gradient-logo: linear-gradient(135deg, #4A7C59 0%, #80A86E 50%, #E5B345 100%);
     --gradient-bg-soft: linear-gradient(135deg, rgba(74, 124, 89, 0.05) 0%, rgba(229, 179, 69, 0.05) 50%, rgba(123, 197, 227, 0.06) 100%);
-    --gradient-card: linear-gradient(145deg, #FFFFFF 0%, #FAF7F2 100%);
-    --gradient-hero: linear-gradient(135deg, #FAF7F2 0%, #F0F6F2 45%, #FEFAF0 75%, #F0F8FA 100%);
+    --gradient-card: linear-gradient(145deg, #FFFFFF 0%, #FDFCF9 100%);
+    --gradient-hero: linear-gradient(135deg, #FDFCF9 0%, #F6FBF7 45%, #FFFCF6 75%, #F6FBFC 100%);
 
     /* Pop Accents */
     --pop-coral: #E76F51;
@@ -33,9 +33,9 @@
     --pop-purple-light: #F6EDFC;
 
     /* Neutrals — Warm Sandy Tone */
-    --bg: #FAF7F2;
+    --bg: #FDFCF9;
     --bg-white: #FFFFFF;
-    --bg-warm: #F4EFE6;
+    --bg-warm: #F7F4EE;
     --bg-dark: #1E2822;
     --text: #243329;
     --text-muted: #5C6E62;
@@ -221,7 +221,7 @@ body::before {
     background-repeat: no-repeat;
     background-size: cover;
     background-position: 100% 40%;
-    opacity: 0.22;
+    opacity: 0.08;
 }
 
 /* Overlay de bruit SVG pour éliminer les dégradés plats */
@@ -17976,7 +17976,7 @@ div:has(> #cpHeadline) { display: none !important; }
 /* Native: keep global artisan atmosphere (do not kill body::before). */
 body.is-native-app::before {
     display: block !important;
-    opacity: 0.22;
+    opacity: 0.08;
     z-index: -1;
     background-image: url('hero-image.webp');
     background-repeat: no-repeat;
@@ -19594,7 +19594,7 @@ body.lyann-messaging-open {
 }
 body.lyann-messaging-open::before {
     display: block !important;
-    opacity: 0.22;
+    opacity: 0.08;
     z-index: -1;
     background-color: transparent;
     background-image: url('hero-image.webp');
