@@ -133,7 +133,7 @@ Tests locaux, sans `vercel deploy` : le lien réel vers Production → REFUS ; u
 
 ## Activation Staging — 17 octobre 2026
 
-Domaine actif : `https://staging.lyann.app`. Déploiement `dpl_8d457ZS3quiKZJLtnZPugcdYtYJf`, projet `lyann-staging-preview` / `prj_FHIKUKYa8IwpiitigUma4gTtTF6q`. Aucun redéploiement n’a été fait pour aligner la référence Git.
+Domaine actif : `https://staging.lyann.app`. Déploiement actif `dpl_GnVnm9HMvkY7eG1wHRcVMp5fUvdp`, projet `lyann-staging-preview` / `prj_FHIKUKYa8IwpiitigUma4gTtTF6q`, source `44a9794`. Le déploiement précédent `dpl_8d457ZS3quiKZJLtnZPugcdYtYJf` a été remplacé parce qu’un retour Stripe ouvert sur le domaine Staging partait vers `lyann.app`. Ce n’est pas un redéploiement fait pour changer la référence Git.
 
 Le déploiement a été produit à partir de `6135b80` plus les fichiers alors présents dans la copie de travail : `shared-html-build.js`, `scripts/build-web.js`, `scripts/deploy-staging.sh`, `scripts/vercel-target-gate.js`, `scripts/vercel-target-gate.test.js`, `tests/staging-v2-isolation.test.js` et la rédaction alors en cours de ce document. Ces fichiers ne contiennent pas de secret. Les images et journaux sous `artifacts/` n’entrent pas dans ce gel. Le schéma Xcode a été modifié après l’envoi Vercel : il ne fait pas partie du bundle Web.
 
