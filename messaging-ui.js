@@ -295,6 +295,7 @@
         const activeId = window.LYANN_ACTIVE_CHAT_CONTACT?.id;
         if (activeId && String(activeId) === String(row.dataset.chatMemberId)) row.classList.add('active');
         row.style.cssText = '';
+        row.setAttribute('aria-label', 'Ouvrir la conversation avec ' + (conversation.name || 'ce membre'));
         const avatarWrap = document.createElement('div');
         avatarWrap.className = 'chat-contact-avatar-wrap';
         if (conversation.isSupport) {
@@ -431,6 +432,7 @@
     }
 
     let conversationListLoading = false;
+    let inboxRenderGeneration = 0;
     async function renderConversationList() {
         if (conversationListLoading) return;
         conversationListLoading = true;
@@ -457,13 +459,21 @@
             return;
         }
 
-        try {
-            const conversations = await withTimeout(repo.listConversations(userId, { fresh: true }), 8000, 'conversation list');
-            if (conversations.length) renderConversationRows(listContainer, withSupportRow(conversations));
-            else setListEmptyState(listContainer);
+        const generation = ++inboxRenderGeneration;
+        const pending = repo.listConversations(userId, { fresh: true });
+        const paintInbox = (conversations) => {
+            if (generation !== inboxRenderGeneration) return;
+            const box = document.getElementById('chatContactsList');
+            if (!box || !Array.isArray(conversations)) return;
+            if (conversations.length) renderConversationRows(box, withSupportRow(conversations));
+            else setListEmptyState(box);
             if (typeof window.bindInboxChatFanouts === 'function') {
                 window.bindInboxChatFanouts((conversations || []).map((row) => row && row.conversationId).filter(Boolean));
             }
+        };
+        pending.then(paintInbox).catch(() => {});
+        try {
+            paintInbox(await withTimeout(pending, 15000, 'conversation list'));
         } catch (error) {
             console.warn('[MESSAGING] canonical conversation list failed', error);
             // Navigation memory is only a degraded-network fallback, never a second data source.
@@ -478,7 +488,8 @@
                 }]);
             } else {
                 const detail = String((error && (error.message || error)) || 'erreur inconnue').replace(/[<>"']/g, '').slice(0, 180);
-                listContainer.innerHTML = '<div class="chat-empty-state" style="padding:48px 20px;text-align:center;"><strong>Impossible de charger les conversations.</strong><p>Vérifiez votre connexion, puis réessayez.</p><button type="button" class="btn btn-outline" id="chatRetryConversations" style="margin-top:16px;min-height:44px;" aria-label="Réessayer : ' + detail + '">Réessayer</button></div>';
+                const hint = /timeout/i.test(detail) ? 'Le chargement a pris trop de temps.' : 'Vérifiez votre connexion, puis réessayez.';
+                listContainer.innerHTML = '<div class="chat-empty-state" style="padding:48px 20px;text-align:center;"><strong>Impossible de charger les conversations.</strong><p>' + hint + '</p><button type="button" class="btn btn-outline" id="chatRetryConversations" style="margin-top:16px;min-height:44px;" aria-label="Réessayer : ' + detail + '">Réessayer</button></div>';
                 listContainer.querySelector('#chatRetryConversations')?.addEventListener('click', () => renderConversationList());
             }
         }
@@ -539,6 +550,9 @@
             l.classList.remove('mobile-conversation-active', 'has-active-conversation');
         }
         document.querySelectorAll('#chatModal .chat-contacts-sidebar').forEach((node) => node.style.removeProperty('display'));
+        document.querySelectorAll('#chatInputForm button[type="submit"]').forEach((button) => {
+            if (!button.getAttribute('aria-label')) button.setAttribute('aria-label', 'Envoyer le message');
+        });
         const list = document.getElementById('chatContactsList');
         const keepRows = options.restore && list && list.querySelector('.chat-contact-item');
         if (!keepRows) await renderConversationList();

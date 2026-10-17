@@ -82,6 +82,24 @@ Conduite si un incident arrive :
 
 Conditions pour allumer ces moteurs plus tard : tests de reprise `TRANSFER_FAILED`, de gel de litige, de remboursement avant et après transfert, d’idempotence du reversal, et une répétition Staging qui compare Stripe et Supabase après un webhook retardé. Accord explicite requis.
 
+## Phase 8.3 — messagerie, missions, notifications
+
+Bundle `ios-mvbw21dt-794541`. La liste des conversations s’est affichée à trois lancements froids. L’écran « Impossible de charger les conversations » vient du délai de 8 secondes autour de `listConversations` : les mêmes requêtes Staging répondent en moins de deux secondes, et l’ouverture suivante montrait déjà la liste. Le délai passe à 15 secondes. Si la réponse arrive après le message d’erreur, la liste se peint quand même. Le bouton Réessayer reste.
+
+| Parcours | Résultat |
+|---|---|
+| Liste au lancement | PASS. Qa L. visible en 3,7 s, lancement compris |
+| Envoi QA A | PASS. `IOS83-1792210842` dans le fil et dans Supabase, conversation `96c52b91-888a-46c6-9e99-f1b740965f8e` |
+| Réception QA B | PASS. La ligne Qa A. montrait 16 non lus et le texte. Le fil l’affiche à gauche |
+| Réponse QA B | PASS. `IOS83R-1792210842`, marqué Envoyé. Supabase : auteur B, non lu pour A. Le message de A est passé à lu à l’ouverture |
+| Retour à la liste, autre conversation | NON TESTÉ. La liste de B montre aussi Qa O., sans l’ouvrir |
+| Notification d’un nouveau message | NON TESTÉ |
+| Mes missions | PASS liste et filtres. Ouvertes : Tarif Direct « Sécuriser le paiement », A est Lyanneur « En attente du paiement ». Terminées : Jalons neufs et Devis par jalons |
+| Dossier Jalons neufs | PASS. Vous demandez, Terminé, 20 €, Taille 9,49 € et Évacuation 13,49 € avec 1,49 € de frais, historique présent. Un toast « Cette demande n’accepte plus de nouvelles propositions » apparaît avant le dossier |
+| Retour du dossier vers le chat | NON TESTÉ. Le bouton « Retour au chat » est visible |
+| Notification individuelle | PARTIEL. La carte « Proposition de devis » est atteignable. Le rappel groupé n’a pas été ouvert |
+| Reprise après le bouton principal | La capture montre l’écran d’accueil iOS. La session après fermeture complète reste celle déjà prouvée |
+
 ## iPhone physique — seulement ce que le simulateur ne couvre pas
 
 - Ouvrir le lien de confirmation d’un compte créé avec une adresse réellement lue. Google et Apple.
