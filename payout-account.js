@@ -38,6 +38,14 @@
                     refresh_url: base + '?action=finances&connect=refresh'
                 };
             }
+            if (url.hostname === 'staging.lyann.app') {
+                const page = url.pathname && url.pathname !== '/' ? url.pathname : '/';
+                const base = 'https://staging.lyann.app' + page;
+                return {
+                    return_url: base + '?action=finances&connect=return',
+                    refresh_url: base + '?action=finances&connect=refresh'
+                };
+            }
         } catch (_) {}
         return {
             return_url: 'https://lyann.app/?action=finances&connect=return',

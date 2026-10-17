@@ -158,7 +158,7 @@ Secrets Staging installés dans Vercel, sans copie d’un secret Production. Sup
 
 Coût : aucun nouvel abonnement. Un PaymentIntent Test de 1,00 EUR a servi à prouver le webhook. Aucun paiement Live.
 
-Blocage iOS : le schéma Debug pointe maintenant vers `config/App.staging.entitlements` (`applinks:staging.lyann.app`). Le téléphone n’a pas été recompilé. Le retour Safari n’est pas validé. Stripe Connect reste désactivé sur iPhone. Pas de TestFlight.
+Bundle iOS installé sur l’iPhone de yoann : `ios-mvcc63qb-6cd4c6`, identifiant `app.lyann.mobile`, équipe `WLV4WC47U2`. Le binaire signé contient `applinks:staging.lyann.app`, Supabase `tdktfbtqceldlaeqjtow` et l’API `https://staging.lyann.app`. Il ne contient ni `172.20.10.2`, ni la référence Production. Connect natif reste bloqué tant que l’adresse est `capacitor://`. Un retour ouvert depuis `https://staging.lyann.app` reste sur ce domaine. Le retour Safari n’a pas encore été exécuté sur le téléphone. Pas de TestFlight.
 
 Retour arrière Staging : `npx vercel rollback --local-config vercel.staging.json --project prj_FHIKUKYa8IwpiitigUma4gTtTF6q --scope team_Q2iI3QsUHFqSNkD3pjjg5d58`. Retirer ensuite `staging.lyann.app` de ce projet, désactiver le webhook Test, et restaurer l’auth du projet `tdktfbtqceldlaeqjtow`.
 

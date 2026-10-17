@@ -75,6 +75,9 @@ test('return and refresh urls stay on the finances page', () => {
     const local = payoutReturnUrlsFromLocation('http://127.0.0.1:8098/feed.html');
     assert.equal(local.return_url, 'http://127.0.0.1:8098/feed.html?action=finances&connect=return');
     assert.equal(local.refresh_url, 'http://127.0.0.1:8098/feed.html?action=finances&connect=refresh');
+    const staging = payoutReturnUrlsFromLocation('https://staging.lyann.app/feed.html');
+    assert.equal(staging.return_url, 'https://staging.lyann.app/feed.html?action=finances&connect=return');
+    assert.equal(staging.refresh_url, 'https://staging.lyann.app/feed.html?action=finances&connect=refresh');
     const native = payoutReturnUrlsFromLocation('capacitor://localhost/index.html');
     assert.equal(native.blocked, true);
     assert.equal(native.reason, 'NATIVE_RETURN_UNAVAILABLE');
