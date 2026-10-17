@@ -1,17 +1,17 @@
 /* Shared universe header for Bokantaj, Annonces and Lyanneurs. */
 .lyann-universe-header {
-    --universe-wash: #faf7f2;
+    --universe-wash: #fdfcf9;
     background: transparent;
     margin: 0;
     padding: 0;
     border-radius: 0;
 }
 .lyann-universe[data-universe="annonces"] .lyann-universe-header,
-.lyann-universe-header[data-universe="annonces"] { --universe-wash: #fff8e9; }
+.lyann-universe-header[data-universe="annonces"] { --universe-wash: #fffbf4; }
 .lyann-universe[data-universe="lyanneurs"] .lyann-universe-header,
-.lyann-universe-header[data-universe="lyanneurs"] { --universe-wash: #eff7f0; }
+.lyann-universe-header[data-universe="lyanneurs"] { --universe-wash: #f6fbf7; }
 .lyann-universe[data-universe="bokantaj"] .lyann-universe-header,
-.lyann-universe-header[data-universe="bokantaj"] { --universe-wash: #fff2e4; }
+.lyann-universe-header[data-universe="bokantaj"] { --universe-wash: #fff9f4; }
 
 .lyann-universe-frame {
     position: relative;

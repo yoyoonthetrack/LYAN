@@ -39,7 +39,7 @@
     --bg-dark: #1E2822;
     --text: #243329;
     --text-muted: #5C6E62;
-    --text-light: #FAF7F2;
+    --text-light: #FDFCF9;
 
     /* UI Tokens */
     --border: #E5DFD5;
@@ -893,7 +893,7 @@ body:has(.hero) .feed-preview-section {
     object-position: center;
     border: 0;
     border-radius: 28px;
-    background: #F4EFE6;
+    background: #F7F4EE;
     box-shadow: 0 18px 48px rgba(36, 53, 43, 0.14);
 }
 
@@ -2340,7 +2340,7 @@ body:has(.hero) .feed-preview-section {
 
 /* THEME PROVIDER (TALENT) : Vert Sage & Jaune Sable */
 .theme-provider .profile-header-banner {
-    background: linear-gradient(135deg, #FAF7F2 0%, #E6EFE9 100%);
+    background: linear-gradient(135deg, #FDFCF9 0%, #E6EFE9 100%);
 }
 
 .theme-provider .profile-role-badge {
@@ -2541,7 +2541,7 @@ body:has(.hero) .feed-preview-section {
     align-items: center !important;
     justify-content: space-between !important;
     gap: 16px !important;
-    background: linear-gradient(135deg, #FAF7F2 0%, #E6EFE9 100%) !important;
+    background: linear-gradient(135deg, #FDFCF9 0%, #E6EFE9 100%) !important;
     border-bottom: 1px solid #E1ECE5 !important;
     position: relative !important;
     flex-shrink: 0 !important;
@@ -4588,7 +4588,7 @@ body.legal-page.is-legal-doc .legal-hero-intro {
 /* MANIFESTO / VISION SECTION */
 .manifesto-section {
     background: linear-gradient(135deg, #1E2822 0%, #29382F 100%);
-    color: #FAF7F2;
+    color: #FDFCF9;
     padding: 100px 0;
     position: relative;
     overflow: hidden;
@@ -5635,7 +5635,7 @@ input:checked + .slider:before {
    LE LAKOU - ÉCHOS & LYANNS DU QUARTIER (feed.html)
    ========================================================================== */
 .feed-page {
-    background: #FFF2E4;
+    background: #FFF9F4;
 }
 
 .nav-live-dot {
@@ -6914,7 +6914,7 @@ input:checked + .slider:before {
    ========================================================================== */
 
 :root {
-    --m-chat-bg: #FAF7F2;
+    --m-chat-bg: #FDFCF9;
     --m-padding-x: 20px;
     --m-section-gap: 24px;
     --m-card-radius: 18px;
@@ -12194,7 +12194,7 @@ body.is-native-app .navbar.scrolled,
     max-width: 88vw;
     height: 100vh;
     height: 100dvh;
-    background: #FAF7F2;
+    background: #FDFCF9;
     box-shadow: -10px 0 40px rgba(0, 0, 0, 0.25);
     z-index: 100000;
     transform: translateX(100%);
@@ -12934,7 +12934,7 @@ body.is-native-app .navbar.scrolled,
         flex-direction: column !important;
         align-items: flex-start !important;
         gap: 12px !important;
-        background: linear-gradient(135deg, #FAF7F2 0%, #E6EFE9 100%) !important;
+        background: linear-gradient(135deg, #FDFCF9 0%, #E6EFE9 100%) !important;
         border-bottom: 1px solid #E1ECE5 !important;
     }
 
@@ -13321,7 +13321,7 @@ body.is-native-app .navbar.scrolled,
 
 /* Hero & Identity Section */
 .lyann-profile-hero {
-    background: #FAF7F2;
+    background: #FDFCF9;
     border: 1px solid #E4DDD2;
     border-radius: 20px;
     padding: 24px;
@@ -14115,7 +14115,7 @@ body.is-native-app .navbar.scrolled,
 }
 
 .need-example-chip {
-    background: #FAF7F2;
+    background: #FDFCF9;
     border: 1.5px solid #E5DFD5;
     border-radius: 12px;
     padding: 12px 16px;
@@ -15016,7 +15016,7 @@ html, body {
 .mobile-bottom-sheet-card {
     width: 100% !important;
     max-width: 540px !important;
-    background: #FAF7F2 !important;
+    background: #FDFCF9 !important;
     border-radius: 24px 24px 0 0 !important;
     padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)) 20px !important;
     box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2) !important;
@@ -15301,7 +15301,7 @@ body.capacitor-native .nav-msg-btn,
     justify-content: space-between !important;
     padding: 14px 18px !important;
     border-bottom: 1px solid #E2E8F0 !important;
-    background: #FAF7F2 !important;
+    background: #FDFCF9 !important;
 }
 
 .chat-sidebar-header span {
@@ -15334,7 +15334,7 @@ body.capacitor-native .nav-msg-btn,
 
 /* COMPACT LYANN CONTEXT CARD */
 .chat-mission-context-card {
-    background: #FAF7F2 !important;
+    background: #FDFCF9 !important;
     border-bottom: 1px solid #E2E8F0 !important;
     padding: 10px 14px !important;
     display: flex !important;
@@ -16114,7 +16114,7 @@ body.is-native-app .navbar .nav-auth-btn {
         margin: 0 !important;
         padding: 0 !important;
         border-radius: 0 !important;
-        background: #FAF7F2 !important;
+        background: #FDFCF9 !important;
         display: flex !important;
         flex-direction: column !important;
         box-shadow: none !important;
@@ -16127,7 +16127,7 @@ body.is-native-app .navbar .nav-auth-btn {
         height: 100% !important;
         display: flex !important;
         flex-direction: column !important;
-        background: #FAF7F2 !important;
+        background: #FDFCF9 !important;
         margin: 0 !important;
         border-radius: 0 !important;
     }
@@ -16142,7 +16142,7 @@ body.is-native-app .navbar .nav-auth-btn {
         flex-direction: column !important;
         width: 100% !important;
         height: 100% !important;
-        background: #FAF7F2 !important;
+        background: #FDFCF9 !important;
     }
 
     .account-main-header {
@@ -16393,7 +16393,7 @@ body.is-native-app .navbar .nav-auth-btn {
         max-width: 740px !important;
         max-height: 90vh !important;
         border-radius: 24px !important;
-        background: #FAF7F2 !important;
+        background: #FDFCF9 !important;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
         overflow: hidden !important;
         margin: auto !important;
@@ -16593,7 +16593,7 @@ body.is-native-app .navbar .nav-auth-btn {
         display: flex !important;
         flex-direction: column !important;
         border-radius: 24px !important;
-        background: #FAF7F2 !important;
+        background: #FDFCF9 !important;
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
         overflow: hidden !important;
         margin: auto !important;
@@ -16607,7 +16607,7 @@ body.is-native-app .navbar .nav-auth-btn {
         height: 100% !important;
         display: grid !important;
         grid-template-columns: 270px minmax(0, 1fr) !important;
-        background: #FAF7F2 !important;
+        background: #FDFCF9 !important;
         overflow: hidden !important;
     }
 
@@ -16730,7 +16730,7 @@ body.is-native-app .navbar .nav-auth-btn {
         flex: 1 !important;
         display: flex !important;
         flex-direction: column !important;
-        background: #FAF7F2 !important;
+        background: #FDFCF9 !important;
         overflow: hidden !important;
     }
 
@@ -16792,7 +16792,7 @@ body.is-native-app .navbar .nav-auth-btn {
         padding: 32px 36px !important;
         box-sizing: border-box !important;
         overflow-y: auto !important;
-        background: #FAF7F2 !important;
+        background: #FDFCF9 !important;
     }
 
     /* 2-Column Responsive Inner Grid for Mon compte */
@@ -17985,7 +17985,7 @@ body.is-native-app::before {
 }
 
 body.is-native-app .hamburger-drawer-overlay {
-    background: #FAF7F2 !important;
+    background: #FDFCF9 !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
@@ -18326,7 +18326,7 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #FAF7F2;
+    background: #FDFCF9;
     border-radius: 14px;
     padding: 12px 14px;
     color: #6B7A70;
@@ -20366,7 +20366,7 @@ html body.keyboard-open.chat-conversation-open #chatModal.modal-overlay.active {
 /* Page changes are full HTML documents. Keep the gap the same cream as the app,
    and cross-fade for about 180ms. Older WebViews get a short leave fade in script.js. */
 html {
-    background: #FAF7F2;
+    background: #FDFCF9;
 }
 @view-transition {
     navigation: auto;
