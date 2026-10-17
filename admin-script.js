@@ -8,14 +8,18 @@ window.currentAdminUser = null;
 window.adminDataLoaded = false;
 
 window.fetchWithAdminAuth = async function(url, options = {}) {
-    const headers = options.headers || {};
-    if (window.currentAdminUser && window.currentAdminUser.token) {
-        headers['Authorization'] = `Bearer ${window.currentAdminUser.token}`;
-    } else if (window.LYANN_API_CLIENT) {
+    const headers = Object.assign({}, options.headers || {});
+    let token = '';
+    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getSession === 'function') {
         const { data: sData } = await window.LYANN_API_CLIENT.getSession();
-        if (sData?.session?.access_token) {
-            headers['Authorization'] = `Bearer ${sData.session.access_token}`;
-        }
+        token = sData?.session?.access_token || '';
+    }
+    if (!token && window.currentAdminUser && window.currentAdminUser.token) {
+        token = window.currentAdminUser.token;
+    }
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        if (window.currentAdminUser) window.currentAdminUser.token = token;
     }
     return fetch(url, { ...options, headers });
 };
@@ -2399,21 +2403,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Approval Agent Task Handler
     window.approveAgentTask = async function(taskId, decision) {
         try {
-            const res = await fetch(`/v1/admin/agent-tasks/${taskId}/approve`, {
+            const res = await window.fetchWithAdminAuth(`/v1/admin/agent-tasks/${taskId}/approve`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ decision })
             });
-            if (res.ok) {
-                alert(`✅ Tâche ${taskId} ${decision === 'APPROVED' ? 'approuvée et exécutée' : 'refusée'}.`);
-            } else {
-                alert(`✅ Action enregistrée : Tâche ${taskId} ${decision === 'APPROVED' ? 'approuvée' : 'refusée'}.`);
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok || body.success === false) {
+                throw new Error(editorialFailureMessage(body, res.status));
             }
-        } catch(e) {
-            alert(`✅ Action enregistrée : Tâche ${taskId} ${decision === 'APPROVED' ? 'approuvée' : 'refusée'}.`);
+            const notice = document.getElementById('editorialNotice');
+            const message = body.message || (decision === 'APPROVED' ? 'Publication enregistrée.' : 'Brouillon refusé.');
+            if (notice) notice.textContent = message;
+            else alert(message);
+        } catch (e) {
+            const notice = document.getElementById('editorialNotice');
+            const message = e.message || 'Erreur serveur.';
+            if (notice) notice.textContent = message;
+            else alert(message);
         }
-        recordAdminAuditLog('AGENT_TASK_APPROVAL', 'Task Engine', 'Task', taskId, `Décision admin: ${decision}`);
-        loadAdminRealData();
+        if (typeof loadAdminRealData === 'function') loadAdminRealData();
+        if (typeof window.openEditorialDesk === 'function') window.openEditorialDesk();
     };
 
     // Tab Task Engine vs Approval Center toggle inside sec-agents
@@ -2733,6 +2743,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     let maisonProfilesCache = [];
     let maisonSelectedId = null;
 
+    function editorialFailureMessage(body, status) {
+        const code = body && body.code;
+        if (status === 401 || code === 'ADMIN_AUTH_REQUIRED' || code === 'ADMIN_TOKEN_INVALID') return 'Session expirée.';
+        if (code === 'environment') return 'Erreur d’environnement.';
+        if (status === 403 || code === 'ADMIN_ACCESS_DENIED') return 'Accès refusé.';
+        if (code === 'already_published') return 'Publication déjà effectuée.';
+        if (code === 'therapeutic') return 'Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifiez le texte avant validation.';
+        if (code === 'quality' || code === 'not_pending') return (body && body.error) || 'Texte non conforme.';
+        if (status >= 500) return 'Erreur serveur.';
+        return (body && body.error) || 'Erreur serveur.';
+    }
     async function maisonJson(url, options = {}) {
         const res = await window.fetchWithAdminAuth(url, {
             ...options,
@@ -2743,7 +2764,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok || body.success === false) {
-            throw new Error(body.error || `Action admin impossible (${res.status})`);
+            throw new Error(editorialFailureMessage(body, res.status));
         }
         return body;
     }
@@ -3060,12 +3081,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p>Source : <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a>${item.metadata?.original_published_at ? ` · ${maisonEsc(item.metadata.original_published_at)}` : ''}</p>
                     <p class="maison-muted">Faits : ${maisonEsc(item.metadata?.facts || '—')}</p>
                     <p class="maison-muted">Contrôle : ${(item.controls && item.controls.ok) ? 'conforme' : maisonEsc((item.controls && item.controls.reasons || []).join(' · ') || 'non vérifié')}</p>
+                    ${(item.controls && !item.controls.ok && (item.controls.reasons || []).some((reason) => /affirmation thérapeutique/.test(reason))) ? '<p class="editorial-warning">Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifiez le texte avant validation.</p>' : ''}
                     <textarea class="admin-input editorial-text" rows="6" style="width:100%;">${maisonEsc(item.instruction || '')}</textarea>
-                    <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                    ${item.approval_status === 'PENDING' && item.status !== 'CANCELLED' ? `<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
                         <button type="button" class="admin-btn admin-btn-secondary editorial-save">Modifier</button>
                         <button type="button" class="admin-btn admin-btn-danger editorial-reject">Refuser</button>
                         <button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider et publier</button>
-                    </div>
+                    </div>` : '<p class="maison-muted">Ce brouillon n’est plus en attente. Le bouton de publication n’est plus proposé.</p>'}
                 </article>
             `).join('') || '<p class="maison-muted">Aucune proposition pour le moment.</p>');
             botsEl.querySelectorAll('[data-editorial-status]').forEach((button) => {
@@ -3078,23 +3100,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             });
             listEl.querySelectorAll('[data-proposal]').forEach((card) => {
-                const run = (action) => async () => {
+                const notice = document.getElementById('editorialNotice');
+                const show = (message) => { if (notice) notice.textContent = message; };
+                const run = (button, pendingLabel, action) => async () => {
+                    const previous = button.textContent;
+                    button.disabled = true;
+                    button.textContent = pendingLabel;
+                    show(pendingLabel);
                     try {
-                        await action();
+                        const result = await action();
+                        show(result.message || 'Enregistré.');
                         await loadEditorialDesk();
+                        const nextNotice = document.getElementById('editorialNotice');
+                        if (nextNotice) nextNotice.textContent = result.message || 'Enregistré.';
                     } catch (err) {
-                        alert(err.message);
+                        show(err.message || 'Erreur serveur.');
+                        button.disabled = false;
+                        button.textContent = previous;
                     }
                 };
-                card.querySelector('.editorial-save')?.addEventListener('click', run(() => maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/revise`, {
+                const id = card.getAttribute('data-proposal');
+                const text = () => card.querySelector('.editorial-text')?.value || '';
+                card.querySelector('.editorial-save')?.addEventListener('click', run(card.querySelector('.editorial-save'), 'Enregistrement…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/revise`, {
                     method: 'POST',
-                    body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
-                })));
-                card.querySelector('.editorial-publish')?.addEventListener('click', run(() => maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/publish`, {
-                    method: 'POST',
-                    body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
-                })));
-                card.querySelector('.editorial-reject')?.addEventListener('click', run(() => maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/reject`, { method: 'POST', body: '{}' })));
+                    body: JSON.stringify({ content: text() })
+                }).then((body) => ({ message: body.message || 'Modification enregistrée.' }))));
+                card.querySelector('.editorial-publish')?.addEventListener('click', run(card.querySelector('.editorial-publish'), 'Publication…', async () => {
+                    await maisonJson(`/v1/admin/editorial/proposals/${id}/revise`, {
+                        method: 'POST',
+                        body: JSON.stringify({ content: text() })
+                    });
+                    return maisonJson(`/v1/admin/editorial/proposals/${id}/publish`, {
+                        method: 'POST',
+                        body: JSON.stringify({ content: text() })
+                    });
+                }));
+                card.querySelector('.editorial-reject')?.addEventListener('click', run(card.querySelector('.editorial-reject'), 'Refus…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/reject`, { method: 'POST', body: '{}' }).then(() => ({ message: 'Brouillon refusé.' }))));
             });
         } catch (err) {
             botsEl.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;

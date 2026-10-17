@@ -1513,31 +1513,82 @@ app.get('/v1/admin/editorial/proposals', async (req, res) => {
     });
 });
 
+async function publishStoredEditorialProposal(res, task, content, approver) {
+    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+        return res.status(403).json({ success: false, code: 'environment', error: 'Erreur d’environnement.' });
+    }
+    if (!task || !task.metadata || !task.metadata.editorial) {
+        return res.status(404).json({ success: false, code: 'not_editorial', error: 'Proposition introuvable.' });
+    }
+    if (task.metadata.published_post_id || task.approval_status === 'APPROVED') {
+        return res.status(409).json({
+            success: false,
+            code: 'already_published',
+            error: 'Publication déjà effectuée.',
+            post_id: task.metadata.published_post_id || null
+        });
+    }
+    if (task.approval_status !== 'PENDING' || task.status === 'CANCELLED') {
+        return res.status(409).json({ success: false, code: 'not_pending', error: 'Ce brouillon n’est plus en attente.' });
+    }
+    const text = String(content || task.instruction || '').trim();
+    if (text && text !== String(task.instruction || '').trim()) {
+        const now = new Date().toISOString();
+        const revisions = Array.isArray(task.metadata.revisions) ? task.metadata.revisions.slice() : [];
+        revisions.push({ at: now, by: approver.userId, previous: task.instruction, next: text });
+        const { error: saveError } = await supabaseAdmin.from('lyann_agent_tasks').update({
+            instruction: text,
+            updated_at: now,
+            metadata: Object.assign({}, task.metadata, { revisions })
+        }).eq('id', task.id).eq('approval_status', 'PENDING');
+        if (saveError) {
+            return res.status(500).json({ success: false, code: 'server', error: 'Erreur serveur.' });
+        }
+        task.instruction = text;
+        task.metadata = Object.assign({}, task.metadata, { revisions });
+    }
+    const stored = String(task.instruction || '').trim();
+    const bot = EDITORIAL_BOTS.find((item) => item.slug === (task.metadata && task.metadata.slug) || item.name === task.agent_name);
+    const review = reviewEditorialText({
+        text: stored,
+        facts: (task.metadata && task.metadata.facts) || '',
+        healthReview: Boolean(bot && bot.healthReview) || (task.metadata && task.metadata.validation_status === 'HUMAN_REQUIRED')
+    });
+    if (!review.ok) {
+        const therapeutic = review.reasons.some((reason) => /affirmation thérapeutique/.test(reason));
+        return res.status(409).json({
+            success: false,
+            code: therapeutic ? 'therapeutic' : 'quality',
+            error: therapeutic
+                ? 'Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifiez le texte avant validation.'
+                : 'Texte non conforme. ' + review.reasons.join(' ; ')
+        });
+    }
+    const postId = await publishEditorialTask(supabaseAdmin, task, stored, approver);
+    return res.json({ success: true, post_id: postId, message: 'Publié sur le Bokantaj de Staging.' });
+}
+
 app.post('/v1/admin/editorial/proposals/:id/publish', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'agents.approve');
-    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    if (!authResult.authorized) {
+        const expired = authResult.status === 401;
+        return res.status(authResult.status).json({
+            success: false,
+            code: expired ? 'ADMIN_TOKEN_INVALID' : 'ADMIN_ACCESS_DENIED',
+            error: expired ? 'Session expirée.' : 'Accès refusé.'
+        });
+    }
     try {
         const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', req.params.id).maybeSingle();
         if (error) throw error;
         if (!task) return res.status(404).json({ success: false, error: 'Proposition introuvable.' });
-        const text = String(req.body?.content || task.instruction || '');
-        const bot = EDITORIAL_BOTS.find((item) => item.slug === (task.metadata && task.metadata.slug) || item.name === task.agent_name);
-        const review = reviewEditorialText({
-            text,
-            facts: (task.metadata && task.metadata.facts) || '',
-            healthReview: Boolean(bot && bot.healthReview) || (task.metadata && task.metadata.validation_status === 'HUMAN_REQUIRED')
-        });
-        if (!review.ok) {
-            return res.status(409).json({ success: false, error: 'Publication refusée : ' + review.reasons.join(' ; ') });
-        }
-        const postId = await publishEditorialTask(supabaseAdmin, task, req.body?.content, {
+        return await publishStoredEditorialProposal(res, task, req.body?.content, {
             userId: authResult.userId,
             email: authResult.email,
             actor: 'admin'
         });
-        return res.json({ success: true, post_id: postId });
     } catch (e) {
-        return res.status(500).json({ success: false, error: e.message || 'Publication impossible.' });
+        return res.status(500).json({ success: false, code: 'server', error: 'Erreur serveur.' });
     }
 });
 
@@ -2554,34 +2605,56 @@ app.get('/v1/admin/agent-tasks', async (req, res) => {
 });
 
 app.post('/v1/admin/agent-tasks/:id/approve', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({
+            success: false,
+            code: authResult.status === 401 ? 'ADMIN_TOKEN_INVALID' : 'ADMIN_ACCESS_DENIED',
+            error: authResult.status === 401 ? 'Session expirée.' : 'Accès refusé.'
+        });
+    }
     try {
         const { id } = req.params;
         const { decision } = req.body;
-        const newStatus = decision === 'APPROVED' ? 'COMPLETED' : 'CANCELLED';
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
-        let updatedTask = null;
-        if (isUuid) {
-            const { data } = await supabaseAdmin
-                .from('lyann_agent_tasks')
-                .update({
-                    status: newStatus,
-                    approval_status: decision === 'APPROVED' ? 'APPROVED' : 'REJECTED',
-                    completed_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select()
-                .maybeSingle();
-            updatedTask = data;
+        const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', id).maybeSingle();
+        if (error) throw error;
+        if (!task) return res.status(404).json({ success: false, error: 'Tâche introuvable.' });
+        if (task.metadata && task.metadata.editorial) {
+            if (decision === 'APPROVED') {
+                return await publishStoredEditorialProposal(res, task, task.instruction, {
+                    userId: authResult.userId,
+                    email: authResult.email,
+                    actor: 'admin'
+                });
+            }
+            const { error: rejectError } = await supabaseAdmin.from('lyann_agent_tasks').update({
+                status: 'CANCELLED',
+                approval_status: 'REJECTED',
+                updated_at: new Date().toISOString()
+            }).eq('id', id).eq('approval_status', 'PENDING');
+            if (rejectError) throw rejectError;
+            return res.json({ success: true, message: 'Brouillon refusé.' });
         }
-
-        res.json({
+        const newStatus = decision === 'APPROVED' ? 'COMPLETED' : 'CANCELLED';
+        const { data: updatedTask, error: updateError } = await supabaseAdmin
+            .from('lyann_agent_tasks')
+            .update({
+                status: newStatus,
+                approval_status: decision === 'APPROVED' ? 'APPROVED' : 'REJECTED',
+                approved_by: decision === 'APPROVED' ? authResult.userId : null,
+                completed_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select()
+            .maybeSingle();
+        if (updateError) throw updateError;
+        return res.json({
             success: true,
-            task: updatedTask || { id, status: newStatus, approval_status: decision },
-            message: `Tâche ${decision === 'APPROVED' ? 'approuvée et exécutée' : 'rejetée'}.`
+            task: updatedTask,
+            message: decision === 'APPROVED' ? 'Tâche approuvée.' : 'Tâche refusée.'
         });
     } catch (e) {
-        res.status(500).json({ error: "Erreur validation tâche agent." });
+        return res.status(500).json({ success: false, code: 'server', error: 'Erreur serveur.' });
     }
 });
 
