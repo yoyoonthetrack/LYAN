@@ -21,11 +21,27 @@
         return 'none';
     }
 
-    function payoutReturnUrls() {
+    function payoutReturnUrlsFromLocation(href) {
+        try {
+            const url = new URL(String(href || ''));
+            if (url.hostname === '127.0.0.1' && String(url.port || '') === '8098') {
+                const page = url.pathname && url.pathname !== '/' ? url.pathname : '/feed.html';
+                const base = 'http://127.0.0.1:8098' + page;
+                return {
+                    return_url: base + '?action=finances&connect=return',
+                    refresh_url: base + '?action=finances&connect=refresh'
+                };
+            }
+        } catch (_) {}
         return {
             return_url: 'https://lyann.app/?action=finances&connect=return',
             refresh_url: 'https://lyann.app/?action=finances&connect=refresh'
         };
+    }
+
+    function payoutReturnUrls() {
+        const href = typeof window !== 'undefined' && window.location ? window.location.href : '';
+        return payoutReturnUrlsFromLocation(href);
     }
 
     function readConnectParam(search) {
@@ -385,10 +401,13 @@
         const boot = () => {
             watchAppReturn();
             consumeReturn();
+            if (!readConnectParam(window.location.search)) {
+                Promise.resolve(resumeSetup()).catch(() => {});
+            }
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
         else boot();
     }
 
-    return { payoutAccountState, payoutReturnUrls, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh, fetchReadiness, beginPayoutSetup, resumeSetup, rememberPayoutReturn, readPayoutReturn, clearPayoutReturn, simulateConnect, connectSimulationBody, readConnectSimulation };
+    return { payoutAccountState, payoutReturnUrls, payoutReturnUrlsFromLocation, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh, fetchReadiness, beginPayoutSetup, resumeSetup, rememberPayoutReturn, readPayoutReturn, clearPayoutReturn, simulateConnect, connectSimulationBody, readConnectSimulation };
 });

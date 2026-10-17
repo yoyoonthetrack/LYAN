@@ -98,6 +98,17 @@ test('phase 7 ledger keeps gains and expenses on one account without a net balan
     assert.equal(lines[1].customerFeeCents, 149);
     assert.equal(lines[1].cents, 1949);
     assert.equal(typeof policy.netAvailableBalance, 'undefined');
+    const refunded = policy.ledgerLines(me, [
+        { id: 'r1', requester_id: me, provider_id: 'other', payment_status: 'REFUNDED', customer_total_cents: 4349 }
+    ]);
+    assert.equal(refunded[0].label, 'Remboursé');
+    assert.match(policy.dossierMoney(me, refunded.map((line) => ({
+        id: line.id,
+        requester_id: me,
+        provider_id: 'other',
+        payment_status: 'REFUNDED',
+        customer_total_cents: 4349
+    }))), /Remboursé/);
 });
 
 test('6.18 engines stay off', () => {

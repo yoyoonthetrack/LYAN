@@ -3254,8 +3254,23 @@ function paintDossierActions(host, dossier, quotes) {
             checking
         })
         : '';
-    const nextHost = host.closest('.chat-dossier-sheet') && host.closest('.chat-dossier-sheet').querySelector('[data-dossier-next]');
+    const sheet = host.closest('.chat-dossier-sheet');
+    const nextHost = sheet && sheet.querySelector('[data-dossier-next]');
     if (nextHost) nextHost.textContent = nextCopy || '';
+    if (sheet && quote && userId && window.LYANN_FINANCE_POLICY_UI && typeof window.LYANN_FINANCE_POLICY_UI.dossierMoney === 'function') {
+        let money = sheet.querySelector('[data-dossier-money]');
+        if (!money) {
+            money = document.createElement('p');
+            money.setAttribute('data-dossier-money', '1');
+            money.style.margin = '8px 0 0';
+            money.style.fontSize = '0.85rem';
+            money.style.color = '#3F5C49';
+            if (nextHost && nextHost.parentNode) nextHost.parentNode.appendChild(money);
+        }
+        const text = window.LYANN_FINANCE_POLICY_UI.dossierMoney(userId, quote.payments || []);
+        money.textContent = text;
+        money.hidden = !text;
+    }
     const prompts = window.LYANN_PAYOUT_PROMPT;
     const guidance = prompts && typeof prompts.payoutGuidance === 'function' && accepted && readiness
         ? prompts.payoutGuidance({
@@ -3712,6 +3727,14 @@ async function restorePayoutDossier(hint) {
 window.restorePayoutDossier = restorePayoutDossier;
 
 function refreshDealChrome() {
+    try {
+        window.__lyannReminderQuotes = typeof timelineQuotes !== 'undefined' ? Array.from(timelineQuotes.values()) : [];
+        const readiness = {};
+        if (typeof payoutReadinessByUser !== 'undefined') {
+            payoutReadinessByUser.forEach((state, id) => { readiness[id] = state; });
+        }
+        window.__lyannReminderReadiness = readiness;
+    } catch (_) {}
     const box = document.getElementById('chatMessagesContainer');
     if (box) {
         const current = quotesWithCurrentContact();

@@ -90,7 +90,11 @@ Les pages restent des documents HTML distincts. Le fond entre deux pages est le 
 
 ## Phase 7 — un seul compte
 
-Un utilisateur peut demander et réaliser en même temps. L’onglet Finances agrège les deux sans solde net : filtres Tout, Gains, Dépenses. Une dépense affiche la prestation et les frais payés. Un gain affiche le brut, la commission et le net. Un transfert Stripe n’est pas un virement bancaire reçu. QA A (demandeur) : 19,49 € sécurisés dont 1,49 € de frais, et des remboursements. QA B (Lyanneur des mêmes missions) : 17,46 € à recevoir sur 18,00 € brut. Aucun des deux comptes de test n’a les deux côtés à la fois ; le mélange est couvert par le test unitaire.
+Un utilisateur peut demander et réaliser en même temps. L’onglet Finances agrège les deux sans solde net : filtres Tout, Gains, Dépenses. Une dépense affiche la prestation et les frais payés. Un gain affiche le brut, la commission et le net. Un remboursement n’est pas présenté comme une dépense encore active. Un transfert Stripe n’est pas un virement bancaire reçu. Le dossier reprend les mêmes états serveur.
+
+QA A ne peut pas encore recevoir un paiement : son compte Connect test existe, mais les virements Stripe ne sont pas actifs (`requirements_past_due`, onboarding incomplet). La règle d’éligibilité n’a pas été assouplie. Le devis inversé « [CAMPAGNE-J2] A est Lyanneur » reste accepté, avec QA B demandeur. L’inscription Stripe Test s’arrête sur le captcha hébergé par Stripe ; elle n’a pas été contournée. Tant que ce compte n’est pas prêt, le paiement n’est pas présenté comme réussi. Le retour Stripe ramène sur le dossier local, et le rappel « compte de versement » disparaît dès que l’état change.
+
+Sur le même écran Finances de QA A, après le devis inversé non payé : à recevoir 0,00 €, dépenses sécurisées 106,47 €, remboursements 173,96 €, sans compensation. QA B reste le Lyanneur des missions précédentes (17,46 € à recevoir sur 18,00 € brut). Le mélange gains + dépenses sur un même paiement réel reste NON TESTÉ tant que Connect n’est pas actif ; il est couvert par le test unitaire.
 
 ## Git
 

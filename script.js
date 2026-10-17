@@ -1340,15 +1340,15 @@ safeDomReady(() => {
         let completionCardHTML = '';
         if (isSelf) {
             let missingPrompts = [];
-            if (!pData.bio || pData.bio.trim().length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus"></i> Presentation</span>');
+            if (!pData.bio || pData.bio.trim().length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus"></i> Présentation</span>');
             if (!userServices || userServices.length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus"></i> Compétences</span>');
             if (!portfolioItems || portfolioItems.length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Réalisation</span>');
 
             if (missingPrompts.length > 0) {
                 completionCardHTML = `
-                    <div class="lyann-completion-card" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 14px 18px; margin-bottom: 16px;">
-                        <div class="lyann-completion-header" style="font-weight: 700; font-size: 0.9rem; color: #1E293B; margin-bottom: 8px;">
-                            <i class="ph ph-sparkle" style="color: #4A7C59;"></i> Ton profil peut être encore plus utile :
+                    <div class="lyann-completion-card" style="background: #FAF7F2; border: 1px solid #E4DDD2; border-radius: 16px; padding: 14px 18px; margin-bottom: 16px;">
+                        <div class="lyann-completion-header" style="font-weight: 700; font-size: 0.9rem; color: #3F5C49; margin-bottom: 8px;">
+                            <i class="ph ph-sparkle" style="color: #4A7C59;"></i> Quelques détails aident les voisins à te reconnaître
                         </div>
                         <div class="lyann-completion-items" style="display: flex; gap: 8px; flex-wrap: wrap;">
                             ${missingPrompts.join('')}
@@ -5180,16 +5180,20 @@ safeDomReady(() => {
         const shown = lines.filter((line) => filter === 'all' || (filter === 'gains' ? line.kind === 'gain' : line.kind === 'expense'));
         const gainWaiting = lines.filter((line) => line.kind === 'gain' && line.cents != null && /À recevoir/.test(line.label)).reduce((sum, line) => sum + line.cents, 0);
         const spent = lines.filter((line) => line.kind === 'expense' && line.cents != null && line.label === 'Paiement sécurisé').reduce((sum, line) => sum + line.cents, 0);
+        const refunded = lines.filter((line) => line.label === 'Remboursé' && line.cents != null).reduce((sum, line) => sum + line.cents, 0);
         const filters = [
             ['all', 'Tout'],
             ['gains', 'Gains'],
             ['expenses', 'Dépenses']
         ].map(([id, label]) => '<button type="button" data-finance-filter="' + id + '" class="btn ' + (filter === id ? 'btn-primary' : 'btn-outline') + '" style="min-height:36px;">' + label + '</button>').join('');
         const rows = shown.length
-            ? shown.map((line) => '<article style="padding:12px 0;border-top:1px solid #E2E8F0;"><strong>' + (line.kind === 'gain' ? 'Gain' : 'Dépense') + '</strong> · ' + eurosFromCents(line.cents) + '<p style="margin:4px 0 0;color:#64748B;font-size:0.85rem;">' + financeLineDetail(line) + '</p><p style="margin:2px 0 0;color:#64748B;font-size:0.85rem;">' + line.label + '</p></article>').join('')
+            ? shown.map((line) => {
+                const title = line.label === 'Remboursé' ? 'Remboursé' : (line.kind === 'gain' ? 'Gain' : 'Dépense');
+                return '<article style="padding:12px 0;border-top:1px solid #E2E8F0;"><strong>' + title + '</strong> · ' + eurosFromCents(line.cents) + '<p style="margin:4px 0 0;color:#64748B;font-size:0.85rem;">' + financeLineDetail(line) + '</p><p style="margin:2px 0 0;color:#64748B;font-size:0.85rem;">' + line.label + '</p></article>';
+            }).join('')
             : '<p style="color:#64748B;">' + (lines.length ? (filter === 'gains' ? 'Pas encore de gain.' : 'Pas encore de dépense.') : 'Pas encore de mouvement. Une mission payée ou réalisée apparaîtra ici, sans mélange des gains et des dépenses.') + '</p>';
         host.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' + filters + '</div>'
-            + '<p style="font-size:0.88rem;margin:0 0 8px;">À recevoir : <strong>' + eurosFromCents(gainWaiting) + '</strong>. Dépenses sécurisées : <strong>' + eurosFromCents(spent) + '</strong>. Ces deux montants ne se compensent pas.</p>'
+            + '<p style="font-size:0.88rem;margin:0 0 8px;">À recevoir : <strong>' + eurosFromCents(gainWaiting) + '</strong>. Dépenses sécurisées : <strong>' + eurosFromCents(spent) + '</strong>. Remboursé : <strong>' + eurosFromCents(refunded) + '</strong>. Ces montants ne se compensent pas.</p>'
             + rows;
         host.dataset.filter = filter;
         host.querySelectorAll('[data-finance-filter]').forEach((button) => {

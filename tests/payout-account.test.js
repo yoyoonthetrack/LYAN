@@ -71,6 +71,10 @@ test('active matches the server payable rule and ignores payouts_enabled', () =>
 });
 
 test('return and refresh urls stay on the finances page', () => {
+    const { payoutReturnUrlsFromLocation } = require('../payout-account.js');
+    const local = payoutReturnUrlsFromLocation('http://127.0.0.1:8098/feed.html');
+    assert.equal(local.return_url, 'http://127.0.0.1:8098/feed.html?action=finances&connect=return');
+    assert.equal(local.refresh_url, 'http://127.0.0.1:8098/feed.html?action=finances&connect=refresh');
     const urls = payoutReturnUrls();
     assert.equal(urls.return_url, 'https://lyann.app/?action=finances&connect=return');
     assert.equal(urls.refresh_url, 'https://lyann.app/?action=finances&connect=refresh');

@@ -3554,9 +3554,15 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
         }
         const payable = providerCanBePaid(payableProfile, payableAccount);
         if (!payable.ok) {
+            const payoutWaitCopy = {
+                CONNECT_REQUIRED: 'Le compte de versement du Lyanneur n’est pas encore configuré. Le devis reste accepté : le paiement pourra être sécurisé ensuite.',
+                CONNECT_NOT_READY: 'Le compte de versement du Lyanneur n’est pas encore prêt. Le devis reste accepté : le paiement pourra être sécurisé ensuite.',
+                PROVIDER_NOT_PAYABLE: 'Ce compte ne peut pas recevoir de versement. Aucun paiement n’a été créé.',
+                WRONG_CONNECT_ACCOUNT: 'Le compte de versement ne correspond pas. Aucun paiement n’a été créé.'
+            };
             return res.status(409).json({
                 code: payable.code,
-                error: 'Paiement refusé : le Lyanneur ne peut pas encore recevoir un versement.'
+                error: payoutWaitCopy[payable.code] || 'Le paiement ne peut pas être sécurisé pour le moment. Aucun paiement n’a été créé.'
             });
         }
 

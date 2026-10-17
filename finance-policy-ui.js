@@ -314,6 +314,16 @@
         return Number.isFinite(n) ? n : null;
     }
 
+    function dossierMoney(userId, payments) {
+        const lines = ledgerLines(userId, payments);
+        if (!lines.length) return '';
+        return lines.map((line) => {
+            const title = line.label === 'Remboursé' ? 'Remboursé' : (line.kind === 'gain' ? 'Gain' : 'Payé');
+            const amount = line.cents == null ? 'montant indisponible' : cents(line.cents);
+            return title + ' ' + amount + ' — ' + line.label;
+        }).join(' · ');
+    }
+
     function ledgerStatus(pay, kind) {
         const paymentStatus = String(pay.payment_status || '');
         const transferStatus = String(pay.transfer_status || '');
@@ -334,6 +344,7 @@
     const api = {
         cents: cents,
         ledgerLines: ledgerLines,
+        dossierMoney: dossierMoney,
         classifyFinanceDisplay: classifyFinanceDisplay,
         policyCopy: policyCopy,
         fundLabel: fundLabel,

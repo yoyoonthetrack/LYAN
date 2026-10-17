@@ -135,6 +135,7 @@ function notificationKind(type) {
         PAYOUT_READY: ['Compte de versement', 'ph-bank']
     };
     if (exact[key]) return { label: exact[key][0], icon: exact[key][1] };
+    if (key.startsWith('REMINDER_')) return { label: 'Rappel', icon: 'ph-bell-ringing' };
     if (key.startsWith('PAYMENT')) return { label: 'Paiement', icon: 'ph-credit-card' };
     if (key.startsWith('QUOTE')) return { label: 'Proposition de devis', icon: 'ph-file-text' };
     if (key.startsWith('MISSION')) return { label: 'Mission', icon: 'ph-flag-checkered' };
@@ -240,6 +241,11 @@ function openNotificationsModal() {
         return;
     }
     renderNotificationsModal();
+    if (window.LYANN_MISSION_REMINDERS?.loadContext) {
+        window.LYANN_MISSION_REMINDERS.loadContext(currentUserId).then(() => {
+            if (document.getElementById('notificationsModal')?.classList.contains('active')) renderNotificationsModal();
+        }).catch(() => {});
+    }
     if (window.LyannNotificationEngine?.hydrateFromServer) {
         window.LyannNotificationEngine.hydrateFromServer(currentUserId).then(() => {
             if (document.getElementById('notificationsModal')?.classList.contains('active')) renderNotificationsModal();
@@ -275,6 +281,33 @@ function renderNotificationsModal() {
     notifs = notifs
         .filter((n) => n && n.user_id === currentUserId && n.type !== 'NEW_MESSAGE')
         .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    const reminderApi = window.LYANN_MISSION_REMINDERS;
+    if (reminderApi && typeof reminderApi.reminderCandidates === 'function') {
+        let prefs = {};
+        try { prefs = window.LyannNotificationEngine?.getUserPreferences?.(currentUserId) || {}; } catch (_) {}
+        const candidates = reminderApi.reminderCandidates({
+            userId: currentUserId,
+            quotes: window.__lyannReminderQuotes || [],
+            readiness: window.__lyannReminderReadiness || {},
+            prefs,
+            now: Date.now()
+        });
+        const view = reminderApi.visibleReminders(notifs, candidates);
+        const reminders = view.extra.map((item) => ({
+                id: 'reminder:' + item.kind + ':' + item.entityId,
+                user_id: currentUserId,
+                type: item.type,
+                title: item.title,
+                body: item.body,
+                entity_type: 'request',
+                entity_id: item.entityId,
+                request_id: item.requestId,
+                read: false,
+                created_at: new Date().toISOString(),
+                cta: { label: 'Ouvrir le dossier' }
+        }));
+        notifs = reminders.concat(view.persisted);
+    }
     const unreadCount = notifs.filter((n) => !n.read).length;
 
     modal.innerHTML = `
@@ -306,8 +339,10 @@ function renderNotificationsModal() {
                     const notifId = escapeNotificationText(n.id);
                     const entityType = escapeNotificationText(n.entity_type || '');
                     const entityId = escapeNotificationText(n.entity_id || '');
+                    const notifType = escapeNotificationText(n.type || '');
+                    const requestId = escapeNotificationText(n.request_id || '');
                     return `
-                        <div class="notif-item-card${isUnread ? ' is-unread' : ''}" role="button" tabindex="0" data-notif-id="${notifId}" data-entity-type="${entityType}" data-entity-id="${entityId}">
+                        <div class="notif-item-card${isUnread ? ' is-unread' : ''}" role="button" tabindex="0" data-notif-id="${notifId}" data-notif-type="${notifType}" data-entity-type="${entityType}" data-entity-id="${entityId}" data-request-id="${requestId}">
                             <span class="lyann-notif-icon" aria-hidden="true"><i class="ph ${icon}"></i></span>
                             <div class="lyann-notif-copy">
                                 ${kind ? `<span class="lyann-notif-kind">${escapeNotificationText(kind.label)}</span>` : ''}
@@ -397,8 +432,19 @@ function renderNotificationsModal() {
             const notifId = card.getAttribute('data-notif-id');
             const entityType = card.getAttribute('data-entity-type');
             const entityId = card.getAttribute('data-entity-id');
-            const nType = (window.LyannNotificationEngine?.getUserNotifications?.(currentUserId, currentUserId) || [])
-                .find((item) => String(item.id) === String(notifId))?.type;
+            const nType = card.getAttribute('data-notif-type')
+                || (window.LyannNotificationEngine?.getUserNotifications?.(currentUserId, currentUserId) || [])
+                    .find((item) => String(item.id) === String(notifId))?.type;
+
+            if (String(nType || '').indexOf('REMINDER_') === 0) {
+                const requestId = card.getAttribute('data-request-id');
+                closeModal();
+                const surfaces = window.LYANN_MISSION_SURFACES;
+                if (requestId && surfaces && typeof surfaces.openDossier === 'function') {
+                    surfaces.openDossier({ requestId }).catch(() => {});
+                }
+                return;
+            }
 
             if (nType === 'REQUEST_CLOSING') return;
 

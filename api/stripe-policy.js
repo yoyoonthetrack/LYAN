@@ -2113,7 +2113,7 @@ function legacyPaymentColumns(financials) {
 
 const STAGING_V2_REF = 'tdktfbtqceldlaeqjtow';
 const PRODUCTION_REF = 'gzispjfoywklpqatjyop';
-const STAGING_RETURN_FALLBACK = 'http://127.0.0.1:8098/feed.html';
+const STAGING_RETURN_FALLBACK = 'http://127.0.0.1:8098/feed.html?action=finances&connect=return';
 const PRODUCTION_RETURN_FALLBACK = 'https://lyann.app/';
 
 function envSupabaseRef(env) {
@@ -2134,7 +2134,10 @@ function safeStripeReturnUrl(value, env) {
     if (isStagingV2ReturnEnv(runtime)) {
         try {
             const url = new URL(String(value || STAGING_RETURN_FALLBACK));
-            if (url.hostname === 'lyann.app' || url.hostname === 'www.lyann.app') return STAGING_RETURN_FALLBACK;
+            if (url.hostname === 'lyann.app' || url.hostname === 'www.lyann.app') {
+                const mode = url.searchParams.get('connect') === 'refresh' ? 'refresh' : 'return';
+                return 'http://127.0.0.1:8098/feed.html?action=finances&connect=' + mode;
+            }
             const port = url.port || (url.protocol === 'http:' ? '80' : '443');
             const localOk = url.protocol === 'http:' && url.hostname === '127.0.0.1' && port === '8098';
             const nativeOk = url.protocol === 'capacitor:' || url.protocol === 'ionic:';
