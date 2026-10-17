@@ -657,7 +657,11 @@
     }
     const paymentsByQuote = new Map();
     if (quoteIds.length) {
-      const paymentResult = await client.supabase.from('payments').select('id,quote_id,milestone_id,payment_status').in('quote_id', quoteIds);
+      const rich = 'id,quote_id,milestone_id,requester_id,provider_id,payment_status,transfer_status,stripe_transfer_id,service_amount_cents,customer_fee_cents,customer_total_cents,provider_fee_cents,provider_net_cents';
+      let paymentResult = await client.supabase.from('payments').select(rich).in('quote_id', quoteIds);
+      if (paymentResult.error) {
+        paymentResult = await client.supabase.from('payments').select('id,quote_id,milestone_id,payment_status').in('quote_id', quoteIds);
+      }
       if (!paymentResult.error) {
         (paymentResult.data || []).forEach((payment) => {
           if (!paymentsByQuote.has(payment.quote_id)) paymentsByQuote.set(payment.quote_id, []);

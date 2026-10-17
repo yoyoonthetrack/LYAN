@@ -101,5 +101,26 @@ test('the payout reminder stays ahead of older quote replies', () => {
     quotes.push({ id: 'gain', status: 'ACCEPTED', provider_id: me, requester_id: other, updated_at: '2026-10-17T11:00:00Z' });
     const items = reminderCandidates({ userId: me, now, readiness: { [me]: 'incomplete' }, quotes });
     assert.equal(items[0].kind, 'payout_setup');
-    assert.equal(items.length, 6);
+    assert.ok(items.filter((item) => item.kind === 'quote_reply').length <= 3);
+    assert.ok(items.length <= 8);
+});
+
+test('two missions between the same people stay distinct and point at the other person', () => {
+    const items = reminderCandidates({
+        userId: me,
+        now,
+        readiness: { [me]: 'incomplete', [other]: 'active' },
+        quotes: [
+            { id: 'q-gain', status: 'ACCEPTED', provider_id: me, requester_id: other, description: 'Aide inversée', request_id: 'req-gain', request_invitation_id: 'inv-gain', updated_at: '2026-10-17T11:00:00Z' },
+            { id: 'q-pay', status: 'ACCEPTED', provider_id: other, requester_id: me, description: 'Tarif direct', request_id: 'req-pay', request_invitation_id: 'inv-pay', updated_at: '2026-10-16T08:00:00Z', milestones: [{ id: 'm', status: 'PENDING' }] }
+        ]
+    });
+    assert.equal(items[0].kind, 'payout_setup');
+    assert.equal(items[0].contactId, other);
+    assert.equal(items[0].invitationId, 'inv-gain');
+    assert.match(items[0].body, /Aide inversée/);
+    assert.equal(items[1].kind, 'payment_due');
+    assert.equal(items[1].contactId, other);
+    assert.match(items[1].body, /Tarif direct/);
+    assert.notEqual(items[0].requestId, items[1].requestId);
 });

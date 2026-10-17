@@ -111,6 +111,40 @@ test('phase 7 ledger keeps gains and expenses on one account without a net balan
     }))), /Remboursé/);
 });
 
+test('dossier summary uses server cents and the role on that mission', () => {
+    const quote = {
+        requester_id: 'client',
+        provider_id: 'helper',
+        milestones: [
+            { id: 'm1', title: 'Aide', amount: 18, status: 'COMPLETED' },
+            { id: 'm2', title: 'Suite', amount: 12, status: 'PENDING' }
+        ],
+        payments: [{
+            id: 'p1',
+            milestone_id: 'm1',
+            requester_id: 'client',
+            provider_id: 'helper',
+            payment_status: 'SUCCEEDED',
+            transfer_status: 'PENDING_VALIDATION',
+            service_amount_cents: 1800,
+            customer_fee_cents: 149,
+            customer_total_cents: 1949,
+            provider_fee_cents: 54,
+            provider_net_cents: 1746
+        }]
+    };
+    const client = policy.dossierSummary('client', quote);
+    assert.match(client, /payé 19,49 €/);
+    assert.match(client, /frais 1,49 €/);
+    assert.match(client, /Validation attendue/);
+    assert.match(client, /pas encore payé/);
+    const helper = policy.dossierSummary('helper', quote);
+    assert.match(helper, /à recevoir 17,46 €/);
+    assert.match(helper, /commission 0,54 €/);
+    assert.doesNotMatch(helper, /Validation attendue/);
+    assert.equal(policy.dossierSummary('stranger', quote), '');
+});
+
 test('6.18 engines stay off', () => {
     assert.equal(postTransferFinancialExecutionEnabled(), false);
     assert.equal(preTransferRefundExecutionEnabled(), false);

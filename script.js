@@ -1308,7 +1308,7 @@ safeDomReady(() => {
         if (trustItems.length > 0) {
             trustLineHTML = `<div class="lyann-trust-line-compact">${trustItems.join('<span class="lyann-trust-dot">•</span>')}</div>`;
         } else {
-            trustLineHTML = `<div class="lyann-trust-line-compact"><span class="lyann-badge lyann-badge-verified" style="background:#F1F5F9; color:#475569;"><i class="ph ph-sparkle"></i> Nouveau membre sur LYANN</span></div>`;
+            trustLineHTML = `<div class="lyann-trust-line-compact"><span class="lyann-badge lyann-badge-verified" style="background:#F3EFE6; color:#3F5C49;"><i class="ph ph-sparkle"></i> Nouveau membre sur LYANN</span></div>`;
         }
 
         // Build CTA Group
@@ -1360,7 +1360,7 @@ safeDomReady(() => {
 
         // Build Skills ("Je peux aider pour")
         let servicesHTML = '';
-        const allSkills = (userServices && userServices.length > 0) ? userServices.map(s => typeof s === 'string' ? s : (s.title || s.name || '')) : (Array.isArray(pData.skills) && pData.skills.length > 0 ? pData.skills : (Array.isArray(pData.intervention_zone) ? pData.intervention_zone : []));
+        const allSkills = (userServices && userServices.length > 0) ? userServices.map(s => typeof s === 'string' ? s : (s.title || s.name || '')) : (Array.isArray(pData.skills) ? pData.skills : []);
         if (allSkills.length > 0) {
             servicesHTML = `
                 <div class="lyann-profile-section">
@@ -1380,7 +1380,7 @@ safeDomReady(() => {
                         <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Je peux aider pour</h4>
                         <button type="button" class="btn btn-outline btn-sm" id="btnAddNewServiceHub">Ajouter un service</button>
                     </div>
-                    <div class="lyann-zero-data" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="cursor:pointer; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 16px; text-align: center;">
+                    <div class="lyann-zero-data" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="cursor:pointer; background: #FAF7F2; border: 1px dashed #E4DDD2; border-radius: 14px; padding: 16px; text-align: center;">
                         <span class="lyann-zero-data-title" style="font-size: 0.88rem; color: #475569; font-weight: 600;"><i class="ph ph-plus-circle"></i> Ajoute les compétences pour lesquelles tu peux aider</span>
                     </div>
                 </div>
@@ -1395,7 +1395,7 @@ safeDomReady(() => {
                 <div class="lyann-section-header">
                     <h4 class="lyann-section-title"><i class="ph ph-navigation-arrow"></i> Zone</h4>
                 </div>
-                <div class="lyann-relocation-card" style="display: flex; align-items: center; gap: 10px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 12px 16px;">
+                <div class="lyann-relocation-card" style="display: flex; align-items: center; gap: 10px; background: #FAF7F2; border: 1px solid #E4DDD2; border-radius: 14px; padding: 12px 16px;">
                     <div class="lyann-relocation-icon" style="color: #4A7C59; font-size: 1.2rem;"><i class="ph ph-map-pin"></i></div>
                     <div class="lyann-relocation-text" style="font-size: 0.88rem; color: #1E293B;">
                         <strong>${window.escapeHtmlAttr(formattedLocation)}</strong><span style="color: #64748B;">${radiusText}</span>
@@ -1413,7 +1413,7 @@ safeDomReady(() => {
                         <h4 class="lyann-section-title"><i class="ph ph-images"></i> Réalisations</h4>
                         ${isSelf ? '<button type="button" class="btn btn-outline btn-sm" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Ajouter</button>' : ''}
                     </div>
-                    <div class="lyann-portfolio-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                    <div class="lyann-portfolio-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px;">
                         ${portfolioItems.map(item => `
                             <div class="lyann-portfolio-card" onclick="window.lyannOpenLightbox('${item.image_url.replace(/'/g, "\\'")}', '${(item.title || '').replace(/'/g, "\\'")}', '${(item.caption || '').replace(/'/g, "\\'")}')" style="cursor: pointer; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid #E2E8F0;">
                                 <img src="${item.image_url}" alt="${window.escapeHtmlAttr(item.title || 'Réalisation')}" class="lyann-portfolio-img" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block;">
@@ -1442,7 +1442,7 @@ safeDomReady(() => {
         let reviewsHTML = `
             <div class="lyann-profile-section" id="profileAvis">
                 <div class="lyann-section-header" style="margin-bottom: 10px;">
-                    <h4 class="lyann-section-title"><i class="ph ph-star"></i> Avis (${reviewsCount})</h4>
+                    <h4 class="lyann-section-title"><i class="ph ph-star"></i> Avis et recommandations (${reviewsCount})</h4>
                 </div>
         `;
         if (reviewsList && reviewsList.length > 0) {
@@ -1492,7 +1492,7 @@ safeDomReady(() => {
                                 <i class="ph ph-map-pin"></i> ${window.escapeHtmlAttr(formattedLocation)}
                             </div>
                             ${trustLineHTML}
-                            ${pData.bio ? `<p class="lyann-profile-bio" style="font-size:0.9rem; color:#475569; margin:8px 0;">${window.escapeHtmlAttr(pData.bio)}</p>` : ''}
+                            ${pData.bio ? `<p class="lyann-profile-bio" style="font-size:0.9rem; color:#3F4A42; margin:8px 0; line-height:1.45;">${window.escapeHtmlAttr(pData.bio)}</p>` : (isSelf ? '<p class="lyann-profile-bio" style="font-size:0.9rem; color:#6B7280; margin:8px 0;">Une courte présentation rassure les voisins.</p>' : '')}
                             ${ctaHTML}
                         </div>
                     </div>

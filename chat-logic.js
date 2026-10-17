@@ -3267,7 +3267,13 @@ function paintDossierActions(host, dossier, quotes) {
             money.style.color = '#3F5C49';
             if (nextHost && nextHost.parentNode) nextHost.parentNode.appendChild(money);
         }
-        const text = window.LYANN_FINANCE_POLICY_UI.dossierMoney(userId, quote.payments || []);
+        const policy = window.LYANN_FINANCE_POLICY_UI;
+        const summaryQuote = Object.assign({}, quote);
+        if (!summaryQuote.requester_id && dossier.roleCode === 'requester') summaryQuote.requester_id = userId;
+        if (!summaryQuote.provider_id && !summaryQuote.helper_id && dossier.roleCode === 'lyanneur') summaryQuote.provider_id = userId;
+        const text = typeof policy.dossierSummary === 'function'
+            ? policy.dossierSummary(userId, summaryQuote)
+            : policy.dossierMoney(userId, quote.payments || []);
         money.textContent = text;
         money.hidden = !text;
     }

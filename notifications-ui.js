@@ -302,6 +302,8 @@ function renderNotificationsModal() {
                 entity_type: 'request',
                 entity_id: item.entityId,
                 request_id: item.requestId,
+                invitation_id: item.invitationId,
+                contact_id: item.contactId,
                 read: false,
                 created_at: new Date().toISOString(),
                 cta: { label: 'Ouvrir le dossier' }
@@ -341,8 +343,10 @@ function renderNotificationsModal() {
                     const entityId = escapeNotificationText(n.entity_id || '');
                     const notifType = escapeNotificationText(n.type || '');
                     const requestId = escapeNotificationText(n.request_id || '');
+                    const invitationId = escapeNotificationText(n.invitation_id || '');
+                    const contactId = escapeNotificationText(n.contact_id || '');
                     return `
-                        <div class="notif-item-card${isUnread ? ' is-unread' : ''}" role="button" tabindex="0" data-notif-id="${notifId}" data-notif-type="${notifType}" data-entity-type="${entityType}" data-entity-id="${entityId}" data-request-id="${requestId}">
+                        <div class="notif-item-card${isUnread ? ' is-unread' : ''}" role="button" tabindex="0" data-notif-id="${notifId}" data-notif-type="${notifType}" data-entity-type="${entityType}" data-entity-id="${entityId}" data-request-id="${requestId}" data-invitation-id="${invitationId}" data-contact-id="${contactId}">
                             <span class="lyann-notif-icon" aria-hidden="true"><i class="ph ${icon}"></i></span>
                             <div class="lyann-notif-copy">
                                 ${kind ? `<span class="lyann-notif-kind">${escapeNotificationText(kind.label)}</span>` : ''}
@@ -438,11 +442,19 @@ function renderNotificationsModal() {
 
             if (String(nType || '').indexOf('REMINDER_') === 0) {
                 const requestId = card.getAttribute('data-request-id');
+                const invitationId = card.getAttribute('data-invitation-id');
+                const contactId = card.getAttribute('data-contact-id');
                 closeModal();
-                const surfaces = window.LYANN_MISSION_SURFACES;
-                if (requestId && surfaces && typeof surfaces.openDossier === 'function') {
-                    surfaces.openDossier({ requestId }).catch(() => {});
-                }
+                const openReminder = async () => {
+                    if (contactId && window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.openConversation === 'function') {
+                        try { await window.LYANN_MESSAGING.openConversation({ contactId, requestId: requestId || null }); } catch (_) {}
+                    }
+                    const surfaces = window.LYANN_MISSION_SURFACES;
+                    if (surfaces && typeof surfaces.openDossier === 'function' && (requestId || invitationId)) {
+                        try { await surfaces.openDossier({ requestId: requestId || null, invitationId: invitationId || null }); } catch (_) {}
+                    }
+                };
+                openReminder();
                 return;
             }
 

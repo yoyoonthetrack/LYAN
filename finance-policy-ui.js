@@ -314,6 +314,51 @@
         return Number.isFinite(n) ? n : null;
     }
 
+    function euroAmount(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return null;
+        return String(n).replace('.', ',') + ' €';
+    }
+
+    function dossierSummary(userId, quote) {
+        if (!quote || !userId) return '';
+        const me = String(userId);
+        const providerId = String(quote.provider_id || quote.helper_id || '');
+        const requesterId = String(quote.requester_id || '');
+        if (providerId !== me && requesterId !== me) return '';
+        const role = providerId === me ? 'gain' : 'expense';
+        const steps = Array.isArray(quote.milestones) ? quote.milestones.filter(Boolean) : [];
+        const payments = Array.isArray(quote.payments) ? quote.payments : [];
+        if (!steps.length) return dossierMoney(userId, payments);
+        return steps.map((milestone) => {
+            const name = milestone.title || 'Jalon';
+            const pay = payments.find((item) => item && String(item.milestone_id) === String(milestone.id)) || null;
+            const status = String(milestone.status || '').toUpperCase();
+            if (!pay) {
+                const amount = euroAmount(milestone.amount);
+                if (status === 'PENDING' || !status) return '« ' + name + ' »' + (amount ? ' ' + amount : '') + ' — pas encore payé.';
+                return '« ' + name + ' » — en attente.';
+            }
+            const line = ledgerLines(userId, [pay])[0];
+            if (!line) return '';
+            if (line.label === 'Remboursé') return '« ' + name + ' » remboursé ' + cents(line.cents) + '. Ce n’est plus un paiement actif.';
+            if (role === 'gain') {
+                const brut = line.serviceCents != null ? cents(line.serviceCents) : 'montant indisponible';
+                const fee = line.providerFeeCents != null ? ', commission ' + cents(line.providerFeeCents) : '';
+                const net = line.cents != null ? cents(line.cents) : 'montant indisponible';
+                return '« ' + name + ' » : à recevoir ' + net + ' (brut ' + brut + fee + '). ' + line.label + '.';
+            }
+            const total = line.cents != null ? cents(line.cents) : 'montant indisponible';
+            const detail = line.serviceCents != null
+                ? ' (prestation ' + cents(line.serviceCents) + (line.customerFeeCents != null ? ', frais ' + cents(line.customerFeeCents) : '') + ')'
+                : '';
+            const waiting = status === 'COMPLETED' && line.label === 'Paiement sécurisé'
+                ? ' Validation attendue. Aucun transfert n’est encore créé.'
+                : '';
+            return '« ' + name + ' » : payé ' + total + detail + '. ' + line.label + '.' + waiting;
+        }).filter(Boolean).join(' ');
+    }
+
     function dossierMoney(userId, payments) {
         const lines = ledgerLines(userId, payments);
         if (!lines.length) return '';
@@ -345,6 +390,7 @@
         cents: cents,
         ledgerLines: ledgerLines,
         dossierMoney: dossierMoney,
+        dossierSummary: dossierSummary,
         classifyFinanceDisplay: classifyFinanceDisplay,
         policyCopy: policyCopy,
         fundLabel: fundLabel,

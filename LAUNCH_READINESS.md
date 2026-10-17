@@ -96,6 +96,28 @@ QA A ne peut pas encore recevoir un paiement : son compte Connect test existe, m
 
 Sur le même écran Finances de QA A, après le devis inversé non payé : à recevoir 0,00 €, dépenses sécurisées 106,47 €, remboursements 173,96 €, sans compensation. QA B reste le Lyanneur des missions précédentes (17,46 € à recevoir sur 18,00 € brut). Le mélange gains + dépenses sur un même paiement réel reste NON TESTÉ tant que Connect n’est pas actif ; il est couvert par le test unitaire.
 
+### Onboarding Stripe Test, à la main
+
+Ne pas contourner le captcha ni accepter les conditions à la place de QA A.
+
+1. Se connecter sur `http://127.0.0.1:8098/feed.html` avec QA A.
+2. Ouvrir la conversation avec QA B, puis le dossier « [CAMPAGNE-J2] A est Lyanneur ».
+3. Choisir **Configurer mon compte de versement**. Stripe Test s’ouvre (compte Express déjà créé).
+4. Utiliser le numéro de téléphone de test proposé par Stripe, puis le code `000000` s’il est demandé.
+5. Renseigner l’identité de test, l’adresse et l’IBAN de test `FR1420041010050500013M02606`. Passer le captcha dans le navigateur.
+6. Revenir sur LYANN. Le dossier doit se rouvrir. Le bouton Payer apparaît chez QA B seulement quand les virements Stripe sont actifs.
+7. Rejouer alors le paiement inversé en Stripe Test, sans cliquer « Valider et libérer le paiement » : ce bouton peut créer un transfert.
+
+### Rappels, profils, dossier
+
+Les rappels nomment la mission, ouvrent la conversation puis le dossier, et disparaissent quand l’état change. Deux missions entre les mêmes personnes restent distinctes. Le dossier affiche les centimes serveur, les frais et l’attente de validation, selon le rôle de cette mission.
+
+### Manques classés, non développés
+
+- Indispensable avant un GO : terminer Connect pour QA A, puis rejouer le paiement inversé. Safari et l’app iOS installée restent NON TESTÉ.
+- Utile ensuite : confirmation réelle du virement bancaire, distincte du transfert Stripe.
+- Après accord : exécuter les remboursements partiels (moteurs encore coupés) et accepter un domaine d’email pour les nouveaux comptes.
+
 ## Git
 
 Les artefacts (`artifacts/`, y compris `isolated.env`) et les fichiers `.env*` ne sont pas commités. Ils contiennent des clés.
