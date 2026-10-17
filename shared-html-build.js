@@ -150,7 +150,7 @@ const BOOT_SPLASH_MARKUP = `<div id="lyannBootSplash" class="lyann-boot-splash" 
     setTimeout(function(){ if(el&&el.parentNode) el.remove(); }, 380);
   }
   var shownAt=Date.now();
-  function hideWhenReady(){ setTimeout(hide, Math.max(0, 1200-(Date.now()-shownAt))); }
+  function hideWhenReady(){ setTimeout(hide, Math.max(0, 220-(Date.now()-shownAt))); }
   if(document.readyState==='complete') hideWhenReady(); else window.addEventListener('load', hideWhenReady, {once:true});
   setTimeout(hide, 4000);
 })();

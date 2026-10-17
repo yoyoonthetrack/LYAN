@@ -1,4 +1,26 @@
 console.log("⚡ [BOOT 01] script.js loaded");
+(function installLyannPageTransitions() {
+    if (window.__lyannPageTransitions) return;
+    window.__lyannPageTransitions = true;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const native = window.CSS && CSS.supports && CSS.supports('view-transition-name', 'root');
+    if (reduce || native) return;
+    document.addEventListener('click', (event) => {
+        if (event.defaultPrevented || event.button !== 0) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+        if (!link || link.hasAttribute('download')) return;
+        const target = link.getAttribute('target');
+        if (target && target !== '_self') return;
+        let url;
+        try { url = new URL(link.href, window.location.href); } catch (e) { return; }
+        if (url.origin !== window.location.origin) return;
+        if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+        event.preventDefault();
+        document.documentElement.classList.add('lyann-page-leave');
+        window.setTimeout(() => { window.location.href = url.href; }, 160);
+    }, true);
+})();
 console.log("[AUTH_REAL] app boot");
 window.__LYANN_AUTH_REAL__ = window.__LYANN_AUTH_REAL__ || {
     hasSession: false,

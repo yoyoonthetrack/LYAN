@@ -1619,7 +1619,7 @@ body:has(.hero) .feed-preview-section {
     padding: 20px;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.35s ease;
+    transition: opacity 200ms ease, visibility 200ms ease;
 }
 
 .modal-overlay.active {
@@ -1636,8 +1636,8 @@ body:has(.hero) .feed-preview-section {
     border: 1px solid rgba(255, 255, 255, 0.6);
     overflow: hidden;
     position: relative;
-    transform: scale(0.92) translateY(20px);
-    transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+    transform: scale(0.98) translateY(8px);
+    transition: transform 200ms cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .modal-overlay.active .modal-card {
@@ -20342,5 +20342,48 @@ html body.keyboard-open.chat-conversation-open #chatModal.modal-overlay.active {
     font-size: 0.8rem;
     font-weight: 700;
     color: #4A7C59;
+}
+
+/* Page changes are full HTML documents. Keep the gap the same cream as the app,
+   and cross-fade for about 180ms. Older WebViews get a short leave fade in script.js. */
+html {
+    background: #FAF7F2;
+}
+@view-transition {
+    navigation: auto;
+}
+::view-transition-old(root) {
+    animation: lyann-page-out 180ms ease both;
+}
+::view-transition-new(root) {
+    animation: lyann-page-in 180ms ease both;
+}
+@keyframes lyann-page-out {
+    to { opacity: 0; }
+}
+@keyframes lyann-page-in {
+    from { opacity: 0; }
+}
+@supports not (view-transition-name: root) {
+    body {
+        animation: lyann-page-in 180ms ease;
+    }
+}
+html.lyann-page-leave body {
+    opacity: 0;
+    transition: opacity 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    @view-transition {
+        navigation: none;
+    }
+    ::view-transition-old(root),
+    ::view-transition-new(root),
+    body {
+        animation: none;
+    }
+    html.lyann-page-leave body {
+        transition: none;
+    }
 }
 

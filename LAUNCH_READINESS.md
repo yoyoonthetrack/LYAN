@@ -60,6 +60,10 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 - PASS : « Commencer gratuitement » ouvre l’inscription.
 - NON TESTÉ : offres payantes, réglages, suppression de compte.
 
+### Transitions
+
+Les pages restent des documents HTML distincts. Le fond entre deux pages est le crème de l’app. Les navigateurs récents fondent la page en 180 ms. Les autres font un fondu de sortie de 160 ms, sans bloquer si l’utilisateur demande moins d’animations. Les modales passent de 350 ms à 200 ms. L’écran d’accueil ne force plus 1,2 s d’attente.
+
 ### 7. Mobile et iOS
 
 - PASS : Missions (n) visible en 390 px (32 px de haut).
