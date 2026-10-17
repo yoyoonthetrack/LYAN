@@ -119,6 +119,25 @@ Ouvrir un dossier déjà lié ne lance plus `initiate_lyann_help_conversation`. 
 
 Installation sur l’iPhone, sans TestFlight : brancher le téléphone, lui faire confiance, ouvrir `ios/App/App.xcodeproj`, schéma App, destination le téléphone, puis Run. Ne pas archiver et ne pas envoyer à App Store Connect. Le téléphone doit être sur le même réseau que le Mac pour joindre l’API `8098`. La messagerie et les missions passent par Supabase en HTTPS.
 
+## Phase 8.5 — installation iPhone
+
+Commit `00d96c7`, puis le correctif de retour natif. Bundle local `ios-mvbxq3t8-77ddd5`, identique à `www/`. Verrou Supabase `tdktfbtqceldlaeqjtow`. Clé embarquée : rôle `anon`, pas de `service_role`, pas de `sk_live`. Stripe du processus sur 8098 : `test`.
+
+L’API écoute sur toutes les interfaces, port 8098. Le Mac répond sur `http://172.20.10.2:8098` (en0). Le pare-feu macOS est désactivé. Cette adresse est celle du partage de connexion, pas une preuve que l’iPhone l’atteint. ATS n’autorise pas le HTTP arbitraire : seulement le réseau local (`NSAllowsLocalNetworking`) et Stripe en HTTPS. Aucune exception supplémentaire.
+
+Le serveur Staging réécrit encore tout retour `lyann.app` vers `http://127.0.0.1:8098`. Sur un iPhone, cette adresse est le téléphone, pas le Mac. L’app native demande désormais `capacitor://localhost/feed.html?action=finances&connect=return`, URL déjà acceptée par le serveur. Si Stripe Test refuse ce schéma, l’onboarding s’arrête. Ne pas continuer sur lyann.app.
+
+L’inscription native demande la confirmation vers `capacitor://localhost/confirm-signup.html`. Google revient par `app.lyann.dom://google-auth`. Apple utilise la connexion native.
+
+| Sujet simulateur déjà exécuté | Résultat |
+|---|---|
+| Deuxième conversation, Support LYANN | PASS |
+| Retour liste des missions, puis dossier, puis fil | PASS |
+| Rappel groupé | NON TESTÉ, aucune carte chez QA B |
+| Reprise par le bouton principal | Capture de l’écran d’accueil. Session après fermeture complète : PASS |
+
+Bêta privée possible comme application Staging installée à la main. Elle ne peut pas encaisser d’argent réel. Les remboursements restent éteints. QA A ne peut pas recevoir. Production et Stripe Live restent interdits.
+
 ## iPhone physique — seulement ce que le simulateur ne couvre pas
 
 - Ouvrir le lien de confirmation d’un compte créé avec une adresse réellement lue. Google et Apple.

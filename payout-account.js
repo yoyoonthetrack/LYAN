@@ -24,6 +24,13 @@
     function payoutReturnUrlsFromLocation(href) {
         try {
             const url = new URL(String(href || ''));
+            if (url.protocol === 'capacitor:' || url.protocol === 'ionic:') {
+                const base = url.protocol + '//' + (url.host || 'localhost') + '/feed.html';
+                return {
+                    return_url: base + '?action=finances&connect=return',
+                    refresh_url: base + '?action=finances&connect=refresh'
+                };
+            }
             if (url.hostname === '127.0.0.1' && String(url.port || '') === '8098') {
                 const page = url.pathname && url.pathname !== '/' ? url.pathname : '/feed.html';
                 const base = 'http://127.0.0.1:8098' + page;
