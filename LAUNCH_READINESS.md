@@ -119,9 +119,21 @@ Ouvrir un dossier déjà lié ne lance plus `initiate_lyann_help_conversation`. 
 
 Installation sur l’iPhone, sans TestFlight : brancher le téléphone, lui faire confiance, ouvrir `ios/App/App.xcodeproj`, schéma App, destination le téléphone, puis Run. Ne pas archiver et ne pas envoyer à App Store Connect. Le téléphone doit être sur le même réseau que le Mac pour joindre l’API `8098`. La messagerie et les missions passent par Supabase en HTTPS.
 
-## Phase 8.8 — Staging prêt à autoriser
+## Phase 8.9 — Destination Vercel verrouillée
 
-Rien n’est déployé. Le projet Vercel Production `lyan-app` n’est pas modifié : `vercel.json` ne contient pas de commande qui changerait ses déploiements. Le projet prévu est décrit par `vercel.staging.json`, nom `lyann-staging`. Si ce fichier était branché par erreur sur Production, `scripts/vercel-staging-ignore.js` ignore le build. `scripts/deploy-staging.sh` s’arrête sans `LYANN_AUTHORIZE_STAGING_DEPLOY=1`, et s’arrête aussi si le lien local s’appelle `lyan-app`.
+Production réelle : projet `lyan`, identifiant `prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM`, domaine `lyann.app`. L’ancien garde-fou, limité au nom `lyan-app`, ne protégeait pas ce projet.
+
+`scripts/vercel-target-gate.js` refuse toute destination dont l’identifiant est celui de Production, dont le domaine est `lyann.app`, `www.lyann.app` ou `admin.lyann.app`, dont le Team ID n’est pas dans `config/vercel-staging-allowlist.json`, ou dont le Project ID n’est pas exactement `prj_FHIKUKYa8IwpiitigUma4gTtTF6q` sous le nom `lyann-staging-preview`. Un lien `.vercel/project.json` illisible, ou différent de `VERCEL_PROJECT_ID`, est un refus. Sans Project ID, Team ID ou nom, c’est aussi un refus. Une clé `sk_live_` ou la référence Supabase `gzispjfoywklpqatjyop` est un refus.
+
+Le Team ID attendu est `team_Q2iI3QsUHFqSNkD3pjjg5d58`, lu dans le lien local. Un autre Team ID est refusé. Aucun déploiement n’a été lancé.
+
+L’inspection en direct du compte Vercel n’a pas abouti depuis cette machine : pas de jeton, et `vercel project ls` est resté sans réponse. Les rapports locaux des phases 6.19 et 6.24 décrivent `lyann-staging-preview` / `prj_FHIKUKYa8IwpiitigUma4gTtTF6q`, équipe `yoyo-d85d`, sans connexion Git du dépôt. C’est le projet à réutiliser. `vercel.staging.json` porte maintenant ce nom. Il ne faut pas créer `lyann-staging`.
+
+`scripts/vercel-staging-ignore.js` ignore tout build qui n’est pas lancé par `scripts/deploy-staging.sh`. Un commit ou un push ne publie pas. Aucune action GitHub du dépôt n’appelle Vercel. Le lien local `.vercel/project.json` pointait vers Production (`lyan`, `prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM`, équipe `team_Q2iI3QsUHFqSNkD3pjjg5d58`). Il a été retiré de la copie de travail. Il n’était pas versionné. Le projet distant n’a pas été modifié.
+
+Tests locaux, sans `vercel deploy` : le lien réel vers Production → REFUS ; un Project ID inconnu → REFUS ; `lyann-staging-preview` / `prj_FHIKUKYa8IwpiitigUma4gTtTF6q` avec le Team ID attendu → ACCEPTÉ par le garde-fou seul. Le script s’est arrêté avant `npx vercel`.
+
+Le plan, après ton autorisation : lier uniquement `lyann-staging-preview`, renseigner ses variables Staging, lancer `LYANN_AUTHORIZE_STAGING_DEPLOY=1 sh scripts/deploy-staging.sh`, puis `scripts/verify-staging-hosted.js`. Coût : l’offre Vercel déjà utilisée par ce projet ; pas de second projet. DNS `staging.lyann.app`, variables Vercel, webhook Stripe Test et redeploiement restent à autoriser. Production, Stripe Live et Supabase Production restent interdits.
 
 Une instance `LYANN_RUNTIME=staging` ou un Preview Vercel qui pointe vers Supabase Production, Stripe Live, une clé service d’un autre projet, ou `https://lyann.app` ne démarre pas. Les webhooks Staging exigent une signature. Les origines de navigateur inconnues sont refusées. Stripe, Apple et Supabase appellent l’API sans en-tête Origin : ces appels restent possibles. Il ne faut pas activer le mot de passe Vercel sur ce projet, sinon ces services seraient bloqués. L’accès des testeurs se limite aux comptes créés dans Supabase Staging.
 

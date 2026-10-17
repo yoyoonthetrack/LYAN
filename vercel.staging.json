@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "lyann-staging",
+  "name": "lyann-staging-preview",
   "buildCommand": "node scripts/build-web.js",
   "outputDirectory": ".",
   "cleanUrls": true,
@@ -114,30 +114,6 @@
     {
       "source": "/.well-known/apple-app-site-association",
       "destination": "/config/apple-app-site-association.staging.json"
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "admin.lyann.app"
-        }
-      ],
-      "destination": "/admin.html",
-      "permanent": false
-    },
-    {
-      "source": "/index.html",
-      "has": [
-        {
-          "type": "host",
-          "value": "admin.lyann.app"
-        }
-      ],
-      "destination": "/admin.html",
-      "permanent": false
     }
   ],
   "headers": [
