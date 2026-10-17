@@ -275,7 +275,8 @@ app.use((req, res, next) => {
     if (url.includes('webhook')) {
         express.raw({ type: '*/*' })(req, res, next);
     } else {
-        express.json()(req, res, next);
+        const maisonMedia = url.includes('/v1/admin/maison/');
+        express.json({ limit: maisonMedia ? '16mb' : '1mb' })(req, res, next);
     }
 });
 
@@ -1078,7 +1079,7 @@ async function requireMaisonOperator(req) {
 async function loadMaisonProfile(profileId) {
     const { data, error } = await supabaseAdmin
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, city, territory, email, bio, account_type, created_at')
+        .select('id, first_name, last_name, avatar_url, city, territory, email, bio, professional_status, account_type, created_at')
         .eq('id', profileId)
         .maybeSingle();
     if (error) throw error;
@@ -1186,6 +1187,108 @@ app.get('/v1/admin/maison/profiles/:id/desk', async (req, res) => {
     }
 });
 
+function maisonMediaFile(payload, kind) {
+    const raw = String(payload || '');
+    const match = raw.match(/^data:([^;]+);base64,(.+)$/);
+    const mime = (match ? match[1] : '').toLowerCase();
+    const body = match ? match[2] : raw;
+    if (!body) return null;
+    let buffer;
+    try { buffer = Buffer.from(body, 'base64'); } catch (_) { return { error: 'Fichier illisible.' }; }
+    if (kind === 'photo') {
+        const allowed = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+        if (!allowed[mime]) return { error: 'Choisis une photo JPG, PNG ou WEBP.' };
+        if (buffer.length > 5 * 1024 * 1024) return { error: 'La photo doit faire moins de 5 Mo.' };
+        return { buffer, mime, ext: allowed[mime] };
+    }
+    const allowed = { 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' };
+    if (!allowed[mime]) return { error: 'Choisis une vidéo MP4, MOV ou WebM.' };
+    if (buffer.length > 10 * 1024 * 1024) return { error: 'La vidéo doit faire moins de 10 Mo.' };
+    return { buffer, mime, ext: allowed[mime] };
+}
+
+async function maisonStoreMedia(profileId, file) {
+    const path = `${profileId}/${require('crypto').randomUUID()}.${file.ext}`;
+    const { error } = await supabaseAdmin.storage.from('bokantaj-media').upload(path, file.buffer, { contentType: file.mime, upsert: false });
+    if (error) throw new Error('Le fichier n’a pas pu être enregistré.');
+    return supabaseAdmin.storage.from('bokantaj-media').getPublicUrl(path).data.publicUrl;
+}
+
+app.patch('/v1/admin/maison/profiles/:id', async (req, res) => {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const profile = await loadMaisonProfile(req.params.id);
+        if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        const first = String(req.body?.first_name || '').trim();
+        const last = String(req.body?.last_name || '').trim();
+        const city = String(req.body?.city || '').trim();
+        const territory = String(req.body?.territory || '').trim().toLowerCase();
+        const bio = String(req.body?.bio || '').trim();
+        const skill = String(req.body?.professional_status || '').trim();
+        if (!first || !last) return res.status(400).json({ success: false, error: 'Le prénom et le nom sont requis.' });
+        if (!['guadeloupe', 'martinique'].includes(territory)) {
+            return res.status(400).json({ success: false, error: 'Le territoire doit être la Guadeloupe ou la Martinique.' });
+        }
+        const { error } = await supabaseAdmin.from('profiles').update({
+            first_name: first,
+            last_name: last,
+            city: city || null,
+            territory,
+            bio: bio || null,
+            professional_status: skill || null,
+            updated_at: new Date().toISOString()
+        }).eq('id', profile.id).eq('account_type', 'seed');
+        if (error) throw error;
+        await recordMaisonAudit(authResult.userId, 'MAISON_UPDATE_PROFILE', profile.id, { city, territory });
+        return res.json({ success: true });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Modification impossible.' });
+    }
+});
+
+app.post('/v1/admin/maison/profiles/:id/requests', async (req, res) => {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const profile = await loadMaisonProfile(req.params.id);
+        if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        const title = String(req.body?.title || '').trim().slice(0, 80);
+        const description = String(req.body?.description || '').trim();
+        if (!title || !description) {
+            return res.status(400).json({ success: false, error: 'Le titre et la description de l’annonce sont requis.' });
+        }
+        const row = {
+            requester_id: profile.id,
+            visibility: 'PUBLIC',
+            title,
+            description,
+            category: String(req.body?.category || 'Général').trim() || 'Général',
+            location: profile.city || 'Guadeloupe',
+            urgency: 'Normale',
+            status: 'OPEN',
+            price_mode: 'QUOTE',
+            date_mode: 'FLEXIBLE'
+        };
+        let inserted = await supabaseAdmin.from('requests').insert(row).select('id').single();
+        if (inserted.error && /column/i.test(inserted.error.message || '')) {
+            delete row.visibility;
+            delete row.price_mode;
+            delete row.date_mode;
+            inserted = await supabaseAdmin.from('requests').insert(row).select('id').single();
+        }
+        if (inserted.error) throw inserted.error;
+        await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_REQUEST', profile.id, { request_id: inserted.data.id });
+        return res.json({ success: true, request_id: inserted.data.id });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Annonce impossible.' });
+    }
+});
+
 app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
     const authResult = await requireMaisonOperator(req);
     if (!authResult.authorized) {
@@ -1195,14 +1298,21 @@ app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
         const profile = await loadMaisonProfile(req.params.id);
         if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
         const content = String(req.body?.content || '').trim();
-        if (!content) return res.status(400).json({ success: false, error: 'Écris le Lyann à publier.' });
+        const photo = req.body?.photo ? maisonMediaFile(req.body.photo, 'photo') : null;
+        const video = req.body?.video ? maisonMediaFile(req.body.video, 'video') : null;
+        if (photo?.error) return res.status(400).json({ success: false, error: photo.error });
+        if (video?.error) return res.status(400).json({ success: false, error: video.error });
+        if (!content && !photo && !video) return res.status(400).json({ success: false, error: 'Écris un Lyann ou ajoute une photo ou une vidéo.' });
+        const mediaUrls = [];
+        if (photo) mediaUrls.push(await maisonStoreMedia(profile.id, photo));
+        if (video) mediaUrls.push(await maisonStoreMedia(profile.id, video));
         const { data, error } = await supabaseAdmin.from('bokantaj_posts').insert({
             author_id: profile.id,
             type: req.body?.type || 'info',
-            content,
+            content: content || 'Lyann',
             city: req.body?.city || profile.city || null,
             territory: req.body?.territory || profile.territory || null,
-            media_urls: []
+            media_urls: mediaUrls
         }).select('id').single();
         if (error) throw error;
         await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_BOKANTAJ', profile.id, { post_id: data.id });
@@ -1313,6 +1423,100 @@ async function actOnMaisonQuote(req, res, action) {
         return res.status(500).json({ success: false, error: e.message || 'Action mission impossible.' });
     }
 }
+
+const { collectEditorial, publishEditorialTask } = require('./editorial-run');
+const { EDITORIAL_BOTS, EDITORIAL_BADGE } = require('./editorial-engine');
+
+function editorialAuthorized(req) {
+    const expected = String(process.env.EDITORIAL_CRON_SECRET || process.env.CRON_SECRET || '');
+    const header = String(req.headers.authorization || '');
+    const supplied = header.startsWith('Bearer ') ? header.slice(7) : String(req.headers['x-lyann-editorial-secret'] || '');
+    if (!expected || supplied.length !== expected.length) return false;
+    return require('crypto').timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+}
+
+app.all('/v1/editorial/collect', async (req, res) => {
+    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+        return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
+    }
+    if (!editorialAuthorized(req)) {
+        return res.status(401).json({ success: false, error: 'Collecte éditoriale non autorisée.' });
+    }
+    try {
+        const report = await collectEditorial(supabaseAdmin);
+        return res.json({ success: true, ...report });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Collecte impossible.' });
+    }
+});
+
+app.get('/v1/admin/editorial/bots', async (req, res) => {
+    const authResult = await verifyAdminPermission(req);
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const names = EDITORIAL_BOTS.map((bot) => bot.name);
+    const { data, error } = await supabaseAdmin.from('lyann_agents').select('id, agent_name, status, zones, personality, system_instructions, linked_profile_id, last_activity_at').in('agent_name', names);
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    const ids = (data || []).map((row) => row.linked_profile_id);
+    const { data: profiles } = ids.length
+        ? await supabaseAdmin.from('profiles').select('id, avatar_url, bio, city, territory').in('id', ids)
+        : { data: [] };
+    const bots = (data || []).map((agent) => {
+        const definition = EDITORIAL_BOTS.find((bot) => bot.name === agent.agent_name);
+        return {
+            ...agent,
+            badge: EDITORIAL_BADGE,
+            sources: definition ? definition.sources : [],
+            maxPerDay: definition ? definition.maxPerDay : null,
+            healthReview: definition ? definition.healthReview : false,
+            profile: (profiles || []).find((profile) => profile.id === agent.linked_profile_id) || null
+        };
+    });
+    return res.json({ success: true, bots });
+});
+
+app.get('/v1/admin/editorial/proposals', async (req, res) => {
+    const authResult = await verifyAdminPermission(req);
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const { data: agents } = await supabaseAdmin.from('lyann_agents').select('id, agent_name').in('agent_name', EDITORIAL_BOTS.map((bot) => bot.name));
+    const ids = (agents || []).map((agent) => agent.id);
+    if (!ids.length) return res.json({ success: true, proposals: [] });
+    const { data, error } = await supabaseAdmin.from('lyann_agent_tasks').select('id, agent_id, title, instruction, status, approval_status, metadata, created_at').in('agent_id', ids).order('created_at', { ascending: false }).limit(40);
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    const names = {};
+    (agents || []).forEach((agent) => { names[agent.id] = agent.agent_name; });
+    return res.json({ success: true, proposals: (data || []).map((row) => ({ ...row, agent_name: names[row.agent_id] })) });
+});
+
+app.post('/v1/admin/editorial/proposals/:id/publish', async (req, res) => {
+    const authResult = await verifyAdminPermission(req);
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    try {
+        const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', req.params.id).maybeSingle();
+        if (error) throw error;
+        if (!task) return res.status(404).json({ success: false, error: 'Proposition introuvable.' });
+        const postId = await publishEditorialTask(supabaseAdmin, task, req.body?.content);
+        return res.json({ success: true, post_id: postId });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Publication impossible.' });
+    }
+});
+
+app.post('/v1/admin/editorial/proposals/:id/reject', async (req, res) => {
+    const authResult = await verifyAdminPermission(req);
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const { error } = await supabaseAdmin.from('lyann_agent_tasks').update({ status: 'CANCELLED', approval_status: 'REJECTED', updated_at: new Date().toISOString() }).eq('id', req.params.id);
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    return res.json({ success: true });
+});
+
+app.post('/v1/admin/editorial/bots/:id/status', async (req, res) => {
+    const authResult = await verifyAdminPermission(req);
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const status = req.body?.status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE';
+    const { error } = await supabaseAdmin.from('lyann_agents').update({ status, updated_at: new Date().toISOString() }).eq('id', req.params.id);
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    return res.json({ success: true, status });
+});
 
 app.post('/v1/admin/maison/profiles/:id/quotes/:quoteId/accept', (req, res) => actOnMaisonQuote(req, res, 'accept'));
 app.post('/v1/admin/maison/profiles/:id/quotes/:quoteId/reject', (req, res) => actOnMaisonQuote(req, res, 'reject'));

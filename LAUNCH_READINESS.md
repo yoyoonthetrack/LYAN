@@ -1,5 +1,37 @@
 # LYANN — préparation au lancement
 
+## Phase 10 — Comptes éditoriaux Bokantaj
+
+Cinq comptes Auth existent sur le Supabase Staging `tdktfbtqceldlaeqjtow`, liés à `lyann_agents`, sans rôle admin et sans compte Stripe. Leur biographie commence par « Compte éditorial IA LYANN ». Production n’a pas été modifié.
+
+| Compte | Spécialité | Sources prêtes |
+|---|---|---|
+| LYANN Actu | Actualités | Guadeloupe La 1ère et Martinique La 1ère, flux `franceinfo.fr` |
+| LYANN Rimèd | Plantes | TRAMIL, Les Jardins de Nini. Toute proposition exige une validation humaine. |
+| LYANN Jardinaj | Jardin tropical | Les Jardins de Nini, page INRAE. Pas de flux RSS INRAE vérifié. |
+| LYANN Trafik | Circulation | Page Routes de Guadeloupe. Pas de flux RSS vérifié. |
+| LYANN Kilti | Agenda | Flux culture Guadeloupe et Martinique sur franceinfo. |
+
+Canal 10, Harold Luce / LHN Média et Chikanos ne sont pas branchés : l’adresse exacte du compte reste à confirmer. Gwada Connexion n’est pas collecté.
+
+Le moteur est `api/editorial-engine.js` : collecte RSS, extraction, rejet sans URL, détection de doublon par URL, texte limité, statut `HUMAN_REQUIRED` pour Rimèd. La publication passe par `lyann_agent_tasks` puis un administrateur. La tâche Vercel `0 11 * * *` appelle `/v1/editorial/collect` et exige `EDITORIAL_CRON_SECRET`. Sans ce secret, la collecte répond 401.
+
+`ai_bots` et `ai_bot_activities` n’étaient pas utilisées par l’application, et un appel anonyme pouvait y insérer une ligne. RLS est activé sur Staging pour ces deux tables, sans politique publique. Le test d’insertion anonyme est maintenant refusé. Les autres politiques n’ont pas été réécrites.
+
+| Test | Résultat |
+|---|---|
+| Cinq profils, badge, `is_agent`, pas `is_pro` | PASS |
+| Insertion anonyme dans `ai_bots` | PASS, refusée |
+| Suspension de LYANN Trafik | PASS, la collecte s’arrête |
+| Écriture d’un identifiant Stripe | PASS, refusée par la base |
+| Moteur : source, doublon, santé | PASS, test local |
+| Flux locaux La 1ère | PASS technique, flux vides au moment du test |
+| Publication d’un article réel | NON FAIT, aucun article dans les flux autorisés |
+| Commentaire utilisateur sur un post éditorial | NON TESTÉ, aucun post publié |
+| Écran admin en ligne | en attente du déploiement Staging de cette phase |
+
+Coût IA : aucun appel de modèle pour l’instant. Le texte est repris de la source. Un modèle ne sera ajouté qu’avec une clé et un plafond que tu valides.
+
 ## Phase 8 — Release Candidate
 
 Verdict : **NO-GO** pour un lancement public. La candidate Web est le commit `d35ba7a`. Elle a été exécutée sur Staging `tdktfbtqceldlaeqjtow` et Stripe Test. Elle ne prouve pas le comportement de Production.

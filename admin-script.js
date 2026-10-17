@@ -2779,14 +2779,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p class="maison-muted">${maisonEsc(profile.city || '')} ${maisonEsc(profile.territory || '')}</p>
                     </div>
                 </div>
+                <form id="maisonProfileForm" class="admin-card" style="padding:12px;">
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Modifier le profil</h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <input id="maisonFirstName" class="admin-input" value="${maisonEsc(profile.first_name || '')}" placeholder="Prénom" required>
+                        <input id="maisonLastName" class="admin-input" value="${maisonEsc(profile.last_name || '')}" placeholder="Nom" required>
+                        <input id="maisonCity" class="admin-input" value="${maisonEsc(profile.city || '')}" placeholder="Ville">
+                        <select id="maisonTerritory" class="admin-input">
+                            <option value="guadeloupe"${profile.territory === 'guadeloupe' ? ' selected' : ''}>Guadeloupe</option>
+                            <option value="martinique"${profile.territory === 'martinique' ? ' selected' : ''}>Martinique</option>
+                        </select>
+                    </div>
+                    <input id="maisonSkill" class="admin-input" value="${maisonEsc(profile.professional_status || '')}" placeholder="Métier" style="margin-top:8px; width:100%;">
+                    <textarea id="maisonBio" class="admin-input" rows="3" placeholder="Présentation" style="margin-top:8px; width:100%;">${maisonEsc(profile.bio || '')}</textarea>
+                    <button type="submit" class="admin-btn admin-btn-secondary" style="margin-top:10px;">Enregistrer le profil</button>
+                </form>
                 <div>
-                    <h3 style="margin:0 0 8px; font-size:1rem;">Publier dans Bokantaj</h3>
-                    <textarea id="maisonBokantajInput" class="admin-input" rows="3" placeholder="Écrire un Lyann au nom de ${maisonEsc(maisonName(profile))}…" style="width:100%;"></textarea>
-                    <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn" style="margin-top:10px;"><i class="ph-bold ph-paper-plane-tilt"></i> Publier</button>
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Publier dans Bokantaj au nom de ${maisonEsc(maisonName(profile))}</h3>
+                    <textarea id="maisonBokantajInput" class="admin-input" rows="3" placeholder="Écrire un Lyann…" style="width:100%;"></textarea>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                        <label class="admin-btn admin-btn-secondary">Photo<input id="maisonPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+                        <label class="admin-btn admin-btn-secondary">Vidéo<input id="maisonVideoInput" type="file" accept="video/mp4,video/quicktime,video/webm" hidden></label>
+                        <span class="maison-muted" id="maisonMediaLabel">Aucune photo ni vidéo</span>
+                    </div>
+                    <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn" style="margin-top:10px;"><i class="ph-bold ph-paper-plane-tilt"></i> Publier le Lyann</button>
                     ${posts.length ? `<p class="maison-muted" style="margin-top:10px;">Derniers posts : ${posts.map((p) => maisonEsc((p.content || '').slice(0, 42))).join(' · ')}</p>` : ''}
                 </div>
+                <form id="maisonRequestForm" class="admin-card" style="padding:12px;">
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Publier une annonce</h3>
+                    <input id="maisonRequestTitle" class="admin-input" placeholder="Titre de l’annonce" required style="width:100%;">
+                    <input id="maisonRequestCategory" class="admin-input" placeholder="Métier, par exemple Plomberie" style="margin-top:8px; width:100%;">
+                    <textarea id="maisonRequestDescription" class="admin-input" rows="3" placeholder="Décris le service proposé" required style="margin-top:8px; width:100%;"></textarea>
+                    <button type="submit" class="admin-btn admin-btn-primary" style="margin-top:10px;">Publier l’annonce</button>
+                </form>
                 <div>
-                    <h3 style="margin:0 0 8px; font-size:1rem;">Messagerie</h3>
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Répondre à la place de ${maisonEsc(maisonName(profile))}</h3>
                     ${conversations.length ? conversations.map((c) => `
                         <div class="admin-card" style="padding:12px; margin-bottom:10px;" data-maison-conv="${maisonEsc(c.id)}">
                             <strong>${maisonEsc(c.counterpart?.name || 'Membre')}</strong>
@@ -2796,8 +2823,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 `).join('') || '<p class="maison-muted">Pas encore de messages.</p>'}
                             </div>
                             <div style="display:flex; gap:8px;">
-                                <input type="text" class="admin-input maison-reply-input" placeholder="Répondre…" style="flex:1;">
-                                <button type="button" class="admin-btn admin-btn-secondary maison-reply-btn">Envoyer</button>
+                                <input type="text" class="admin-input maison-reply-input" placeholder="Répondre en son nom…" style="flex:1;">
+                                <button type="button" class="admin-btn admin-btn-secondary maison-reply-btn">Répondre</button>
                             </div>
                         </div>
                     `).join('') : '<p class="maison-muted">Aucune conversation pour ce profil.</p>'}
@@ -2824,15 +2851,75 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
         `;
-        document.getElementById('maisonPublishBtn')?.addEventListener('click', async () => {
-            const input = document.getElementById('maisonBokantajInput');
+        const mediaLabel = document.getElementById('maisonMediaLabel');
+        const photoInput = document.getElementById('maisonPhotoInput');
+        const videoInput = document.getElementById('maisonVideoInput');
+        const refreshMediaLabel = () => {
+            if (!mediaLabel) return;
+            const parts = [];
+            if (photoInput?.files?.[0]) parts.push(photoInput.files[0].name);
+            if (videoInput?.files?.[0]) parts.push(videoInput.files[0].name);
+            mediaLabel.textContent = parts.length ? parts.join(' · ') : 'Aucune photo ni vidéo';
+        };
+        photoInput?.addEventListener('change', refreshMediaLabel);
+        videoInput?.addEventListener('change', refreshMediaLabel);
+        const readDataUrl = (file) => new Promise((resolve, reject) => {
+            if (!file) return resolve('');
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(new Error('Lecture du fichier impossible.'));
+            reader.readAsDataURL(file);
+        });
+        document.getElementById('maisonProfileForm')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
             try {
-                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
+                await maisonJson(`/v1/admin/maison/profiles/${profile.id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                        first_name: document.getElementById('maisonFirstName')?.value || '',
+                        last_name: document.getElementById('maisonLastName')?.value || '',
+                        city: document.getElementById('maisonCity')?.value || '',
+                        territory: document.getElementById('maisonTerritory')?.value || '',
+                        professional_status: document.getElementById('maisonSkill')?.value || '',
+                        bio: document.getElementById('maisonBio')?.value || ''
+                    })
+                });
+                await window.loadMaisonStudio();
+                await window.openMaisonDesk(profile.id);
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+        document.getElementById('maisonRequestForm')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            try {
+                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/requests`, {
                     method: 'POST',
-                    body: JSON.stringify({ content: input?.value || '', city: profile.city, territory: profile.territory })
+                    body: JSON.stringify({
+                        title: document.getElementById('maisonRequestTitle')?.value || '',
+                        category: document.getElementById('maisonRequestCategory')?.value || '',
+                        description: document.getElementById('maisonRequestDescription')?.value || ''
+                    })
                 });
                 await window.openMaisonDesk(profile.id);
             } catch (err) {
+                alert(err.message);
+            }
+        });
+        document.getElementById('maisonPublishBtn')?.addEventListener('click', async () => {
+            const input = document.getElementById('maisonBokantajInput');
+            const button = document.getElementById('maisonPublishBtn');
+            try {
+                if (button) button.disabled = true;
+                const photo = photoInput?.files?.[0] ? await readDataUrl(photoInput.files[0]) : '';
+                const video = videoInput?.files?.[0] ? await readDataUrl(videoInput.files[0]) : '';
+                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
+                    method: 'POST',
+                    body: JSON.stringify({ content: input?.value || '', city: profile.city, territory: profile.territory, photo, video })
+                });
+                await window.openMaisonDesk(profile.id);
+            } catch (err) {
+                if (button) button.disabled = false;
                 alert(err.message);
             }
         });
@@ -2903,6 +2990,65 @@ document.addEventListener('DOMContentLoaded', async () => {
             ? maisonProfilesCache.filter((p) => maisonName(p).toLowerCase().includes(query) || (p.city || '').toLowerCase().includes(query))
             : maisonProfilesCache;
         renderMaisonRoster(filtered);
+    });
+
+    async function loadEditorialDesk() {
+        const botsEl = document.getElementById('editorialBots');
+        const listEl = document.getElementById('editorialProposals');
+        if (!botsEl || !listEl) return;
+        botsEl.innerHTML = '<p class="maison-muted">Chargement…</p>';
+        try {
+            const bots = await maisonJson('/v1/admin/editorial/bots');
+            const proposals = await maisonJson('/v1/admin/editorial/proposals');
+            botsEl.innerHTML = (bots.bots || []).map((bot) => `
+                <article class="admin-card" style="padding:14px;">
+                    <img src="${maisonEsc(bot.profile?.avatar_url || '')}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">
+                    <h3 style="margin:8px 0 4px;">${maisonEsc(bot.agent_name)}</h3>
+                    <p class="maison-muted">${maisonEsc(bot.badge || '')} · ${maisonEsc(bot.personality || '')}</p>
+                    <p class="maison-muted">${(bot.sources || []).map((source) => maisonEsc(source.name)).join(' · ')}</p>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-editorial-status="${maisonEsc(bot.id)}" data-next="${bot.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED'}">${bot.status === 'SUSPENDED' ? 'Réactiver' : 'Suspendre'}</button>
+                </article>
+            `).join('') || '<p class="maison-muted">Aucun compte éditorial.</p>';
+            listEl.innerHTML = `<h3 style="margin-top:0;">Propositions</h3>` + ((proposals.proposals || []).map((item) => `
+                <article class="admin-card" style="padding:12px; margin-bottom:10px;" data-proposal="${maisonEsc(item.id)}">
+                    <strong>${maisonEsc(item.agent_name || '')}</strong>
+                    <span class="maison-muted"> · ${maisonEsc(item.approval_status || '')} · ${maisonEsc(item.metadata?.validation_status || '')}</span>
+                    <p><a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a></p>
+                    <textarea class="admin-input editorial-text" rows="5" style="width:100%;">${maisonEsc(item.instruction || '')}</textarea>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button type="button" class="admin-btn admin-btn-primary editorial-publish">Publier</button>
+                        <button type="button" class="admin-btn admin-btn-danger editorial-reject">Rejeter</button>
+                    </div>
+                </article>
+            `).join('') || '<p class="maison-muted">Aucune proposition pour le moment.</p>');
+            botsEl.querySelectorAll('[data-editorial-status]').forEach((button) => {
+                button.addEventListener('click', async () => {
+                    await maisonJson(`/v1/admin/editorial/bots/${button.getAttribute('data-editorial-status')}/status`, {
+                        method: 'POST',
+                        body: JSON.stringify({ status: button.getAttribute('data-next') })
+                    });
+                    await loadEditorialDesk();
+                });
+            });
+            listEl.querySelectorAll('[data-proposal]').forEach((card) => {
+                card.querySelector('.editorial-publish')?.addEventListener('click', async () => {
+                    await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/publish`, {
+                        method: 'POST',
+                        body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
+                    });
+                    await loadEditorialDesk();
+                });
+                card.querySelector('.editorial-reject')?.addEventListener('click', async () => {
+                    await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/reject`, { method: 'POST', body: '{}' });
+                    await loadEditorialDesk();
+                });
+            });
+        } catch (err) {
+            botsEl.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;
+        }
+    }
+    document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.addEventListener('click', () => {
+        loadEditorialDesk();
     });
 
     window.loadAdminRealData = loadAdminRealData;
