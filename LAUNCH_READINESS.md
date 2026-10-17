@@ -116,7 +116,7 @@ Inscription d’un nouveau compte : NON TESTÉ jusqu’à une adresse réelle. P
 
 Un rappel groupé ouvre Missions filtré sur cette action. Vérifié : « 7 missions — un paiement peut être sécurisé » affiche 7 lignes et « 7 missions · paiements à sécuriser ». Le filtre ne survit pas au rechargement. Un rappel d’une seule mission ouvre son dossier. Les rappels ne gonflent pas le compteur de non lues (62 hors rappels).
 
-Devis par jalons « [CAMPAGNE-J2] Devis par jalons » : les boutons Accepter et Refuser sont là. Le clic sur Accepter n’a pas abouti dans ce passage (la confirmation n’est pas apparue, le devis est resté en attente). NON PASS. Safari et le build iOS installé restent NON TESTÉ. Pas de TestFlight.
+Devis par jalons : l’acceptation depuis le dossier ne trouvait pas la version du devis, donc la confirmation ne s’ouvrait pas. Elle utilise maintenant la version déjà chargée. « [CAMPAGNE-J2] Devis par jalons » est accepté, version 1, jalons 20 € et 30 €. Un devis neuf « Jalons neufs » (8 € puis 12 €) est aussi accepté. Après rechargement, QA A voit deux actions « Sécuriser le paiement ». QA B voit le devis accepté, sans bouton de paiement. Safari et le build iOS installé restent NON TESTÉ. Pas de TestFlight.
 
 ### Manques classés, non développés
 

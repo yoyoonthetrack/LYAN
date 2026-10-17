@@ -1781,9 +1781,27 @@ async function runDealMutation(action, entityId, options = {}) {
 }
 window.__lyannRunDealMutation = runDealMutation;
 
-window.handleAcceptQuote = async function(quoteId) {
+function loadedQuoteForAccept(quoteId, source) {
+    const id = String(quoteId || '');
+    const cached = timelineQuotes.get(id);
+    if (cached && cached.version != null && cached.version !== '') return cached;
+    if (source && String(source.id || '') === id && source.version != null && source.version !== '') return source;
+    const lists = [];
+    const contact = currentChatContact;
+    if (contact && Array.isArray(contact.dossiers)) {
+        contact.dossiers.forEach((dossier) => {
+            if (dossier && Array.isArray(dossier.quotes)) lists.push.apply(lists, dossier.quotes);
+        });
+    }
+    if (contact && contact.activeDossier && Array.isArray(contact.activeDossier.quotes)) {
+        lists.push.apply(lists, contact.activeDossier.quotes);
+    }
+    return lists.find((quote) => quote && String(quote.id) === id && quote.version != null && quote.version !== '') || cached || null;
+}
+
+window.handleAcceptQuote = async function(quoteId, sourceQuote) {
     if (!quoteId) return;
-    if (quoteActionLocks.has(quoteId) || (dealMutationGuard && dealMutationGuard.isBusy('accept', quoteId))) return;
+    if (quoteActionLocks.has(String(quoteId)) || (dealMutationGuard && dealMutationGuard.isBusy('accept', quoteId))) return;
     if (!await window.LYANN_ROUTER.requireAuthForInteraction('proposal', { quoteId, contactId: currentChatContact?.id })) {
         return;
     }
@@ -1792,8 +1810,8 @@ window.handleAcceptQuote = async function(quoteId) {
             quoteId,
             keepLockedOnSuccess: true,
             execute: async (handle) => {
-                const knownVersion = timelineQuotes.get(String(quoteId));
-                if (knownVersion && knownVersion.status && knownVersion.status !== 'SENT') {
+                const knownVersion = loadedQuoteForAccept(quoteId, sourceQuote);
+                if (knownVersion && knownVersion.status && String(knownVersion.status).toUpperCase() !== 'SENT') {
                     throw new Error('Ce devis ne peut plus être accepté.');
                 }
                 const version = knownVersion ? knownVersion.version : null;
@@ -1820,12 +1838,24 @@ window.handleAcceptQuote = async function(quoteId) {
                 return window.LYANN_API_CLIENT.acceptRequestQuote(quoteId, acceptance.version);
             },
             apply: async (res) => {
-                console.log("⚡ Devis accepté avec succès via RPC Supabase:", res);
                 const known = timelineQuotes.get(String(quoteId)) || { id: quoteId };
                 known.status = 'ACCEPTED';
                 if (res && res.mission_id) known.mission_id = res.mission_id;
                 timelineQuotes.set(String(quoteId), known);
+                const contact = currentChatContact;
+                const mark = (quote) => {
+                    if (quote && String(quote.id) === String(quoteId)) quote.status = 'ACCEPTED';
+                };
+                if (contact && Array.isArray(contact.dossiers)) {
+                    contact.dossiers.forEach((dossier) => (dossier.quotes || []).forEach(mark));
+                }
+                if (contact && contact.activeDossier && Array.isArray(contact.activeDossier.quotes)) {
+                    contact.activeDossier.quotes.forEach(mark);
+                }
                 applyQuoteStatusToDom(quoteId, 'ACCEPTED');
+                if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.syncOpenDossier === 'function') {
+                    window.LYANN_MISSION_SURFACES.syncOpenDossier();
+                }
                 await refreshOpenBusinessCards();
             }
         });
@@ -1838,7 +1868,9 @@ window.handleAcceptQuote = async function(quoteId) {
         const stale = /changé|version|Rechargez le devis|déjà été créée/i.test(message);
         const blocked = /ne peut plus être accepté|user_blocked/i.test(message);
         const readable = message && message.length < 180 && !/PGRST|schema cache|function/i.test(message);
-        chatToast(blocked ? 'Ce devis ne peut plus être accepté.' : (readable && stale ? message : (stale ? 'Ce devis a changé. Rechargez-le avant de l’accepter.' : 'Le devis n’a pas pu être accepté. Réessayez.')));
+        const shown = blocked ? 'Ce devis ne peut plus être accepté.' : (readable && stale ? message : (stale ? 'Ce devis a changé. Rechargez-le avant de l’accepter.' : 'Le devis n’a pas pu être accepté. Réessayez.'));
+        if (window.lyannToast) window.lyannToast(shown, 'warning');
+        else chatToast(shown);
     }
 };
 
@@ -3769,7 +3801,7 @@ function bindMissionAction(parent, quote, action) {
 
         if (action.id === 'accept') {
             setButtonBusy(button, true);
-            Promise.resolve(window.handleAcceptQuote(quote.id)).finally(() => {
+            Promise.resolve(window.handleAcceptQuote(quote.id, quote)).finally(() => {
                 if (button.isConnected && !quoteActionLocks.has(String(quote.id))) setButtonBusy(button, false);
             });
             return;
