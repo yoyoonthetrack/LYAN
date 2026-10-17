@@ -2,7 +2,7 @@
 
 ## Phase 8 — Release Candidate
 
-Verdict : **NO-GO** pour un lancement public. Le commit local de cette phase est la candidate Web. Elle a été exécutée sur Staging `tdktfbtqceldlaeqjtow` et Stripe Test. Elle ne prouve pas le comportement de Production.
+Verdict : **NO-GO** pour un lancement public. La candidate Web est le commit `d35ba7a`. Elle a été exécutée sur Staging `tdktfbtqceldlaeqjtow` et Stripe Test. Elle ne prouve pas le comportement de Production.
 
 Bundle iOS recopié depuis les mêmes sources : `ios-mvbtlu3o-3fab5f`, 215 fichiers, identique à `www/`. Backend injecté : aucun. Xcode 27.1 est présent. Le simulateur refuse de démarrer : CoreSimulator 1171.7.0 est plus ancien que celui attendu par Xcode (1174.9.2). Aucun binaire iPhone n’a été produit. Pas de TestFlight.
 
