@@ -1314,6 +1314,7 @@ const LYANN_API_CLIENT = {
     },
 
     async getFeed() {
+        const pageOptions = (arguments.length && arguments[0] && typeof arguments[0] === 'object') ? arguments[0] : {};
         function extractTerritoryKey(locationStr, profileTerritory) {
             const combined = ((locationStr || '') + ' ' + (profileTerritory || '')).toLowerCase();
             if (combined.includes('martinique') || combined.includes('972')) return 'martinique';
@@ -1327,11 +1328,13 @@ const LYANN_API_CLIENT = {
 
         try {
             // 1. Fetch Bokantaj Posts
-            const { data: postsData, error: postsError } = await this.supabase
+            let postsQuery = this.supabase
                 .from('bokantaj_posts')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(LYANN_FEED_PAGE_SIZE);
+            if (pageOptions.before) postsQuery = postsQuery.lt('created_at', pageOptions.before);
+            const { data: postsData, error: postsError } = await postsQuery;
 
             if (postsError) throw postsError;
             const posts = postsData || [];
@@ -1426,6 +1429,8 @@ const LYANN_API_CLIENT = {
                     badge: p.type === 'dispo' ? 'Disponibilité' : (p.type === 'besoin' ? 'Besoin' : 'Info Bokantaj'),
                     badgeIcon: p.type === 'dispo' ? 'ph-lightning' : (p.type === 'besoin' ? 'ph-magnifying-glass' : 'ph-newspaper'),
                     type: p.type,
+                    city: p.city || '',
+                    territory: p.territory || authorProf?.territory || '',
                     location: p.city || p.territory || authorProf?.city || '',
                     territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
                     created_at: p.created_at,
@@ -1446,7 +1451,7 @@ const LYANN_API_CLIENT = {
 
             const unifiedFeed = formattedPosts;
 
-            return { data: unifiedFeed, error: null };
+            return { data: unifiedFeed, error: null, hasMore: posts.length === LYANN_FEED_PAGE_SIZE };
         } catch (err) {
             console.error("❌ Error loading unified Bokantaj feed:", err);
             return { data: [], error: err.message || "Erreur serveur" };

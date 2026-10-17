@@ -2500,6 +2500,13 @@ safeDomReady(() => {
     let currentFlashPosts = [];
     let activeFeedTypeFilter = 'all';
     let activeFeedTerritoryFilter = 'all';
+    let bokantajSortMode = 'recent';
+    let bokantajHasMore = false;
+    let bokantajCursor = null;
+    let bokantajLoadGen = 0;
+    let bokantajPaging = false;
+    let bokantajLocationAsked = false;
+    const bokantajFilters = { types: [], zone: 'all', radiusKm: 5, commune: '', period: 'all' };
     let attachedPhotos = [];
     let attachedPhotoFiles = [];
     let attachedVideo = null;
@@ -2545,7 +2552,7 @@ safeDomReady(() => {
 
     let bokantajFeedLoading = false;
     window.loadBokantajFeedFromSupabase = async function(options = {}) {
-        if (bokantajFeedLoading) return;
+        const gen = ++bokantajLoadGen;
         bokantajFeedLoading = true;
         const quiet = options.background === true && bokantajFeedState === 'READY' && currentFlashPosts.length > 0;
         console.log("[BOKANTAJ] init start");
@@ -2568,8 +2575,15 @@ safeDomReady(() => {
 
             const client = window.LYANN_API_CLIENT || window.apiClient;
             if (client?.advanceRequestLifecycle) client.advanceRequestLifecycle();
+            const profile = window.LYANN_CURRENT_USER_PROFILE;
+            if (profile && window.LYANN_GEO && typeof window.LYANN_GEO.setViewerLocation === 'function') {
+                window.LYANN_GEO.setViewerLocation(profile.city, profile.territory);
+            }
             const data = await window.LYANN_BOKANTAJ_REPOSITORY.load({ force: options.force === true });
+            if (gen !== bokantajLoadGen) return;
             currentFlashPosts = Array.isArray(data) ? data : [];
+            bokantajHasMore = window.LYANN_BOKANTAJ_REPOSITORY.hasMore();
+            bokantajCursor = currentFlashPosts.length ? currentFlashPosts[currentFlashPosts.length - 1].created_at : null;
             bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
         } catch (err) {
             console.error("[BOKANTAJ] Error during load:", err);
@@ -2581,8 +2595,10 @@ safeDomReady(() => {
                 bokantajFeedState = 'ERROR';
             }
         } finally {
-            renderFlashFeed();
-            window.renderTalentsSidebar(isExplicitDemoMode);
+            if (gen === bokantajLoadGen) {
+                renderFlashFeed();
+                window.renderTalentsSidebar(isExplicitDemoMode);
+            }
             bokantajFeedLoading = false;
         }
     };
@@ -2789,7 +2805,127 @@ safeDomReady(() => {
         }
     };
 
+    function bokantajOrigin(filters) {
+        const geo = window.LYANN_GEO;
+        const active = filters || bokantajFilters;
+        if (!geo || typeof geo.referencePoint !== 'function') return null;
+        const point = geo.referencePoint();
+        if (point) return point;
+        if (active.zone === 'commune' && active.commune && typeof geo.coordinatesFor === 'function') {
+            return geo.coordinatesFor(active.commune, '');
+        }
+        return null;
+    }
+
+    function bokantajFiltersAreActive() {
+        return bokantajFilters.types.length > 0
+            || bokantajFilters.period !== 'all'
+            || bokantajFilters.zone === 'nearby'
+            || (bokantajFilters.zone === 'commune' && !!bokantajFilters.commune);
+    }
+
+    function annotateBokantajDistance(post, filters, sortMode) {
+        const geo = window.LYANN_GEO;
+        const active = filters || bokantajFilters;
+        const mode = sortMode || bokantajSortMode;
+        const origin = bokantajOrigin(active);
+        const showDistance = mode === 'nearby' || active.zone === 'nearby';
+        if (!showDistance || !geo || !origin || typeof geo.coordinatesFor !== 'function' || typeof geo.distanceKm !== 'function') {
+            post._distanceKm = null;
+            return post;
+        }
+        const target = geo.coordinatesFor(post.location || post.city || '', post.territory || post.territoryKey || '');
+        const km = target ? geo.distanceKm(origin, target) : null;
+        post._distanceKm = Number.isFinite(km) ? km : null;
+        return post;
+    }
+
+    function bokantajPassesSafety(post) {
+        const activeUserId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id;
+        const safetyEngine = window.LyannSafetyEngine || null;
+        if (activeUserId && safetyEngine && typeof safetyEngine.isUserBlocked === 'function') {
+            const authorId = post.author_id || post.memberId;
+            if (authorId && safetyEngine.isUserBlocked(activeUserId, authorId)) return false;
+        }
+        return true;
+    }
+
+    function bokantajVisiblePosts(filters, sortMode) {
+        const query = window.LYANN_BOKANTAJ_QUERY;
+        const active = filters || bokantajFilters;
+        const mode = sortMode || bokantajSortMode;
+        const now = new Date();
+        const list = currentFlashPosts.filter((post) => {
+            if (!post || !bokantajPassesSafety(post)) return false;
+            if (query && !query.postMatchesTypes(post, active.types)) return false;
+            if (query && !query.postWithinPeriod(post, active.period, now)) return false;
+            if (active.zone === 'commune' && active.commune && query && !query.communeMatches(post, active.commune)) return false;
+            annotateBokantajDistance(post, active, mode);
+            if (active.zone === 'nearby') {
+                if (!Number.isFinite(post._distanceKm)) return false;
+                if (post._distanceKm > Number(active.radiusKm || 0)) return false;
+            }
+            return true;
+        });
+        return query ? query.sortPosts(list, mode) : list;
+    }
+
+    function syncBokantajChrome() {
+        document.querySelectorAll('.bokantaj-sort-tab').forEach((btn) => {
+            const on = btn.dataset.sort === bokantajSortMode;
+            btn.classList.toggle('is-selected', on);
+            btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        const dot = document.getElementById('activeFilterBadge');
+        if (dot) dot.hidden = !bokantajFiltersAreActive();
+        const hint = document.getElementById('bokantajNearbyHint');
+        if (hint) hint.hidden = !(bokantajSortMode === 'nearby' && bokantajOrigin());
+        const applyBtn = document.getElementById('btnApplyBokantajSheetFilters');
+        if (applyBtn && document.getElementById('bokantajFilterSheetModal')?.classList.contains('active')) {
+            const draft = readBokantajFilterDraft();
+            const complete = (bokantajFeedState === 'READY' || bokantajFeedState === 'EMPTY') && !bokantajHasMore;
+            const count = complete ? bokantajVisiblePosts(draft, bokantajSortMode).length : null;
+            const plural = count === 0 || count > 1;
+            applyBtn.textContent = count == null
+                ? 'Afficher les publications'
+                : `Afficher ${count} publication${plural ? 's' : ''}`;
+        }
+    }
+
+    function bokantajLocationGateHtml() {
+        const denied = bokantajLocationAsked
+            ? '<p>La localisation n’est pas disponible. Choisissez une zone pour voir les publications proches.</p>'
+            : '<p>Pour classer les publications les plus proches, activez la localisation ou choisissez une zone.</p>';
+        return `
+            <div class="bokantaj-location-gate">
+                ${denied}
+                <div class="bokantaj-location-actions">
+                    <button type="button" class="btn btn-primary" id="bokantajEnableLocation">Activer la localisation</button>
+                    <button type="button" class="btn btn-outline" id="bokantajManualZone">Choisir une zone</button>
+                </div>
+            </div>
+        `;
+    }
+
+    async function hydrateBokantajReference() {
+        const geo = window.LYANN_GEO;
+        if (!geo) return false;
+        if (typeof geo.referencePoint === 'function' && geo.referencePoint()) return true;
+        let profile = window.LYANN_CURRENT_USER_PROFILE;
+        if (!profile?.city && window.LYANN_API_CLIENT?.getCurrentUser && window.LYANN_API_CLIENT.getUserProfile) {
+            try {
+                const user = await window.LYANN_API_CLIENT.getCurrentUser();
+                if (user?.id) profile = await window.LYANN_API_CLIENT.getUserProfile(user.id);
+            } catch (_) { profile = null; }
+        }
+        if (profile?.city && typeof geo.setViewerLocation === 'function') {
+            return geo.setViewerLocation(profile.city, profile.territory);
+        }
+        return Boolean(geo.referencePoint && geo.referencePoint());
+    }
+
     function renderFlashFeed() {
+        syncBokantajChrome();
         const feedContainer = document.getElementById('flashFeedContainer');
         if (!feedContainer) {
             console.warn("[BOKANTAJ] feed container NOT found (#flashFeedContainer)");
@@ -2822,6 +2958,13 @@ safeDomReady(() => {
             return;
         }
 
+        const needsOrigin = bokantajSortMode === 'nearby' || bokantajFilters.zone === 'nearby';
+        if (needsOrigin && !bokantajOrigin()) {
+            syncBokantajChrome();
+            feedContainer.innerHTML = bokantajLocationGateHtml();
+            return;
+        }
+
         if (bokantajFeedState === 'EMPTY') {
             feedContainer.innerHTML = `
                 <div class="text-center" style="padding: 50px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed var(--border);">
@@ -2835,40 +2978,17 @@ safeDomReady(() => {
         }
 
         try {
-            let filtered = currentFlashPosts.filter(post => {
-                if (!post) return false;
-                const pType = post.item_type === 'LYANN' ? 'besoin' : post.type;
+            syncBokantajChrome();
+            let filtered = bokantajVisiblePosts();
 
-                // V2 filter handling
-                let matchType = true;
-                if (activeFeedTypeFilter === 'post') {
-                    matchType = post.item_type === 'POST';
-                } else if (activeFeedTypeFilter === 'lyann') {
-                    matchType = post.item_type === 'LYANN';
-                } else if (activeFeedTypeFilter === 'dispo' || activeFeedTypeFilter === 'besoin' || activeFeedTypeFilter === 'reco' || activeFeedTypeFilter === 'info') {
-                    matchType = pType === activeFeedTypeFilter;
-                }
-
-                const matchTerritory = activeFeedTerritoryFilter === 'all' || (post.territoryKey && post.territoryKey.includes(activeFeedTerritoryFilter)) || activeFeedTerritoryFilter === post.territoryKey;
-                
-                // Step 14 Safety Filter: Exclude content from blocked users safely (browser compatible)
-                const activeUserId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id;
-                const safetyEngine = (typeof window !== 'undefined' ? window.LyannSafetyEngine : (typeof globalThis !== 'undefined' ? globalThis.LyannSafetyEngine : null));
-                if (activeUserId && safetyEngine && typeof safetyEngine.isUserBlocked === 'function') {
-                    const authorId = post.author_id || post.memberId;
-                    if (authorId && safetyEngine.isUserBlocked(activeUserId, authorId)) {
-                        return false;
-                    }
-                }
-                return matchType && matchTerritory;
-            });
-
-            if (filtered.length === 0) {
+                if (filtered.length === 0) {
+                const nearbyMiss = bokantajSortMode === 'nearby' && currentFlashPosts.length > 0 && !bokantajFiltersAreActive();
                 feedContainer.innerHTML = `
                     <div class="text-center" style="padding: 40px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed var(--border);">
                         <i class="ph ph-funnel" style="font-size: 2.2rem; color: var(--text-muted); margin-bottom: 10px;"></i>
-                        <h4 style="font-weight: 800; font-size: 1.05rem; margin-bottom: 4px; color: #1E293B;">Aucun contenu pour les filtres sélectionnés</h4>
-                        <p style="color: var(--text-muted); font-size: 0.88rem;">Essayez de modifier votre territoire ou type de publication.</p>
+                        <h4 style="font-weight: 800; font-size: 1.05rem; margin-bottom: 4px; color: #1E293B;">${nearbyMiss ? 'Aucune publication n’a de lieu précis.' : 'Aucun contenu pour ces filtres'}</h4>
+                        <p style="color: var(--text-muted); font-size: 0.88rem;">Essayez un autre type, une autre zone ou une autre période.</p>
+                        ${bokantajHasMore ? '<button type="button" class="btn btn-outline" id="bokantajLoadMore" style="margin-top:12px;">Charger des publications plus anciennes</button>' : ''}
                     </div>
                 `;
                 console.log("[BOKANTAJ] render complete (0 filtered items)");
@@ -2946,7 +3066,11 @@ safeDomReady(() => {
                     if (!authorDisplayName || isUUID(authorDisplayName)) authorDisplayName = 'Lyanneur';
                     const authorDisplayNameHtml = window.escapeHtmlAttr(authorDisplayName);
 
-                    const locationText = window.escapeHtmlAttr(post.author_city || post.location || 'Guadeloupe');
+                    const placeLabel = post.author_city || post.location || '';
+                    const locationText = placeLabel ? window.escapeHtmlAttr(placeLabel) : '';
+                    const distanceLabel = Number.isFinite(post._distanceKm) && window.LYANN_BOKANTAJ_QUERY
+                        ? window.LYANN_BOKANTAJ_QUERY.formatDistanceKm(post._distanceKm, window.LYANN_GEO?.hasPreciseLocation?.())
+                        : '';
                     const timeAgoText = post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : (post.timeAgo || 'Récemment');
                     
                     const rawTitle = (post.title || '').trim();
@@ -3022,7 +3146,7 @@ safeDomReady(() => {
                                         <div class="flash-author-info" style="line-height: 1.25; min-width: 0; flex: 1;">
                                             <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayNameHtml}${post.editorial ? '' : ' <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i>'}</strong>
                                             ${post.editorial ? '<span style="display:block; font-size:0.72rem; font-weight:650; color:#35583F;">Compte éditorial LYANN</span>' : ''}
-                                            <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
+                                            <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${locationText ? `<i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ` : ''}${distanceLabel ? `${window.escapeHtmlAttr(distanceLabel)} · ` : ''}${timeAgoText}${budgetHTML}</span>
                                         </div>
                                     </div>
                                     ${isOwnPost ? `
@@ -3093,6 +3217,10 @@ safeDomReady(() => {
                     return '';
                 }
             }).join('');
+
+            if (bokantajHasMore) {
+                feedContainer.insertAdjacentHTML('beforeend', '<div class="bokantaj-load-more"><button type="button" class="btn btn-outline" id="bokantajLoadMore">Voir plus de publications</button></div>');
+            }
 
             attachFlashFeedListeners();
             if (typeof window.syncFavoriteButtonStates === 'function') {
@@ -3320,23 +3448,30 @@ safeDomReady(() => {
         document.querySelectorAll('.btn-share-post').forEach(btn => {
             if (btn.dataset.listenersBound === 'true') return;
             btn.dataset.listenersBound = 'true';
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
                 const targetId = btn.dataset.targetId;
                 const title = btn.dataset.title || 'Bokantaj LYANN';
                 const isLyannCard = btn.closest('.flash-card')?.classList.contains('lyann-card');
                 const paramName = isLyannCard ? 'request' : 'post';
                 const shareUrl = `${window.location.origin}/feed.html?${paramName}=${targetId}`;
-
-                if (navigator.share) {
-                    navigator.share({ title: title, text: `Découvrez cette publication sur Bokantaj LYANN :`, url: shareUrl }).catch(() => {});
-                } else {
-                    navigator.clipboard.writeText(shareUrl).then(() => {
-                        if (window.NotificationService) {
-                            window.NotificationService.showToast('success', "Lien copié dans le presse-papier !");
-                        }
-                    }).catch(() => {
-                        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(title + ' ' + shareUrl)}`, '_blank');
-                    });
+                const text = 'Découvrez cette publication sur Bokantaj LYANN';
+                const sharePlugin = window.Capacitor?.Plugins?.Share;
+                try {
+                    if (sharePlugin && typeof sharePlugin.share === 'function') {
+                        await sharePlugin.share({ title, text, url: shareUrl, dialogTitle: 'Partager' });
+                        return;
+                    }
+                    if (navigator.share) {
+                        await navigator.share({ title, text, url: shareUrl });
+                        return;
+                    }
+                    await navigator.clipboard.writeText(shareUrl);
+                    window.lyannToast?.('Lien copié.', 'success');
+                } catch (err) {
+                    if (err && (err.name === 'AbortError' || /cancel/i.test(String(err.message || '')))) return;
+                    window.lyannToast?.('Le partage n’a pas abouti. Réessayez.', 'warning');
                 }
             });
         });
@@ -3460,18 +3595,17 @@ safeDomReady(() => {
         createFlashForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = flashContentInput ? flashContentInput.value.trim() : '';
-            const type = document.getElementById('flashTypeSelect')?.value || 'info';
-            const location = document.getElementById('flashTerritorySelect')?.value || 'Guadeloupe (971)';
+            const type = document.querySelector('input[name="bokantajPostType"]:checked')?.value
+                || document.getElementById('flashTypeSelect')?.value
+                || 'info';
+            const profile = window.LYANN_CURRENT_USER_PROFILE || {};
+            const city = profile.city || null;
+            const territoryKey = profile.territory || null;
 
             if (!text && attachedPhotos.length === 0 && !attachedVideo) {
                 window.lyannAlert('Veuillez écrire un message ou ajouter une photo/vidéo à votre Lyann.');
                 return;
             }
-
-            let territoryKey = 'guadeloupe';
-            if (location.includes('Martinique')) territoryKey = 'martinique';
-            else if (location.includes('Guyane')) territoryKey = 'guyane';
-            else if (location.includes('Réunion')) territoryKey = 'reunion';
 
             const submitBtn = createFlashForm.querySelector('button[type="submit"]');
             if (submitBtn) {
@@ -3492,7 +3626,7 @@ safeDomReady(() => {
                         content: text,
                         type: type,
                         territory: territoryKey,
-                        city: location,
+                        city: city,
                         media_urls: mediaUrls
                     });
                 }
@@ -3532,22 +3666,43 @@ safeDomReady(() => {
     }
 
     window.openBokantajComposer = function() {
+        const form = document.getElementById('createFlashForm');
+        const opener = document.getElementById('bokantajComposerOpen');
+        if (form) form.hidden = false;
+        if (opener) opener.setAttribute('aria-expanded', 'true');
         const input = document.getElementById('flashContentInput');
-        if (input) {
-            input.focus();
-            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        if (input) input.focus();
     };
     window.closeBokantajComposer = function() {
         const input = document.getElementById('flashContentInput');
         const count = document.getElementById('flashCharCount');
         const preview = document.getElementById('flashMediaPreviewContainer');
         const photo = document.getElementById('flashPhotoInput');
+        const video = document.getElementById('flashVideoInput');
+        const form = document.getElementById('createFlashForm');
+        const opener = document.getElementById('bokantajComposerOpen');
         if (input) input.value = '';
         if (count) count.textContent = '0';
         if (preview) preview.innerHTML = '';
         if (photo) photo.value = '';
+        if (video) video.value = '';
+        const infoType = document.querySelector('input[name="bokantajPostType"][value="info"]');
+        if (infoType) infoType.checked = true;
+        if (form) form.hidden = true;
+        if (opener) opener.setAttribute('aria-expanded', 'false');
     };
+    const composerOpenBtn = document.getElementById('bokantajComposerOpen');
+    if (composerOpenBtn) composerOpenBtn.addEventListener('click', () => window.openBokantajComposer());
+    const photoQuick = document.getElementById('btnComposerPhotoQuick');
+    if (photoQuick) photoQuick.addEventListener('click', () => {
+        window.openBokantajComposer();
+        document.getElementById('flashPhotoInput')?.click();
+    });
+    const videoQuick = document.getElementById('btnComposerVideoQuick');
+    if (videoQuick) videoQuick.addEventListener('click', () => {
+        window.openBokantajComposer();
+        document.getElementById('flashVideoInput')?.click();
+    });
     document.addEventListener('click', (event) => {
         const opener = event.target.closest('#btnEmptyBokantajShare');
         if (!opener) return;
@@ -3602,161 +3757,249 @@ safeDomReady(() => {
         });
     }
 
-    // === BOKANTAJ FILTER BOTTOM SHEET & COMPACT PILLS LOGIC (MOBILE UX POLISH V2) ===
-    const btnOpenFilterSheet = document.getElementById('btnOpenBokantajFilterSheet');
-    const filterSheetModal = document.getElementById('bokantajFilterSheetModal');
-    const closeFilterSheetBtn = document.getElementById('closeBokantajFilterSheetBtn');
-    const btnApplySheetFilters = document.getElementById('btnApplyBokantajSheetFilters');
-    const btnResetSheetFilters = document.getElementById('btnResetBokantajSheetFilters');
-    const sheetNearbyToggle = document.getElementById('sheetNearbyToggle');
+    function readBokantajFilterDraft() {
+        const types = [...document.querySelectorAll('#bokantajTypeChips .bokantaj-choice.is-selected')]
+            .map((btn) => btn.dataset.type)
+            .filter((type) => type && type !== 'all');
+        const zone = document.querySelector('#bokantajZoneChips .bokantaj-choice.is-selected')?.dataset.zone || 'all';
+        const radius = Number(document.querySelector('#bokantajRadiusChips .bokantaj-choice.is-selected')?.dataset.radius || bokantajFilters.radiusKm || 5);
+        const period = document.querySelector('#bokantajPeriodChips .bokantaj-choice.is-selected')?.dataset.period || 'all';
+        const commune = document.getElementById('bokantajZoneValue')?.value || '';
+        return {
+            types,
+            zone: zone === 'commune' && !commune ? 'all' : zone,
+            radiusKm: radius,
+            commune,
+            period
+        };
+    }
 
-    // 1. Open Filter Sheet
-    const openBokantajFilterSheetNow = (e) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
+    function paintBokantajFilterDraft() {
+        document.querySelectorAll('#bokantajTypeChips .bokantaj-choice').forEach((btn) => {
+            const type = btn.dataset.type;
+            const selected = type === 'all' ? bokantajFilters.types.length === 0 : bokantajFilters.types.includes(type);
+            btn.classList.toggle('is-selected', selected);
+        });
+        document.querySelectorAll('#bokantajZoneChips .bokantaj-choice').forEach((btn) => {
+            btn.classList.toggle('is-selected', btn.dataset.zone === bokantajFilters.zone);
+        });
+        document.querySelectorAll('#bokantajRadiusChips .bokantaj-choice').forEach((btn) => {
+            btn.classList.toggle('is-selected', Number(btn.dataset.radius) === Number(bokantajFilters.radiusKm));
+        });
+        document.querySelectorAll('#bokantajPeriodChips .bokantaj-choice').forEach((btn) => {
+            btn.classList.toggle('is-selected', btn.dataset.period === bokantajFilters.period);
+        });
+        const zoneValue = document.getElementById('bokantajZoneValue');
+        const zoneLabel = document.getElementById('bokantajZoneLabel');
+        if (zoneValue) zoneValue.value = bokantajFilters.commune || '';
+        if (zoneLabel) {
+            zoneLabel.hidden = !(bokantajFilters.zone === 'commune' && bokantajFilters.commune);
+            zoneLabel.textContent = bokantajFilters.commune || '';
         }
+        refreshBokantajRadiusRow();
+    }
+
+    function refreshBokantajRadiusRow() {
+        const zone = document.querySelector('#bokantajZoneChips .bokantaj-choice.is-selected')?.dataset.zone || 'all';
+        const radiusRow = document.getElementById('bokantajRadiusChips');
+        const note = document.getElementById('bokantajZoneNote');
+        const known = Boolean(bokantajOrigin(readBokantajFilterDraft()));
+        if (radiusRow) radiusRow.hidden = !(zone === 'nearby' && known);
+        if (note) note.hidden = !(zone === 'nearby' && !known);
+    }
+
+    function closeBokantajFilterSheet() {
+        const filterSheetModal = document.getElementById('bokantajFilterSheetModal');
+        if (!filterSheetModal) return;
+        filterSheetModal.classList.remove('active');
+        filterSheetModal.style.display = 'none';
+        filterSheetModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('sheet-open');
+    }
+
+    function openBokantajFilterSheetNow(event) {
+        const filterSheetModal = document.getElementById('bokantajFilterSheetModal');
+        if (!filterSheetModal) return;
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        paintBokantajFilterDraft();
         filterSheetModal.style.display = 'flex';
         filterSheetModal.classList.add('active');
         filterSheetModal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('sheet-open');
-    };
+        syncBokantajChrome();
+    }
 
-    // FILTER INTERACTION: pointer-up opens the sheet without waiting for click synthesis.
+    // FILTER INTERACTION: pointer-up opens the sheet without waiting for click synthesis
+    const btnOpenFilterSheet = document.getElementById('btnOpenBokantajFilterSheet');
+    const filterSheetModal = document.getElementById('bokantajFilterSheetModal');
     if (btnOpenFilterSheet && filterSheetModal) {
         let lastFilterPointerOpen = 0;
         btnOpenFilterSheet.addEventListener('pointerup', (e) => {
             lastFilterPointerOpen = Date.now();
             openBokantajFilterSheetNow(e);
         }, { passive: false });
-
-        // Keyboard / older browser fallback. Pointer-triggered clicks are de-duplicated.
-        btnOpenFilterSheet.addEventListener('click', (e) => {
+        btnOpenFilterSheet.addEventListener('click', (event) => {
             if (Date.now() - lastFilterPointerOpen < 500) {
-                e.preventDefault();
-                e.stopPropagation();
+                event.preventDefault();
+                event.stopPropagation();
                 return;
             }
-            openBokantajFilterSheetNow(e);
+            openBokantajFilterSheetNow(event);
         });
     }
+    document.getElementById('closeBokantajFilterSheetBtn')?.addEventListener('click', closeBokantajFilterSheet);
+    filterSheetModal?.addEventListener('click', (event) => {
+        if (event.target === filterSheetModal) closeBokantajFilterSheet();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && filterSheetModal?.classList.contains('active')) closeBokantajFilterSheet();
+    });
 
-    // 2. Close Filter Sheet
-    if (closeFilterSheetBtn && filterSheetModal) {
-        const closeSheet = () => {
-            filterSheetModal.classList.remove('active');
-            filterSheetModal.style.display = 'none';
-            document.body.classList.remove('sheet-open');
-        };
-        closeFilterSheetBtn.addEventListener('click', closeSheet);
-        filterSheetModal.addEventListener('click', (e) => {
-            if (e.target === filterSheetModal) closeSheet();
+    document.getElementById('bokantajTypeChips')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('.bokantaj-choice');
+        if (!btn) return;
+        const type = btn.dataset.type;
+        const chips = [...document.querySelectorAll('#bokantajTypeChips .bokantaj-choice')];
+        if (type === 'all') {
+            chips.forEach((chip) => chip.classList.toggle('is-selected', chip.dataset.type === 'all'));
+        } else {
+            btn.classList.toggle('is-selected');
+            const any = chips.some((chip) => chip.dataset.type !== 'all' && chip.classList.contains('is-selected'));
+            chips.forEach((chip) => {
+                if (chip.dataset.type === 'all') chip.classList.toggle('is-selected', !any);
+            });
+        }
+        syncBokantajChrome();
+    });
+    document.getElementById('bokantajZoneChips')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('.bokantaj-choice');
+        if (!btn) return;
+        document.querySelectorAll('#bokantajZoneChips .bokantaj-choice').forEach((chip) => {
+            chip.classList.toggle('is-selected', chip === btn);
         });
-    }
+        if (btn.dataset.zone === 'commune') {
+            const input = document.getElementById('bokantajZoneValue');
+            const label = document.getElementById('bokantajZoneLabel');
+            if (input && label && typeof window.openLyannCommuneDrawer === 'function') {
+                window.openLyannCommuneDrawer(input, label);
+            }
+        }
+        refreshBokantajRadiusRow();
+        syncBokantajChrome();
+    });
+    document.getElementById('bokantajZoneValue')?.addEventListener('change', () => {
+        const label = document.getElementById('bokantajZoneLabel');
+        const value = document.getElementById('bokantajZoneValue')?.value || '';
+        if (label) {
+            label.hidden = !value;
+            label.textContent = value;
+        }
+        refreshBokantajRadiusRow();
+        syncBokantajChrome();
+    });
+    document.getElementById('bokantajRadiusChips')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('.bokantaj-choice');
+        if (!btn) return;
+        document.querySelectorAll('#bokantajRadiusChips .bokantaj-choice').forEach((chip) => {
+            chip.classList.toggle('is-selected', chip === btn);
+        });
+        syncBokantajChrome();
+    });
+    document.getElementById('bokantajPeriodChips')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('.bokantaj-choice');
+        if (!btn) return;
+        document.querySelectorAll('#bokantajPeriodChips .bokantaj-choice').forEach((chip) => {
+            chip.classList.toggle('is-selected', chip === btn);
+        });
+        syncBokantajChrome();
+    });
+    document.getElementById('btnApplyBokantajSheetFilters')?.addEventListener('click', () => {
+        const draft = readBokantajFilterDraft();
+        bokantajFilters.types = draft.types;
+        bokantajFilters.zone = draft.zone;
+        bokantajFilters.radiusKm = draft.radiusKm;
+        bokantajFilters.commune = draft.commune;
+        bokantajFilters.period = draft.period;
+        activeFeedTypeFilter = draft.types[0] || 'all';
+        activeFeedTerritoryFilter = draft.zone === 'all' ? 'all' : draft.zone;
+        closeBokantajFilterSheet();
+        renderFlashFeed();
+    });
+    document.getElementById('btnResetBokantajSheetFilters')?.addEventListener('click', () => {
+        bokantajFilters.types = [];
+        bokantajFilters.zone = 'all';
+        bokantajFilters.radiusKm = 5;
+        bokantajFilters.commune = '';
+        bokantajFilters.period = 'all';
+        activeFeedTypeFilter = 'all';
+        activeFeedTerritoryFilter = 'all';
+        paintBokantajFilterDraft();
+        closeBokantajFilterSheet();
+        renderFlashFeed();
+    });
 
-    // 3. Sheet Type Buttons Toggle
-    const sheetTypeBtns = document.querySelectorAll('.sheet-type-btn');
-    sheetTypeBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            sheetTypeBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+    document.querySelectorAll('.bokantaj-sort-tab').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const next = btn.dataset.sort === 'nearby' ? 'nearby' : 'recent';
+            if (next === bokantajSortMode) return;
+            bokantajSortMode = next;
+            if (next === 'nearby') await hydrateBokantajReference();
+            renderFlashFeed();
         });
     });
 
-    // 4. Sheet Topic Tags Toggle
-    const sheetTopicTags = document.querySelectorAll('.sheet-topic-tag');
-    sheetTopicTags.forEach(tag => {
-        tag.addEventListener('click', () => {
-            tag.classList.toggle('active');
-        });
-    });
-
-    // 5. Apply Sheet Filters
-    if (btnApplySheetFilters) {
-        btnApplySheetFilters.addEventListener('click', () => {
-            // Apply selected type
-            const activeTypeBtn = document.querySelector('.sheet-type-btn.active');
-            if (activeTypeBtn) {
-                activeFeedTypeFilter = activeTypeBtn.dataset.type || 'all';
-                // Sync row 1 segment buttons
-                document.querySelectorAll('.bokantaj-segment-group .feed-pill').forEach(btn => {
-                    if (btn.dataset.filterV2 === activeFeedTypeFilter) {
-                        btn.classList.add('active');
-                    } else {
-                        btn.classList.remove('active');
-                    }
+    document.addEventListener('click', async (event) => {
+        if (event.target.closest('#bokantajLoadMore')) {
+            event.preventDefault();
+            if (!bokantajHasMore || !bokantajCursor || bokantajPaging) return;
+            bokantajPaging = true;
+            const gen = bokantajLoadGen;
+            const button = document.getElementById('bokantajLoadMore');
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Chargement…';
+            }
+            try {
+                const page = await window.LYANN_BOKANTAJ_REPOSITORY.load({ before: bokantajCursor });
+                if (gen !== bokantajLoadGen) return;
+                const items = Array.isArray(page) ? page : [];
+                const seen = new Set(currentFlashPosts.map((post) => post && post.id));
+                items.forEach((item) => {
+                    if (item && !seen.has(item.id)) currentFlashPosts.push(item);
                 });
-            }
-
-            // Apply nearby toggle
-            if (sheetNearbyToggle && sheetNearbyToggle.checked) {
-                activeFeedTerritoryFilter = 'nearby';
-                const nearbyChip = document.querySelector('.bokantaj-topic-scroller .chip-pill[data-filter-v2="nearby"]');
-                if (nearbyChip) nearbyChip.classList.add('active');
-            } else if (sheetNearbyToggle && !sheetNearbyToggle.checked && activeFeedTerritoryFilter === 'nearby') {
-                activeFeedTerritoryFilter = 'all';
-                const nearbyChip = document.querySelector('.bokantaj-topic-scroller .chip-pill[data-filter-v2="nearby"]');
-                if (nearbyChip) nearbyChip.classList.remove('active');
-            }
-
-            // Close sheet and re-render feed
-            if (filterSheetModal) {
-                filterSheetModal.classList.remove('active');
-                filterSheetModal.style.display = 'none';
-                document.body.classList.remove('sheet-open');
-            }
-
-            if (typeof renderFlashFeed === 'function') {
+                bokantajHasMore = items.length > 0 && window.LYANN_BOKANTAJ_REPOSITORY.hasMore();
+                if (items.length) bokantajCursor = items[items.length - 1].created_at;
+                if (!items.length) bokantajHasMore = false;
                 renderFlashFeed();
+            } catch (err) {
+                if (window.lyannAlert) window.lyannAlert('Les publications plus anciennes n’ont pas pu être chargées.');
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = 'Voir plus de publications';
+                }
+            } finally {
+                bokantajPaging = false;
             }
-        });
-    }
-
-    // 6. Reset Sheet Filters
-    if (btnResetSheetFilters) {
-        btnResetSheetFilters.addEventListener('click', () => {
-            activeFeedTypeFilter = 'all';
-            activeFeedTerritoryFilter = 'all';
-            if (sheetNearbyToggle) sheetNearbyToggle.checked = false;
-            sheetTypeBtns.forEach((b, i) => b.classList.toggle('active', i === 0));
-            sheetTopicTags.forEach(t => t.classList.remove('active'));
-            
-            document.querySelectorAll('.bokantaj-segment-group .feed-pill').forEach((btn, i) => {
-                btn.classList.toggle('active', i === 0);
-            });
-            document.querySelectorAll('.bokantaj-topic-scroller .chip-pill').forEach(chip => {
-                chip.classList.remove('active');
-            });
-
-            if (filterSheetModal) {
-                filterSheetModal.classList.remove('active');
-                filterSheetModal.style.display = 'none';
-                document.body.classList.remove('sheet-open');
-            }
-
-            if (typeof renderFlashFeed === 'function') {
-                renderFlashFeed();
-            }
-        });
-    }
-
-    // 7. Directly bind Row 1 & Row 2 Bokantaj segment & scroller buttons
-    document.querySelectorAll('.bokantaj-segment-group .feed-pill, .bokantaj-topic-scroller .chip-pill').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const filterVal = btn.dataset.filterV2;
-            if (filterVal === 'nearby') {
-                btn.classList.toggle('active');
-                activeFeedTerritoryFilter = btn.classList.contains('active') ? 'nearby' : 'all';
-                if (sheetNearbyToggle) sheetNearbyToggle.checked = btn.classList.contains('active');
-            } else if (filterVal) {
-                document.querySelectorAll('.bokantaj-segment-group .feed-pill').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                activeFeedTypeFilter = filterVal;
-            }
-            if (typeof renderFlashFeed === 'function') {
-                renderFlashFeed();
-            }
-        });
+            return;
+        }
+        if (event.target.closest('#bokantajEnableLocation')) {
+            event.preventDefault();
+            bokantajLocationAsked = true;
+            const fix = window.LYANN_GEO && typeof window.LYANN_GEO.requestPreciseLocation === 'function'
+                ? await window.LYANN_GEO.requestPreciseLocation()
+                : null;
+            if (!fix) await hydrateBokantajReference();
+            renderFlashFeed();
+            return;
+        }
+        if (event.target.closest('#bokantajManualZone')) {
+            event.preventDefault();
+            openBokantajFilterSheetNow();
+            document.querySelector('#bokantajZoneChips .bokantaj-choice[data-zone="commune"]')?.click();
+        }
     });
 
 
@@ -4415,6 +4658,7 @@ safeDomReady(() => {
                     const label = commune + ' · ' + entry.island + (shortTerritory ? ' · ' + shortTerritory : '');
                     input.value = label;
                     button.textContent = label;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
                     sheet.hidden = true;
                 });
                 list.appendChild(row);
@@ -4431,6 +4675,7 @@ safeDomReady(() => {
         sheet.hidden = false;
         sheet.style.display = 'flex';
     }
+    window.openLyannCommuneDrawer = openBookingCommuneDrawer;
     if (document.getElementById('bookingLocation')) window.installBookingCommunePicker();
 
     // Modal Booking (Prise de RDV)
@@ -6169,7 +6414,7 @@ safeDomReady(() => {
             ? profileData.avatar_url
             : getInitialsAvatarSvg(displayName);
 
-        const avatarEls = document.querySelectorAll('.nav-profile-avatar, .drawer-profile-avatar, #accountModalAvatar, #drawerProfileAvatar');
+        const avatarEls = document.querySelectorAll('.nav-profile-avatar, .drawer-profile-avatar, #accountModalAvatar, #drawerProfileAvatar, #composerUserAvatar');
         avatarEls.forEach(img => {
             if (img) {
                 img.src = avatarUrl;

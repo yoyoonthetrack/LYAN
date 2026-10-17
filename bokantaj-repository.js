@@ -5,6 +5,7 @@
   let cached = null;
   let cachedAt = 0;
   let inFlight = null;
+  let lastHasMore = false;
 
   function isFresh() {
     return Array.isArray(cached) && (Date.now() - cachedAt) < CACHE_TTL_MS;
@@ -19,33 +20,35 @@
     });
   }
 
-  async function fetchFeed() {
+  async function fetchFeed(options) {
     const client = window.LYANN_API_CLIENT || window.apiClient;
     if (!client || typeof client.getFeed !== 'function') {
       throw new Error('LYANN feed client is not available');
     }
 
-    const result = await client.getFeed();
+    const result = await client.getFeed(options || {});
     if (result && result.error) throw result.error;
+    lastHasMore = !!(result && result.hasMore);
     return sanitizeFeed(result ? result.data : []);
   }
 
   async function load(options = {}) {
+    if (options.before) return fetchFeed(options);
     const force = options.force === true;
     if (!force && isFresh()) return cached;
     if (!force && inFlight) return inFlight;
 
-    inFlight = fetchFeed()
+    const flight = fetchFeed({})
       .then((items) => {
         cached = items;
         cachedAt = Date.now();
         return items;
       })
       .finally(() => {
-        inFlight = null;
+        if (inFlight === flight) inFlight = null;
       });
-
-    return inFlight;
+    inFlight = flight;
+    return flight;
   }
 
   function invalidate() {
@@ -57,6 +60,7 @@
   window.LYANN_BOKANTAJ_REPOSITORY = Object.freeze({
     load,
     invalidate,
-    sanitizeFeed
+    sanitizeFeed,
+    hasMore() { return lastHasMore; }
   });
 })();

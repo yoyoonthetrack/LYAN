@@ -575,14 +575,37 @@ body.is-native-app .explorer-page .explorer-results-heading { margin: 2px 0 8px 
     body:not(.is-native-app)[data-explorer-mode="annonces"] .annonces-header-art,
     body:not(.is-native-app)[data-explorer-mode="lyanneurs"] .lyanneurs-header-art { display: none; }
 }
-@media (min-width: 768px) {
+#bokantajFilterSheetModal.mobile-bottom-sheet {
+    align-items: flex-end !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+    background: rgba(24, 34, 28, 0.45) !important;
+    transform: none !important;
+}
+#bokantajFilterSheetModal .bokantaj-filter-card {
+    width: 100% !important;
+    max-width: 640px;
+    margin: 0 auto;
+    border-radius: 24px 24px 0 0 !important;
+}
+#bokantajFilterSheetModal .bokantaj-chip-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#bokantajFilterSheetModal .bokantaj-choice {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+}
+@media (min-width: 1024px) {
     #bokantajFilterSheetModal.mobile-bottom-sheet {
         align-items: center !important;
-        justify-content: center;
+        justify-content: center !important;
+        padding: 24px !important;
     }
     #bokantajFilterSheetModal .bokantaj-filter-card {
-        width: min(560px, calc(100vw - 32px));
-        border-radius: 24px;
+        width: min(560px, calc(100vw - 32px)) !important;
+        border-radius: 24px !important;
         max-height: min(80dvh, 720px);
         box-shadow: 0 16px 40px rgba(23, 35, 28, 0.16);
     }
