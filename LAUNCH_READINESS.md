@@ -1,5 +1,40 @@
 # LYANN — préparation au lancement
 
+## Phase 8 — Release Candidate
+
+Verdict : **NO-GO** pour un lancement public. Le commit local de cette phase est la candidate Web. Elle a été exécutée sur Staging `tdktfbtqceldlaeqjtow` et Stripe Test. Elle ne prouve pas le comportement de Production.
+
+Bundle iOS recopié depuis les mêmes sources : `ios-mvbtlu3o-3fab5f`, 215 fichiers, identique à `www/`. Backend injecté : aucun. Xcode 27.1 est présent. Le simulateur refuse de démarrer : CoreSimulator 1171.7.0 est plus ancien que celui attendu par Xcode (1174.9.2). Aucun binaire iPhone n’a été produit. Pas de TestFlight.
+
+| Sujet | Résultat |
+|---|---|
+| Quatre transferts Stripe Test (7,76 €, 11,64 €, 19,40 €, 29,10 €), `livemode: false` | PASS |
+| Deux libérations simultanées du même jalon déjà transféré | PASS, les deux répondent déjà transféré, un seul id |
+| Lyanneur qui tente de valider | PASS, HTTP 403 |
+| Missions « Jalons neufs » et « Devis par jalons » | PASS, COMPLETED, jalons RELEASED |
+| Somme des quatre paiements | PASS, frais 5,96 €, total client 75,96 €, nets 67,90 € |
+| Virement bancaire confirmé | NON TESTÉ, et non affiché comme reçu |
+| Remboursement avant transfert, remboursement après transfert, reversement | DÉSACTIVÉS. Les fonctions renvoient false. Non réactivés |
+| Litige | Le code gèle le transfert. Exécution d’un remboursement de litige absente |
+| Reprise d’un transfert TRANSFER_FAILED | Présente dans le verrou, non rejouée sur un vrai échec Stripe |
+| Version 1 refusée après révision en version 2 | PARTIEL. Le devis reste SENT, montant 6 €, aucune mission. La réponse HTTP n’est pas revenue (`fetch failed` / délai coupé) |
+| Acceptation de la version courante, refus du Lyanneur | PASS |
+| Inscription réelle, Google, Apple | NON TESTÉ. Action humaine : créer le compte avec une adresse lue, puis ouvrir le lien Supabase |
+| Connect de QA A | BLOQUÉ humain. Captcha Stripe. Le compte ne peut pas encore recevoir |
+| Safari | NON TESTÉ |
+| App iOS installée de ce commit | NON TESTÉ |
+| Production (migrations, RLS, webhooks, lyann.app) | NON MODIFIÉE. Audit code seulement |
+
+Risque financier : un transfert Stripe Test n’est pas un virement reçu. Les remboursements ne s’exécutent pas. Un jalon à 8 € coûte 1,49 € de frais, soit 2,98 € pour deux petits jalons.
+
+Risque de sécurité : ne pas poser de clé live sur le processus qui sert `release-payment`. Ce chemin utilise la clé du processus. Le serveur de campagne refuse déjà une clé live au démarrage quand il est verrouillé sur Staging.
+
+Écart Web / iOS : les sources du bundle sont les mêmes. L’app installée ne l’est pas. Le simulateur de cette machine ne compile pas.
+
+À reporter : paiement groupé de plusieurs jalons, abonnements payants, confirmation bancaire.
+
+Le journal ci-dessous garde l’historique. Là où il dit que la validation n’a pas été cliquée, la Phase 8 prévaut.
+
 Journal de reprise. Staging uniquement (`tdktfbtqceldlaeqjtow`). Pas de déploiement, pas de Stripe Live, pas d’écriture Production.
 
 Les fixtures historiques (QA-616A, QA-610Q, etc.) ne sont pas modifiées. Les données de cette campagne portent le préfixe `[CAMPAGNE-J2]`.
