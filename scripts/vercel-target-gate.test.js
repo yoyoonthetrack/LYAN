@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const { decideVercelTarget, loadPolicy } = require('./vercel-target-gate');
+const { decideVercelTarget, inspectExistingDestination, canonicalTarget, shellExports, loadPolicy } = require('./vercel-target-gate');
 
 const PRODUCTION = 'prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM';
 const STAGING = 'prj_FHIKUKYa8IwpiitigUma4gTtTF6q';
@@ -50,5 +50,17 @@ assert.strictEqual(ambiguous.code, 'AMBIGUOUS');
 const accepted = decideVercelTarget(staging, ready);
 assert.strictEqual(accepted.ok, true);
 assert.strictEqual(accepted.code, 'STAGING');
+
+const unset = inspectExistingDestination({}, ready);
+assert.strictEqual(unset.ok, true);
+assert.strictEqual(unset.code, 'UNSET');
+
+const target = canonicalTarget(ready);
+assert.strictEqual(target.projectId, STAGING);
+assert.notStrictEqual(target.projectId, PRODUCTION);
+const exported = shellExports(ready).join('\n');
+assert.match(exported, /VERCEL_PROJECT_ID='prj_FHIKUKYa8IwpiitigUma4gTtTF6q'/);
+assert.match(exported, /VERCEL_ORG_ID='team_Q2iI3QsUHFqSNkD3pjjg5d58'/);
+assert.doesNotMatch(exported, /prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM/);
 
 console.log('vercel-target-gate: REFUS production, REFUS inconnu, ACCEPTÉ staging identifié');

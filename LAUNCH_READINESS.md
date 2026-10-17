@@ -125,19 +125,46 @@ Production réelle : projet `lyan`, identifiant `prj_avTkY4HCjHZSdd9ZvRj1JPSQSAf
 
 `scripts/vercel-target-gate.js` refuse toute destination dont l’identifiant est celui de Production, dont le domaine est `lyann.app`, `www.lyann.app` ou `admin.lyann.app`, dont le Team ID n’est pas dans `config/vercel-staging-allowlist.json`, ou dont le Project ID n’est pas exactement `prj_FHIKUKYa8IwpiitigUma4gTtTF6q` sous le nom `lyann-staging-preview`. Un lien `.vercel/project.json` illisible, ou différent de `VERCEL_PROJECT_ID`, est un refus. Sans Project ID, Team ID ou nom, c’est aussi un refus. Une clé `sk_live_` ou la référence Supabase `gzispjfoywklpqatjyop` est un refus.
 
-Le Team ID attendu est `team_Q2iI3QsUHFqSNkD3pjjg5d58`, lu dans le lien local. Un autre Team ID est refusé. Aucun déploiement n’a été lancé.
-
-L’inspection en direct du compte Vercel n’a pas abouti depuis cette machine : pas de jeton, et `vercel project ls` est resté sans réponse. Les rapports locaux des phases 6.19 et 6.24 décrivent `lyann-staging-preview` / `prj_FHIKUKYa8IwpiitigUma4gTtTF6q`, équipe `yoyo-d85d`, sans connexion Git du dépôt. C’est le projet à réutiliser. `vercel.staging.json` porte maintenant ce nom. Il ne faut pas créer `lyann-staging`.
+Le Team ID attendu est `team_Q2iI3QsUHFqSNkD3pjjg5d58`. Un autre Team ID est refusé. L’API Vercel a confirmé le projet `lyann-staging-preview`, sans dépôt Git et sans hook de déploiement. Le plan de l’équipe est Pro, déjà actif. Aucun supplément n’a été souscrit.
 
 `scripts/vercel-staging-ignore.js` ignore tout build qui n’est pas lancé par `scripts/deploy-staging.sh`. Un commit ou un push ne publie pas. Aucune action GitHub du dépôt n’appelle Vercel. Le lien local `.vercel/project.json` pointait vers Production (`lyan`, `prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM`, équipe `team_Q2iI3QsUHFqSNkD3pjjg5d58`). Il a été retiré de la copie de travail. Il n’était pas versionné. Le projet distant n’a pas été modifié.
 
 Tests locaux, sans `vercel deploy` : le lien réel vers Production → REFUS ; un Project ID inconnu → REFUS ; `lyann-staging-preview` / `prj_FHIKUKYa8IwpiitigUma4gTtTF6q` avec le Team ID attendu → ACCEPTÉ par le garde-fou seul. Le script s’est arrêté avant `npx vercel`.
 
-Le plan, après ton autorisation : lier uniquement `lyann-staging-preview`, renseigner ses variables Staging, lancer `LYANN_AUTHORIZE_STAGING_DEPLOY=1 sh scripts/deploy-staging.sh`, puis `scripts/verify-staging-hosted.js`. Coût : l’offre Vercel déjà utilisée par ce projet ; pas de second projet. DNS `staging.lyann.app`, variables Vercel, webhook Stripe Test et redeploiement restent à autoriser. Production, Stripe Live et Supabase Production restent interdits.
+## Activation Staging — 17 octobre 2026
+
+Domaine actif : `https://staging.lyann.app`. Déploiement `dpl_8d457ZS3quiKZJLtnZPugcdYtYJf`, projet `lyann-staging-preview` / `prj_FHIKUKYa8IwpiitigUma4gTtTF6q`. Aucun redéploiement n’a été fait pour aligner la référence Git.
+
+Le déploiement a été produit à partir de `6135b80` plus les fichiers alors présents dans la copie de travail : `shared-html-build.js`, `scripts/build-web.js`, `scripts/deploy-staging.sh`, `scripts/vercel-target-gate.js`, `scripts/vercel-target-gate.test.js`, `tests/staging-v2-isolation.test.js` et la rédaction alors en cours de ce document. Ces fichiers ne contiennent pas de secret. Les images et journaux sous `artifacts/` n’entrent pas dans ce gel. Le schéma Xcode a été modifié après l’envoi Vercel : il ne fait pas partie du bundle Web.
+
+Protection : authentification Vercel et mot de passe en `prod_deployment_urls_and_all_previews` sur ce projet seulement. `https://staging.lyann.app` répond 200. L’URL `vercel.app` du même déploiement répond 401. Le projet `lyan` n’a pas été modifié. Ses domaines restent `lyann.app` et `admin.lyann.app`.
+
+Secrets Staging installés dans Vercel, sans copie d’un secret Production. Supabase Auth Staging : `site_url` `https://staging.lyann.app`, inscriptions désactivées, redirections limitées à ce domaine et aux schémas `app.lyann.dom://google-auth` et `app.lyann.dom://confirm-signup`. Webhook Stripe Test activé sur `https://staging.lyann.app/v1/payments/webhook`. L’ancien endpoint Test vers `lyann.app` était déjà désactivé et n’a pas été modifié.
+
+| Contrôle | Résultat |
+|---|---|
+| HTTPS et certificat | PASS |
+| Fichier Apple sans authentification, appID `WLV4WC47U2.app.lyann.mobile` | PASS |
+| HTML sans référence Production ni adresse du Mac | PASS |
+| Stripe `pk_test_` / mode test | PASS |
+| Webhook sans signature | PASS, HTTP 400 |
+| Webhook Test signé `payment_intent.succeeded` | PASS, `processed` |
+| Annonces publiques | PASS |
+| Session QA, missions et conversations | PASS |
+| Inscription nouvelle | PASS, refusée |
+| Finance et admin sans session | PASS, HTTP 401 |
+| Hôte injoignable | PASS, l’appel échoue sans données |
+| Projet Production, Git automatique, Stripe Live | non touchés |
+
+Coût : aucun nouvel abonnement. Un PaymentIntent Test de 1,00 EUR a servi à prouver le webhook. Aucun paiement Live.
+
+Blocage iOS : le schéma Debug pointe maintenant vers `config/App.staging.entitlements` (`applinks:staging.lyann.app`). Le téléphone n’a pas été recompilé. Le retour Safari n’est pas validé. Stripe Connect reste désactivé sur iPhone. Pas de TestFlight.
+
+Retour arrière Staging : `npx vercel rollback --local-config vercel.staging.json --project prj_FHIKUKYa8IwpiitigUma4gTtTF6q --scope team_Q2iI3QsUHFqSNkD3pjjg5d58`. Retirer ensuite `staging.lyann.app` de ce projet, désactiver le webhook Test, et restaurer l’auth du projet `tdktfbtqceldlaeqjtow`.
 
 Une instance `LYANN_RUNTIME=staging` ou un Preview Vercel qui pointe vers Supabase Production, Stripe Live, une clé service d’un autre projet, ou `https://lyann.app` ne démarre pas. Les webhooks Staging exigent une signature. Les origines de navigateur inconnues sont refusées. Stripe, Apple et Supabase appellent l’API sans en-tête Origin : ces appels restent possibles. Il ne faut pas activer le mot de passe Vercel sur ce projet, sinon ces services seraient bloqués. L’accès des testeurs se limite aux comptes créés dans Supabase Staging.
 
-Le fichier d’association est au format Apple `appIDs` / `components`, sans redirection, servi plus tard en `https://staging.lyann.app/.well-known/apple-app-site-association`. `config/App.staging.entitlements` contient `applinks:staging.lyann.app` et n’est pas relié au build Debug installé. Si l’app est absente, le lien s’ouvre dans Safari sur le domaine Staging. Aucun retour externe n’est PASS.
+Le fichier d’association est servi en `https://staging.lyann.app/.well-known/apple-app-site-association`. Le schéma Debug référence `config/App.staging.entitlements`. Le binaire installé sur l’iPhone ne l’inclut pas encore. Si l’app ne réclame pas le lien, Safari reste sur le domaine Staging. Le retour externe n’est pas validé.
 
 `node scripts/verify-staging-hosted.js` ne contacte rien tant que `LYANN_STAGING_PUBLIC_ORIGIN` n’est pas défini. Après mise en ligne, il contrôle HTTPS, l’absence de secret dans `/v1/payments/config`, le fichier d’association et le refus d’un webhook non signé. L’auth, le lien Safari et Connect restent des tests iPhone.
 

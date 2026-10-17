@@ -239,6 +239,10 @@ function nativeBuildStamp() {
 }
 
 function resolveInjectedBackendOrigin() {
+  if (String(process.env.LYANN_RUNTIME || '').toLowerCase() === 'staging') {
+    const origin = String(process.env.LYANN_STAGING_PUBLIC_ORIGIN || '').replace(/\/$/, '');
+    return origin === 'https://staging.lyann.app' ? origin : '';
+  }
   let backend = process.env.LYANN_E2E_BASE_URL != null
     ? String(process.env.LYANN_E2E_BASE_URL).replace(/\/$/, '')
     : '';
@@ -271,8 +275,9 @@ function jwtRef(token) {
 }
 
 function injectIsolatedSupabaseConfig(html) {
-  if (process.env.VERCEL_ENV === 'production') return html;
-  if (process.env.LYANN_E2E_ALLOW_WRITES !== '1') return html;
+  const stagingRuntime = String(process.env.LYANN_RUNTIME || '').toLowerCase() === 'staging';
+  if (process.env.VERCEL_ENV === 'production' && !stagingRuntime) return html;
+  if (!stagingRuntime && process.env.LYANN_E2E_ALLOW_WRITES !== '1') return html;
   const url = String(process.env.LYANN_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '');
   const anon = process.env.LYANN_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
   const lock = String(process.env.LYANN_E2E_WRITE_PROJECT_REF || process.env.LYANN_SUPABASE_LOCK || '');

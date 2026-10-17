@@ -100,8 +100,66 @@ function inputFromEnv(env = process.env) {
     };
 }
 
+function hasIdentity(input) {
+    const linked = input.linked || {};
+    return [
+        input.projectId, input.orgId, input.projectName,
+        linked.projectId, linked.orgId, linked.projectName,
+        ...(input.domains || [])
+    ].some((value) => String(value || '').trim());
+}
+
+function inspectExistingDestination(input, policy) {
+    if (input.linked && input.linked.unreadable) {
+        return { ok: false, code: 'UNKNOWN', detail: 'lien Vercel illisible' };
+    }
+    if (!hasIdentity(input)) return { ok: true, code: 'UNSET', detail: 'aucune destination préexistante' };
+    return decideVercelTarget(input, policy);
+}
+
+function canonicalTarget(policy) {
+    const ids = policy.stagingProjectIds || [];
+    const orgs = policy.expectedOrgIds || [];
+    const names = policy.stagingProjectNames || [];
+    if (ids.length !== 1 || orgs.length !== 1 || names.length !== 1) return null;
+    if ((policy.productionProjectIds || []).includes(ids[0])) return null;
+    if ((policy.productionProjectNames || []).includes(names[0])) return null;
+    return { projectId: ids[0], orgId: orgs[0], projectName: names[0] };
+}
+
+function shellExports(policy) {
+    const target = canonicalTarget(policy);
+    if (!target) return null;
+    const quote = (value) => `'${String(value).replace(/'/g, `'\\''`)}'`;
+    return [
+        `export VERCEL_ORG_ID=${quote(target.orgId)}`,
+        `export VERCEL_PROJECT_ID=${quote(target.projectId)}`,
+        `export VERCEL_PROJECT_NAME=${quote(target.projectName)}`,
+        `export LYANN_STAGING_PUBLIC_ORIGIN=${quote('https://staging.lyann.app')}`
+    ];
+}
+
 function main() {
-    const decision = decideVercelTarget(inputFromEnv(), loadPolicy());
+    const policy = loadPolicy();
+    if (process.argv.includes('--check-link')) {
+        const decision = inspectExistingDestination(inputFromEnv(), policy);
+        if (!decision.ok) {
+            console.error(`REFUS ${decision.code} : ${decision.detail}`);
+            process.exit(1);
+        }
+        console.log(decision.code === 'UNSET' ? 'AUCUN LIEN ÉTRANGER' : `LIEN STAGING ${decision.detail}`);
+        return;
+    }
+    if (process.argv.includes('--print-env')) {
+        const lines = shellExports(policy);
+        if (!lines) {
+            console.error('REFUS AMBIGUOUS : la liste Staging ne désigne pas un seul projet');
+            process.exit(1);
+        }
+        console.log(lines.join('\n'));
+        return;
+    }
+    const decision = decideVercelTarget(inputFromEnv(), policy);
     if (!decision.ok) {
         console.error(`REFUS ${decision.code} : ${decision.detail}`);
         process.exit(1);
@@ -111,4 +169,11 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { decideVercelTarget, loadPolicy, inputFromEnv };
+module.exports = {
+    decideVercelTarget,
+    inspectExistingDestination,
+    canonicalTarget,
+    shellExports,
+    loadPolicy,
+    inputFromEnv
+};

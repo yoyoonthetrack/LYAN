@@ -100,10 +100,20 @@ test('HTML inject refuses production host and Vercel production', () => {
   const local = injectIsolatedSupabaseConfig('<script src="api-client.js"></script>');
   assert.doesNotMatch(local, /LYANN_SUPABASE_URL/);
   process.env.VERCEL_ENV = 'production';
+  delete process.env.LYANN_RUNTIME;
   process.env.LYANN_SUPABASE_URL = STAGING_URL;
   const vercel = injectIsolatedSupabaseConfig('<script src="api-client.js"></script>');
   assert.doesNotMatch(vercel, /LYANN_SUPABASE_URL/);
+  process.env.LYANN_RUNTIME = 'staging';
+  process.env.LYANN_STAGING_PUBLIC_ORIGIN = 'https://staging.lyann.app';
+  process.env.LYANN_E2E_BASE_URL = 'http://127.0.0.1:8098';
+  const hosted = injectIsolatedSupabaseConfig('<script src="api-client.js"></script>');
+  assert.match(hosted, new RegExp(STAGING_V2_REF));
+  assert.match(hosted, /https:\/\/staging\.lyann\.app/);
+  assert.doesNotMatch(hosted, /127\.0\.0\.1/);
+  assert.doesNotMatch(hosted, /gzispjfoywklpqatjyop/);
   process.env.VERCEL_ENV = '';
+  delete process.env.LYANN_RUNTIME;
 });
 
 test('HTML inject throws if a service_role JWT is offered to the browser', () => {
