@@ -26,6 +26,7 @@
             } catch (_) {}
         }
         let leaves = [], records = [], revision = 0, savedArea = '';
+        let showAllTrades = false;
         // The delay filter offers the same date modes the cards display, so a chosen
         // option always matches what a reader sees on the results.
         const dateModeLabel = value => window.LYANN_ANNONCE_FORMAT?.dateModeLabel(value) || value;
@@ -286,12 +287,23 @@
             const host = $('explorerCategoryPills');
             const select = $('explorerCategory');
             if (!host || !select) return;
-            host.innerHTML = [...select.options].map((option) => {
+            const options = [...select.options];
+            const selected = options.find((option) => (option.value || '') === (filters.category || ''));
+            let visible = options;
+            if (mode === 'lyanneurs' && !showAllTrades) {
+                visible = options.slice(0, 3);
+                if (selected && !visible.includes(selected)) visible = [options[0], selected].filter(Boolean);
+            }
+            const pills = visible.map((option) => {
                 const value = option.value || '';
                 const label = value ? option.textContent : 'Tout';
                 const active = (filters.category || '') === value;
                 return `<button type="button" class="lyann-pill${active ? ' is-active' : ''}" data-category="${escape(value)}" aria-pressed="${active ? 'true' : 'false'}">${escape(label)}</button>`;
             }).join('');
+            const more = mode === 'lyanneurs' && !showAllTrades && options.length > 3
+                ? `<button type="button" class="lyann-pill lyann-pill-more" data-action="more-trades">Voir plus</button>`
+                : '';
+            host.innerHTML = pills + more;
         }
         function refineCard() {
             if (mode === 'annonces') {
@@ -358,7 +370,12 @@
             }
             const button = event.target.closest('button');
             if (!button) return;
-            if (button.dataset.mode) { mode = button.dataset.mode; search(); return; }
+            if (button.dataset.action === 'more-trades') {
+                showAllTrades = true;
+                renderCategoryPills();
+                return;
+            }
+            if (button.dataset.mode) { mode = button.dataset.mode; showAllTrades = false; search(); return; }
             if (button.dataset.remove) {
                 filters[button.dataset.remove] = '';
                 if (button.dataset.remove === 'territory') filters.commune = '';

@@ -542,17 +542,17 @@ body.is-native-app[data-explorer-mode="lyanneurs"] .lyanneurs-header-art {
     border-radius: 0;
 }
 body[data-explorer-mode="lyanneurs"] .explorer-page .lyann-pills {
-    flex-wrap: wrap;
-    overflow: visible;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     mask-image: none;
     -webkit-mask-image: none;
     gap: 6px;
-    padding: 0;
+    padding: 0 2px 2px;
 }
 body[data-explorer-mode="lyanneurs"] .lyann-pill {
-    min-height: 30px;
-    padding: 3px 9px;
-    font-size: 0.74rem;
+    min-height: 32px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
 }
 @media (max-width: 767px) {
     .explorer-page .explorer-tools { margin: 8px 0 0 !important; }
