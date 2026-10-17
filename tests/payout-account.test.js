@@ -22,6 +22,20 @@ test('no payout account offers setup', () => {
     assert.equal(view.readyVisible, false);
 });
 
+test('pending verification is distinct from incomplete onboarding', () => {
+    assert.equal(payoutAccountState({
+        success: true,
+        ready: false,
+        account_created: true,
+        onboarding_completed: true,
+        transfers_active: false
+    }), 'pending');
+    const view = renderPayoutAccount('pending');
+    assert.equal(view.subtitle, 'Vérification en cours');
+    assert.equal(view.actionVisible, false);
+    assert.equal(view.readyVisible, false);
+});
+
 test('incomplete onboarding is not shown as active', () => {
     assert.equal(payoutAccountState({
         success: true,
@@ -40,7 +54,7 @@ test('active matches the server payable rule and ignores payouts_enabled', () =>
     assert.equal(payoutAccountState(ready), 'active');
     assert.equal(payoutAccountState({ ...ready, payouts_enabled: false }), 'active');
     assert.equal(payoutAccountState({ ...ready, ready: false, payouts_enabled: true }), 'incomplete');
-    assert.equal(payoutAccountState({ ...ready, transfers_active: false }), 'incomplete');
+    assert.equal(payoutAccountState({ ...ready, transfers_active: false }), 'pending');
     assert.equal(payoutAccountState({ ...ready, onboarding_completed: false }), 'incomplete');
     const active = renderPayoutAccount('active');
     assert.equal(active.title, 'Compte de versement actif');

@@ -12,7 +12,11 @@
     "cap:sync": "npx cap sync",
     "ios": "npx cap open ios",
     "android": "npx cap open android",
-    "watch:mobile": "node watch.js"
+    "watch:mobile": "node watch.js",
+    "staging-v2:write-env": "node scripts/write-staging-v2-env.js",
+    "staging-v2:verify": "node scripts/verify-staging-v2-isolation.js",
+    "staging-v2:phase4": "node scripts/phase4-auth-rls-storage.js",
+    "staging-v2:server": "node -r ./scripts/force-staging-v2-env.js api/server.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",

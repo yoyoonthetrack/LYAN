@@ -1,0 +1,28 @@
+{
+  "prefix": "[CAMPAGNE-J2]",
+  "requesterId": "41f31232-70c7-4515-b987-e8160a127f85",
+  "helperId": "f30466d3-fcb5-4567-a1ac-8860a563c377",
+  "cases": {
+    "direct": {
+      "title": "[CAMPAGNE-J2] Tarif Direct",
+      "requestId": "e4da3da9-878d-40f1-8d8b-102d9a325d18",
+      "invitationId": "9c57e7e3-6ded-44a2-bb11-5400d85f6048",
+      "quoteId": "2f5eb0d3-39fd-4a78-b84f-fbf682f622a4",
+      "quoteStatus": "ACCEPTED"
+    },
+    "jalons": {
+      "title": "[CAMPAGNE-J2] Devis par jalons",
+      "requestId": "d4e0e785-3cdf-457c-b913-a7ba0164d444",
+      "invitationId": "eb544671-e110-4861-b397-96251537fc5d",
+      "quoteId": "402183f8-cfdf-4e42-af95-e88f90809890",
+      "quoteStatus": "SENT"
+    },
+    "refus": {
+      "title": "[CAMPAGNE-J2] Devis à refuser",
+      "requestId": "fda78a24-44b7-4e95-a189-079d492444f6",
+      "invitationId": "af27af53-f8ac-4de0-abb9-04dd128e7537",
+      "quoteId": "93c178b7-cb12-479d-bf29-67109d94390a",
+      "quoteStatus": "REJECTED"
+    }
+  }
+}

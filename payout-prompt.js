@@ -35,11 +35,28 @@
         if (readiness === 'unknown') {
             return {
                 title: 'Vérification du compte de versement…',
-                body: '',
+                body: 'L’état du compte n’est pas encore connu. Aucune action de paiement n’est ouverte pour l’instant.',
                 action: '',
                 intent: '',
                 blockPay: true
             };
+        }
+        if (readiness === 'pending') {
+            return role === 'provider'
+                ? {
+                    title: 'Votre compte de versement est en cours de vérification.',
+                    body: 'Le demandeur pourra sécuriser le paiement dès que la vérification sera terminée.',
+                    action: '',
+                    intent: '',
+                    blockPay: true
+                }
+                : {
+                    title: 'En attente du Lyanneur',
+                    body: 'Le compte de versement est en cours de vérification. Vous n’avez aucune action immédiate.',
+                    action: '',
+                    intent: '',
+                    blockPay: true
+                };
         }
         if (readiness === 'error') {
             const providerName = cleanName(input.providerName, 'votre interlocuteur');
@@ -103,5 +120,124 @@
         };
     }
 
-    return { cleanName, quoteStillNeedsPayout, payoutPrompt, payoutReadyCopy };
+    function payoutGuidance(input) {
+        const role = input && input.role;
+        const readiness = input && input.readiness;
+        const title = String((input && input.requestTitle) || '').trim();
+        const dossier = title ? ('Mission « ' + title + ' ». ') : '';
+        if (readiness === 'active') {
+            return { kind: 'ready', headline: '', body: '', action: null, alert: false, blockPay: false, status: '' };
+        }
+        if (readiness === 'unknown') {
+            return {
+                kind: 'unknown',
+                status: 'Devis accepté',
+                headline: 'Vérification du compte de versement…',
+                body: dossier + 'L’état du compte n’est pas encore connu. Aucune action de paiement n’est ouverte pour l’instant.',
+                action: null,
+                alert: false,
+                blockPay: true
+            };
+        }
+        if (readiness === 'error') {
+            return {
+                kind: 'error',
+                status: 'Devis accepté',
+                headline: 'Impossible de vérifier le compte de versement',
+                body: dossier + 'Réessayez dans un instant. Ce n’est pas une preuve que le compte n’est pas configuré.',
+                action: { id: 'retry', label: 'Réessayer' },
+                alert: true,
+                blockPay: true
+            };
+        }
+        if (readiness === 'pending') {
+            if (role === 'provider') {
+                return {
+                    kind: 'pending',
+                    status: 'Devis accepté',
+                    headline: 'Vérification en cours',
+                    body: dossier + 'Votre compte de versement est en cours de vérification. Le demandeur pourra sécuriser le paiement ensuite.',
+                    action: null,
+                    alert: true,
+                    blockPay: true
+                };
+            }
+            return {
+                kind: 'pending',
+                status: 'En attente du Lyanneur',
+                headline: 'En attente du Lyanneur',
+                body: dossier + 'Le compte de versement du Lyanneur est en cours de vérification avant la sécurisation du paiement. Vous n’avez aucune action immédiate.',
+                action: null,
+                alert: true,
+                blockPay: true
+            };
+        }
+        if (readiness === 'none' || readiness === 'incomplete') {
+            if (role === 'provider') {
+                return {
+                    kind: readiness,
+                    status: 'Devis accepté',
+                    headline: readiness === 'incomplete' ? 'Terminez la configuration' : 'Compte de versement à configurer',
+                    body: dossier + 'Le devis est accepté. Configurez votre compte de versement pour que le demandeur puisse sécuriser le paiement.',
+                    action: { id: 'setup', label: 'Configurer mon compte de versement' },
+                    alert: true,
+                    blockPay: true
+                };
+            }
+            return {
+                kind: readiness,
+                status: 'En attente du Lyanneur',
+                headline: 'En attente du Lyanneur',
+                body: dossier + 'Le compte de versement du Lyanneur doit être finalisé avant la sécurisation du paiement. Vous n’avez aucune action immédiate.',
+                action: null,
+                alert: true,
+                blockPay: true
+            };
+        }
+        return {
+            kind: String(readiness || 'unknown'),
+            headline: 'Vérification du compte de versement…',
+            body: dossier + 'L’état du compte n’est pas encore connu.',
+            action: null,
+            alert: false,
+            blockPay: true,
+            status: 'Devis accepté'
+        };
+    }
+
+    function payoutChatNotice(input) {
+        const kind = input && input.kind;
+        const title = String((input && input.requestTitle) || '').trim() || 'cette mission';
+        const role = input && input.role;
+        if (kind === 'accepted_wait') {
+            return role === 'provider'
+                ? {
+                    title: 'Devis accepté — compte de versement',
+                    body: 'Le devis de « ' + title + ' » est accepté. Configurez votre compte de versement pour recevoir le paiement.',
+                    open: 'Voir le dossier'
+                }
+                : {
+                    title: 'Devis accepté — en attente du Lyanneur',
+                    body: 'Le devis de « ' + title + ' » est accepté. Le Lyanneur doit finaliser son compte de versement avant la sécurisation du paiement.',
+                    open: 'Voir le dossier'
+                };
+        }
+        if (kind === 'payout_ready') {
+            return {
+                title: 'Compte de versement prêt',
+                body: 'Le compte de versement est prêt pour « ' + title + ' ». Le paiement peut maintenant être sécurisé.',
+                open: 'Voir le dossier'
+            };
+        }
+        if (kind === 'payment_secured') {
+            return {
+                title: 'Paiement sécurisé',
+                body: 'Le paiement de « ' + title + ' » est sécurisé par LYANN.',
+                open: 'Voir le dossier'
+            };
+        }
+        return null;
+    }
+
+    return { cleanName, quoteStillNeedsPayout, payoutPrompt, payoutReadyCopy, payoutGuidance, payoutChatNotice };
 });

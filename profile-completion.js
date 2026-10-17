@@ -706,8 +706,14 @@
             nextBtn.innerHTML = '<i class="ph ph-spinner-gap spin-animation"></i> Enregistrement DB...';
 
             try {
-                const fn = document.getElementById('cpFirstName')?.value.trim() || 'Membre';
-                const ln = document.getElementById('cpLastName')?.value.trim() || '';
+                const cap = (value, fallback) => {
+                    const raw = String(value || '').trim();
+                    if (window.capitalizeLyannName) return window.capitalizeLyannName(raw) || fallback || '';
+                    if (!raw) return fallback || '';
+                    return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+                };
+                const fn = cap(document.getElementById('cpFirstName')?.value, 'Membre');
+                const ln = cap(document.getElementById('cpLastName')?.value, '');
                 const headline = document.getElementById('cpHeadline')?.value.trim() || '';
                 const territory = terrSelect?.value || 'Guadeloupe (971)';
                 const city = citySelect?.value || cityInput?.value.trim() || 'Saint-François';
@@ -737,6 +743,7 @@
                     return;
                 }
 
+                console.warn('[LYANN] native-build profile-save', window.LYANN_NATIVE_BUILD_ID || window.LYANN_ASSET_VERSION || 'unversioned');
                 console.log(`[ProfileSave] userId=${userId} step=final payloadFields=first_name,last_name,bio,territory,city,phone,intervention_radius_km,avatar_url avatarChanged=${!!selectedAvatarFile} saveStarted=true`);
 
                 let avatarUploadStatus = 'SKIPPED';

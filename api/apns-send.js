@@ -41,7 +41,7 @@ function apnsAuthorization(config, nowSeconds = Math.floor(Date.now() / 1000)) {
     return cachedJwt.value;
 }
 
-function sendApns({ config, deviceToken, environment, payload }) {
+function sendApns({ config, deviceToken, environment, payload, apnsId }) {
     const host = apnsHost(environment);
     const body = JSON.stringify(payload || buildTestPayload());
     return new Promise((resolve) => {
@@ -67,7 +67,7 @@ function sendApns({ config, deviceToken, environment, payload }) {
             'apns-topic': config.bundleId,
             'apns-push-type': 'alert',
             'apns-priority': '10',
-            'apns-id': crypto.randomUUID()
+            'apns-id': apnsId || crypto.randomUUID()
         });
         let status = 0;
         request.setEncoding('utf8');

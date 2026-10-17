@@ -176,7 +176,8 @@ test('a new annonce does not inherit a completed mission from the same conversat
         missions: [oldMission],
         requestId: 'annonce-ancienne'
     });
-    assert.equal(sameAnnonce.mission.id, 'mission-old');
+    // Mission terminée : pas de chrome conversation (bandeau / Suivi / Voir).
+    assert.equal(sameAnnonce.mission, null);
     const fromInbox = revision.selectThreadContext({ missions: [oldMission, { ...oldMission, id: 'mission-old-2' }] });
     assert.equal(fromInbox.mission, null);
     assert.equal(fromInbox.ambiguous, false);

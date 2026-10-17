@@ -62,6 +62,7 @@
     --lyann-safe-left: env(safe-area-inset-left, 0px);
     --lyann-safe-right: env(safe-area-inset-right, 0px);
 
+    --lyann-chat-header-offset: 48px;
     --lyann-header-height: 64px;
     --lyann-header-total-height: calc(var(--lyann-header-height) + var(--lyann-safe-top));
 
@@ -209,8 +210,22 @@ img, video, picture, canvas {
     height: auto;
 }
 
-/* Overlay de bruit SVG pour éliminer les dégradés plats */
+/* Fond artisan global (web + app) — moitié de la présence homepage */
 body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url('hero-image.webp');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: 100% 40%;
+    opacity: 0.22;
+}
+
+/* Overlay de bruit SVG pour éliminer les dégradés plats */
+body::after {
     content: "";
     position: fixed;
     top: 0;
@@ -798,6 +813,7 @@ body:has(.hero)::before {
     inset: 0;
     z-index: -1;
     pointer-events: none;
+    opacity: 1;
     background-color: #F7F5F0;
     background-image: linear-gradient(180deg, rgba(247, 245, 240, 0.5) 0%, rgba(247, 245, 240, 0.68) 100%), url('hero-image.webp');
     background-repeat: no-repeat;
@@ -6768,7 +6784,7 @@ input:checked + .slider:before {
 /* Custom styles for in-chat payment & tracking */
 .chat-overlay-pane {
     position: absolute;
-    top: 109px; /* height of header (73px) + role simulator bar (36px) */
+    top: var(--lyann-chat-header-offset, 54px);
     left: 0;
     right: 0;
     bottom: 0;
@@ -6782,11 +6798,16 @@ input:checked + .slider:before {
 }
 #chatTrackingOverlay.chat-overlay-pane {
     justify-content: flex-start;
-    top: 73px; /* Just below header */
+    top: var(--lyann-chat-header-offset, 54px);
     color: #1B4332;
     background: #FFFFFF;
+    z-index: 600;
 }
 #trackingMilestonesList {
+    color: #1B4332;
+}
+#trackingMilestonesList,
+#trackingMilestonesList * {
     color: #1B4332;
 }
 .role-pill {
@@ -7050,24 +7071,29 @@ input:checked + .slider:before {
 /* HEADER CHAT (54px compact) */
 .chat-header-bar {
     flex: 0 0 auto;
-    min-height: 54px;
-    padding: 10px 16px;
+    min-height: 48px;
+    padding: 6px 12px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     background: #FFFFFF;
     position: relative !important;
     z-index: 500 !important;
-    overflow: visible !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
     box-sizing: border-box;
+    flex-wrap: nowrap;
 }
 
 .chat-header-user {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
 }
 
 .chat-back-to-contacts-btn {
@@ -7102,13 +7128,23 @@ input:checked + .slider:before {
 
 .chat-header-info {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
     min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
 }
 
+.chat-header-name-row {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+}
 .chat-header-info strong {
-    font-size: 1.08rem; /* 17-18px */
+    font-size: 1.02rem;
     font-weight: 700;
     color: var(--text);
     white-space: nowrap;
@@ -7128,6 +7164,19 @@ input:checked + .slider:before {
     margin-top: 2px;
 }
 
+@media (max-width: 767px) {
+    #chatModal .chat-fav-header-btn,
+    #chatModal .chat-close-modal-btn {
+        display: none !important;
+    }
+    #chatModal .chat-more-btn,
+    #chatModal .chat-back-to-contacts-btn {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        min-height: 36px;
+    }
+}
 .chat-more-btn {
     width: 44px;
     height: 44px;
@@ -7155,17 +7204,20 @@ input:checked + .slider:before {
 }
 .chat-header-dropdown.active {
     display: block !important;
-    position: absolute !important;
-    right: 8px !important;
-    top: 52px !important;
+    position: fixed !important;
+    right: 12px !important;
+    top: 64px !important;
     background: #FFFFFF !important;
     border: 1px solid var(--border) !important;
     border-radius: 16px !important;
     box-shadow: 0 10px 30px rgba(0,0,0,0.22) !important;
     width: 210px !important;
-    z-index: 999999 !important;
+    z-index: 2147483640 !important;
     padding: 8px 0 !important;
     animation: fadeInNotif 0.15s ease-out;
+    max-height: min(70vh, 420px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .chat-dropdown-item {
     width: 100%;
@@ -7236,6 +7288,523 @@ input:checked + .slider:before {
     font-size: 1.1rem;
 }
 
+.chat-dossier-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: 72px;
+    width: 100%;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+    flex: 1 1 100%;
+}
+.chat-dossier-chip {
+    flex: 0 0 auto;
+    max-width: 220px;
+    min-height: 44px;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 14px;
+    padding: 6px 10px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    cursor: pointer;
+}
+.chat-dossier-chip.is-active {
+    border-color: var(--primary);
+    background: var(--bg-warm);
+}
+.chat-dossier-chip-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+.chat-dossier-chip-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.chat-dossier-event-open {
+    margin-top: 8px;
+    min-height: 44px;
+}
+.chat-dossier-role {
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.chat-missions-together {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 0;
+    min-height: 32px;
+    padding: 4px 8px;
+    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    cursor: pointer;
+    max-width: 9.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#chatHeaderActions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    min-width: 0;
+}
+.chat-missions-together i {
+    color: var(--primary);
+    flex-shrink: 0;
+}
+.chat-mission-picker,
+#chatMissionPickerOverlay.chat-overlay-pane {
+    position: absolute;
+    top: var(--lyann-chat-header-offset, 54px);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 600;
+    background: #fff;
+    color: var(--primary-dark);
+    flex-direction: column;
+    justify-content: flex-start;
+}
+.chat-mission-picker-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+.chat-mission-picker-back {
+    min-width: 44px;
+    min-height: 44px;
+    border: 0;
+    background: transparent;
+    color: var(--primary-dark);
+    cursor: pointer;
+}
+.chat-mission-picker-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+.chat-mission-picker-sub {
+    margin: 2px 0 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+.chat-mission-picker-tools {
+    padding: 12px 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.chat-mission-picker-search {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+.chat-mission-picker-filters {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.chat-mission-filter {
+    flex: 0 0 auto;
+    min-height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.chat-mission-filter.is-active {
+    background: var(--bg-warm);
+    color: var(--primary-dark);
+    border-color: var(--primary);
+}
+.chat-mission-picker-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 8px 16px 20px;
+    min-height: 0;
+}
+.chat-mission-pick {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 16px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    min-height: 64px;
+    cursor: pointer;
+}
+.chat-mission-pick-title {
+    font-weight: 800;
+    color: var(--primary-dark);
+}
+.chat-mission-pick-meta,
+.chat-mission-pick-next {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.chat-mission-pick-status {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+.chat-mission-empty {
+    padding: 28px 12px;
+    text-align: center;
+    color: var(--text-muted);
+}
+.chat-mission-empty strong {
+    display: block;
+    color: var(--primary-dark);
+    margin-bottom: 6px;
+}
+.chat-dossier-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: #FFFFFF;
+    box-shadow: 0 1px 0 rgba(27, 67, 50, 0.04);
+}
+.chat-dossier-card-head {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.chat-dossier-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.chat-dossier-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 2px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #F1F8F3;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+.chat-dossier-next {
+    padding: 12px 14px;
+    border: 1px solid rgba(74, 124, 89, 0.22);
+    border-radius: 14px;
+    background: #F1F8F3;
+}
+.chat-dossier-next h4 {
+    margin: 0 0 4px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--primary-dark);
+}
+.chat-dossier-next p {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    color: var(--text);
+}
+.chat-dossier-sheet-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--primary-dark);
+}
+.chat-dossier-sheet-amount {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--primary-dark);
+}
+.chat-dossier-sheet-quote {
+    margin: 0;
+    color: var(--text-muted);
+}
+.chat-dossier-sheet-status {
+    margin: 0;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+.chat-dossier-sheet-desc {
+    margin: 0;
+    color: var(--text);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.chat-dossier-cta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+.chat-dossier-cta .btn {
+    min-height: 44px;
+    width: 100%;
+}
+.chat-dossier-cta .btn-primary {
+    min-height: 52px;
+    font-size: 1.02rem;
+}
+.chat-dossier-wait {
+    margin: 0;
+    color: var(--text-muted);
+}
+.chat-dossier-payout-alert {
+    margin: 8px 0 12px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(232, 184, 63, 0.16);
+    border: 1px solid rgba(232, 184, 63, 0.4);
+}
+.chat-dossier-payout-alert strong {
+    display: block;
+    font-size: 0.92rem;
+    margin-bottom: 4px;
+}
+.chat-dossier-payout-alert p {
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+.chat-payout-context {
+    border-left: 3px solid var(--primary);
+}
+.chat-dossier-event-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+.chat-dossier-event-actions .btn {
+    min-height: 40px;
+}
+.chat-timeline-mission {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+.chat-pending-actions-banner {
+    flex: 0 0 auto;
+    padding: 8px 12px 0;
+    max-height: 42vh;
+}
+.chat-todo-panel {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #F8FBF8;
+    padding: 4px 10px 8px;
+}
+.chat-todo-summary {
+    list-style: none;
+    cursor: pointer;
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: var(--primary-dark);
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+}
+.chat-todo-summary::-webkit-details-marker {
+    display: none;
+}
+.chat-todo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 32vh;
+    overflow-y: auto;
+    padding-bottom: 4px;
+}
+.chat-todo-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #FFFFFF;
+}
+.chat-todo-item-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+.chat-todo-title {
+    font-size: 0.9rem;
+    color: var(--primary-dark);
+}
+.chat-todo-status {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--primary);
+    white-space: nowrap;
+}
+.chat-todo-context {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--text-muted);
+}
+.chat-todo-action {
+    min-height: 40px;
+    width: 100%;
+}
+.chat-notice-compact {
+    padding: 8px 12px !important;
+    margin: 6px 0 !important;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #FFFFFF;
+    max-width: 100%;
+}
+.chat-notice-compact .chat-timeline-title {
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+.chat-notice-compact .chat-timeline-body,
+.chat-notice-compact .chat-timeline-meta {
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+.chat-notice-compact .chat-dossier-event-actions .btn {
+    min-height: 36px;
+    font-size: 0.82rem;
+}
+.lyann-inbox-pending {
+    color: var(--primary);
+    font-weight: 700;
+}
+.chat-dossier-jalons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+.chat-dossier-jalon {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.88rem;
+}
+.chat-timeline-card.chat-dossier-event {
+    padding: 10px 12px;
+    margin: 8px 0;
+    max-width: 100%;
+}
+.chat-dossier-history {
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+}
+@media (max-width: 430px) {
+    .chat-missions-together {
+        max-width: 7.25rem;
+    }
+    #chatModal .chat-header-info strong {
+        font-size: 0.92rem;
+    }
+}
+@media (max-width: 380px) {
+    .chat-header-bar {
+        padding-left: 8px;
+        padding-right: 8px;
+        gap: 4px;
+    }
+    .chat-header-user {
+        gap: 4px;
+    }
+    #chatModal .chat-header-avatar,
+    body.lyann-messaging-open #chatModal .chat-header-avatar {
+        width: 24px !important;
+        height: 24px !important;
+    }
+    #chatModal .chat-back-to-contacts-btn,
+    #chatModal .chat-more-btn {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+    }
+    .chat-missions-together i {
+        display: none;
+    }
+    .chat-missions-together {
+        max-width: 6.6rem;
+        padding: 3px 7px;
+        font-size: 0.68rem;
+        gap: 0;
+    }
+    #chatModal .chat-header-info strong {
+        font-size: 0.88rem;
+    }
+}
+@media (max-width: 430px) {
+    .chat-dossier-strip {
+        max-height: 76px;
+    }
+    .chat-mission-banner {
+        flex-wrap: wrap;
+    }
+}
+
 /* MESSAGES CONTAINER & BUBBLES */
 .chat-messages-scroll {
     flex: 1 1 auto;
@@ -7250,8 +7819,10 @@ input:checked + .slider:before {
 }
 
 .chat-msg-bubble {
+    width: max-content;
     max-width: 100%;
-    min-width: 0;
+    min-width: 4.5rem;
+    box-sizing: border-box;
     padding: 12px 16px;
     border-radius: 18px;
     font-size: 1rem; /* 16px */
@@ -7260,6 +7831,19 @@ input:checked + .slider:before {
     word-break: normal;
     overflow-wrap: break-word;
     white-space: pre-wrap;
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+}
+.chat-msg-text {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    min-width: 0;
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+    white-space: pre-wrap;
+    word-break: normal;
+    overflow-wrap: break-word;
 }
 
 .chat-msg-bubble.received {
@@ -10097,6 +10681,74 @@ button.speed-dial-item,
     animation: spin 1s linear infinite !important;
 }
 
+@keyframes lyannBtnSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.lyann-btn-spin,
+.btn .lyann-btn-spin,
+button .ph.lyann-btn-spin {
+    display: inline-block;
+    animation: lyannBtnSpin 0.75s linear infinite;
+    font-size: 1.15em;
+    line-height: 1;
+    vertical-align: middle;
+}
+.btn.is-busy,
+button.is-busy {
+    position: relative;
+    pointer-events: none;
+    min-width: 2.75rem;
+    justify-content: center;
+}
+
+/*
+ * Tab / page transitions — NEVER animate transform/opacity on body.
+ * A transformed body becomes the containing block for position:fixed,
+ * which collapses #chatModal when messaging hides page sections.
+ */
+#lyann-page-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 2147482500;
+    background: #F7F5F0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.14s ease;
+}
+#lyann-page-veil.is-on {
+    opacity: 1;
+    pointer-events: auto;
+}
+@keyframes lyannPageEnter {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+#lyann-page-veil.is-enter {
+    animation: lyannPageEnter 0.2s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+    #lyann-page-veil,
+    #lyann-page-veil.is-on {
+        transition: none;
+        opacity: 0;
+        pointer-events: none;
+    }
+    #lyann-page-veil.is-enter {
+        animation: none;
+    }
+    .lyann-btn-spin,
+    .btn .lyann-btn-spin,
+    button .ph.lyann-btn-spin {
+        animation: none;
+    }
+}
+
+/* Keep noise below chat (chat sits at 9000 while messaging is open). */
+body.lyann-messaging-open::after {
+    display: none !important;
+}
+
 /* Safe Area support pour Notch, barre de navigation, status bar sur iOS & Android */
 body.is-native-app {
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -12446,13 +13098,17 @@ body.is-native-app .navbar.scrolled,
     position: relative;
     overflow: hidden;
     background: #DC2626;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    height: auto;
 }
 
 .chat-contact-item {
     position: relative;
     z-index: 2;
     background: #FFFFFF;
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
 }
 
 .chat-contact-item:hover .btn-delete-conv-desktop {
@@ -12505,7 +13161,7 @@ body.is-native-app .navbar.scrolled,
     align-items: flex-end;
     width: fit-content;
     max-width: min(78%, 520px);
-    min-width: 0;
+    min-width: 4.5rem;
     margin-bottom: 8px;
     align-self: flex-start;
 }
@@ -16713,7 +17369,7 @@ body.is-native-app .navbar .nav-auth-btn {
 }
 
 .chat-main-area.chat-child-surface-active .chat-overlay-pane {
-    top: 73px !important;
+    top: var(--lyann-chat-header-offset, 54px) !important;
     z-index: 250 !important;
 }
 
@@ -16741,7 +17397,15 @@ body:has(#chatLeaveReviewForm[style*="display:flex"]) #chatMissionContextBar {
 
 body:has(#chatTrackingOverlay[style*="display: flex"]) #chatTrackingOverlay,
 body:has(#chatTrackingOverlay[style*="display:flex"]) #chatTrackingOverlay {
-    z-index: 400 !important;
+    z-index: 600 !important;
+}
+#chatModal:has(#chatTrackingOverlay[style*="display: flex"]) .chat-missions-together,
+#chatModal:has(#chatTrackingOverlay[style*="display:flex"]) .chat-missions-together,
+#chatModal:has(#chatTrackingOverlay.is-open) .chat-missions-together,
+#chatModal:has(#chatMissionPickerOverlay[style*="display: flex"]) .chat-missions-together,
+#chatModal:has(#chatMissionPickerOverlay[style*="display:flex"]) .chat-missions-together,
+#chatModal:has(#chatMissionPickerOverlay.is-open) .chat-missions-together {
+    display: none !important;
 }
 
 /* LYANN CANONICAL MESSAGING SHELL v4 */
@@ -16752,7 +17416,8 @@ body:has(#chatTrackingOverlay[style*="display:flex"]) #chatTrackingOverlay {
 #chatModal .chat-main-area.lyann-child-surface-open #chatViewMissionBtn,
 #chatModal .chat-main-area.lyann-child-surface-open #chatMessagesContainer,
 #chatModal .chat-main-area.lyann-child-surface-open #chatReplyBar,
-#chatModal .chat-main-area.lyann-child-surface-open .chat-input-area {
+#chatModal .chat-main-area.lyann-child-surface-open .chat-input-area,
+#chatModal .chat-main-area.lyann-child-surface-open .chat-pending-actions-banner {
   display: none !important;
 }
 
@@ -16882,13 +17547,34 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
     top: 0 !important;
     z-index: 40 !important;
     flex: 0 0 auto !important;
-    min-height: 64px !important;
-    padding-top: calc(10px + env(safe-area-inset-top, 0px)) !important;
-    padding-bottom: 10px !important;
+    min-height: 44px !important;
+    padding-top: calc(4px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: 4px !important;
     background: #FFFFFF !important;
     background-color: #FFFFFF !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+  body.lyann-messaging-open #chatModal .chat-header-avatar {
+    width: 28px;
+    height: 28px;
+  }
+  body.lyann-messaging-open #chatModal .chat-header-subtitle {
+    display: none;
+  }
+  body.lyann-messaging-open #chatModal {
+    --lyann-chat-header-offset: calc(44px + env(safe-area-inset-top, 0px));
+  }
+  body.lyann-messaging-open #chatTrackingOverlay > div:first-child {
+    padding: 8px 12px !important;
+  }
+  body.lyann-messaging-open #chatTrackingOverlay #btnExitTracking {
+    min-height: 44px;
+    padding: 8px 12px !important;
+    font-size: 0.82rem !important;
+  }
+  body.lyann-messaging-open.chat-conversation-open #chatModal .chat-main-area.lyann-child-surface-open .chat-missions-together {
+    display: none !important;
   }
 
   
@@ -17268,8 +17954,15 @@ div:has(> #cpHeadline) { display: none !important; }
     background: #FFF8E8 !important;
 }
 
+/* Native: keep global artisan atmosphere (do not kill body::before). */
 body.is-native-app::before {
-    display: none !important;
+    display: block !important;
+    opacity: 0.22;
+    z-index: -1;
+    background-image: url('hero-image.webp');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: 100% 40%;
 }
 
 body.is-native-app .hamburger-drawer-overlay {
@@ -17346,6 +18039,7 @@ html.is-native-shell body:not(.user-is-logged-in) {
     background: #F7F5F0;
 }
 html.is-native-shell body:not(.user-is-logged-in)::before {
+    /* Guest home paints its own hero layer on #nativeGuestHome */
     display: none;
 }
 html.is-native-shell body:not(.user-is-logged-in) .navbar .nav-container,
@@ -17885,6 +18579,20 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     background: #fff;
     box-shadow: 0 2px 12px rgba(36, 56, 43, 0.06);
 }
+.chat-action-panel.is-neutral {
+    background: #f7f9f7;
+    border-style: dashed;
+    box-shadow: none;
+}
+.chat-mission-kicker {
+    margin: 0 0 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #6b7c72;
+    line-height: 1.3;
+}
 .chat-mission-head {
     display: flex;
     justify-content: space-between;
@@ -17905,6 +18613,12 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     margin: 8px 0 0;
     font-weight: 700;
     color: #35583f;
+}
+.chat-mission-actor {
+    margin: 4px 0 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #C69222;
 }
 .chat-mission-steps {
     display: flex;
@@ -17947,6 +18661,9 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     width: 100%;
     min-height: 44px;
     justify-content: center;
+}
+.chat-mission-actions .btn-outline {
+    order: 1;
 }
 .chat-mission-details {
     margin-top: 12px;
@@ -18431,6 +19148,11 @@ body:not(.user-is-logged-out) .feed-guest-cta { display: none; }
 /* Inbox list — mint field, white cards, filters */
 #chatModal .chat-contacts-sidebar {
     position: relative;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
     background: #F1F8F3 !important;
     border-right: 0 !important;
 }
@@ -18521,32 +19243,65 @@ body.keyboard-open.is-native-app.lyann-messaging-open.chat-list-open:not(.chat-c
 #chatModal .lyann-inbox-pill i { font-size: 0.95rem; opacity: 0.8; }
 #chatModal .lyann-inbox-pill.is-active { background: #3f7d52; color: #fff; }
 #chatModal .lyann-inbox-pill.is-active i { opacity: 1; }
-#chatModal .chat-contacts-list { padding: 2px 12px 96px; background: transparent; position: relative; z-index: 1; }
-#chatModal .chat-contact-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    width: 100%;
-    margin: 0 0 8px;
-    padding: 10px 12px;
-    min-height: 68px;
-    height: auto;
-    border: 0;
-    border-radius: 20px;
-    background: #fff;
+/* Inbox list must be the scrollport: flex child + min-height:0, or iOS clips
+   content under overflow:hidden ancestors with no nested scroll. */
+#chatModal .chat-contacts-sidebar > .chat-sidebar-header,
+#chatModal .chat-contacts-sidebar > .chat-search-wrapper,
+#chatModal .chat-contacts-sidebar > .lyann-inbox-filters {
+    flex: 0 0 auto !important;
+}
+#chatModal .chat-contacts-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    overscroll-behavior-y: contain;
+    padding: 8px 12px 96px;
+    background: transparent;
+    position: relative;
+    z-index: 1;
+}
+/* flex-shrink:0 — iOS WKWebView shrinks flex children in a scrollport and cards overlap */
+#chatModal .chat-contact-item,
+#chatModal button.chat-contact-item {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-shrink: 0 !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 12px 14px !important;
+    min-height: 76px !important;
+    height: auto !important;
+    max-height: none !important;
+    border: 0 !important;
+    border-radius: 20px !important;
+    background: #fff !important;
     box-shadow: 0 6px 16px rgba(47, 84, 58, 0.05);
     text-align: left;
     font: inherit;
     cursor: pointer;
-    box-sizing: border-box;
-    overflow: visible;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    position: relative !important;
+    transform: none !important;
+    line-height: 1.35 !important;
 }
 #chatModal .chat-contact-info {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-    flex: 1;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    height: auto !important;
+    overflow: hidden !important;
 }
 #chatModal .chat-contact-avatar,
 #chatModal .chat-contact-avatar-wrap.is-support {
@@ -18570,11 +19325,11 @@ body.keyboard-open.is-native-app.lyann-messaging-open.chat-list-open:not(.chat-c
 #chatModal .chat-contact-preview {
     color: #6b7c72;
     font-size: 0.86rem;
-    line-height: 1.3;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    line-height: 1.35;
+    display: block;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
 }
 #chatModal .chat-contact-item.is-unread .chat-contact-preview { color: #24352b; font-weight: 650; }
 #chatModal .chat-contact-time { margin-left: auto; color: #8a9a90; font-size: 0.75rem; font-weight: 600; flex: 0 0 auto; }
@@ -18614,6 +19369,23 @@ body.keyboard-open.is-native-app.lyann-messaging-open.chat-list-open:not(.chat-c
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+#chatModal .lyann-inbox-unread[hidden] { display: none !important; }
+#chatModal .lyann-inbox-new {
+    flex: 0 0 auto;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #fff;
+    background: #3f7d52;
+    border-radius: 999px;
+    padding: 2px 7px;
+}
+#chatModal .chat-contact-item.is-unread {
+    background: #f4faf6;
+}
+#chatModal .chat-contact-item.is-live-new {
+    box-shadow: inset 3px 0 0 #3f7d52;
 }
 #chatModal .lyann-inbox-compose {
     position: absolute;
@@ -18802,8 +19574,15 @@ body.lyann-messaging-open {
     background: #F1F8F3 !important;
 }
 body.lyann-messaging-open::before {
-    display: none !important;
-    content: none !important;
+    display: block !important;
+    opacity: 0.22;
+    z-index: -1;
+    background-color: transparent;
+    background-image: url('hero-image.webp');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: 100% 40%;
+    animation: none;
 }
 body.lyann-messaging-open .bokantaj-top-filter-row,
 body.lyann-messaging-open #bokantajFilterSheetModal,
@@ -18829,10 +19608,10 @@ body.lyann-messaging-open .flash-feed-list {
     visibility: hidden !important;
     pointer-events: none !important;
 }
-body.lyann-messaging-open #userAccountModal,
-body.lyann-messaging-open #userAccountModal.modal-overlay,
-body.lyann-messaging-open #userAccountModal.modal-overlay.active,
-body.lyann-messaging-open #userAccountModal.lyann-surface-active {
+/* While messaging owns the shell, keep Mon Compte out of the way — but never
+   after the router has dismissed messaging to open account / publish. */
+body.lyann-messaging-open:not(:has(#userAccountModal.modal-overlay.active)) #userAccountModal,
+body.lyann-messaging-open:not(:has(#userAccountModal.modal-overlay.active)) #userAccountModal.modal-overlay {
     display: none !important;
     visibility: hidden !important;
     pointer-events: none !important;
@@ -18866,6 +19645,27 @@ html body #notificationsModal.sheet-backdrop.active,
 html body #notificationsModal.lyann-notif-backdrop.active,
 html body .lyann-notif-backdrop.active {
     z-index: 2147483002 !important;
+}
+
+/* Major surfaces must open ABOVE the native hamburger (iOS was opening behind it). */
+html body #userAccountModal.modal-overlay.active,
+html body #userAccountModal.modal-overlay.lyann-surface-active,
+html body #modal-request-help.modal-overlay.active,
+html body #loginModal.modal-overlay.active,
+html body #onboardingModal.modal-overlay.active,
+html body #modalCompleteProfile.modal-overlay.active,
+html body #lyannDetailModal.modal-overlay.active,
+html body #lyannDetailModal.modal-overlay.lyann-surface-active,
+html body #publicMemberProfileModal.modal-overlay.active,
+html body #quickProfileModal.modal-overlay.active {
+    z-index: 2147483010 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+html body.is-native-app #userAccountModal.modal-overlay.active,
+html body.is-native-app #modal-request-help.modal-overlay.active {
+    display: flex !important;
 }
 #notificationsModal.sheet-backdrop.active,
 #notificationsModal.lyann-notif-backdrop.active,
@@ -18991,8 +19791,21 @@ html body .lyann-notif-backdrop.active {
         max-width: 100% !important;
         margin: 10px 16px 8px !important;
     }
-    body.lyann-messaging-open #chatModal .chat-msg-bubble {
+    body.lyann-messaging-open #chatModal .chat-msg-bubble-wrap {
         max-width: min(420px, 72%) !important;
+        min-width: 4.5rem !important;
+    }
+    body.lyann-messaging-open #chatModal .chat-msg-bubble {
+        width: max-content !important;
+        max-width: 100% !important;
+        min-width: 4.5rem !important;
+    }
+    body.lyann-messaging-open #chatModal .chat-msg-text {
+        width: max-content !important;
+        max-width: 100% !important;
+        writing-mode: horizontal-tb !important;
+        white-space: pre-wrap !important;
+        word-break: normal !important;
     }
     body.lyann-messaging-open #chatModal .chat-back-to-contacts-btn {
         display: none !important;
@@ -19155,18 +19968,71 @@ body.lyann-messaging-open:has(#chatModal .chat-modal-layout.mobile-conversation-
 body.chat-conversation-open.lyann-messaging-open #chatModal .chat-header-bar {
     background: #F1F8F3 !important;
     background-color: #F1F8F3 !important;
-    min-height: 56px !important;
+    min-height: 44px !important;
     height: auto !important;
-    overflow: hidden !important;
+    /* visible : le menu ••• sort sous le header — hidden le coupait / le passait derrière le fil */
+    overflow: visible !important;
     flex-shrink: 0 !important;
     border-bottom: 0 !important;
     position: relative !important;
-    z-index: 30 !important;
+    z-index: 4000 !important;
+    /* No transform: any transform on chrome above the thread can still confuse iOS hit-testing. */
+}
+body.chat-conversation-open.lyann-messaging-open #chatModal .chat-header-dropdown.active {
+    z-index: 5000 !important;
 }
 body.chat-conversation-open #chatModal .chat-main-area,
 body.chat-conversation-open #chatModal .chat-messages-scroll {
     background: #F1F8F3 !important;
     background-color: #F1F8F3 !important;
+}
+/* iOS WKWebView: nested overflow-y scroll breaks when an ancestor keeps a transform
+   (even translateX(0)). Keep the off-screen slide transform; clear it when active. */
+body.chat-conversation-open #chatModal .chat-messages-scroll,
+body.chat-conversation-open #chatModal #chatMessagesContainer {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    overscroll-behavior-y: contain;
+}
+/* Inbox (list open, thread closed): same scrollport contract as the thread.
+   Sidebar only — do not force .chat-modal-layout to column (desktop is 2-pane). */
+body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal .chat-contacts-sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal .chat-contacts-list,
+body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal #chatContactsList {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    overscroll-behavior-y: contain;
+}
+body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal .chat-contact-item,
+body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal button.chat-contact-item,
+body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal .chat-contact-swipe-wrapper {
+    flex: 0 0 auto !important;
+    flex-shrink: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+}
+/* Sticky header is redundant once the list is the scroller; keep chrome in flow. */
+body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal .chat-sidebar-header {
+    position: relative !important;
+    top: auto !important;
 }
 body.chat-conversation-open #chatModal .chat-msg-bubble.received {
     background: #ffffff !important;
@@ -19256,18 +20122,225 @@ html body.keyboard-open.chat-conversation-open #chatModal.modal-overlay.active {
     }
     #chatModal .chat-modal-layout.mobile-conversation-active .chat-main-area {
         display: flex !important;
+        flex-direction: column !important;
         visibility: visible;
         pointer-events: auto;
         position: absolute;
         inset: 0;
-        transform: translateX(0);
+        /* transform:none — translateX(0) still creates a containing block and kills iOS thread scroll */
+        transform: none;
         transition: transform 200ms ease;
         z-index: 5 !important;
         width: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
         background: #F1F8F3 !important;
     }
 }
-#chatModal #chatViewMissionBtn {
+#chatModal #chatViewMissionBtn,
+#chatModal #chatMissionContextBar,
+#chatModal #chatMissionContext,
+#chatModal #chatFinanceStrip,
+#chatModal .lyann-finance-strip,
+#chatModal #chatContextualActionsBar:empty {
     display: none !important;
+}
+
+.milestone-allocation-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.md-milestone-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.md-milestone-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #fff;
+}
+.md-milestone-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.md-milestone-remove {
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+}
+.md-milestone-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.md-milestone-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+}
+.md-milestone-grid input,
+.md-milestone-card > .modal-input,
+#mdTotalAmount {
+    min-height: 44px;
+    font-size: 16px;
+}
+.md-add-milestone {
+    min-height: 48px;
+    width: 100%;
+    font-weight: 800;
+}
+.md-assign-remainder {
+    min-height: 40px;
+    width: 100%;
+    font-size: 0.78rem;
+}
+.md-allocation-summary {
+    position: relative;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #F1F8F3;
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+}
+.md-allocation-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+.md-allocation-live {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+#milestoneDevisForm {
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    max-height: min(78vh, 640px);
+}
+@media (max-width: 390px) {
+    .md-milestone-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.lyann-profile-share-overlay {
+    z-index: 1000008;
+}
+.lyann-profile-share-card {
+    max-height: min(82vh, 640px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.lyann-share-subtitle {
+    margin: 0 0 14px;
+    font-size: 0.88rem;
+    color: #64748b;
+}
+.lyann-share-dest-grid {
+    display: grid;
+    gap: 10px;
+}
+.lyann-share-dest-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 52px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #fff;
+    color: var(--text);
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+}
+.lyann-share-dest-btn i {
+    font-size: 1.4rem;
+    color: var(--primary);
+}
+.lyann-share-search {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+.lyann-share-recipient-list {
+    overflow-y: auto;
+    max-height: 46vh;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.lyann-share-recipient {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 48px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 12px;
+    background: #f8fafc;
+    cursor: pointer;
+    text-align: left;
+    font-weight: 700;
+}
+.lyann-share-recipient img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #e6efe9;
+}
+.lyann-share-empty {
+    margin: 8px 0 0;
+    color: #64748b;
+    font-size: 0.88rem;
+}
+.lyann-shared-profile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    min-width: 180px;
+    padding: 12px 14px;
+    border: 1px solid rgba(74, 124, 89, 0.28);
+    border-radius: 16px;
+    background: #f4faf6;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.lyann-shared-profile-kicker {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #4A7C59;
+}
+.lyann-shared-profile-name {
+    font-size: 0.98rem;
+    font-weight: 800;
+}
+.lyann-shared-profile-cta {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #4A7C59;
 }
 

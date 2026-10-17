@@ -15,6 +15,7 @@
     
     <!-- Admin Stylesheet -->
     <link rel="stylesheet" href="admin-style.css">
+    <link rel="stylesheet" href="finance-desk.css?v=20261015a">
 </head>
 <body class="admin-body">
 
@@ -691,6 +692,8 @@
                     </div>
                 </div>
 
+                <div id="adminFinanceDeskRoot" class="finance-desk" aria-label="Dossiers remboursement et litiges"></div>
+
                 <div class="admin-card">
                     <table class="admin-table">
                         <thead>
@@ -810,6 +813,8 @@
                         <p class="admin-page-sub">Gel des séquestres Stripe et médiation administrative entre parties.</p>
                     </div>
                 </div>
+
+                <div id="adminDisputeDeskRoot" class="finance-desk" aria-label="Litiges financiers"></div>
 
                 <div class="admin-card">
                     <table class="admin-table">
@@ -2151,11 +2156,22 @@
     <script src="subscriptions-engine.js"></script>
     <script src="pro-verification-engine.js"></script>
     <script src="search-engine.js"></script>
+    <script src="deal-notification-policy.js?v=20261014e6"></script>
     <script src="notification-engine.js"></script>
     <script src="notifications-service.js"></script>
     <script src="dialog.js"></script>
     <script src="matching-engine.js"></script>
     <script src="ai-classifier.js"></script>
+    <script src="finance-policy-ui.js"></script>
+    <script src="finance-desk.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.LYANN_FINANCE_DESK) return;
+            if (document.getElementById('adminFinanceDeskRoot')) {
+                window.LYANN_FINANCE_DESK.mount('#adminFinanceDeskRoot', { role: 'admin', caseId: 'funded_not_started', screen: 'payment', syncHash: false });
+            }
+        });
+    </script>
     <script src="admin-script.js"></script>
 </body>
 </html>

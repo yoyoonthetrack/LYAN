@@ -137,10 +137,185 @@
     }
 
     const ACTIVE_MISSION = new Set(['AGREED', 'IN_PROGRESS', 'WORK_MARKED_COMPLETE']);
+    const FINISHED_MISSION = new Set(['COMPLETED', 'CANCELLED', 'CANCELED']);
 
     function missionRequestId(mission) {
         if (!mission) return null;
         return mission.related_request_id || mission.request_id || null;
+    }
+
+    function isFinishedMission(mission) {
+        return FINISHED_MISSION.has(String((mission && mission.status) || '').toUpperCase());
+    }
+
+    function isActiveMission(mission) {
+        return ACTIVE_MISSION.has(String((mission && mission.status) || ''));
+    }
+
+    /**
+     * Resolve which request/invitation/mission should drive quote context for a pair.
+     * Prefer explicit ids; pair-only fallback only when the deal context is unique.
+     * Never promote a finished mission from another annonce as the active deal.
+     */
+    function resolveQuoteContextSelection(input) {
+        const invitations = Array.isArray(input && input.invitations) ? input.invitations.filter(Boolean) : [];
+        const missions = Array.isArray(input && input.missions) ? input.missions.filter(Boolean) : [];
+        const requestId = input && input.requestId ? String(input.requestId) : '';
+        const invitationId = input && input.invitationId ? String(input.invitationId) : '';
+        const missionId = input && input.missionId ? String(input.missionId) : '';
+
+        function acceptedForRequest(rid) {
+            return invitations.filter((invitation) => {
+                return invitation
+                    && String(invitation.request_id || '') === String(rid)
+                    && String(invitation.status || '') === 'ACCEPTED';
+            });
+        }
+
+        function pack(code, fields) {
+            return {
+                ok: Boolean(fields && fields.ok),
+                ambiguous: Boolean(fields && fields.ambiguous),
+                code: code,
+                requestId: (fields && fields.requestId) || null,
+                invitationId: (fields && fields.invitationId) || null,
+                invitationIds: Array.isArray(fields && fields.invitationIds) ? fields.invitationIds : [],
+                missionId: (fields && fields.missionId) || null
+            };
+        }
+
+        function fromRequest(rid, code) {
+            const matchedInvs = acceptedForRequest(rid);
+            const matchedMissions = missions.filter((mission) => String(missionRequestId(mission) || '') === String(rid));
+            const active = matchedMissions.filter(isActiveMission);
+            const invitationIds = matchedInvs.map((invitation) => invitation.id).filter(Boolean);
+            if (!matchedInvs.length && !matchedMissions.length) {
+                return pack('missing', { ok: false, ambiguous: false, requestId: rid });
+            }
+            return pack(code || 'matched_request', {
+                ok: true,
+                ambiguous: false,
+                requestId: rid,
+                invitationId: invitationIds[0] || null,
+                invitationIds: invitationIds,
+                missionId: active.length === 1 ? active[0].id : null
+            });
+        }
+
+        if (missionId) {
+            const mission = missions.find((row) => String(row.id) === missionId) || null;
+            if (!mission) {
+                return pack('mission_missing', { ok: false, ambiguous: false, requestId: requestId || null, missionId: missionId });
+            }
+            const linkedRequest = missionRequestId(mission);
+            if (requestId && linkedRequest && String(linkedRequest) !== requestId) {
+                return pack('mission_request_mismatch', {
+                    ok: false,
+                    ambiguous: false,
+                    requestId: requestId,
+                    missionId: missionId
+                });
+            }
+            const resolvedRequest = requestId || (linkedRequest ? String(linkedRequest) : '');
+            const linkedInvitation = mission.request_invitation_id ? String(mission.request_invitation_id) : '';
+            let matchedInvs = invitations.filter((invitation) => {
+                if (!invitation) return false;
+                if (linkedInvitation && String(invitation.id) === linkedInvitation) return true;
+                if (resolvedRequest && String(invitation.request_id) === resolvedRequest) return true;
+                return false;
+            });
+            matchedInvs = matchedInvs.filter((invitation) => {
+                const status = String(invitation.status || '');
+                return !status || status === 'ACCEPTED';
+            });
+            if (invitationId) {
+                matchedInvs = matchedInvs.filter((invitation) => String(invitation.id) === invitationId);
+                if (!matchedInvs.length) {
+                    return pack('invitation_mismatch', {
+                        ok: false,
+                        ambiguous: false,
+                        requestId: resolvedRequest || null,
+                        missionId: missionId
+                    });
+                }
+            }
+            const invitationIds = matchedInvs.map((invitation) => invitation.id).filter(Boolean);
+            if (linkedInvitation && !invitationIds.includes(linkedInvitation)) invitationIds.unshift(linkedInvitation);
+            return pack('matched_mission', {
+                ok: true,
+                ambiguous: false,
+                requestId: resolvedRequest || null,
+                invitationId: invitationIds[0] || linkedInvitation || null,
+                invitationIds: invitationIds,
+                missionId: missionId
+            });
+        }
+
+        if (invitationId) {
+            const invitation = invitations.find((row) => String(row.id) === invitationId) || null;
+            if (!invitation) {
+                return pack('invitation_missing', { ok: false, ambiguous: false, requestId: requestId || null, invitationId: invitationId });
+            }
+            if (requestId && String(invitation.request_id || '') !== requestId) {
+                return pack('invitation_request_mismatch', {
+                    ok: false,
+                    ambiguous: false,
+                    requestId: requestId,
+                    invitationId: invitationId
+                });
+            }
+            const resolvedRequest = String(invitation.request_id || requestId || '') || null;
+            const linkedMission = missions.find((mission) => {
+                return String(mission.request_invitation_id || '') === invitationId
+                    || (resolvedRequest && String(missionRequestId(mission) || '') === resolvedRequest && isActiveMission(mission));
+            }) || null;
+            if (linkedMission && requestId && missionRequestId(linkedMission)
+                && String(missionRequestId(linkedMission)) !== requestId) {
+                return pack('mission_request_mismatch', {
+                    ok: false,
+                    ambiguous: false,
+                    requestId: requestId,
+                    invitationId: invitationId
+                });
+            }
+            return pack('matched_invitation', {
+                ok: true,
+                ambiguous: false,
+                requestId: resolvedRequest,
+                invitationId: invitationId,
+                invitationIds: [invitationId],
+                missionId: linkedMission && isActiveMission(linkedMission) ? linkedMission.id : null
+            });
+        }
+
+        if (requestId) return fromRequest(requestId, 'matched_request');
+
+        const accepted = invitations.filter((invitation) => String((invitation && invitation.status) || '') === 'ACCEPTED');
+        const uniqueRequests = [...new Set([
+            ...accepted.map((invitation) => String(invitation.request_id || '')).filter(Boolean),
+            ...missions.map((mission) => {
+                const rid = missionRequestId(mission);
+                return rid ? String(rid) : '';
+            }).filter(Boolean)
+        ])];
+
+        const openRequestIds = uniqueRequests.filter((rid) => {
+            const forRequest = missions.filter((mission) => String(missionRequestId(mission) || '') === rid);
+            if (forRequest.some(isActiveMission)) return true;
+            if (forRequest.length && forRequest.every(isFinishedMission)) return false;
+            return accepted.some((invitation) => String(invitation.request_id || '') === rid);
+        });
+
+        if (openRequestIds.length === 1) return fromRequest(openRequestIds[0], 'unique_open');
+        if (openRequestIds.length > 1) {
+            return pack('ambiguous', { ok: false, ambiguous: true });
+        }
+        // No open deal: allow fallback only when a single request context is verifiable.
+        if (uniqueRequests.length === 1) return fromRequest(uniqueRequests[0], 'unique_finished');
+        if (uniqueRequests.length > 1) {
+            return pack('ambiguous_finished', { ok: false, ambiguous: true });
+        }
+        return pack('missing', { ok: false, ambiguous: false });
     }
 
     function selectThreadContext(input) {
@@ -168,10 +343,7 @@
         if (!requestId) return { mission: null, ambiguous: false, requestId: null };
         if (active.length === 1) return { mission: active[0], ambiguous: false, requestId };
         if (active.length > 1) return { mission: null, ambiguous: true, requestId };
-        const completed = matching.filter((mission) => String(mission.status || '') === 'COMPLETED');
-        if (completed.length === 1 && matching.length === 1) {
-            return { mission: completed[0], ambiguous: false, requestId };
-        }
+        // Missions terminées : pas de bandeau / chrome en tête de conversation.
         return { mission: null, ambiguous: false, requestId };
     }
 
@@ -270,6 +442,7 @@
         acceptSignatureFallback,
         selectThreadContext,
         selectInvitationForRequest,
+        resolveQuoteContextSelection,
         decideAcceptance
     };
 });

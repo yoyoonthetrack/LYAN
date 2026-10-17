@@ -11,7 +11,7 @@ if (!process.env.VERCEL && !process.argv.includes('--force')) {
   process.exit(1);
 }
 
-const pages = fs.readdirSync(root).filter((f) => f.endsWith('.html') && !/^admin/.test(f));
+const pages = fs.readdirSync(root).filter((f) => f.endsWith('.html'));
 for (const page of pages) {
   buildHtmlFile(path.join(root, page));
 }

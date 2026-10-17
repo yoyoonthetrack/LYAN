@@ -6,6 +6,7 @@
     'use strict';
 
     // Same payable rule as connectPayoutReady: ready does not depend on payouts_enabled.
+    // pending = account exists, onboarding done, transfers not yet active (verification).
     function payoutAccountState(status) {
         if (!status || status.success === false) return 'error';
         const payable = status.ready === true
@@ -13,6 +14,9 @@
             && status.onboarding_completed === true
             && status.transfers_active === true;
         if (payable) return 'active';
+        if (status.account_created === true && status.onboarding_completed === true && status.transfers_active !== true) {
+            return 'pending';
+        }
         if (status.account_created === true) return 'incomplete';
         return 'none';
     }
@@ -39,6 +43,7 @@
         loading: { title: 'Compte de versement', subtitle: 'Vérification…', action: '', ready: false, intent: 'onboarding' },
         none: { title: 'Compte de versement', subtitle: 'À configurer', action: 'Configurer', ready: false, intent: 'onboarding' },
         incomplete: { title: 'Compte de versement', subtitle: 'Configuration à terminer', action: 'Continuer', ready: false, intent: 'onboarding' },
+        pending: { title: 'Compte de versement', subtitle: 'Vérification en cours', action: '', ready: false, intent: '' },
         active: {
             title: 'Compte de versement actif',
             subtitle: 'Vos informations de versement sont configurées.',
@@ -46,7 +51,7 @@
             ready: true,
             intent: 'update'
         },
-        error: { title: 'Compte de versement', subtitle: 'Impossible de vérifier votre compte de versement.', action: 'Réessayer', ready: false, intent: 'onboarding' }
+        error: { title: 'Compte de versement', subtitle: 'Impossible de vérifier votre compte de versement. Vérifiez votre connexion, puis réessayez.', action: 'Réessayer', ready: false, intent: 'onboarding' }
     };
 
     function payoutLinkPath(intent) {
@@ -76,7 +81,63 @@
         return { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
     }
 
+    const SIM_KEY = 'lyann_connect_sim';
+
+    function connectSimulationBody(state) {
+        const base = {
+            success: true,
+            ready: false,
+            account_created: false,
+            onboarding_completed: false,
+            transfers_active: false,
+            payouts_enabled: false,
+            charges_enabled: false
+        };
+        if (state === 'none') return base;
+        if (state === 'incomplete') return Object.assign({}, base, { account_created: true });
+        if (state === 'pending') return Object.assign({}, base, { account_created: true, onboarding_completed: true });
+        if (state === 'active') {
+            return Object.assign({}, base, {
+                ready: true,
+                account_created: true,
+                onboarding_completed: true,
+                transfers_active: true
+            });
+        }
+        if (state === 'error') return { success: false };
+        return null;
+    }
+
+    function readConnectSimulation() {
+        try {
+            const raw = sessionStorage.getItem(SIM_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            return parsed && parsed.state ? String(parsed.state) : '';
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function simulateConnect(state) {
+        try {
+            if (!state) sessionStorage.removeItem(SIM_KEY);
+            else sessionStorage.setItem(SIM_KEY, JSON.stringify({ state: String(state) }));
+        } catch (_) {}
+        return readConnectSimulation();
+    }
+
     async function connectRequest(path, options) {
+        const method = String((options && options.method) || 'GET').toUpperCase();
+        const sim = readConnectSimulation();
+        if (sim && method === 'GET' && /\/v1\/payments\/connect\/(status|peer-status)/.test(String(path || ''))) {
+            if (sim === 'unknown') {
+                const error = new Error('unknown');
+                error.code = 'unknown';
+                throw error;
+            }
+            const body = connectSimulationBody(sim);
+            if (body) return body;
+        }
         const headers = await authHeader();
         if (!headers) {
             const error = new Error('auth');
@@ -84,7 +145,15 @@
             throw error;
         }
         const fetcher = window.lyannBackendFetch || window.fetch.bind(window);
-        const response = await fetcher(path, Object.assign({ headers }, options || {}));
+        let response;
+        try {
+            response = await fetcher(path, Object.assign({ headers }, options || {}));
+        } catch (networkError) {
+            const error = new Error('network');
+            error.code = 0;
+            error.cause = networkError;
+            throw error;
+        }
         let body = {};
         try { body = await response.json(); } catch (_) {}
         if (response.status === 401) {
@@ -105,8 +174,48 @@
             || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
     }
 
-    function openStripe(url) {
+    const RETURN_KEY = 'lyann_payout_return';
+
+    function rememberPayoutReturn(hint) {
+        const payload = hint && typeof hint === 'object' ? {
+            requestId: hint.requestId || null,
+            invitationId: hint.invitationId || null,
+            contactId: hint.contactId || null,
+            conversationId: hint.conversationId || null,
+            contactName: hint.contactName || '',
+            at: Date.now()
+        } : null;
+        try {
+            if (payload && (payload.requestId || payload.invitationId || payload.contactId)) {
+                sessionStorage.setItem(RETURN_KEY, JSON.stringify(payload));
+            }
+            sessionStorage.setItem('lyann_payout_setup', '1');
+        } catch (_) {}
+        return payload;
+    }
+
+    function readPayoutReturn() {
+        try {
+            const raw = sessionStorage.getItem(RETURN_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function clearPayoutReturn() {
+        try { sessionStorage.removeItem(RETURN_KEY); } catch (_) {}
+    }
+
+    async function openStripe(url) {
         try { sessionStorage.setItem('lyann_payout_setup', '1'); } catch (_) {}
+        const app = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+        if (isNative() && app && typeof app.openUrl === 'function') {
+            try {
+                await app.openUrl({ url: url });
+                return;
+            } catch (_) {}
+        }
         if (isNative()) {
             const opened = window.open(url, '_blank');
             if (!opened) window.location.assign(url);
@@ -116,6 +225,10 @@
     }
 
     async function fetchReadiness(userId) {
+        const sim = readConnectSimulation();
+        if (sim === 'unknown') return 'unknown';
+        if (sim === 'error') return 'error';
+        if (sim) return payoutAccountState(connectSimulationBody(sim));
         const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
         const session = supabase ? await supabase.auth.getSession() : null;
         const mine = session && session.data && session.data.session && session.data.session.user && session.data.session.user.id;
@@ -126,7 +239,8 @@
         return payoutAccountState(body);
     }
 
-    async function beginPayoutSetup() {
+    async function beginPayoutSetup(hint) {
+        rememberPayoutReturn(hint);
         try {
             await startOnboarding();
         } catch (error) {
@@ -145,7 +259,7 @@
             body: JSON.stringify(payoutReturnUrls())
         });
         if (!link.url) throw new Error('api');
-        openStripe(link.url);
+        await openStripe(link.url);
     }
 
     async function startAccountUpdate() {
@@ -154,7 +268,7 @@
             body: '{}'
         });
         if (!link.url) throw new Error('api');
-        openStripe(link.url);
+        await openStripe(link.url);
     }
 
     function paint(view) {
@@ -225,7 +339,13 @@
             return null;
         };
         Promise.resolve(open()).then(async () => {
+            const hint = readPayoutReturn();
             const state = await refresh();
+            try {
+                window.dispatchEvent(new CustomEvent('lyann:payout-readiness', { detail: { state: state || 'error', hint: hint || null } }));
+                window.dispatchEvent(new CustomEvent('lyann:payout-return', { detail: { state: state || 'error', hint: hint || null } }));
+            } catch (_) {}
+            if (hint && (hint.requestId || hint.invitationId)) return;
             if (mode === 'refresh' && state !== 'active' && state !== 'error') {
                 try { await startOnboarding(); } catch (_) { paint(renderPayoutAccount('error')); }
             }
@@ -239,9 +359,11 @@
         if (typeof window.openAccountModalSubView === 'function') {
             try { await window.openAccountModalSubView('finances'); } catch (_) {}
         }
+        const hint = readPayoutReturn();
         const state = await refresh();
         try {
-            window.dispatchEvent(new CustomEvent('lyann:payout-readiness', { detail: { state: state || 'error' } }));
+            window.dispatchEvent(new CustomEvent('lyann:payout-readiness', { detail: { state: state || 'error', hint: hint || null } }));
+            window.dispatchEvent(new CustomEvent('lyann:payout-return', { detail: { state: state || 'error', hint: hint || null } }));
         } catch (_) {}
         return state;
     }
@@ -268,5 +390,5 @@
         else boot();
     }
 
-    return { payoutAccountState, payoutReturnUrls, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh, fetchReadiness, beginPayoutSetup, resumeSetup };
+    return { payoutAccountState, payoutReturnUrls, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh, fetchReadiness, beginPayoutSetup, resumeSetup, rememberPayoutReturn, readPayoutReturn, clearPayoutReturn, simulateConnect, connectSimulationBody, readConnectSimulation };
 });

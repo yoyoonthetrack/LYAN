@@ -1191,28 +1191,32 @@ safeDomReady(() => {
         }
 
         const cleanFn = window.capitalizeLyannName(fn);
-        const cleanLnInit = ln ? ln.replace(/[^a-zA-Z]/g, '').charAt(0).toUpperCase() : '';
+        const initialFrom = (value) => {
+            const raw = String(value || '').trim();
+            const letter = raw.match(/[A-Za-zÀ-ÿ]/);
+            return letter ? letter[0].toUpperCase() : '';
+        };
+        const cleanLnInit = initialFrom(ln);
 
         if (cleanFn && cleanLnInit) {
-            return `${cleanFn}.${cleanLnInit}`;
+            return `${cleanFn} ${cleanLnInit}.`;
         }
         if (cleanFn) {
             return cleanFn;
         }
         if (dn && dn !== 'Lyanneur' && dn !== 'Membre LYANN') {
-            if (dn.includes('.') && !dn.endsWith('.')) {
-                const parts = dn.split('.');
-                const firstP = window.capitalizeLyannName(parts[0]);
-                const lastP = parts[1] ? parts[1].replace(/[^a-zA-Z]/g, '').charAt(0).toUpperCase() : '';
-                if (firstP && lastP) return `${firstP}.${lastP}`;
-                if (firstP) return firstP;
+            const dotted = dn.match(/^([^.\s]+)\s*\.\s*([A-Za-zÀ-ÿ])/);
+            if (dotted) {
+                const firstP = window.capitalizeLyannName(dotted[1]);
+                const lastP = dotted[2].toUpperCase();
+                if (firstP && lastP) return `${firstP} ${lastP}.`;
             }
             if (dn.includes(' ')) {
                 const parts = dn.trim().split(/\s+/);
                 if (parts.length > 1) {
                     const firstP = window.capitalizeLyannName(parts[0]);
-                    const lastP = parts[parts.length - 1].replace(/[^a-zA-Z]/g, '').charAt(0).toUpperCase();
-                    if (firstP && lastP) return `${firstP}.${lastP}`;
+                    const lastP = initialFrom(parts[parts.length - 1]);
+                    if (firstP && lastP) return `${firstP} ${lastP}.`;
                     if (firstP) return firstP;
                 }
             }
@@ -1248,6 +1252,14 @@ safeDomReady(() => {
 
         // Build Name Prénom N. using canonical formatter
         const formattedName = window.formatPublicName(pData, null, 'Lyanneur');
+        currentVisitingMember = {
+            id: pData.id,
+            user_id: pData.id,
+            name: formattedName,
+            role: pData.primary_activity || pData.headline || pData.role || 'Lyanneur',
+            avatar: pData.avatar_url || pData.avatar || ''
+        };
+        window.currentVisitingMember = currentVisitingMember;
         const safeDisplayName = window.escapeHtmlAttr(formattedName);
         const avatarSrc = window.escapeHtmlAttr(window.resolveLyannAvatarSrc(pData.avatar_url || pData.avatar));
 
@@ -1272,10 +1284,12 @@ safeDomReady(() => {
 
         // Build CTA Group
         let ctaHTML = '';
+        const shareProfileBtnHtml = `<button type="button" class="btn-share-profile" id="shareProfileBtn" aria-label="Partager le profil" title="Partager le profil" style="background: none; border: 1px solid #CBD5E1; border-radius: 50%; padding: 8px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #64748B; cursor: pointer; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;"><i class="ph ph-share-network"></i></button>`;
         if (isSelf) {
             ctaHTML = `
                 <div class="lyann-profile-cta-group">
                     <button type="button" class="btn btn-outline btn-sm" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();"><i class="ph ph-pencil-simple"></i> Modifier mon profil</button>
+                    ${shareProfileBtnHtml}
                 </div>
             `;
         } else {
@@ -1288,6 +1302,7 @@ safeDomReady(() => {
                     <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="PROFILE" data-favorite-id="${pData.id}" data-fav-type="PROFILE" data-fav-id="${pData.id}" data-surface="profile-modal" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: 1px solid #CBD5E1; border-radius: 50%; padding: 8px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #64748B; cursor: pointer; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                         <i class="ph ph-bookmark-simple"></i>
                     </button>
+                    ${shareProfileBtnHtml}
                 </div>
             `;
         }
@@ -1756,21 +1771,7 @@ safeDomReady(() => {
         });
     }
 
-    // Share profile
-    if (shareProfileBtn) {
-        shareProfileBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if (currentVisitingMember) {
-                const text = `Découvrez le profil de ${currentVisitingMember.name} (${currentVisitingMember.role}) sur LYANN !`;
-                const url = window.location.href;
-                const shared = await shareNative("Profil LYANN", text, url);
-                if (!shared && navigator.clipboard) {
-                    navigator.clipboard.writeText(url);
-                    window.lyannAlert(`🔗 Lien du profil de ${currentVisitingMember.name} copié dans votre presse-papier !`);
-                }
-            }
-        });
-    }
+    // Share profile — owned by window.shareProfile (OS sheet + chat LYANN).
 
     // Public tabs switcher
     const publicTabBtns = document.querySelectorAll('.public-tab-btn');
@@ -4654,6 +4655,8 @@ safeDomReady(() => {
         let myRequests = [];
         let myMissions = [];
         let myOffers = [];
+        let myDossiers = [];
+        const dossierApi = window.LYANN_MISSION_DOSSIER;
 
         const client = window.LYANN_API_CLIENT || window.apiClient;
         if (client && client.supabase && currentUserId) {
@@ -4675,6 +4678,44 @@ safeDomReady(() => {
                 if (miss) myMissions = miss;
             } catch(e) {}
 
+            let myInvitations = [];
+            let myDossierQuotes = [];
+            let myDossierRequests = [];
+            try {
+                const { data: invs } = await client.supabase
+                    .from('request_invitations')
+                    .select('*')
+                    .or(`requester_id.eq.${currentUserId},recipient_id.eq.${currentUserId}`)
+                    .eq('status', 'ACCEPTED')
+                    .order('created_at', { ascending: false });
+                if (invs) myInvitations = invs;
+            } catch(e) {}
+            const invitationIds = myInvitations.map((row) => row.id).filter(Boolean);
+            const requestIds = [...new Set(myInvitations.map((row) => row.request_id).filter(Boolean)
+                .concat(myMissions.map((row) => row.related_request_id || row.request_id).filter(Boolean)))];
+            if (invitationIds.length) {
+                try {
+                    const { data: quotes } = await client.supabase.from('quotes').select('*').in('request_invitation_id', invitationIds);
+                    if (quotes) myDossierQuotes = quotes;
+                } catch(e) {}
+            }
+            if (requestIds.length) {
+                try {
+                    const { data: reqRows } = await client.supabase.from('requests').select('id,title,status,requester_id').in('id', requestIds);
+                    if (reqRows) myDossierRequests = reqRows;
+                } catch(e) {}
+            }
+            myDossiers = dossierApi && typeof dossierApi.listDossiers === 'function'
+                ? dossierApi.listDossiers({
+                    viewerId: currentUserId,
+                    invitations: myInvitations,
+                    missions: myMissions,
+                    quotes: myDossierQuotes,
+                    requests: myDossierRequests
+                })
+                : [];
+            window.__lyannMyDossiers = myDossiers;
+
             try {
                 const { data: offs } = await client.supabase
                     .from('quotes')
@@ -4686,7 +4727,7 @@ safeDomReady(() => {
         }
 
         const reqCount = myRequests.length;
-        const missCount = myMissions.length;
+        const missCount = myDossiers.length || myMissions.length;
         const offCount = myOffers.length;
 
         let tabsHTML = `
@@ -4739,7 +4780,9 @@ safeDomReady(() => {
                                 <label class="sr-only" for="annonce-status-${r.id}">Statut de l'annonce</label>
                                 <select id="annonce-status-${r.id}" class="annonce-status-select" data-request-id="${r.id}" onchange="event.stopPropagation(); window.setAnnouncementStatus('${r.id}', this.value);" onclick="event.stopPropagation();" style="font-size:0.78rem; font-weight:700; border-radius:12px; border:1px solid #E2E8F0; padding:4px 8px; background:#fff; color:#17231C;">
                                     <option value="OPEN" ${String(r.status || 'OPEN').toUpperCase() === 'OPEN' ? 'selected' : ''}>Ouverte</option>
+                                    <option value="IN_PROGRESS" ${String(r.status || '').toUpperCase() === 'IN_PROGRESS' ? 'selected' : ''}>En cours</option>
                                     <option value="PAUSED" ${String(r.status || '').toUpperCase() === 'PAUSED' ? 'selected' : ''}>En pause</option>
+                                    <option value="COMPLETED" ${String(r.status || '').toUpperCase() === 'COMPLETED' ? 'selected' : ''}>Terminée</option>
                                     <option value="CLOSED" ${String(r.status || '').toUpperCase() === 'CLOSED' ? 'selected' : ''}>Fermée</option>
                                 </select>
                                 <button type="button" class="activity-delete-btn" aria-label="Modifier cette annonce" onclick="event.stopPropagation(); window.editMyAnnouncement('${r.id}');">
@@ -4765,18 +4808,31 @@ safeDomReady(() => {
                 `;
             }
         } else if (activeTab === 'missions') {
-            if (myMissions.length > 0) {
-                const rowsHTML = myMissions.map(m => `
-                    <div class="account-v3-row account-touch-row">
-                        <div class="row-icon"><i class="ph ph-hand-heart"></i></div>
-                        <div class="row-content">
-                            <strong class="row-title">Mission #${m.id.slice(0, 8)}</strong>
-                            <span class="row-subtitle">Statut : ${m.status || 'En cours'}</span>
-                        </div>
-                        <i class="ph ph-caret-right row-chevron"></i>
-                    </div>
-                `).join('<div class="account-divider"></div>');
-                mainListHTML = `<div class="account-group-box">${rowsHTML}</div>`;
+            const source = myDossiers.length ? myDossiers : myMissions.map((m) => ({
+                missionId: m.id,
+                requestId: m.related_request_id || m.request_id,
+                invitationId: m.request_invitation_id || '',
+                title: m.title || 'Mission',
+                roleLabel: String(m.requester_id) === String(currentUserId) ? 'Vous demandez' : 'Vous êtes Lyanneur',
+                statusLabel: String(m.status || ''),
+                statusCode: 'in_progress',
+                otherId: String(m.requester_id) === String(currentUserId) ? (m.helper_id || '') : (m.requester_id || ''),
+                nextAction: 'Ouvrir le dossier'
+            }));
+            window.__lyannMyDossiers = dossierApi && typeof dossierApi.uniqueDossiers === 'function'
+                ? dossierApi.uniqueDossiers(source)
+                : source;
+            if (window.__lyannMyDossiers.length > 0) {
+                const filter = window.__lyannMissionBucket || 'open';
+                const query = window.__lyannMissionQuery || '';
+                const chips = [
+                    ['open', 'Ouvertes'],
+                    ['waiting', 'En attente'],
+                    ['active', 'En cours'],
+                    ['done', 'Terminées']
+                ].map(([id, label]) => `<button type="button" class="activity-tab-chip ${filter === id ? 'active' : ''}" data-mission-bucket-filter="${id}" onclick="window.applyMyMissionsBucket('${id}', '${currentUserId}')">${label}</button>`).join('');
+                const searchHTML = `<label class="sr-only" for="myMissionsSearch">Rechercher une mission</label><input id="myMissionsSearch" type="search" class="chat-mission-picker-search" placeholder="Rechercher une mission" value="${window.escapeHtmlAttr(query)}" oninput="window.applyMyMissionsSearch(this.value, '${currentUserId}')" onsearch="window.applyMyMissionsSearch(this.value, '${currentUserId}')" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.applyMyMissionsSearch(this.value, '${currentUserId}');}" style="margin-bottom:10px;">`;
+                mainListHTML = `${searchHTML}<div class="fav-filter-tabs" style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;">${chips}</div><div class="account-group-box" id="myMissionsResults"></div>`;
             } else {
                 mainListHTML = `
                     <div class="account-v3-empty" style="background:#FFFFFF; border:1px solid #EAE6DF; border-radius:18px; padding:32px 20px; text-align:center;">
@@ -4821,13 +4877,20 @@ safeDomReady(() => {
     };
 
     window.setAnnouncementStatus = async function(requestId, status) {
-        const allowed = ['OPEN', 'PAUSED', 'CLOSED'];
+        const allowed = ['OPEN', 'PAUSED', 'CLOSED', 'IN_PROGRESS', 'COMPLETED'];
         if (!requestId || !allowed.includes(status)) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
         if (!client?.updateRequest) return;
         try {
             await client.updateRequest(requestId, { status });
-            const label = status === 'OPEN' ? 'Ouverte' : (status === 'PAUSED' ? 'En pause' : 'Fermée');
+            const labels = {
+                OPEN: 'Ouverte',
+                PAUSED: 'En pause',
+                CLOSED: 'Fermée',
+                IN_PROGRESS: 'En cours',
+                COMPLETED: 'Terminée'
+            };
+            const label = labels[status] || status;
             if (window.NotificationService) window.NotificationService.showToast('success', `Annonce ${label.toLowerCase()}.`);
             window.LYANN_EXPLORER_REPOSITORY?.invalidate?.();
             if (typeof window.LYANN_EXPLORER?.refresh === 'function') window.LYANN_EXPLORER.refresh();
@@ -4864,11 +4927,119 @@ safeDomReady(() => {
         }
     };
 
+    window.openMissionFromActivity = async function(missionId, contactId, requestId, invitationId) {
+        if (typeof window.closeUserAccountModal === 'function') window.closeUserAccountModal();
+        const messaging = window.LYANN_MESSAGING;
+        if (messaging && typeof messaging.openConversation === 'function' && contactId) {
+            await messaging.openConversation({
+                contactId: contactId,
+                requestId: requestId || null,
+                invitationId: invitationId || null,
+                missionId: missionId || null
+            });
+            if (typeof window.openMissionDossier === 'function' && requestId) {
+                window.openMissionDossier({ requestId, invitationId, missionId });
+            }
+            return;
+        }
+        if (window.LYANN_ROUTER && requestId) window.LYANN_ROUTER.go('mission', { requestId });
+    };
+
+    window.applyMyMissionsSearch = function(value, userId) {
+        window.__lyannMissionQuery = String(value || '');
+        window.paintMyMissionsList(userId);
+    };
+
+    window.applyMyMissionsBucket = function(bucket, userId) {
+        window.__lyannMissionBucket = bucket || 'open';
+        window.paintMyMissionsList(userId);
+    };
+
+    window.paintMyMissionsList = function(userId) {
+        const list = document.getElementById('myMissionsResults');
+        if (!list) return 0;
+        const dossierApi = window.LYANN_MISSION_DOSSIER;
+        const source = (dossierApi && typeof dossierApi.uniqueDossiers === 'function')
+            ? dossierApi.uniqueDossiers(window.__lyannMyDossiers || [])
+            : (window.__lyannMyDossiers || []);
+        window.__lyannMyDossiers = source;
+        const query = window.__lyannMissionQuery || '';
+        const filter = window.__lyannMissionBucket || 'open';
+        const filtered = (dossierApi && typeof dossierApi.filterDossiers === 'function')
+            ? dossierApi.filterDossiers(source, { query, bucket: filter })
+            : source.filter((row) => {
+                const hay = [row.title, row.statusLabel, row.roleLabel, row.nextAction].join(' ').toLowerCase();
+                if (query && hay.indexOf(String(query).toLowerCase()) === -1) return false;
+                return true;
+            });
+        document.querySelectorAll('[data-mission-bucket-filter]').forEach((chip) => {
+            chip.classList.toggle('active', chip.getAttribute('data-mission-bucket-filter') === filter);
+        });
+        const search = document.getElementById('myMissionsSearch');
+        if (search && search.value !== query) search.value = query;
+        list.replaceChildren();
+        if (!filtered.length) {
+            const empty = document.createElement('p');
+            empty.className = 'finance-muted';
+            empty.id = 'myMissionsEmpty';
+            empty.setAttribute('data-missions-empty', '1');
+            empty.style.padding = '16px';
+            empty.textContent = String(query).trim()
+                ? 'Aucune mission ne correspond à cette recherche.'
+                : 'Aucune mission dans ce filtre.';
+            list.appendChild(empty);
+            return 0;
+        }
+        filtered.forEach((row, index) => {
+            if (index) {
+                const divider = document.createElement('div');
+                divider.className = 'account-divider';
+                list.appendChild(divider);
+            }
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'account-v3-row account-touch-row';
+            btn.setAttribute('data-mission-request', row.requestId || '');
+            btn.setAttribute('data-mission-invitation', row.invitationId || '');
+            btn.setAttribute('data-mission-title', row.title || '');
+            btn.setAttribute('data-mission-bucket', (dossierApi && dossierApi.dossierBucket) ? dossierApi.dossierBucket(row) : '');
+            btn.style.cssText = 'width:100%;text-align:left;background:transparent;border:0;cursor:pointer;';
+            btn.addEventListener('click', () => {
+                window.openMissionFromActivity(row.missionId || '', row.otherId || '', row.requestId || '', row.invitationId || '');
+            });
+            const icon = document.createElement('div');
+            icon.className = 'row-icon';
+            icon.innerHTML = '<i class="ph ph-folder"></i>';
+            const content = document.createElement('div');
+            content.className = 'row-content';
+            content.style.cssText = 'flex:1; min-width:0;';
+            const title = document.createElement('strong');
+            title.className = 'row-title';
+            title.style.cssText = 'display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+            title.textContent = row.title || 'Mission';
+            const sub = document.createElement('span');
+            sub.className = 'row-subtitle';
+            sub.textContent = [row.roleLabel, row.statusLabel, row.nextAction || 'Ouvrir le dossier'].filter(Boolean).join(' · ');
+            content.appendChild(title);
+            content.appendChild(sub);
+            const pill = document.createElement('span');
+            pill.className = 'pill ' + (row.statusCode === 'done' ? 'pill-green' : 'pill-red');
+            pill.style.flexShrink = '0';
+            pill.textContent = row.statusLabel || '';
+            btn.appendChild(icon);
+            btn.appendChild(content);
+            btn.appendChild(pill);
+            list.appendChild(btn);
+        });
+        return filtered.length;
+    };
+
     window.switchActivityTab = async function(tabName, userId) {
         const container = document.getElementById('monActiviteContainer');
         if (!container) return;
         const html = await window.renderMonActiviteSubView(userId, tabName);
         container.outerHTML = html;
+        if (tabName === 'missions') window.paintMyMissionsList(userId);
     };
 
     window.renderBlockedAccounts = async function() {
@@ -4995,6 +5166,16 @@ safeDomReady(() => {
                                 <strong style="font-size:1.15rem; color:white;">Paiements sécurisés</strong>
                             </div>
                             <p style="margin:0; font-size:0.9rem; line-height:1.5; color:rgba(255,255,255,0.88);">Le montant de chaque mission est suivi dans sa conversation : devis, paiement, puis versement une fois la mission confirmée. Les fonds sont conservés par Stripe, notre partenaire de paiement.</p>
+                        </div>
+                        <div class="account-group-box" style="margin-top:12px;">
+                            <button type="button" class="account-touch-row" style="width:100%;text-align:left;background:transparent;border:0;cursor:pointer;" onclick="window.openAccountModalSubView('activity').then(() => window.switchActivityTab('missions', window.CURRENT_USER_ID || window.LYANN_AUTH_STATE?.getSnapshot?.()?.userId));">
+                                <div class="row-icon"><i class="ph ph-briefcase"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Mes missions</strong>
+                                    <span class="row-subtitle">Retrouver le paiement, le remboursement et le litige dans la conversation</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </button>
                         </div>
                     </section>
                     <section class="account-desktop-section">
@@ -5353,6 +5534,9 @@ safeDomReady(() => {
         } else {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+        }
+        if (typeof window.paintMyMissionsList === 'function' && document.getElementById('myMissionsResults')) {
+            window.paintMyMissionsList(currentUserId);
         }
         if (subViewName === 'finances' && window.LYANN_PAYOUT_ACCOUNT) window.LYANN_PAYOUT_ACCOUNT.mount();
         if (subViewName === 'settings' && typeof window.renderBlockedAccounts === 'function') window.renderBlockedAccounts();
@@ -8079,6 +8263,61 @@ safeDomReady(() => {
     let titleSuggestedFor = '';
     let titleTimer = null;
     let titleRequestSeq = 0;
+    const TITLE_STOP = new Set(['bonjour','hello','salut','svp','stp','besoin','aide','quelqu','quelquun','maison','faites','faire','voudrais','pourrais','merci']);
+
+    function titleFromNeed(text, max) {
+        const limit = max || TITLE_MAX;
+        let raw = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!raw) return '';
+        raw = raw.replace(/^(bonjour|salut|hello|coucou)[,!.\s]+/i, '');
+        const sentence = (raw.split(/[.!?\n]/)[0] || raw).trim() || raw;
+        let out = sentence;
+        if (out.length > limit) {
+            out = out.slice(0, limit);
+            const sp = out.lastIndexOf(' ');
+            if (sp >= Math.min(18, limit - 10)) out = out.slice(0, sp);
+            out = out.replace(/[,;:\-–—]\s*$/, '');
+        }
+        if (!out) return '';
+        return (out.charAt(0).toUpperCase() + out.slice(1)).slice(0, limit);
+    }
+
+    function localTitleChoices(description) {
+        const primary = titleFromNeed(description);
+        const tokens = String(description || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9'\s]/g, ' ')
+            .split(/\s+/)
+            .filter((w) => w.length >= 4 && !TITLE_STOP.has(w));
+        const compact = titleFromNeed(tokens.slice(0, 6).join(' '));
+        const out = [];
+        [primary, compact].forEach((item) => {
+            if (item && item.length >= 3 && !out.includes(item)) out.push(item);
+        });
+        return out;
+    }
+
+    function applyWizardTitle(text, { picked = true } = {}) {
+        if (!titleInput || !text) return;
+        titleInput.value = String(text).slice(0, TITLE_MAX);
+        titlePicked = picked;
+        if (titleEdit) titleEdit.hidden = false;
+        if (titleBlock) titleBlock.hidden = false;
+        syncWizardTitleCounter();
+    }
+
+    function ensureWizardTitleFromNeed() {
+        if (!titleInput) return '';
+        let value = titleInput.value.trim();
+        if (value.length >= 3) return value;
+        value = titleFromNeed(descriptionInput ? descriptionInput.value : '');
+        if (value.length >= 3) applyWizardTitle(value);
+        return (titleInput.value || '').trim();
+    }
+    window.titleFromNeed = titleFromNeed;
+    window.ensureWizardTitleFromNeed = ensureWizardTitleFromNeed;
 
     function syncWizardTitleCounter() {
         if (titleCounter && titleInput) titleCounter.textContent = `${titleInput.value.length} / ${TITLE_MAX}`;
@@ -8124,7 +8363,7 @@ safeDomReady(() => {
     async function suggestWizardTitle({ force = false } = {}) {
         if (!titleInput || !descriptionInput) return;
         const description = descriptionInput.value.trim();
-        if (description.length < 15) return;
+        if (description.length < 8) return;
         if (!force && ((titlePicked || titleTouched) || description === titleSuggestedFor)) return;
         titleSuggestedFor = description;
         if (titleBlock) titleBlock.hidden = false;
@@ -8141,29 +8380,35 @@ safeDomReady(() => {
         if (!force && (titlePicked || titleTouched)) return;
 
         if (result?.titles?.length === 3) {
-            setWizardTitleStatus('Choisissez le titre qui convient le mieux.');
+            setWizardTitleStatus('Choisissez le titre qui convient le mieux, ou gardez le vôtre.');
             renderWizardTitleChoices(result.titles);
+            if (!titleInput.value.trim()) applyWizardTitle(result.titles[0]);
             if (titleSuggestBtn) titleSuggestBtn.hidden = false;
+            return;
+        }
+        const local = localTitleChoices(description);
+        if (local.length) {
+            renderWizardTitleChoices(local.length > 1 ? local : []);
+            if (!titleTouched || titleInput.value.trim().length < 3) applyWizardTitle(local[0]);
+            if (titleSuggestBtn) titleSuggestBtn.hidden = false;
+            setWizardTitleStatus('Titre repris de votre texte. Vous pouvez le corriger.');
             return;
         }
         renderWizardTitleChoices([]);
         if (titleEdit) titleEdit.hidden = false;
         if (titleSuggestBtn) titleSuggestBtn.hidden = false;
-        if (result?.error === 'AUTH') {
-            setWizardTitleStatus('Connectez-vous pour recevoir 3 titres proposés d’après votre besoin.', true);
-            return;
-        }
+        applyWizardTitle(titleFromNeed(description));
         if (result?.error === 'RATE') {
-            setWizardTitleStatus('Trop de propositions demandées. Réessayez dans quelques minutes.', true);
+            setWizardTitleStatus('Trop de propositions demandées. Votre texte sert de titre, vous pouvez le raccourcir.');
             return;
         }
-        setWizardTitleStatus('Les titres n’ont pas pu être proposés. Réessayez, ou écrivez le vôtre.', true);
+        setWizardTitleStatus('Titre repris de votre texte. Vous pouvez le corriger.');
     }
     window.suggestWizardTitle = suggestWizardTitle;
 
     if (descriptionInput) {
         descriptionInput.addEventListener('input', () => {
-            if (titleBlock && descriptionInput.value.trim().length >= 15) titleBlock.hidden = false;
+            if (titleBlock && descriptionInput.value.trim().length >= 8) titleBlock.hidden = false;
             clearTimeout(titleTimer);
             titleTimer = setTimeout(() => suggestWizardTitle(), 900);
         });
@@ -8321,10 +8566,11 @@ safeDomReady(() => {
                     alert("Veuillez décrire votre besoin.");
                     return;
                 }
-                const chosenTitle = (document.getElementById('wizardTitleInput')?.value || '').trim();
+                const chosenTitle = typeof ensureWizardTitleFromNeed === 'function'
+                    ? ensureWizardTitleFromNeed()
+                    : (document.getElementById('wizardTitleInput')?.value || '').trim();
                 if (chosenTitle.length < 3) {
-                    alert("Choisissez un des trois titres, puis corrigez-le si besoin.");
-                    if (typeof suggestWizardTitle === 'function') suggestWizardTitle({ force: true });
+                    alert('Ajoutez encore quelques mots pour décrire votre besoin.');
                     return;
                 }
                 

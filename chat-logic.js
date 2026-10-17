@@ -22,13 +22,38 @@ function threadStatusLabel(status) {
     const labels = {
         OPEN: 'Ouverte',
         PENDING: 'En attente',
+        AGREED: 'Acceptée',
+        PAUSED: 'En pause',
+        ASSIGNED: 'Attribuée',
+        FUNDED: 'Payée',
         IN_PROGRESS: 'En cours',
         WORK_MARKED_COMPLETE: 'À valider',
         COMPLETED: 'Terminée',
+        CLOSED: 'Fermée',
+        RELEASED: 'Terminée',
+        VALIDATED: 'Validée',
         CANCELLED: 'Annulée',
-        CANCELED: 'Annulée'
+        CANCELED: 'Annulée',
+        DISPUTED: 'Litige'
     };
-    return labels[status] || '';
+    const key = String(status || '').toUpperCase();
+    return labels[key] || '';
+}
+
+function milestoneStatusLabel(status) {
+    const labels = {
+        PENDING: 'En attente de paiement',
+        FUNDED: 'Paiement sécurisé',
+        IN_PROGRESS: 'Travaux en cours',
+        COMPLETED: 'Travail déclaré terminé',
+        VALIDATED: 'Travail validé',
+        RELEASED: 'Paiement libéré',
+        CANCELLED: 'Annulé',
+        CANCELED: 'Annulé',
+        DISPUTED: 'Litige en cours'
+    };
+    const key = String(status || '').toUpperCase();
+    return labels[key] || 'En cours';
 }
 
 function openThreadMission(event, requestId) {
@@ -95,6 +120,12 @@ function paintCompactThreadBanner(banner, { kicker, title, meta, requestId, onOp
         };
     }
     if (actions.childElementCount) banner.appendChild(actions);
+    const contactForStrip = currentChatContact;
+    paintDossierStrip(
+        banner,
+        contactForStrip && Array.isArray(contactForStrip.dossiers) ? contactForStrip.dossiers : [],
+        contactForStrip && contactForStrip.activeDossier
+    );
     const viewMissionBtn = document.getElementById('chatViewMissionBtn');
     if (viewMissionBtn) {
         viewMissionBtn.style.display = 'none';
@@ -104,7 +135,117 @@ function paintCompactThreadBanner(banner, { kicker, title, meta, requestId, onOp
     syncMissionJump(false);
 }
 
+function paintDossierStrip(banner, dossiers, active) {
+    if (!banner) return;
+    banner.querySelectorAll('.chat-dossier-strip').forEach((node) => node.remove());
+    if (!Array.isArray(dossiers) || dossiers.length < 2) return;
+    const strip = document.createElement('div');
+    strip.className = 'chat-dossier-strip';
+    strip.setAttribute('role', 'tablist');
+    strip.setAttribute('aria-label', 'Dossiers de mission');
+    dossiers.forEach((row) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chat-dossier-chip' + (active && active.key === row.key ? ' is-active' : '');
+        chip.setAttribute('role', 'tab');
+        chip.setAttribute('aria-selected', active && active.key === row.key ? 'true' : 'false');
+        chip.dataset.requestId = row.requestId || '';
+        chip.dataset.invitationId = row.invitationId || '';
+        chip.dataset.dossierKey = row.key || '';
+        const title = document.createElement('span');
+        title.className = 'chat-dossier-chip-title';
+        title.textContent = row.title || 'Mission';
+        const meta = document.createElement('span');
+        meta.className = 'chat-dossier-chip-meta';
+        meta.textContent = [row.roleLabel, row.statusLabel].filter(Boolean).join(' · ');
+        chip.append(title, meta);
+        chip.addEventListener('click', (event) => {
+            event.stopPropagation();
+            void selectChatDossier({ requestId: row.requestId, invitationId: row.invitationId });
+        });
+        strip.appendChild(chip);
+    });
+    banner.insertBefore(strip, banner.firstChild);
+}
+
+async function selectChatDossier(hint) {
+    if (!currentChatContact) return false;
+    const dossiers = Array.isArray(currentChatContact.dossiers) ? currentChatContact.dossiers : [];
+    const api = window.LYANN_MISSION_DOSSIER;
+    const picked = api && typeof api.selectActiveDossier === 'function'
+        ? api.selectActiveDossier(dossiers, hint || {})
+        : { ok: false, ambiguous: dossiers.length > 1, dossier: null };
+    const nextKey = picked.dossier && api ? api.dossierKey(picked.dossier) : '';
+    const prevKey = currentChatContact.activeDossier && api
+        ? api.dossierKey(currentChatContact.activeDossier)
+        : (currentChatContact.requestId ? ('req:' + currentChatContact.requestId + '|inv:' + (currentChatContact.invitationId || '')) : '');
+    if (nextKey && nextKey !== prevKey && typeof resetDossierCaches === 'function') {
+        resetDossierCaches();
+        if (typeof dossierSession !== 'undefined' && dossierSession.begin) dossierSession.begin(nextKey);
+        cancelDealContextRefresh();
+    }
+    applyDossierToContact(currentChatContact, picked.ok ? picked.dossier : null, picked.ambiguous);
+    if (window.LYANN_ACTIVE_CHAT_CONTACT) {
+        window.LYANN_ACTIVE_CHAT_CONTACT.requestId = currentChatContact.requestId;
+        window.LYANN_ACTIVE_CHAT_CONTACT.invitationId = currentChatContact.invitationId;
+        window.LYANN_ACTIVE_CHAT_CONTACT.missionAmbiguous = currentChatContact.missionAmbiguous;
+    }
+    noteDealContextConversation(currentChatContact);
+    paintThreadBusinessBanner();
+    const box = document.getElementById('chatMessagesContainer');
+    if (picked.ok && picked.dossier) {
+        // Drop the previous dossier's ActionPanel immediately so amounts/CTAs cannot linger
+        // while the request-scoped refresh is in flight.
+        if (box) {
+            paintDealRecaps(box, [], {
+                panel: 'loading',
+                panelMeta: {
+                    requestId: picked.dossier.requestId || null,
+                    requestTitle: picked.dossier.title || ''
+                },
+                skipWatch: true
+            });
+        }
+        void (async () => {
+            if (typeof renderMessages === 'function') await renderMessages(null, { fresh: false });
+            await refreshDealContext('dossier-switch');
+        })();
+    } else if (box) {
+        paintDealRecaps(box, [], { panel: 'ambiguous' });
+    }
+    return picked.ok;
+}
+window.selectChatDossier = selectChatDossier;
+
+function hideChatFinanceStrip() {
+    const strip = document.getElementById('chatFinanceStrip');
+    if (strip) strip.style.display = 'none';
+}
+
+function attachChatFinanceStrip(banner, row) {
+    const policy = window.LYANN_FINANCE_POLICY_UI;
+    if (!banner || !policy || typeof policy.renderCompactStrip !== 'function') return;
+    let host = document.getElementById('chatFinanceStrip');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'chatFinanceStrip';
+        host.className = 'lyann-finance-strip';
+        banner.insertAdjacentElement('afterend', host);
+    }
+    host.innerHTML = policy.renderCompactStrip(row || {});
+    host.style.display = '';
+}
+
+function financeRowFromThread(quotes, mission, request) {
+    const policy = window.LYANN_FINANCE_POLICY_UI;
+    if (policy && typeof policy.rowFromQuoteContext === 'function') {
+        return policy.rowFromQuoteContext(quotes, mission, request);
+    }
+    return { demo: false, quote: {}, mission: mission || {}, milestone: {}, payment: {} };
+}
+
 function hideChatMissionChrome() {
+    hideChatFinanceStrip();
     const banner = document.getElementById('chatMissionContextBar') || document.getElementById('chatMissionContext');
     if (banner) {
         banner.style.display = 'none';
@@ -112,15 +253,22 @@ function hideChatMissionChrome() {
         banner.innerHTML = '';
     }
     const dropViewMission = document.getElementById('chatDropViewMission');
-    if (dropViewMission) dropViewMission.style.display = 'none';
+    if (dropViewMission) {
+        dropViewMission.style.display = 'none';
+        delete dropViewMission.dataset.requestId;
+    }
     const directAction = document.getElementById('chatDropDirectAction');
     if (directAction) directAction.style.display = 'none';
     const dateAction = document.getElementById('chatDropProposeDate');
     if (dateAction) dateAction.style.display = 'none';
     const viewMissionBtn = document.getElementById('chatViewMissionBtn');
-    if (viewMissionBtn) viewMissionBtn.style.display = 'none';
+    if (viewMissionBtn) {
+        viewMissionBtn.style.display = 'none';
+        delete viewMissionBtn.dataset.requestId;
+    }
     const actionContainer = document.getElementById('chatContextualActionsBar');
     if (actionContainer) actionContainer.style.display = 'none';
+    syncMissionJump(false);
 }
 
 function renderDirectThreadAction(banner) {
@@ -215,6 +363,36 @@ function scrollToThreadQuote(quoteId) {
     window.setTimeout(() => node.classList.remove('lyann-quote-highlight'), 1600);
 }
 
+function openMissionDossier(hint) {
+    if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.openDossier === 'function') {
+        return window.LYANN_MISSION_SURFACES.openDossier(hint || {});
+    }
+    const contact = currentChatContact;
+    const dossierApi = window.LYANN_MISSION_DOSSIER;
+    const picked = dossierApi && contact
+        ? dossierApi.selectActiveDossier(contact.dossiers || [], hint || {
+            requestId: contact.requestId,
+            invitationId: contact.invitationId,
+            missionId: contact.missionId
+        })
+        : { ok: false, dossier: null };
+    if (picked.ok && picked.dossier && (!contact.requestId || String(contact.requestId) !== String(picked.dossier.requestId))) {
+        void selectChatDossier({ requestId: picked.dossier.requestId, invitationId: picked.dossier.invitationId });
+    }
+    const dossier = (picked.ok && picked.dossier) || (contact && contact.activeDossier) || null;
+    const mission = (dossier && dossier.mission) || (contact && contact.threadMission) || hint || null;
+    const overlay = document.getElementById('chatTrackingOverlay');
+    const heading = overlay && overlay.querySelector('h4');
+    if (heading) heading.innerHTML = '<i class="ph ph-folder"></i> Dossier de mission';
+    openMissionTracking(mission && mission.id ? mission : {
+        id: (mission && mission.id) || (dossier && dossier.missionId) || '',
+        title: (dossier && dossier.title) || (hint && hint.title) || 'Mission',
+        status: (dossier && dossier.statusLabel) || '',
+        dossier
+    });
+}
+window.openMissionDossier = openMissionDossier;
+
 function openMissionTracking(mission) {
     const overlay = document.getElementById('chatTrackingOverlay');
     const list = document.getElementById('trackingMilestonesList');
@@ -225,58 +403,95 @@ function openMissionTracking(mission) {
         overlay.style.display = 'flex';
     }
     overlay.style.color = '#1B4332';
-    if (!mission || !mission.id) {
+    overlay.style.background = '#FFFFFF';
+    if (!mission || (!mission.id && !(mission.dossier && mission.dossier.requestId) && !(currentChatContact && currentChatContact.requestId))) {
         if (list) {
             list.style.color = '#1B4332';
-            list.textContent = 'Aucune mission sélectionnée pour ce suivi.';
+            list.textContent = 'Choisissez un dossier pour voir le devis et le suivi.';
         }
         return;
     }
-    overlay.dataset.missionId = String(mission.id);
+    overlay.dataset.missionId = String(mission.id || (mission.dossier && mission.dossier.requestId) || '');
+    overlay.dataset.requestId = String((mission.dossier && mission.dossier.requestId) || (currentChatContact && currentChatContact.requestId) || '');
     if (list) {
         list.style.color = '#1B4332';
-        list.textContent = 'Chargement du suivi…';
+        list.textContent = 'Chargement du dossier…';
     }
-    if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.getMissionDetailsSecure !== 'function') {
-        if (list) list.textContent = 'Le suivi de cette mission est indisponible.';
+    const paintTracking = (row, extraMilestones) => {
+        if (!list) return;
+        list.replaceChildren();
+        const dossierNow = (mission && mission.dossier) || (currentChatContact && currentChatContact.activeDossier) || null;
+        if (dossierNow) {
+            const roleLine = document.createElement('p');
+            roleLine.className = 'chat-dossier-role';
+            roleLine.textContent = [dossierNow.roleLabel, dossierNow.statusLabel, dossierNow.title].filter(Boolean).join(' · ');
+            list.appendChild(roleLine);
+        }
+        const policy = window.LYANN_FINANCE_POLICY_UI;
+        const wrap = document.createElement('div');
+        wrap.className = 'lyann-tracking-sheet';
+        if (policy && typeof policy.renderMissionTracking === 'function') {
+            wrap.innerHTML = policy.renderMissionTracking(row || {});
+        } else {
+            wrap.textContent = (row && row.quote && row.quote.description) || (mission.title || 'Mission');
+        }
+        list.appendChild(wrap);
+        const milestones = Array.isArray(extraMilestones) ? extraMilestones : [];
+        if (milestones.length > 1) {
+            const more = document.createElement('ol');
+            more.className = 'lyann-tracking-milestones';
+            milestones.forEach((milestone) => {
+                const item = document.createElement('li');
+                item.textContent = (milestone.title || 'Étape') + ' — ' + milestoneStatusLabel(milestone.status);
+                more.appendChild(item);
+            });
+            list.appendChild(more);
+        }
+    };
+    const fallbackRow = financeRowFromThread(collectThreadQuotes(), mission, currentChatContact && currentChatContact.threadRequest && currentChatContact.threadRequest.request);
+    const dossier = (mission && mission.dossier) || (currentChatContact && currentChatContact.activeDossier) || null;
+    const missionUuid = mission && mission.id && (typeof window.isUUID === 'function' ? window.isUUID(mission.id) : false);
+    if (!missionUuid || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.getMissionDetailsSecure !== 'function') {
+        paintTracking(fallbackRow, collectThreadQuotes().flatMap((quote) => quote && quote.milestones ? quote.milestones : []));
         return;
     }
     window.LYANN_API_CLIENT.getMissionDetailsSecure(mission.id).then((res) => {
-        if (overlay.dataset.missionId !== String(mission.id)) return;
+        if (overlay.dataset.missionId !== String(mission.id) && overlay.dataset.requestId !== String((dossier && dossier.requestId) || '')) return;
         if (!list) return;
         if (!res || res.error || !res.data) {
-            list.textContent = 'Cette mission est introuvable.';
+            paintTracking(fallbackRow, []);
             return;
         }
         const milestones = Array.isArray(res.data.milestones) ? res.data.milestones : [];
-        list.replaceChildren();
-        if (!milestones.length) {
-            list.textContent = 'Cette mission n’a pas encore de jalon.';
-            return;
-        }
-        milestones.forEach((milestone) => {
-            const row = document.createElement('p');
-            row.textContent = (milestone.title || 'Jalon') + (milestone.status ? ' · ' + milestone.status : '');
-            list.appendChild(row);
-        });
+        const quote = res.data.quote || fallbackRow.quote || {};
+        const payment = (res.data.payment || (res.data.payments && res.data.payments[0]) || fallbackRow.payment) || {};
+        paintTracking({
+            demo: false,
+            mission: res.data.mission || mission,
+            milestone: milestones[0] || fallbackRow.milestone || {},
+            payment: payment,
+            quote: quote
+        }, milestones);
     }).catch(() => {
-        if (list) list.textContent = 'Le suivi n’a pas pu être chargé.';
+        paintTracking(fallbackRow, []);
     });
 }
 
 function threadPrimaryAction(requestContext, mission, quotes, myUserId) {
     const request = requestContext && requestContext.request;
-    const requesterId = requestContext && (requestContext.requesterId || request?.requester_id);
-    const mine = Boolean(request && myUserId && String(requesterId) === String(myUserId));
     const list = Array.isArray(quotes) ? quotes : [];
+    if (threadDealIsFinished(mission, list, request)) return null;
     const pending = list.find((quote) => quote && ['SENT', 'VIEWED', 'REVISED'].includes(quote.status));
-    if (mission && ['IN_PROGRESS', 'WORK_MARKED_COMPLETE', 'COMPLETED'].includes(mission.status)) {
+    // Suivi seulement tant que la mission est encore active (jamais une fois terminée).
+    if (mission && mission.id && ['IN_PROGRESS', 'WORK_MARKED_COMPLETE', 'AGREED'].includes(String(mission.status || ''))) {
         return { id: 'lyannThreadPrimaryAction', label: 'Suivi', run: () => openMissionTracking(mission) };
     }
     if (pending) {
-        return { id: 'lyannThreadPrimaryAction', label: 'Voir le devis', run: () => scrollToThreadQuote(pending.id) };
+        const requestId = (requestContext && requestContext.requestId) || (currentChatContact && currentChatContact.requestId) || null;
+        return { id: 'lyannThreadPrimaryAction', label: 'Voir le dossier', run: () => openMissionDossier({ requestId }) };
     }
-    if (request && !mine) {
+    const gate = threadQuoteProposalGate(requestContext, mission, list, myUserId);
+    if (gate.ok) {
         return {
             id: 'btnCtxPropose',
             label: 'Proposer un devis',
@@ -286,48 +501,129 @@ function threadPrimaryAction(requestContext, mission, quotes, myUserId) {
     return null;
 }
 
+function threadQuoteProposalGate(requestContext, mission, quotes, myUserId) {
+    const request = requestContext && requestContext.request;
+    const requesterId = requestContext && (requestContext.requesterId || request?.requester_id);
+    const mine = Boolean(request && myUserId && String(requesterId) === String(myUserId));
+    if (!request) {
+        return { ok: false, reason: 'Choisissez l’annonce avant de proposer un devis.' };
+    }
+    if (mine) {
+        return { ok: false, reason: 'C’est le Lyanneur invité qui envoie le devis pour cette annonce.' };
+    }
+    const reqStatus = String(request.status || '').toUpperCase();
+    if (['COMPLETED', 'CLOSED', 'CANCELLED', 'CANCELED'].includes(reqStatus)) {
+        return { ok: false, reason: 'Cette demande est close. Impossible de proposer un nouveau devis.' };
+    }
+    const missionStatus = mission && String(mission.status || '').toUpperCase();
+    if (missionStatus && ['COMPLETED', 'CANCELLED', 'CANCELED'].includes(missionStatus)) {
+        return { ok: false, reason: 'Cette mission est terminée. Impossible de proposer un nouveau devis.' };
+    }
+    const list = Array.isArray(quotes) ? quotes : [];
+    const acceptedOpen = list.some((quote) => quote && quote.status === 'ACCEPTED' && !quoteIsClosedDeal(quote));
+    if (acceptedOpen) {
+        return { ok: false, reason: 'Un devis a déjà été accepté pour cette demande.' };
+    }
+    const pending = list.find((quote) => quote && ['SENT', 'VIEWED', 'REVISED'].includes(String(quote.status || '')));
+    if (pending) {
+        return { ok: false, reason: 'Un devis est déjà en attente de réponse.', pending: pending };
+    }
+    return { ok: true, reason: '' };
+}
+
+function collectThreadQuotes() {
+    const out = [];
+    if (typeof timelineQuotes === 'undefined' || !timelineQuotes || typeof timelineQuotes.forEach !== 'function') {
+        return out;
+    }
+    const contact = currentChatContact;
+    const requestId = contact && contact.requestId ? String(contact.requestId) : null;
+    const dossiers = contact && Array.isArray(contact.dossiers) ? contact.dossiers : [];
+    if (!requestId && (contact && contact.missionAmbiguous || dossiers.length > 1)) {
+        return out;
+    }
+    const dossierApi = window.LYANN_MISSION_DOSSIER;
+    timelineQuotes.forEach((value, key) => {
+        if (String(key || '').startsWith('milestone:')) return;
+        if (!value || !value.id) return;
+        const status = String(value.status || '');
+        if (!['SENT', 'VIEWED', 'REVISED', 'ACCEPTED', 'REJECTED'].includes(status)) return;
+        if (requestId && dossierApi && typeof dossierApi.quoteBelongsToDossier === 'function') {
+            if (!dossierApi.quoteBelongsToDossier(value, { requestId, invitationId: contact && contact.invitationId })) return;
+        } else if (requestId && value.request_id && String(value.request_id) !== requestId) {
+            return;
+        }
+        out.push(value);
+    });
+    return out;
+}
+
+function dealEventBelongsToActiveDossier(quote, row) {
+    const contact = currentChatContact;
+    if (!contact) return false;
+    const dossiers = Array.isArray(contact.dossiers) ? contact.dossiers : [];
+    if (dossiers.length < 2) return true;
+    if (!contact.requestId) return false;
+    const meta = (row && (row.metadata || row.meta)) || {};
+    const inferred = {
+        id: (quote && quote.id) || (row && (row.entity_id || row.entityId)) || null,
+        request_id: (quote && (quote.request_id || quote.requestId)) || meta.request_id || meta.requestId || (row && (row.request_id || row.requestId)) || null,
+        request_invitation_id: (quote && quote.request_invitation_id) || meta.request_invitation_id || (row && row.request_invitation_id) || null
+    };
+    const dossierApi = window.LYANN_MISSION_DOSSIER;
+    if (dossierApi && typeof dossierApi.quoteBelongsToDossier === 'function'
+        && (inferred.request_id || inferred.request_invitation_id)) {
+        return dossierApi.quoteBelongsToDossier(inferred, {
+            requestId: contact.requestId,
+            invitationId: contact.invitationId
+        });
+    }
+    if (inferred.request_id) return String(inferred.request_id) === String(contact.requestId);
+    return false;
+}
+
+function quoteIsClosedDeal(quote) {
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    if (!quote || !payment) return false;
+    if (quote.status === 'REJECTED') return true;
+    if (quote.status !== 'ACCEPTED') return false;
+    if (typeof payment.quoteSettled === 'function' && payment.quoteSettled(quote.milestones || [])) return true;
+    if (typeof payment.missionPhase === 'function' && payment.missionPhase(quote) === 'closed') return true;
+    const view = typeof payment.missionCard === 'function'
+        ? payment.missionCard(quote, (typeof getMyId === 'function' ? getMyId() : null) || quote.requester_id, 'active')
+        : null;
+    return !!(view && view.closed);
+}
+
+function threadDealIsFinished(mission, quotes, request) {
+    if (mission && ['COMPLETED', 'CANCELLED', 'CANCELED'].includes(String(mission.status || '').toUpperCase())) {
+        return true;
+    }
+    if (request && ['COMPLETED', 'CLOSED', 'CANCELLED', 'CANCELED'].includes(String(request.status || '').toUpperCase())) {
+        return true;
+    }
+    const list = Array.isArray(quotes) && quotes.length ? quotes : collectThreadQuotes();
+    if (!list.length) return false;
+    const accepted = list.filter((quote) => quote && quote.status === 'ACCEPTED');
+    if (!accepted.length) return false;
+    return accepted.every((quote) => quoteIsClosedDeal(quote));
+}
+
+function hasViewableThreadMission(mission, quotes, request) {
+    if (!mission || !mission.id) return false;
+    if (threadDealIsFinished(mission, quotes, request)) return false;
+    return true;
+}
+
 function paintThreadBusinessBanner() {
     const banner = document.getElementById('chatMissionContextBar') || document.getElementById('chatMissionContext');
     const contact = currentChatContact;
-    if (!banner || !contact || isLyannSupportContact(contact.id)) {
-        hideChatMissionChrome();
-        return;
+    window.__lyannChatContact = contact || null;
+    hideChatMissionChrome();
+    if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.paintTogetherButton === 'function') {
+        window.LYANN_MISSION_SURFACES.paintTogetherButton(contact);
     }
-    const requestContext = contact.threadRequest || null;
-    const mission = contact.threadMission || null;
-    const request = requestContext && requestContext.request;
-    if (!request && !(mission && !contact.direct)) {
-        hideChatMissionChrome();
-        if (contact.direct) renderDirectThreadAction(banner);
-        return;
-    }
-    const quotes = [];
-    if (typeof timelineQuotes !== 'undefined' && timelineQuotes && typeof timelineQuotes.forEach === 'function') {
-        timelineQuotes.forEach((quote) => { if (quote) quotes.push(quote); });
-    }
-    const myUserId = typeof getMyId === 'function' ? getMyId() : null;
-    const requestId = (requestContext && requestContext.requestId) || (mission && mission.request_id) || null;
-    const status = threadStatusLabel((mission && mission.status) || (request && request.status));
-    const price = mission && mission.agreed_price != null && mission.agreed_price !== '' ? mission.agreed_price + ' €' : '';
-    const location = request && request.location ? request.location : '';
-    const ambiguous = Boolean(contact.missionAmbiguous);
-    paintCompactThreadBanner(banner, {
-        kicker: mission ? 'Mission' : (requestContext && (request.visibility === 'DIRECT' || request.target_user_id) ? 'Demande privée' : 'Annonce'),
-        title: (mission && mission.title) || (request && request.title) || '',
-        meta: [price, status, !price ? location : '', ambiguous ? 'Plusieurs missions en cours' : ''].filter(Boolean).join(' · '),
-        requestId,
-        onOpen: requestId ? (event) => openThreadMission(event, requestId) : null,
-        primary: threadPrimaryAction(requestContext, mission, quotes, myUserId)
-    });
-    const dropViewMission = document.getElementById('chatDropViewMission');
-    if (dropViewMission) {
-        dropViewMission.style.display = requestId ? 'flex' : 'none';
-        if (requestId) dropViewMission.dataset.requestId = requestId;
-    }
-    setThreadMenuAction('chatDropProposeDate', 'Proposer une date', 'ph-calendar', () => {
-        handleChatAction('PROPOSE_DATE', mission);
-    }, Boolean(request) && !isLyannSupportContact(contact.id));
-    if (requestId) window.__lyannChatRequestId = requestId;
+    if (banner) banner.style.display = 'none';
 }
 
 window.isUserBlocked = function(idOrName) {
@@ -420,6 +716,74 @@ window.openReportModal = function(targetName = null, targetUserId = null, contex
     return true;
 };
 let currentChatContact = null;
+
+/** E4 — coalesced deal/ActionPanel refresh (generation drops stale responses). */
+const dealContextSyncApi = window.LYANN_DEAL_CONTEXT_SYNC || null;
+const dealContextRefresh = dealContextSyncApi && typeof dealContextSyncApi.createDealContextRefreshController === 'function'
+    ? dealContextSyncApi.createDealContextRefreshController({
+        debounceMs: dealContextSyncApi.DEBOUNCE_MS != null ? dealContextSyncApi.DEBOUNCE_MS : 80
+    })
+    : null;
+/** E5 — per-action mutex + scope checks for accept/refuse/revise/pay/done/validate. */
+const dealMutationGuard = dealContextSyncApi && typeof dealContextSyncApi.createDealMutationGuard === 'function'
+    ? dealContextSyncApi.createDealMutationGuard()
+    : null;
+
+function dealContextScopeFromContact(contact) {
+    const c = contact || currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT || {};
+    const threadRequest = c.threadRequest || null;
+    const dossier = c.activeDossier || null;
+    return {
+        contactId: c.id || null,
+        requestId: c.requestId || (dossier && dossier.requestId) || (threadRequest && threadRequest.requestId) || null,
+        invitationId: c.invitationId || (dossier && dossier.invitationId) || (threadRequest && threadRequest.invitationId) || null,
+        missionId: (c.threadMission && c.threadMission.id) || c.missionId || (dossier && dossier.missionId) || null,
+        conversationId: c.conversationId || (dossier && dossier.conversationId) || null
+    };
+}
+
+function applyDossierToContact(contact, dossier, ambiguous) {
+    if (!contact) return;
+    contact.missionAmbiguous = Boolean(ambiguous) || (!dossier && Array.isArray(contact.dossiers) && contact.dossiers.length > 1);
+    contact.activeDossier = dossier || null;
+    if (!dossier) {
+        if (contact.missionAmbiguous) {
+            contact.requestId = null;
+            contact.invitationId = null;
+            contact.threadMission = null;
+            contact.missionId = null;
+        }
+        return;
+    }
+    contact.requestId = dossier.requestId || null;
+    contact.invitationId = dossier.invitationId || null;
+    contact.missionId = dossier.missionId || null;
+    contact.threadMission = dossier.mission && ['AGREED', 'IN_PROGRESS', 'WORK_MARKED_COMPLETE'].includes(String(dossier.mission.status || ''))
+        ? dossier.mission
+        : null;
+    if (dossier.request) {
+        contact.requestData = dossier.request;
+        contact.threadRequest = {
+            requestId: dossier.requestId,
+            invitationId: dossier.invitationId,
+            requesterId: dossier.requesterId,
+            request: dossier.request
+        };
+    }
+    window.__lyannChatRequestId = dossier.requestId || null;
+}
+
+function cancelDealContextRefresh() {
+    if (dealContextRefresh) dealContextRefresh.cancel();
+    if (dealMutationGuard) dealMutationGuard.cancel();
+}
+
+function noteDealContextConversation(contact) {
+    const scope = dealContextScopeFromContact(contact);
+    if (dealContextRefresh) dealContextRefresh.setScope(scope);
+    if (dealMutationGuard) dealMutationGuard.setScope(scope);
+}
+
 function getMyId() {
     const authId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId;
     return authId || window.CURRENT_USER_ID || null;
@@ -445,12 +809,14 @@ function closeAllOverlays() {
 
 function openChatChildSurface(id) {
     if (!id) return false;
+    let opened = false;
     if (window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.openChildSurface === 'function') {
-        return window.LYANN_MESSAGING.openChildSurface(id);
+        opened = window.LYANN_MESSAGING.openChildSurface(id);
     }
     const el = document.getElementById(id);
-    if (!el) return false;
-    el.style.display = 'flex';
+    if (!el) return !!opened;
+    el.classList.add('is-open');
+    el.style.setProperty('display', 'flex', 'important');
     setChatContextCoveredByOverlay(true);
     return true;
 }
@@ -468,7 +834,12 @@ async function getChatMessages(contactId, options = {}) {
     const userId = getMyId();
     if (!userId || !isUUID(userId) || !isUUID(contactId) || !window.LYANN_MESSAGING_REPOSITORY) return [];
     try {
-        return await window.LYANN_MESSAGING_REPOSITORY.getMessages(userId, contactId, options);
+        const conversationId = currentChatContact && currentChatContact.id === contactId
+            ? currentChatContact.conversationId
+            : options.conversationId;
+        return await window.LYANN_MESSAGING_REPOSITORY.getMessages(userId, contactId, Object.assign({}, options, {
+            conversationId: options.conversationId || conversationId || null
+        }));
     } catch (error) {
         console.warn('[MESSAGING] canonical message query failed', error);
         return [];
@@ -888,6 +1259,7 @@ window.openPhotoLightbox = function (url) {
 window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, initialNeed = null) {
     const openedAt = performance.now();
     const generation = ++threadGeneration;
+    cancelDealContextRefresh();
     const isUUID = (str) => typeof window.isUUID === 'function' ? window.isUUID(str) : (typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
     const openingDirect = Boolean(initialNeed && initialNeed.direct && !initialNeed.requestId);
 
@@ -916,6 +1288,9 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
     else if (initialHeaderAvatar && displayAvatar) initialHeaderAvatar.src = displayAvatar;
 
     currentChatContact = { id: contactId, name: displayName, avatar: displayAvatar };
+    if (typeof resetDossierCaches === 'function') resetDossierCaches();
+    if (typeof dossierSession !== 'undefined' && dossierSession.clear) dossierSession.clear();
+    noteDealContextConversation(currentChatContact);
     document.querySelectorAll('.chat-modal-layout').forEach(l => {
         l.classList.add('mobile-conversation-active', 'has-active-conversation');
     });
@@ -933,9 +1308,18 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
     const supportPromise = window.LYANN_SUPPORT_USER_ID || !window.LYANN_API_CLIENT?.getSupportUserId
         ? Promise.resolve(window.LYANN_SUPPORT_USER_ID || null)
         : window.LYANN_API_CLIENT.getSupportUserId().catch(() => null);
-    const profilePromise = window.LYANN_API_CLIENT?.getUserProfile && contactId && isUUID(contactId)
-        ? window.LYANN_API_CLIENT.getUserProfile(contactId).catch(() => null)
-        : Promise.resolve(null);
+    const profilePromise = (async () => {
+        const client = window.LYANN_API_CLIENT;
+        if (!client || !contactId || !isUUID(contactId)) return null;
+        if (typeof client.getPublicProfileWithReputation === 'function') {
+            const pub = await client.getPublicProfileWithReputation(contactId).catch(() => null);
+            if (pub && (pub.first_name || pub.last_name)) return pub;
+        }
+        if (typeof client.getUserProfile === 'function') {
+            return client.getUserProfile(contactId).catch(() => null);
+        }
+        return null;
+    })();
     const requestPromise = !openingDirect && contactId && isUUID(contactId) && window.LYANN_API_CLIENT?.supabase
         ? window.LYANN_API_CLIENT.supabase.from('requests').select('id, requester_id, title').eq('id', contactId).maybeSingle().then((res) => res && res.data).catch(() => null)
         : Promise.resolve(null);
@@ -960,11 +1344,22 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
         displayAvatar = window.getLyannAvatarUrl(prof.avatar_url);
     }
 
-    if ((!displayName || displayName === "Lyanneur" || isUUID(displayName)) && isUUID(contactId)) {
-        displayName = "Membre LYANN";
+    if ((!displayName || displayName === "Lyanneur" || displayName === "Membre LYANN" || isUUID(displayName)) && isUUID(contactId)) {
+        const warm = window.LYANN_MESSAGING_REPOSITORY && typeof window.LYANN_MESSAGING_REPOSITORY.peekConversations === 'function'
+            ? window.LYANN_MESSAGING_REPOSITORY.peekConversations(getMyId())
+            : null;
+        const known = Array.isArray(warm) ? warm.find((row) => row && String(row.contactId) === String(contactId)) : null;
+        if (known && known.name && known.name !== "Membre LYANN" && known.name !== "Lyanneur") displayName = known.name;
+        else if (!displayName || displayName === "Lyanneur" || isUUID(displayName)) displayName = "Membre LYANN";
     }
 
     currentChatContact = { id: contactId, name: displayName, avatar: displayAvatar };
+    if (initialNeed && initialNeed.requestId && !openingDirect) {
+        currentChatContact.requestId = initialNeed.requestId;
+        if (initialNeed.invitationId) currentChatContact.invitationId = initialNeed.invitationId;
+        if (initialNeed.missionId) currentChatContact.missionId = initialNeed.missionId;
+    }
+    noteDealContextConversation(currentChatContact);
     if (openingDirect) {
         currentChatContact.direct = true;
         currentChatContact.requestId = null;
@@ -1051,12 +1446,94 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
 let chatRefreshInFlight = false;
 let chatRefreshToken = 0;
 let threadGeneration = 0;
+
+async function loadPairDossiers(contact) {
+    const api = window.LYANN_API_CLIENT;
+    const dossierApi = window.LYANN_MISSION_DOSSIER;
+    const myUserId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!api || !dossierApi || !contact || !myUserId || isLyannSupportContact(contact.id)) {
+        if (contact) contact.dossiers = [];
+        return [];
+    }
+    try {
+        const invitationsPromise = typeof api.listAcceptedInvitationsBetween === 'function'
+            ? api.listAcceptedInvitationsBetween(myUserId, contact.id, { limit: 50 })
+            : Promise.resolve([]);
+        const missionsPromise = typeof api.listMissionsBetween === 'function'
+            ? api.listMissionsBetween(myUserId, contact.id)
+            : Promise.resolve([]);
+        const [invitations, missions] = await Promise.all([invitationsPromise, missionsPromise]);
+        const invitationIds = (invitations || []).map((row) => row.id).filter(Boolean);
+        const requestIds = [...new Set((invitations || []).map((row) => row.request_id).filter(Boolean)
+            .concat((missions || []).map((row) => row.related_request_id || row.request_id).filter(Boolean)))];
+        let quotes = [];
+        let requests = [];
+        if (api.supabase) {
+            const seenQuotes = new Set();
+            async function collectQuotes(column, ids) {
+                if (!ids.length) return;
+                const quoteRes = await api.supabase.from('quotes').select('*').in(column, ids).order('created_at', { ascending: false });
+                if (quoteRes.error) return;
+                (quoteRes.data || []).forEach((row) => {
+                    if (!row || !row.id || seenQuotes.has(row.id)) return;
+                    seenQuotes.add(row.id);
+                    quotes.push(row);
+                });
+            }
+            await collectQuotes('request_invitation_id', invitationIds);
+            await collectQuotes('request_id', requestIds);
+            const repo = window.LYANN_MESSAGING_REPOSITORY;
+            if (quotes.length && repo && typeof repo.enrichQuotes === 'function') {
+                try {
+                    quotes = await repo.enrichQuotes(api, quotes);
+                } catch (_) {}
+            }
+        }
+        if (api.supabase && requestIds.length) {
+            const reqRes = await api.supabase.from('requests').select('id,title,description,status,requester_id,visibility,target_user_id,location').in('id', requestIds);
+            if (!reqRes.error) requests = reqRes.data || [];
+        }
+        const dossiers = dossierApi.listDossiers({
+            viewerId: myUserId,
+            conversationId: contact.conversationId,
+            invitations: invitations || [],
+            missions: missions || [],
+            quotes,
+            requests
+        });
+        contact.dossiers = dossiers;
+        if (contact.activeDossier && dossierApi && typeof dossierApi.selectActiveDossier === 'function') {
+            const kept = dossierApi.selectActiveDossier(dossiers, {
+                requestId: contact.activeDossier.requestId,
+                invitationId: contact.activeDossier.invitationId
+            });
+            if (kept.ok) contact.activeDossier = kept.dossier;
+        }
+        if (window.LYANN_ACTIVE_CHAT_CONTACT && window.LYANN_ACTIVE_CHAT_CONTACT.id === contact.id) {
+            window.LYANN_ACTIVE_CHAT_CONTACT.dossiers = dossiers;
+            window.LYANN_ACTIVE_CHAT_CONTACT.activeDossier = contact.activeDossier || null;
+        }
+        window.__lyannChatContact = contact;
+        return dossiers;
+    } catch (_) {
+        contact.dossiers = contact.dossiers || [];
+        return contact.dossiers;
+    }
+}
+
+window.reloadPairDossiers = function () {
+    if (!currentChatContact) return Promise.resolve([]);
+    return loadPairDossiers(currentChatContact);
+};
+
 window.refreshChatUI = async function () {
     if (!currentChatContact) return;
     const token = ++chatRefreshToken;
     const contactId = currentChatContact.id;
     chatRefreshInFlight = true;
     try {
+    // Re-arm only when switching threads — not on in-thread refreshes.
+    if (dealRecapArmedForContactId !== String(contactId)) armDealRecapOpenBump(contactId);
 
     if (typeof window.updateChatFavHeaderUI === 'function') {
         window.updateChatFavHeaderUI();
@@ -1092,6 +1569,11 @@ window.refreshChatUI = async function () {
         } catch(e) {}
     }
     if (token !== chatRefreshToken || currentChatContact?.id !== contactId) return;
+    if (sharedConvId) {
+        currentChatContact.conversationId = sharedConvId;
+        if (window.LYANN_ACTIVE_CHAT_CONTACT) window.LYANN_ACTIVE_CHAT_CONTACT.conversationId = sharedConvId;
+        void bindChatFanout(sharedConvId);
+    }
 
     const messagesPromise = renderMessages(null, { fresh: true });
 
@@ -1108,10 +1590,37 @@ window.refreshChatUI = async function () {
             ? window.LYANN_API_CLIENT.listMissionsBetween(myUserId, currentChatContact.id)
             : null;
         [requestContext, mission] = await Promise.all([contextPromise, missionPromise]);
+        await loadPairDossiers(currentChatContact);
+        paintPendingActionBanner();
+        (currentChatContact.dossiers || []).forEach((dossier) => {
+            (dossier.quotes || []).forEach((quote) => {
+                if (!quote || String(quote.status || '').toUpperCase() !== 'ACCEPTED') return;
+                const providerId = quote.provider_id || quote.helper_id;
+                if (!providerId) return;
+                ensurePayoutReadiness(providerId).then(() => {
+                    if (token !== chatRefreshToken) return;
+                    paintPendingActionBanner();
+                    if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.syncOpenDossier === 'function') {
+                        window.LYANN_MISSION_SURFACES.syncOpenDossier();
+                    }
+                }).catch(() => {});
+            });
+        });
     }
     if (token !== chatRefreshToken || currentChatContact?.id !== contactId) return;
 
     const explicitRequestId = currentChatContact.requestId || null;
+    const listedThread = (window.LYANN_MESSAGING_REPOSITORY && typeof window.LYANN_MESSAGING_REPOSITORY.peekConversations === 'function')
+        ? (window.LYANN_MESSAGING_REPOSITORY.peekConversations(myUserId) || []).find((item) => item && String(item.conversationId || '') === String(sharedConvId || ''))
+        : null;
+    const multiRequestThread = Boolean(listedThread && listedThread.multiRequest)
+        || (Array.isArray(currentChatContact.dossiers) && currentChatContact.dossiers.length > 1);
+    if (requestContext && requestContext.mismatchedHint) {
+        requestContext = null;
+    }
+    if (multiRequestThread && !explicitRequestId) {
+        requestContext = null;
+    }
     if (requestContext && requestContext.startedBy) currentChatContact.startedBy = requestContext.startedBy;
     if (requestContext && requestContext.direct && !requestContext.request && !explicitRequestId) {
         currentChatContact.direct = true;
@@ -1142,21 +1651,57 @@ window.refreshChatUI = async function () {
         } catch (_) {}
     }
     if (!supportThread && requestContext && requestContext.request) {
-        if (!explicitRequestId) currentChatContact.requestId = requestContext.requestId;
+        if (!explicitRequestId && !multiRequestThread) currentChatContact.requestId = requestContext.requestId;
         currentChatContact.requestData = requestContext.request;
         if (privateRequest || (requestContext.request.visibility === 'DIRECT' || requestContext.request.target_user_id)) currentChatContact.direct = true;
     }
     if (!supportThread) {
         const chosenRequestId = explicitRequestId || (requestContext && requestContext.requestId) || null;
-        const selection = window.LYANN_QUOTE_REVISION && window.LYANN_QUOTE_REVISION.selectThreadContext
+        let selection = window.LYANN_QUOTE_REVISION && window.LYANN_QUOTE_REVISION.selectThreadContext
             ? window.LYANN_QUOTE_REVISION.selectThreadContext({
                 missions: Array.isArray(mission) ? mission : [],
                 requestId: chosenRequestId
             })
-            : { mission: null, ambiguous: false };
+            : { mission: null, ambiguous: false, requestId: chosenRequestId || null };
+        // Unique open deal only. Several dossiers stay ambiguous — never the latest invitation.
+        if (!chosenRequestId && !multiRequestThread && window.LYANN_QUOTE_REVISION && typeof window.LYANN_QUOTE_REVISION.resolveQuoteContextSelection === 'function') {
+            const deal = window.LYANN_QUOTE_REVISION.resolveQuoteContextSelection({
+                invitations: (currentChatContact.dossiers || []).map((row) => row.invitation).filter(Boolean),
+                missions: Array.isArray(mission) ? mission : [],
+                requestId: null
+            });
+            if (deal.ambiguous) {
+                selection = { mission: null, ambiguous: true, requestId: null };
+            } else if (deal.requestId) {
+                selection = window.LYANN_QUOTE_REVISION.selectThreadContext({
+                    missions: Array.isArray(mission) ? mission : [],
+                    requestId: deal.requestId
+                });
+                if (!currentChatContact.requestId) currentChatContact.requestId = deal.requestId;
+            }
+        }
         currentChatContact.threadRequest = requestContext && requestContext.request ? requestContext : null;
+        if (requestContext && requestContext.invitationId && (!multiRequestThread || explicitRequestId)) {
+            currentChatContact.invitationId = requestContext.invitationId;
+        }
         currentChatContact.threadMission = selection.mission || null;
-        currentChatContact.missionAmbiguous = Boolean(selection.ambiguous);
+        const dossierApi = window.LYANN_MISSION_DOSSIER;
+        const dossierPick = dossierApi && typeof dossierApi.selectActiveDossier === 'function'
+            ? dossierApi.selectActiveDossier(currentChatContact.dossiers || [], {
+                requestId: explicitRequestId || currentChatContact.requestId || null,
+                invitationId: currentChatContact.invitationId || null,
+                missionId: currentChatContact.missionId || null
+            })
+            : { ok: false, ambiguous: multiRequestThread && !explicitRequestId, dossier: null };
+        applyDossierToContact(
+            currentChatContact,
+            dossierPick.ok ? dossierPick.dossier : null,
+            Boolean(selection.ambiguous) || Boolean(dossierPick.ambiguous) || (multiRequestThread && !explicitRequestId && !dossierPick.ok)
+        );
+        if (currentChatContact.missionAmbiguous) currentChatContact.threadMission = null;
+        if (dossierPick.ok && dossierPick.dossier && dossierSession && dossierSession.begin) {
+            dossierSession.begin(dossierPick.dossier.key);
+        }
         paintThreadBusinessBanner();
     } else {
         hideChatMissionChrome();
@@ -1170,6 +1715,14 @@ window.refreshChatUI = async function () {
 
     if (token !== chatRefreshToken || currentChatContact?.id !== contactId) return;
     await messagesPromise;
+    if (token !== chatRefreshToken || currentChatContact?.id !== contactId) return;
+    // E5.1: always rebuild ActionPanel from explicit E1 scope + server quote state.
+    // Banner alone must never be the only chrome after context switch / empty thread.
+    if (!supportThread) {
+        noteDealContextConversation(currentChatContact);
+        void refreshDealContext('thread-open');
+    }
+    if (currentChatContact && currentChatContact.conversationId) void bindChatFanout(currentChatContact.conversationId);
     } finally {
         if (token === chatRefreshToken) chatRefreshInFlight = false;
     }
@@ -1177,52 +1730,112 @@ window.refreshChatUI = async function () {
 
 const quoteActionLocks = new Set();
 
+/**
+ * E5 — run a deal mutation under mutex + conversation/request scope.
+ * Late responses after switch are ignored (stale). On error, refresh server state before unlocking CTAs.
+ */
+async function runDealMutation(action, entityId, options = {}) {
+    const opts = options || {};
+    const scope = dealContextScopeFromContact(currentChatContact);
+    if (dealMutationGuard) dealMutationGuard.setScope(scope);
+    const handle = dealMutationGuard
+        ? dealMutationGuard.begin(action, entityId, scope)
+        : { key: String(action) + ':' + String(entityId || ''), token: 1, scope: '', generation: 0 };
+    if (!handle) return { started: false, busy: true, apply: false, stale: false };
+
+    const quoteId = opts.quoteId || null;
+    const button = opts.button || null;
+    const keepLockedOnSuccess = opts.keepLockedOnSuccess === true;
+    if (quoteId) {
+        quoteActionLocks.add(String(quoteId));
+        disableCardButtons(quoteId);
+    }
+    if (button) setButtonBusy(button, true);
+
+    let success = false;
+    try {
+        const result = await opts.execute(handle);
+        const apply = !dealMutationGuard || dealMutationGuard.shouldApply(handle);
+        if (!apply) return { started: true, busy: false, apply: false, stale: true, result };
+        if (typeof opts.apply === 'function') await opts.apply(result, handle);
+        success = true;
+        return { started: true, busy: false, apply: true, stale: false, result };
+    } catch (err) {
+        const cancelled = !!(err && (err.dealMutationCancelled || err.message === '__deal_mutation_cancelled__'));
+        const staleErr = !!(err && (err.dealMutationStale || err.message === '__deal_mutation_stale__'));
+        if (!cancelled && !staleErr) {
+            try {
+                await refreshDealContext('mutation-error:' + action);
+            } catch (_) { /* refresh best-effort before re-offer */ }
+        }
+        throw err;
+    } finally {
+        if (dealMutationGuard) dealMutationGuard.end(handle);
+        const stillHere = !dealMutationGuard || dealMutationGuard.getActiveScope() === (handle.scope || dealMutationGuard.getActiveScope());
+        if (!success || !keepLockedOnSuccess) {
+            if (quoteId) quoteActionLocks.delete(String(quoteId));
+            if (quoteId && stillHere) enableCardButtons(quoteId);
+            if (button && button.isConnected) setButtonBusy(button, false);
+        }
+    }
+}
+window.__lyannRunDealMutation = runDealMutation;
+
 window.handleAcceptQuote = async function(quoteId) {
-    if (!quoteId || quoteActionLocks.has(quoteId)) return;
-    quoteActionLocks.add(quoteId);
-    disableCardButtons(quoteId);
+    if (!quoteId) return;
+    if (quoteActionLocks.has(quoteId) || (dealMutationGuard && dealMutationGuard.isBusy('accept', quoteId))) return;
     if (!await window.LYANN_ROUTER.requireAuthForInteraction('proposal', { quoteId, contactId: currentChatContact?.id })) {
-        quoteActionLocks.delete(quoteId);
         return;
     }
     try {
-        const knownVersion = timelineQuotes.get(String(quoteId));
-        const version = knownVersion ? knownVersion.version : null;
-        const acceptance = window.LYANN_QUOTE_REVISION && window.LYANN_QUOTE_REVISION.planQuoteAcceptance
-            ? window.LYANN_QUOTE_REVISION.planQuoteAcceptance(version)
-            : { ok: Number.isInteger(Number(version)) && Number(version) >= 1, version: Number(version) };
-        if (!acceptance.ok) {
-            quoteActionLocks.delete(quoteId);
-            const box = document.getElementById('chatMessagesContainer');
-            box?.querySelectorAll(quoteTimelineSelector(quoteId) + ' button, [data-live-quote-id="' + CSS.escape(String(quoteId)) + '"] button').forEach((button) => { button.disabled = false; });
-            chatToast(acceptance.message || 'Rechargez le devis avant de l’accepter.');
-            return;
-        }
-        const amount = knownVersion && knownVersion.total_amount != null ? knownVersion.total_amount + ' €' : 'le montant affiché';
-        if (window.lyannConfirm) {
-            const ok = await window.lyannConfirm(`Accepter la version ${acceptance.version} à ${amount} ? Une mission sera créée. Une version plus ancienne ne peut plus être acceptée.`);
-            if (!ok) {
-                quoteActionLocks.delete(quoteId);
-                const box = document.getElementById('chatMessagesContainer');
-                box?.querySelectorAll(quoteTimelineSelector(quoteId) + ' button, [data-live-quote-id="' + CSS.escape(String(quoteId)) + '"] button').forEach((button) => { button.disabled = false; });
-                return;
+        const outcome = await runDealMutation('accept', quoteId, {
+            quoteId,
+            keepLockedOnSuccess: true,
+            execute: async (handle) => {
+                const knownVersion = timelineQuotes.get(String(quoteId));
+                if (knownVersion && knownVersion.status && knownVersion.status !== 'SENT') {
+                    throw new Error('Ce devis ne peut plus être accepté.');
+                }
+                const version = knownVersion ? knownVersion.version : null;
+                const acceptance = window.LYANN_QUOTE_REVISION && window.LYANN_QUOTE_REVISION.planQuoteAcceptance
+                    ? window.LYANN_QUOTE_REVISION.planQuoteAcceptance(version)
+                    : { ok: Number.isInteger(Number(version)) && Number(version) >= 1, version: Number(version) };
+                if (!acceptance.ok) {
+                    throw new Error(acceptance.message || 'Rechargez le devis avant de l’accepter.');
+                }
+                const amount = knownVersion && knownVersion.total_amount != null ? knownVersion.total_amount + ' €' : 'le montant affiché';
+                if (window.lyannConfirm) {
+                    const ok = await window.lyannConfirm(`Accepter la version ${acceptance.version} à ${amount} ? Une mission sera créée. Une version plus ancienne ne peut plus être acceptée.`);
+                    if (!ok) {
+                        const abort = new Error('__deal_mutation_cancelled__');
+                        abort.dealMutationCancelled = true;
+                        throw abort;
+                    }
+                }
+                if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                    const stale = new Error('__deal_mutation_stale__');
+                    stale.dealMutationStale = true;
+                    throw stale;
+                }
+                return window.LYANN_API_CLIENT.acceptRequestQuote(quoteId, acceptance.version);
+            },
+            apply: async (res) => {
+                console.log("⚡ Devis accepté avec succès via RPC Supabase:", res);
+                const known = timelineQuotes.get(String(quoteId)) || { id: quoteId };
+                known.status = 'ACCEPTED';
+                if (res && res.mission_id) known.mission_id = res.mission_id;
+                timelineQuotes.set(String(quoteId), known);
+                applyQuoteStatusToDom(quoteId, 'ACCEPTED');
+                await refreshOpenBusinessCards();
             }
-        }
-        const res = await window.LYANN_API_CLIENT.acceptRequestQuote(quoteId, acceptance.version);
-        console.log("⚡ Devis accepté avec succès via RPC Supabase:", res);
-        const known = timelineQuotes.get(String(quoteId)) || { id: quoteId };
-        known.status = 'ACCEPTED';
-        timelineQuotes.set(String(quoteId), known);
-        applyQuoteStatusToDom(quoteId, 'ACCEPTED');
-        await refreshOpenBusinessCards();
-        if (window.lyannAlert) window.lyannAlert("Devis accepté. La mission a été créée.");
-    } catch(err) {
+        });
+        if (outcome && outcome.busy) return;
+    } catch (err) {
+        if (err && (err.dealMutationCancelled || err.message === '__deal_mutation_cancelled__')) return;
+        if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
         console.error("Erreur lors de l'acceptation du devis:", err);
-        const box = document.getElementById('chatMessagesContainer');
-        box?.querySelectorAll(quoteTimelineSelector(quoteId) + ' button, [data-live-quote-id="' + CSS.escape(String(quoteId)) + '"] button').forEach((button) => { button.disabled = false; });
-        quoteActionLocks.delete(quoteId);
         const message = String(err && err.message || '');
-        const stale = /changé|version|Rechargez le devis/i.test(message);
+        const stale = /changé|version|Rechargez le devis|déjà été créée/i.test(message);
         const blocked = /ne peut plus être accepté|user_blocked/i.test(message);
         const readable = message && message.length < 180 && !/PGRST|schema cache|function/i.test(message);
         chatToast(blocked ? 'Ce devis ne peut plus être accepté.' : (readable && stale ? message : (stale ? 'Ce devis a changé. Rechargez-le avant de l’accepter.' : 'Le devis n’a pas pu être accepté. Réessayez.')));
@@ -1230,26 +1843,47 @@ window.handleAcceptQuote = async function(quoteId) {
 };
 
 window.handleRejectQuote = async function(quoteId) {
-    if (!await window.LYANN_ROUTER.requireAuthForInteraction('proposal', { quoteId, contactId: currentChatContact?.id })) return;
     if (!quoteId) return;
+    if (quoteActionLocks.has(quoteId) || (dealMutationGuard && dealMutationGuard.isBusy('decline', quoteId))) return;
+    if (!await window.LYANN_ROUTER.requireAuthForInteraction('proposal', { quoteId, contactId: currentChatContact?.id })) {
+        return;
+    }
     try {
-        if (window.lyannConfirm) {
-            const ok = await window.lyannConfirm("Êtes-vous sûr de vouloir refuser ce devis ?");
-            if (!ok) return;
-        }
-        disableCardButtons(quoteId);
-        const res = await window.LYANN_API_CLIENT.rejectRequestQuote(quoteId);
-        console.log("⚡ Devis refusé via RPC Supabase:", res);
-        const known = timelineQuotes.get(String(quoteId)) || { id: quoteId };
-        known.status = 'REJECTED';
-        timelineQuotes.set(String(quoteId), known);
-        applyQuoteStatusToDom(quoteId, 'REJECTED');
-        await refreshOpenBusinessCards();
-        if (window.lyannAlert) window.lyannAlert("Devis refusé.");
-    } catch(err) {
+        const outcome = await runDealMutation('decline', quoteId, {
+            quoteId,
+            keepLockedOnSuccess: true,
+            execute: async (handle) => {
+                if (window.lyannConfirm) {
+                    const ok = await window.lyannConfirm("Êtes-vous sûr de vouloir refuser ce devis ?");
+                    if (!ok) {
+                        const abort = new Error('__deal_mutation_cancelled__');
+                        abort.dealMutationCancelled = true;
+                        throw abort;
+                    }
+                }
+                if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                    const stale = new Error('__deal_mutation_stale__');
+                    stale.dealMutationStale = true;
+                    throw stale;
+                }
+                return window.LYANN_API_CLIENT.rejectRequestQuote(quoteId);
+            },
+            apply: async (res) => {
+                console.log("⚡ Devis refusé via RPC Supabase:", res);
+                const known = timelineQuotes.get(String(quoteId)) || { id: quoteId };
+                known.status = 'REJECTED';
+                timelineQuotes.set(String(quoteId), known);
+                applyQuoteStatusToDom(quoteId, 'REJECTED');
+                ensureQuoteDeclinedNotice(known);
+                if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
+                await refreshOpenBusinessCards();
+            }
+        });
+        if (outcome && outcome.busy) return;
+    } catch (err) {
+        if (err && (err.dealMutationCancelled || err.message === '__deal_mutation_cancelled__')) return;
+        if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
         console.error("Erreur lors du refus du devis:", err);
-        const box = document.getElementById('chatMessagesContainer');
-        box?.querySelectorAll(quoteTimelineSelector(quoteId) + ' button, [data-live-quote-id="' + CSS.escape(String(quoteId)) + '"] button').forEach((button) => { button.disabled = false; });
         chatToast('Le devis n’a pas pu être refusé. Réessayez.');
     }
 };
@@ -1476,7 +2110,7 @@ window.openQuoteRevision = function(quoteId) {
     });
     panel.addEventListener('submit', async (event) => {
         event.preventDefault();
-        if (save.disabled) return;
+        if (save.disabled || (dealMutationGuard && dealMutationGuard.isBusy('revise', quoteId))) return;
         const latest = timelineQuotes.get(String(quoteId)) || quote;
         const payload = revision.validateRevision({
             quote: latest,
@@ -1489,31 +2123,45 @@ window.openQuoteRevision = function(quoteId) {
             if (window.lyannAlert) window.lyannAlert(payload.message);
             return;
         }
-        save.disabled = true;
-        save.textContent = 'Enregistrement…';
         try {
-            if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.reviseSentQuote !== 'function') {
-                throw new Error('La modification du devis n’est pas encore activée.');
-            }
-            const validUntilValue = validUntil.value ? new Date(validUntil.value + 'T23:59:59').toISOString() : null;
-            await window.LYANN_API_CLIENT.reviseSentQuote(
+            await runDealMutation('revise', quoteId, {
                 quoteId,
-                payload.description,
-                validUntilValue,
-                payload.milestones,
-                payload.version
-            );
-            closeQuoteRevision();
-            await refreshOpenBusinessCards();
-            if (typeof chatToast === 'function') chatToast('Devis mis à jour. Le client voit la nouvelle version.');
+                button: save,
+                execute: async (handle) => {
+                    if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.reviseSentQuote !== 'function') {
+                        throw new Error('La modification du devis n’est pas encore activée.');
+                    }
+                    const validUntilValue = validUntil.value ? new Date(validUntil.value + 'T23:59:59').toISOString() : null;
+                    if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                        const stale = new Error('__deal_mutation_stale__');
+                        stale.dealMutationStale = true;
+                        throw stale;
+                    }
+                    return window.LYANN_API_CLIENT.reviseSentQuote(
+                        quoteId,
+                        payload.description,
+                        validUntilValue,
+                        payload.milestones,
+                        payload.version
+                    );
+                },
+                apply: async () => {
+                    closeQuoteRevision();
+                    await refreshOpenBusinessCards();
+                    if (typeof chatToast === 'function') chatToast('Devis mis à jour. Le client voit la nouvelle version.');
+                }
+            });
         } catch (err) {
+            if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
             const message = String(err && err.message || '');
             const friendly = /revise_sent_quote|could not find the function|schema cache/i.test(message)
                 ? 'La modification du devis n’est pas encore activée.'
                 : (message || 'Le devis n’a pas pu être modifié.');
             if (window.lyannAlert) window.lyannAlert(friendly);
-            save.disabled = false;
-            save.textContent = 'Enregistrer la nouvelle version';
+            if (save.isConnected) {
+                save.disabled = false;
+                save.textContent = 'Enregistrer la nouvelle version';
+            }
         }
     });
     document.body.appendChild(overlay);
@@ -1521,8 +2169,22 @@ window.openQuoteRevision = function(quoteId) {
     description.focus();
 };
 
+function isRpcNoiseMessage(text) {
+    const raw = String(text || '');
+    return /n['’]est plus ouvert aux propositions|La demande liée n['’]est plus ouverte|statut actuel:\s*[A-Z_]+/i.test(raw);
+}
+
 function notifyQuoteUnavailable(err) {
-    const msg = (err && err.message) ? String(err.message) : 'Proposition indisponible.';
+    const raw = (err && err.message) ? String(err.message) : 'Proposition indisponible.';
+    if (isRpcNoiseMessage(raw)) {
+        const human = 'Cette demande n’accepte plus de nouvelles propositions pour le moment.';
+        if (window.showToast) window.showToast(human, 'info');
+        else if (window.lyannAlert) window.lyannAlert(human);
+        return;
+    }
+    const msg = (typeof window.lyannSanitizeUserMessage === 'function')
+        ? window.lyannSanitizeUserMessage(raw)
+        : raw;
     if (window.showToast) window.showToast(msg, 'error');
     else if (window.lyannAlert) window.lyannAlert(msg);
     else alert(msg);
@@ -1579,8 +2241,74 @@ function invalidateActiveQuoteContext() {
     }
 }
 
+/** Options for getQuoteContext — always pass the thread's request/invitation when known. */
+function threadQuoteContextOptions(extra = {}) {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT || {};
+    const threadRequest = contact.threadRequest || null;
+    return Object.assign({}, extra, {
+        requestId: contact.requestId || (threadRequest && threadRequest.requestId) || null,
+        invitationId: contact.invitationId
+            || (threadRequest && threadRequest.invitationId)
+            || null,
+        missionId: (contact.threadMission && contact.threadMission.id) || contact.missionId || null,
+        conversationId: contact.conversationId || null
+    });
+}
+
+function applyQuoteContextMeta(quotes, contact) {
+    if (!contact || !quotes) return quotes;
+    if (quotes.ambiguous) {
+        contact.missionAmbiguous = true;
+        contact.threadMission = null;
+        return quotes;
+    }
+    if (quotes.requestId && !contact.requestId && !contact.missionAmbiguous) {
+        contact.requestId = quotes.requestId;
+    }
+    if (quotes.invitationId && !contact.invitationId && !contact.missionAmbiguous) contact.invitationId = quotes.invitationId;
+    return quotes;
+}
+
+function quoteLooksFunded(quotes) {
+    const list = Array.isArray(quotes) ? quotes : [];
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    if (payment && typeof payment.missionPhase === 'function') {
+        if (list.some((quote) => {
+            const phase = payment.missionPhase(quote);
+            return phase === 'prestation' || phase === 'validation' || phase === 'closed';
+        })) return true;
+    }
+    return list.some((quote) => {
+        const milestoneFunded = (quote.milestones || []).some((m) => {
+            const st = m && m.status;
+            return st === 'FUNDED' || st === 'IN_PROGRESS' || st === 'COMPLETED' || st === 'VALIDATED' || st === 'RELEASED';
+        });
+        const paymentSucceeded = (quote.payments || []).some((p) => p && p.payment_status === 'SUCCEEDED');
+        return milestoneFunded || paymentSucceeded;
+    });
+}
+
 window.lyannAwaitPaidQuote = async function lyannAwaitPaidQuote() {
-    await refreshOpenBusinessCards();
+    // E5: never invent FUNDED — re-read server deal state after Stripe, including webhook lag.
+    const waits = [0, 450, 900, 1600, 2400];
+    let outcome = null;
+    let funded = false;
+    for (let i = 0; i < waits.length; i += 1) {
+        if (waits[i]) await new Promise((resolve) => setTimeout(resolve, waits[i]));
+        if (currentChatContact && typeof loadPairDossiers === 'function') {
+            try { await loadPairDossiers(currentChatContact); } catch (_) {}
+        }
+        outcome = await refreshDealContext('payment-confirm');
+        const quotes = outcome && Array.isArray(outcome.quotes) ? outcome.quotes : [];
+        const dossierQuotes = (currentChatContact && Array.isArray(currentChatContact.dossiers))
+            ? currentChatContact.dossiers.flatMap((row) => row && Array.isArray(row.quotes) ? row.quotes : [])
+            : [];
+        funded = quoteLooksFunded(quotes.length ? quotes : dossierQuotes);
+        syncLiveDealActions(quotes.length ? quotes : dossierQuotes);
+        if (funded) break;
+        if (typeof openConversationIsVisible === 'function' && !openConversationIsVisible()) break;
+    }
+    return { outcome, funded: !!funded, serverValidated: !!funded };
 };
 
 function isPersistedUuid(id) {
@@ -1592,7 +2320,10 @@ function isPersistedUuid(id) {
 async function resolveChatMilestoneId(preferredId, statuses) {
     const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
     if (!window.LYANN_MESSAGING_REPOSITORY || !contact || !contact.id) return null;
-    const quotes = await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), contact.id, { fresh: true });
+    const quotes = applyQuoteContextMeta(
+        await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), contact.id, threadQuoteContextOptions({ fresh: true })),
+        contact
+    );
     const milestones = (quotes || []).flatMap((quote) => (quote.milestones || []).map((milestone) => ({
         ...milestone,
         quoteId: quote.id,
@@ -1737,123 +2468,164 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         return refuseUnlinkedMission('Acceptation');
     }
     else if (actionId === 'REJECT_QUOTE') {
-        if (window.LYANN_API_CLIENT && extraData && extraData.quoteId) {
-            try {
-                await window.LYANN_API_CLIENT.rejectRequestQuote(extraData.quoteId);
-                console.log("⚡ Devis refusé via RPC Supabase Production");
-            } catch (err) {
-                console.warn("Erreur refus Devis Supabase:", err);
-                if (window.lyannAlert) window.lyannAlert("Erreur lors du refus du devis : " + (err.message || err));
-                return;
-            }
+        const rejectId = extraData && extraData.quoteId;
+        if (rejectId) {
+            await window.handleRejectQuote(rejectId);
+            return;
         }
         refreshOpenBusinessCards();
     }
 
     else if (actionId === 'PAY_MISSION') {
         const payingQuote = quoteForPayAction(extraData);
+        const payEntity = (extraData && extraData.milestoneId) || (mission && mission.id) || 'pay';
+        if (dealMutationGuard && dealMutationGuard.isBusy('pay', payEntity)) return;
         if (payingQuote && payoutBlocksPayment(payingQuote)) {
             const prompt = payoutPromptForQuote(payingQuote);
             chatToast(prompt && prompt.title ? prompt.title : 'Le compte de versement n’est pas encore prêt.');
             return;
         }
-        if (!mission || !isMissionUuid(mission.id)) return refuseUnlinkedMission('Paiement');
-        const coPrestationTitle = document.getElementById('coPrestationTitle');
-        const coDevisAmount = document.getElementById('coDevisAmount');
-        const coLyannFee = document.getElementById('coLyannFee');
-        const coTotalAmount = document.getElementById('coTotalAmount');
+        const payableMilestoneId = extraData && extraData.milestoneId;
+        if (!isMissionUuid(payableMilestoneId) && !(mission && isMissionUuid(mission.id))) {
+            return refuseUnlinkedMission('Paiement');
+        }
+        try {
+            await runDealMutation('pay', payEntity, {
+                quoteId: payingQuote && payingQuote.id,
+                execute: async (handle) => {
+                    const coPrestationTitle = document.getElementById('coPrestationTitle');
+                    const coDevisAmount = document.getElementById('coDevisAmount');
+                    const coLyannFee = document.getElementById('coLyannFee');
+                    const coTotalAmount = document.getElementById('coTotalAmount');
 
-        const title = mission.title || 'Intervention LYANN';
-        if (coPrestationTitle) coPrestationTitle.textContent = title;
-        if (coDevisAmount) coDevisAmount.textContent = '…';
-        if (coLyannFee) coLyannFee.textContent = '…';
-        if (coTotalAmount) coTotalAmount.textContent = '…';
+                    const title = mission.title || 'Intervention LYANN';
+                    if (coPrestationTitle) coPrestationTitle.textContent = title;
+                    if (coDevisAmount) coDevisAmount.textContent = '…';
+                    if (coLyannFee) coLyannFee.textContent = '…';
+                    if (coTotalAmount) coTotalAmount.textContent = '…';
 
-        closeAllOverlays();
-        const chatCheckoutOverlay = document.getElementById('chatCheckoutOverlay');
-        if (chatCheckoutOverlay) {
-            const milestoneId = await resolveChatMilestoneId(
-                extraData.milestoneId || (mission && mission.milestoneId),
-                ['PENDING']
-            );
-            if (milestoneId) chatCheckoutOverlay.dataset.milestoneId = milestoneId;
-            else delete chatCheckoutOverlay.dataset.milestoneId;
-            openChatChildSurface('chatCheckoutOverlay');
-            const ensureStripeCheckout = () => {
-                if (window.LYANN_STRIPE && typeof window.LYANN_STRIPE.prepareCheckout === 'function') {
-                    return Promise.resolve();
-                }
-                if (window.LYANN_FEATURES && typeof window.LYANN_FEATURES.ensure === 'function') {
-                    return window.LYANN_FEATURES.ensure('stripeCheckout');
-                }
-                return new Promise((resolve, reject) => {
-                    const script = document.createElement('script');
-                    script.src = 'lyann-stripe.js?v=20260922v';
-                    script.addEventListener('load', resolve, { once: true });
-                    script.addEventListener('error', () => reject(new Error('Stripe checkout unavailable')), { once: true });
-                    document.head.appendChild(script);
-                });
-            };
-            const prepareStripe = () => {
-                if (!window.LYANN_STRIPE || typeof window.LYANN_STRIPE.prepareCheckout !== 'function') return;
-                window.LYANN_STRIPE.prepareCheckout(milestoneId).then((prepared) => {
+                    closeAllOverlays();
+                    const chatCheckoutOverlay = document.getElementById('chatCheckoutOverlay');
+                    if (!chatCheckoutOverlay) {
+                        throw new Error('Paiement indisponible : le portail de paiement n’est pas disponible sur cet écran.');
+                    }
+                    const milestoneId = await resolveChatMilestoneId(
+                        extraData.milestoneId || (mission && mission.milestoneId),
+                        ['PENDING']
+                    );
+                    if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                        const stale = new Error('__deal_mutation_stale__');
+                        stale.dealMutationStale = true;
+                        throw stale;
+                    }
+                    if (milestoneId) chatCheckoutOverlay.dataset.milestoneId = milestoneId;
+                    else delete chatCheckoutOverlay.dataset.milestoneId;
+                    openChatChildSurface('chatCheckoutOverlay');
+                    const ensureStripeCheckout = () => {
+                        if (window.LYANN_STRIPE && typeof window.LYANN_STRIPE.prepareCheckout === 'function') {
+                            return Promise.resolve();
+                        }
+                        if (window.LYANN_FEATURES && typeof window.LYANN_FEATURES.ensure === 'function') {
+                            return window.LYANN_FEATURES.ensure('stripeCheckout');
+                        }
+                        return new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'lyann-stripe.js?v=20260922v';
+                            script.addEventListener('load', resolve, { once: true });
+                            script.addEventListener('error', () => reject(new Error('Stripe checkout unavailable')), { once: true });
+                            document.head.appendChild(script);
+                        });
+                    };
+                    await ensureStripeCheckout();
+                    if (!window.LYANN_STRIPE || typeof window.LYANN_STRIPE.prepareCheckout !== 'function') {
+                        throw new Error('Paiement indisponible.');
+                    }
+                    const payBtn = document.getElementById('btnConfirmCheckoutPay');
+                    if (payBtn) payBtn.disabled = true;
+                    const prepared = await window.LYANN_STRIPE.prepareCheckout(milestoneId);
+                    if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                        const stale = new Error('__deal_mutation_stale__');
+                        stale.dealMutationStale = true;
+                        throw stale;
+                    }
                     const amounts = prepared && prepared.data && prepared.data.amounts;
                     if (amounts) applyServerCheckoutAmounts(amounts);
-                    if (prepared && prepared.error) notifyActionUnavailable(prepared.error);
-                }).catch((err) => {
-                    notifyActionUnavailable({ message: err && err.message ? err.message : 'Paiement indisponible.' });
-                });
-            };
-            ensureStripeCheckout().then(prepareStripe).catch((err) => {
-                notifyActionUnavailable({ message: 'Paiement indisponible : Stripe.js n’a pas pu être chargé.' });
-                console.warn(err);
+                    if (prepared && prepared.error) throw prepared.error;
+                    return prepared;
+                }
             });
-        } else if (window.lyannAlert) {
-            window.lyannAlert('Paiement indisponible : le portail de paiement n’est pas disponible sur cet écran.');
+        } catch (err) {
+            if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
+            notifyActionUnavailable(err && err.message ? err : { message: err && err.message ? err.message : 'Paiement indisponible.' });
         }
         return;
     }
 
     else if (actionId === 'MARK_DONE') {
-        const milestoneId = await resolveChatMilestoneId(
-            extraData.milestoneId || (mission && mission.milestoneId),
-            ['FUNDED', 'IN_PROGRESS']
-        );
-        if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.submitMilestoneCompletion !== 'function') {
-            return refuseUnlinkedMission('Clôture');
+        const preferred = extraData.milestoneId || (mission && mission.milestoneId);
+        const lockKey = preferred || (mission && mission.id) || 'done';
+        if (dealMutationGuard && dealMutationGuard.isBusy('done', lockKey)) return;
+        try {
+            await runDealMutation('done', lockKey, {
+                execute: async (handle) => {
+                    const milestoneId = await resolveChatMilestoneId(preferred, ['FUNDED', 'IN_PROGRESS']);
+                    if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.submitMilestoneCompletion !== 'function') {
+                        throw new Error('Clôture indisponible : cette action n’est pas liée à un jalon enregistré.');
+                    }
+                    if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                        const stale = new Error('__deal_mutation_stale__');
+                        stale.dealMutationStale = true;
+                        throw stale;
+                    }
+                    const result = await window.LYANN_API_CLIENT.submitMilestoneCompletion(milestoneId);
+                    if (result && result.error) throw result.error;
+                    return result;
+                },
+                apply: async (result) => {
+                    if (typeof window.showToast === 'function') {
+                        window.showToast((result && result.data && result.data.message) || 'Prestation déclarée réalisée, en attente de validation.', 'success');
+                    }
+                    invalidateActiveQuoteContext();
+                    await refreshOpenBusinessCards();
+                }
+            });
+        } catch (err) {
+            if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
+            notifyActionUnavailable(err);
         }
-        const result = await window.LYANN_API_CLIENT.submitMilestoneCompletion(milestoneId);
-        if (result && result.error) {
-            notifyActionUnavailable(result.error);
-            return;
-        }
-        if (typeof window.showToast === 'function') {
-            window.showToast((result && result.data && result.data.message) || 'Prestation déclarée réalisée, en attente de validation.', 'success');
-        }
-        invalidateActiveQuoteContext();
-        refreshOpenBusinessCards();
         return;
     }
 
     else if (actionId === 'CONFIRM_DONE') {
-        const milestoneId = await resolveChatMilestoneId(
-            extraData.milestoneId || (mission && mission.milestoneId),
-            ['COMPLETED']
-        );
-        if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.releaseMilestonePayment !== 'function') {
-            return refuseUnlinkedMission('Validation');
-        }
+        const preferred = extraData.milestoneId || (mission && mission.milestoneId);
+        const lockKey = preferred || (mission && mission.id) || 'confirm';
+        if (dealMutationGuard && dealMutationGuard.isBusy('confirm', lockKey)) return;
         try {
-            const result = await window.LYANN_API_CLIENT.releaseMilestonePayment(milestoneId);
-            if (typeof window.showToast === 'function') {
-                window.showToast((result && result.message) || 'Validation enregistrée.', 'success');
-            }
+            await runDealMutation('confirm', lockKey, {
+                execute: async (handle) => {
+                    const milestoneId = await resolveChatMilestoneId(preferred, ['COMPLETED']);
+                    if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.releaseMilestonePayment !== 'function') {
+                        throw new Error('Validation indisponible : cette action n’est pas liée à un jalon enregistré.');
+                    }
+                    if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                        const stale = new Error('__deal_mutation_stale__');
+                        stale.dealMutationStale = true;
+                        throw stale;
+                    }
+                    return window.LYANN_API_CLIENT.releaseMilestonePayment(milestoneId);
+                },
+                apply: async (result) => {
+                    if (typeof window.showToast === 'function') {
+                        window.showToast((result && result.message) || 'Validation enregistrée.', 'success');
+                    }
+                    invalidateActiveQuoteContext();
+                    await refreshOpenBusinessCards();
+                }
+            });
         } catch (err) {
+            if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
             notifyActionUnavailable(err);
-            return;
         }
-        invalidateActiveQuoteContext();
-        refreshOpenBusinessCards();
         return;
     }
 
@@ -2022,6 +2794,14 @@ const TIMELINE_LABELS = {
     review_submitted: 'Avis publié'
 };
 const timelineQuotes = new Map();
+const dossierSession = (window.LYANN_MISSION_DOSSIER && typeof window.LYANN_MISSION_DOSSIER.createDossierSession === 'function')
+    ? window.LYANN_MISSION_DOSSIER.createDossierSession()
+    : { begin() { return 1; }, clear() { return 1; }, isCurrent() { return true; }, generation() { return 1; }, activeKey() { return ''; } };
+
+function resetDossierCaches() {
+    timelineQuotes.clear();
+    window.__lyannChatRequestId = null;
+}
 
 function isTimelineMessage(msg) {
     const type = msg && (msg.messageType || msg.type);
@@ -2045,12 +2825,93 @@ function placeThreadNode(container, node) {
     else container.appendChild(node);
 }
 
-function disableCardButtons(quoteId) {
-    const box = document.getElementById('chatMessagesContainer');
-    if (!box || !quoteId) return;
-    box.querySelectorAll('[data-live-quote-id="' + CSS.escape(String(quoteId)) + '"] button, ' + quoteTimelineSelector(quoteId) + ' button').forEach((button) => {
+function setButtonBusy(button, busy) {
+    if (!button) return;
+    if (busy) {
+        if (!button.isConnected) return;
+        if (button.dataset.lyannBusyLabel == null) {
+            button.dataset.lyannBusyLabel = button.innerHTML;
+        }
         button.disabled = true;
+        button.classList.add('is-busy');
+        button.setAttribute('aria-busy', 'true');
+        if (!button.querySelector('.lyann-btn-spin')) {
+            button.innerHTML = '<i class="ph ph-circle-notch lyann-btn-spin" aria-hidden="true"></i>';
+        }
+        return;
+    }
+    button.disabled = false;
+    button.classList.remove('is-busy');
+    button.removeAttribute('aria-busy');
+    if (button.dataset.lyannBusyLabel != null) {
+        button.innerHTML = button.dataset.lyannBusyLabel;
+        delete button.dataset.lyannBusyLabel;
+    }
+}
+
+function quoteActionButtons(quoteId) {
+    const box = document.getElementById('chatMessagesContainer');
+    if (!box || !quoteId) return [];
+    const id = CSS.escape(String(quoteId));
+    return [...box.querySelectorAll(
+        '[data-live-quote-id="' + id + '"] button, ' +
+        quoteTimelineSelector(quoteId) + ' button, ' +
+        '[data-deal-recap="' + id + '"] button'
+    )];
+}
+
+function disableCardButtons(quoteId) {
+    quoteActionButtons(quoteId).forEach((button) => setButtonBusy(button, true));
+}
+
+function enableCardButtons(quoteId) {
+    quoteActionButtons(quoteId).forEach((button) => setButtonBusy(button, false));
+}
+
+function quoteDeclineNodeSelector(quoteId) {
+    return '[data-message-type="quote_declined"][data-entity-id="' + CSS.escape(String(quoteId)) + '"]';
+}
+
+function ensureQuoteDeclinedNotice(quote, row) {
+    const box = document.getElementById('chatMessagesContainer');
+    const quoteId = quote && quote.id;
+    if (!box || !quoteId) return;
+    if (!dealEventBelongsToActiveDossier(quote, row)) return;
+    const copy = window.LYANN_QUOTE_PAYMENT && typeof window.LYANN_QUOTE_PAYMENT.quoteDeclineCopy === 'function'
+        ? window.LYANN_QUOTE_PAYMENT.quoteDeclineCopy(quote, typeof getMyId === 'function' ? getMyId() : null)
+        : { headline: 'Le devis a été refusé.', next: '' };
+    const existing = box.querySelector(quoteDeclineNodeSelector(quoteId));
+    if (existing) {
+        const state = existing.querySelector('.chat-timeline-state');
+        if (state) state.textContent = copy.headline;
+        let next = existing.querySelector('.chat-timeline-meta');
+        if (copy.next && !next) {
+            next = document.createElement('div');
+            next.className = 'chat-timeline-meta';
+            const body = existing.querySelector('.chat-timeline-body') || existing;
+            body.appendChild(next);
+        }
+        if (next && copy.next) next.textContent = copy.next;
+        return;
+    }
+    const createdAt = (row && (row.created_at || row.createdAt)) || new Date().toISOString();
+    const node = renderTimelineCard({
+        id: (row && row.id) || ('quote-declined-' + quoteId),
+        createdAt: createdAt,
+        timestamp: createdAt ? Date.parse(createdAt) : Date.now(),
+        messageType: 'quote_declined',
+        entityType: 'quote',
+        entityId: quoteId,
+        sender: 'them',
+        metadata: Object.assign({}, (row && row.metadata) || {}, {
+            amount: quote.total_amount,
+            status: 'REJECTED',
+            provider_id: quote.provider_id || quote.helper_id
+        })
     });
+    if (!node) return;
+    placeThreadNode(box, node);
+    if (threadIsNearBottom(box)) scrollThreadToBottom(box, false);
 }
 
 function applyQuoteStatusToDom(quoteId, status) {
@@ -2096,32 +2957,13 @@ function fundingActionForOpenQuotes() {
 }
 
 function appendFundingAction(parent) {
+    // E2: keep waiting copy on timeline; MARK_DONE / CONFIRM_DONE live only on missionCard.
     const next = fundingActionForOpenQuotes();
-    if (!next || !parent) return;
-    if (next.waiting) {
-        const line = document.createElement('div');
-        line.className = 'chat-timeline-meta';
-        line.textContent = next.waiting;
-        parent.appendChild(line);
-    }
-    if (!next.action || !next.milestone) return;
-    const actions = document.createElement('div');
-    actions.className = 'chat-timeline-actions';
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'btn btn-primary';
-    button.style.background = '#2E7D32';
-    button.textContent = next.label;
-    button.addEventListener('click', () => {
-        button.disabled = true;
-        handleChatAction(next.action, {
-            id: next.missionId,
-            milestoneId: next.milestone.id,
-            title: next.milestone.title
-        });
-    });
-    actions.appendChild(button);
-    parent.appendChild(actions);
+    if (!next || !parent || !next.waiting) return;
+    const line = document.createElement('div');
+    line.className = 'chat-timeline-meta';
+    line.textContent = next.waiting;
+    parent.appendChild(line);
 }
 
 function repaintFundingCards(box) {
@@ -2158,11 +3000,7 @@ function renderDealRecapCard(quote) {
         row.textContent = line.label + ' · ' + line.value;
         wrapper.appendChild(row);
     });
-    if (payment.payableMilestoneForQuote(quote, userId)) {
-        appendPayableQuoteAction(wrapper, quote);
-        return wrapper;
-    }
-    appendPayoutPrompt(wrapper, quote);
+    // E2: informational history only — pay / done / validate live on missionCard.
     const next = payment.nextFundingAction(quote, userId);
     if (next && next.waiting && !recap.released) {
         const wait = document.createElement('div');
@@ -2170,72 +3008,105 @@ function renderDealRecapCard(quote) {
         wait.textContent = next.waiting;
         wrapper.appendChild(wait);
     }
-    if (next && next.action && next.milestone) {
-        const actions = document.createElement('div');
-        actions.className = 'chat-timeline-actions';
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'btn btn-primary';
-        button.style.background = '#2E7D32';
-        button.textContent = next.label;
-        button.addEventListener('click', () => {
-            button.disabled = true;
-            handleChatAction(next.action, {
-                id: next.missionId,
-                milestoneId: next.milestone.id,
-                title: next.milestone.title
-            });
-        });
-        actions.appendChild(button);
-        wrapper.appendChild(actions);
-    }
     return wrapper;
 }
 
-function renderMissionCard(quote) {
-    const payment = window.LYANN_QUOTE_PAYMENT;
-    const userId = typeof getMyId === 'function' ? getMyId() : null;
-    if (!payment || !payment.missionCard || !quote || !userId) return null;
-    const providerId = quote.provider_id || quote.helper_id;
-    const readiness = payoutReadinessByUser.get(String(providerId || '')) || 'unknown';
-    const view = payment.missionCard(quote, userId, readiness);
-    if (!view) return null;
+function actionPanelRequestMeta(quote) {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT || {};
+    const request = (contact.threadRequest && contact.threadRequest.request) || contact.requestData || null;
+    return {
+        requestTitle: (request && request.title)
+            || contact.annonceTitle
+            || (quote && quote.request_title)
+            || '',
+        requestId: (quote && quote.request_id)
+            || contact.requestId
+            || (contact.threadRequest && contact.threadRequest.requestId)
+            || null
+    };
+}
+
+function renderActionPanelShell(view, quote) {
     const card = document.createElement('article');
-    card.className = 'chat-mission-card';
-    card.dataset.dealRecap = String(quote.id);
+    card.className = 'chat-mission-card chat-action-panel';
+    if (view.panelKind && view.panelKind !== 'action') card.classList.add('is-neutral');
+    if (view.mode) card.dataset.panelMode = view.mode;
+    if (view.panelKind) card.dataset.panelKind = view.panelKind;
+    card.dataset.actionPanel = '1';
+    if (view.quoteId) card.dataset.dealRecap = String(view.quoteId);
+    if (view.requestId) card.dataset.requestId = String(view.requestId);
+    if (view.missionId) card.dataset.missionId = String(view.missionId);
+    if (view.dealType) card.dataset.dealType = view.dealType;
+    if (view.phase) card.dataset.phase = view.phase;
+    if (view.actorToAct) card.dataset.actor = view.actorToAct;
+
+    const kickerBits = [];
+    if (view.dealTypeLabel) kickerBits.push(view.dealTypeLabel);
+    if (view.annonceTitle) kickerBits.push(view.annonceTitle);
+    if (kickerBits.length) {
+        const kicker = document.createElement('p');
+        kicker.className = 'chat-mission-kicker';
+        kicker.textContent = kickerBits.join(' · ');
+        card.appendChild(kicker);
+    }
+
     const head = document.createElement('div');
     head.className = 'chat-mission-head';
     const title = document.createElement('h3');
-    title.textContent = view.title;
-    const amount = document.createElement('strong');
-    amount.textContent = view.amount;
-    head.append(title, amount);
+    title.textContent = view.title || 'Suivi de mission';
+    head.appendChild(title);
+    if (view.amount) {
+        const amount = document.createElement('strong');
+        amount.textContent = view.amount;
+        head.appendChild(amount);
+    }
+    card.appendChild(head);
+
     const status = document.createElement('p');
     status.className = 'chat-mission-status';
-    status.textContent = view.status;
-    card.append(head, status);
-    const steps = document.createElement('ol');
-    steps.className = 'chat-mission-steps';
-    view.steps.forEach((step) => {
-        const item = document.createElement('li');
-        item.dataset.state = step.state;
-        item.textContent = step.label;
-        steps.appendChild(item);
-    });
-    card.appendChild(steps);
+    status.textContent = view.status || '';
+    card.appendChild(status);
+
+    if (view.actorLabel) {
+        const actor = document.createElement('p');
+        actor.className = 'chat-mission-actor';
+        actor.textContent = view.actorLabel;
+        card.appendChild(actor);
+    }
+
+    if (view.showSteps && Array.isArray(view.steps) && view.steps.length) {
+        const steps = document.createElement('ol');
+        steps.className = 'chat-mission-steps';
+        view.steps.forEach((step) => {
+            const item = document.createElement('li');
+            item.dataset.state = step.state;
+            item.textContent = step.label;
+            steps.appendChild(item);
+        });
+        card.appendChild(steps);
+    }
+
     if (view.context) {
         const context = document.createElement('p');
         context.className = 'chat-mission-context';
         context.textContent = view.context;
         card.appendChild(context);
     }
-    if (view.actions.length) {
+
+    const actionList = [];
+    if (view.primaryAction) actionList.push(view.primaryAction);
+    (view.secondaryActions || []).forEach((action) => actionList.push(action));
+    if (!actionList.length && Array.isArray(view.actions)) {
+        view.actions.forEach((action) => actionList.push(action));
+    }
+    if (quote && actionList.length) {
         const actions = document.createElement('div');
         actions.className = 'chat-mission-actions';
-        view.actions.forEach((action) => bindMissionAction(actions, quote, action));
+        actionList.forEach((action) => bindMissionAction(actions, quote, action));
         card.appendChild(actions);
     }
-    if (view.details.length > 1) {
+
+    if (quote && Array.isArray(view.details) && view.details.length > 1) {
         const details = document.createElement('details');
         details.className = 'chat-mission-details';
         const summary = document.createElement('summary');
@@ -2244,6 +3115,7 @@ function renderMissionCard(quote) {
         view.details.forEach((line) => {
             const row = document.createElement('div');
             row.className = 'chat-mission-milestone';
+            if (line.paymentState) row.dataset.paymentState = line.paymentState;
             const label = document.createElement('span');
             label.textContent = line.title + (line.amount ? ' · ' + line.amount : '');
             row.appendChild(label);
@@ -2255,25 +3127,641 @@ function renderMissionCard(quote) {
     return card;
 }
 
+function renderNeutralActionPanel(kind, meta) {
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    if (!payment || typeof payment.actionPanelNeutral !== 'function') return null;
+    const view = payment.actionPanelNeutral(kind, meta || {});
+    return renderActionPanelShell(view, null);
+}
+
+function renderMissionCard(quote) {
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!payment || !payment.missionCard || !quote || !userId) return null;
+    const providerId = quote.provider_id || quote.helper_id;
+    const readiness = payoutReadinessByUser.get(String(providerId || '')) || 'unknown';
+    const revision = window.LYANN_QUOTE_REVISION;
+    const reviseOk = !!(revision && typeof revision.assessRevision === 'function' && revision.assessRevision(quote, userId).ok);
+    const meta = actionPanelRequestMeta(quote);
+    const view = payment.missionCard(quote, userId, readiness, Object.assign({}, meta, { reviseOk }));
+    if (!view) return null;
+    // E3: revise is modeled as secondary CTA in the ActionPanel view model when reviseOk.
+    // Compat: if an older payment module omitted it, keep the secondary revise home on missionCard only.
+    if (reviseOk && !view.actions.some((action) => action.id === 'revise')) {
+        const revise = { id: 'revise', label: 'Modifier le devis', tone: 'secondary' };
+        view.actions.push(revise);
+        view.secondaryActions = (view.secondaryActions || []).concat([revise]);
+    }
+    return renderActionPanelShell(view, quote);
+}
+
+function reportableMilestone(quotes) {
+    const list = Array.isArray(quotes) ? quotes : [];
+    for (let i = 0; i < list.length; i += 1) {
+        const milestones = (list[i] && list[i].milestones) || [];
+        for (let j = 0; j < milestones.length; j += 1) {
+            const status = String(milestones[j] && milestones[j].status || '').toUpperCase();
+            if (['FUNDED', 'IN_PROGRESS', 'COMPLETED'].includes(status) && milestones[j].id) return milestones[j];
+        }
+    }
+    return null;
+}
+
+function hydrateQuoteForDossier(quote, dossier) {
+    if (!quote) return null;
+    const next = Object.assign({}, quote);
+    if (!next.mission_id && dossier && dossier.mission && dossier.mission.id) next.mission_id = dossier.mission.id;
+    if (!next.mission_status && dossier && dossier.mission && dossier.mission.status) next.mission_status = dossier.mission.status;
+    if (!Array.isArray(next.milestones)) next.milestones = [];
+    if (!Array.isArray(next.payments)) next.payments = [];
+    if (!next.request_id && dossier && dossier.requestId) next.request_id = dossier.requestId;
+    if (!next.request_title && dossier && dossier.title) next.request_title = dossier.title;
+    return next;
+}
+
+function paintDossierActions(host, dossier, quotes) {
+    if (!host || !dossier) return;
+    host.replaceChildren();
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    const dossierApi = window.LYANN_MISSION_DOSSIER;
+    const scoped = (quotes || dossier.quotes || []).filter((quote) => {
+        if (!quote) return false;
+        if (!dossierApi || typeof dossierApi.quoteBelongsToDossier !== 'function') return true;
+        return dossierApi.quoteBelongsToDossier(quote, dossier);
+    });
+    const rawQuote = window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.relevantQuote === 'function'
+        ? window.LYANN_MISSION_SURFACES.relevantQuote(Object.assign({}, dossier, { quotes: scoped }))
+        : scoped[0] || null;
+    const quote = hydrateQuoteForDossier(rawQuote, dossier);
+    const requestContext = {
+        request: dossier.request || null,
+        requesterId: dossier.requesterId,
+        requestId: dossier.requestId,
+        invitationId: dossier.invitationId
+    };
+    const gate = threadQuoteProposalGate(requestContext, dossier.mission, scoped, userId);
+    const revision = window.LYANN_QUOTE_REVISION;
+    const reviseOk = !!(quote && revision && typeof revision.assessRevision === 'function' && revision.assessRevision(quote, userId).ok);
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const providerId = quote ? String(quote.provider_id || quote.helper_id || '') : '';
+    const accepted = quote && String(quote.status || '').toUpperCase() === 'ACCEPTED';
+    const readinessKnown = !!(providerId && payoutReadinessByUser.has(providerId));
+    const checking = !!(accepted && providerId && !readinessKnown);
+    if (checking) {
+        ensurePayoutReadiness(providerId).then(() => {
+            if (!host.isConnected) return;
+            paintDossierActions(host, dossier, quotes);
+            paintPendingActionBanner();
+        }).catch(() => {});
+    }
+    let view = null;
+    const readiness = readinessKnown ? payoutReadinessByUser.get(providerId) : (accepted ? null : 'active');
+    if (quote && payment && typeof payment.missionCard === 'function' && userId && readiness) {
+        view = payment.missionCard(quote, userId, readiness, {
+            reviseOk,
+            requestId: dossier.requestId,
+            requestTitle: dossier.title
+        });
+    }
+    const cardActionIds = view && Array.isArray(view.actions) ? view.actions.map((action) => action && action.id).filter(Boolean) : [];
+    const planned = dossierApi && typeof dossierApi.dossierActionIds === 'function'
+        ? dossierApi.dossierActionIds({
+            roleCode: dossier.roleCode,
+            quoteStatus: quote && quote.status,
+            canPropose: gate.ok,
+            reviseOk,
+            hasReportableMilestone: dossier.roleCode === 'requester' && !!reportableMilestone(scoped),
+            cardActionIds
+        })
+        : cardActionIds;
+    const nextCopy = dossierApi && typeof dossierApi.explainNextStep === 'function'
+        ? dossierApi.explainNextStep({
+            roleCode: dossier.roleCode,
+            quote,
+            view,
+            readiness: readiness || '',
+            checking
+        })
+        : '';
+    const nextHost = host.closest('.chat-dossier-sheet') && host.closest('.chat-dossier-sheet').querySelector('[data-dossier-next]');
+    if (nextHost) nextHost.textContent = nextCopy || '';
+    const prompts = window.LYANN_PAYOUT_PROMPT;
+    const guidance = prompts && typeof prompts.payoutGuidance === 'function' && accepted && readiness
+        ? prompts.payoutGuidance({
+            role: dossier.roleCode === 'lyanneur' ? 'provider' : 'requester',
+            readiness,
+            requestTitle: dossier.title
+        })
+        : null;
+    if (guidance && guidance.alert) {
+        const alertBox = document.createElement('div');
+        alertBox.className = 'chat-dossier-payout-alert';
+        alertBox.setAttribute('data-payout-state', guidance.kind || readiness || '');
+        const head = document.createElement('strong');
+        head.textContent = guidance.headline || '';
+        alertBox.appendChild(head);
+        const body = document.createElement('p');
+        body.textContent = guidance.body || '';
+        alertBox.appendChild(body);
+        host.appendChild(alertBox);
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'chat-dossier-cta';
+    wrap.setAttribute('data-dossier-request', dossier.requestId || '');
+    wrap.setAttribute('data-dossier-invitation', dossier.invitationId || '');
+    let hasPrimary = false;
+    if (view && view.primaryAction && planned.includes(view.primaryAction.id)) {
+        bindMissionAction(wrap, quote, view.primaryAction);
+        hasPrimary = true;
+    }
+    (view && view.secondaryActions ? view.secondaryActions : []).forEach((action) => {
+        if (action && planned.includes(action.id)) bindMissionAction(wrap, quote, action);
+    });
+    if (planned.includes('propose')) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = hasPrimary ? 'btn btn-outline' : 'btn btn-primary';
+        button.dataset.dealAction = 'propose';
+        button.textContent = 'Proposer un devis';
+        button.addEventListener('click', () => handleChatAction('MAKE_PROPOSAL', dossier.mission));
+        wrap.appendChild(button);
+        hasPrimary = true;
+    }
+    if (planned.includes('report')) {
+        const milestone = reportableMilestone(scoped);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-outline';
+        button.dataset.dealAction = 'report';
+        button.textContent = 'Signaler un problème';
+        button.addEventListener('click', () => handleChatAction('REPORT_PROBLEM', { milestoneId: milestone && milestone.id }));
+        wrap.appendChild(button);
+    }
+    if (!wrap.querySelector('button') && !nextHost) {
+        const wait = document.createElement('p');
+        wait.className = 'chat-dossier-wait';
+        wait.textContent = nextCopy || 'Le chat reste disponible pour cette mission.';
+        wrap.appendChild(wait);
+    }
+    host.appendChild(wrap);
+    if (view && Array.isArray(view.details) && view.details.length) {
+        const jalons = document.createElement('div');
+        jalons.className = 'chat-dossier-jalons';
+        jalons.setAttribute('data-dossier-jalons', '1');
+        view.details.forEach((detail) => {
+            const row = document.createElement('div');
+            row.className = 'chat-dossier-jalon';
+            row.setAttribute('data-milestone-id', detail.id || '');
+            const label = document.createElement('span');
+            label.textContent = [detail.title, detail.amount].filter(Boolean).join(' · ');
+            row.appendChild(label);
+            if (detail.action) bindMissionAction(row, quote, detail.action);
+            jalons.appendChild(row);
+        });
+        host.appendChild(jalons);
+    }
+}
+window.paintDossierActions = paintDossierActions;
+
+let pendingActionsPanelUserOpen = null;
+
+function chatTodoPanelDefaultOpen() {
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches) return false;
+    return true;
+}
+
+function pendingActionCopy(row, userId) {
+    const dossier = row && row.dossier;
+    const quote = row && row.quote;
+    const title = (dossier && dossier.title) || (quote && (quote.request_title || quote.requestTitle)) || 'Mission';
+    if (!row || row.actionId === 'propose' || !quote) {
+        return {
+            title,
+            status: (dossier && dossier.statusLabel) || 'En discussion',
+            context: 'Vous pouvez proposer un devis pour cette mission.',
+            label: 'Proposer un devis'
+        };
+    }
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const providerId = String(quote.provider_id || quote.helper_id || '');
+    const status = String(quote.status || '').toUpperCase();
+    let readiness = 'active';
+    if (status === 'ACCEPTED' && providerId && payoutReadinessByUser.has(providerId)) {
+        readiness = payoutReadinessByUser.get(providerId);
+    } else if (status === 'ACCEPTED') {
+        readiness = 'active';
+    }
+    const view = payment && typeof payment.missionCard === 'function'
+        ? payment.missionCard(quote, userId, readiness, {
+            requestId: dossier && dossier.requestId,
+            requestTitle: title
+        })
+        : null;
+    const action = view && (view.primaryAction || ((view.actions || []).find((item) => item && item.tone !== 'secondary')));
+    return {
+        title,
+        status: (view && view.status) || (dossier && dossier.statusLabel) || status || '',
+        context: (view && view.context) || '',
+        label: (action && action.label) || 'Voir le dossier'
+    };
+}
+
+function pendingDossierActions(contact, userId) {
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const surfaces = window.LYANN_MISSION_SURFACES;
+    const rows = [];
+    if (!contact || !userId) return rows;
+    (contact.dossiers || []).forEach((dossier) => {
+        const quote = hydrateQuoteForDossier(
+            surfaces && typeof surfaces.relevantQuote === 'function'
+                ? surfaces.relevantQuote(dossier)
+                : (dossier.quotes && dossier.quotes[0]) || null,
+            dossier
+        );
+        if (!quote) {
+            if (dossier.roleCode === 'lyanneur' && dossier.statusCode === 'discussing') {
+                rows.push({ dossier, actionId: 'propose' });
+            }
+            return;
+        }
+        const status = String(quote.status || '').toUpperCase();
+        const providerId = String(quote.provider_id || quote.helper_id || '');
+        let readiness = null;
+        if (status === 'SENT' || status === 'VIEWED' || status === 'REVISED') readiness = 'active';
+        else if (providerId && payoutReadinessByUser.has(providerId)) readiness = payoutReadinessByUser.get(providerId);
+        else return;
+        if (payment && typeof payment.quoteNeedsViewerAction === 'function' && payment.quoteNeedsViewerAction(quote, userId, readiness)) {
+            rows.push({ dossier, quote, actionId: 'card' });
+            return;
+        }
+        if (dossier.roleCode === 'lyanneur' && (status === 'REJECTED' || !status)) {
+            const gate = threadQuoteProposalGate({
+                request: dossier.request || null,
+                requesterId: dossier.requesterId,
+                requestId: dossier.requestId,
+                invitationId: dossier.invitationId
+            }, dossier.mission, dossier.quotes || [], userId);
+            if (gate && gate.ok) rows.push({ dossier, quote, actionId: 'propose' });
+        }
+    });
+    return rows;
+}
+
+function ensurePendingActionBanner() {
+    const area = document.querySelector('#chatModal .chat-input-area');
+    if (!area || !area.parentNode) return null;
+    let bar = document.getElementById('chatPendingActionsBanner');
+    if (bar) return bar;
+    bar = document.createElement('div');
+    bar.id = 'chatPendingActionsBanner';
+    bar.className = 'chat-pending-actions-banner';
+    bar.hidden = true;
+    area.parentNode.insertBefore(bar, area);
+    return bar;
+}
+
+function paintPendingActionBanner() {
+    const bar = ensurePendingActionBanner();
+    if (!bar) return;
+    const contact = currentChatContact;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    const pending = pendingDossierActions(contact, userId);
+    if (!pending.length) {
+        bar.replaceChildren();
+        bar.hidden = true;
+        return;
+    }
+    bar.hidden = false;
+    bar.replaceChildren();
+    const details = document.createElement('details');
+    details.className = 'chat-todo-panel';
+    details.open = pendingActionsPanelUserOpen === null ? chatTodoPanelDefaultOpen() : pendingActionsPanelUserOpen;
+    details.addEventListener('toggle', () => {
+        pendingActionsPanelUserOpen = details.open;
+    });
+    const summary = document.createElement('summary');
+    summary.className = 'chat-todo-summary';
+    const count = pending.length;
+    summary.textContent = 'Vos actions à faire (' + count + ')';
+    details.appendChild(summary);
+    const list = document.createElement('div');
+    list.className = 'chat-todo-list';
+    pending.forEach((row) => {
+        const copy = pendingActionCopy(row, userId);
+        const item = document.createElement('article');
+        item.className = 'chat-todo-item';
+        item.setAttribute('data-dossier-request', (row.dossier && row.dossier.requestId) || '');
+        item.setAttribute('data-dossier-invitation', (row.dossier && row.dossier.invitationId) || '');
+        const head = document.createElement('div');
+        head.className = 'chat-todo-item-head';
+        const name = document.createElement('strong');
+        name.className = 'chat-todo-title';
+        name.textContent = copy.title;
+        const status = document.createElement('span');
+        status.className = 'chat-todo-status';
+        status.textContent = copy.status;
+        head.appendChild(name);
+        if (copy.status) head.appendChild(status);
+        item.appendChild(head);
+        if (copy.context) {
+            const context = document.createElement('p');
+            context.className = 'chat-todo-context';
+            context.textContent = copy.context;
+            item.appendChild(context);
+        }
+        const action = document.createElement('button');
+        action.type = 'button';
+        action.className = 'btn btn-primary chat-todo-action';
+        action.setAttribute('data-dossier-request', (row.dossier && row.dossier.requestId) || '');
+        action.setAttribute('data-dossier-invitation', (row.dossier && row.dossier.invitationId) || '');
+        action.textContent = copy.label;
+        action.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void openMissionDossier({
+                requestId: row.dossier.requestId,
+                invitationId: row.dossier.invitationId
+            });
+        });
+        item.appendChild(action);
+        list.appendChild(item);
+    });
+    list.addEventListener('pointerdown', (event) => event.stopPropagation());
+    details.appendChild(list);
+    bar.appendChild(details);
+}
+
+function applyLiveQuotesToDossiers(quotes) {
+    const contact = currentChatContact;
+    if (!contact || !Array.isArray(contact.dossiers) || !contact.dossiers.length) return;
+    const list = Array.isArray(quotes) ? quotes : [];
+    const dossierApi = window.LYANN_MISSION_DOSSIER;
+    contact.dossiers.forEach((dossier) => {
+        if (!dossier) return;
+        const matching = list.filter((quote) => {
+            if (!quote) return false;
+            if (dossierApi && typeof dossierApi.quoteBelongsToDossier === 'function') {
+                return dossierApi.quoteBelongsToDossier(quote, dossier);
+            }
+            return String(quote.request_id || quote.requestId || '') === String(dossier.requestId || '');
+        });
+        if (!matching.length) return;
+        const byId = new Map((dossier.quotes || []).map((row) => [String(row && row.id || ''), row]).filter((entry) => entry[0]));
+        matching.forEach((quote) => {
+            if (quote && quote.id) byId.set(String(quote.id), quote);
+        });
+        dossier.quotes = [...byId.values()];
+    });
+    if (contact.activeDossier && contact.activeDossier.requestId) {
+        const next = contact.dossiers.find((row) => String(row.requestId) === String(contact.activeDossier.requestId));
+        if (next) contact.activeDossier = next;
+    }
+    if (window.LYANN_ACTIVE_CHAT_CONTACT && window.LYANN_ACTIVE_CHAT_CONTACT.id === contact.id) {
+        window.LYANN_ACTIVE_CHAT_CONTACT.dossiers = contact.dossiers;
+        window.LYANN_ACTIVE_CHAT_CONTACT.activeDossier = contact.activeDossier || null;
+    }
+}
+
+function syncLiveDealActions(quotes) {
+    applyLiveQuotesToDossiers(quotes);
+    if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.syncOpenDossier === 'function') {
+        window.LYANN_MISSION_SURFACES.syncOpenDossier(quotes);
+    }
+    paintPendingActionBanner();
+}
+window.paintPendingActionBanner = paintPendingActionBanner;
+window.syncLiveDealActions = syncLiveDealActions;
+
+function payoutNoticeStorageKey(userId, quoteId, kind) {
+    return 'lyann.payoutNotice.v1.' + String(userId || '') + '.' + String(quoteId || '') + '.' + String(kind || '');
+}
+
+function payoutNoticeSeen(userId, quoteId, kind) {
+    try { return localStorage.getItem(payoutNoticeStorageKey(userId, quoteId, kind)) === '1'; } catch (_) { return false; }
+}
+
+function markPayoutNoticeSeen(userId, quoteId, kind) {
+    try { localStorage.setItem(payoutNoticeStorageKey(userId, quoteId, kind), '1'); } catch (_) {}
+}
+
+function payoutPrevKey(userId, providerId) {
+    return 'lyann.payoutPrev.v1.' + String(userId || '') + '.' + String(providerId || '');
+}
+
+function appendOncePayoutNotice(box, quote, kind, role) {
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!box || !quote || !quote.id || !userId) return;
+    if (payoutNoticeSeen(userId, quote.id, kind)) return;
+    if (kind === 'payout_ready' && box.querySelector('.chat-payout-ready')) {
+        markPayoutNoticeSeen(userId, quote.id, kind);
+        return;
+    }
+    if (kind === 'payment_secured' && box.querySelector('[data-message-type="payment_secured"]')) {
+        markPayoutNoticeSeen(userId, quote.id, kind);
+        return;
+    }
+    const prompts = window.LYANN_PAYOUT_PROMPT;
+    const copy = prompts && typeof prompts.payoutChatNotice === 'function'
+        ? prompts.payoutChatNotice({
+            kind,
+            role,
+            requestTitle: dossierTitleForEvent(quote)
+        })
+        : null;
+    if (!copy) return;
+    const card = document.createElement('div');
+    card.className = 'chat-timeline-card chat-dossier-event chat-payout-context chat-notice-compact';
+    card.dataset.payoutNotice = kind;
+    card.dataset.quoteId = String(quote.id);
+    const title = document.createElement('div');
+    title.className = 'chat-timeline-title';
+    title.textContent = copy.title;
+    card.appendChild(title);
+    const body = document.createElement('div');
+    body.className = 'chat-timeline-body';
+    const meta = document.createElement('div');
+    meta.className = 'chat-timeline-meta';
+    meta.textContent = copy.body;
+    body.appendChild(meta);
+    card.appendChild(body);
+    attachDossierEventCta(card, quote);
+    box.appendChild(card);
+    markPayoutNoticeSeen(userId, quote.id, kind);
+}
+
+function paintPayoutContextNotices(box, quotes) {
+    if (!box) return;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    (quotes || []).forEach((quote) => {
+        if (!quote || !userId) return;
+        const providerId = String(quote.provider_id || quote.helper_id || '');
+        const role = String(providerId) === String(userId) ? 'provider' : (String(quote.requester_id) === String(userId) ? 'requester' : '');
+        if (!role) return;
+        const status = String(quote.status || '').toUpperCase();
+        const readiness = providerId && payoutReadinessByUser.has(providerId)
+            ? payoutReadinessByUser.get(providerId)
+            : null;
+        if (status === 'ACCEPTED' && (readiness === 'none' || readiness === 'incomplete' || readiness === 'pending')) {
+            appendOncePayoutNotice(box, quote, 'accepted_wait', role);
+        }
+        let prev = '';
+        try { prev = localStorage.getItem(payoutPrevKey(userId, providerId)) || ''; } catch (_) {}
+        if (readiness === 'active' && prev && prev !== 'active') {
+            appendOncePayoutNotice(box, quote, 'payout_ready', role);
+        }
+        if (box.querySelector('[data-message-type="payment_secured"]')) {
+            markPayoutNoticeSeen(userId, quote.id, 'payment_secured');
+        }
+        if (readiness) {
+            try { localStorage.setItem(payoutPrevKey(userId, providerId), readiness); } catch (_) {}
+        }
+    });
+}
+
+async function restorePayoutDossier(hint) {
+    const payout = window.LYANN_PAYOUT_ACCOUNT;
+    const clear = () => {
+        if (payout && typeof payout.clearPayoutReturn === 'function') payout.clearPayoutReturn();
+        try { sessionStorage.removeItem('lyann_payout_setup'); } catch (_) {}
+    };
+    if (!hint || (!hint.requestId && !hint.invitationId)) {
+        clear();
+        return { ok: false, code: 'missing_hint' };
+    }
+    if (typeof window.closeUserAccountModal === 'function') {
+        try { window.closeUserAccountModal(); } catch (_) {}
+    }
+    const contactId = hint.contactId;
+    const chatModal = document.getElementById('chatModal');
+    const chatVisible = !!(chatModal && (
+        chatModal.classList.contains('active')
+        || chatModal.classList.contains('lyann-surface-active')
+        || (window.LYANN_SURFACES && typeof window.LYANN_SURFACES.isOpen === 'function' && window.LYANN_SURFACES.isOpen('messaging'))
+    ));
+    const alreadyOpen = currentChatContact && contactId && String(currentChatContact.id) === String(contactId);
+    if (contactId && (!alreadyOpen || !chatVisible)) {
+        if (window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.openConversation === 'function') {
+            try {
+                await window.LYANN_MESSAGING.openConversation({
+                    contactId,
+                    name: hint.contactName || '',
+                    requestId: hint.requestId || null
+                });
+            } catch (_) {}
+        } else if (typeof window.openChatWithUser === 'function') {
+            window.openChatWithUser(hint.contactName || '', '', contactId, { requestId: hint.requestId || null });
+            await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+    }
+    if (typeof window.reloadPairDossiers === 'function') {
+        try { await window.reloadPairDossiers(); } catch (_) {}
+    }
+    const surfaces = window.LYANN_MISSION_SURFACES;
+    let opened = { ok: false };
+    if (surfaces && typeof surfaces.openDossier === 'function') {
+        try {
+            opened = await surfaces.openDossier({
+                requestId: hint.requestId || null,
+                invitationId: hint.invitationId || null
+            }) || { ok: false };
+        } catch (_) {
+            opened = { ok: false };
+        }
+    } else {
+        openMissionDossier({ requestId: hint.requestId, invitationId: hint.invitationId });
+        opened = { ok: true };
+    }
+    const overlay = document.getElementById('chatTrackingOverlay');
+    if (overlay && opened && opened.ok) {
+        overlay.classList.add('is-open');
+        overlay.style.setProperty('display', 'flex', 'important');
+    }
+    const sheet = document.querySelector('.chat-dossier-sheet');
+    const requestMatch = !hint.requestId || (sheet && sheet.getAttribute('data-dossier-request') === String(hint.requestId));
+    const overlayOpen = !!(overlay && (
+        overlay.classList.contains('is-open')
+        || (overlay.style.display && overlay.style.display !== 'none')
+        || (typeof window.getComputedStyle === 'function' && window.getComputedStyle(overlay).display !== 'none')
+    ));
+    if (opened && opened.ok && overlayOpen && requestMatch) {
+        clear();
+        return { ok: true, code: 'restored', requestId: hint.requestId, invitationId: hint.invitationId };
+    }
+    if (surfaces && typeof surfaces.openPicker === 'function') {
+        try { surfaces.openPicker(); } catch (_) {}
+    }
+    clear();
+    return { ok: false, code: 'inaccessible', requestId: hint.requestId, invitationId: hint.invitationId };
+}
+window.restorePayoutDossier = restorePayoutDossier;
+
+function refreshDealChrome() {
+    const box = document.getElementById('chatMessagesContainer');
+    if (box) {
+        const current = quotesWithCurrentContact();
+        repaintQuoteTimelineCards(box);
+        paintDealRecaps(box, current, { skipWatch: true, softEmpty: !current.length });
+        paintPayoutContextNotices(box, current);
+    }
+    if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.syncOpenDossier === 'function') {
+        window.LYANN_MISSION_SURFACES.syncOpenDossier();
+    }
+    paintPendingActionBanner();
+}
+
 function bindMissionAction(parent, quote, action) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = action.tone === 'secondary' ? 'btn btn-outline' : 'btn btn-primary';
     button.textContent = action.label;
+    button.dataset.dealAction = String(action.id || '');
     button.addEventListener('click', () => {
-        button.disabled = true;
-        const release = () => { button.disabled = false; };
+        // E5: handlers own busy/mutex; ignore second click while action or quote is locked.
+        if (button.disabled || button.classList.contains('is-busy')) return;
+        const entityForGuard = action.milestoneId || quote.id;
+        if (dealMutationGuard && dealMutationGuard.isBusy(action.id, entityForGuard)) return;
+        if ((action.id === 'accept' || action.id === 'decline') && quoteActionLocks.has(String(quote.id))) return;
+
         if (action.id === 'accept') {
-            window.handleAcceptQuote(quote.id);
+            setButtonBusy(button, true);
+            Promise.resolve(window.handleAcceptQuote(quote.id)).finally(() => {
+                if (button.isConnected && !quoteActionLocks.has(String(quote.id))) setButtonBusy(button, false);
+            });
             return;
         }
         if (action.id === 'decline') {
-            window.handleRejectQuote(quote.id);
+            setButtonBusy(button, true);
+            Promise.resolve(window.handleRejectQuote(quote.id)).finally(() => {
+                if (button.isConnected && !quoteActionLocks.has(String(quote.id))) setButtonBusy(button, false);
+            });
+            return;
+        }
+        if (action.id === 'revise') {
+            if (typeof window.openQuoteRevision === 'function') window.openQuoteRevision(quote.id);
+            return;
+        }
+        if (action.id === 'retry') {
+            const providerId = quote && (quote.provider_id || quote.helper_id);
+            setButtonBusy(button, true);
+            Promise.resolve(refreshPayoutReadiness(providerId)).finally(() => {
+                if (button.isConnected) setButtonBusy(button, false);
+            });
             return;
         }
         if (action.id === 'setup') {
             const setup = window.LYANN_PAYOUT_ACCOUNT && window.LYANN_PAYOUT_ACCOUNT.beginPayoutSetup;
-            Promise.resolve(setup ? setup() : null).catch(release);
+            const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT || {};
+            const hint = {
+                requestId: quote && (quote.request_id || quote.requestId) || contact.requestId || null,
+                invitationId: quote && quote.request_invitation_id || contact.invitationId || null,
+                contactId: contact.id || null,
+                conversationId: contact.conversationId || null,
+                contactName: contact.name || ''
+            };
+            Promise.resolve(runDealMutation('setup', quote.id || 'setup', {
+                button,
+                execute: async () => (setup ? setup(hint) : null)
+            })).catch(() => {});
             return;
         }
         const run = () => handleChatAction(action.id === 'pay' ? 'PAY_MISSION' : action.id === 'done' ? 'MARK_DONE' : 'CONFIRM_DONE', {
@@ -2283,17 +3771,26 @@ function bindMissionAction(parent, quote, action) {
         });
         if (action.id === 'pay') {
             const payload = window.LYANN_QUOTE_PAYMENT.payMissionPayload(quote, (quote.milestones || []).find((milestone) => milestone.id === action.milestoneId));
-            handleChatAction(payload.action, payload);
+            setButtonBusy(button, true);
+            Promise.resolve(handleChatAction(payload.action, payload)).finally(() => {
+                if (button.isConnected) setButtonBusy(button, false);
+            });
             return;
         }
         if (action.confirm && window.lyannConfirm) {
             window.lyannConfirm('Valider le travail et libérer le paiement ? Cette action est définitive.').then((ok) => {
-                if (ok) run();
-                else release();
+                if (!ok) return;
+                setButtonBusy(button, true);
+                Promise.resolve(run()).finally(() => {
+                    if (button.isConnected) setButtonBusy(button, false);
+                });
             });
             return;
         }
-        run();
+        setButtonBusy(button, true);
+        Promise.resolve(run()).finally(() => {
+            if (button.isConnected) setButtonBusy(button, false);
+        });
     });
     parent.appendChild(button);
 }
@@ -2305,6 +3802,10 @@ function renderMissionHistory(quotes) {
     const block = document.createElement('details');
     block.className = 'chat-mission-history';
     block.dataset.dealRecap = 'history';
+    const historyRequestId = (quotes[0] && (quotes[0].request_id || quotes[0].requestId))
+        || (currentChatContact && currentChatContact.requestId)
+        || '';
+    if (historyRequestId) block.dataset.requestId = String(historyRequestId);
     const summary = document.createElement('summary');
     summary.textContent = 'Propositions précédentes';
     block.appendChild(summary);
@@ -2346,12 +3847,174 @@ function syncMissionJump(visible) {
     button.hidden = false;
 }
 
+let dealRecapOpenBumpContactId = null;
+let dealRecapArmedForContactId = null;
+
+function armDealRecapOpenBump(contactId) {
+    const id = contactId ? String(contactId) : null;
+    dealRecapOpenBumpContactId = id;
+    dealRecapArmedForContactId = id;
+}
+window.armDealRecapOpenBump = armDealRecapOpenBump;
+
+function dealRecapSeenKey(contactId) {
+    return 'lyann_deal_fp_' + String(contactId || '');
+}
+
+function readDealRecapFingerprints(contactId) {
+    try {
+        return JSON.parse(sessionStorage.getItem(dealRecapSeenKey(contactId)) || '{}') || {};
+    } catch (_) {
+        return {};
+    }
+}
+
+function writeDealRecapFingerprints(contactId, quotes) {
+    if (!contactId || !window.LYANN_QUOTE_PAYMENT?.quoteFingerprint) return;
+    const map = {};
+    (quotes || []).forEach((quote) => {
+        if (!quote || !quote.id) return;
+        map[String(quote.id)] = window.LYANN_QUOTE_PAYMENT.quoteFingerprint(quote);
+    });
+    try { sessionStorage.setItem(dealRecapSeenKey(contactId), JSON.stringify(map)); } catch (_) {}
+}
+
+function shouldRevealDealRecapOnOpen(quotes) {
+    const contactId = currentChatContact && currentChatContact.id;
+    if (!contactId || dealRecapOpenBumpContactId !== String(contactId)) return false;
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!payment || !userId) return false;
+    const board = payment.missionBoard ? payment.missionBoard(quotes) : { active: [] };
+    if (!board.active.length) return false;
+    const seen = readDealRecapFingerprints(contactId);
+    const needsMe = board.active.some((quote) => {
+        const readiness = payoutReadinessByUser.get(String(quote.provider_id || quote.helper_id || '')) || 'active';
+        return payment.quoteNeedsViewerAction(quote, userId, readiness);
+    });
+    const peerChanged = board.active.some((quote) => {
+        const next = payment.quoteFingerprint(quote);
+        const prev = seen[String(quote.id)];
+        return prev != null && prev !== next;
+    });
+    // First open with an action waiting for me also counts as a reveal.
+    const firstOpenNeedsMe = needsMe && board.active.every((quote) => seen[String(quote.id)] == null);
+    return needsMe || peerChanged || firstOpenNeedsMe;
+}
+
+function insertDealRecapCard(box, card, quote) {
+    if (!box || !card) return;
+    card.dataset.dealRecap = String(quote.id);
+    if (quote.mission_id) card.dataset.missionId = String(quote.mission_id);
+    else card.dataset.missionId = String(quote.id);
+    const anchor = (typeof quoteTimelineSelector === 'function' ? box.querySelector(quoteTimelineSelector(quote.id)) : null)
+        || box.querySelector('[data-live-quote-id="' + CSS.escape(String(quote.id)) + '"]')
+        || box.querySelector('[data-entity-type="quote"][data-entity-id="' + CSS.escape(String(quote.id)) + '"]');
+    if (anchor && anchor.parentNode === box) {
+        if (anchor.nextSibling) box.insertBefore(card, anchor.nextSibling);
+        else box.appendChild(card);
+        return;
+    }
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const stamp = payment && typeof payment.quoteTime === 'function' ? payment.quoteTime(quote) : 0;
+    if (stamp) {
+        const nodes = Array.from(box.children);
+        for (let i = 0; i < nodes.length; i += 1) {
+            const created = Date.parse(nodes[i].dataset.createdAt || '') || 0;
+            if (created && created > stamp) {
+                box.insertBefore(card, nodes[i]);
+                return;
+            }
+        }
+    }
+    // Active deals without a timeline seat: once at the end for CTA focus only.
+    // Never append closed/history cards after newer messages (omit if unseated).
+    if (card.dataset.missionFocus === '1') box.appendChild(card);
+}
+
 function paintDealRecaps(box, quotes, options) {
     if (!box) return;
+    const optsEarly = options || {};
+    if (box.id === 'chatMessagesContainer' && optsEarly.allowThreadPanel !== true) {
+        box.querySelectorAll('[data-action-panel]').forEach((node) => node.remove());
+        if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.syncOpenDossier === 'function') {
+            window.LYANN_MISSION_SURFACES.syncOpenDossier(quotes);
+        }
+        if (!optsEarly.skipWatch) watchPayoutReadiness(quotes);
+        return;
+    }
     const stick = threadIsNearBottom(box);
     const previousTop = box.scrollTop;
     const payment = window.LYANN_QUOTE_PAYMENT;
+    const opts = options || {};
+    const panelMode = opts.panel || null;
     const board = payment && payment.missionBoard ? payment.missionBoard(quotes) : { active: [], history: [] };
+    const fpBase = (quotes || []).map((quote) => (payment && payment.quoteFingerprint ? payment.quoteFingerprint(quote) : '')).join('|');
+    const fp = panelMode ? ('neutral:' + panelMode + '|' + fpBase) : fpBase;
+    const reveal = !panelMode && shouldRevealDealRecapOnOpen(quotes);
+    const existingRecaps = box.querySelectorAll('[data-deal-recap], [data-action-panel]');
+
+    // E3 neutral ActionPanel: ambiguous / loading / error / empty — no active CTAs, no invented mission.
+    if (panelMode === 'ambiguous' || panelMode === 'loading' || panelMode === 'error' || panelMode === 'empty') {
+        existingRecaps.forEach((node) => node.remove());
+        const neutral = renderNeutralActionPanel(panelMode, opts.panelMeta || actionPanelRequestMeta(null));
+        if (neutral) {
+            neutral.dataset.dealRecap = 'neutral-' + panelMode;
+            neutral.dataset.missionFocus = '1';
+            box.appendChild(neutral);
+        }
+        box.dataset.dealRecapFp = fp;
+        syncMissionJump(!!neutral);
+        if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
+        if (!opts.skipWatch) watchPayoutReadiness(quotes);
+        if (stick) scrollThreadToBottom(box, false);
+        else box.scrollTop = previousTop;
+        return;
+    }
+
+    // Closed-only / server-confirmed empty: strip leftover active recap.
+    // Local cache paints with zero matching quotes must not wipe the panel while a
+    // request-scoped server rebuild is in flight (context switch / empty thread).
+    // Never keep a panel whose data-request-id belongs to another dossier.
+    if (!board.active.length) {
+        const scopedReq = (currentChatContact && currentChatContact.requestId)
+            || (opts.panelMeta && opts.panelMeta.requestId)
+            || null;
+        const leftoverPanel = box.querySelector('[data-action-panel], [data-deal-recap]');
+        const leftoverReq = leftoverPanel && leftoverPanel.dataset.requestId ? String(leftoverPanel.dataset.requestId) : '';
+        const leftoverKind = leftoverPanel && leftoverPanel.dataset.panelKind ? String(leftoverPanel.dataset.panelKind) : '';
+        const leftoverIsLiveDeal = leftoverPanel
+            && leftoverReq
+            && scopedReq
+            && leftoverReq === String(scopedReq)
+            && leftoverKind !== 'loading'
+            && leftoverKind !== 'empty'
+            && leftoverKind !== 'error'
+            && leftoverKind !== 'ambiguous';
+        if (opts.softEmpty && leftoverIsLiveDeal) {
+            syncMissionJump(true);
+            if (!opts.skipWatch) watchPayoutReadiness(quotes);
+            return;
+        }
+        existingRecaps.forEach((node) => node.remove());
+        if (board.history && board.history.length) {
+            const history = renderMissionHistory(board.history);
+            if (history) box.appendChild(history);
+        }
+        box.dataset.dealRecapFp = fp;
+        syncMissionJump(false);
+        if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
+        if (!opts.skipWatch) watchPayoutReadiness(quotes);
+        if (stick) scrollThreadToBottom(box, false);
+        else box.scrollTop = previousTop;
+        return;
+    }
+    // Same active deal state while already in the thread → keep current seat (no reshuffle to bottom).
+    if (!reveal && box.dataset.dealRecapFp === fp && existingRecaps.length) {
+        syncMissionJump(true);
+        if (!opts.skipWatch) watchPayoutReadiness(quotes);
+        return;
+    }
     const tracked = (quotes || []).filter((quote) => quote && (quote.status === 'SENT' || quote.status === 'ACCEPTED' || quote.status === 'REJECTED'));
     if (tracked.length && payment) {
         const hidden = payment.hiddenTimelineTypes([], tracked);
@@ -2360,25 +4023,68 @@ function paintDealRecaps(box, quotes, options) {
         });
         box.querySelectorAll('.chat-payout-ready, [data-live-quote]').forEach((node) => node.remove());
     }
-    box.querySelectorAll('[data-deal-recap]').forEach((node) => node.remove());
+    box.querySelectorAll('[data-deal-recap], [data-action-panel]').forEach((node) => node.remove());
+    if (reveal) dealRecapOpenBumpContactId = null;
     board.active.forEach((quote, index) => {
         const card = renderMissionCard(quote);
         if (!card) return;
         if (index === 0) card.dataset.missionFocus = '1';
-        card.dataset.missionId = String(quote.mission_id || quote.id);
-        box.appendChild(card);
+        // À l’ouverture si action attendue / action adverse → carte en bas pour le CTA.
+        if (reveal && index === 0) box.appendChild(card);
+        else insertDealRecapCard(box, card, quote);
     });
-    const history = renderMissionHistory(board.history);
-    if (history) box.appendChild(history);
-    syncMissionJump(board.active.length > 0 || board.history.length > 0);
-    if (stick) scrollThreadToBottom(box, false);
-    else box.scrollTop = previousTop;
-    if (!options || !options.skipWatch) watchPayoutReadiness(quotes);
+    // Previous / closed deals: consultable history under the active ActionPanel (not as active CTAs).
+    if (board.history && board.history.length) {
+        const history = renderMissionHistory(board.history);
+        if (history) {
+            const focus = box.querySelector('[data-mission-focus="1"]');
+            if (focus && focus.parentNode === box) {
+                if (focus.nextSibling) box.insertBefore(history, focus.nextSibling);
+                else box.appendChild(history);
+            } else {
+                box.appendChild(history);
+            }
+        }
+    }
+    box.dataset.dealRecapFp = fp;
+    syncMissionJump(true);
+    const contactId = currentChatContact && currentChatContact.id;
+    if (contactId) writeDealRecapFingerprints(contactId, quotes);
+    if (reveal) {
+        const focus = box.querySelector('[data-mission-focus="1"]');
+        if (focus && typeof focus.scrollIntoView === 'function') {
+            focus.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        } else {
+            scrollThreadToBottom(box, false);
+        }
+    } else if (stick) {
+        scrollThreadToBottom(box, false);
+    } else {
+        box.scrollTop = previousTop;
+    }
+    if (!opts.skipWatch) watchPayoutReadiness(quotes);
 }
+window.paintDealRecaps = paintDealRecaps;
 
 const payoutReadinessByUser = new Map();
 const payoutReadinessPending = new Map();
 let payoutWatchSerial = 0;
+
+window.lyannApplyPayoutReadiness = function (userId, state) {
+    const key = String(userId || '');
+    if (!key) return;
+    if (state == null || state === '') {
+        payoutReadinessByUser.delete(key);
+        payoutReadinessPending.delete(key);
+        return;
+    }
+    payoutReadinessByUser.set(key, state);
+};
+
+window.lyannClearPayoutReadiness = function () {
+    payoutReadinessByUser.clear();
+    payoutReadinessPending.clear();
+};
 
 function rememberPayoutReady(providerId) {
     if (!providerId) return;
@@ -2415,9 +4121,16 @@ function payoutBlocksPayment(quote) {
 function quotesWithCurrentContact() {
     const contactId = currentChatContact && currentChatContact.id;
     const userId = typeof getMyId === 'function' ? getMyId() : null;
+    const requestId = currentChatContact && currentChatContact.requestId
+        ? String(currentChatContact.requestId)
+        : null;
     const list = [];
     timelineQuotes.forEach((quote) => {
         if (!quote || !quote.id || !quote.status) return;
+        if (requestId) {
+            const quoteRequest = quote.request_id || quote.mission_related_request_id || null;
+            if (quoteRequest && String(quoteRequest) !== requestId) return;
+        }
         const providerId = quote.provider_id || quote.helper_id;
         const involved = String(providerId) === String(userId) || String(quote.requester_id) === String(userId);
         const withContact = contactId && (String(providerId) === String(contactId) || String(quote.requester_id) === String(contactId));
@@ -2453,8 +4166,7 @@ function refreshPayoutReadiness(userId) {
     return ensurePayoutReadiness(key).then((state) => {
         const box = document.getElementById('chatMessagesContainer');
         if (box) {
-            repaintQuoteTimelineCards(box);
-            paintDealRecaps(box, quotesWithCurrentContact(), { skipWatch: true });
+            refreshDealChrome();
         }
         return state;
     });
@@ -2485,10 +4197,17 @@ function appendPayoutPrompt(parent, quote) {
         button.addEventListener('click', () => {
             button.disabled = true;
             const providerId = quote.provider_id || quote.helper_id;
+            const contact = currentChatContact || {};
             const run = prompt.intent === 'retry'
                 ? refreshPayoutReadiness(providerId)
                 : (window.LYANN_PAYOUT_ACCOUNT && window.LYANN_PAYOUT_ACCOUNT.beginPayoutSetup
-                    ? window.LYANN_PAYOUT_ACCOUNT.beginPayoutSetup()
+                    ? window.LYANN_PAYOUT_ACCOUNT.beginPayoutSetup({
+                        requestId: quote.request_id || contact.requestId || null,
+                        invitationId: quote.request_invitation_id || contact.invitationId || null,
+                        contactId: contact.id || null,
+                        conversationId: contact.conversationId || null,
+                        contactName: contact.name || ''
+                    })
                     : Promise.reject());
             Promise.resolve(run()).catch(() => { button.disabled = false; });
         });
@@ -2497,21 +4216,27 @@ function appendPayoutPrompt(parent, quote) {
     parent.appendChild(box);
 }
 
+window.addEventListener('lyann:payout-return', (event) => {
+    const hint = event && event.detail && event.detail.hint;
+    if (!hint) return;
+    Promise.resolve(restorePayoutDossier(hint)).catch(() => {});
+});
+
 window.addEventListener('lyann:payout-readiness', (event) => {
     const state = event && event.detail && event.detail.state;
     const userId = typeof getMyId === 'function' ? getMyId() : null;
     if (userId && state) payoutReadinessByUser.set(String(userId), state);
     const box = document.getElementById('chatMessagesContainer');
     if (!box || !currentChatContact) return;
-    repaintQuoteTimelineCards(box);
-    paintDealRecaps(box, quotesWithCurrentContact(), { skipWatch: true });
+    refreshDealChrome();
 });
 
 function watchPayoutReadiness(quotes) {
     const contactId = currentChatContact && currentChatContact.id;
     const missing = [];
     (quotes || []).forEach((quote) => {
-        if (!window.LYANN_PAYOUT_PROMPT || !window.LYANN_PAYOUT_PROMPT.quoteStillNeedsPayout(quote)) return;
+        const accepted = quote && String(quote.status || '').toUpperCase() === 'ACCEPTED';
+        if (!accepted && (!window.LYANN_PAYOUT_PROMPT || !window.LYANN_PAYOUT_PROMPT.quoteStillNeedsPayout(quote))) return;
         const providerId = quote.provider_id || quote.helper_id;
         if (providerId && !payoutReadinessByUser.has(String(providerId))) missing.push(String(providerId));
     });
@@ -2522,10 +4247,9 @@ function watchPayoutReadiness(quotes) {
         if (!currentChatContact || currentChatContact.id !== contactId) return;
         const box = document.getElementById('chatMessagesContainer');
         if (!box) return;
-        const current = quotesWithCurrentContact();
-        repaintQuoteTimelineCards(box);
-        paintDealRecaps(box, current, { skipWatch: true });
+        refreshDealChrome();
         if (typeof window.__lyannAppendLiveQuote === 'function') {
+            const current = quotesWithCurrentContact();
             box.querySelectorAll('[data-live-quote="1"]').forEach((node) => node.remove());
             current.forEach((quote) => window.__lyannAppendLiveQuote(box, quote));
         }
@@ -2575,8 +4299,12 @@ function appendPayableQuoteAction(parent, quote) {
     pay.style.background = '#2E7D32';
     pay.textContent = payment.payButtonLabel(payable.amount);
     pay.addEventListener('click', () => {
-        pay.disabled = true;
-        payment.dispatchQuotePay(quote, getMyId(), (action, payload) => handleChatAction(action, payload));
+        if (pay.disabled || pay.classList.contains('is-busy')) return;
+        const payKey = (quote.milestones || []).find((m) => m && m.status === 'PENDING')?.id || quote.id;
+        if (dealMutationGuard && dealMutationGuard.isBusy('pay', payKey)) return;
+        setButtonBusy(pay, true);
+        Promise.resolve(payment.dispatchQuotePay(quote, getMyId(), (action, payload) => handleChatAction(action, payload)))
+            .finally(() => { if (pay.isConnected) setButtonBusy(pay, false); });
     });
     actions.appendChild(pay);
     parent.appendChild(actions);
@@ -2598,6 +4326,103 @@ function repaintQuoteTimelineCards(box) {
         });
         node.replaceWith(replacement);
     });
+}
+
+function resolveChatEventDossier(quote) {
+    const api = window.LYANN_MISSION_DOSSIER;
+    const contact = currentChatContact;
+    if (api && typeof api.resolveEventDossier === 'function') {
+        return api.resolveEventDossier(quote, contact && contact.dossiers);
+    }
+    return { ok: false, title: '', requestId: '', invitationId: '', reason: 'no_api' };
+}
+
+function dossierTitleForEvent(quote) {
+    const resolved = resolveChatEventDossier(quote);
+    return resolved.ok ? (resolved.title || '') : '';
+}
+
+function viewerMaySeeQuoteAmount(quote) {
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!quote || !userId) return false;
+    return String(quote.requester_id) === String(userId)
+        || String(quote.provider_id || quote.helper_id) === String(userId);
+}
+
+function attachDossierEventCta(wrapper, quote) {
+    if (!wrapper || wrapper.querySelector('.chat-dossier-event-open')) return;
+    const resolved = resolveChatEventDossier(quote);
+    if (!resolved.ok || (!resolved.requestId && !resolved.invitationId)) return;
+    const actions = document.createElement('div');
+    actions.className = 'chat-dossier-event-actions';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-outline chat-dossier-event-open';
+    button.textContent = 'Voir le dossier';
+    button.setAttribute('data-dossier-request', resolved.requestId || '');
+    button.setAttribute('data-dossier-invitation', resolved.invitationId || '');
+    button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        void openMissionDossier({ requestId: resolved.requestId, invitationId: resolved.invitationId });
+    });
+    actions.appendChild(button);
+    wrapper.appendChild(actions);
+}
+
+function attachGuidedEventBody(wrapper, type, quote) {
+    const dossierApi = window.LYANN_MISSION_DOSSIER;
+    const resolved = resolveChatEventDossier(quote);
+    const missionTitle = resolved.ok ? resolved.title : '';
+    let eventType = type;
+    if (type === 'quote_updated' && quote && Number(quote.version) > 1) eventType = 'quote_replaced';
+    const eventTitle = dossierApi && typeof dossierApi.compactEventLabel === 'function'
+        ? dossierApi.compactEventLabel(eventType, '')
+        : (TIMELINE_LABELS[eventType] || TIMELINE_LABELS[type] || 'Mise à jour');
+    const titleNode = wrapper.querySelector('.chat-timeline-title');
+    if (titleNode) titleNode.textContent = eventTitle;
+    wrapper.classList.add('chat-dossier-event', 'chat-notice-compact');
+    if (!resolved.ok) wrapper.classList.add('chat-notice-neutral');
+    if (wrapper.querySelector('.chat-timeline-body')) {
+        if (resolved.ok) attachDossierEventCta(wrapper, quote);
+        return;
+    }
+    if (!quote) return;
+    const body = document.createElement('div');
+    body.className = 'chat-timeline-body';
+    if (missionTitle) {
+        const name = document.createElement('div');
+        name.className = 'chat-timeline-mission';
+        name.textContent = missionTitle;
+        body.appendChild(name);
+    }
+    if (quote && quote.total_amount != null && viewerMaySeeQuoteAmount(quote)) {
+        const amount = document.createElement('div');
+        amount.className = 'chat-timeline-amount';
+        amount.textContent = Number(quote.total_amount) + ' €';
+        body.appendChild(amount);
+    }
+    const next = document.createElement('div');
+    next.className = 'chat-timeline-meta';
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    const providerId = quote ? String(quote.provider_id || quote.helper_id || '') : '';
+    const readiness = providerId && payoutReadinessByUser.has(providerId)
+        ? payoutReadinessByUser.get(providerId)
+        : null;
+    const view = quote && userId && payment && readiness
+        ? payment.missionCard(quote, userId, readiness, { requestTitle: missionTitle })
+        : null;
+    next.textContent = (dossierApi && typeof dossierApi.explainNextStep === 'function')
+        ? dossierApi.explainNextStep({
+            roleCode: quote && userId && String(quote.requester_id) === String(userId) ? 'requester' : 'lyanneur',
+            quote,
+            view,
+            readiness: readiness || ''
+        })
+        : '';
+    if (next.textContent) body.appendChild(next);
+    if (body.childElementCount) wrapper.appendChild(body);
+    attachDossierEventCta(wrapper, quote);
 }
 
 function renderTimelineCard(msg) {
@@ -2638,25 +4463,38 @@ function renderTimelineCard(msg) {
         }
     } else if (type === 'quote_created' || type === 'quote_updated') {
         const quote = timelineQuotes.get(String(msg.entityId || ''));
+        const dossierApi = window.LYANN_MISSION_DOSSIER;
+        const resolved = resolveChatEventDossier(quote);
+        const replaced = !!(quote && (Number(quote.version) > 1 || type === 'quote_updated'));
+        const eventType = replaced ? 'quote_replaced' : type;
+        const eventTitle = dossierApi && typeof dossierApi.compactEventLabel === 'function'
+            ? dossierApi.compactEventLabel(eventType, '')
+            : (replaced ? 'Devis remplacé' : (TIMELINE_LABELS[type] || 'Devis'));
+        title.textContent = eventTitle;
+        wrapper.classList.add('chat-dossier-event', 'chat-notice-compact');
+        if (!resolved.ok) wrapper.classList.add('chat-notice-neutral');
         const body = document.createElement('div');
         body.className = 'chat-timeline-body';
+        if (resolved.ok && resolved.title) {
+            const name = document.createElement('div');
+            name.className = 'chat-timeline-mission';
+            name.textContent = resolved.title;
+            body.appendChild(name);
+        }
+        if (quote && quote.total_amount != null && viewerMaySeeQuoteAmount(quote)) {
+            const amount = document.createElement('div');
+            amount.className = 'chat-timeline-amount';
+            amount.textContent = Number(quote.total_amount) + ' €';
+            body.appendChild(amount);
+        }
         const description = document.createElement('div');
-        description.textContent = (quote && quote.description) || '';
-        const total = document.createElement('div');
-        total.className = 'chat-timeline-amount';
-        if (quote && quote.total_amount != null) total.textContent = String(quote.total_amount) + ' €';
-        body.append(description, total);
-        (quote && quote.milestones || []).slice().sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0)).forEach((milestone) => {
-            const line = document.createElement('div');
-            line.className = 'chat-timeline-meta';
-            line.textContent = (milestone.title || 'Jalon') + (milestone.amount != null ? ' · ' + milestone.amount + ' €' : '');
-            body.appendChild(line);
-        });
+        description.textContent = ((quote && quote.description) || '').slice(0, 140);
+        if (description.textContent) body.appendChild(description);
         const revisionSummary = window.LYANN_QUOTE_REVISION && window.LYANN_QUOTE_REVISION.describeRevision
             ? window.LYANN_QUOTE_REVISION.describeRevision(quote)
             : { changed: false };
         if (revisionSummary.changed) {
-            title.textContent = 'Devis modifié';
+            title.textContent = 'Devis remplacé';
             const change = document.createElement('div');
             change.className = 'chat-timeline-state';
             change.textContent = 'Devis modifié · version ' + revisionSummary.nextVersion;
@@ -2690,86 +4528,62 @@ function renderTimelineCard(msg) {
             state.className = 'chat-timeline-state';
             state.textContent = quote.status === 'ACCEPTED' ? '✓ Accepté' : 'Devis refusé';
             body.appendChild(state);
-            appendPayableQuoteAction(body, quote);
-        } else if (quote && quote.status === 'SENT' && quote.requester_id === getMyId()) {
-            const actions = document.createElement('div');
-            actions.className = 'chat-timeline-actions';
-            const accept = document.createElement('button');
-            accept.type = 'button';
-            accept.className = 'btn btn-primary';
-            accept.textContent = revisionSummary.changed ? 'Accepter la version ' + revisionSummary.nextVersion : 'Accepter';
-            accept.addEventListener('click', () => {
-                accept.disabled = true;
-                window.handleAcceptQuote(quote.id);
-            });
-            const decline = document.createElement('button');
-            decline.type = 'button';
-            decline.className = 'btn btn-outline';
-            decline.textContent = 'Refuser';
-            decline.addEventListener('click', () => {
-                decline.disabled = true;
-                window.handleRejectQuote(quote.id);
-            });
-            actions.append(accept, decline);
-            body.appendChild(actions);
-        } else if (quote && window.LYANN_QUOTE_REVISION && window.LYANN_QUOTE_REVISION.assessRevision(quote, getMyId()).ok) {
-            const actions = document.createElement('div');
-            actions.className = 'chat-timeline-actions';
-            const edit = document.createElement('button');
-            edit.type = 'button';
-            edit.className = 'btn btn-outline';
-            edit.textContent = 'Modifier le devis';
-            edit.addEventListener('click', () => window.openQuoteRevision(quote.id));
-            actions.appendChild(edit);
-            body.appendChild(actions);
+        } else if (quote && quote.status === 'SENT') {
+            const state = document.createElement('div');
+            state.className = 'chat-timeline-state';
+            state.textContent = quote.requester_id === getMyId()
+                ? (revisionSummary.changed ? 'Nouvelle version à traiter sur le suivi de mission' : 'Devis en attente de votre réponse')
+                : 'Devis envoyé · en attente de réponse';
+            body.appendChild(state);
         }
-        if (quote && quote.status !== 'ACCEPTED') appendPayoutPrompt(body, quote);
+        // E2: accept / refuse / modify / pay live only on missionCard — timeline stays informational.
         wrapper.appendChild(body);
+        attachDossierEventCta(wrapper, quote);
     } else if (type === 'milestone_completed') {
-        const body = document.createElement('div');
-        body.className = 'chat-timeline-body';
-        const line = document.createElement('div');
-        line.className = 'chat-timeline-meta';
-        line.textContent = 'La prestation est déclarée terminée.';
-        body.appendChild(line);
-        appendFundingAction(body);
-        wrapper.appendChild(body);
+        const quote = timelineQuotes.get(String(msg.entityId || ''))
+            || [...timelineQuotes.values()].find((row) => Array.isArray(row && row.milestones) && row.milestones.some((item) => String(item.id) === String(msg.entityId || '')))
+            || null;
+        attachGuidedEventBody(wrapper, type, quote);
+        if (!quote) {
+            const body = document.createElement('div');
+            body.className = 'chat-timeline-body';
+            const line = document.createElement('div');
+            line.className = 'chat-timeline-meta';
+            line.textContent = 'La prestation est déclarée terminée.';
+            body.appendChild(line);
+            wrapper.appendChild(body);
+        }
     } else if (type === 'payment_requested') {
         // The title is enough. The raw status (CREATED) stays off the card.
     } else if (type === 'payment_secured') {
+        const quote = timelineQuotes.get(String(msg.entityId || ''))
+            || [...timelineQuotes.values()].find((row) => Array.isArray(row && row.payments) && row.payments.some((item) => String(item.id) === String(msg.entityId || '')))
+            || null;
+        if (quote) {
+            attachGuidedEventBody(wrapper, type, quote);
+        } else {
         const body = document.createElement('div');
         body.className = 'chat-timeline-body';
         const line = document.createElement('div');
         line.className = 'chat-timeline-meta';
         line.textContent = 'Le montant est encaissé.';
         body.appendChild(line);
-        const userId = typeof getMyId === 'function' ? getMyId() : null;
-        let viewerIsProvider = false;
-        timelineQuotes.forEach((quote) => {
-            if (!viewerIsProvider && quote && String(quote.provider_id || quote.helper_id) === String(userId)) viewerIsProvider = true;
-        });
-        const note = window.LYANN_QUOTE_PAYMENT && window.LYANN_QUOTE_PAYMENT.providerFundsSecuredNote;
-        if (viewerIsProvider && note) {
-            const contactName = currentChatContact && currentChatContact.name;
-            note(contactName).forEach((sentence) => {
-                const paragraph = document.createElement('div');
-                paragraph.className = 'chat-timeline-meta';
-                paragraph.textContent = sentence;
-                body.appendChild(paragraph);
-            });
+        wrapper.appendChild(body);
         }
-        appendFundingAction(body);
-        wrapper.appendChild(body);
+    } else if (type === 'quote_declined') {
+        const quote = timelineQuotes.get(String(msg.entityId || '')) || null;
+        attachGuidedEventBody(wrapper, type, quote);
+        if (!quote) {
+            const body = document.createElement('div');
+            body.className = 'chat-timeline-body';
+            const headline = document.createElement('div');
+            headline.className = 'chat-timeline-state';
+            headline.textContent = 'Le devis a été refusé.';
+            body.appendChild(headline);
+            wrapper.appendChild(body);
+        }
     } else if (type === 'quote_accepted') {
-        const quote = timelineQuotes.get(String(msg.entityId || ''));
-        const body = document.createElement('div');
-        body.className = 'chat-timeline-body';
-        const total = document.createElement('div');
-        total.className = 'chat-timeline-amount';
-        if (quote && quote.total_amount != null) total.textContent = String(quote.total_amount) + ' €';
-        body.appendChild(total);
-        appendPayableQuoteAction(body, quote);
-        wrapper.appendChild(body);
+        attachGuidedEventBody(wrapper, type, timelineQuotes.get(String(msg.entityId || '')) || null);
     } else if (meta.title || meta.status) {
         const line = document.createElement('div');
         line.className = 'chat-timeline-meta';
@@ -2783,35 +4597,196 @@ function renderTimelineCard(msg) {
     return wrapper;
 }
 
-async function refreshOpenBusinessCards() {
-    const contact = currentChatContact;
-    const userId = typeof getMyId === 'function' ? getMyId() : null;
-    if (!contact?.id || !userId) return;
-    invalidateActiveQuoteContext();
-    const quotes = await window.LYANN_MESSAGING_REPOSITORY?.getQuoteContext?.(userId, contact.id, { fresh: true });
+/**
+ * E4 — Re-read server deal state (E1-scoped) and re-paint ActionPanel only.
+ * Never infers payment/mission phase from the wake message alone.
+ */
+async function paintDealContextFromServer(contact, userId, token, scopeSnap) {
+    const contactId = contact && contact.id;
+    if (!contactId || !userId) return { applied: false };
+    // Capture E1 options from the contact that started this refresh — never the live
+    // currentChatContact, which may have switched mid-flight.
+    const scoped = dealContextScopeFromContact(contact);
+    const fetchOptions = {
+        fresh: true,
+        requestId: scoped.requestId || null,
+        invitationId: scoped.invitationId || null,
+        missionId: scoped.missionId || null,
+        conversationId: scoped.conversationId || null
+    };
+    if (window.LYANN_MESSAGING_REPOSITORY && typeof window.LYANN_MESSAGING_REPOSITORY.invalidateQuoteContext === 'function') {
+        window.LYANN_MESSAGING_REPOSITORY.invalidateQuoteContext(userId, contactId);
+    }
+    let quotes;
+    try {
+        quotes = applyQuoteContextMeta(
+            await window.LYANN_MESSAGING_REPOSITORY?.getQuoteContext?.(userId, contactId, fetchOptions),
+            contact
+        );
+    } catch (err) {
+        console.warn('[DEAL CONTEXT] refresh failed', err);
+        if (dealContextRefresh && !dealContextRefresh.shouldAccept(token, scopeSnap)) return { applied: false, stale: true };
+        if (!currentChatContact || currentChatContact.id !== contactId) return { applied: false, stale: true };
+        const errBox = document.getElementById('chatMessagesContainer');
+        // E5.1: honest error state instead of a vanished panel or a stuck loader.
+        if (errBox) paintDealRecaps(errBox, [], { panel: 'error' });
+        return { applied: true, error: true };
+    }
+    if (dealContextRefresh && !dealContextRefresh.shouldAccept(token, scopeSnap)) {
+        return { applied: false, stale: true };
+    }
+    if (!currentChatContact || currentChatContact.id !== contactId) {
+        return { applied: false, stale: true };
+    }
     const box = document.getElementById('chatMessagesContainer');
-    if (!box || currentChatContact?.id !== contact.id || !Array.isArray(quotes)) return;
+    if (!box || !Array.isArray(quotes)) return { applied: false };
+    if (quotes.ambiguous || (contact.missionAmbiguous && !scoped.requestId)) {
+        paintDealRecaps(box, [], { panel: 'ambiguous' });
+        if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
+        return { applied: true, ambiguous: true };
+    }
+    if (!quotes.length) {
+        // E5.1: an empty server list must not wipe a just-rebuilt panel while the
+        // request-scoped deal still exists in the thread cache (switch / reopen).
+        const scopedRequest = scoped.requestId ? String(scoped.requestId) : '';
+        const cached = [];
+        timelineQuotes.forEach((quote) => {
+            if (!quote || !quote.id || String(quote.id).startsWith('milestone:')) return;
+            const quoteRequest = String(quote.request_id || quote.requestId || '');
+            if (scopedRequest && quoteRequest && quoteRequest !== scopedRequest) return;
+            if (scopedRequest && !quoteRequest && quote.mission_related_request_id && String(quote.mission_related_request_id) !== scopedRequest) return;
+            cached.push(quote);
+        });
+        if (cached.length) {
+            paintDealRecaps(box, cached);
+            if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
+            syncLiveDealActions(cached);
+            return { applied: true, quotes: cached, fromCache: true };
+        }
+        if (scopedRequest || scoped.invitationId || scoped.missionId) {
+            const leftover = box.querySelector('[data-action-panel], [data-deal-recap]');
+            const leftoverReq = leftover && leftover.dataset.requestId ? String(leftover.dataset.requestId) : '';
+            const leftoverKind = leftover && leftover.dataset.panelKind ? String(leftover.dataset.panelKind) : '';
+            const sameLiveDeal = leftover
+                && leftoverReq
+                && leftoverReq === scopedRequest
+                && leftoverKind !== 'loading'
+                && leftoverKind !== 'empty'
+                && leftoverKind !== 'error'
+                && leftoverKind !== 'ambiguous';
+            if (sameLiveDeal) {
+                paintDealRecaps(box, [], { softEmpty: true });
+            } else {
+                paintDealRecaps(box, [], {
+                    panel: 'empty',
+                    panelMeta: {
+                        requestId: scoped.requestId || null,
+                        requestTitle: (contact.activeDossier && contact.activeDossier.title)
+                            || (contact.requestData && contact.requestData.title)
+                            || ''
+                    }
+                });
+            }
+            if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
+            paintPendingActionBanner();
+            return { applied: true, empty: true };
+        }
+    }
+    if (scoped.requestId) {
+        timelineQuotes.forEach((value, key) => {
+            if (String(key || '').startsWith('milestone:')) return;
+            const dossierApi = window.LYANN_MISSION_DOSSIER;
+            if (dossierApi && typeof dossierApi.quoteBelongsToDossier === 'function') {
+                if (!dossierApi.quoteBelongsToDossier(value, { requestId: scoped.requestId, invitationId: scoped.invitationId })) {
+                    timelineQuotes.delete(key);
+                }
+            } else if (value && value.request_id && String(value.request_id) !== String(scoped.requestId)) {
+                timelineQuotes.delete(key);
+            }
+        });
+    }
     quotes.forEach((quote) => {
+        let next = quote;
         const previous = timelineQuotes.get(String(quote.id));
         if (previous && (previous.status === 'ACCEPTED' || previous.status === 'REJECTED') && quote.status === 'SENT') {
-            quote = Object.assign({}, quote, { status: previous.status });
+            // Keep a just-confirmed local terminal status if the list read is momentarily stale.
+            next = Object.assign({}, quote, { status: previous.status });
         }
-        timelineQuotes.set(String(quote.id), quote);
-        (quote.milestones || []).forEach((milestone) => timelineQuotes.set('milestone:' + milestone.id, milestone));
-        if (quote.status === 'ACCEPTED') {
+        timelineQuotes.set(String(next.id), next);
+        (next.milestones || []).forEach((milestone) => timelineQuotes.set('milestone:' + milestone.id, milestone));
+        if (next.status === 'ACCEPTED') {
             const proposeRow = document.getElementById('btnCtxPropose');
             if (proposeRow && proposeRow.parentElement) proposeRow.parentElement.style.display = 'none';
         }
-        const covered = box.querySelector(quoteTimelineSelector(quote.id));
+        const covered = box.querySelector(quoteTimelineSelector(next.id));
         if (covered) {
-            box.querySelectorAll('[data-live-quote-id="' + CSS.escape(String(quote.id)) + '"]').forEach((node) => node.remove());
+            box.querySelectorAll('[data-live-quote-id="' + CSS.escape(String(next.id)) + '"]').forEach((node) => node.remove());
             repaintQuoteTimelineCards(box);
             repaintFundingCards(box);
+            if (next.status === 'REJECTED' || next.status === 'DECLINED') ensureQuoteDeclinedNotice(next);
             return;
         }
-        applyQuoteStatusToDom(quote.id, quote.status);
+        applyQuoteStatusToDom(next.id, next.status);
+        if (next.status === 'REJECTED' || next.status === 'DECLINED') ensureQuoteDeclinedNotice(next);
     });
+    // ActionPanel / missionCard only — payment phase from server quote fields (E3 + E4).
     paintDealRecaps(box, quotes);
+    if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
+    syncLiveDealActions(quotes);
+    return { applied: true, quotes };
+}
+
+async function refreshDealContext(reason) {
+    const contact = currentChatContact;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!contact?.id || !userId) return null;
+    const scope = dealContextScopeFromContact(contact);
+    if (dealContextRefresh) {
+        dealContextRefresh.setScope(scope);
+        return dealContextRefresh.request(reason || 'manual', async ({ token, scope: scopeSnap }) => (
+            paintDealContextFromServer(contact, userId, token, scopeSnap)
+        ));
+    }
+    return paintDealContextFromServer(
+        contact,
+        userId,
+        0,
+        dealContextSyncApi && typeof dealContextSyncApi.scopeKey === 'function'
+            ? dealContextSyncApi.scopeKey(scope)
+            : ''
+    );
+}
+window.refreshDealContext = refreshDealContext;
+
+async function refreshOpenBusinessCards() {
+    return refreshDealContext('legacy');
+}
+
+/**
+ * E5.1 — single ActionPanel owner after a thread DOM rebuild.
+ * renderMessages() wipes the container; the panel must never silently vanish.
+ * Show a neutral loading panel when a deal context is known/expected, then let the
+ * generation-guarded refreshDealContext() repaint from E1 scope + server state.
+ * While refreshChatUI() is resolving the thread scope, it triggers the refresh itself
+ * ('thread-open') once the explicit request context is known.
+ */
+function scheduleActionPanelRebuild(box, hadPanel) {
+    if (!box || !currentChatContact || !isUUID(currentChatContact.id)) return;
+    if (isLyannSupportContact(currentChatContact.id)) return;
+    if (box.id === 'chatMessagesContainer') {
+        box.querySelectorAll('[data-action-panel]').forEach((node) => node.remove());
+        if (!chatRefreshInFlight) void refreshDealContext('render');
+        return;
+    }
+    if (currentChatContact.missionAmbiguous && !currentChatContact.requestId) {
+        if (!box.querySelector('[data-action-panel]')) paintDealRecaps(box, [], { panel: 'ambiguous', skipWatch: true });
+        return;
+    }
+    const expectsDeal = hadPanel || !!(currentChatContact.requestId || currentChatContact.invitationId || currentChatContact.threadMission);
+    if (expectsDeal && !box.querySelector('[data-action-panel]')) {
+        paintDealRecaps(box, [], { panel: 'loading', skipWatch: true });
+    }
+    if (!chatRefreshInFlight) void refreshDealContext('render');
 }
 
 async function renderMessages(passedMessages = null, options = {}) {
@@ -2858,11 +4833,15 @@ async function renderMessages(passedMessages = null, options = {}) {
         .map((status) => status.closest('.chat-msg-bubble-wrap'))
         .filter((node) => node && !node.dataset.messageId);
     pendingOptimistic.forEach((node) => node.remove());
+    const hadActionPanel = !!container.querySelector('[data-action-panel]');
     container.innerHTML = '';
+    delete container.dataset.dealRecapFp;
 
     if (!Array.isArray(msgs) || (msgs.length === 0 && realQuotes.length === 0)) {
         renderEmptyConversationState(container);
         armThreadHistory(0);
+        // E5.1: empty chat text must not skip ActionPanel — same single owner as non-empty threads.
+        scheduleActionPanelRebuild(container, hadActionPanel);
         return;
     }
 
@@ -2901,12 +4880,20 @@ async function renderMessages(passedMessages = null, options = {}) {
             : new Set();
         if (isTimelineMessage(msg)) {
             const payment = window.LYANN_QUOTE_PAYMENT;
-            if (payment && payment.isDealTimeline && payment.isDealTimeline(timelineType)) return;
-            if (hiddenTimeline.has(timelineType)) return;
+            const visibleNotice = payment && typeof payment.isVisibleDealNotice === 'function'
+                ? payment.isVisibleDealNotice(timelineType)
+                : timelineType === 'quote_declined';
+            if (!visibleNotice && payment && payment.isDealTimeline && payment.isDealTimeline(timelineType)) return;
+            if (!visibleNotice && hiddenTimeline.has(timelineType)) return;
+            const entityQuote = timelineQuotes.get(String(msg.entityId || msg.entity_id || ''));
+            if ((visibleNotice || (payment && payment.isDealTimeline && payment.isDealTimeline(timelineType)))
+                && !dealEventBelongsToActiveDossier(entityQuote, msg)) {
+                return;
+            }
             const node = renderTimelineCard(msg);
             if (node) container.appendChild(node);
         }
-        else if (msg.type === 'text' && isQuoteAcceptedNotice(msg.text)) {
+        else if (msg.type === 'text' && (isQuoteAcceptedNotice(msg.text) || isRpcNoiseMessage(msg.text))) {
             return;
         }
         else if (isPayoutReadyNotice(msg)) {
@@ -2942,7 +4929,12 @@ async function renderMessages(passedMessages = null, options = {}) {
                     const accBtn = div.querySelector('.btn-accept-inline');
                     const ctrBtn = div.querySelector('.btn-counter-inline');
                     if (accBtn) {
-                        accBtn.onclick = () => handleChatAction('ACCEPT_PRICE', { title: msg.title, agreed_price: msg.amount, id: msg.missionId || null, quoteId: msg.quoteId || null });
+                        accBtn.onclick = () => {
+                            setButtonBusy(accBtn, true);
+                            Promise.resolve(handleChatAction('ACCEPT_PRICE', { title: msg.title, agreed_price: msg.amount, id: msg.missionId || null, quoteId: msg.quoteId || null }))
+                                .catch(() => setButtonBusy(accBtn, false))
+                                .finally(() => { if (accBtn.isConnected && !quoteActionLocks.has(msg.quoteId)) setButtonBusy(accBtn, false); });
+                        };
                     }
                     if (ctrBtn) {
                         ctrBtn.onclick = () => handleChatAction('COUNTER_OFFER');
@@ -2994,7 +4986,14 @@ async function renderMessages(passedMessages = null, options = {}) {
                 `;
                 setTimeout(() => {
                     const cBtn = div.querySelector('.btn-confirm-work');
-                    if (cBtn) cBtn.onclick = () => handleChatAction('CONFIRM_DONE', { id: msg.missionId || null, milestoneId: msg.milestoneId || null });
+                    if (cBtn) {
+                        cBtn.onclick = () => {
+                            setButtonBusy(cBtn, true);
+                            Promise.resolve(handleChatAction('CONFIRM_DONE', { id: msg.missionId || null, milestoneId: msg.milestoneId || null }))
+                                .catch(() => setButtonBusy(cBtn, false))
+                                .finally(() => setButtonBusy(cBtn, false));
+                        };
+                    }
                 }, 0);
             }
             else if (msg.cardType === 'MISSION_COMPLETED') {
@@ -3017,153 +5016,52 @@ async function renderMessages(passedMessages = null, options = {}) {
         if (!q || !q.id || !container) return;
         // Timeline message cards already cover the quote — avoid a duplicate live card.
         if (container.querySelector(quoteTimelineSelector(q.id))) return;
+        // Mission terminée : pas de carte devis ni deal-recap collés après les messages récents.
+        if (quoteIsClosedDeal(q)) {
+            container.querySelectorAll('[data-live-quote-id="' + CSS.escape(String(q.id)) + '"]').forEach((node) => node.remove());
+            return;
+        }
+        if (container.querySelector('[data-deal-recap="' + CSS.escape(String(q.id)) + '"]')) return;
         const status = String(q.status || '');
         if (!['SENT', 'VIEWED', 'REVISED', 'ACCEPTED'].includes(status)) return;
         const isMyQuote = (q.provider_id || q.helper_id) === getMyId();
-        const payment = window.LYANN_QUOTE_PAYMENT;
-        const pendingMs = payment ? payment.payableMilestoneForQuote(q, getMyId()) : null;
-        const fundedMs = (q.milestones || []).find((m) => m && (m.status === 'FUNDED' || m.status === 'IN_PROGRESS'));
-        const completedMs = (q.milestones || []).find((m) => m && m.status === 'COMPLETED');
         const quoteDiv = document.createElement('div');
         quoteDiv.dataset.liveQuote = '1';
         quoteDiv.dataset.liveQuoteId = q.id;
-        quoteDiv.className = `chat-msg-card ${isMyQuote ? 'align-right' : 'align-left'}`;
-        quoteDiv.style.cssText = 'width: 100%; max-width: 440px; border: 1.5px solid var(--border); border-radius: 16px; background: #ffffff; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); margin: 12px 0;';
-
-        const quoteNum = q.quote_number || ('DEV-' + q.id.slice(0, 8).toUpperCase());
-        const providerName = escapeChatHtml(isMyQuote ? 'Vous (Prestataire)' : (currentChatContact?.name || 'Membre LYANN'));
-        
-        let statusBadgeClass = 'background: #eff6ff; color: #1d4ed8;';
-        if (q.status === 'ACCEPTED') statusBadgeClass = 'background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;';
-        else if (q.status === 'REJECTED') statusBadgeClass = 'background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;';
-
-        let milestonesHTML = '';
-        if (q.milestones && q.milestones.length > 0) {
-            milestonesHTML = `
-                <div style="background: #f8fafc; border-radius: 12px; padding: 10px 12px; margin-top: 10px; margin-bottom: 12px;">
-                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Parties du devis (${q.milestones.length})</div>
-                    ${q.milestones.map(m => `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 0.82rem;">
-                            <div>
-                                <strong style="color: var(--text);">${escapeChatHtml(m.title)}</strong>
-                                ${m.description ? `<div style="font-size: 0.72rem; color: var(--text-muted);">${escapeChatHtml(m.description)}</div>` : ''}
-                            </div>
-                            <div style="font-weight: 700; color: var(--primary-dark);">${m.amount} € (${m.percentage}%)</div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-
-        let actionsHTML = '';
-        if (q.status === 'SENT') {
-            if (q.requester_id === getMyId()) {
-                actionsHTML = `
-                    <div style="display: flex; gap: 8px; margin-top: 12px;">
-                        <button type="button" class="btn btn-primary" onclick="window.handleAcceptQuote('${q.id}')" style="flex: 1; justify-content: center; font-size: 0.85rem; padding: 8px 12px;"><i class="ph ph-check-circle"></i> Accepter le devis (${q.total_amount} €)</button>
-                        <button type="button" class="btn btn-outline" onclick="window.handleRejectQuote('${q.id}')" style="flex: 1; justify-content: center; font-size: 0.85rem; padding: 8px 12px; border-color: #ef4444; color: #ef4444;"><i class="ph ph-x-circle"></i> Refuser</button>
-                    </div>
-                `;
-            } else {
-                actionsHTML = `
-                    <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-align: center; margin-top: 8px; padding: 8px; background: #f1f5f9; border-radius: 8px;">
-                        <i class="ph ph-clock"></i> En attente de validation par le client
-                    </div>
-                `;
-            }
-        } else if (q.status === 'ACCEPTED') {
-            const acceptedBadge = `
-                <div style="font-size: 0.85rem; color: #15803d; font-weight: 700; text-align: center; margin-top: 8px; padding: 8px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
-                    <i class="ph ph-check-circle"></i> Devis Accepté · Mission Créée
-                </div>
-            `;
-            const providerId = q.provider_id || q.helper_id;
-            if (pendingMs) {
-                actionsHTML = `
-                    ${acceptedBadge}
-                    <div style="display: flex; gap: 8px; margin-top: 12px;">
-                        <button type="button" class="btn btn-primary btn-quote-pay" data-quote-pay style="flex: 1; justify-content: center; background:#2E7D32;">
-                            <i class="ph ph-lock-key"></i> ${payment.payButtonLabel(pendingMs.amount)}
-                        </button>
-                    </div>
-                `;
-            } else if (providerId === getMyId() && fundedMs) {
-                actionsHTML = `
-                    ${acceptedBadge}
-                    <div style="display: flex; gap: 8px; margin-top: 12px;">
-                        <button type="button" class="btn btn-primary btn-quote-mark-done" data-quote-mark-done style="flex: 1; justify-content: center;">
-                            ✓ J'ai terminé
-                        </button>
-                    </div>
-                `;
-            } else if (q.requester_id === getMyId() && completedMs) {
-                actionsHTML = `
-                    ${acceptedBadge}
-                    <div style="display: flex; gap: 8px; margin-top: 12px;">
-                        <button type="button" class="btn btn-primary btn-quote-confirm" data-quote-confirm style="flex: 1; justify-content: center;">
-                            ✓ Tout est bon
-                        </button>
-                    </div>
-                `;
-            } else if (fundedMs) {
-                actionsHTML = `
-                    <div style="font-size: 0.85rem; color: #15803d; font-weight: 700; text-align: center; margin-top: 8px; padding: 8px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
-                        <i class="ph ph-check-circle"></i> Devis accepté
-                    </div>
-                `;
-            } else {
-                actionsHTML = acceptedBadge;
-            }
-        } else if (q.status === 'REJECTED') {
-            actionsHTML = `
-                <div style="font-size: 0.85rem; color: #b91c1c; font-weight: 700; text-align: center; margin-top: 8px; padding: 8px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
-                    <i class="ph ph-x-circle"></i> Devis Refusé
-                </div>
-            `;
-        }
-
+        let statusBadgeLabel = 'Devis';
+        if (q.status === 'REJECTED') statusBadgeLabel = 'Refusé';
+        else if (q.status === 'ACCEPTED') statusBadgeLabel = 'Accepté';
+        else if (q.status === 'SENT' || q.status === 'VIEWED' || q.status === 'REVISED') statusBadgeLabel = 'Envoyé';
         window.__lyannAppendLiveQuote = appendLiveQuoteCard;
-        quoteDiv.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 10px;">
-                <div>
-                    <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted); letter-spacing: 0.5px;">${quoteNum}</div>
-                    <div style="font-size: 0.82rem; font-weight: 700; color: var(--primary-dark);">Prestataire : ${providerName}</div>
-                </div>
-                <span style="font-weight: 800; font-size: 0.72rem; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; ${statusBadgeClass}">${q.status}</span>
-            </div>
-            <div style="font-size: 1.05rem; font-weight: 800; color: var(--text); margin-bottom: 4px;">${escapeChatHtml(q.description || 'Devis détaillé')}</div>
-            <div style="font-size: 1.3rem; font-weight: 900; color: var(--primary); margin-bottom: 8px;">${q.total_amount} €</div>
-            ${q.valid_until ? `<div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;"><i class="ph ph-calendar"></i> Valable jusqu'au ${new Date(q.valid_until).toLocaleDateString('fr-FR')}</div>` : ''}
-            ${milestonesHTML}
-            ${actionsHTML}
-        `;
-        if (payoutBlocksPayment(q)) {
-            const pay = quoteDiv.querySelector('[data-quote-pay]');
-            if (pay && pay.parentElement) pay.parentElement.remove();
-        }
-        appendPayoutPrompt(quoteDiv, q);
-        const payBtn = quoteDiv.querySelector('[data-quote-pay]');
-        if (payBtn && pendingMs && q.mission_id) {
-            payBtn.addEventListener('click', () => {
-                payment.dispatchQuotePay(q, getMyId(), (action, payload) => handleChatAction(action, payload));
+        const dossierApi = window.LYANN_MISSION_DOSSIER;
+        const compactLabel = dossierApi && typeof dossierApi.compactEventLabel === 'function'
+            ? dossierApi.compactEventLabel(q.status === 'REJECTED' ? 'quote_declined' : (q.status === 'ACCEPTED' ? 'quote_accepted' : 'quote_created'), dossierTitleForEvent(q))
+            : (q.description || 'Devis');
+        const amountHtml = (q.total_amount != null && viewerMaySeeQuoteAmount(q))
+            ? ('<div class="chat-timeline-amount">' + Number(q.total_amount) + ' €</div>')
+            : '';
+        quoteDiv.className = 'chat-timeline-card chat-dossier-event';
+        quoteDiv.style.cssText = '';
+        quoteDiv.innerHTML = [
+            '<div class="chat-timeline-title">' + escapeChatHtml(compactLabel) + '</div>',
+            '<div class="chat-timeline-meta">' + escapeChatHtml(statusBadgeLabel) + (isMyQuote ? ' · Vous' : '') + '</div>',
+            amountHtml,
+            '<button type="button" class="btn btn-outline chat-dossier-event-open">Voir le dossier</button>'
+        ].join('');
+        const openBtn = quoteDiv.querySelector('.chat-dossier-event-open');
+        if (openBtn) {
+            openBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                openMissionDossier({
+                    requestId: q.request_id || null,
+                    invitationId: q.request_invitation_id || null
+                });
             });
-        }
-        const markDoneBtn = quoteDiv.querySelector('[data-quote-mark-done]');
-        if (markDoneBtn && fundedMs) {
-            markDoneBtn.addEventListener('click', () => handleChatAction('MARK_DONE', {
-                id: q.mission_id,
-                milestoneId: fundedMs.id
-            }));
-        }
-        const confirmBtn = quoteDiv.querySelector('[data-quote-confirm]');
-        if (confirmBtn && completedMs) {
-            confirmBtn.addEventListener('click', () => handleChatAction('CONFIRM_DONE', {
-                id: q.mission_id,
-                milestoneId: completedMs.id
-            }));
         }
         container.appendChild(quoteDiv);
     }
+    realQuotes.forEach((quote) => timelineQuotes.set(String(quote.id), quote));
+    if (realQuotes.length) paintDealRecaps(container, realQuotes);
     realQuotes.forEach((quote) => appendLiveQuoteCard(container, quote));
 
     if (window.LYANN_MESSAGING_REPOSITORY && isUUID(currentChatContact.id)) {
@@ -3196,22 +5094,9 @@ async function renderMessages(passedMessages = null, options = {}) {
             }).catch(() => {});
         }
         if (!realQuotes.length) {
-            window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(userId, contactId).then((quotes) => {
-                if (generation !== chatRenderGeneration || currentChatContact?.id !== contactId || !quotes?.length) return;
-                const box = document.getElementById('chatMessagesContainer');
-                if (!box) return;
-                const stick = threadIsNearBottom(box);
-                quotes.forEach((quote) => timelineQuotes.set(String(quote.id), quote));
-                if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
-                repaintQuoteTimelineCards(box);
-                repaintFundingCards(box);
-                paintDealRecaps(box, quotes);
-                box.querySelectorAll('[data-live-quote="1"]').forEach((node) => {
-                    if (node.dataset.liveQuoteId && box.querySelector(quoteTimelineSelector(node.dataset.liveQuoteId))) node.remove();
-                });
-                quotes.forEach((quote) => appendLiveQuoteCard(box, quote));
-                if (stick) scrollThreadToBottom(box, false);
-            }).catch(() => {});
+            // E5.1: single ActionPanel owner (generation + E1 scope guarded). No parallel
+            // pair-scoped fetch that could repaint/strip the panel after a context switch.
+            scheduleActionPanelRebuild(container, hadActionPanel);
         }
     }
 
@@ -3298,10 +5183,12 @@ function validateChatFile(file, kind) {
     const photo = kind === 'photo';
     const video = kind === 'video';
     const mime = video && (rawMime === 'video/x-m4v' || rawMime === 'video/m4v') ? 'video/mp4' : rawMime;
+    // iOS renvoie souvent un type vide / octet-stream pour les MOV de la galerie.
+    const looseNativeVideo = video && (!mime || mime === 'application/octet-stream') && (!ext || VIDEO_EXT.has(ext));
     const mimeOk = photo
         ? (PHOTO_MIMES.has(mime) || (!mime && PHOTO_EXT.has(ext)))
         : video
-            ? (VIDEO_MIMES.has(mime) || (!mime && VIDEO_EXT.has(ext)))
+            ? (VIDEO_MIMES.has(mime) || VIDEO_EXT.has(ext) || looseNativeVideo)
             : (DOC_MIMES.has(mime) || (!mime && DOC_EXT.has(ext)));
     if (!mimeOk) {
         return { ok: false, message: photo ? 'Cette photo n’est pas acceptée. Utilisez JPEG, PNG, WebP ou HEIC.' : (video ? 'Cette vidéo n’est pas acceptée. Utilisez MP4, MOV ou WebM.' : 'Ce document n’est pas accepté.') };
@@ -3310,8 +5197,8 @@ function validateChatFile(file, kind) {
     if (file.size > limit) {
         return { ok: false, message: photo ? 'Cette photo dépasse 10 Mo.' : (video ? 'Cette vidéo dépasse 50 Mo.' : 'Ce document dépasse 20 Mo.') };
     }
-    const fallback = photo ? 'image/jpeg' : (video ? 'video/mp4' : 'application/pdf');
-    return { ok: true, mime: mime || fallback, ext: ext || (photo ? 'jpg' : (video ? 'mp4' : 'pdf')) };
+    const fallback = photo ? 'image/jpeg' : (video ? (ext === 'mov' ? 'video/quicktime' : 'video/mp4') : 'application/pdf');
+    return { ok: true, mime: (VIDEO_MIMES.has(mime) || PHOTO_MIMES.has(mime) || DOC_MIMES.has(mime)) ? mime : fallback, ext: ext || (photo ? 'jpg' : (video ? 'mp4' : 'pdf')) };
 }
 
 function safeAttachmentExt(ext, kind) {
@@ -3402,10 +5289,37 @@ function createThreadBubble(msg, hints) {
             quote.append(who, document.createTextNode(': ' + (msg.replyToText || '')));
             bubble.appendChild(quote);
         }
-        const textNode = document.createElement('div');
-        textNode.className = 'chat-msg-text';
-        textNode.textContent = msg.text || '';
-        bubble.appendChild(textNode);
+        const sharedProfileId = String(msg.entityType || msg.entity_type || '').toLowerCase() === 'profile'
+            ? String(msg.entityId || msg.entity_id || '')
+            : '';
+        if (sharedProfileId) {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'lyann-shared-profile-card';
+            card.setAttribute('data-open-shared-profile', sharedProfileId);
+            const kicker = document.createElement('div');
+            kicker.className = 'lyann-shared-profile-kicker';
+            kicker.textContent = 'Profil LYANN';
+            const title = document.createElement('div');
+            title.className = 'lyann-shared-profile-name';
+            const meta = msg.metadata && typeof msg.metadata === 'object' ? msg.metadata : {};
+            title.textContent = meta.name || meta.displayName || 'Voir ce Lyanneur';
+            const cta = document.createElement('div');
+            cta.className = 'lyann-shared-profile-cta';
+            cta.textContent = 'Ouvrir le profil';
+            card.append(kicker, title, cta);
+            card.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (typeof window.openPublicMemberProfile === 'function') window.openPublicMemberProfile(sharedProfileId);
+            });
+            bubble.appendChild(card);
+        } else {
+            const textNode = document.createElement('div');
+            textNode.className = 'chat-msg-text';
+            textNode.textContent = msg.text || '';
+            bubble.appendChild(textNode);
+        }
     }
     const meta = document.createElement('div');
     meta.className = 'chat-msg-time';
@@ -3577,20 +5491,121 @@ function setAttachmentProgress(node, ratio) {
 
 function videoDuration(file) {
     return new Promise((resolve) => {
+        if (!file) {
+            resolve(NaN);
+            return;
+        }
         const url = URL.createObjectURL(file);
         const video = document.createElement('video');
+        let settled = false;
+        const finish = (value) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            URL.revokeObjectURL(url);
+            resolve(value);
+        };
+        const timer = setTimeout(() => finish(NaN), 8000);
         video.preload = 'metadata';
-        video.onloadedmetadata = () => {
-            const duration = video.duration;
-            URL.revokeObjectURL(url);
-            resolve(duration);
-        };
-        video.onerror = () => {
-            URL.revokeObjectURL(url);
-            resolve(NaN);
-        };
+        video.muted = true;
+        video.playsInline = true;
+        video.onloadedmetadata = () => finish(video.duration);
+        video.onerror = () => finish(NaN);
         video.src = url;
     });
+}
+
+async function enforceVideoDuration(file, knownSeconds) {
+    let duration = Number(knownSeconds);
+    if (!Number.isFinite(duration) || duration <= 0) {
+        duration = await videoDuration(file);
+    }
+    if (Number.isFinite(duration) && duration > 0) {
+        if (duration > MAX_VIDEO_SECONDS) {
+            chatToast('La vidéo doit durer 60 secondes au plus.');
+            return false;
+        }
+        return true;
+    }
+    // iOS WKWebView ne lit souvent pas la durée d’un blob local — la limite taille reste en place.
+    return true;
+}
+
+function capacitorMediaUrl(path) {
+    if (!path) return '';
+    if (/^(https?:|blob:|data:|capacitor:)/i.test(path)) return path;
+    if (window.Capacitor && typeof window.Capacitor.convertFileSrc === 'function') {
+        return window.Capacitor.convertFileSrc(path);
+    }
+    return path;
+}
+
+function videoMimeFromFormat(format, fallback) {
+    const value = String(format || '').toLowerCase().replace(/^\./, '');
+    if (value === 'mov' || value === 'quicktime') return 'video/quicktime';
+    if (value === 'webm') return 'video/webm';
+    if (value === 'm4v') return 'video/mp4';
+    if (value === 'mp4' || value === 'mpeg4') return 'video/mp4';
+    return fallback || 'video/mp4';
+}
+
+function videoExtFromFormat(format, mime) {
+    const value = String(format || '').toLowerCase().replace(/^\./, '');
+    if (VIDEO_EXT.has(value)) return value === 'jpeg' ? 'mp4' : value;
+    if (value === 'quicktime') return 'mov';
+    if (String(mime || '').includes('quicktime')) return 'mov';
+    if (String(mime || '').includes('webm')) return 'webm';
+    return 'mp4';
+}
+
+async function fileFromNativeMedia(item, kind) {
+    const meta = item && item.metadata ? item.metadata : {};
+    const format = meta.format || '';
+    const src = capacitorMediaUrl(item.webPath || item.uri || '');
+    if (!src) throw new Error('Fichier introuvable.');
+    const response = await fetch(src);
+    if (!response.ok) throw new Error('Impossible de lire le fichier sélectionné.');
+    const blob = await response.blob();
+    if (kind === 'video') {
+        const mime = videoMimeFromFormat(format, blob.type || 'video/mp4');
+        const ext = videoExtFromFormat(format, mime);
+        return new File([blob], 'video.' + ext, { type: mime });
+    }
+    const mime = blob.type || 'image/jpeg';
+    const ext = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
+    return new File([blob], 'photo.' + ext, { type: mime });
+}
+
+async function pickChatVideo() {
+    const camera = typeof window.isNativePlatform === 'function'
+        && window.isNativePlatform()
+        && window.Capacitor?.Plugins?.Camera;
+    if (!camera || typeof camera.chooseFromGallery !== 'function') {
+        chatPicker('video').click();
+        return;
+    }
+    try {
+        if (typeof camera.requestPermissions === 'function') {
+            await camera.requestPermissions({ permissions: ['photos'] });
+        }
+        const picked = await camera.chooseFromGallery({
+            // MediaTypeSelection.Video === 1
+            mediaType: 1,
+            limit: 1,
+            includeMetadata: true
+        });
+        const item = Array.isArray(picked?.results) ? picked.results[0] : null;
+        if (!item) return;
+        const file = await fileFromNativeMedia(item, 'video');
+        const knownDuration = item.metadata && item.metadata.duration;
+        if (!(await enforceVideoDuration(file, knownDuration))) return;
+        await stageChatAttachment(file, 'video', { skipDurationCheck: true });
+    } catch (error) {
+        const message = String(error?.message || error || '');
+        if (/cancel|dismiss|user cancelled|User cancelled/i.test(message)) return;
+        console.warn('[CHAT] video pick', message);
+        chatToast('Impossible d’ouvrir cette vidéo. Réessayez depuis votre galerie.');
+    }
 }
 
 function renderAttachPreview(file, kind, localUrl) {
@@ -3653,7 +5668,7 @@ function clearAttachPreview() {
     bar.remove();
 }
 
-async function stageChatAttachment(file, kind) {
+async function stageChatAttachment(file, kind, options) {
     if (!currentChatContact?.id) {
         chatToast('Ouvrez une conversation avant d’ajouter un fichier.');
         return;
@@ -3663,31 +5678,23 @@ async function stageChatAttachment(file, kind) {
         chatToast(check.message);
         return;
     }
-    if (kind === 'video') {
-        const duration = await videoDuration(file);
-        if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_VIDEO_SECONDS) {
-            chatToast('La vidéo doit durer 60 secondes au plus.');
-            return;
-        }
+    if (kind === 'video' && !(options && options.skipDurationCheck)) {
+        if (!(await enforceVideoDuration(file))) return;
     }
     clearAttachPreview();
     const localUrl = kind === 'photo' || kind === 'video' ? URL.createObjectURL(file) : '';
     renderAttachPreview(file, kind, localUrl);
 }
 
-async function sendChatAttachment(file, kind) {
+async function sendChatAttachment(file, kind, options) {
     if (!currentChatContact?.id) return;
     const check = validateChatFile(file, kind);
     if (!check.ok) {
         chatToast(check.message);
         return;
     }
-    if (kind === 'video') {
-        const duration = await videoDuration(file);
-        if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_VIDEO_SECONDS) {
-            chatToast('La vidéo doit durer 60 secondes au plus.');
-            return;
-        }
+    if (kind === 'video' && !(options && options.skipDurationCheck)) {
+        if (!(await enforceVideoDuration(file))) return;
     }
     const clientId = createOptimisticClientId();
     const localUrl = kind === 'photo' || kind === 'video' ? URL.createObjectURL(file) : '';
@@ -3801,13 +5808,7 @@ async function retryOutgoing(clientId) {
                 chatToast(check.message);
                 return;
             }
-            if (retryKind === 'video') {
-                const duration = await videoDuration(file);
-                if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_VIDEO_SECONDS) {
-                    chatToast('La vidéo doit durer 60 secondes au plus.');
-                    return;
-                }
-            }
+            if (retryKind === 'video' && !(await enforceVideoDuration(file))) return;
             job.file = file;
             job.needsFile = false;
             job.mime = check.mime;
@@ -4160,27 +6161,60 @@ function initChatSubmitAndContacts() {
         bsActionVideo.dataset.bound = '1';
         bsActionVideo.addEventListener('click', () => {
             if (bottomSheet) bottomSheet.style.display = 'none';
-            chatPicker('video').click();
+            void pickChatVideo();
         });
     }
 
+let chatHeaderMenuToggleAt = 0;
+function seatChatHeaderDropdown(menu, anchor) {
+    if (!menu) return;
+    const host = document.getElementById('chatModal') || document.body;
+    if (menu.parentElement !== host) host.appendChild(menu);
+    const btn = anchor
+        || document.querySelector('#chatModal #chatMoreOptionsBtn')
+        || document.getElementById('chatMoreOptionsBtn');
+    const rect = btn && typeof btn.getBoundingClientRect === 'function' ? btn.getBoundingClientRect() : null;
+    menu.classList.add('active');
+    menu.style.setProperty('display', 'block', 'important');
+    menu.style.setProperty('position', 'fixed', 'important');
+    menu.style.setProperty('z-index', '2147483640', 'important');
+    menu.style.setProperty('left', 'auto', 'important');
+    if (rect && rect.width) {
+        menu.style.setProperty('top', Math.round(rect.bottom + 8) + 'px', 'important');
+        menu.style.setProperty('right', Math.max(8, Math.round(window.innerWidth - rect.right)) + 'px', 'important');
+    } else {
+        menu.style.setProperty('top', '72px', 'important');
+        menu.style.setProperty('right', '12px', 'important');
+    }
+}
+function hideChatHeaderDropdown() {
+    const dropdownMenu = document.getElementById('chatHeaderDropdownMenu');
+    if (!dropdownMenu) return;
+    dropdownMenu.classList.remove('active');
+    dropdownMenu.style.setProperty('display', 'none', 'important');
+}
 window.toggleChatHeaderDropdown = function (e) {
     if (e) {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        // onclick + capture click / touchstart + click : un seul toggle
+        if (e.__lyannChatMenuToggled) return;
+        e.__lyannChatMenuToggled = true;
     }
+    const now = Date.now();
+    if (now - chatHeaderMenuToggleAt < 320) return;
+    chatHeaderMenuToggleAt = now;
     const dropdownMenu = document.getElementById('chatHeaderDropdownMenu');
-    if (dropdownMenu) {
-        const isCurrentlyActive = dropdownMenu.classList.contains('active') || dropdownMenu.style.display === 'block';
-        if (isCurrentlyActive) {
-            dropdownMenu.classList.remove('active');
-            dropdownMenu.style.setProperty('display', 'none', 'important');
-        } else {
-            dropdownMenu.classList.add('active');
-            dropdownMenu.style.setProperty('display', 'block', 'important');
-            dropdownMenu.style.setProperty('z-index', '999999', 'important');
-        }
+    if (!dropdownMenu) return;
+    const isCurrentlyActive = dropdownMenu.classList.contains('active') || dropdownMenu.style.display === 'block';
+    if (isCurrentlyActive) {
+        hideChatHeaderDropdown();
+        return;
     }
+    const anchor = e && e.target && e.target.closest
+        ? (e.target.closest('#chatMoreOptionsBtn') || e.target.closest('.chat-more-btn'))
+        : null;
+    seatChatHeaderDropdown(dropdownMenu, anchor);
 };
 
 window.backToChatContacts = function (e) {
@@ -4205,11 +6239,7 @@ window.backToChatContacts = function (e) {
     document.querySelectorAll('.chat-main-area, .chat-main-pane').forEach(m => {
         m.style.setProperty('display', 'none', 'important');
     });
-    const dropdownMenu = document.getElementById('chatHeaderDropdownMenu');
-    if (dropdownMenu) {
-        dropdownMenu.classList.remove('active');
-        dropdownMenu.style.setProperty('display', 'none', 'important');
-    }
+    hideChatHeaderDropdown();
 };
 
 // Global Delegated Interaction Handler (Click + Touch) for Chat Header Buttons
@@ -4238,11 +6268,7 @@ const handleChatHeaderClicks = async (e) => {
             if (typeof e.stopPropagation === 'function') e.stopPropagation();
         }
         
-        const dropdownMenu = document.getElementById('chatHeaderDropdownMenu');
-        if (dropdownMenu) {
-            dropdownMenu.classList.remove('active');
-            dropdownMenu.style.setProperty('display', 'none', 'important');
-        }
+        hideChatHeaderDropdown();
 
         if (dropViewProfile) {
             if (currentChatContact && typeof window.openQuickProfileModal === 'function') {
@@ -4251,7 +6277,9 @@ const handleChatHeaderClicks = async (e) => {
                 window.lyannAlert(`Profil de ${currentChatContact ? currentChatContact.name : 'ce membre'}`);
             }
         } else if (dropShareProfile) {
-            if (window.lyannAlert) window.lyannAlert(`Lien du profil de ${currentChatContact ? currentChatContact.name : 'ce membre'} copié !`);
+            if (e && e.type === 'touchstart') return;
+            if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+            window.shareProfile(currentChatContact, null, { trigger: dropShareProfile });
         } else if (dropBlockUser) {
             if (!currentChatContact) return;
             if (window.lyannConfirm) {
@@ -4273,10 +6301,8 @@ const handleChatHeaderClicks = async (e) => {
     }
 
     // Close dropdown menu if clicking outside
-    const dropdownMenu = document.getElementById('chatHeaderDropdownMenu');
-    if (dropdownMenu && !e.target.closest('#chatHeaderDropdownMenu')) {
-        dropdownMenu.classList.remove('active');
-        dropdownMenu.style.setProperty('display', 'none', 'important');
+    if (!e.target.closest('#chatHeaderDropdownMenu') && !e.target.closest('#chatMoreOptionsBtn') && !e.target.closest('.chat-more-btn')) {
+        hideChatHeaderDropdown();
     }
 };
 
@@ -4540,237 +6566,176 @@ document.addEventListener('touchstart', (e) => {
         });
     }
 
-    // Milestone allocation: 30/30/40 by default, euros follow the total, either side stays editable.
-    const MILESTONE_DEFAULT_PERCENTS = [30, 30, 40];
-    const roundMilestoneMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
-    const roundMilestonePercent = (value) => Math.round((Number(value) || 0) * 100) / 100;
+    const milestoneEditorApi = window.LYANN_MILESTONE_EDITOR;
+    let milestoneEditorState = milestoneEditorApi ? milestoneEditorApi.createState() : null;
 
     function milestoneTotal() {
-        return Math.max(0, parseFloat(document.getElementById('mdTotalAmount')?.value) || 0);
+        const parsed = milestoneEditorApi && typeof milestoneEditorApi.parseDecimal === 'function'
+            ? milestoneEditorApi.parseDecimal(document.getElementById('mdTotalAmount')?.value)
+            : { ok: true, value: parseFloat(document.getElementById('mdTotalAmount')?.value) || 0 };
+        return parsed && parsed.ok ? Math.max(0, parsed.value) : 0;
     }
 
-    function milestonePercentInputs() {
-        return [1, 2, 3].map((i) => document.getElementById('mdJ' + i + 'Percent'));
-    }
-
-    function milestoneAmountInputs() {
-        return [1, 2, 3].map((i) => document.getElementById('mdJ' + i + 'Amount'));
-    }
-
-    function readMilestonePercents() {
-        return milestonePercentInputs().map((input) => Math.min(100, Math.max(0, parseFloat(input?.value) || 0)));
-    }
-
-    function readMilestoneAmounts() {
-        return milestoneAmountInputs().map((input) => Math.max(0, parseFloat(input?.value) || 0));
-    }
-
-    function ensureMilestoneAmountInput(index) {
-        const existing = document.getElementById('mdJ' + index + 'Amount');
-        if (existing) return existing;
-        const percentInput = document.getElementById('mdJ' + index + 'Percent');
-        if (!percentInput) return null;
-        const amountInput = document.createElement('input');
-        amountInput.type = 'number';
-        amountInput.id = 'mdJ' + index + 'Amount';
-        amountInput.className = 'modal-input';
-        amountInput.min = '0';
-        amountInput.step = '0.01';
-        amountInput.inputMode = 'decimal';
-        amountInput.setAttribute('aria-label', 'Montant en euros du jalon ' + index);
-        amountInput.placeholder = '0,00';
-        amountInput.style.cssText = 'flex:1.15; min-width:72px; font-size:0.8rem; height:32px; padding:2px 8px; box-sizing:border-box;';
-        const euro = document.createElement('span');
-        euro.textContent = '€';
-        euro.style.cssText = 'font-size:0.8rem; font-weight:700;';
-        const percentMark = percentInput.nextElementSibling;
-        const anchor = percentMark && percentMark.tagName === 'SPAN' ? percentMark : percentInput;
-        anchor.insertAdjacentElement('afterend', amountInput);
-        amountInput.insertAdjacentElement('afterend', euro);
-        const titleInput = document.getElementById('mdJ' + index + 'Title');
-        if (titleInput) {
-            titleInput.style.flex = '1.3';
-            titleInput.style.minWidth = '0';
-            titleInput.removeAttribute('required');
-            titleInput.placeholder = 'Titre';
-        }
-        return amountInput;
-    }
-
-    function seedMilestoneDefaults() {
-        const inputs = milestonePercentInputs();
-        if (inputs.some((input) => !input)) return;
-        if (inputs.some((input) => input.value !== '')) return;
-        inputs.forEach((input, index) => {
-            input.value = String(MILESTONE_DEFAULT_PERCENTS[index]);
-        });
-    }
-
-    function amountsFromMilestonePercents(total, percents) {
-        if (!(total > 0)) return [0, 0, 0];
-        const amounts = percents.map((percent) => roundMilestoneMoney(total * percent / 100));
-        const percentSum = roundMilestonePercent(percents.reduce((sum, percent) => sum + percent, 0));
-        if (Math.abs(percentSum - 100) <= 0.05) {
-            amounts[2] = roundMilestoneMoney(total - amounts[0] - amounts[1]);
-        }
-        return amounts;
-    }
-
-    function formatMilestonePercent(value) {
-        return roundMilestonePercent(value).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
-    }
-
-    function formatMilestoneMoney(value) {
-        return roundMilestoneMoney(value).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-    }
-
-    function updateMilestoneSummary() {
+    function paintMilestoneSummary() {
+        if (!milestoneEditorApi || !milestoneEditorState) return;
         const total = milestoneTotal();
-        const percents = readMilestonePercents();
-        const amounts = readMilestoneAmounts();
-        const percentSum = roundMilestonePercent(percents.reduce((sum, percent) => sum + percent, 0));
-        const amountSum = roundMilestoneMoney(amounts.reduce((sum, amount) => sum + amount, 0));
-        const remaining = roundMilestoneMoney(total - amountSum);
+        const view = milestoneEditorApi.summary(milestoneEditorState, total);
+        const quoteEl = document.getElementById('mdAllocationQuoteTotal');
         const pctEl = document.getElementById('mdAllocationPercentTotal');
         const amtEl = document.getElementById('mdAllocationAmountTotal');
         const remEl = document.getElementById('mdAllocationRemaining');
-        if (pctEl) pctEl.textContent = formatMilestonePercent(percentSum);
-        if (amtEl) amtEl.textContent = formatMilestoneMoney(amountSum);
+        if (quoteEl) quoteEl.textContent = milestoneEditorApi.formatMoney(view.total) + ' €';
+        if (pctEl) pctEl.textContent = milestoneEditorApi.formatPercent(view.percentSum) + ' %';
+        if (amtEl) amtEl.textContent = milestoneEditorApi.formatMoney(view.allocated) + ' €';
         if (remEl) {
-            remEl.textContent = formatMilestoneMoney(remaining);
-            remEl.style.color = Math.abs(remaining) <= 0.01 ? 'var(--primary)' : (remaining < 0 ? '#B91C1C' : '#475569');
+            remEl.textContent = (view.remainingCents < 0 ? 'Dépassement ' : '') + milestoneEditorApi.formatMoney(Math.abs(view.remaining)) + ' €';
+            remEl.style.color = view.balanced ? 'var(--primary)' : (view.remainingCents < 0 ? '#B91C1C' : '#475569');
         }
         const live = document.getElementById('mdAllocationLive');
-        if (!live) return;
-        const balanced = total > 0 && Math.abs(percentSum - 100) <= 0.05 && Math.abs(amountSum - total) <= 0.05;
-        live.style.color = balanced ? 'var(--primary-dark, #1B4332)' : '#B91C1C';
-        if (!(total > 0)) {
-            live.textContent = 'Saisissez le montant total : les jalons passent à 30 % / 30 % / 40 %.';
-            live.style.color = '#475569';
-            return;
+        if (live) {
+            live.style.color = view.balanced ? 'var(--primary-dark, #1B4332)' : '#B91C1C';
+            live.textContent = view.balanced
+                ? 'Répartition complète : ' + milestoneEditorApi.formatPercent(view.percentSum) + ' % · ' + milestoneEditorApi.formatMoney(view.allocated) + ' €'
+                : 'La somme des montants doit égaler exactement le total.';
         }
-        live.textContent = balanced
-            ? 'Répartition complète : ' + formatMilestonePercent(percentSum) + ' · ' + formatMilestoneMoney(amountSum)
-            : 'Répartition : ' + formatMilestonePercent(percentSum) + ' · montants ' + formatMilestoneMoney(amountSum) + ' sur ' + formatMilestoneMoney(total);
-    }
-
-    function applyMilestoneAmountsFromPercents() {
-        const total = milestoneTotal();
-        const amounts = amountsFromMilestonePercents(total, readMilestonePercents());
-        milestoneAmountInputs().forEach((input, index) => {
-            if (!input || document.activeElement === input) return;
-            input.value = total > 0 ? amounts[index].toFixed(2) : '';
+        document.querySelectorAll('[data-assign-remainder]').forEach((button) => {
+            button.hidden = view.remainingCents === 0 || !(total > 0);
         });
-        updateMilestoneSummary();
     }
 
-    function rebalanceMilestones(editedIndex, source) {
-        const total = milestoneTotal();
-        const percentInputs = milestonePercentInputs();
-        const amountInputs = milestoneAmountInputs();
-        const edited = editedIndex - 1;
-        const percents = readMilestonePercents();
-        const amounts = readMilestoneAmounts();
-        const others = [0, 1, 2].filter((index) => index !== edited);
-
-        if (source === 'amount' && total > 0) {
-            percents[edited] = roundMilestonePercent(Math.min(total, amounts[edited]) / total * 100);
-        }
-        percents[edited] = Math.min(100, Math.max(0, percents[edited]));
-
-        const otherSum = others.reduce((sum, index) => sum + percents[index], 0);
-        const remaining = roundMilestonePercent(100 - percents[edited]);
-        if (otherSum <= 0) {
-            const share = roundMilestonePercent(remaining / others.length);
-            others.forEach((index, position) => {
-                percents[index] = position === others.length - 1
-                    ? roundMilestonePercent(remaining - share * (others.length - 1))
-                    : share;
+    function paintMilestoneRows() {
+        const list = document.getElementById('mdMilestoneList');
+        if (!list || !milestoneEditorApi || !milestoneEditorState) return;
+        const focused = document.activeElement && list.contains(document.activeElement)
+            ? { name: document.activeElement.getAttribute('data-field'), start: document.activeElement.selectionStart, id: document.activeElement.closest('[data-milestone-id]') && document.activeElement.closest('[data-milestone-id]').getAttribute('data-milestone-id') }
+            : null;
+        const scroll = list.scrollTop;
+        list.replaceChildren();
+        milestoneEditorState.rows.forEach((row, index) => {
+            const card = document.createElement('article');
+            card.className = 'md-milestone-card';
+            card.setAttribute('data-milestone-id', row.id);
+            const head = document.createElement('div');
+            head.className = 'md-milestone-head';
+            const label = document.createElement('strong');
+            label.textContent = 'Jalon ' + (index + 1);
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn btn-outline md-milestone-remove';
+            remove.textContent = 'Supprimer';
+            remove.disabled = milestoneEditorState.rows.length <= 1;
+            remove.addEventListener('click', () => {
+                if (milestoneEditorApi.rowHasData(row) && !window.confirm('Supprimer ce jalon et conserver les autres tels quels ?')) return;
+                milestoneEditorApi.removeRow(milestoneEditorState, row.id);
+                paintMilestoneRows();
             });
-        } else {
-            let assigned = 0;
-            others.forEach((index, position) => {
-                if (position === others.length - 1) {
-                    percents[index] = roundMilestonePercent(remaining - assigned);
-                } else {
-                    percents[index] = roundMilestonePercent(remaining * percents[index] / otherSum);
-                    assigned = roundMilestonePercent(assigned + percents[index]);
+            head.append(label, remove);
+            const title = document.createElement('input');
+            title.type = 'text';
+            title.className = 'modal-input';
+            title.placeholder = 'Nom du jalon';
+            title.value = row.title;
+            title.setAttribute('data-field', 'title');
+            title.addEventListener('input', () => { row.title = title.value; });
+            const grid = document.createElement('div');
+            grid.className = 'md-milestone-grid';
+            const percentLabel = document.createElement('label');
+            percentLabel.textContent = 'Pourcentage';
+            const percent = document.createElement('input');
+            percent.type = 'text';
+            percent.inputMode = 'decimal';
+            percent.autocomplete = 'off';
+            percent.className = 'modal-input';
+            percent.setAttribute('data-field', 'percent');
+            percent.setAttribute('aria-label', 'Pourcentage du jalon ' + (index + 1));
+            percent.value = milestoneEditorApi.formatPercent(row.percent);
+            percent.addEventListener('input', () => {
+                const parsed = milestoneEditorApi.parseDecimal(percent.value);
+                if (!parsed.ok || parsed.incomplete) return;
+                milestoneEditorApi.applyPercent(milestoneEditorState, row.id, parsed.value, milestoneTotal());
+                const amountInput = card.querySelector('[data-field="amount"]');
+                if (amountInput && document.activeElement !== amountInput) amountInput.value = milestoneEditorApi.formatMoney(milestoneEditorApi.fromCents(row.amountCents));
+                paintMilestoneSummary();
+            });
+            percentLabel.appendChild(percent);
+            const amountLabel = document.createElement('label');
+            amountLabel.textContent = 'Montant';
+            const amount = document.createElement('input');
+            amount.type = 'text';
+            amount.inputMode = 'decimal';
+            amount.autocomplete = 'off';
+            amount.className = 'modal-input';
+            amount.setAttribute('data-field', 'amount');
+            amount.setAttribute('aria-label', 'Montant du jalon ' + (index + 1));
+            amount.value = milestoneEditorApi.formatMoney(milestoneEditorApi.fromCents(row.amountCents));
+            amount.addEventListener('input', () => {
+                const parsed = milestoneEditorApi.parseDecimal(amount.value);
+                if (!parsed.ok || parsed.incomplete) return;
+                milestoneEditorApi.applyAmount(milestoneEditorState, row.id, parsed.value, milestoneTotal());
+                if (document.activeElement !== percent) percent.value = milestoneEditorApi.formatPercent(row.percent);
+                paintMilestoneSummary();
+            });
+            amountLabel.appendChild(amount);
+            grid.append(percentLabel, amountLabel);
+            const remainder = document.createElement('button');
+            remainder.type = 'button';
+            remainder.className = 'btn btn-outline md-assign-remainder';
+            remainder.setAttribute('data-assign-remainder', row.id);
+            remainder.textContent = 'Affecter le reste à ce jalon';
+            remainder.addEventListener('click', () => {
+                milestoneEditorApi.assignRemainder(milestoneEditorState, row.id, milestoneTotal());
+                paintMilestoneRows();
+            });
+            card.append(head, title, grid, remainder);
+            list.appendChild(card);
+        });
+        list.scrollTop = scroll;
+        if (focused && focused.id) {
+            const restore = list.querySelector('[data-milestone-id="' + focused.id + '"] [data-field="' + focused.name + '"]');
+            if (restore && typeof restore.focus === 'function') {
+                restore.focus();
+                if (typeof restore.setSelectionRange === 'function' && focused.start != null) {
+                    try { restore.setSelectionRange(focused.start, focused.start); } catch (_) {}
                 }
-            });
-        }
-
-        percentInputs.forEach((input, index) => {
-            if (!input) return;
-            if (source === 'percent' && index === edited && document.activeElement === input) return;
-            input.value = String(percents[index]);
-        });
-
-        const computed = amountsFromMilestonePercents(total, readMilestonePercents());
-        if (source === 'amount' && total > 0) computed[edited] = roundMilestoneMoney(Math.min(total, amounts[edited]));
-        const restIndex = others[others.length - 1];
-        if (total > 0) {
-            const used = computed.reduce((sum, amount, index) => index === restIndex ? sum : sum + amount, 0);
-            computed[restIndex] = roundMilestoneMoney(total - used);
-            if (!(source === 'percent' && restIndex === edited && document.activeElement === percentInputs[restIndex])) {
-                percents[restIndex] = roundMilestonePercent(computed[restIndex] / total * 100);
-                if (percentInputs[restIndex]) percentInputs[restIndex].value = String(percents[restIndex]);
             }
         }
-
-        amountInputs.forEach((input, index) => {
-            if (!input || document.activeElement === input) return;
-            input.value = total > 0 ? computed[index].toFixed(2) : '';
-        });
-        updateMilestoneSummary();
+        paintMilestoneSummary();
     }
 
     function initMilestoneAllocationSync() {
         const totalInput = document.getElementById('mdTotalAmount');
         const form = document.getElementById('milestoneDevisForm');
-        if (!totalInput || !form || totalInput.dataset.allocationSyncBound === 'true') return;
+        if (!totalInput || !form || !milestoneEditorApi || totalInput.dataset.allocationSyncBound === 'true') return;
         totalInput.dataset.allocationSyncBound = 'true';
-
-        for (let i = 1; i <= 3; i++) ensureMilestoneAmountInput(i);
-
-        form.querySelectorAll('label').forEach((label) => {
-            if (label.textContent.includes('Jalons de paiement')) label.textContent = 'Jalons de paiement';
-        });
-        const hint = [...form.querySelectorAll('p')].find((paragraph) => /100\s*%/.test(paragraph.textContent));
-        if (hint) {
-            hint.innerHTML = '<i class="ph ph-info"></i> Départ proposé : 30 % / 30 % / 40 %. Un pourcentage ou un montant modifié recalcule l’autre.';
+        const add = document.getElementById('mdAddMilestoneBtn');
+        if (add) {
+            add.addEventListener('click', () => {
+                milestoneEditorApi.addRow(milestoneEditorState);
+                paintMilestoneRows();
+            });
         }
-        if (!document.getElementById('mdAllocationLive')) {
-            const live = document.createElement('p');
-            live.id = 'mdAllocationLive';
-            live.style.cssText = 'font-size:0.75rem; margin:6px 0 0; font-weight:700;';
-            if (hint) hint.insertAdjacentElement('afterend', live);
-        }
-
-        seedMilestoneDefaults();
-
-        for (let i = 1; i <= 3; i++) {
-            const percentInput = document.getElementById('mdJ' + i + 'Percent');
-            const amountInput = document.getElementById('mdJ' + i + 'Amount');
-            if (percentInput) {
-                percentInput.step = '0.01';
-                percentInput.min = '0';
-                percentInput.max = '100';
-                percentInput.removeAttribute('required');
-                percentInput.addEventListener('input', () => rebalanceMilestones(i, 'percent'));
-            }
-            if (amountInput) amountInput.addEventListener('input', () => rebalanceMilestones(i, 'amount'));
-        }
-
         totalInput.addEventListener('input', () => {
-            seedMilestoneDefaults();
-            applyMilestoneAmountsFromPercents();
+            const parsed = milestoneEditorApi.parseDecimal(totalInput.value);
+            if (!parsed.ok || parsed.incomplete) { paintMilestoneSummary(); return; }
+            milestoneEditorApi.applyTotal(milestoneEditorState, parsed.value);
+            document.querySelectorAll('#mdMilestoneList [data-milestone-id]').forEach((card) => {
+                const id = card.getAttribute('data-milestone-id');
+                const row = milestoneEditorState.rows.find((item) => item.id === id);
+                if (!row) return;
+                const percent = card.querySelector('[data-field="percent"]');
+                const amount = card.querySelector('[data-field="amount"]');
+                if (percent && document.activeElement !== percent) percent.value = milestoneEditorApi.formatPercent(row.percent);
+                if (amount && document.activeElement !== amount) amount.value = milestoneEditorApi.formatMoney(milestoneEditorApi.fromCents(row.amountCents));
+            });
+            paintMilestoneSummary();
         });
-        applyMilestoneAmountsFromPercents();
+        paintMilestoneRows();
     }
 
     window.lyannRefreshMilestoneAllocation = function lyannRefreshMilestoneAllocation() {
-        seedMilestoneDefaults();
-        applyMilestoneAmountsFromPercents();
+        if (!milestoneEditorApi) return;
+        milestoneEditorApi.applyTotal(milestoneEditorState, milestoneTotal());
+        paintMilestoneRows();
     };
 
     initMilestoneAllocationSync();
@@ -4784,15 +6749,7 @@ document.addEventListener('touchstart', (e) => {
                 const titleInput = document.getElementById('mdTitle');
                 const totalInput = document.getElementById('mdTotalAmount');
                 const title = titleInput ? titleInput.value.trim() : '';
-                const total = totalInput ? parseFloat(totalInput.value) : 0;
-
-                seedMilestoneDefaults();
-                const rawPercents = readMilestonePercents();
-                const rawAmounts = readMilestoneAmounts();
-                const percentSum = roundMilestonePercent(rawPercents.reduce((sum, percent) => sum + percent, 0));
-                const amountSum = roundMilestoneMoney(rawAmounts.reduce((sum, amount) => sum + amount, 0));
-                let percents = rawPercents.slice();
-                let amounts = rawAmounts.slice();
+                const total = milestoneTotal();
 
                 if (!currentChatContact) {
                     throw new Error("Aucun contact sélectionné pour la discussion.");
@@ -4808,38 +6765,15 @@ document.addEventListener('touchstart', (e) => {
                     return;
                 }
 
-                if (Math.abs(percentSum - 100) <= 0.05) {
-                    amounts = amountsFromMilestonePercents(total, percents);
-                } else if (Math.abs(amountSum - total) <= 0.05) {
-                    percents = amounts.map((amount) => roundMilestonePercent(amount / total * 100));
-                    percents[2] = roundMilestonePercent(100 - percents[0] - percents[1]);
-                    amounts = amountsFromMilestonePercents(total, percents);
-                } else {
-                    const msg = 'Les jalons doivent faire 100 % du total. Pourcentages : ' + formatMilestonePercent(percentSum) + '. Montants : ' + formatMilestoneMoney(amountSum) + ' sur ' + formatMilestoneMoney(total) + '.';
-                    if (window.lyannAlert) window.lyannAlert(msg);
-                    else alert(msg);
+                const checked = milestoneEditorApi && milestoneEditorState
+                    ? milestoneEditorApi.validate(milestoneEditorState, total)
+                    : { ok: false, message: 'Les jalons sont indisponibles.' };
+                if (!checked.ok) {
+                    if (window.lyannAlert) window.lyannAlert(checked.message);
+                    else alert(checked.message);
                     return;
                 }
-
-                milestoneAmountInputs().forEach((input, index) => {
-                    if (input) input.value = amounts[index].toFixed(2);
-                });
-                milestonePercentInputs().forEach((input, index) => {
-                    if (input) input.value = String(percents[index]);
-                });
-
-                const [m1, m2, m3] = amounts;
-                const [p1, p2, p3] = percents;
-
-                const j1Title = document.getElementById('mdJ1Title')?.value.trim() || "Jalon 1 - Préparation";
-                const j2Title = document.getElementById('mdJ2Title')?.value.trim() || "Jalon 2 - Intervention";
-                const j3Title = document.getElementById('mdJ3Title')?.value.trim() || "Jalon 3 - Finalisation";
-
-                const milestonesPayload = [
-                    { title: j1Title, description: "Phase 1", amount: m1, percentage: p1 },
-                    { title: j2Title, description: "Phase 2", amount: m2, percentage: p2 },
-                    { title: j3Title, description: "Phase 3", amount: m3, percentage: p3 }
-                ];
+                const milestonesPayload = checked.milestones;
 
                 try {
                     await createProductionQuoteForContact(currentChatContact.id, title, total, milestonesPayload);
@@ -4851,16 +6785,8 @@ document.addEventListener('touchstart', (e) => {
                 // Clean & close
                 if (titleInput) titleInput.value = '';
                 if (totalInput) totalInput.value = '';
-                [1, 2, 3].forEach((index) => {
-                    const titleField = document.getElementById('mdJ' + index + 'Title');
-                    const percentField = document.getElementById('mdJ' + index + 'Percent');
-                    const amountField = document.getElementById('mdJ' + index + 'Amount');
-                    if (titleField) titleField.value = '';
-                    if (percentField) percentField.value = '';
-                    if (amountField) amountField.value = '';
-                });
-                seedMilestoneDefaults();
-                applyMilestoneAmountsFromPercents();
+                milestoneEditorState = milestoneEditorApi.createState();
+                paintMilestoneRows();
                 closeAllOverlays();
                 await refreshOpenBusinessCards();
 
@@ -4975,6 +6901,10 @@ window.openChatAttachSheet = function(e) {
                 void captureChatPhoto();
                 return;
             }
+            if (kind === 'video') {
+                void pickChatVideo();
+                return;
+            }
             chatPicker(kind).click();
         });
         document.body.appendChild(sheet);
@@ -5004,7 +6934,7 @@ window.openChatAttachSheet = function(e) {
             button.innerHTML = '<div class="chat-bs-icon-wrap"><i class="ph ph-play-circle"></i></div><span>Vidéo</span>';
             button.addEventListener('click', () => {
                 sheet.style.display = 'none';
-                chatPicker('video').click();
+                void pickChatVideo();
             });
             grid.appendChild(button);
         }
@@ -5026,7 +6956,7 @@ window.handleGuardedAttachment = function(type) {
         return;
     }
     if (type === 'video') {
-        chatPicker('video').click();
+        void pickChatVideo();
         return;
     }
     if (type === 'file' || type === 'document') {
@@ -5072,23 +7002,29 @@ document.addEventListener('click', function(e) {
 window.addEventListener('lyann_missions_updated', () => refreshOpenBusinessCards());
 
 // === MOBILE KEYBOARD VISUAL VIEWPORT ADAPTATION ===
+// Do not pin scrollTop on every visualViewport scroll/resize — on iOS that fires during
+// thread pans and made the conversation feel stuck at the bottom.
 if (window.visualViewport) {
     const handleVisualViewportResize = () => {
         const modal = document.getElementById('chatModal');
-        if (modal && (modal.classList.contains('active') || modal.style.display === 'flex')) {
-            const modalCard = modal.querySelector('.modal-card-chat');
-            if (modalCard) {
-                // Shrink modal height to exact visible viewport above software keyboard
-                modalCard.style.height = `${window.visualViewport.height}px`;
-            }
-            const msgScroll = document.getElementById('chatMessagesScroll') || document.querySelector('.chat-messages-scroll');
-            if (msgScroll) {
-                msgScroll.scrollTop = msgScroll.scrollHeight;
-            }
+        if (!modal || !(modal.classList.contains('active') || modal.style.display === 'flex')) return;
+        if (!document.body.classList.contains('chat-conversation-open')) return;
+        const viewport = window.visualViewport;
+        const keyboardOpen = window.innerHeight - viewport.height - viewport.offsetTop > 80;
+        const modalCard = modal.querySelector('.modal-card-chat');
+        if (modalCard) {
+            if (keyboardOpen) modalCard.style.height = `${viewport.height}px`;
+            else modalCard.style.removeProperty('height');
+        }
+        if (!keyboardOpen) return;
+        const msgScroll = document.getElementById('chatMessagesContainer')
+            || document.getElementById('chatMessagesScroll')
+            || document.querySelector('.chat-messages-scroll');
+        if (msgScroll && threadIsNearBottom(msgScroll)) {
+            msgScroll.scrollTop = msgScroll.scrollHeight;
         }
     };
     window.visualViewport.addEventListener('resize', handleVisualViewportResize);
-    window.visualViewport.addEventListener('scroll', handleVisualViewportResize);
 }
 
 // Safe startup execution. No chat DOM MutationObserver is allowed.
@@ -5111,35 +7047,302 @@ window.getLyannFavorites = function() {
     return [];
 };
 
-window.shareProfile = async function(memberOrName, role) {
-    const name = (typeof memberOrName === 'object' && memberOrName) ? (memberOrName.name || memberOrName.first_name || 'ce membre') : (memberOrName || 'ce membre');
-    const memberRole = (typeof memberOrName === 'object' && memberOrName) ? (memberOrName.role || memberOrName.primary_activity || role || 'Lyanneur') : (role || 'Lyanneur');
-    const shareText = `Découvrez le profil de ${name} (${memberRole}) sur LYANN !`;
-    const shareUrl = window.location.href;
+function buildProfileShareUrl(memberId) {
+    const id = encodeURIComponent(String(memberId || '').trim());
+    const host = (typeof location !== 'undefined' && location.protocol === 'capacitor:')
+        ? 'https://lyann.app'
+        : ((typeof location !== 'undefined' && location.origin) ? location.origin : 'https://lyann.app');
+    return `${String(host).replace(/\/$/, '')}/index.html?action=member&id=${id}`;
+}
+window.buildProfileShareUrl = buildProfileShareUrl;
 
-    let shared = false;
-    if (typeof window.shareNative === 'function') {
-        try { shared = await window.shareNative("Profil LYANN", shareText, shareUrl); } catch(e) {}
-    } else if (navigator.share) {
+function profileSharePayload(member) {
+    const url = buildProfileShareUrl(member && member.id);
+    const name = (member && member.name) || 'ce membre';
+    const memberRole = (member && member.role) || 'Lyanneur';
+    const shortText = `Découvrez le profil de ${name} sur LYANN`;
+    return {
+        title: 'Profil LYANN',
+        url,
+        shortText,
+        text: `${shortText} (${memberRole}) : ${url}`
+    };
+}
+
+function resolveShareMember(memberOrName, role, trigger) {
+    const visiting = window.currentVisitingMember;
+    const chat = (typeof currentChatContact !== 'undefined' ? currentChatContact : null) || window.LYANN_ACTIVE_CHAT_CONTACT;
+    let member = null;
+    if (trigger && trigger.closest && trigger.closest('#publicMemberProfileModal') && visiting && visiting.id) member = visiting;
+    else if (memberOrName && typeof memberOrName === 'object') member = memberOrName;
+    else if (visiting && visiting.id && !(trigger && trigger.id === 'chatDropShareProfile')) member = visiting;
+    else if (chat && chat.id) member = chat;
+    const name = (member && (member.name || member.first_name || member.display_name))
+        || (typeof memberOrName === 'string' ? memberOrName : 'ce membre');
+    return {
+        id: (member && (member.id || member.user_id)) || '',
+        name,
+        role: (member && (member.role || member.primary_activity)) || role || 'Lyanneur',
+        avatar: (member && (member.avatar || member.avatar_url)) || ''
+    };
+}
+
+function closeProfileShareSheet() {
+    const sheet = document.getElementById('lyannProfileShareSheet');
+    if (sheet) sheet.remove();
+}
+
+function toastProfileShare(message, kind) {
+    if (typeof window.showToast === 'function') window.showToast(message, kind || 'success');
+    else if (typeof window.showLyanToast === 'function') window.showLyanToast(message, '🔗');
+    else if (typeof window.lyannAlert === 'function') window.lyannAlert(message);
+}
+
+async function shareProfileExternally(payload) {
+    const nativeShare = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share;
+    if (nativeShare && typeof window.shareNative === 'function') {
         try {
-            await navigator.share({ title: "Profil LYANN", text: shareText, url: shareUrl });
-            shared = true;
-        } catch (e) {
-            shared = false;
+            const ok = await window.shareNative(payload.title, payload.text, payload.url);
+            return ok ? 'shared' : 'cancelled';
+        } catch (error) {
+            if (error && (error.name === 'AbortError' || /cancel/i.test(String(error.message || error)))) return 'cancelled';
         }
     }
-
-    if (!shared && navigator.clipboard) {
+    if (navigator.share) {
         try {
-            await navigator.clipboard.writeText(shareUrl);
-            shared = true;
-        } catch(e) {}
+            await navigator.share({ title: payload.title, text: payload.shortText, url: payload.url });
+            return 'shared';
+        } catch (error) {
+            if (error && (error.name === 'AbortError' || /cancel/i.test(String(error.message || error)))) return 'cancelled';
+        }
+    }
+    try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            await navigator.clipboard.writeText(payload.url);
+            return 'copied';
+        }
+    } catch (_) {}
+    return 'failed';
+}
+
+async function listProfileShareRecipients(query, excludeIds) {
+    const exclude = new Set((excludeIds || []).filter(Boolean).map(String));
+    const me = String(getMyId() || '');
+    if (me) exclude.add(me);
+    const userId = getMyId();
+    const repo = window.LYANN_MESSAGING_REPOSITORY;
+    let rows = [];
+    if (userId && repo) {
+        rows = repo.peekConversations(userId) || [];
+        if ((!rows || !rows.length) && typeof repo.listConversations === 'function') {
+            try { rows = await repo.listConversations(userId); } catch (_) { rows = []; }
+        }
+    }
+    const mapped = (rows || []).map((row) => ({
+        id: row.contactId || row.id,
+        name: row.name || 'Membre LYANN',
+        avatar: row.avatar || '',
+        fromInbox: true
+    })).filter((row) => row.id && !exclude.has(String(row.id)));
+    const q = String(query || '').trim().toLowerCase();
+    let out = q ? mapped.filter((row) => String(row.name || '').toLowerCase().includes(q)) : mapped.slice();
+    if (q.length >= 2) {
+        const client = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+        const safe = q.replace(/[^a-zA-ZÀ-ÿ0-9 '\-]/g, '').slice(0, 32);
+        if (client && safe) {
+            try {
+                const { data } = await client.from('public_profiles')
+                    .select('id,first_name,last_name,avatar_url')
+                    .or(`first_name.ilike.%${safe}%,last_name.ilike.%${safe}%`)
+                    .limit(16);
+                for (const profile of data || []) {
+                    if (!profile || !profile.id || exclude.has(String(profile.id))) continue;
+                    if (out.some((item) => String(item.id) === String(profile.id))) continue;
+                    const name = typeof window.formatPublicName === 'function'
+                        ? window.formatPublicName(profile, null, 'Lyanneur')
+                        : String(profile.first_name || 'Lyanneur');
+                    out.push({
+                        id: profile.id,
+                        name,
+                        avatar: typeof window.getLyannAvatarUrl === 'function' ? window.getLyannAvatarUrl(profile.avatar_url) : (profile.avatar_url || ''),
+                        fromInbox: false
+                    });
+                }
+            } catch (_) {}
+        }
+    }
+    return out.slice(0, 30);
+}
+
+async function sendSharedProfileToChat(member, recipient) {
+    if (!member || !member.id || !recipient || !recipient.id) return false;
+    const payload = profileSharePayload(member);
+    const text = payload.text;
+    if (typeof window.addMessageToContact === 'function') {
+        await window.addMessageToContact(recipient.id, {
+            type: 'text',
+            text,
+            entityType: 'profile',
+            entityId: member.id,
+            metadata: { name: member.name, role: member.role, url: payload.url }
+        });
+    }
+    const profileModal = document.getElementById('publicMemberProfileModal');
+    if (profileModal) {
+        profileModal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    if (window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.openConversation === 'function') {
+        await window.LYANN_MESSAGING.openConversation({
+            contactId: recipient.id,
+            name: recipient.name,
+            avatar: recipient.avatar
+        });
+    } else if (window.LYANN_ROUTER && typeof window.LYANN_ROUTER.go === 'function') {
+        window.LYANN_ROUTER.go('messages', { contactId: recipient.id, name: recipient.name });
+    }
+    toastProfileShare(`Profil envoyé à ${recipient.name}.`, 'success');
+    return true;
+}
+
+function paintShareRecipientList(listEl, rows, onPick) {
+    listEl.innerHTML = '';
+    if (!rows.length) {
+        const empty = document.createElement('p');
+        empty.className = 'lyann-share-empty';
+        empty.textContent = 'Aucun Lyanneur trouvé. Cherchez un prénom, ou choisissez une conversation.';
+        listEl.appendChild(empty);
+        return;
+    }
+    rows.forEach((row) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'lyann-share-recipient';
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = (typeof window.resolveLyannAvatarSrc === 'function' ? window.resolveLyannAvatarSrc(row.avatar) : row.avatar) || '';
+        img.addEventListener('error', () => { if (typeof window.handleAvatarError === 'function') window.handleAvatarError(img); });
+        const label = document.createElement('span');
+        label.textContent = row.name;
+        btn.append(img, label);
+        btn.addEventListener('click', () => onPick(row));
+        listEl.appendChild(btn);
+    });
+}
+
+function openProfileShareSheet(member) {
+    closeProfileShareSheet();
+    const payload = profileSharePayload(member);
+    const sheet = document.createElement('div');
+    sheet.id = 'lyannProfileShareSheet';
+    sheet.className = 'chat-bottom-sheet-overlay lyann-profile-share-overlay';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-labelledby', 'lyannProfileShareTitle');
+    sheet.innerHTML = [
+        '<div class="chat-bottom-sheet-card lyann-profile-share-card">',
+        '<div class="chat-bottom-sheet-handle"></div>',
+        '<div class="chat-bottom-sheet-header">',
+        '<h3 id="lyannProfileShareTitle">Partager le profil</h3>',
+        '<button type="button" class="chat-bottom-sheet-close" data-close-profile-share="1" aria-label="Fermer"><i class="ph ph-x"></i></button>',
+        '</div>',
+        '<p class="lyann-share-subtitle"></p>',
+        '<div class="lyann-share-dest-grid" data-share-step="dest">',
+        '<button type="button" class="lyann-share-dest-btn" data-share-dest="external"><i class="ph ph-whatsapp-logo"></i><span>WhatsApp, Messages…</span></button>',
+        '<button type="button" class="lyann-share-dest-btn" data-share-dest="lyann"><i class="ph ph-chat-circle-text"></i><span>Un Lyanneur</span></button>',
+        '<button type="button" class="lyann-share-dest-btn" data-share-dest="copy"><i class="ph ph-link"></i><span>Copier le lien</span></button>',
+        '</div>',
+        '<div class="lyann-share-lyann-pane" data-share-step="lyann" hidden>',
+        '<input type="search" class="lyann-share-search" placeholder="Rechercher un Lyanneur" autocomplete="off">',
+        '<div class="lyann-share-recipient-list" role="list"></div>',
+        '</div>',
+        '</div>'
+    ].join('');
+    const subtitle = sheet.querySelector('.lyann-share-subtitle');
+    if (subtitle) subtitle.textContent = member.name ? ('Profil de ' + member.name) : 'Choisir comment partager';
+    const lyannPane = sheet.querySelector('[data-share-step="lyann"]');
+    const destGrid = sheet.querySelector('[data-share-step="dest"]');
+    const listEl = sheet.querySelector('.lyann-share-recipient-list');
+    const searchEl = sheet.querySelector('.lyann-share-search');
+
+    const pickRecipient = async (row) => {
+        closeProfileShareSheet();
+        await sendSharedProfileToChat(member, row);
+    };
+
+    const showLyannPicker = async () => {
+        if (window.LYANN_ROUTER && typeof window.LYANN_ROUTER.requireAuthForInteraction === 'function') {
+            const ok = await window.LYANN_ROUTER.requireAuthForInteraction('messages');
+            if (!ok) return;
+        }
+        destGrid.hidden = true;
+        lyannPane.hidden = false;
+        const title = sheet.querySelector('#lyannProfileShareTitle');
+        if (title) title.textContent = 'Envoyer à un Lyanneur';
+        const rows = await listProfileShareRecipients('', [member.id]);
+        paintShareRecipientList(listEl, rows, pickRecipient);
+        if (searchEl) searchEl.focus();
+    };
+
+    sheet.addEventListener('click', async (event) => {
+        if (event.target === sheet || event.target.closest('[data-close-profile-share]')) {
+            closeProfileShareSheet();
+            return;
+        }
+        const dest = event.target.closest('[data-share-dest]');
+        if (!dest) return;
+        const kind = dest.getAttribute('data-share-dest');
+        if (kind === 'lyann') {
+            showLyannPicker();
+            return;
+        }
+        if (kind === 'copy') {
+            const result = await (async () => {
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(payload.url);
+                        return 'copied';
+                    }
+                } catch (_) {}
+                return 'failed';
+            })();
+            closeProfileShareSheet();
+            if (result === 'copied') toastProfileShare('Lien du profil copié.', 'success');
+            else toastProfileShare('Impossible de copier le lien.', 'warning');
+            return;
+        }
+        closeProfileShareSheet();
+        const result = await shareProfileExternally(payload);
+        if (result === 'copied') toastProfileShare('Lien du profil copié. Collez-le dans WhatsApp ou Messages.', 'success');
+        else if (result === 'failed') toastProfileShare('Partage indisponible sur cet appareil.', 'warning');
+    });
+
+    let searchTimer = 0;
+    if (searchEl) {
+        searchEl.addEventListener('input', () => {
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(async () => {
+                const rows = await listProfileShareRecipients(searchEl.value, [member.id]);
+                paintShareRecipientList(listEl, rows, pickRecipient);
+            }, 180);
+        });
     }
 
-    const msg = `🔗 Lien du profil de ${name} copié dans votre presse-papier !`;
-    if (typeof window.showToast === 'function') window.showToast(msg, 'success');
-    else if (typeof window.lyannAlert === 'function') window.lyannAlert(msg);
-    else alert(msg);
+    document.body.appendChild(sheet);
+}
+
+let profileShareOpenAt = 0;
+window.shareProfile = async function(memberOrName, role, options) {
+    const now = Date.now();
+    if (now - profileShareOpenAt < 500) return;
+    profileShareOpenAt = now;
+    const trigger = options && options.trigger;
+    const member = resolveShareMember(memberOrName, role, trigger);
+    if (!member.id) {
+        toastProfileShare('Profil introuvable pour le partage.', 'warning');
+        return;
+    }
+    openProfileShareSheet(member);
 };
 
 window.isContactFavorite = function(contactId) {
@@ -5242,8 +7445,8 @@ document.addEventListener('click', (e) => {
     if (shareBtn) {
         e.preventDefault();
         e.stopPropagation();
-        const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT || window.currentVisitingMember;
-        window.shareProfile(contact || 'ce membre');
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        window.shareProfile(null, null, { trigger: shareBtn });
     }
 
     const dateBtn = e.target.closest('#btnCtxDate, #bsActionDate, #btnChooseDate, #btnProposeDate, .btn-propose-date');
@@ -5271,8 +7474,13 @@ let realtimeEverConnected = false;
 let realtimeDropped = false;
 let chatRealtimeAuthed = false;
 let chatAuthWatchInstalled = false;
-let realtimeRetryTimer = null;
 let catchUpPromise = null;
+let chatRealtimeRecyclePromise = null;
+let lastChatRealtimeRecycleAt = 0;
+let lastVisibleCatchupAt = 0;
+const chatRealtimeSlot = window.LYANN_REALTIME_SESSION
+    ? window.LYANN_REALTIME_SESSION.createRealtimeSlot()
+    : null;
 let readReceiptLogQueued = false;
 let readBadgeQueued = false;
 
@@ -5310,22 +7518,42 @@ function reconcileLiveRow(row) {
 
 function appendLiveChatMessage(row, options = {}) {
     const container = document.getElementById('chatMessagesContainer');
-    if (!container || !row || !currentChatContact) return;
+    if (!container || !row || !currentChatContact) return false;
     const messageId = row.id ? String(row.id) : '';
-    if (messageId && container.querySelector(chatMessageSelector(messageId))) return;
+    if (messageId && container.querySelector(chatMessageSelector(messageId))) return true;
     const mine = row.sender_id && row.sender_id === getMyId();
     const text = typeof row.content === 'string' ? row.content : '';
     const attachmentType = row.attachment_type === 'photo' || row.attachment_type === 'video' || row.attachment_type === 'document' ? row.attachment_type : '';
-    if (!attachmentType && isJsonMessageContent(text)) return;
+    if (!attachmentType && isJsonMessageContent(text)) return false;
     const stick = Object.prototype.hasOwnProperty.call(options, 'stickToBottom') ? options.stickToBottom : threadIsNearBottom(container);
-    if (!attachmentType && isQuoteAcceptedNotice(text)) {
-        return;
+    if (!attachmentType && (isQuoteAcceptedNotice(text) || isRpcNoiseMessage(text))) {
+        return false;
     }
-    if (row.metadata && row.metadata.kind === 'payout_ready') return;
-    const dealType = row.message_type || '';
-    if (window.LYANN_QUOTE_PAYMENT && window.LYANN_QUOTE_PAYMENT.isDealTimeline && window.LYANN_QUOTE_PAYMENT.isDealTimeline(dealType)) {
-        refreshOpenBusinessCards();
-        return;
+    if (row.metadata && row.metadata.kind === 'payout_ready') return false;
+    const messageType = row.message_type || row.messageType || '';
+    const visibleNotice = window.LYANN_QUOTE_PAYMENT && typeof window.LYANN_QUOTE_PAYMENT.isVisibleDealNotice === 'function'
+        ? window.LYANN_QUOTE_PAYMENT.isVisibleDealNotice(messageType)
+        : messageType === 'quote_declined';
+    const dealWake = dealContextSyncApi && typeof dealContextSyncApi.isDealWakeMessage === 'function'
+        ? dealContextSyncApi.isDealWakeMessage(row, window.LYANN_QUOTE_PAYMENT && window.LYANN_QUOTE_PAYMENT.isDealTimeline)
+        : (window.LYANN_QUOTE_PAYMENT && window.LYANN_QUOTE_PAYMENT.isDealTimeline
+            && window.LYANN_QUOTE_PAYMENT.isDealTimeline(messageType));
+    if (dealWake) {
+        const quote = timelineQuotes.get(String(row.entity_id || '')) || {
+            id: row.entity_id,
+            request_id: row.metadata && (row.metadata.request_id || row.metadata.requestId),
+            request_invitation_id: row.metadata && row.metadata.request_invitation_id,
+            total_amount: row.metadata && row.metadata.amount,
+            provider_id: row.metadata && row.metadata.provider_id
+        };
+        const belongs = dealEventBelongsToActiveDossier(quote, row);
+        if (belongs) void refreshDealContext('realtime-timeline');
+        if (messageType === 'quote_declined') {
+            if (belongs) ensureQuoteDeclinedNotice(quote, row);
+            return belongs;
+        }
+        if (!visibleNotice) return false;
+        if (!belongs) return false;
     }
     container.querySelector('.chat-empty-state')?.remove();
     if (!container.querySelector('.chat-date-separator')) {
@@ -5353,13 +7581,14 @@ function appendLiveChatMessage(row, options = {}) {
         attachmentSize: row.attachment_size,
         attachmentMime: row.attachment_mime || ''
     };
-    if (!attachmentType && isJsonMessageContent(text) && !isTimelineMessage(mapped)) return;
+    if (!attachmentType && isJsonMessageContent(text) && !isTimelineMessage(mapped)) return false;
     const node = isTimelineMessage(mapped) ? renderTimelineCard(mapped) : createThreadBubble(mapped);
-    if (!node) return;
-    if (node.dataset.messageId && container.querySelector(chatMessageSelector(node.dataset.messageId))) return;
+    if (!node) return false;
+    if (node.dataset.messageId && container.querySelector(chatMessageSelector(node.dataset.messageId))) return true;
     placeThreadNode(container, node);
     const followed = !node.nextElementSibling || !node.nextElementSibling.dataset || !node.nextElementSibling.dataset.messageId;
     if (stick && followed) scrollThreadToBottom(container, !options.quiet);
+    return true;
 }
 window.appendLiveChatMessage = appendLiveChatMessage;
 
@@ -5386,13 +7615,17 @@ function placeLiveMessage(row, options = {}) {
     const outcome = reconcileLiveRow(row);
     if (outcome === 'parked') return 'parked';
     if (outcome) return 'reconciled';
-    appendLiveChatMessage(row, options);
-    return 'appended';
+    return appendLiveChatMessage(row, options) ? 'appended' : 'skipped';
 }
+
+let catchUpQueuedReason = null;
 
 async function catchUpOpenThread(reason) {
     if (!currentChatContact?.id || !isUUID(currentChatContact.id)) return;
-    if (catchUpPromise) return catchUpPromise;
+    if (catchUpPromise) {
+        catchUpQueuedReason = reason || 'queued';
+        return catchUpPromise;
+    }
     const contactId = currentChatContact.id;
     if (reason === 'foreground') console.log('[CHAT] foreground catchup');
     catchUpPromise = (async () => {
@@ -5411,11 +7644,13 @@ async function catchUpOpenThread(reason) {
             return;
         }
         const stick = threadIsNearBottom(container);
-        let cursor = newestServerCursor(container);
-        if (!cursor) {
+        const reasonText = String(reason || '');
+        if (/fanout|reconnect|subscribe|denied|recycle|postgres-dropped|realtime-miss/.test(reasonText)) {
+            window.LYANN_MESSAGING_REPOSITORY?.invalidateMessages?.(currentChatContact.conversationId);
             placePage(await getChatMessages(contactId, { fresh: true, limit: 50 }), stick);
             return;
         }
+        let cursor = newestServerCursor(container);
         let pages = 0;
         while (pages < 40 && currentChatContact && currentChatContact.id === contactId) {
             const batch = await getChatMessages(contactId, { fresh: true, limit: 50, after: cursor });
@@ -5429,7 +7664,12 @@ async function catchUpOpenThread(reason) {
             cursor = next;
             if (batch.length < 50) break;
         }
-    })().finally(() => { catchUpPromise = null; });
+    })().finally(() => {
+        catchUpPromise = null;
+        const again = catchUpQueuedReason;
+        catchUpQueuedReason = null;
+        if (again) void catchUpOpenThread(again);
+    });
     return catchUpPromise;
 }
 
@@ -5567,21 +7807,320 @@ async function noteChatPreview(userId, row, contactId) {
     }
     const preview = noted?.preview || window.LYANN_MESSAGING_REPOSITORY?.formatMessagePreview?.(row) || inboxPreviewText(row.content);
     publishChatActivity({
-        contactId: noted?.contactId || contactId || null,
+        contactId: (noted && noted.contactId) || contactId || null,
         preview,
         conversationId: row.conversation_id,
         lastMessageAt: row.created_at || null,
         unread: noted ? !!noted.unread : unread,
+        unreadCount: noted && noted.unreadCount ? noted.unreadCount : (unread ? 1 : 0),
         name: noted?.name || '',
         avatar: noted?.avatar || ''
     });
+}
+
+let chatFanout = { conversationId: null, channel: null, generation: 0, subscribed: false, retries: 0, inboxIds: new Set() };
+const inboxFanoutChannels = new Map();
+
+function chatFanoutName(conversationId) {
+    return 'lyann-chat-fanout:' + conversationId;
+}
+
+function chatFanoutChannelConfig() {
+    return { config: { private: true, broadcast: { ack: false, self: false } } };
+}
+
+function chatFanoutWake(kind, conversationId, requestId) {
+    const payload = {
+        kind: kind === 'deal' ? 'deal' : 'wake',
+        conversationId: String(conversationId || '')
+    };
+    if (requestId) payload.requestId = String(requestId);
+    return payload;
+}
+
+function conversationAllowedForFanout(conversationId) {
+    if (!conversationId || (typeof isUUID === 'function' && !isUUID(conversationId))) return false;
+    if (chatFanout.conversationId && String(chatFanout.conversationId) === String(conversationId) && chatFanout.subscribed) return true;
+    const open = currentChatContact && currentChatContact.conversationId
+        ? String(currentChatContact.conversationId)
+        : '';
+    if (open && open === String(conversationId)) return true;
+    if (chatFanout.inboxIds && typeof chatFanout.inboxIds.has === 'function' && chatFanout.inboxIds.has(String(conversationId))) return true;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    const listed = window.LYANN_MESSAGING_REPOSITORY && typeof window.LYANN_MESSAGING_REPOSITORY.peekConversations === 'function'
+        ? (window.LYANN_MESSAGING_REPOSITORY.peekConversations(userId) || [])
+        : [];
+    return listed.some((item) => item && String(item.conversationId || '') === String(conversationId));
+}
+
+async function unbindChatFanout() {
+    const stale = chatFanout.channel;
+    chatFanout = {
+        conversationId: null,
+        channel: null,
+        generation: chatFanout.generation + 1,
+        subscribed: false,
+        retries: chatFanout.retries || 0,
+        inboxIds: chatFanout.inboxIds || new Set()
+    };
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    if (stale && supabase && typeof supabase.removeChannel === 'function') {
+        try { await supabase.removeChannel(stale); } catch (_) {}
+    }
+}
+
+async function ensureRealtimeAuth(supabase) {
+    if (!supabase || !supabase.auth || !supabase.realtime) return '';
+    try {
+        const sessionResult = await supabase.auth.getSession();
+        const token = (sessionResult && sessionResult.data && sessionResult.data.session && sessionResult.data.session.access_token) || '';
+        if (token && typeof supabase.realtime.setAuth === 'function') await supabase.realtime.setAuth(token);
+        console.log('[CHAT] realtime auth', token ? 'ok' : 'missing');
+        return token;
+    } catch (_) {
+        return '';
+    }
+}
+
+function scheduleCatchUpBurst(reason) {
+    void catchUpOpenThread(reason);
+    setTimeout(() => { void catchUpOpenThread(reason + '-b'); }, 400);
+    setTimeout(() => { void catchUpOpenThread(reason + '-c'); }, 1500);
+    setTimeout(() => { void catchUpOpenThread(reason + '-d'); }, 3500);
+}
+
+async function bindChatFanout(conversationId) {
+    if (!conversationId || !isUUID(conversationId)) return;
+    if (chatFanout.channel && String(chatFanout.conversationId) === String(conversationId)) return;
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    if (!supabase || typeof supabase.channel !== 'function') return;
+    await ensureRealtimeAuth(supabase);
+    if (String(chatFanout.conversationId || '') !== String(conversationId)) await unbindChatFanout();
+    const generation = chatFanout.generation;
+    const channel = supabase.channel(chatFanoutName(conversationId), chatFanoutChannelConfig())
+        .on('broadcast', { event: 'lyann-chat' }, (msg) => {
+            const payload = msg && (msg.payload || msg);
+            applyIncomingChatEvent(payload, 'fanout');
+        });
+    chatFanout = {
+        conversationId,
+        channel,
+        generation,
+        subscribed: false,
+        retries: chatFanout.retries || 0,
+        inboxIds: chatFanout.inboxIds || new Set()
+    };
+    channel.subscribe((status, err) => {
+        if (generation !== chatFanout.generation) return;
+        console.log('[CHAT] realtime fanout', status);
+        if (status === 'SUBSCRIBED') {
+            chatFanout.subscribed = true;
+            chatFanout.retries = 0;
+            scheduleCatchUpBurst('fanout-subscribe');
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.log('[CHAT] realtime fanout denied', err && (err.message || err));
+            chatFanout.subscribed = false;
+            scheduleCatchUpBurst('fanout-denied');
+            if ((chatFanout.retries || 0) < 3 && currentChatContact && String(currentChatContact.conversationId || '') === String(conversationId)) {
+                chatFanout.retries = (chatFanout.retries || 0) + 1;
+                const retries = chatFanout.retries;
+                setTimeout(() => {
+                    if (chatFanout.channel === channel) {
+                        chatFanout.conversationId = null;
+                        chatFanout.channel = null;
+                    }
+                    void bindChatFanout(conversationId);
+                }, 700 * retries);
+            }
+        }
+    });
+}
+
+async function waitFanoutSubscribed(conversationId, timeoutMs) {
+    const deadline = Date.now() + (timeoutMs || 4000);
+    while (Date.now() < deadline) {
+        if (chatFanout.subscribed && chatFanout.channel && String(chatFanout.conversationId) === String(conversationId)) return true;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return !!(chatFanout.channel && String(chatFanout.conversationId) === String(conversationId));
+}
+
+async function bindInboxChatFanouts(conversationIds) {
+    const ids = (Array.isArray(conversationIds) ? conversationIds : [])
+        .map((id) => String(id || ''))
+        .filter((id) => id && (typeof isUUID !== 'function' || isUUID(id)));
+    const wanted = new Set(ids.slice(0, 12));
+    const open = currentChatContact && currentChatContact.conversationId ? String(currentChatContact.conversationId) : '';
+    if (open) wanted.add(open);
+    chatFanout.inboxIds = wanted;
+    for (const [id, channel] of inboxFanoutChannels) {
+        if (wanted.has(id)) continue;
+        inboxFanoutChannels.delete(id);
+        const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+        if (channel && supabase && typeof supabase.removeChannel === 'function') {
+            try { await supabase.removeChannel(channel); } catch (_) {}
+        }
+    }
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    if (!supabase || typeof supabase.channel !== 'function') return;
+    await ensureRealtimeAuth(supabase);
+    for (const id of wanted) {
+        if (inboxFanoutChannels.has(id)) continue;
+        if (chatFanout.channel && String(chatFanout.conversationId) === id) continue;
+        const channel = supabase.channel(chatFanoutName(id), chatFanoutChannelConfig())
+            .on('broadcast', { event: 'lyann-chat' }, (msg) => {
+                const payload = msg && (msg.payload || msg);
+                applyIncomingChatEvent(payload, 'fanout');
+            });
+        inboxFanoutChannels.set(id, channel);
+        channel.subscribe((status) => {
+            console.log('[CHAT] realtime inbox fanout', status);
+        });
+    }
+}
+window.bindInboxChatFanouts = bindInboxChatFanouts;
+
+async function publishChatFanout(conversationId, kind, requestId) {
+    if (!conversationId || !isUUID(conversationId)) return;
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    if (!supabase || typeof supabase.channel !== 'function') return;
+    const payload = chatFanoutWake(kind, conversationId, requestId || (currentChatContact && currentChatContact.requestId) || null);
+    if (payload.row || payload.content || payload.new) return;
+    try {
+        await ensureRealtimeAuth(supabase);
+        await bindChatFanout(conversationId);
+        await waitFanoutSubscribed(conversationId, 4000);
+        const channel = (chatFanout.conversationId === conversationId && chatFanout.channel) ? chatFanout.channel : null;
+        if (!channel) return;
+        let sent;
+        if (chatFanout.subscribed && typeof channel.send === 'function') {
+            sent = await channel.send({ type: 'broadcast', event: 'lyann-chat', payload });
+        }
+        if (sent !== 'ok' && typeof channel.httpSend === 'function') {
+            sent = await channel.httpSend('lyann-chat', payload);
+        } else if (sent !== 'ok' && typeof channel.send === 'function') {
+            sent = await channel.send({ type: 'broadcast', event: 'lyann-chat', payload });
+        }
+        console.log('[CHAT] realtime fanout send', sent);
+    } catch (_) {}
+}
+
+function applyFanoutWake(payload) {
+    const convId = payload && payload.conversationId ? String(payload.conversationId) : '';
+    console.log('[CHAT] realtime fanout recv');
+    if (!conversationAllowedForFanout(convId)) return;
+    console.log('[CHAT] realtime insert');
+    window.LYANN_MESSAGING_REPOSITORY?.invalidateMessages?.(convId);
+    const openHere = openConversationIsVisible()
+        && currentChatContact
+        && String(currentChatContact.conversationId || '') === convId;
+    if (openHere) {
+        scheduleCatchUpBurst(payload.kind === 'deal' ? 'fanout-deal' : 'fanout-wake');
+        if (payload.kind === 'deal') {
+            void (async () => {
+                if (typeof loadPairDossiers === 'function') await loadPairDossiers(currentChatContact);
+                paintPendingActionBanner();
+                const fanoutRequestId = payload.requestId ? String(payload.requestId) : '';
+                const openRequestId = currentChatContact.requestId ? String(currentChatContact.requestId) : '';
+                if (fanoutRequestId && openRequestId && fanoutRequestId !== openRequestId) {
+                    if (Array.isArray(currentChatContact.dossiers)) {
+                        currentChatContact.dossiers.forEach((row) => {
+                            if (String(row.requestId) === fanoutRequestId) row.stale = true;
+                        });
+                    }
+                    if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
+                    return;
+                }
+                if (!openRequestId && currentChatContact.missionAmbiguous) {
+                    if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
+                    return;
+                }
+                void refreshDealContext('fanout');
+            })();
+        }
+        return;
+    }
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    if (userId) {
+        const noted = window.LYANN_MESSAGING_REPOSITORY?.noteIncomingPreview?.(userId, convId, 'Nouveau message', new Date().toISOString(), { unread: true });
+        publishChatActivity({
+            contactId: noted && noted.contactId ? noted.contactId : null,
+            conversationId: convId,
+            preview: (noted && noted.preview) || 'Nouveau message',
+            unread: true,
+            unreadCount: noted && noted.unreadCount ? noted.unreadCount : 1,
+            lastMessageAt: new Date().toISOString(),
+            name: noted && noted.name ? noted.name : '',
+            avatar: noted && noted.avatar ? noted.avatar : ''
+        });
+    }
+    if (typeof window.bumpMessageBadge === 'function') window.bumpMessageBadge();
+    else if (typeof window.paintMessageBadge === 'function') window.paintMessageBadge(1);
+    if (typeof window.refreshMessageBadge === 'function') window.refreshMessageBadge(userId);
+}
+
+function applyIncomingChatEvent(payload, source) {
+    if (!payload) return;
+    if (source === 'fanout') {
+        applyFanoutWake({
+            kind: payload.kind === 'deal' ? 'deal' : 'wake',
+            conversationId: payload.conversationId || (payload.row && payload.row.conversation_id) || '',
+            requestId: payload.requestId || ''
+        });
+        return;
+    }
+    const kind = payload.kind || (payload.row ? 'message' : '');
+    if (kind === 'deal' || kind === 'wake') {
+        applyFanoutWake({ kind: kind === 'deal' ? 'deal' : 'wake', conversationId: payload.conversationId, requestId: payload.requestId || '' });
+        return;
+    }
+    const row = payload.row || payload.new || null;
+    if (!row || !row.conversation_id) return;
+    applyIncomingMessageRow(row, source);
+}
+
+function applyIncomingMessageRow(row, source) {
+    if (!row) return;
+    console.log('[CHAT] realtime insert');
+    const userId = getMyId();
+    const convId = row.conversation_id;
+    const openHere = openConversationIsVisible() && incomingBelongsToOpenChat(row, currentChatContact, userId);
+    if (openHere) {
+        if (convId && currentChatContact && !currentChatContact.conversationId) {
+            currentChatContact.conversationId = convId;
+        }
+        window.LYANN_DATA_CACHE?.invalidate?.('chat-messages', convId);
+        window.LYANN_MESSAGING_REPOSITORY?.ingestIncomingMessage?.(userId, currentChatContact.id, convId, row);
+        const placed = placeLiveMessage(row, { stickToBottom: true });
+        if (placed === 'reconciled') console.log('[CHAT] reconciled');
+        if (placed === 'skipped' || placed === 'parked') void catchUpOpenThread('realtime-miss');
+        if (placed === 'appended') lastVisibleCatchupAt = Date.now();
+        const wake = dealContextSyncApi && typeof dealContextSyncApi.isDealWakeMessage === 'function'
+            ? dealContextSyncApi.isDealWakeMessage(row, window.LYANN_QUOTE_PAYMENT && window.LYANN_QUOTE_PAYMENT.isDealTimeline)
+            : (window.LYANN_QUOTE_PAYMENT && window.LYANN_QUOTE_PAYMENT.isDealTimeline
+                && window.LYANN_QUOTE_PAYMENT.isDealTimeline(row.message_type || ''));
+        if (wake) void refreshDealContext(source === 'fanout' ? 'fanout' : 'realtime');
+        if (typeof paintThreadBusinessBanner === 'function') paintThreadBusinessBanner();
+    } else if (userId) {
+        window.LYANN_MESSAGING_REPOSITORY?.invalidateMessages?.(convId);
+    }
+    void noteChatPreview(userId, row, openHere ? currentChatContact.id : null);
+    if (row.sender_id && row.sender_id !== userId) {
+        if (openHere && window.LYANN_MESSAGING_REPOSITORY?.markConversationRead && currentChatContact?.id) {
+            window.LYANN_MESSAGING_REPOSITORY.markConversationRead(userId, currentChatContact.id).catch(() => {});
+        } else if (typeof window.refreshMessageBadge === 'function') {
+            if (typeof window.bumpMessageBadge === 'function') window.bumpMessageBadge();
+            window.refreshMessageBadge(userId);
+        }
+    }
 }
 
 function incomingBelongsToOpenChat(row, contact, userId) {
     if (!row || !contact) return false;
     const conversationId = row.conversation_id ? String(row.conversation_id) : '';
     const openConversationId = contact.conversationId ? String(contact.conversationId) : '';
-    if (openConversationId && conversationId && openConversationId === conversationId) return true;
+    if (openConversationId && conversationId) return openConversationId === conversationId;
     const senderId = row.sender_id ? String(row.sender_id) : '';
     const contactId = contact.id ? String(contact.id) : '';
     const me = userId ? String(userId) : '';
@@ -5591,45 +8130,94 @@ function incomingBelongsToOpenChat(row, contact, userId) {
 
 function openConversationIsVisible() {
     if (typeof document === 'undefined' || document.visibilityState === 'hidden') return false;
-    if (!document.body || !document.body.classList.contains('lyann-messaging-open')) return false;
     if (!currentChatContact || typeof isUUID !== 'function' || !isUUID(currentChatContact.id)) return false;
+    const bodyOpen = document.body && (
+        document.body.classList.contains('lyann-messaging-open')
+        || document.body.classList.contains('in-chat-active')
+        || document.body.classList.contains('chat-conversation-open')
+    );
+    const modal = document.getElementById('chatModal');
+    const modalOpen = !!(modal && (modal.classList.contains('active') || modal.style.display === 'flex'));
+    if (!bodyOpen && !modalOpen) return false;
     const layout = document.querySelector('#chatModal .chat-modal-layout');
-    if (!layout) return false;
+    if (!layout) return true;
     return layout.classList.contains('has-active-conversation') || layout.classList.contains('mobile-conversation-active');
+}
+
+async function reconnectRealtimeSocket(supabase) {
+    if (!supabase || !supabase.realtime) return;
+    const rt = supabase.realtime;
+    const connected = typeof rt.isConnected === 'function' ? rt.isConnected() : false;
+    if (connected) return;
+    try {
+        if (typeof rt.disconnect === 'function') rt.disconnect();
+    } catch (_) {}
+    try {
+        const sessionResult = await supabase.auth.getSession();
+        const token = (sessionResult && sessionResult.data && sessionResult.data.session && sessionResult.data.session.access_token) || '';
+        if (token && typeof rt.setAuth === 'function') {
+            await rt.setAuth(token);
+        }
+        if (typeof rt.connect === 'function') rt.connect();
+        const deadline = Date.now() + 4000;
+        while (Date.now() < deadline) {
+            if (typeof rt.isConnected === 'function' && rt.isConnected()) return;
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+    } catch (_) {}
+}
+
+async function forceChatRealtimeResubscribe(reason) {
+    if (chatRealtimeRecyclePromise) return chatRealtimeRecyclePromise;
+    if (lastChatRealtimeRecycleAt && Date.now() - lastChatRealtimeRecycleAt < 2000) return;
+    lastChatRealtimeRecycleAt = Date.now();
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    if (!supabase || !getMyId()) return;
+    chatRealtimeRecyclePromise = (async () => {
+        realtimeDropped = true;
+        chatSubscription = null;
+        if (chatRealtimeSlot) {
+            await chatRealtimeSlot.release((channel) => (
+                typeof supabase.removeChannel === 'function' ? supabase.removeChannel(channel) : null
+            ), { keepAttempt: true });
+        }
+        await reconnectRealtimeSocket(supabase);
+        if (!getMyId()) return;
+        console.log('[CHAT] realtime recycle', reason || '');
+        setupRealtime();
+        const convId = currentChatContact && currentChatContact.conversationId;
+        if (!convId) return;
+        const socketDown = supabase.realtime && typeof supabase.realtime.isConnected === 'function'
+            && !supabase.realtime.isConnected();
+        const fanoutLive = chatFanout.channel
+            && chatFanout.subscribed
+            && String(chatFanout.conversationId) === String(convId);
+        if (reason === 'online' || reason === 'foreground' || socketDown || !fanoutLive) {
+            await unbindChatFanout();
+            void bindChatFanout(convId);
+        } else {
+            scheduleCatchUpBurst('recycle');
+        }
+    })().finally(() => { chatRealtimeRecyclePromise = null; });
+    return chatRealtimeRecyclePromise;
 }
 
 function setupRealtime() {
     if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) return;
-    if (chatSubscription) return;
+    if (chatSubscription && !realtimeDropped) return;
     const supabase = window.LYANN_API_CLIENT.supabase;
+    if (chatSubscription) {
+        const stale = chatSubscription;
+        chatSubscription = null;
+        if (typeof supabase.removeChannel === 'function') {
+            Promise.resolve(supabase.removeChannel(stale)).catch(() => {});
+        }
+    }
     const generation = ++chatRealtimeGeneration;
 
-    const channel = supabase.channel('lyann-messages', { config: { private: true } })
+    const channel = supabase.channel('lyann-messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-            const row = payload?.new;
-            if (!row) return;
-            console.log('[CHAT] realtime insert');
-            const userId = getMyId();
-            const convId = row.conversation_id;
-            const openHere = incomingBelongsToOpenChat(row, currentChatContact, userId);
-            if (openHere) {
-                if (convId && currentChatContact && (!currentChatContact.conversationId || String(row.sender_id) === String(currentChatContact.id))) {
-                    currentChatContact.conversationId = convId;
-                }
-                window.LYANN_MESSAGING_REPOSITORY?.invalidateMessages?.(convId);
-                const placed = placeLiveMessage(row);
-                if (placed === 'reconciled') console.log('[CHAT] reconciled');
-            } else if (userId) {
-                window.LYANN_MESSAGING_REPOSITORY?.invalidateMessages?.(convId);
-            }
-            void noteChatPreview(userId, row, openHere ? currentChatContact.id : null);
-            if (row.sender_id && row.sender_id !== userId) {
-                if (openHere && window.LYANN_MESSAGING_REPOSITORY?.markConversationRead && currentChatContact?.id) {
-                    window.LYANN_MESSAGING_REPOSITORY.markConversationRead(userId, currentChatContact.id).catch(() => {});
-                } else if (typeof window.refreshMessageBadge === 'function') {
-                    window.refreshMessageBadge(userId);
-                }
-            }
+            applyIncomingChatEvent({ kind: 'message', row: payload && payload.new }, 'postgres');
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, payload => {
             const row = payload?.new;
@@ -5662,6 +8250,7 @@ function setupRealtime() {
             });
         });
     chatSubscription = channel;
+    if (chatRealtimeSlot) chatRealtimeSlot.hold(channel);
     const join = async () => {
         let token = '';
         try {
@@ -5674,25 +8263,38 @@ function setupRealtime() {
         if (generation !== chatRealtimeGeneration || chatSubscription !== channel) return;
         if (token) chatRealtimeAuthed = true;
         channel.subscribe((status) => {
+            console.log('[CHAT] realtime status', status, generation, chatRealtimeGeneration);
             if (generation !== chatRealtimeGeneration) return;
+            if (chatRealtimeSlot && chatRealtimeSlot.current() !== channel) return;
             if (status === 'SUBSCRIBED') {
                 const recover = realtimeDropped;
                 realtimeDropped = false;
                 realtimeEverConnected = true;
+                if (chatRealtimeSlot) chatRealtimeSlot.markHealthy();
                 if (recover) console.log('[CHAT] realtime reconnected');
                 catchUpOpenThread(recover ? 'reconnect' : 'subscribe');
+                if (openConversationIsVisible()) {
+                    void refreshDealContext(recover ? 'reconnect' : 'subscribe');
+                }
                 if (recover && typeof window.refreshMessageBadge === 'function') window.refreshMessageBadge(getMyId());
-            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || (status === 'CLOSED' && realtimeEverConnected)) {
+            } else             if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
                 realtimeDropped = true;
-                if (realtimeRetryTimer) return;
-                realtimeRetryTimer = setTimeout(() => {
-                    realtimeRetryTimer = null;
+                scheduleCatchUpBurst('postgres-dropped');
+                if (!chatRealtimeSlot) return;
+                chatRealtimeSlot.scheduleRetry(async () => {
                     if (generation !== chatRealtimeGeneration) return;
+                    if (chatRealtimeSlot.current() !== channel) return;
                     chatSubscription = null;
                     chatRealtimeGeneration += 1;
-                    if (typeof supabase.removeChannel === 'function') Promise.resolve(supabase.removeChannel(channel)).catch(() => {});
+                    const nextGen = chatRealtimeGeneration;
+                    chatRealtimeSlot.hold(null);
+                    if (typeof supabase.removeChannel === 'function') {
+                        try { await supabase.removeChannel(channel); } catch (_) {}
+                    }
+                    if (chatRealtimeGeneration !== nextGen) return;
+                    if (!getMyId()) return;
                     setupRealtime();
-                }, 2000);
+                });
             }
         });
     };
@@ -5710,8 +8312,16 @@ function watchChatAuthForRealtime() {
             const stale = chatSubscription;
             chatSubscription = null;
             chatRealtimeAuthed = false;
+            void unbindChatFanout();
+            realtimeDropped = false;
             chatRealtimeGeneration += 1;
-            if (stale && typeof supabase.removeChannel === 'function') Promise.resolve(supabase.removeChannel(stale)).catch(() => {});
+            if (chatRealtimeSlot) {
+                void chatRealtimeSlot.release((channel) => (
+                    typeof supabase.removeChannel === 'function' ? supabase.removeChannel(channel) : null
+                ));
+            } else if (stale && typeof supabase.removeChannel === 'function') {
+                Promise.resolve(supabase.removeChannel(stale)).catch(() => {});
+            }
             window.LYANN_MESSAGING_REPOSITORY?.releaseWarmCache?.();
             const box = document.getElementById('chatMessagesContainer');
             if (box) box.innerHTML = '';
@@ -5722,34 +8332,106 @@ function watchChatAuthForRealtime() {
         const stale = chatSubscription;
         chatSubscription = null;
         chatRealtimeGeneration += 1;
-        if (stale && typeof supabase.removeChannel === 'function') Promise.resolve(supabase.removeChannel(stale)).catch(() => {});
-        window.LYANN_MESSAGING_REPOSITORY?.releaseWarmCache?.();
-        setupRealtime();
+        if (chatRealtimeSlot) {
+            chatRealtimeSlot.cancelRetry();
+            chatRealtimeSlot.hold(null);
+        }
+        const switchGen = chatRealtimeGeneration;
+        const openNext = async () => {
+            if (stale && typeof supabase.removeChannel === 'function') {
+                try { await supabase.removeChannel(stale); } catch (_) {}
+            }
+            if (chatRealtimeGeneration !== switchGen) return;
+            if (!getMyId()) return;
+            window.LYANN_MESSAGING_REPOSITORY?.releaseWarmCache?.();
+            setupRealtime();
+            const convId = currentChatContact && currentChatContact.conversationId;
+            if (convId) void bindChatFanout(convId);
+        };
+        void openNext();
+        return;
     });
 }
 
 if (window.LYANN_AUTH_STATE?.getSnapshot?.().status === 'ready') setupRealtime();
 else window.addEventListener('lyann:auth-ready', setupRealtime, { once: true });
 watchChatAuthForRealtime();
+window.addEventListener('lyann:chat-persisted', (event) => {
+    const row = event && event.detail;
+    if (!row || !row.conversation_id) return;
+    void publishChatFanout(row.conversation_id, 'wake');
+});
+window.addEventListener('lyann:deal-mutated', () => {
+    const conversationId = currentChatContact && currentChatContact.conversationId;
+    if (!conversationId) return;
+    void publishChatFanout(conversationId, 'deal', currentChatContact && currentChatContact.requestId);
+    if (openConversationIsVisible()) {
+        void (async () => {
+            await loadPairDossiers(currentChatContact);
+            paintPendingActionBanner();
+            if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.syncOpenDossier === 'function') {
+                const active = currentChatContact && currentChatContact.activeDossier;
+                window.LYANN_MISSION_SURFACES.syncOpenDossier(active && active.quotes);
+            }
+            void catchUpOpenThread('deal-mutated');
+            void refreshDealContext('deal-mutated');
+        })();
+    }
+});
 setInterval(() => {
     if (chatRefreshInFlight || !openConversationIsVisible()) return;
+    const pace = window.LYANN_REALTIME_SESSION || {};
+    const droppedGap = pace.DROPPED_CATCHUP_MS || 8000;
+    const healthyGap = pace.HEALTHY_CATCHUP_MS || 30000;
+    const gap = realtimeDropped ? droppedGap : Math.min(healthyGap, 4000);
+    const now = Date.now();
+    if (now - lastVisibleCatchupAt < gap) return;
+    lastVisibleCatchupAt = now;
     catchUpOpenThread('visible');
 }, 2000);
+// E4 fallback: light deal re-read only while Realtime is down and the thread is focused.
+const dealFallbackMs = (dealContextSyncApi && dealContextSyncApi.FALLBACK_INTERVAL_MS) || 12000;
+setInterval(() => {
+    if (!realtimeDropped || !openConversationIsVisible()) return;
+    void refreshDealContext('fallback');
+}, dealFallbackMs);
+function resumeChatRealtime(reason) {
+    catchUpOpenThread(reason);
+    if (reason === 'foreground' && openConversationIsVisible()) void refreshDealContext('foreground');
+    if (!getMyId() || !realtimeDropped) return;
+    if (chatRealtimeSlot && chatRealtimeSlot.hasRetry()) return;
+    void forceChatRealtimeResubscribe(reason);
+}
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
-    catchUpOpenThread('foreground');
+    resumeChatRealtime('foreground');
 });
+(function watchNativeAppForegroundForDealSync() {
+    const app = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (!app || typeof app.addListener !== 'function') return;
+    app.addListener('appStateChange', (state) => {
+        if (!state || !state.isActive) return;
+        resumeChatRealtime('foreground');
+    });
+})();
 document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     const photoViewerModal = document.getElementById('chatPhotoViewerModal');
     if (photoViewerModal && photoViewerModal.style.display !== 'none') photoViewerModal.style.display = 'none';
 });
 window.addEventListener('online', () => {
+    const wasDropped = realtimeDropped;
+    catchUpPromise = null;
     flushOrphanAttachments();
-    catchUpOpenThread('reconnect');
+    scheduleCatchUpBurst('reconnect');
+    if (openConversationIsVisible()) void refreshDealContext('online');
     if (typeof window.refreshMessageBadge === 'function') window.refreshMessageBadge(getMyId());
+    if (wasDropped) void forceChatRealtimeResubscribe('online');
+    setTimeout(() => { void catchUpOpenThread('reconnect'); }, 700);
 });
 window.addEventListener('offline', () => {
+    realtimeDropped = true;
+    catchUpPromise = null;
     outgoingSends.forEach((job) => {
         if (!job?.abortController || job.cancelled) return;
         job.droppedOffline = true;
@@ -5816,7 +8498,6 @@ window.openMissionDetailsModal = async function(missionId) {
                     if (startRes.error) {
                         alert('⚠️ ' + startRes.error.message);
                     } else {
-                        if (window.lyannAlert) window.lyannAlert('🚀 Mission démarrée ! Les travaux sont désormais en cours.');
                         window.openMissionDetailsModal(missionId);
                     }
                 };
@@ -5869,28 +8550,52 @@ window.openMissionDetailsModal = async function(missionId) {
 window.handleMarkMilestoneDone = async function(milestoneId, missionId) {
     if (!await window.LYANN_ROUTER.requireAuthForInteraction('missionAction', { missionId, milestoneId, contactId: currentChatContact?.id })) return;
     if (!milestoneId) return;
-    const res = await window.LYANN_API_CLIENT.markMilestoneDoneSecure(milestoneId);
-    if (res.error) {
-        alert('⚠️ ' + res.error.message);
-    } else {
-        if (window.lyannAlert) window.lyannAlert('✅ Jalon marqué comme effectué ! Le demandeur a été notifié pour validation.');
-        window.openMissionDetailsModal(missionId);
+    if (dealMutationGuard && dealMutationGuard.isBusy('done', milestoneId)) return;
+    try {
+        await runDealMutation('done', milestoneId, {
+            execute: async (handle) => {
+                if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                    const stale = new Error('__deal_mutation_stale__');
+                    stale.dealMutationStale = true;
+                    throw stale;
+                }
+                const res = await window.LYANN_API_CLIENT.markMilestoneDoneSecure(milestoneId);
+                if (res && res.error) throw res.error;
+                return res;
+            },
+            apply: async () => {
+                window.openMissionDetailsModal(missionId);
+            }
+        });
+    } catch (err) {
+        if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
+        alert('⚠️ ' + (err && err.message ? err.message : 'Action indisponible'));
     }
 };
 
 window.handleValidateMilestone = async function(milestoneId, missionId) {
     if (!await window.LYANN_ROUTER.requireAuthForInteraction('missionAction', { missionId, milestoneId, contactId: currentChatContact?.id })) return;
     if (!milestoneId) return;
-    const res = await window.LYANN_API_CLIENT.validateMilestoneSecure(milestoneId);
-    if (res.error) {
-        alert('⚠️ ' + res.error.message);
-    } else {
-        if (res.data?.mission_completed) {
-            if (window.lyannAlert) window.lyannAlert('🎉 Félicitations ! Tous les jalons ont été validés. La mission est désormais TERMINÉE !');
-        } else {
-            if (window.lyannAlert) window.lyannAlert('👍 Jalon validé avec succès !');
-        }
-        window.openMissionDetailsModal(missionId);
+    if (dealMutationGuard && dealMutationGuard.isBusy('confirm', milestoneId)) return;
+    try {
+        await runDealMutation('confirm', milestoneId, {
+            execute: async (handle) => {
+                if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                    const stale = new Error('__deal_mutation_stale__');
+                    stale.dealMutationStale = true;
+                    throw stale;
+                }
+                const res = await window.LYANN_API_CLIENT.validateMilestoneSecure(milestoneId);
+                if (res && res.error) throw res.error;
+                return res;
+            },
+            apply: async () => {
+                window.openMissionDetailsModal(missionId);
+            }
+        });
+    } catch (err) {
+        if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
+        alert('⚠️ ' + (err && err.message ? err.message : 'Action indisponible'));
     }
 };
 

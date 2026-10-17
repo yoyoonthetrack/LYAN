@@ -9,10 +9,15 @@ const failures = [];
 
 function fail(message) { failures.push(message); }
 function idx(source, needle) { return source.indexOf(needle); }
+function scriptTagIndex(source, fileName) {
+  const escaped = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = String(source || '').match(new RegExp(`<script\\s+src=["']${escaped}(?:\\?[^"']*)?["']`, 'i'));
+  return match ? match.index : -1;
+}
 
-const dataCache = idx(feed, '<script src="data-cache.js"></script>');
-const profileRepo = idx(feed, '<script src="profile-repository.js"></script>');
-const bokantajRepo = idx(feed, '<script src="bokantaj-repository.js"></script>');
+const dataCache = scriptTagIndex(feed, 'data-cache.js');
+const profileRepo = scriptTagIndex(feed, 'profile-repository.js');
+const bokantajRepo = scriptTagIndex(feed, 'bokantaj-repository.js');
 const legacy = idx(feed, '<script src="script.js');
 
 if (bokantajRepo === -1) fail('feed.html: bokantaj-repository.js is missing');

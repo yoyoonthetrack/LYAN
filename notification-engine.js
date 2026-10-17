@@ -94,19 +94,45 @@
     function primeNotificationSound() {
         const el = ensureNotificationAudio();
         if (!el) return;
+        // Unlock autoplay after a user gesture without an audible blip.
+        el.muted = true;
         const play = el.play();
         if (play && typeof play.then === 'function') {
             play.then(() => {
                 el.pause();
                 el.currentTime = 0;
-            }).catch(() => {});
+                el.muted = false;
+            }).catch(() => {
+                el.muted = false;
+            });
+        } else {
+            el.muted = false;
         }
     }
 
     function shouldSkipChime(notif) {
+        const policy = (typeof window !== 'undefined' && window.LYANN_DEAL_NOTIFICATION_POLICY)
+            || (typeof globalThis !== 'undefined' && globalThis.LYANN_DEAL_NOTIFICATION_POLICY)
+            || null;
+        const active = (typeof window !== 'undefined' && window.LYANN_ACTIVE_CHAT_CONTACT) || null;
+        const chatOpen = typeof document !== 'undefined'
+            && document.body
+            && document.body.classList.contains('lyann-messaging-open');
+        const appVisible = typeof document === 'undefined' || !document.hidden;
+        const surface = {
+            contactId: active && (active.id || active.contactId) || null,
+            requestId: active && active.requestId || null,
+            chatOpen: !!chatOpen
+        };
+        if (policy && typeof policy.shouldSkipChime === 'function') {
+            return policy.shouldSkipChime(notif, surface, { appVisible });
+        }
         if (!notif || notif.read) return true;
-        const activeId = (typeof window !== 'undefined' && (window.LYANN_ACTIVE_CHAT_CONTACT?.id || window.LYANN_ACTIVE_CHAT_CONTACT?.contactId)) || null;
-        if (notif.type === 'NEW_MESSAGE' && activeId && String(notif.entity_id) === String(activeId)) return true;
+        if (notif.type === 'NEW_MESSAGE' && surface.chatOpen && surface.contactId
+            && String(notif.entity_id) === String(surface.contactId)
+            && (!surface.requestId || !notif.requestId || String(notif.requestId) === String(surface.requestId))) {
+            return true;
+        }
         return false;
     }
 
@@ -212,9 +238,10 @@
                 const others = getAllNotifications().filter((n) => n.user_id !== userId);
                 const merged = [...mapped, ...localOnly].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
                 saveAllNotifications([...merged, ...others].slice(0, 200));
-                const firstLoad = !hydratedUsers.has(userId);
                 hydratedUsers.add(userId);
-                rememberNotificationIds(mapped, { chime: !firstLoad });
+                // Catch-up / tab focus / poll must NEVER chime — only realtime INSERT
+                // and explicit createNotification play the notification tone.
+                rememberNotificationIds(mapped, { chime: false });
                 if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('lyann_notifications_updated'));
                 }

@@ -104,7 +104,8 @@ function isFinancialRoute(path) {
 }
 
 function isProductionSupabaseConfigured() {
-    const url = process.env.SUPABASE_URL || `https://${LYANN_PRODUCTION_SUPABASE_HOST}`;
+    const url = process.env.SUPABASE_URL;
+    if (!url) return false;
     try {
         return new URL(url).hostname === LYANN_PRODUCTION_SUPABASE_HOST;
     } catch (e) {

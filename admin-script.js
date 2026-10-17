@@ -1616,80 +1616,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // REGISTRE DE MODÉRATION & SIGNALEMENTS EN DIRECT
     // --------------------------------------------------------------------------
     function renderAdminReports() {
-        const tbody = document.getElementById('adminReportsTableBody');
-        const countBadge = document.getElementById('adminReportsCount');
-        if (!tbody) return;
-
-        let reports = [];
-        try {
-            reports = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]');
-        } catch(e) {}
-
-        // Reports come from /v1/admin/ops — never seed fake rows
-        if (!Array.isArray(reports)) reports = [];
-
-        if (countBadge) countBadge.textContent = reports.length;
-
-        tbody.innerHTML = reports.map(rep => {
-            const isSanctioned = rep.status === 'Sanctionné (Bloqué)';
-            const isDismissed = rep.status === 'Classé sans suite';
-
-            let statusBadgeClass = 'status-badge pending';
-            if (isSanctioned) statusBadgeClass = 'status-badge cancelled';
-            if (isDismissed) statusBadgeClass = 'status-badge verified';
-
-            return `
-                <tr id="admin-rep-row-${rep.id}">
-                    <td style="font-family: var(--admin-font-mono); font-size: 0.85rem;">${rep.id}</td>
-                    <td><strong>${rep.reporterName}</strong></td>
-                    <td><span style="color: #EF4444; font-weight: 700;">${rep.targetName}</span></td>
-                    <td><span class="status-badge pending" style="background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">${rep.reasonLabel}</span></td>
-                    <td style="max-width: 260px; font-size: 0.88rem; line-height: 1.3;">${rep.details || 'Aucune précision'}</td>
-                    <td style="font-size: 0.82rem; color: #64748B;">${rep.timestamp}</td>
-                    <td><span class="${statusBadgeClass}" id="admin-rep-badge-${rep.id}">${rep.status || 'En cours'}</span></td>
-                    <td>
-                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                            <button type="button" class="admin-btn admin-btn-sm" onclick="window.adminSanctionUser('${rep.id}', '${rep.targetName}')" style="background: #DC2626; color: white; border: none;" title="Bloquer le membre du réseau"><i class="ph-bold ph-user-minus"></i> Bloquer</button>
-                            <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminDismissReport('${rep.id}')" title="Classer le signalement sans suite"><i class="ph-bold ph-check"></i> Classer</button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        if (typeof window.loadAdminSection === 'function') window.loadAdminSection('sec-content');
     }
 
-    window.adminSanctionUser = function(repId, targetName) {
-        if (confirm(`🚨 Confirmer le blocage conservatoire de ${targetName} sur l'ensemble du réseau LYANN ?`)) {
-            let blocked = [];
-            try { blocked = JSON.parse(localStorage.getItem('LYANN_BLOCKED_USERS') || '[]'); } catch(e){}
-            if (!blocked.some(b => (typeof b === 'string' ? b === targetName : b.name === targetName))) {
-                blocked.push({ id: targetName, name: targetName, timestamp: new Date().toISOString() });
-                localStorage.setItem('LYANN_BLOCKED_USERS', JSON.stringify(blocked));
-            }
-
-            let reports = [];
-            try { reports = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]'); } catch(e){}
-            const rep = reports.find(r => r.id === repId);
-            if (rep) rep.status = 'Sanctionné (Bloqué)';
-            localStorage.setItem('LYANN_REPORTS', JSON.stringify(reports));
-
-            renderAdminReports();
-            if (typeof window.recordAdminAuditLog === 'function') {
-                window.recordAdminAuditLog('MEMBER_SANCTION_BLOCK', 'Modération', 'Membre', targetName, `Blocage conservatoire suite au signalement ${repId}`);
-            }
-            alert(`🚨 Membre ${targetName} bloqué et sanction enregistrée dans le registre de modération.`);
-        }
+    window.adminSanctionUser = function() {
+        alert('Le blocage d’un membre se fait depuis son profil. Ce registre ne sanctionne personne tout seul.');
     };
 
     window.adminDismissReport = function(repId) {
-        let reports = [];
-        try { reports = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]'); } catch(e){}
-        const rep = reports.find(r => r.id === repId);
-        if (rep) rep.status = 'Classé sans suite';
-        localStorage.setItem('LYANN_REPORTS', JSON.stringify(reports));
-
-        renderAdminReports();
-        alert(`✅ Signalement ${repId} classé sans suite.`);
+        if (typeof window.adminUpdateReport === 'function') return window.adminUpdateReport(repId, 'user', 'DISMISSED');
     };
 
     // --------------------------------------------------------------------------
@@ -3067,6 +3002,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.loadAdminSection('sec-requests');
     };
 
+    window.adminViewReportEvidence = async function(reportId) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/reports/${reportId}/evidence`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Preuves indisponibles.');
+            return;
+        }
+        const files = data.files || [];
+        if (!files.length) {
+            alert('Aucune preuve jointe.');
+            return;
+        }
+        files.forEach((file) => window.open(file.url, '_blank', 'noopener'));
+    };
+
     window.adminUpdateReport = async function(reportId, source, status) {
         const res = await window.fetchWithAdminAuth(`/v1/admin/ops/reports/${reportId}`, {
             method: 'POST',
@@ -3332,6 +3282,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td>${adminDate(row.created_at)}</td>
                     <td>${adminBadge(row.status)}</td>
                     <td>
+                        ${row.source === 'user' && row.evidence_count ? `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminViewReportEvidence('${row.id}')">Preuves (${row.evidence_count})</button>` : ''}
+                        ${row.source === 'user' && row.status === 'OPEN' ? `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminUpdateReport('${row.id}','user','IN_REVIEW')">Prendre en charge</button>` : ''}
                         <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminUpdateReport('${row.id}','${row.source}','RESOLVED')">Classer</button>
                     </td>
                 </tr>`).join('') : adminEmpty(8, 'Aucun signalement.');

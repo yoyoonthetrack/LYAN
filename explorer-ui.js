@@ -92,17 +92,15 @@
         }
         function formatDisplayName(p) {
             if (!p) return 'Lyanneur';
-            if (p.first_name) {
-                const last = p.last_name ? ` ${p.last_name.trim().charAt(0)}.` : '';
-                return `${p.first_name.trim()}${last}`;
+            if (typeof window.formatPublicName === 'function') {
+                return window.formatPublicName(p, null, 'Lyanneur');
             }
-            const raw = String(p.name || 'Lyanneur').trim();
-            if (raw.includes('.')) return raw;
-            const parts = raw.split(' ');
-            if (parts.length >= 2) {
-                return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
-            }
-            return raw;
+            const first = window.capitalizeLyannName ? window.capitalizeLyannName(p.first_name || '') : String(p.first_name || '').trim();
+            const last = p.last_name ? String(p.last_name).trim() : '';
+            const initial = last.match(/[A-Za-zÀ-ÿ]/);
+            if (first && initial) return `${first} ${initial[0].toUpperCase()}.`;
+            if (first) return first;
+            return String(p.name || 'Lyanneur').trim();
         }
 
         function getSeedProfileMetadata(p) {

@@ -12,6 +12,7 @@
         ['chat-milestone-quote', 'chatMilestoneDevisForm'],
         ['chat-checkout', 'chatCheckoutOverlay'],
         ['chat-tracking', 'chatTrackingOverlay'],
+        ['chat-mission-picker', 'chatMissionPickerOverlay'],
         ['chat-proof', 'chatSubmitProofOverlay'],
         ['chat-date', 'chatProposeDateForm'],
         ['chat-review', 'chatLeaveReviewForm']
@@ -184,7 +185,8 @@
         const name = childSurfaceNameForElement(el);
         const manager = surfaces();
         if (manager && name) manager.open(name);
-        else el.style.display = 'flex';
+        el.classList.add('is-open');
+        el.style.setProperty('display', 'flex');
         syncChildSurfaceState();
         return true;
     }
@@ -242,6 +244,39 @@
         if (status === 'ACCEPTED') return 'Accepté';
         if (status === 'REJECTED' || status === 'DECLINED') return 'Refusé';
         return '';
+    }
+
+    function paintInboxNewMark(row, on) {
+        if (!row) return;
+        let mark = row.querySelector('.lyann-inbox-new');
+        if (!on) {
+            if (mark) mark.remove();
+            row.classList.remove('is-live-new');
+            return;
+        }
+        if (!mark) {
+            mark = document.createElement('span');
+            mark.className = 'lyann-inbox-new';
+            mark.textContent = 'Nouveau';
+            const nameRow = row.querySelector('.chat-contact-name-row');
+            const time = row.querySelector('.chat-contact-time');
+            if (nameRow && time) nameRow.insertBefore(mark, time);
+            else if (nameRow) nameRow.appendChild(mark);
+            else row.appendChild(mark);
+        }
+        row.classList.add('is-live-new');
+    }
+
+    function findInboxRow(list, detail) {
+        if (!list || !detail) return null;
+        if (detail.contactId) {
+            const byContact = list.querySelector('[data-chat-member-id="' + escapeInboxSelector(detail.contactId) + '"]');
+            if (byContact) return byContact;
+        }
+        if (detail.conversationId) {
+            return list.querySelector('[data-conversation-id="' + escapeInboxSelector(detail.conversationId) + '"]');
+        }
+        return null;
     }
 
     function createConversationRow(conversation) {
@@ -316,7 +351,7 @@
             info.appendChild(preview);
         }
         const quoteLabel = inboxQuoteLabel(conversation.quoteStatus);
-        if (conversation.annonceTitle || quoteLabel) {
+        if (conversation.annonceTitle || quoteLabel || conversation.pendingAction) {
             const context = document.createElement('div');
             context.className = 'lyann-inbox-context';
             if (conversation.annonceTitle) {
@@ -329,15 +364,22 @@
                 quote.textContent = 'Devis · ' + quoteLabel;
                 context.appendChild(quote);
             }
+            if (conversation.pendingAction) {
+                const pending = document.createElement('span');
+                pending.className = 'lyann-inbox-pending';
+                pending.textContent = 'Action en attente';
+                context.appendChild(pending);
+            }
             info.appendChild(context);
         }
         row.dataset.context = [conversation.annonceTitle || '', quoteLabel || ''].join(' ').toLowerCase();
         const dot = document.createElement('span');
         dot.className = 'chat-unread-dot lyann-inbox-unread';
         dot.setAttribute('aria-hidden', 'true');
-        const unreadCount = Number(conversation.unreadCount) || 0;
+        const unreadCount = Number(conversation.unreadCount) || (conversation.unread ? 1 : 0);
         dot.hidden = unreadCount < 1;
         if (unreadCount) dot.textContent = String(unreadCount);
+        if (conversation.unread) paintInboxNewMark(row, true);
         row.append(avatarWrap, info, dot);
         row.addEventListener('click', () => openConversation({
             contactId: conversation.contactId || conversation.id,
@@ -419,6 +461,9 @@
             const conversations = await withTimeout(repo.listConversations(userId, { fresh: true }), 8000, 'conversation list');
             if (conversations.length) renderConversationRows(listContainer, withSupportRow(conversations));
             else setListEmptyState(listContainer);
+            if (typeof window.bindInboxChatFanouts === 'function') {
+                window.bindInboxChatFanouts((conversations || []).map((row) => row && row.conversationId).filter(Boolean));
+            }
         } catch (error) {
             console.warn('[MESSAGING] canonical conversation list failed', error);
             // Navigation memory is only a degraded-network fallback, never a second data source.
@@ -575,7 +620,16 @@
         const contactId = options.contactId || options.requesterId
             || options.initialNeed?.requesterId || options.memberId
             || options.id || null;
-        const name = options.name || 'Membre LYANN';
+        const viewerId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.CURRENT_USER_ID || null;
+        const warmRows = viewerId && window.LYANN_MESSAGING_REPOSITORY?.peekConversations
+            ? window.LYANN_MESSAGING_REPOSITORY.peekConversations(viewerId)
+            : null;
+        const known = Array.isArray(warmRows)
+            ? warmRows.find((row) => row && contactId && String(row.contactId) === String(contactId))
+            : null;
+        const name = (options.name && options.name !== 'Membre LYANN')
+            ? options.name
+            : ((known && known.name) || options.name || 'Membre LYANN');
         const avatar = options.avatar || defaultAvatar();
 
         console.log('[MESSAGING openConversation] contactId:', contactId, 'name:', name);
@@ -584,6 +638,9 @@
             console.warn('[MESSAGING openConversation] no contactId, falling back to list');
             return openList();
         }
+
+        if (typeof window.armDealRecapOpenBump === 'function') window.armDealRecapOpenBump(contactId);
+        else if (typeof armDealRecapOpenBump === 'function') armDealRecapOpenBump(contactId);
 
         const legacyOpenConversation = getLegacyHydrator();
         registerSurfaces();
@@ -600,7 +657,6 @@
         const openToken = (window.__lyannOpenToken = (window.__lyannOpenToken || 0) + 1);
         const openedAt = performance.now();
         captureInboxScroll();
-        const viewerId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.CURRENT_USER_ID || null;
         const warmThread = Boolean(viewerId && window.LYANN_MESSAGING_REPOSITORY?.peekMessages?.(viewerId, contactId));
         const headerName = document.getElementById('chatHeaderName');
         const headerAvatar = document.getElementById('chatHeaderAvatar');
@@ -624,19 +680,37 @@
                 window.LYANN_API_CLIENT.getSupportUserId().catch(() => {});
             }
             const supportThread = Boolean(window.LYANN_SUPPORT_USER_ID && String(contactId) === String(window.LYANN_SUPPORT_USER_ID));
-            await legacyOpenConversation(name, avatar, contactId, supportThread ? null : (options.initialNeed || (options.direct ? { direct: true } : null)));
+            // E1: top-level requestId/invitationId/missionId must reach chat-logic even without initialNeed.
+            const threadNeed = supportThread
+                ? null
+                : (options.initialNeed
+                    || ((options.requestId || options.invitationId || options.missionId)
+                        ? {
+                            requestId: options.requestId || null,
+                            invitationId: options.invitationId || null,
+                            missionId: options.missionId || null,
+                            requesterId: options.requesterId || null,
+                            title: options.title || null
+                        }
+                        : null)
+                    || (options.direct ? { direct: true } : null));
+            await legacyOpenConversation(name, avatar, contactId, threadNeed);
             if (openToken !== window.__lyannOpenToken || !document.body.classList.contains('chat-conversation-open')) return true;
             const l = layout();
             if (l) {
                 l.classList.add('mobile-conversation-active', 'has-active-conversation');
             }
             const enriched = window.LYANN_ACTIVE_CHAT_CONTACT || {};
-            const active = {
+            const fromNotification = options.scopeSource === 'notification';
+            const resolvedRequestId = supportThread
+                ? null
+                : (resolveRequestId(options) || (fromNotification ? null : (enriched.requestId || null)));
+            const active = Object.assign({}, enriched, {
                 id: contactId,
                 name: supportThread ? 'Support LYANN' : (enriched.name || name),
                 avatar: enriched.avatar || avatar,
-                requestId: supportThread ? null : resolveRequestId(options)
-            };
+                requestId: resolvedRequestId
+            });
             window.LYANN_ACTIVE_CHAT_CONTACT = active;
             try { localStorage.setItem('lyann_last_active_contact', JSON.stringify(active)); } catch (_) {}
         } finally {
@@ -841,13 +915,13 @@
     window.addEventListener('lyann:chat-activity', (event) => {
         const detail = event.detail || {};
         const list = document.getElementById('chatContactsList');
-        if (!list || !detail.contactId) return;
+        if (!list || (!detail.contactId && !detail.conversationId)) return;
         [...list.children].forEach((child) => {
             if (!child.classList?.contains('chat-contact-item')) child.remove();
         });
-        const selector = escapeInboxSelector(detail.contactId);
-        let row = list.querySelector('[data-chat-member-id="' + selector + '"]');
+        let row = findInboxRow(list, detail);
         if (!row) {
+            if (!detail.contactId) return;
             row = createConversationRow({
                 contactId: detail.contactId,
                 conversationId: detail.conversationId,
@@ -855,7 +929,8 @@
                 avatar: detail.avatar,
                 preview: detail.preview,
                 lastMessageAt: detail.lastMessageAt,
-                unread: !!detail.unread
+                unread: !!detail.unread,
+                unreadCount: detail.unreadCount || (detail.unread ? 1 : 0)
             });
             list.appendChild(row);
         } else {
@@ -878,7 +953,9 @@
                 const dot = row.querySelector('.chat-unread-dot');
                 if (dot) {
                     if (detail.unread) {
-                        const next = (Number(dot.textContent) || 0) + 1;
+                        const next = Number(detail.unreadCount) > 0
+                            ? Number(detail.unreadCount)
+                            : Math.max(1, (Number(dot.textContent) || 0) + 1);
                         dot.textContent = String(next);
                         dot.hidden = false;
                     } else {
@@ -886,8 +963,10 @@
                         dot.hidden = true;
                     }
                 }
+                paintInboxNewMark(row, !!detail.unread);
             }
             if (detail.conversationId) row.dataset.conversationId = detail.conversationId;
+            if (detail.contactId) row.dataset.chatMemberId = detail.contactId;
         }
         bumpInboxRow(row);
         applyInboxView();
@@ -911,6 +990,7 @@
                 dot.hidden = true;
                 dot.textContent = '';
             }
+            paintInboxNewMark(row, false);
         });
         applyInboxView();
     });

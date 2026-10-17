@@ -1,7 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { buildHtml } = require('./shared-html-build');
+process.env.LYANN_MOBILE_BUILD = '1';
+process.env.LYANN_NATIVE_BUILD_AT = new Date().toISOString();
+process.env.LYANN_NATIVE_BUILD_ID = process.env.LYANN_NATIVE_BUILD_ID
+  || ('ios-' + Date.now().toString(36) + '-' + crypto.randomBytes(3).toString('hex'));
+const { buildHtml, injectIsolatedSupabaseConfig, resolveInjectedBackendOrigin } = require('./shared-html-build');
 
 const srcDir = __dirname;
 const sharedDist = path.join(__dirname, 'www');
@@ -35,7 +39,7 @@ function resetDir(dir) {
 function copyFileBuilt(sourcePath, destinationPath) {
   const ext = path.extname(sourcePath).toLowerCase();
   if (ext === '.html') {
-    const html = buildHtml(fs.readFileSync(sourcePath, 'utf8'));
+    const html = injectIsolatedSupabaseConfig(buildHtml(fs.readFileSync(sourcePath, 'utf8')));
     fs.writeFileSync(destinationPath, html, 'utf8');
   } else {
     fs.copyFileSync(sourcePath, destinationPath);
@@ -91,6 +95,15 @@ for (const dir of ['vendor', 'assets']) {
   const source = path.join(srcDir, dir);
   if (fs.existsSync(source)) fs.cpSync(source, path.join(sharedDist, dir), { recursive: true, force: true });
 }
+
+const stamp = {
+  id: process.env.LYANN_NATIVE_BUILD_ID,
+  at: process.env.LYANN_NATIVE_BUILD_AT,
+  lock: process.env.LYANN_E2E_WRITE_PROJECT_REF || process.env.LYANN_SUPABASE_LOCK || '',
+  backend: resolveInjectedBackendOrigin()
+};
+fs.writeFileSync(path.join(sharedDist, 'lyann-native-build.json'), JSON.stringify(stamp) + '\n');
+console.log('LYANN native build stamp', stamp.id, stamp.at, 'backend=' + (stamp.backend || '(empty)'));
 
 // Capacitor consumes the exact shared artifact. No iOS/Android-specific HTML or JS mutation is allowed here.
 if (fs.existsSync(path.dirname(iosPublic))) {

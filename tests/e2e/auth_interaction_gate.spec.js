@@ -21,9 +21,9 @@ test.afterEach(async ({page}) => {
 function harness(authenticated = false) {
   const storage = new Map(), calls = [], events = [];
   let readyStatus = 'ready';
-  const document = {readyState:'loading',body:{style:{}},addEventListener(){},getElementById(){return null;},querySelector(){return null;},querySelectorAll(){return [];}};
+  const document = {readyState:'loading',documentElement:{classList:{remove(){}}},head:{appendChild(){}},body:{style:{},classList:{add(){},remove(){},contains(){return false;}}},createElement(){return {}},addEventListener(){},getElementById(){return null;},querySelector(){return null;},querySelectorAll(){return [];}};
   const window = {location:{origin:'https://lyann.test',href:'https://lyann.test/results.html?mode=annonces',pathname:'/results.html',search:'?mode=annonces',hash:'',assign:url=>calls.push(['navigate',url])},
-    addEventListener(){},dispatchEvent:e=>events.push(e),openLoginModal:()=>calls.push(['login']),closeLoginModal(){},
+    setTimeout,clearTimeout,addEventListener(){},dispatchEvent:e=>events.push(e),openLoginModal:()=>calls.push(['login']),closeLoginModal(){},
     LYANN_AUTH_STATE:{isAuthenticated:()=>authenticated,getSnapshot:()=>({status:readyStatus,authenticated}),ready:async()=>{readyStatus='ready';}},
     openLyannWizard:query=>calls.push(['publish',query]),openLyannDetailModal:id=>calls.push(['request',id]),
     openPublicMemberProfile:id=>calls.push(['profile',id]),
@@ -120,7 +120,12 @@ for(const action of ['publish','requestHelp','favorite']) test(`Real login retur
   expect(email,'QA identity supplied through runner environment').toBeTruthy();expect(password).toBeTruthy();
   await publicExplorer(page);
   const card=page.locator('[data-request-id]').first();const id=await card.getAttribute('data-request-id');
-  const writes=[];page.on('request',r=>{if(r.url().includes('/rest/v1/') && r.method()!=='GET')writes.push(r.url());});
+  const writes=[];page.on('request',r=>{
+    if(!r.url().includes('/rest/v1/') || r.method()==='GET') return;
+    // PostgREST exposes this STABLE lookup as POST. It only reads the support id.
+    if(r.method()==='POST' && /\/rest\/v1\/rpc\/lyann_support_user_id(?:\?|$)/.test(r.url())) return;
+    writes.push(r.url());
+  });
   if(action==='publish')await page.locator('.explorer-publish').first().click();
   else await card.locator(action==='favorite'?'.btn-fav-toggle':'[data-action="help"]').click();
   await expect(page.locator('#loginModal')).toBeVisible();

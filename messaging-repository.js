@@ -10,7 +10,20 @@
   const LIST_TTL_MS = 10_000;
 
   const warm = { userId: null, conversations: null, messages: new Map(), byConversation: new Map(), at: 0 };
+  const messageEpoch = new Map();
   let warmPromise = null;
+
+  function bumpMessageEpoch(contactId) {
+    if (!contactId) return 0;
+    const key = String(contactId);
+    const next = (messageEpoch.get(key) || 0) + 1;
+    messageEpoch.set(key, next);
+    return next;
+  }
+
+  function currentMessageEpoch(contactId) {
+    return messageEpoch.get(String(contactId || '')) || 0;
+  }
 
   function bindWarmUser(userId) {
     if (warm.userId === userId) return;
@@ -40,9 +53,33 @@
 
   function rememberMessages(userId, contactId, conversationId, rows) {
     bindWarmUser(userId);
-    warm.messages.set(String(contactId), rows || []);
+    const next = Array.isArray(rows) ? rows.slice() : [];
+    const cached = warm.messages.get(String(contactId));
+    if (Array.isArray(cached) && cached.length) {
+      const byId = new Map();
+      cached.forEach((row) => { if (row && row.id) byId.set(String(row.id), row); });
+      next.forEach((row) => { if (row && row.id) byId.set(String(row.id), row); });
+      const merged = [...byId.values()].sort(compareMappedMessages);
+      warm.messages.set(String(contactId), merged);
+    } else {
+      warm.messages.set(String(contactId), next);
+    }
     if (conversationId) warm.byConversation.set(String(conversationId), String(contactId));
     warm.at = Date.now();
+  }
+
+  function ingestIncomingMessage(userId, contactId, conversationId, row) {
+    if (!row || !userId || !contactId) return null;
+    bindWarmUser(userId);
+    bumpMessageEpoch(contactId);
+    const mapped = mapMessage(row, userId);
+    const current = warm.messages.get(String(contactId)) || [];
+    if (!current.some((item) => String(item.id) === String(mapped.id))) {
+      rememberMessages(userId, contactId, conversationId || row.conversation_id, current.concat(mapped));
+    } else if (conversationId) {
+      warm.byConversation.set(String(conversationId), String(contactId));
+    }
+    return mapped;
   }
 
   function forgetWarmMessages(userId, contactId, conversationId) {
@@ -205,7 +242,7 @@
 
       const [participantResult, messageResult, conversationMeta] = await Promise.all([
         client.supabase.from('conversation_participants').select('conversation_id,user_id').in('conversation_id', conversationIds),
-        client.supabase.from('messages').select('id,conversation_id,sender_id,content,created_at,is_read,attachment_type,attachment_name,message_type,entity_type').in('conversation_id', conversationIds).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(Math.min(conversationIds.length * 4, 160)),
+        client.supabase.from('messages').select('id,conversation_id,sender_id,content,created_at,is_read,attachment_type,attachment_name,message_type,entity_type,entity_id').in('conversation_id', conversationIds).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(Math.min(conversationIds.length * 4, 160)),
         client.supabase.from('conversations').select('id,mission_id,context_mode').in('id', conversationIds)
       ]);
       if (participantResult.error) throw participantResult.error;
@@ -262,17 +299,20 @@
         }
       }
 
-      const invitationByConversation = new Map();
+      const invitationsByConversation = new Map();
       try {
-        const invitationResult = await client.supabase.from('request_invitations').select('id,conversation_id,request_id').in('conversation_id', conversationIds);
+        const invitationResult = await client.supabase.from('request_invitations').select('id,conversation_id,request_id,requester_id,recipient_id,status').in('conversation_id', conversationIds);
         if (!invitationResult.error) {
           for (const invitation of invitationResult.data || []) {
-            if (invitation.conversation_id) invitationByConversation.set(invitation.conversation_id, invitation);
+            if (!invitation.conversation_id) continue;
+            const list = invitationsByConversation.get(invitation.conversation_id) || [];
+            list.push(invitation);
+            invitationsByConversation.set(invitation.conversation_id, list);
           }
         }
       } catch (_) {}
       const requestTitle = new Map();
-      const requestIds = [...new Set([...invitationByConversation.values()].map((item) => item.request_id).filter(Boolean))];
+      const requestIds = [...new Set([...invitationsByConversation.values()].flat().map((item) => item.request_id).filter(Boolean))];
       if (requestIds.length) {
         try {
           const requestResult = await client.supabase.from('requests').select('id,title').in('id', requestIds);
@@ -282,16 +322,18 @@
         } catch (_) {}
       }
       const quoteStatusByInvitation = new Map();
-      const invitationIds = [...invitationByConversation.values()].map((item) => item.id).filter(Boolean);
+      let quotesById = new Map();
+      const invitationIds = [...invitationsByConversation.values()].flat().map((item) => item.id).filter(Boolean);
       if (invitationIds.length) {
         try {
-          const quoteResult = await client.supabase.from('quotes').select('request_invitation_id,status,created_at').in('request_invitation_id', invitationIds).order('created_at', { ascending: false });
+          const quoteResult = await client.supabase.from('quotes').select('id,request_id,request_invitation_id,status,created_at,requester_id,provider_id').in('request_invitation_id', invitationIds).order('created_at', { ascending: false });
           if (!quoteResult.error) {
             for (const quote of quoteResult.data || []) {
               if (quote.request_invitation_id && !quoteStatusByInvitation.has(quote.request_invitation_id)) {
                 quoteStatusByInvitation.set(quote.request_invitation_id, quote.status);
               }
             }
+            quotesById = new Map((quoteResult.data || []).filter((row) => row && row.id).map((row) => [String(row.id), row]));
           }
         } catch (_) {}
       }
@@ -338,16 +380,38 @@
         const isSupport = supportId && contactId === supportId;
         const name = contactLabel(profile, isSupport);
         const avatar = typeof window.getLyannAvatarUrl === 'function' ? window.getLyannAvatarUrl(profile?.avatar_url) : (profile?.avatar_url || '');
-        const preview = latest ? formatMessagePreview(latest) : (isSupport ? 'Écrivez-nous ici pour toute question ou aide sur l\'application.' : '');
         const meta = conversationMeta.error ? null : (conversationMeta.data || []).find((item) => item.id === conversationId);
-        const invitation = invitationByConversation.get(conversationId) || null;
-        const annonceTitle = invitation ? (requestTitle.get(invitation.request_id) || '') : '';
-        const rawQuote = invitation ? (quoteStatusByInvitation.get(invitation.id) || '') : '';
+        const invitations = invitationsByConversation.get(conversationId) || [];
+        const requestIdsForConv = [...new Set(invitations.map((item) => item.request_id).filter(Boolean))];
+        const multiRequest = requestIdsForConv.length > 1;
+        const dossiers = invitations.map((item) => ({
+          requestId: item.request_id || null,
+          invitationId: item.id || null,
+          title: requestTitle.get(item.request_id) || '',
+          requesterId: item.requester_id || null,
+          providerId: item.recipient_id || null
+        }));
+        const invitation = multiRequest ? null : (invitations[0] || null);
+        const latestQuote = latest && latest.entity_id ? quotesById.get(String(latest.entity_id)) : null;
+        const latestMissionTitle = latestQuote
+          ? (requestTitle.get(latestQuote.request_id) || '')
+          : '';
+        const annonceTitle = latestMissionTitle
+          || (invitation ? (requestTitle.get(invitation.request_id) || '') : '');
+        const rawQuote = latestQuote
+          ? latestQuote.status
+          : (invitation ? (quoteStatusByInvitation.get(invitation.id) || '') : '');
         const quoteStatus = rawQuote && meta?.mission_id && missionStatus.get(meta.mission_id) === 'COMPLETED'
           ? 'COMPLETED'
           : rawQuote;
+        const previewBase = latest ? formatMessagePreview(latest) : (isSupport ? 'Écrivez-nous ici pour toute question ou aide sur l\'application.' : '');
+        const preview = latestMissionTitle && previewBase && TIMELINE_PREVIEW[latest.message_type || '']
+          ? (previewBase + ' · ' + latestMissionTitle)
+          : previewBase;
         const hasAnnonce = Boolean(annonceTitle) || Boolean(meta?.mission_id) || (meta?.context_mode && meta.context_mode !== 'direct') || annonceIds.has(conversationId);
         const hasDevis = Boolean(quoteStatus) || devisIds.has(conversationId);
+        const pendingQuote = latestQuote && ['SENT', 'VIEWED', 'REVISED'].includes(String(latestQuote.status || ''));
+        const pendingAction = !!(pendingQuote && String(latestQuote.requester_id) === String(userId));
         return {
           conversationId, contactId, name, avatar, preview,
           lastMessageAt: latest?.created_at || null,
@@ -356,6 +420,10 @@
           unread: unreadConversations.has(conversationId),
           unreadCount: unreadCounts.get(conversationId) || 0,
           hasAnnonce, hasDevis, annonceTitle,
+          pendingAction,
+          multiRequest,
+          dossiers: dossiers,
+          requestId: multiRequest ? null : (invitation && invitation.request_id) || null,
           quoteStatus,
           attachmentType: latest?.attachment_type || '',
           attachmentName: latest?.attachment_name || '',
@@ -394,10 +462,17 @@
     const limit = messagePageSize(options);
     const cached = peekMessages(userId, contactId);
     if (Array.isArray(cached) && !options.fresh && !before && !after) return cached;
-    const conversationId = await findConversationId(userId, contactId, options);
+    const hinted = options.conversationId ? String(options.conversationId) : '';
+    const conversationId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hinted)
+      ? hinted
+      : await findConversationId(userId, contactId, options);
     if (!conversationId) return (before || after) ? [] : (cached || []);
     const c = cache();
-    if (options.fresh && !before && !after && c) c.invalidate('chat-messages', conversationId);
+    if (options.fresh) {
+      bumpMessageEpoch(contactId);
+      if (c) c.invalidate('chat-messages', conversationId);
+    }
+    const epoch = currentMessageEpoch(contactId);
     const loader = async () => {
       const ascending = Boolean(after);
       let query = client.supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending }).order('id', { ascending }).limit(limit);
@@ -414,7 +489,18 @@
     const cursor = messageCursorValue(after || before);
     const cacheKey = cursor ? `${conversationId}:${cursorKey}:${cursor.createdAt}:${cursor.id}:${limit}` : conversationId;
     const rows = c ? await c.dedupe('chat-messages', cacheKey, loader, MESSAGES_TTL_MS) : await loader();
-    if (!before && !after) rememberMessages(userId, contactId, conversationId, rows);
+    if (!before && !after && currentMessageEpoch(contactId) === epoch) {
+      rememberMessages(userId, contactId, conversationId, rows);
+    }
+    if (!before && !after) {
+      const live = peekMessages(userId, contactId);
+      if (Array.isArray(live) && live.length) {
+        const byId = new Map();
+        (rows || []).forEach((row) => { if (row && row.id) byId.set(String(row.id), row); });
+        live.forEach((row) => { if (row && row.id) byId.set(String(row.id), row); });
+        return [...byId.values()].sort(compareMappedMessages);
+      }
+    }
     return rows;
   }
 
@@ -429,7 +515,7 @@
 
   function noteIncomingPreview(userId, conversationId, content, createdAt, extra) {
     if (!userId || warm.userId !== userId || !conversationId || !Array.isArray(warm.conversations)) return null;
-    const row = warm.conversations.find((item) => item.conversationId === conversationId);
+    const row = warm.conversations.find((item) => String(item.conversationId || '') === String(conversationId || ''));
     if (!row) return null;
     const payload = extra && typeof extra === 'object' ? { content, ...extra } : { content };
     row.preview = formatMessagePreview(payload);
@@ -504,79 +590,253 @@
     return warmPromise;
   }
 
+  const quoteContextKeysByPair = new Map();
+
+  function quoteContextCacheId(userId, contactId, options = {}) {
+    const base = pairKey(userId, contactId);
+    const requestId = options.requestId ? String(options.requestId) : '';
+    const invitationId = options.invitationId ? String(options.invitationId) : '';
+    const missionId = options.missionId ? String(options.missionId) : '';
+    return `${base}|r:${requestId}|i:${invitationId}|m:${missionId}`;
+  }
+
+  function rememberQuoteContextKey(userId, contactId, cacheId) {
+    const pair = pairKey(userId, contactId);
+    if (!quoteContextKeysByPair.has(pair)) quoteContextKeysByPair.set(pair, new Set());
+    quoteContextKeysByPair.get(pair).add(cacheId);
+  }
+
+  function tagQuoteContext(quotes, meta) {
+    const list = Array.isArray(quotes) ? quotes.slice() : [];
+    list.ambiguous = Boolean(meta && meta.ambiguous);
+    list.requestId = (meta && meta.requestId) || null;
+    list.invitationId = (meta && meta.invitationId) || null;
+    list.missionId = (meta && meta.missionId) || null;
+    list.selectionCode = (meta && meta.code) || null;
+    return list;
+  }
+
+  async function enrichQuotes(client, quotes) {
+    if (!quotes?.length) return [];
+    const quoteIds = quotes.map((quote) => quote.id).filter(Boolean);
+    let milestones = [];
+    if (quoteIds.length) {
+      const primary = await client.supabase.from('milestones').select('*').in('quote_id', quoteIds).order('display_order', { ascending: true });
+      if (primary.error) {
+        const fallback = await client.supabase.from('milestones').select('*').in('quote_id', quoteIds).order('created_at', { ascending: true });
+        if (fallback.error) throw fallback.error;
+        milestones = fallback.data || [];
+      } else milestones = primary.data || [];
+    }
+    const byQuote = new Map();
+    for (const milestone of milestones) {
+      if (!byQuote.has(milestone.quote_id)) byQuote.set(milestone.quote_id, []);
+      byQuote.get(milestone.quote_id).push(milestone);
+    }
+    const missionIds = [...new Set(quotes.map((quote) => quote.mission_id).filter(Boolean))];
+    const missionStatus = new Map();
+    if (missionIds.length) {
+      const missionResult = await client.supabase.from('missions').select('id,status,related_request_id,request_invitation_id').in('id', missionIds);
+      if (!missionResult.error) {
+        (missionResult.data || []).forEach((mission) => missionStatus.set(mission.id, mission));
+      }
+    }
+    const revisionsByQuote = new Map();
+    if (quoteIds.length) {
+      const revisionResult = await client.supabase
+        .from('quote_revisions')
+        .select('quote_id, version, description, total_amount, milestones, created_at')
+        .in('quote_id', quoteIds)
+        .order('version', { ascending: false });
+      if (!revisionResult.error) {
+        (revisionResult.data || []).forEach((revision) => {
+          if (!revisionsByQuote.has(revision.quote_id)) revisionsByQuote.set(revision.quote_id, []);
+          revisionsByQuote.get(revision.quote_id).push(revision);
+        });
+      }
+    }
+    const paymentsByQuote = new Map();
+    if (quoteIds.length) {
+      const paymentResult = await client.supabase.from('payments').select('id,quote_id,milestone_id,payment_status').in('quote_id', quoteIds);
+      if (!paymentResult.error) {
+        (paymentResult.data || []).forEach((payment) => {
+          if (!paymentsByQuote.has(payment.quote_id)) paymentsByQuote.set(payment.quote_id, []);
+          paymentsByQuote.get(payment.quote_id).push(payment);
+        });
+      }
+    }
+    return quotes.map((quote) => {
+      const currentVersion = Number(quote.version) || 1;
+      const history = revisionsByQuote.get(quote.id) || [];
+      const previousRevision = history.find((revision) => Number(revision.version) < currentVersion) || null;
+      const missionRow = quote.mission_id ? missionStatus.get(quote.mission_id) : null;
+      return {
+        ...quote,
+        mission_status: missionRow ? missionRow.status : null,
+        mission_related_request_id: missionRow
+          ? (missionRow.related_request_id || missionRow.request_id || null)
+          : null,
+        payments: paymentsByQuote.get(quote.id) || [],
+        milestones: byQuote.get(quote.id) || [],
+        previousRevision
+      };
+    });
+  }
+
+  async function loadQuotesForSelection(client, userId, contactId, selection) {
+    if (!selection || !selection.ok) return [];
+    const pairFilter = `and(requester_id.eq.${userId},provider_id.eq.${contactId}),and(requester_id.eq.${contactId},provider_id.eq.${userId})`;
+    let quotes = [];
+    if (selection.requestId) {
+      const { data, error } = await client.supabase
+        .from('quotes')
+        .select('*')
+        .eq('request_id', selection.requestId)
+        .or(pairFilter)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      quotes = data || [];
+    } else if (selection.invitationIds && selection.invitationIds.length) {
+      const { data, error } = await client.supabase
+        .from('quotes')
+        .select('*')
+        .in('request_invitation_id', selection.invitationIds)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      quotes = data || [];
+    }
+    if (selection.invitationId) {
+      quotes = quotes.filter((quote) => {
+        if (!quote.request_invitation_id) return true;
+        if (selection.invitationIds && selection.invitationIds.length) {
+          return selection.invitationIds.includes(quote.request_invitation_id);
+        }
+        return String(quote.request_invitation_id) === String(selection.invitationId);
+      });
+    }
+    if (selection.requestId) {
+      quotes = quotes.filter((quote) => !quote.request_id || String(quote.request_id) === String(selection.requestId));
+    }
+    if (selection.missionId) {
+      const linked = quotes.filter((quote) => quote.mission_id && String(quote.mission_id) === String(selection.missionId));
+      if (linked.length) quotes = linked;
+    }
+    return enrichQuotes(client, quotes);
+  }
+
+  /**
+   * Quote/mission context for a chat pair.
+   * Prefer options.requestId (and invitationId / missionId when known).
+   * Never silently replace with the last invitation between two users when several annonces exist.
+   */
   async function getQuoteContext(userId, contactId, options = {}) {
     const client = api();
-    if (!client?.supabase || !userId || !contactId) return [];
+    if (!client?.supabase || !userId || !contactId) return tagQuoteContext([], { code: 'missing' });
     const c = cache();
-    const key = pairKey(userId, contactId);
-    if (options.fresh && c) c.invalidate('chat-quote-context', key);
+    const cacheId = quoteContextCacheId(userId, contactId, options);
+    rememberQuoteContextKey(userId, contactId, cacheId);
+    if (options.fresh && c) {
+      c.invalidate('chat-quote-context', cacheId);
+      c.invalidate('chat-quote-context', pairKey(userId, contactId));
+    }
     const loader = async () => {
-      const invitation = typeof client.getActiveInvitationBetween === 'function' ? await client.getActiveInvitationBetween(userId, contactId) : null;
-      if (!invitation?.id) return [];
-      const { data: quotes, error: quoteError } = await client.supabase.from('quotes').select('*').eq('request_invitation_id', invitation.id).order('created_at', { ascending: false });
-      if (quoteError) throw quoteError;
-      if (!quotes?.length) return [];
-      const quoteIds = quotes.map((quote) => quote.id).filter(Boolean);
-      let milestones = [];
-      if (quoteIds.length) {
-        const primary = await client.supabase.from('milestones').select('*').in('quote_id', quoteIds).order('position', { ascending: true });
-        if (primary.error) {
-          const fallback = await client.supabase.from('milestones').select('*').in('quote_id', quoteIds).order('created_at', { ascending: true });
-          if (fallback.error) throw fallback.error;
-          milestones = fallback.data || [];
-        } else milestones = primary.data || [];
-      }
-      const byQuote = new Map();
-      for (const milestone of milestones) {
-        if (!byQuote.has(milestone.quote_id)) byQuote.set(milestone.quote_id, []);
-        byQuote.get(milestone.quote_id).push(milestone);
-      }
-      const missionIds = [...new Set(quotes.map((quote) => quote.mission_id).filter(Boolean))];
-      const missionStatus = new Map();
-      if (missionIds.length) {
-        const missionResult = await client.supabase.from('missions').select('id,status').in('id', missionIds);
-        if (!missionResult.error) {
-          (missionResult.data || []).forEach((mission) => missionStatus.set(mission.id, mission.status));
-        }
-      }
-      const revisionsByQuote = new Map();
-      if (quoteIds.length) {
-        const revisionResult = await client.supabase
-          .from('quote_revisions')
-          .select('quote_id, version, description, total_amount, milestones, created_at')
-          .in('quote_id', quoteIds)
-          .order('version', { ascending: false });
-        if (!revisionResult.error) {
-          (revisionResult.data || []).forEach((revision) => {
-            if (!revisionsByQuote.has(revision.quote_id)) revisionsByQuote.set(revision.quote_id, []);
-            revisionsByQuote.get(revision.quote_id).push(revision);
+      const invitationsPromise = typeof client.listAcceptedInvitationsBetween === 'function'
+        ? client.listAcceptedInvitationsBetween(userId, contactId, { limit: 20 })
+        : (typeof client.getActiveInvitationBetween === 'function'
+          ? client.getActiveInvitationBetween(userId, contactId).then((row) => (row ? [row] : []))
+          : Promise.resolve([]));
+      const missionsPromise = typeof client.listMissionsBetween === 'function'
+        ? client.listMissionsBetween(userId, contactId)
+        : Promise.resolve([]);
+      const [invitations, missions] = await Promise.all([invitationsPromise, missionsPromise]);
+      const selector = window.LYANN_QUOTE_REVISION && typeof window.LYANN_QUOTE_REVISION.resolveQuoteContextSelection === 'function'
+        ? window.LYANN_QUOTE_REVISION.resolveQuoteContextSelection
+        : null;
+      const selection = selector
+        ? selector({
+          invitations: invitations || [],
+          missions: missions || [],
+          requestId: options.requestId || null,
+          invitationId: options.invitationId || null,
+          missionId: options.missionId || null
+        })
+        : null;
+
+      if (!selection) {
+        // Legacy fallback only when revision selector is unavailable: unique invitation only.
+        const accepted = Array.isArray(invitations) ? invitations : [];
+        if (accepted.length !== 1) {
+          return tagQuoteContext([], {
+            ambiguous: accepted.length > 1,
+            code: accepted.length > 1 ? 'ambiguous' : 'missing'
           });
         }
-      }
-      const paymentsByQuote = new Map();
-      if (quoteIds.length) {
-        const paymentResult = await client.supabase.from('payments').select('id,quote_id,milestone_id,payment_status').in('quote_id', quoteIds);
-        if (!paymentResult.error) {
-          (paymentResult.data || []).forEach((payment) => {
-            if (!paymentsByQuote.has(payment.quote_id)) paymentsByQuote.set(payment.quote_id, []);
-            paymentsByQuote.get(payment.quote_id).push(payment);
-          });
-        }
-      }
-      return quotes.map((quote) => {
-        const currentVersion = Number(quote.version) || 1;
-        const history = revisionsByQuote.get(quote.id) || [];
-        const previousRevision = history.find((revision) => Number(revision.version) < currentVersion) || null;
-        return {
-          ...quote,
-          mission_status: missionStatus.get(quote.mission_id) || null,
-          payments: paymentsByQuote.get(quote.id) || [],
-          milestones: byQuote.get(quote.id) || [],
-          previousRevision
+        const legacy = {
+          ok: true,
+          ambiguous: false,
+          code: 'legacy_unique',
+          requestId: accepted[0].request_id || null,
+          invitationId: accepted[0].id,
+          invitationIds: [accepted[0].id],
+          missionId: null
         };
+        const quotes = await loadQuotesForSelection(client, userId, contactId, legacy);
+        return tagQuoteContext(quotes, legacy);
+      }
+
+      if (selection.ambiguous || !selection.ok) {
+        return tagQuoteContext([], selection);
+      }
+
+      // Verify invitation ↔ request ↔ mission correspondence before painting.
+      if (selection.missionId && selection.requestId) {
+        const mission = (missions || []).find((row) => String(row.id) === String(selection.missionId));
+        const missionRequest = mission
+          ? (mission.related_request_id || mission.request_id || null)
+          : null;
+        if (missionRequest && String(missionRequest) !== String(selection.requestId)) {
+          return tagQuoteContext([], {
+            ok: false,
+            ambiguous: false,
+            code: 'mission_request_mismatch',
+            requestId: selection.requestId,
+            invitationId: selection.invitationId,
+            missionId: selection.missionId
+          });
+        }
+      }
+      if (selection.invitationId && selection.requestId) {
+        const invitation = (invitations || []).find((row) => String(row.id) === String(selection.invitationId));
+        if (invitation && invitation.request_id && String(invitation.request_id) !== String(selection.requestId)) {
+          return tagQuoteContext([], {
+            ok: false,
+            ambiguous: false,
+            code: 'invitation_request_mismatch',
+            requestId: selection.requestId,
+            invitationId: selection.invitationId,
+            missionId: selection.missionId
+          });
+        }
+      }
+
+      const quotes = await loadQuotesForSelection(client, userId, contactId, selection);
+      const verified = quotes.filter((quote) => {
+        if (selection.requestId && quote.request_id && String(quote.request_id) !== String(selection.requestId)) {
+          return false;
+        }
+        if (selection.requestId && quote.mission_related_request_id
+          && String(quote.mission_related_request_id) !== String(selection.requestId)) {
+          return false;
+        }
+        if (selection.missionId && quote.mission_id && String(quote.mission_id) !== String(selection.missionId)) {
+          // Keep quotes for the same request that are not yet linked to this mission (SENT).
+          if (quote.status === 'ACCEPTED') return false;
+        }
+        return true;
       });
+      return tagQuoteContext(verified, selection);
     };
-    return c ? c.dedupe('chat-quote-context', key, loader, QUOTE_CONTEXT_TTL_MS) : loader();
+    return c ? c.dedupe('chat-quote-context', cacheId, loader, QUOTE_CONTEXT_TTL_MS) : loader();
   }
 
   function invalidateConversation(userId, contactId, conversationId) {
@@ -586,17 +846,31 @@
     if (userId && contactId) {
       const key = pairKey(userId, contactId);
       c.invalidate('chat-conversation', key);
-      c.invalidate('chat-quote-context', key);
+      invalidateQuoteContext(userId, contactId);
       c.invalidate('chat-conversation-list', String(userId));
     }
     if (conversationId) c.invalidate('chat-messages', conversationId);
   }
   function invalidateMessages(conversationId) {
+    const mapped = conversationId && warm.byConversation.has(String(conversationId))
+      ? warm.byConversation.get(String(conversationId))
+      : null;
+    if (mapped) bumpMessageEpoch(mapped);
     forgetWarmMessages(null, null, conversationId);
     const c = cache();
     if (c && conversationId) c.invalidate('chat-messages', conversationId);
   }
-  function invalidateQuoteContext(userId, contactId) { const c = cache(); if (c && userId && contactId) c.invalidate('chat-quote-context', pairKey(userId, contactId)); }
+  function invalidateQuoteContext(userId, contactId) {
+    const c = cache();
+    if (!c || !userId || !contactId) return;
+    const pair = pairKey(userId, contactId);
+    const keys = quoteContextKeysByPair.get(pair);
+    if (keys) {
+      keys.forEach((id) => c.invalidate('chat-quote-context', id));
+      keys.clear();
+    }
+    c.invalidate('chat-quote-context', pair);
+  }
 
   async function markConversationRead(userId, contactId) {
     const client = api();
@@ -621,5 +895,5 @@
     return true;
   }
 
-  window.LYANN_MESSAGING_REPOSITORY = { findConversationId, listConversations, getMessages, getQuoteContext, invalidateConversation, invalidateMessages, invalidateQuoteContext, peekConversations, peekMessages, warmInbox, markConversationRead, noteIncomingPreview, ensureInboxConversation, formatMessagePreview, releaseWarmCache };
+  window.LYANN_MESSAGING_REPOSITORY = { findConversationId, listConversations, getMessages, getQuoteContext, invalidateConversation, invalidateMessages, invalidateQuoteContext, peekConversations, peekMessages, ingestIncomingMessage, warmInbox, markConversationRead, noteIncomingPreview, ensureInboxConversation, formatMessagePreview, enrichQuotes, releaseWarmCache };
 })();

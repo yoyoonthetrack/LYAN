@@ -5,5 +5,17 @@
   "backgroundColor": "#FAF7F2",
   "ios": {
     "backgroundColor": "#FAF7F2"
+  },
+  "server": {
+    "allowNavigation": [
+      "*.stripe.com",
+      "*.stripe.network",
+      "js.stripe.com"
+    ]
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
   }
 }

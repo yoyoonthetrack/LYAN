@@ -53,12 +53,17 @@ test.describe('Runtime product audit — pages and primary surfaces', () => {
     expect(failed, failed.join('\n')).toEqual([]);
   });
 
-  test('desktop public nav reaches Explorer, Bokantaj, Aide, Accueil, Tarifs', async ({ page }) => {
+  test('desktop public nav reaches Lyanneurs, Annonces, Bokantaj, Aide, Accueil, Tarifs', async ({ page }) => {
     test.setTimeout(60000);
     await page.goto('/index.html');
-    await page.getByRole('navigation').getByRole('link', { name: 'Explorer' }).click();
-    await expect(page).toHaveURL(/results\.html/);
-    await expect(page.locator('body')).toContainText(/Explorer|Annonces|Lyanneur/i);
+    await page.getByRole('navigation').getByRole('link', { name: 'Lyanneurs' }).first().click();
+    await expect(page).toHaveURL(/results\.html\?mode=lyanneurs/);
+    await expect(page.locator('#explorerTitle')).toHaveText('Lyanneurs');
+
+    await page.goto('/index.html');
+    await page.getByRole('navigation').getByRole('link', { name: 'Annonces' }).first().click();
+    await expect(page).toHaveURL(/results\.html\?mode=annonces/);
+    await expect(page.locator('#explorerTitle')).toHaveText('Annonces');
 
     await page.getByRole('navigation').getByRole('link', { name: 'Bokantaj' }).click();
     await expect(page).toHaveURL(/feed\.html/);
@@ -144,6 +149,75 @@ test.describe('Runtime product audit — pages and primary surfaces', () => {
     await expect(page.locator('.app-welcome-screen')).toHaveCount(0);
     await expect(page.locator('.mobile-bottom-nav')).toHaveCount(0);
     await expect(page.locator('body')).toContainText(/LYANN/i);
-    await expect(page.getByRole('button', { name: /S'inscrire maintenant/i })).toBeVisible();
+    await expect(page.locator('#btnGuestSignup, #btnNativeJoin').first()).toBeVisible();
+
+    const showMemberNav = async () => {
+      await page.waitForFunction(() => document.body.classList.contains('auth-ready') || document.body.classList.contains('user-is-logged-out') || document.body.classList.contains('user-is-logged-in'));
+      await page.evaluate(async () => {
+        window.LYANN_AUTH_STATE.isAuthenticated = () => true;
+        window.LYANN_AUTH_STATE.ready = async () => ({ status: 'ready', authenticated: true });
+        document.querySelector('.mobile-bottom-nav')?.remove();
+        document.body.classList.remove('has-member-nav');
+        await window.injectMobileInterface();
+      });
+    };
+    await page.goto('/results.html?mode=lyanneurs', { waitUntil: 'domcontentloaded' });
+    await showMemberNav();
+    const nav = page.locator('.mobile-bottom-nav');
+    await expect(nav).toBeVisible();
+    await expect(nav.getByRole('tab', { name: 'Bokantaj' })).toBeVisible();
+    await expect(nav.getByRole('tab', { name: 'Lyanneurs' })).toBeVisible();
+    await expect(nav.getByRole('tab', { name: 'Annonces' })).toBeVisible();
+    await expect(nav.getByRole('tab', { name: 'Messages' })).toBeVisible();
+    await expect(nav.getByRole('tab', { name: 'Profil' })).toBeVisible();
+    await expect(nav.locator('#tab-create, .btn-central-action')).toHaveCount(0);
+    const safe = await nav.evaluate((node) => {
+      const style = getComputedStyle(node);
+      const rule = [...document.styleSheets].flatMap((sheet) => {
+        try { return [...sheet.cssRules]; } catch (_) { return []; }
+      }).find((item) => item.selectorText === '.mobile-bottom-nav' && /safe-area-inset-bottom/.test(item.cssText));
+      return {
+        paddingBottom: style.paddingBottom,
+        height: style.height,
+        declaresSafeArea: Boolean(rule)
+      };
+    });
+    expect(safe.declaresSafeArea).toBe(true);
+    expect(parseFloat(safe.height)).toBeGreaterThanOrEqual(72);
+
+    const tabBoxes = await page.locator('.mobile-bottom-nav .nav-tab').evaluateAll((tabs) => tabs.map((tab) => {
+      const box = tab.getBoundingClientRect();
+      return {
+        name: tab.getAttribute('aria-label'),
+        current: tab.getAttribute('aria-current'),
+        selected: tab.getAttribute('aria-selected'),
+        width: Math.round(box.width),
+        height: Math.round(box.height)
+      };
+    }));
+    expect(tabBoxes.map((tab) => tab.name)).toEqual(['Bokantaj', 'Lyanneurs', 'Annonces', 'Messages', 'Profil']);
+    expect(tabBoxes.find((tab) => tab.name === 'Lyanneurs').current).toBe('page');
+    expect(tabBoxes.find((tab) => tab.name === 'Lyanneurs').selected).toBe('true');
+    expect(tabBoxes.filter((tab) => tab.name !== 'Lyanneurs').every((tab) => tab.selected === 'false' && tab.current !== 'page')).toBe(true);
+    const widths = tabBoxes.map((tab) => tab.width);
+    const heights = tabBoxes.map((tab) => tab.height);
+    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(2);
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(2);
+    expect(Math.min(...widths)).toBeGreaterThanOrEqual(44);
+    expect(Math.min(...heights)).toBeGreaterThanOrEqual(44);
+
+    await expect(page.locator('#tab-lyanneurs')).toHaveClass(/active/);
+    await expect(page.locator('#tab-annonces')).not.toHaveClass(/active/);
+    await page.locator('#tab-annonces').click();
+    await expect(page).toHaveURL(/results\.html\?mode=annonces/);
+    await showMemberNav();
+    await expect(page.locator('#tab-annonces')).toHaveClass(/active/);
+    await expect(page.locator('#tab-lyanneurs')).not.toHaveClass(/active/);
+    await expect(page.locator('#explorerTitle')).toHaveText('Annonces');
+    await page.goBack();
+    await expect(page).toHaveURL(/results\.html\?mode=lyanneurs/);
+    await showMemberNav();
+    await expect(page.locator('#tab-lyanneurs')).toHaveClass(/active/);
+    await expect(page.locator('#explorerTitle')).toHaveText('Lyanneurs');
   });
 });

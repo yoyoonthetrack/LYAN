@@ -15,7 +15,8 @@
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20261012a">
+    <link rel="stylesheet" href="style.css?v=20261015g">
+    <link rel="stylesheet" href="finance-desk.css?v=20261015a">
     
     <!-- Page Specific Styles (Premium Portal Styles) -->
     <style>
@@ -537,6 +538,8 @@
             </div>
         </div>
 
+        <section id="financeDeskRoot" class="finance-desk" aria-label="Gestion financière des missions"></section>
+
         <!-- PORTAL GRID LAYOUT -->
         <div class="portal-grid">
             
@@ -576,9 +579,18 @@
     <!-- Script imports -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="notifications-service.js"></script>
+    <script src="finance-policy-ui.js"></script>
+    <script src="finance-desk.js"></script>
     <script src="payment-script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const financeRoot = document.getElementById('financeDeskRoot');
+            const financeLab = /(?:\?|&)financeLab=1(?:&|$)/.test(String(location.search || ''));
+            if (financeLab && window.LYANN_FINANCE_DESK) {
+                window.LYANN_FINANCE_DESK.mount('#financeDeskRoot', { lab: true, syncHash: true });
+            } else if (financeRoot) {
+                financeRoot.innerHTML = '<article class="finance-card"><h2>Paiement d’une mission</h2><p class="finance-muted">Le devis, le paiement, l’annulation, le remboursement et le litige se suivent dans la conversation de la mission — pas sur cette page. Ouvrez Mes missions depuis votre compte.</p></article>';
+            }
             let currentRole = 'client'; // client or provider
             let currentTab = 'requests'; // client tabs: requests, approval, tracking, dispute / provider tabs: quote, milestones, wallet, stripe_connect
             let selectedTransactionId = null;
@@ -1501,7 +1513,7 @@
                          La description complète, elle, n'apparaît que sur la page de l'annonce. -->
                     <div id="wizardTitleBlock" hidden style="margin-top: 20px;">
                         <p id="wizardTitleHeading" style="font-weight: 700; margin: 0 0 4px;">Choisissez un titre</p>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Trois propositions d’après votre besoin. Choisissez-en une, puis corrigez-la si besoin. 60 caractères maximum.</p>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Un titre court est repris de votre texte. Vous pouvez le corriger. 60 caractères maximum.</p>
                         <p id="wizardTitleStatus" class="wizard-title-status" hidden></p>
                         <div id="wizardTitleChoices" class="wizard-title-choices" role="radiogroup" aria-labelledby="wizardTitleHeading"></div>
                         <div id="wizardTitleEdit" hidden style="margin-top: 12px;">
@@ -2420,28 +2432,20 @@
                                 <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="0.01" step="0.01" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
                             </div>
                             
-                            <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 8px; color: var(--primary-dark);">Jalons de paiement (Répartition en %)</label>
-                                
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 1:</span>
-                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
+                                                        <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
+                                <div class="milestone-allocation-section">
+                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
+                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque jalon garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
+                                    <div id="mdMilestoneList" class="md-milestone-list"></div>
+                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un jalon</button>
+                                    <div id="mdAllocationSummary" class="md-allocation-summary">
+                                        <div class="md-allocation-row"><span>Total du devis</span><strong id="mdAllocationQuoteTotal">0,00 €</strong></div>
+                                        <div class="md-allocation-row"><span>Total réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
+                                        <div class="md-allocation-row"><span>Pourcentage réparti</span><strong id="mdAllocationPercentTotal">0 %</strong></div>
+                                        <div class="md-allocation-row"><span>Reste à répartir</span><strong id="mdAllocationRemaining">—</strong></div>
+                                    </div>
+                                    <p id="mdAllocationLive" class="md-allocation-live">La somme des montants doit égaler exactement le total.</p>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 2:</span>
-                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
-                                </div>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 3:</span>
-                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
-                                </div>
-                                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des jalons doit faire 100%.</p>
                             </div>
 
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -2540,6 +2544,7 @@
     <script src="explorer-repository.js"></script>
 <script src="ai-classifier.js"></script>
 <script src="platform-core.js"></script>
+<script src="deal-notification-policy.js?v=20261014e6"></script>
 <script src="notification-engine.js"></script>
     <script src="notifications-ui.js"></script>
 <script src="app-shell.js?v=20261011c"></script>
@@ -2550,9 +2555,14 @@
 <script src="onboarding.js"></script>
     <script src="messaging-repository.js"></script>
 <script src="quote-revision.js?v=20261012b"></script>
+<script src="mission-dossier.js?v=20261015g"></script>
+<script src="mission-surfaces.js?v=20261015g"></script>
 <script src="quote-payment-eligibility.js?v=20261007d"></script>
+<script src="deal-context-sync.js?v=20261013e4"></script>
 <script src="payout-prompt.js?v=20261009a"></script>
-<script src="chat-logic.js?v=20261007d"></script>
+<script src="realtime-session.js?v=20261014p0"></script>
+<script src="quote-milestone-editor.js?v=20261015n"></script>
+<script src="chat-logic.js?v=20261015g"></script>
 <script src="profile-completion.js"></script>
 
     <!-- ========== MODAL PARCOURS COMPLÉTION DE PROFIL (#modalCompleteProfile) ========== -->

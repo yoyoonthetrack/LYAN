@@ -67,6 +67,15 @@ async function refreshMessageBadge(currentUserId) {
 }
 window.refreshMessageBadge = refreshMessageBadge;
 
+function bumpMessageBadge() {
+    const badge = document.querySelector('#tab-messages .msg-badge-count, #btnHeaderChat .msg-badge-count, .nav-msg-btn .msg-badge-count');
+    const current = badge && badge.classList.contains('is-on') ? parseInt(badge.textContent, 10) : 0;
+    const next = (Number.isFinite(current) ? current : 0) + 1;
+    paintMessageBadge(Math.max(1, next));
+}
+window.bumpMessageBadge = bumpMessageBadge;
+window.paintMessageBadge = paintMessageBadge;
+
 let lyannNotifEscapeHandler = null;
 
 function clearNotificationEscape() {
@@ -110,7 +119,10 @@ function notificationKind(type) {
         QUOTE_SENT: ['Proposition de devis', 'ph-file-text'],
         QUOTE_PROPOSAL: ['Proposition de devis', 'ph-file-text'],
         QUOTE_REVISED: ['Proposition de devis', 'ph-file-text'],
+        QUOTE_RECEIVED: ['Proposition de devis', 'ph-file-text'],
         QUOTE_ACCEPTED: ['Devis accepté', 'ph-check-circle'],
+        MISSION_ACCEPTED: ['Mission acceptée', 'ph-flag-checkered'],
+        WORK_TO_VALIDATE: ['Travail à valider', 'ph-flag-checkered'],
         BOKANTAJ: ['Bokantaj', 'ph-broadcast'],
         NEW_MESSAGE: ['Message', 'ph-chat-circle-dots'],
         REQUEST_CLOSING: ['Annonce', 'ph-clock'],
@@ -136,21 +148,60 @@ function openNotificationTarget(notif) {
     const entityId = notif?.entity_id ? String(notif.entity_id) : '';
     const nType = String(notif?.type || '');
     if (nType === 'REQUEST_CLOSING') return false;
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    if (policy && typeof policy.planNotificationNavigation === 'function') {
+        const plan = policy.planNotificationNavigation(notif, { viewerId: lyannNotificationUserId() });
+        if (!plan.open) return false;
+        if (plan.route === 'finances') {
+            window.LYANN_ROUTER?.go?.('finances');
+            return true;
+        }
+        if (plan.route === 'messages' && plan.payload && plan.payload.contactId && window.LYANN_ROUTER) {
+            window.LYANN_ROUTER.go('messages', {
+                ...plan.payload,
+                name: plan.payload.contactId === window.LYANN_SUPPORT_USER_ID ? 'Support LYANN' : undefined
+            });
+            return true;
+        }
+        if (plan.route === 'mission' && plan.payload && plan.payload.requestId) {
+            if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('mission', plan.payload);
+            else if (typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal(plan.payload.requestId);
+            else if (typeof window.openRequestDetails === 'function') window.openRequestDetails(plan.payload.requestId);
+            return true;
+        }
+        if (plan.route === 'bokantaj') {
+            const onFeed = /feed\.html/i.test(window.location.pathname);
+            const card = entityId ? document.getElementById(entityId) : null;
+            if (onFeed && card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return true;
+            }
+            if (!onFeed) {
+                window.LYANN_ROUTER?.go?.('bokantaj');
+                return true;
+            }
+            return false;
+        }
+        return false;
+    }
     if (nType === 'PAYOUT_READY') {
         window.LYANN_ROUTER?.go?.('finances');
         return true;
     }
     if (nType === 'QUOTE_RECEIVED' || nType === 'MISSION_ACCEPTED' || nType === 'WORK_TO_VALIDATE') {
-        const contactId = entityId.split(':')[0];
+        const parts = entityId.split(':');
+        const contactId = parts[0];
+        const requestId = parts[2] || window.LYANN_DEAL_NOTIFICATION_POLICY?.requestIdFromNotification?.(notif);
         if (contactId && window.LYANN_ROUTER) {
-            window.LYANN_ROUTER.go('messages', { contactId });
+            window.LYANN_ROUTER.go('messages', { contactId, requestId: requestId || undefined, scopeSource: 'notification' });
             return true;
         }
     }
     if ((entityType === 'conversation' || nType === 'NEW_MESSAGE') && entityId) {
         window.LYANN_ROUTER?.go?.('messages', {
             contactId: entityId,
-            name: entityId === window.LYANN_SUPPORT_USER_ID ? 'Support LYANN' : undefined
+            name: entityId === window.LYANN_SUPPORT_USER_ID ? 'Support LYANN' : undefined,
+            scopeSource: 'notification'
         });
         return true;
     }
@@ -472,27 +523,45 @@ async function syncLyannNotificationsFromServer() {
 let lyannNotificationChannel = null;
 let lyannNotificationPoll = null;
 let lyannNotificationChannelLive = false;
+const notificationRealtimeSlot = window.LYANN_REALTIME_SESSION
+    ? window.LYANN_REALTIME_SESSION.createRealtimeSlot()
+    : null;
 
-function stopLyannNotificationLiveFeed() {
+async function stopLyannNotificationLiveFeed() {
     const client = window.LYANN_API_CLIENT || window.apiClient;
-    if (lyannNotificationChannel && client?.supabase) {
-        try { client.supabase.removeChannel(lyannNotificationChannel); } catch (_) {}
-    }
     lyannNotificationChannel = null;
     lyannNotificationChannelLive = false;
+    window.LYANN_NOTIFICATION_LIVE = false;
     if (lyannNotificationPoll) {
         clearInterval(lyannNotificationPoll);
         lyannNotificationPoll = null;
     }
+    if (notificationRealtimeSlot) {
+        await notificationRealtimeSlot.release((channel) => (
+            client?.supabase?.removeChannel ? client.supabase.removeChannel(channel) : null
+        ));
+        return;
+    }
 }
 
-function startLyannNotificationLiveFeed() {
+async function startLyannNotificationLiveFeed(options) {
     const userId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null;
     const client = window.LYANN_API_CLIENT || window.apiClient;
-    stopLyannNotificationLiveFeed();
+    const generation = notificationRealtimeSlot
+        ? await notificationRealtimeSlot.release((channel) => (
+            client?.supabase?.removeChannel ? client.supabase.removeChannel(channel) : null
+        ), options)
+        : 0;
+    if (lyannNotificationPoll) {
+        clearInterval(lyannNotificationPoll);
+        lyannNotificationPoll = null;
+    }
+    lyannNotificationChannelLive = false;
+    window.LYANN_NOTIFICATION_LIVE = false;
     if (!userId || !client?.supabase) return;
+    if (notificationRealtimeSlot && notificationRealtimeSlot.generation() !== generation) return;
 
-    lyannNotificationChannel = client.supabase
+    const channel = client.supabase
         .channel('lyann-user-notifications')
         .on('postgres_changes', {
             event: 'INSERT',
@@ -500,14 +569,40 @@ function startLyannNotificationLiveFeed() {
             table: 'notifications',
             filter: `user_id=eq.${userId}`
         }, (payload) => {
+            const row = payload.new;
             if (window.LyannNotificationEngine?.ingestServerNotification) {
-                window.LyannNotificationEngine.ingestServerNotification(payload.new, userId, { chime: true });
+                window.LyannNotificationEngine.ingestServerNotification(row, userId, { chime: true });
+            }
+            const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+            const contactId = policy?.contactIdFromNotification?.(row);
+            const activeId = window.LYANN_ACTIVE_CHAT_CONTACT?.id || window.LYANN_ACTIVE_CHAT_CONTACT?.contactId;
+            if (policy?.isKeptDealType?.(row?.type) && contactId && activeId && String(contactId) === String(activeId)) {
+                window.refreshDealContext?.('notif-deal');
             }
             updateHeaderNotificationBadge();
-        })
-        .subscribe((status) => {
-            lyannNotificationChannelLive = status === 'SUBSCRIBED';
         });
+    lyannNotificationChannel = channel;
+    if (notificationRealtimeSlot) notificationRealtimeSlot.hold(channel);
+    let notificationJoined = false;
+    channel.subscribe((status) => {
+        if (notificationRealtimeSlot && notificationRealtimeSlot.current() !== channel) return;
+        if (status === 'SUBSCRIBED') {
+            notificationJoined = true;
+            lyannNotificationChannelLive = true;
+            window.LYANN_NOTIFICATION_LIVE = true;
+            if (notificationRealtimeSlot) notificationRealtimeSlot.markHealthy();
+            return;
+        }
+        lyannNotificationChannelLive = false;
+        window.LYANN_NOTIFICATION_LIVE = false;
+        if (status === 'CLOSED' && !notificationJoined) return;
+        if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
+        if (!notificationRealtimeSlot) return;
+        notificationRealtimeSlot.scheduleRetry(() => {
+            if (window.LYANN_AUTH_STATE?.getSnapshot?.().userId !== userId) return;
+            return startLyannNotificationLiveFeed({ keepAttempt: true });
+        });
+    });
 
     // Realtime is the primary path; the poll only covers a channel that is down.
     lyannNotificationPoll = setInterval(() => {
@@ -531,15 +626,20 @@ document.addEventListener('lyann:auth-state', (event) => {
     if (authenticated) {
         syncLyannNotificationsFromServer().then(() => startLyannNotificationLiveFeed());
     } else {
-        stopLyannNotificationLiveFeed();
+        void stopLyannNotificationLiveFeed();
     }
 });
 document.addEventListener('lyann_notifications_updated', () => updateHeaderNotificationBadge());
 window.addEventListener('focus', () => updateHeaderNotificationBadge({ messages: false }));
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;
+    // Badge only on tab return — hydrate is silent (no notification chime).
     updateHeaderNotificationBadge();
-    hydrateLyannNotifications(window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null);
+    const userId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null;
+    hydrateLyannNotifications(userId);
+    if (userId && !lyannNotificationChannelLive && notificationRealtimeSlot && !notificationRealtimeSlot.hasRetry()) {
+        void startLyannNotificationLiveFeed();
+    }
 });
 document.addEventListener('pointerdown', unlockLyannNotificationSound, { once: true, capture: true });
 document.addEventListener('keydown', unlockLyannNotificationSound, { once: true, capture: true });

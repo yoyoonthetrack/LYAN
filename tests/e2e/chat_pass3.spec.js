@@ -113,14 +113,15 @@ test('accepting a quote once does not rebuild the thread', async ({ page }) => {
   await bootChat(page, [
     { id: 'q1', text: '📄 Devis proposé', sender: 'them', timestamp: Date.parse('2026-02-01T00:00:00Z'), createdAt: '2026-02-01T00:00:00Z', type: 'quote_created', messageType: 'quote_created', entityType: 'quote', entityId: QUOTE_ID }
   ], [quote]);
-  await expect(page.locator('[data-message-id="q1"] button', { hasText: 'Accepter' })).toBeVisible();
+  // E2: accept lives on missionCard ([data-deal-recap]), not timeline history.
+  await expect(page.locator('[data-deal-recap="' + QUOTE_ID + '"] button', { hasText: /Accepter/ })).toBeVisible();
+  await expect(page.locator('[data-message-id="q1"] button', { hasText: 'Accepter' })).toHaveCount(0);
   const before = await page.evaluate(() => window.__refreshBuilds);
   await page.evaluate(() => {
     window.__accepts = 0;
     window.LYANN_API_CLIENT.acceptRequestQuote = async () => { window.__accepts += 1; return { id: 'mission-1' }; };
   });
-  await page.locator('[data-message-id="q1"] button', { hasText: 'Accepter' }).click();
-  await page.evaluate(() => window.handleAcceptQuote('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'));
+  await page.locator('[data-deal-recap="' + QUOTE_ID + '"] button', { hasText: /Accepter/ }).click();
   expect(await page.evaluate(() => window.__accepts)).toBe(1);
   expect(await page.evaluate(() => window.__refreshBuilds)).toBe(before);
   await expect(page.locator('[data-message-id="q1"] .chat-timeline-state')).toHaveText('✓ Accepté');

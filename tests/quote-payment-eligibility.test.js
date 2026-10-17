@@ -10,6 +10,8 @@ const {
     payMissionPayload,
     dispatchQuotePay,
     hiddenTimelineTypes,
+    isVisibleDealNotice,
+    quoteDeclineCopy,
     nextFundingAction,
     providerFundsSecuredNote,
     missionCard,
@@ -99,14 +101,35 @@ test('a click dispatches one PAY_MISSION and never the legacy intent route', () 
 
 test('the timeline card uses the same payment decision', () => {
     const source = fs.readFileSync(path.join(__dirname, '../chat-logic.js'), 'utf8');
-    assert.match(source, /payableMilestoneForQuote\(quote, getMyId\(\)\)/);
     assert.match(source, /type === 'quote_accepted'/);
     assert.match(source, /repaintQuoteTimelineCards\(box\)/);
-    assert.match(source, /dispatchQuotePay\(quote, getMyId\(\), \(action, payload\) => handleChatAction\(action, payload\)\)/);
+    // E2: pay / done CTAs live on missionCard (bindMissionAction), not timeline / live quote.
+    assert.match(source, /payMissionPayload\(quote/);
+    assert.match(source, /action\.id === 'pay'/);
     assert.equal(source.includes("'/v1/payments/create-intent'"), false);
     assert.equal(source.includes('"/v1/payments/create-intent"'), false);
     assert.match(source, /type === 'milestone_completed'/);
     assert.match(source, /appendFundingAction\(body\)/);
+    assert.match(source, /MARK_DONE \/ CONFIRM_DONE live only on missionCard/);
+});
+
+test('closed deals are not painted as deal-recap cards stuck at the bottom', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../chat-logic.js'), 'utf8');
+    const paint = source.slice(source.indexOf('function paintDealRecaps'), source.indexOf('function watchPayoutReadiness'));
+    const insert = source.slice(source.indexOf('function insertDealRecapCard'), source.indexOf('function paintDealRecaps'));
+    // Closed-only / server-empty: strip active ActionPanel. softEmpty protects mid-switch local paints.
+    assert.match(paint, /Closed-only \/ server-confirmed empty: strip leftover active recap/);
+    assert.match(paint, /opts\.softEmpty/);
+    assert.equal(paint.includes('(board.history || []).forEach'), false);
+    assert.match(paint, /renderMissionHistory\(board\.history\)/);
+    assert.match(paint, /if \(!board\.active\.length\)/);
+    assert.match(paint, /existingRecaps\.forEach\(\(node\) => node\.remove\(\)\)/);
+    // Unseated non-focus cards must never fall through to appendChild.
+    assert.match(insert, /if \(card\.dataset\.missionFocus === '1'\) box\.appendChild\(card\);/);
+    assert.equal(/\n\s*box\.appendChild\(card\);\n\}/.test(insert), false);
+    assert.match(source, /function threadDealIsFinished/);
+    assert.match(source, /hideChatMissionChrome\(\)/);
+    assert.match(source, /quoteIsClosedDeal\(q\)/);
 });
 
 test('deal steps collapse into one recap instead of a stack of cards', () => {
@@ -116,7 +139,14 @@ test('deal steps collapse into one recap instead of a stack of cards', () => {
     assert.equal(hidden.has('payment_secured'), true);
     assert.equal(hidden.has('milestone_completed'), true);
     assert.equal(hiddenTimelineTypes([], [quote({ status: 'SENT' })]).has('quote_created'), true);
+    assert.equal(hiddenTimelineTypes([], [quote({ status: 'REJECTED' })]).has('quote_declined'), false);
+    assert.equal(isVisibleDealNotice('quote_declined'), true);
+    assert.equal(isVisibleDealNotice('quote_created'), false);
     assert.equal(hiddenTimelineTypes([], []).has('quote_created'), false);
+    const declined = quoteDeclineCopy({ total_amount: 120, provider_id: 'prov-1' }, 'prov-1');
+    assert.equal(declined.headline, 'Le devis de 120 € a été refusé.');
+    assert.equal(declined.next, 'Vous pouvez envoyer une nouvelle proposition.');
+    assert.equal(quoteDeclineCopy({ total_amount: 120, provider_id: 'prov-1' }, 'req-1').next, '');
     const funded = quote();
     funded.milestones[0].status = 'FUNDED';
     const lines = dealRecap(funded).lines.map((line) => line.label + ' ' + line.value);
@@ -147,7 +177,14 @@ test('successive quotes keep one active card and do not mix two missions', () =>
     const finished = quote({ id: 'done', status: 'ACCEPTED', mission_id: 'mission-done', created_at: '2026-10-01T10:00:00Z' });
     finished.milestones[0].status = 'RELEASED';
     const closedOnly = missionBoard([finished]);
-    assert.deepEqual(closedOnly.active.map((item) => item.id), ['done']);
+    assert.deepEqual(closedOnly.active.map((item) => item.id), []);
+    assert.deepEqual(closedOnly.history.map((item) => item.id), ['done']);
+    // Closed deals must not be re-promoted into active (no bottom CTA / Suivi chrome).
+    assert.equal(closedOnly.active.length, 0);
+    assert.equal(missionBoard([finished, refused]).active.length, 0);
+    const mixedClosedOpen = missionBoard([finished, openMission]);
+    assert.deepEqual(mixedClosedOpen.active.map((item) => item.id), ['job-a']);
+    assert.ok(mixedClosedOpen.history.some((item) => item.id === 'done'));
     const providerCard = missionCard(openMission, provider, 'active');
     assert.equal(providerCard.actions.some((action) => action.id === 'pay' || action.id === 'release' || action.id === 'accept'), false);
     const requesterCard = missionCard(otherMission, requester, 'active');
@@ -225,4 +262,16 @@ test('release is offered to the requester only after the work is declared done',
     assert.equal(release.action, 'CONFIRM_DONE');
     assert.equal(release.label, 'Libérer les fonds');
     assert.equal(nextFundingAction(done, provider).action, null);
+});
+
+test('a cancelled milestone does not invite a payment that cannot start', () => {
+    const cancelled = quote();
+    cancelled.status = 'ACCEPTED';
+    cancelled.milestones[0].status = 'CANCELLED';
+    const view = missionCard(cancelled, requester, 'active');
+    assert.equal(view.phase, 'unavailable');
+    assert.equal(view.actions.length, 0);
+    assert.equal(view.primaryAction, null);
+    assert.match(view.context, /n’est plus disponible/);
+    assert.doesNotMatch(view.context, /sécuriser le paiement/i);
 });

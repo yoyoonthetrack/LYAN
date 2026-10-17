@@ -18,6 +18,24 @@
         if (box) box.textContent = message || '';
     }
 
+    function setPayReady(ready) {
+        const submitBtn = document.getElementById('btnConfirmCheckoutPay');
+        if (submitBtn) submitBtn.disabled = !ready;
+        const mount = document.getElementById('lyannCardPaymentElement');
+        if (mount) mount.dataset.ready = ready ? 'true' : 'false';
+    }
+
+    function humanizeCheckoutError(err) {
+        const text = String((err && err.message) || err || '');
+        if (/Load failed|Failed to fetch|NetworkError|ECONN|timed out|timeout/i.test(text)) {
+            return 'Le serveur de paiement local n’est pas joignable. Restez sur le même Wi-Fi que le Mac, autorisez le réseau local, et vérifiez que l’API Staging écoute. Aucun versement n’a été confirmé.';
+        }
+        if (/Impossible de charger Stripe\.js|Stripe\.js indisponible/i.test(text)) {
+            return 'Le formulaire carte Stripe n’a pas pu se charger. Aucun versement n’a été confirmé.';
+        }
+        return text;
+    }
+
     function loadScript(src) {
         if (global.LYANN_FEATURES && typeof global.LYANN_FEATURES.loadScript === 'function') {
             return global.LYANN_FEATURES.loadScript(src);
@@ -81,7 +99,10 @@
     }
 
     async function prepareCheckout(milestoneId) {
+        // E5: coalesce repeated pay initiation (double-click / retry) into one in-flight prepare.
+        if (preparing) return preparing;
         destroyCard();
+        setPayReady(false);
         const mount = document.getElementById('lyannCardPaymentElement');
         if (!isPersistedUuid(milestoneId)) {
             setPaymentError('Paiement indisponible : il faut un jalon PENDING.');
@@ -98,8 +119,9 @@
             const stripeSdk = await getStripe();
             const result = await global.LYANN_API_CLIENT.createMilestonePaymentIntent(milestoneId);
             if (result && result.error) {
-                setPaymentError(result.error.message || 'Paiement indisponible.');
-                return result;
+                setPaymentError(humanizeCheckoutError(result.error) || 'Paiement indisponible.');
+                setPayReady(false);
+                return { error: { message: humanizeCheckoutError(result.error) } };
             }
             const payload = result && result.data ? result.data : {};
             const mockIntent = payload.mode === 'stripe_test_mock'
@@ -128,15 +150,17 @@
                 setPaymentError(event.error ? event.error.message : '');
                 if (mount) mount.dataset.complete = event.complete ? 'true' : 'false';
             });
+            setPayReady(true);
             return { data: payload };
         })();
 
         try {
             return await preparing;
         } catch (err) {
-            const message = err && err.message ? err.message : 'Paiement indisponible.';
+            const message = humanizeCheckoutError(err);
             setPaymentError(message);
-            return { error: { message: 'Paiement indisponible : ' + message } };
+            setPayReady(false);
+            return { error: { message: message.indexOf('Paiement indisponible') === 0 ? message : ('Paiement indisponible : ' + message) } };
         } finally {
             preparing = null;
         }
@@ -183,13 +207,26 @@
                 const overlay = document.getElementById('chatCheckoutOverlay');
                 if (overlay) overlay.style.display = 'none';
             }
-            if (typeof global.lyannAwaitPaidQuote === 'function') global.lyannAwaitPaidQuote();
-            const successMessage = 'Paiement confirmé. Devis accepté s’affiche dans la conversation.';
-            if (typeof global.showToast === 'function') global.showToast(successMessage, 'success');
+            // E5: never show FUNDED / "paiement confirmé" until server deal state validates it.
+            let serverValidated = false;
+            if (typeof global.lyannAwaitPaidQuote === 'function') {
+                const sync = await global.lyannAwaitPaidQuote();
+                serverValidated = !!(sync && (sync.serverValidated || sync.funded));
+            }
+            const successMessage = serverValidated
+                ? 'Paiement sécurisé. L’état de la mission est à jour.'
+                : 'Paiement envoyé. L’état se met à jour après validation serveur.';
+            if (typeof global.showToast === 'function') global.showToast(successMessage, serverValidated ? 'success' : 'info');
             else if (global.lyannAlert) {
                 Promise.resolve(global.lyannAlert(successMessage)).catch(() => {});
             }
-            api.lastResult = { data: { status, payment_intent_id: paymentIntentId || result.paymentIntent.id } };
+            api.lastResult = {
+                data: {
+                    status,
+                    payment_intent_id: paymentIntentId || result.paymentIntent.id,
+                    serverValidated
+                }
+            };
             return api.lastResult;
         } catch (err) {
             const message = err && err.message ? err.message : 'Paiement indisponible.';

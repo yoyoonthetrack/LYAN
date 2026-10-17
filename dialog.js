@@ -31,10 +31,13 @@ function ensureDialogMarkup() {
     }
 }
 
-const LYANN_TECHNICAL_ERROR = /(violates|constraint|duplicate key|null value|syntax error|relation "|column "|function [a-z_]+\(|PGRST|JWT|jwt|permission denied|row-level security|TypeError|ReferenceError|undefined|NetworkError|Failed to fetch|Load failed|fetch failed|ECONN|status code|Internal Server Error|StripeError|sk_live|sk_test|Unexpected token|is not a function|Cannot read prop)/;
+const LYANN_TECHNICAL_ERROR = /(violates|constraint|duplicate key|null value|syntax error|relation "|column "|function [a-z_]+\(|PGRST|JWT|jwt|permission denied|row-level security|TypeError|ReferenceError|undefined|NetworkError|Failed to fetch|Load failed|fetch failed|ECONN|status code|Internal Server Error|StripeError|sk_live|sk_test|Unexpected token|is not a function|Cannot read prop|n['’]est plus ouvert aux propositions|statut actuel:)/;
 
 window.lyannSanitizeUserMessage = function(message) {
     const text = String(message == null ? '' : message);
+    if (/n['’]est plus ouvert aux propositions|statut actuel:\s*[A-Z_]+/i.test(text)) {
+        return 'Cette demande n’accepte plus de nouvelles propositions pour le moment.';
+    }
     if (!LYANN_TECHNICAL_ERROR.test(text)) return text;
     const network = /(NetworkError|Failed to fetch|Load failed|fetch failed|ECONN)/.test(text);
     const generic = network
