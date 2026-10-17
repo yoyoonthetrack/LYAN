@@ -116,7 +116,11 @@ Inscription d’un nouveau compte : NON TESTÉ jusqu’à une adresse réelle. P
 
 Un rappel groupé ouvre Missions filtré sur cette action. Vérifié : « 7 missions — un paiement peut être sécurisé » affiche 7 lignes et « 7 missions · paiements à sécuriser ». Le filtre ne survit pas au rechargement. Un rappel d’une seule mission ouvre son dossier. Les rappels ne gonflent pas le compteur de non lues (62 hors rappels).
 
-Devis par jalons : l’acceptation depuis le dossier ne trouvait pas la version du devis, donc la confirmation ne s’ouvrait pas. Elle utilise maintenant la version déjà chargée. « [CAMPAGNE-J2] Devis par jalons » est accepté, version 1, jalons 20 € et 30 €. Un devis neuf « Jalons neufs » (8 € puis 12 €) est aussi accepté. Après rechargement, QA A voit deux actions « Sécuriser le paiement ». QA B voit le devis accepté, sans bouton de paiement. Safari et le build iOS installé restent NON TESTÉ. Pas de TestFlight.
+Devis par jalons : l’acceptation depuis le dossier ne trouvait pas la version du devis, donc la confirmation ne s’ouvrait pas. Elle utilise maintenant la version déjà chargée. « [CAMPAGNE-J2] Devis par jalons » est accepté, version 1, jalons 20 € et 30 €. Un devis neuf « Jalons neufs » (8 € puis 12 €) est aussi accepté.
+
+Paiements Stripe Test, `livemode: false`, sans transfert : Préparation 20 € → 21,49 € (frais 1,49 €, net Lyanneur 19,40 €), Taille 8 € → 9,49 € (net 7,76 €), Évacuation 12 € → 13,49 € (net 11,64 €). Plantation 30 € reste impayée. Le minimum de 1,49 € s’applique à chaque jalon, pas au devis. Un second encaissement sur un jalon déjà FUNDED est refusé. Le webhook en double est ignoré. Taille est déclarée terminée, transfert encore `PENDING_VALIDATION`, aucun `stripe_transfer_id`. « Valider et libérer le paiement » n’a pas été cliqué : ce chemin crée un transfert Stripe même si l’exécution post-transfert est désactivée.
+
+Une seconde acceptation du devis déjà accepté est refusée. L’appel avec une version obsolète n’a pas atteint Supabase (`fetch failed`) ; le devis visé est resté SENT, version 1. Safari et le build iOS installé restent NON TESTÉ. Pas de TestFlight.
 
 ### Manques classés, non développés
 

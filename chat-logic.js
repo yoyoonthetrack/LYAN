@@ -2791,6 +2791,22 @@ function applyServerCheckoutAmounts(amounts) {
     if (base && amounts.service_amount_cents != null) base.textContent = euros(amounts.service_amount_cents);
     if (fee && amounts.customer_fee_cents != null) fee.textContent = euros(amounts.customer_fee_cents);
     if (total && amounts.customer_total_cents != null) total.textContent = euros(amounts.customer_total_cents);
+    const service = Number(amounts.service_amount_cents);
+    const customerFee = Number(amounts.customer_fee_cents);
+    const rawFee = Number.isFinite(service) ? Math.floor((service * 3 + 50) / 100) : null;
+    let note = document.getElementById('coLyannFeeNote');
+    if (fee && !note) {
+        note = document.createElement('p');
+        note.id = 'coLyannFeeNote';
+        note.style.cssText = 'margin:6px 0 0;font-size:0.78rem;line-height:1.35;color:#3F5C49;';
+        const row = fee.closest('div');
+        if (row && row.parentNode) row.parentNode.insertBefore(note, row.nextSibling);
+    }
+    if (note) {
+        note.textContent = customerFee === 149 && rawFee != null && rawFee < 149
+            ? 'Le minimum de 1,49 € s’applique à ce jalon. Il n’est pas calculé une seule fois pour tout le devis.'
+            : 'Ces frais sont calculés sur ce jalon seulement.';
+    }
 }
 window.applyServerCheckoutAmounts = applyServerCheckoutAmounts;
 
