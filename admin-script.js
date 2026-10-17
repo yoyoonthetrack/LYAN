@@ -3047,6 +3047,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             botsEl.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;
         }
     }
+    document.getElementById('editorialCollectBtn')?.addEventListener('click', async () => {
+        const button = document.getElementById('editorialCollectBtn');
+        if (button) button.disabled = true;
+        try {
+            await maisonJson('/v1/admin/editorial/collect', { method: 'POST', body: '{}' });
+            await loadEditorialDesk();
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    });
     document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.addEventListener('click', () => {
         loadEditorialDesk();
     });

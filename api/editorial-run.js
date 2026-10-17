@@ -1,6 +1,26 @@
 'use strict';
 
-const { EDITORIAL_BOTS, parseRssItems, draftFromSource, canCollect } = require('./editorial-engine');
+const {
+    EDITORIAL_BOTS,
+    parseRssItems,
+    draftFromSource,
+    canCollect,
+    classifyFeed,
+    parseJsonLdList,
+    parseEventJsonLd,
+    isFresh,
+    matchesTerms,
+    acceptRewrittenText
+} = require('./editorial-engine');
+function providerConfig(env) {
+    const apiKey = env.LYANN_AI_API_KEY;
+    if (!apiKey) return null;
+    return {
+        apiKey,
+        baseUrl: (env.LYANN_AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, ''),
+        model: env.LYANN_AI_MODEL || 'gpt-4o-mini'
+    };
+}
 
 async function fetchText(url) {
     const response = await fetch(url, {
@@ -9,6 +29,65 @@ async function fetchText(url) {
     });
     if (!response.ok) throw new Error(`Source indisponible (${response.status})`);
     return response.text();
+}
+
+async function rewriteDraft(draft, fetchImpl) {
+    const config = providerConfig(process.env);
+    if (!config) return { ok: false, reason: 'clé IA absente' };
+    const response = await fetchImpl(`${config.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
+        body: JSON.stringify({
+            model: config.model,
+            temperature: 0.2,
+            max_tokens: 280,
+            messages: [
+                {
+                    role: 'system',
+                    content: [
+                        'Tu rédiges un court texte original en français courant, entre 50 et 100 mots.',
+                        'Tu n’utilises que les faits fournis. Tu n’ajoutes aucun chiffre, lieu, date ou conseil absent du texte source.',
+                        'Tu ne recopies pas le titre seul. Tu gardes un ton factuel, sans emoji et sans question artificielle.',
+                        'Tu termines par la ligne exacte: Source : NOM. URL',
+                        'Si le sujet touche la santé, tu ne donnes ni dosage, ni promesse de guérison.'
+                    ].join(' ')
+                },
+                {
+                    role: 'user',
+                    content: `Source: ${draft.sourceName}\nURL: ${draft.sourceUrl}\nTitre: ${draft.subject}\nFaits: ${draft.facts}`
+                }
+            ]
+        })
+    });
+    if (!response.ok) return { ok: false, reason: `modèle indisponible (${response.status})` };
+    const payload = await response.json();
+    const text = acceptRewrittenText(payload?.choices?.[0]?.message?.content, draft);
+    if (!text) return { ok: false, reason: 'réponse du modèle refusée' };
+    return { ok: true, text };
+}
+
+async function itemsFromSource(source, fetchText) {
+    if (source.kind === 'manual') return { status: 'veille manuelle', items: [] };
+    let body = '';
+    try {
+        body = await fetchText(source.url);
+    } catch (error) {
+        return { status: 'inaccessible', items: [], detail: error.message };
+    }
+    const status = classifyFeed(body, source.kind);
+    if (status !== 'exploitable') return { status, items: [] };
+    if (source.kind === 'rss') {
+        const now = Date.now();
+        const parsed = parseRssItems(body).filter((item) => item.summary);
+        const fresh = parsed.filter((item) => isFresh(item.publishedAt, now, source.maxAgeHours));
+        const items = fresh.filter((item) => matchesTerms(item, source.requireTerms));
+        let status = 'exploitable';
+        if (!parsed.length) status = 'flux vide';
+        else if (!fresh.length) status = 'date trop ancienne';
+        else if (!items.length) status = 'hors sujet';
+        return { status: items.length ? 'exploitable' : status, items };
+    }
+    return { status, items: parseJsonLdList(body) };
 }
 
 async function existingSourceUrls(supabase, agentId) {
@@ -27,6 +106,7 @@ async function collectEditorial(supabase, options = {}) {
     if (error) throw error;
     const created = [];
     const skipped = [];
+    const diagnoses = [];
     for (const bot of EDITORIAL_BOTS) {
         const agent = (agents || []).find((row) => row.agent_name === bot.name);
         if (!agent) {
@@ -38,59 +118,72 @@ async function collectEditorial(supabase, options = {}) {
             continue;
         }
         const seen = await existingSourceUrls(supabase, agent.id);
-        const source = (bot.sources || []).find((item) => item.kind === 'rss' && (!options.onlySlug || options.onlySlug === bot.slug));
-        if (!source) {
-            skipped.push({ bot: bot.name, reason: 'aucune source RSS prête' });
-            continue;
-        }
-        let items = [];
-        try {
-            items = parseRssItems(await fetchText(source.url)).slice(0, 3);
-        } catch (err) {
-            skipped.push({ bot: bot.name, reason: err.message });
-            continue;
-        }
-        if (!items.length) {
-            skipped.push({ bot: bot.name, reason: 'flux vide', url: source.url });
-            continue;
-        }
-        for (const item of items) {
-            if (seen.has(item.url)) {
-                skipped.push({ bot: bot.name, reason: 'doublon', url: item.url });
-                continue;
-            }
-            const draft = draftFromSource({ ...item, sourceName: source.name, territory: source.territory }, bot);
-            if (!draft) continue;
-            const { data, error: insertError } = await supabase.from('lyann_agent_tasks').insert({
-                agent_id: agent.id,
-                title: draft.subject.slice(0, 180),
-                instruction: draft.proposedText,
-                task_type: 'POST_CREATION',
-                status: 'WAITING_APPROVAL',
-                requires_approval: true,
-                approval_status: 'PENDING',
-                metadata: {
-                    editorial: true,
-                    slug: bot.slug,
-                    source_name: draft.sourceName,
-                    source_url: draft.sourceUrl,
-                    original_published_at: draft.originalPublishedAt,
-                    collected_at: new Date().toISOString(),
-                    territory: draft.territory,
-                    subject: draft.subject,
-                    facts: draft.facts,
-                    validation_status: draft.validationStatus,
-                    proposed_text: draft.proposedText,
-                    profile_id: agent.linked_profile_id
+        const sources = (bot.sources || []).filter((item) => !options.onlySlug || options.onlySlug === bot.slug);
+        let drafted = false;
+        for (const source of sources) {
+            const found = await itemsFromSource(source, fetchText);
+            diagnoses.push({ bot: bot.name, source: source.name, status: found.status, url: source.url });
+            if (found.status === 'veille manuelle' || !found.items.length) continue;
+            for (const item of found.items.slice(0, 3)) {
+                let article = item;
+                if (source.kind === 'jsonld') {
+                    try {
+                        article = parseEventJsonLd(await fetchText(item.url)) || item;
+                    } catch (error) {
+                        diagnoses.push({ bot: bot.name, source: source.name, status: 'inaccessible', url: item.url, detail: error.message });
+                        continue;
+                    }
+                    if (!article.summary || !article.publishedAt) continue;
                 }
-            }).select('id').single();
-            if (insertError) throw insertError;
-            seen.add(item.url);
-            created.push({ bot: bot.name, id: data.id, url: draft.sourceUrl, validation: draft.validationStatus });
-            break;
+                if (!article.url || seen.has(article.url)) {
+                    if (article.url && seen.has(article.url)) skipped.push({ bot: bot.name, reason: 'doublon', url: article.url });
+                    continue;
+                }
+                const draft = draftFromSource({ ...article, sourceName: source.name, territory: source.territory }, bot);
+                if (!draft) continue;
+                const rewritten = await rewriteDraft(draft, options.fetchImpl || fetch);
+                if (!rewritten.ok) {
+                    skipped.push({ bot: bot.name, reason: rewritten.reason, url: draft.sourceUrl });
+                    drafted = true;
+                    break;
+                }
+                const { data, error: insertError } = await supabase.from('lyann_agent_tasks').insert({
+                    agent_id: agent.id,
+                    title: draft.subject.slice(0, 180),
+                    instruction: rewritten.text,
+                    task_type: 'POST_CREATION',
+                    status: 'WAITING_APPROVAL',
+                    requires_approval: true,
+                    approval_status: 'PENDING',
+                    metadata: {
+                        editorial: true,
+                        slug: bot.slug,
+                        source_name: draft.sourceName,
+                        source_url: draft.sourceUrl,
+                        original_published_at: draft.originalPublishedAt,
+                        collected_at: new Date().toISOString(),
+                        territory: draft.territory,
+                        subject: draft.subject,
+                        facts: draft.facts,
+                        validation_status: draft.validationStatus,
+                        proposed_text: rewritten.text,
+                        profile_id: agent.linked_profile_id,
+                        generator: 'model'
+                    }
+                }).select('id').single();
+                if (insertError) throw insertError;
+                seen.add(article.url);
+                created.push({ bot: bot.name, id: data.id, url: draft.sourceUrl, validation: draft.validationStatus });
+                drafted = true;
+                break;
+            }
+            if (drafted) break;
+        }
+        if (!drafted && !skipped.some((row) => row.bot === bot.name)) {
+            skipped.push({ bot: bot.name, reason: 'aucune source exploitable' });
         }
     }
-    return { created, skipped };
+    return { created, skipped, diagnoses };
 }
 
 async function publishEditorialTask(supabase, task, editorText) {

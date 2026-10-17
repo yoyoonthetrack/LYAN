@@ -55,5 +55,9 @@ assert.strictEqual(rimed.validationStatus, 'HUMAN_REQUIRED');
 assert.strictEqual(canCollect({ status: 'SUSPENDED', maxPerDay: 4 }, 0), false);
 assert.strictEqual(canCollect({ status: 'ACTIVE', maxPerDay: 1 }, 1), false);
 assert.ok(limitWords('un deux trois', 2).startsWith('un deux'));
+const { classifyFeed, acceptRewrittenText } = require('../api/editorial-engine');
+assert.strictEqual(classifyFeed('<rss><channel><item/></channel></rss>', 'rss'), 'flux vide');
+assert.strictEqual(classifyFeed('<html></html>', 'rss'), 'flux invalide');
+assert.strictEqual(acceptRewrittenText('Pointe-à-Pitre', { subject: 'Pointe-à-Pitre', sourceUrl: 'https://rci.fm/a' }), '');
 
 console.log('editorial-engine: sources, doublon logique, santé et suspension');

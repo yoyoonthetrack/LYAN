@@ -1450,6 +1450,19 @@ app.all('/v1/editorial/collect', async (req, res) => {
     }
 });
 
+app.post('/v1/admin/editorial/collect', async (req, res) => {
+    const authResult = await verifyAdminPermission(req);
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+        return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
+    }
+    try {
+        return res.json({ success: true, ...(await collectEditorial(supabaseAdmin)) });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Collecte impossible.' });
+    }
+});
+
 app.get('/v1/admin/editorial/bots', async (req, res) => {
     const authResult = await verifyAdminPermission(req);
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });

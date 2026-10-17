@@ -4,13 +4,15 @@
 
 Cinq comptes Auth existent sur le Supabase Staging `tdktfbtqceldlaeqjtow`, liés à `lyann_agents`, sans rôle admin et sans compte Stripe. Leur biographie commence par « Compte éditorial IA LYANN ». Production n’a pas été modifié.
 
-| Compte | Spécialité | Sources prêtes |
+| Compte | Collecte au 17 octobre 2026 | Statut |
 |---|---|---|
-| LYANN Actu | Actualités | Guadeloupe La 1ère et Martinique La 1ère, flux `franceinfo.fr` |
-| LYANN Rimèd | Plantes | TRAMIL, Les Jardins de Nini. Toute proposition exige une validation humaine. |
-| LYANN Jardinaj | Jardin tropical | Les Jardins de Nini, page INRAE. Pas de flux RSS INRAE vérifié. |
-| LYANN Trafik | Circulation | Page Routes de Guadeloupe. Pas de flux RSS vérifié. |
-| LYANN Kilti | Agenda | Flux culture Guadeloupe et Martinique sur franceinfo. |
+| LYANN Actu | RCI Guadeloupe, article sur le redressement de Pointe-à-Pitre | Exploitable. La 1ère régionale : flux vide. France-Antilles : veille manuelle. |
+| LYANN Rimèd | Les Jardins de Nini, article sur les plantes et les douleurs | Exploitable, validation humaine obligatoire. TRAMIL : veille manuelle. |
+| LYANN Jardinaj | CIRAD et Nini | Veille manuelle : pas de conseil de culture antillais dans les flux du jour. |
+| LYANN Trafik | Routes de Guadeloupe, point du 16 octobre 2026 à 11 h | Exploitable et daté. |
+| LYANN Kilti | Agenda des îles de Guadeloupe, Fraîcheur Péyi à Terre-de-Bas | Exploitable, dates et lieu dans la page. |
+
+La rédaction par modèle est branchée. Elle refuse un texte qui se limite au titre. Aucune clé `LYANN_AI_API_KEY` n’est présente en local ni sur le projet Staging, donc aucune proposition n’a été enregistrée et aucun article n’a été inventé.
 
 Canal 10, Harold Luce / LHN Média et Chikanos ne sont pas branchés : l’adresse exacte du compte reste à confirmer. Gwada Connexion n’est pas collecté.
 
