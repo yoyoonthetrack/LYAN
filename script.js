@@ -2,9 +2,16 @@ console.log("⚡ [BOOT 01] script.js loaded");
 (function installLyannPageTransitions() {
     if (window.__lyannPageTransitions) return;
     window.__lyannPageTransitions = true;
+    document.querySelectorAll('.nav-search-icon-link, .nav-msg-btn').forEach((el) => {
+        if (!el.getAttribute('aria-label') && el.getAttribute('title')) {
+            el.setAttribute('aria-label', el.getAttribute('title'));
+        }
+    });
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const native = window.CSS && CSS.supports && CSS.supports('view-transition-name', 'root');
-    if (reduce || native) return;
+    // pageswap exists only where the browser cross-fades full document changes itself.
+    // Same-document view transitions (older iOS) must keep this short leave fade.
+    const nativeDocumentChange = 'onpageswap' in window;
+    if (reduce || nativeDocumentChange) return;
     document.addEventListener('click', (event) => {
         if (event.defaultPrevented || event.button !== 0) return;
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

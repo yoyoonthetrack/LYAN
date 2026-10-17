@@ -14,4 +14,7 @@ test('page changes fade briefly and honor reduced motion', () => {
     assert.match(script, /lyann-page-leave/);
     assert.match(script, /prefers-reduced-motion/);
     assert.match(script, /setTimeout\(\(\) => \{ window\.location\.href = url\.href; \}, 160\)/);
+    assert.match(script, /onpageswap/);
+    assert.match(script, /nav-search-icon-link/);
+    assert.doesNotMatch(script, /CSS\.supports\('view-transition-name'/);
 });
