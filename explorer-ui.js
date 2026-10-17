@@ -230,7 +230,7 @@
             const title = $('explorerTitle');
             const subtitle = $('explorerSubtitle');
             const copy = mode === 'annonces'
-                ? { title: 'Annonces', subtitle: 'Découvrez les besoins autour de vous et proposez votre aide.', art: 'annonces' }
+                ? { title: 'Annonces', subtitle: 'Publiez un besoin et recevez des réponses près de chez vous.', art: 'annonces' }
                 : { title: 'Lyanneurs', subtitle: 'Des talents et des pros tout près de chez vous.', art: 'lyanneurs' };
             if (title) title.textContent = copy.title;
             if (subtitle) subtitle.textContent = copy.subtitle;

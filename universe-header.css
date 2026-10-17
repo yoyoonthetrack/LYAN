@@ -501,6 +501,40 @@ body.is-native-app.feed-page .bokantaj-header-art {
     width: 100%;
     border-radius: 0;
 }
+.annonces-header-art { display: none; }
+body[data-explorer-mode="annonces"] .annonces-header-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    opacity: 0.9;
+    border-radius: 18px;
+}
+body[data-explorer-mode="annonces"] .lyann-universe-frame { display: none; }
+body[data-explorer-mode="annonces"] .lyann-universe-copy {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+@media (max-width: 767px) {
+    body[data-explorer-mode="annonces"] .annonces-header-art {
+        width: 100vw;
+        max-width: 100vw;
+        margin-left: calc(50% - 50vw);
+        border-radius: 0;
+    }
+}
+body.is-native-app[data-explorer-mode="annonces"] .annonces-header-art {
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    border-radius: 0;
+}
 @media (min-width: 768px) {
     #bokantajFilterSheetModal.mobile-bottom-sheet {
         align-items: center !important;
