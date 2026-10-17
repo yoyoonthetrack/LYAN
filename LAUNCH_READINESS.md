@@ -11,7 +11,7 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 
 | Cas | État devis | Demandeur QA A | Lyanneur QA B |
 |---|---|---|---|
-| Tarif Direct | ACCEPTED | Vous demandez | invité |
+| Tarif Direct | payé, jalon FUNDED | Vous demandez | Lyanneur voit « Déclarer la prestation terminée » |
 | Devis par jalons | SENT | Accepter / Refuser visibles | en attente du demandeur |
 | Devis à refuser | REJECTED | « Ce devis n’a pas été retenu. » | — |
 
@@ -46,11 +46,14 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 
 ### 5. Stripe Test
 
-- Le serveur, pour le jalon Tonte à 18 €, répond `service_amount_cents=1800`, `customer_fee_cents=149`, `customer_total_cents=1949`. 1800 + 149 = 1949.
-- PASS : après chargement de Stripe.js, l’écran affiche **18.00 €**, **1.49 €**, **19.49 €**. Le champ carte passe à `ready=true`.
-- Les « … » étaient l’état de chargement. Les montants n’arrivent qu’après l’intention Stripe, pas avant. Un paiement déjà créé (`CREATED`) n’avait plus de bouton : le dossier dit maintenant « Finaliser le paiement » et rouvre le checkout.
-- NON TESTÉ : saisie de la carte 4242 et confirmation. Le second essai n’a pas atteint l’iframe dans le délai. Aucun paiement SUCCEEDED.
-- Politique : remboursements et virements après transfert restent désactivés. Non contournés.
+- Grille : frais client = 3 % avec minimum **1,49 €** (`CUSTOMER_FEE_MINIMUM_CENTS = 149`). Pour 18 € : 1 800 + 149 = 1 949 centimes. Commission Lyanneur 3 % = 54 centimes. Net 17,46 €. Revenu LYANN 2,03 €.
+- PASS : écran **18.00 € / 1.49 € / 19.49 €**, carte prête.
+- L’iframe Stripe n’a pas accepté la saisie automatique. Confirmation faite par l’API Stripe Test sur l’intention réelle `pi_3URLut…` (`pm_card_visa`, `livemode: false`, montant 1949). Ce n’est pas une écriture directe en base.
+- PASS : webhook signé `payment_intent.succeeded` → HTTP 200. Rejeu du même événement → `duplicate: true`.
+- PASS : paiement `SUCCEEDED`, transfert `PENDING_VALIDATION` (pas de virement). Jalon `FUNDED`, montant 18.
+- PASS : second `create-milestone-intent` refusé : « Cette Partie n'est pas payable (statut actuel: FUNDED). »
+- PASS après rechargement : QA A voit « Le paiement est sécurisé ». QA B, après la vérification du compte, voit « Déclarer la prestation terminée ».
+- NON TESTÉ : clic « Déclarer la prestation terminée » jusqu’à un jalon COMPLETED, puis libération. Le virement après transfert reste désactivé.
 
 ### 6. Paramètres, abonnements, navigation
 
@@ -64,7 +67,7 @@ Identifiants : `tests/fixtures/campagne-j2.json`.
 
 ### 8. Lancement
 
-- NO-GO. Les montants du checkout sont corrects, le paiement carte n’est pas confirmé. Bokantaj, notifications et inscription complète ne sont pas exécutés. Pas de déploiement.
+- NO-GO pour une ouverture publique. Le paiement test de la campagne est enregistré et visible des deux côtés. Il reste l’inscription complète, Bokantaj publié, les notifications lues, la fin de mission et un build iPhone du même commit. Pas de déploiement.
 
 ## Corrections dans cet arbre
 
