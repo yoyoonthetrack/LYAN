@@ -210,3 +210,298 @@ body.feed-page .btn-publish-flash {
     .lyann-universe-copy h1 { font-size: 1.55rem; }
     .lyann-universe-copy p { font-size: 0.95rem; }
 }
+
+/* Bokantaj feed: composer, sort, filters. The illustrated header stays in normal flow. */
+body.feed-page .feed-hero-section.lyann-universe-header {
+    position: relative;
+}
+body.feed-page .bokantaj-composer {
+    background: #fff;
+    border: 1px solid #eadfcd;
+    border-radius: 20px;
+    padding: 8px;
+    margin: 8px 0 10px;
+    box-shadow: 0 4px 16px rgba(53, 88, 63, 0.05);
+}
+body.feed-page .bokantaj-composer-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+body.feed-page .bokantaj-composer-open {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 4px 8px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    color: #5c6e62;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+body.feed-page .bokantaj-composer-open span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+body.feed-page #composerUserAvatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+    border: 2px solid #d7e3da;
+}
+body.feed-page .bokantaj-composer-media {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    border: 1px solid #eadfcd;
+    background: #faf7f2;
+    color: #35583f;
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+body.feed-page #createFlashForm {
+    padding: 8px 6px 4px;
+}
+body.feed-page #createFlashForm[hidden] { display: none !important; }
+body.feed-page .bokantaj-type-picks {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+}
+body.feed-page .bokantaj-type-picks label {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid #d7e3da;
+    background: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #24352b;
+}
+body.feed-page .bokantaj-type-picks input { accent-color: #4a7c59; }
+body.feed-page #flashContentInput {
+    width: 100%;
+    min-height: 88px;
+    border-radius: 14px;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    font: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    box-sizing: border-box;
+}
+body.feed-page .composer-char-counter {
+    text-align: right;
+    font-size: 0.78rem;
+    color: #5c6e62;
+    margin-top: 4px;
+}
+body.feed-page .composer-actions-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+body.feed-page .media-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #eadfcd;
+    background: #faf7f2;
+    color: #24352b;
+    font-weight: 700;
+    cursor: pointer;
+}
+body.feed-page .media-upload-btn input { display: none; }
+body.feed-page .btn-publish-flash {
+    margin-left: auto;
+    min-height: 44px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-weight: 800;
+}
+body.feed-page .bokantaj-sort-bar {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    margin: 0 0 12px;
+    padding: 0 2px 0;
+    border-bottom: 1px solid #eadfcd;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+body.feed-page .bokantaj-sort-tab,
+body.feed-page .bokantaj-sort-filters {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 10px 12px 8px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: #3d5144;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+body.feed-page .bokantaj-sort-tab.is-selected {
+    color: #35583f;
+    border-bottom-color: #4a7c59;
+}
+body.feed-page .bokantaj-sort-filters {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+}
+body.feed-page .bokantaj-filter-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4a7c59;
+}
+body.feed-page .bokantaj-filter-dot[hidden] { display: none; }
+body.feed-page .bokantaj-nearby-hint {
+    margin: -4px 2px 10px;
+    color: #5c6e62;
+    font-size: 0.82rem;
+}
+body.feed-page .bokantaj-nearby-hint[hidden] { display: none; }
+body.feed-page .bokantaj-load-more,
+body.feed-page .bokantaj-location-gate {
+    margin-top: 12px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #eadfcd;
+    border-radius: 18px;
+    text-align: center;
+}
+body.feed-page .bokantaj-location-gate p {
+    margin: 0 0 12px;
+    color: #3d5144;
+}
+body.feed-page .bokantaj-location-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+#bokantajFilterSheetModal .bokantaj-filter-card {
+    background: #fffdf8;
+    border-radius: 24px 24px 0 0;
+    max-height: min(92dvh, 100%);
+    padding-bottom: 0;
+}
+#bokantajFilterSheetModal .bottom-sheet-header {
+    align-items: flex-start;
+}
+#bokantajFilterSheetModal .bottom-sheet-header h3 {
+    font-size: 1.15rem;
+}
+#bokantajFilterSheetModal .bokantaj-filter-sub {
+    margin: 4px 0 0;
+    color: #5c6e62;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+#bokantajFilterSheetModal .bottom-sheet-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+}
+#bokantajFilterSheetModal .bokantaj-chip-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+#bokantajFilterSheetModal .bokantaj-choice {
+    min-height: 40px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1.5px solid #d7e3da;
+    background: #fff;
+    color: #24352b;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+#bokantajFilterSheetModal .bokantaj-choice.is-selected {
+    background: #e7f2ea;
+    border-color: #4a7c59;
+    color: #35583f;
+}
+#bokantajFilterSheetModal .bokantaj-zone-label,
+#bokantajFilterSheetModal .bokantaj-zone-note {
+    margin: 8px 0 0;
+    color: #5c6e62;
+    font-size: 0.84rem;
+}
+#bokantajFilterSheetModal .bokantaj-filter-footer {
+    display: flex;
+    gap: 8px;
+    position: sticky;
+    bottom: 0;
+    padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+    background: #fffdf8;
+}
+#bokantajFilterSheetModal .bokantaj-filter-footer .btn {
+    min-height: 48px;
+    justify-content: center;
+}
+#bokantajFilterSheetModal .bokantaj-apply-filters {
+    flex: 1.4;
+    background: linear-gradient(90deg, #4a7c59, #e5b345);
+    border: 0;
+    color: #17231c;
+    font-weight: 800;
+}
+#bokantajFilterSheetModal #btnResetBokantajSheetFilters { flex: 1; }
+body.feed-page .bokantaj-header-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 18px;
+    filter: none;
+}
+@media (max-width: 767px) {
+    body.feed-page .bokantaj-header-art {
+        border-radius: 16px;
+    }
+}
+@media (min-width: 768px) {
+    #bokantajFilterSheetModal.mobile-bottom-sheet {
+        align-items: center !important;
+        justify-content: center;
+    }
+    #bokantajFilterSheetModal .bokantaj-filter-card {
+        width: min(560px, calc(100vw - 32px));
+        border-radius: 24px;
+        max-height: min(80dvh, 720px);
+        box-shadow: 0 16px 40px rgba(23, 35, 28, 0.16);
+    }
+}
+body.keyboard-open #bokantajFilterSheetModal .bokantaj-filter-card {
+    max-height: 100dvh;
+}

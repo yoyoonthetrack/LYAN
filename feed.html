@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20261015n">
-    <link rel="stylesheet" href="universe-header.css?v=20261012h">
+    <link rel="stylesheet" href="universe-header.css?v=20261017hdr">
     
     <!-- Phosphor Icons -->
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
@@ -129,14 +129,7 @@
     <!-- ========== HERO PAGE BOKANTAJ ========== -->
     <section class="feed-hero-section lyann-universe-header" data-universe="bokantaj">
         <div class="container lyann-universe" data-universe="bokantaj">
-            <div class="lyann-universe-frame">
-                <img class="lyann-universe-art is-wide" src="assets/universe/bokantaj-landscape.webp" alt="" width="1024" height="576">
-                <img class="lyann-universe-art is-tall" src="assets/universe/bokantaj-portrait.webp" alt="" width="759" height="1024">
-            </div>
-            <div class="lyann-universe-copy">
-                <h1>Bokantaj</h1>
-                <p>Partagez une actu, une idée ou un bon plan avec vos voisins.</p>
-            </div>
+            <img class="bokantaj-header-art" src="assets/universe/lyann-bokantaj-header-en-direct.webp?v=20261017hdr" alt="Bokantaj, en direct. Partagez une actu, une idée ou un bon plan avec vos voisins." width="650" height="376">
         </div>
     </section>
 
@@ -153,53 +146,60 @@
                         <a href="#login" class="btn btn-primary open-login-trigger">Se connecter</a>
                     </div>
 
-                    <!-- BLOC COMPOSITEUR SOCIAL (BOKANTAJ V2) -->
-                    <div class="flash-composer-card" id="flashComposerCard" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
-                        <div class="composer-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-                            <img id="composerUserAvatar" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" onerror="window.handleAvatarError(this)" alt="Avatar" class="user-avatar-circle" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);">
-                            <div class="composer-title-block">
-                                <h4 style="font-size: 1rem; font-weight: 800; color: #17231C; margin: 0;">Quoi de neuf près de chez vous ?</h4>
-                                <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Partagez une idée, une réalisation ou une disponibilité</p>
-                            </div>
+                    <div class="flash-composer-card bokantaj-composer" id="flashComposerCard">
+                        <div class="bokantaj-composer-bar">
+                            <button type="button" class="bokantaj-composer-open" id="bokantajComposerOpen" aria-expanded="false" aria-controls="createFlashForm">
+                                <img id="composerUserAvatar" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" onerror="window.handleAvatarError(this)" alt="" class="user-avatar-circle">
+                                <span>Partager une idée, une info, un bon plan…</span>
+                            </button>
+                            <button type="button" class="bokantaj-composer-media" id="btnComposerPhotoQuick" aria-label="Photo">
+                                <i class="ph ph-image" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="bokantaj-composer-media" id="btnComposerVideoQuick" aria-label="Vidéo">
+                                <i class="ph ph-play-circle" aria-hidden="true"></i>
+                            </button>
                         </div>
 
-                        <form id="createFlashForm" onsubmit="event.preventDefault();">
-                            <div class="composer-textarea-wrapper" style="margin-bottom: 10px;">
-                                <textarea id="flashContentInput" placeholder="Écrivez votre Lyann…" maxlength="280" required style="width: 100%; border-radius: 14px; padding: 10px 12px; border: 1px solid #E2E8F0; font-size: 0.92rem; resize: none; box-sizing: border-box; font-family: inherit;"></textarea>
-                                <div class="composer-char-counter" style="text-align: right; font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;"><span id="flashCharCount">0</span>/280</div>
+                        <form id="createFlashForm" hidden>
+                            <div class="bokantaj-type-picks" role="radiogroup" aria-label="Type de publication">
+                                <label><input type="radio" name="bokantajPostType" value="info" checked> Infos locales</label>
+                                <label><input type="radio" name="bokantajPostType" value="alerte"> Alertes</label>
+                                <label><input type="radio" name="bokantajPostType" value="bon_plan"> Bons plans</label>
+                                <label><input type="radio" name="bokantajPostType" value="evenement"> Événements</label>
+                                <label><input type="radio" name="bokantajPostType" value="astuce"> Astuces</label>
+                                <label><input type="radio" name="bokantajPostType" value="avis"> Avis</label>
                             </div>
-
+                            <div class="composer-textarea-wrapper">
+                                <textarea id="flashContentInput" placeholder="Écrivez votre Lyann…" maxlength="280"></textarea>
+                                <div class="composer-char-counter"><span id="flashCharCount">0</span>/280</div>
+                            </div>
                             <div class="flash-media-preview-container" id="flashMediaPreviewContainer"></div>
-
-                            <div class="composer-actions-bar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-top: 8px; border-top: 1px solid #F1F5F9;">
-                                <label class="media-upload-btn" id="btnComposerPhoto" title="Joindre une photo" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 0.85rem; font-weight: 700; color: #334155; cursor: pointer; min-height: 40px;">
-                                    <i class="ph ph-image" style="color: #4A7C59; font-size: 1.1rem;"></i>
+                            <div class="composer-actions-bar">
+                                <label class="media-upload-btn" id="btnComposerPhoto" title="Joindre une photo">
+                                    <i class="ph ph-image" aria-hidden="true"></i>
                                     <span>Photo</span>
-                                    <input type="file" id="flashPhotoInput" accept="image/jpeg,image/png,image/webp" multiple style="display: none;">
+                                    <input type="file" id="flashPhotoInput" accept="image/jpeg,image/png,image/webp" multiple>
                                 </label>
-                                <label class="media-upload-btn" title="Joindre une vidéo" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 0.85rem; font-weight: 700; color: #334155; cursor: pointer; min-height: 40px;">
-                                    <i class="ph ph-video" style="color: #4A7C59; font-size: 1.1rem;"></i>
+                                <label class="media-upload-btn" title="Joindre une vidéo">
+                                    <i class="ph ph-play-circle" aria-hidden="true"></i>
                                     <span>Vidéo</span>
-                                    <input type="file" id="flashVideoInput" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" style="display: none;">
+                                    <input type="file" id="flashVideoInput" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm">
                                 </label>
-
-                                <button type="submit" class="btn lyann-cta-primary btn-publish-flash" style="padding: 8px 20px; font-weight: 800; border-radius: 20px; font-size: 0.92rem; min-height: 40px; width: auto;">Publier</button>
+                                <button type="submit" class="btn lyann-cta-primary btn-publish-flash">Publier</button>
                             </div>
                         </form>
                     </div>
 
-                    <!-- BARRE DE FILTRES BOKANTAJ ELEGANT (ONE CLEAR CONTROL: FILTRES) -->
-                    <div class="bokantaj-top-filter-row" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0 16px 0; padding: 12px 16px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 700; font-size: 0.92rem; color: #1E293B;"><i class="ph-bold ph-newspaper-clipping" style="color: #4A7C59; font-size: 1.1rem;"></i> Flux Bokantaj</span>
-                            <span id="activeFilterSummary" style="font-size: 0.78rem; color: #64748B; background: #F1F5F9; padding: 3px 10px; border-radius: 12px; font-weight: 600;">Tout • Partout</span>
-                        </div>
-                        <button type="button" class="btn-bokantaj-filter-sheet" id="btnOpenBokantajFilterSheet" aria-label="Filtres avancés" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(74, 124, 89, 0.1); border: 1px solid rgba(74, 124, 89, 0.25); border-radius: 20px; color: #2D5A39; font-weight: 700; font-size: 0.88rem; cursor: pointer;">
-                            <i class="ph ph-sliders-horizontal" style="font-size: 1.05rem;"></i>
+                    <div class="bokantaj-sort-bar" role="tablist" aria-label="Ordre du Bokantaj">
+                        <button type="button" class="bokantaj-sort-tab is-selected" id="bokantajSortRecent" role="tab" aria-selected="true" data-sort="recent">Publications récentes</button>
+                        <button type="button" class="bokantaj-sort-tab" id="bokantajSortNearby" role="tab" aria-selected="false" data-sort="nearby">Autour de moi</button>
+                        <button type="button" class="bokantaj-sort-filters" id="btnOpenBokantajFilterSheet" aria-label="Filtres">
+                            <i class="ph ph-sliders-horizontal" aria-hidden="true"></i>
                             <span>Filtres</span>
-                            <span id="activeFilterBadge" class="filter-count-badge" style="display: none; background: #4A7C59; color: white; width: 18px; height: 18px; border-radius: 50%; font-size: 0.72rem; align-items: center; justify-content: center;">0</span>
+                            <span id="activeFilterBadge" class="bokantaj-filter-dot" hidden></span>
                         </button>
                     </div>
+                    <p class="bokantaj-nearby-hint" id="bokantajNearbyHint" hidden>Les publications les plus proches de vous</p>
 
                     <!-- FLUX BOKANTAJ UNIFIÉ (INJECTÉ DYNAMIQUEMENT) -->
                     <div class="flash-feed-list" id="flashFeedContainer">
@@ -1667,54 +1667,59 @@
         </div>
     </div>
 
-    <!-- ========== BOTTOM SHEET FILTRES BOKANTAJ ========== -->
-    <div class="modal-overlay mobile-bottom-sheet" id="bokantajFilterSheetModal" style="display: none;">
-        <div class="mobile-bottom-sheet-card">
+    <div class="modal-overlay mobile-bottom-sheet" id="bokantajFilterSheetModal" style="display: none;" aria-hidden="true">
+        <div class="mobile-bottom-sheet-card bokantaj-filter-card" role="dialog" aria-modal="true" aria-labelledby="bokantajFilterTitle">
             <div class="bottom-sheet-header">
-                <h3><i class="ph ph-sliders-horizontal" style="color: #4A7C59;"></i> Filtrer le Bokantaj</h3>
+                <div>
+                    <h3 id="bokantajFilterTitle">Filtrer Bokantaj</h3>
+                    <p class="bokantaj-filter-sub">Choisissez ce que vous souhaitez voir.</p>
+                </div>
                 <button class="modal-close-btn" id="closeBokantajFilterSheetBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
             </div>
             <div class="bottom-sheet-body">
-                <!-- Localisation -->
                 <div class="filter-sheet-section">
-                    <h4>Localisation</h4>
-                    <label class="filter-sheet-toggle-label">
-                        <input type="checkbox" id="sheetNearbyToggle" class="filter-sheet-checkbox">
-                        <span>📍 Près de moi uniquement</span>
-                    </label>
-                </div>
-
-                <!-- Type -->
-                <div class="filter-sheet-section">
-                    <h4>Type de contenu</h4>
-                    <div class="filter-sheet-type-options">
-                        <button type="button" class="sheet-type-btn active" data-type="all">Tout</button>
-                        <button type="button" class="sheet-type-btn" data-type="post">📄 Publications</button>
-                        <a href="results.html?mode=annonces" class="btn btn-outline">Voir les annonces</a>
+                    <h4>Type</h4>
+                    <div class="bokantaj-chip-grid" id="bokantajTypeChips">
+                        <button type="button" class="bokantaj-choice is-selected" data-type="all">Tout</button>
+                        <button type="button" class="bokantaj-choice" data-type="info">Infos locales</button>
+                        <button type="button" class="bokantaj-choice" data-type="alerte">Alertes</button>
+                        <button type="button" class="bokantaj-choice" data-type="bon_plan">Bons plans</button>
+                        <button type="button" class="bokantaj-choice" data-type="evenement">Événements</button>
+                        <button type="button" class="bokantaj-choice" data-type="astuce">Astuces</button>
+                        <button type="button" class="bokantaj-choice" data-type="avis">Avis &amp; recommandations</button>
                     </div>
                 </div>
-
-                <!-- Sujets & Catégories -->
                 <div class="filter-sheet-section">
-                    <h4>Sujets & Catégories</h4>
-                    <div class="filter-sheet-tags-grid">
-                        <button type="button" class="sheet-topic-tag" data-query="Plomberie">#Plomberie</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Climatisation">#Climatisation</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Jardinage">#Jardinage</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Bricolage">#Bricolage</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Transport">#Transport</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Électricité">#Électricité</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Peinture">#Peinture</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Ménage">#Ménage</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Aide à la personne">#AideAuxSeniors</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Garde d'enfants">#GardeEnfants</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Informatique">#Informatique</button>
+                    <h4>Zone</h4>
+                    <div class="bokantaj-chip-grid" id="bokantajZoneChips">
+                        <button type="button" class="bokantaj-choice is-selected" data-zone="all">Partout</button>
+                        <button type="button" class="bokantaj-choice" data-zone="nearby">Autour de moi</button>
+                        <button type="button" class="bokantaj-choice" data-zone="commune" id="bokantajChooseZone">Choisir une zone</button>
+                    </div>
+                    <p class="bokantaj-zone-label" id="bokantajZoneLabel" hidden></p>
+                    <input type="hidden" id="bokantajZoneValue" value="">
+                    <div class="bokantaj-chip-grid" id="bokantajRadiusChips" hidden>
+                        <button type="button" class="bokantaj-choice" data-radius="2">2 km</button>
+                        <button type="button" class="bokantaj-choice is-selected" data-radius="5">5 km</button>
+                        <button type="button" class="bokantaj-choice" data-radius="10">10 km</button>
+                        <button type="button" class="bokantaj-choice" data-radius="20">20 km</button>
+                        <button type="button" class="bokantaj-choice" data-radius="50">50 km</button>
+                    </div>
+                    <p class="bokantaj-zone-note" id="bokantajZoneNote" hidden>Activez la localisation ou choisissez une zone pour limiter le rayon.</p>
+                </div>
+                <div class="filter-sheet-section">
+                    <h4>Période</h4>
+                    <div class="bokantaj-chip-grid" id="bokantajPeriodChips">
+                        <button type="button" class="bokantaj-choice is-selected" data-period="all">Toutes les dates</button>
+                        <button type="button" class="bokantaj-choice" data-period="today">Aujourd’hui</button>
+                        <button type="button" class="bokantaj-choice" data-period="7">7 derniers jours</button>
+                        <button type="button" class="bokantaj-choice" data-period="30">30 derniers jours</button>
                     </div>
                 </div>
             </div>
-            <div class="bottom-sheet-footer">
-                <button type="button" class="btn btn-outline" id="btnResetBokantajSheetFilters" style="flex: 1; justify-content: center;">Réinitialiser</button>
-                <button type="button" class="btn btn-primary" id="btnApplyBokantajSheetFilters" style="flex: 2; justify-content: center; font-weight: 800;">Appliquer les filtres</button>
+            <div class="bottom-sheet-footer bokantaj-filter-footer">
+                <button type="button" class="btn btn-outline" id="btnResetBokantajSheetFilters">Réinitialiser</button>
+                <button type="button" class="btn btn-primary bokantaj-apply-filters" id="btnApplyBokantajSheetFilters">Afficher les publications</button>
             </div>
         </div>
     </div>
@@ -1735,6 +1740,7 @@
     <script src="maison-catalog.js?v=20260922c"></script>
     <script src="profile-repository.js?v=20260922c"></script>
     <script src="bokantaj-repository.js"></script>
+    <script src="bokantaj-feed-query.js"></script>
     <script src="annonce-format.js?v=20260922e"></script>
     <script src="commune-geo.js?v=20260922e"></script>
     <script src="commune-distance.js?v=20260922e"></script>
@@ -1760,7 +1766,7 @@
 <script src="notifications-ui.js"></script>
     <script src="app-shell.js?v=20261011c"></script>
     <script src="messaging-ui.js?v=20261015j"></script>
-    <script src="script.js?v=20261015f"></script>
+    <script src="script.js?v=20261017bok"></script>
     <script src="onboarding.js"></script>
     <script src="profile-completion.js"></script>
 
