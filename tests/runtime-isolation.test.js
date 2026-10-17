@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { assertHostedIsolation } = require('../api/runtime-isolation');
+const { assertHostedIsolation, browserOriginAllowed } = require('../api/runtime-isolation');
 
 function jwt(payload) {
     const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -17,6 +17,15 @@ const staging = {
     SUPABASE_SERVICE_ROLE_KEY: jwt({ role: 'service_role', ref: 'tdktfbtqceldlaeqjtow' }),
     LYANN_STAGING_PUBLIC_ORIGIN: 'https://staging.lyann.app'
 };
+
+test('staging can publish from its own site, production cannot', () => {
+    assert.equal(browserOriginAllowed('https://staging.lyann.app', staging), true);
+    assert.equal(browserOriginAllowed('https://lyann.app', staging), true);
+    assert.equal(browserOriginAllowed('https://staging.lyann.app', {
+        SUPABASE_URL: 'https://gzispjfoywklpqatjyop.supabase.co'
+    }), false);
+    assert.equal(browserOriginAllowed('https://evil.example', staging), false);
+});
 
 test('an unscoped local process is not treated as a hosted environment', () => {
     assert.equal(assertHostedIsolation({}).ok, true);

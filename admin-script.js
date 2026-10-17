@@ -2746,7 +2746,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function editorialFailureMessage(body, status) {
         const code = body && body.code;
         if (status === 401 || code === 'ADMIN_AUTH_REQUIRED' || code === 'ADMIN_TOKEN_INVALID') return 'Session expirée.';
-        if (code === 'environment') return 'Erreur d’environnement.';
+        if (code === 'environment' || code === 'ORIGIN_NOT_ALLOWED') return 'Erreur d’environnement.';
         if (status === 403 || code === 'ADMIN_ACCESS_DENIED') return 'Accès refusé.';
         if (code === 'already_published') return 'Publication déjà effectuée.';
         if (code === 'therapeutic') return 'Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifiez le texte avant validation.';

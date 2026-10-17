@@ -11,7 +11,7 @@
  */
 const { createClient } = require('@supabase/supabase-js');
 const { inspectStripeEnv, stagingBrowserOriginAllowed } = require('./stripe-policy');
-const { assertHostedIsolation } = require('./runtime-isolation');
+const { assertHostedIsolation, browserOriginAllowed } = require('./runtime-isolation');
 const app = require('./server.js');
 
 const IS_VERCEL_PRODUCTION = process.env.VERCEL_ENV === 'production';
@@ -28,19 +28,6 @@ function isStagingSupabaseConfigured() {
         return false;
     }
 }
-
-const ALLOWED_WEB_ORIGINS = new Set([
-    'https://lyann.app',
-    'https://www.lyann.app',
-    'https://admin.lyann.app'
-]);
-
-const ALLOWED_NATIVE_ORIGINS = new Set([
-    'capacitor://localhost',
-    'ionic://localhost',
-    'http://localhost',
-    'https://localhost'
-]);
 
 const PRODUCTION_DISABLED_ROUTES = new Set([
     '/v1/auth/login',
@@ -187,12 +174,7 @@ module.exports = async function lyannApiGateway(req, res) {
     // Native Capacitor WebViews send Origin: capacitor://localhost (or ionic://).
     // Requests with no Origin header remain allowed (non-browser / native HTTP).
     // Browser requests in production must originate from a LYANN-owned origin.
-    if (
-        IS_VERCEL_PRODUCTION
-        && origin
-        && !ALLOWED_WEB_ORIGINS.has(origin)
-        && !ALLOWED_NATIVE_ORIGINS.has(origin)
-    ) {
+    if (IS_VERCEL_PRODUCTION && origin && !browserOriginAllowed(origin, process.env)) {
         return jsonError(res, 403, 'ORIGIN_NOT_ALLOWED', 'Origine non autorisée.');
     }
 

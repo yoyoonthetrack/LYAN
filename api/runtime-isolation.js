@@ -72,10 +72,27 @@ function assertHostedIsolation(env) {
     return { ok: true, code: 'PRODUCTION_ISOLATED' };
 }
 
+function browserOriginAllowed(origin, env) {
+    if (!origin) return true;
+    const known = new Set([
+        'https://lyann.app',
+        'https://www.lyann.app',
+        'https://admin.lyann.app',
+        'capacitor://localhost',
+        'ionic://localhost',
+        'http://localhost',
+        'https://localhost'
+    ]);
+    if (known.has(origin)) return true;
+    const ref = supabaseRefFromUrl((env && (env.SUPABASE_URL || env.LYANN_SUPABASE_URL)) || '');
+    return ref === STAGING_REF && origin === 'https://staging.lyann.app';
+}
+
 module.exports = {
     PRODUCTION_REF,
     STAGING_REF,
     hostedKind,
     assertHostedIsolation,
-    jwtPayload
+    jwtPayload,
+    browserOriginAllowed
 };
