@@ -4,7 +4,7 @@
 
 Verdict : **NO-GO** pour un lancement public. La candidate Web est le commit `d35ba7a`. Elle a été exécutée sur Staging `tdktfbtqceldlaeqjtow` et Stripe Test. Elle ne prouve pas le comportement de Production.
 
-Bundle iOS `ios-mvbtwtzs-734a82`, identique à `www/`, backend Staging `http://172.20.10.2:8098`. Le service simulateur a été réaligné sur le framework 1174.9.2. Build Debug installé et lancé sur iPhone 17 (iOS 26.5) : l’accueil s’affiche, avec « Se connecter » et « S’inscrire ». Les taps suivants n’ont pas été automatisés. Pas de TestFlight.
+Bundle iOS `ios-mvbvjyzb-206610`, identique à `www/`, backend Staging `http://172.20.10.2:8098`. Simulateur iPhone 17, iOS 26.5. XCUITest pilote la WebView quand l’élément est à l’écran et `hittable`. Pas de TestFlight.
 
 | Sujet | Résultat |
 |---|---|
@@ -17,19 +17,78 @@ Bundle iOS `ios-mvbtwtzs-734a82`, identique à `www/`, backend Staging `http://1
 | Remboursement avant transfert, remboursement après transfert, reversement | DÉSACTIVÉS. Les fonctions renvoient false. Non réactivés |
 | Litige | Le code gèle le transfert. Exécution d’un remboursement de litige absente |
 | Reprise d’un transfert TRANSFER_FAILED | Présente dans le verrou, non rejouée sur un vrai échec Stripe |
-| Version 1 refusée après révision en version 2 | PARTIEL. Le devis reste SENT, montant 6 €, aucune mission. La réponse HTTP n’est pas revenue (`fetch failed` / délai coupé) |
+| Version 1 refusée après révision en version 2 | PASS. HTTP 400, code P0001, environ 2,6 s, message de rechargement. Le devis reste SENT version 2, aucune mission |
 | Acceptation de la version courante, refus du Lyanneur | PASS |
 | Inscription réelle, Google, Apple | NON TESTÉ. Action humaine : créer le compte avec une adresse lue, puis ouvrir le lien Supabase |
 | Connect de QA A | BLOQUÉ humain. Captcha Stripe. Le compte ne peut pas encore recevoir |
 | Safari | NON TESTÉ |
-| App iOS de ce commit sur simulateur iPhone 17 | PASS lancement accueil. Connexion, annonces, chat et missions NON TESTÉS (pas de pilotage tactile) |
+| App iOS, simulateur iPhone 17 | Voir la section Phase 8.2. Connexion QA A, session, annonces, inbox, activité, finances : exécutés. Fil de discussion, devis créé sur l’appareil, Stripe et Safari : NON TESTÉS |
 | Production (migrations, RLS, webhooks, lyann.app) | NON MODIFIÉE. Audit code seulement |
 
 Risque financier : un transfert Stripe Test n’est pas un virement reçu. Les remboursements ne s’exécutent pas. Un jalon à 8 € coûte 1,49 € de frais, soit 2,98 € pour deux petits jalons.
 
 Risque de sécurité : ne pas poser de clé live sur le processus qui sert `release-payment`. Ce chemin utilise la clé du processus. Le serveur de campagne refuse déjà une clé live au démarrage quand il est verrouillé sur Staging.
 
-Écart Web / iOS : les sources du bundle sont les mêmes. L’app installée ne l’est pas. Le simulateur de cette machine ne compile pas.
+Écart Web / iOS : le bundle installé est le même `www/`. La WebView affiche les parcours. Un premier chargement de l’inbox a affiché « Impossible de charger les conversations » ; le chargement suivant a listé Support et Qa L. Les requêtes Staging équivalentes répondent en moins de deux secondes. Ce n’est pas un faux vert de XCUITest.
+
+## Phase 8.2 — XCUITest et simulateur
+
+Diagnostic, au même instant qu’une capture :
+
+- Écran blanc : seulement dans la première seconde, avant peinture. Après l’attente, l’accueil est complet.
+- WebView : trois web views. Les boutons et champs HTML sont exposés. `exists` et `isHittable` sont vrais pour ce qui est à l’écran.
+- Le formulaire de connexion existe déjà sur la slide suivante, à x = 1237, donc `hittable = false`. Le bouton du pied de page, lui, est à l’écran et atteignable. Après son tap, les champs « Adresse email de connexion » et « Mot de passe de connexion » passent à x = 31 et deviennent atteignables. Le bouton d’envoi est « Valider la connexion », distinct du pied de page.
+- Un clic par coordonnées sur une rangée du menu a manqué sa cible. Les tests suivants n’utilisent que `element.tap()` sur un élément `hittable`.
+
+| Parcours iOS | Résultat |
+|---|---|
+| Connexion QA A à froid, identité `qa.a.author.stagingv2@lyann.invalid` | PASS. Compte « Qa A. », e-mail affiché |
+| Fermeture puis relance | PASS. La même identité revient |
+| Annonces | PASS. 14 annonces, dont `[CAMPAGNE-J2] Devis à refuser` |
+| Lyanneurs | PASS. Ludivine R., Saint-François |
+| Bokantaj | PASS. Compositeur visible, session ouverte |
+| Clavier | PASS. « Test clavier », 12/280, clavier iOS ouvert, texte non publié |
+| Messagerie | PASS liste : Support et Qa L., devis accepté « Version HTTP ». L’ouverture d’un fil n’a pas été faite. Un essai précédent s’est arrêté sur l’erreur de chargement |
+| Notifications | PASS panneau : 61 non lues, propositions de devis et travaux à valider. Le clic jusqu’au dossier n’a pas été fait |
+| Mon activité | PASS liste des annonces, dont Jalons neufs terminée. L’onglet « Mes missions (31) » est visible, pas ouvert |
+| Finances | PASS. À recevoir 0,00 €, dépenses sécurisées 182,43 €, remboursé 173,96 €, sans compensation. Les quatre jalons de campagne apparaissent avec 1,49 € de frais chacun |
+| Profil public | PASS. Qa A., Basse-Terre |
+| Inscription, Google, Apple | NON TESTÉ. Le formulaire s’affiche. Aucun compte créé |
+| Devis créé, payé ou validé dans l’app | NON TESTÉ sur iOS. Déjà exécuté sur le Web Staging |
+| Fil de discussion, pièce jointe | NON TESTÉ |
+| Retour Stripe, lien externe, Safari, push APNs | NON TESTÉ. Réservés à l’iPhone physique |
+| Mise en arrière-plan | PASS. L’app revient sur la session |
+
+## Incidents financiers — procédure manuelle
+
+Les moteurs restent éteints. `preTransferRefundExecutionEnabled` et `postTransferFinancialExecutionEnabled` renvoient false. Ne pas les activer.
+
+Ce qui fonctionne déjà, en Stripe Test seulement :
+
+- Le transfert initial passe par `POST /v1/milestones/release-payment`, idempotence `tr_milestone_<id>`.
+- Un second appel répond déjà transféré.
+- Un webhook en double répond `duplicate: true`.
+- Un litige (`DISPUTED`) bloque le transfert dans `evaluateTransfer`.
+- Un transfert `TRANSFER_FAILED` peut reprendre le verrou. Ce cas n’a pas été rejoué sur un échec Stripe réel.
+
+Conduite si un incident arrive :
+
+1. Vérifier que la clé du processus est `sk_test` et que `livemode` est false. Ne rien faire sur Stripe Live.
+2. Transfert échoué : ne pas créer un second transfert à la main. Relancer la validation demandeur, qui réutilise la même clé d’idempotence. Si Stripe a le transfert et Supabase non, noter les deux identifiants et s’arrêter.
+3. Paiement contesté : ne pas libérer le jalon. Le dossier Stripe est la source. Aucun remboursement automatique n’existe.
+4. Remboursement demandé avant transfert : l’application ne crée pas le refund. Rembourser le PaymentIntent dans le tableau Stripe Test pour le total client, puis noter l’identifiant. Ne pas écrire la ligne dans Supabase à la main.
+5. Remboursement demandé après transfert : ne pas faire de reversal manuel. Le moteur est éteint, un reversal de tableau désynchroniserait le grand livre.
+6. Webhook en retard : rejouer l’événement depuis le tableau Stripe Test vers l’URL Staging. Ne pas pointer un webhook Live vers Staging. Un second envoi est idempotent.
+
+Conditions pour allumer ces moteurs plus tard : tests de reprise `TRANSFER_FAILED`, de gel de litige, de remboursement avant et après transfert, d’idempotence du reversal, et une répétition Staging qui compare Stripe et Supabase après un webhook retardé. Accord explicite requis.
+
+## iPhone physique — seulement ce que le simulateur ne couvre pas
+
+- Ouvrir le lien de confirmation d’un compte créé avec une adresse réellement lue. Google et Apple.
+- Connect de QA A : captcha Stripe, IBAN de test `FR1420041010050500013M02606`, code téléphone `000000`. Ne pas utiliser Stripe Live. Ne pas valider le versement de la mission inversée tant que Connect n’est pas actif.
+- Installer le bundle sur l’iPhone, sans TestFlight tant que ce n’est pas demandé.
+- Notification push réelle, retour depuis la page Stripe, et un lien qui quitte l’application.
+- Ouvrir une conversation et envoyer un message. Ouvrir l’onglet Mes missions puis un dossier.
 
 À reporter : paiement groupé de plusieurs jalons, abonnements payants, confirmation bancaire.
 

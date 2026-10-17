@@ -284,10 +284,10 @@
                             <div class="auth-divider"><span>ou avec votre email</span></div>
                             <form id="nativeGuestLoginForm">
                                 <label for="nativeGuestLoginEmail">Adresse email</label>
-                                <input type="email" id="nativeGuestLoginEmail" autocomplete="username" placeholder="votre.email@exemple.com" required>
+                                <input type="email" id="nativeGuestLoginEmail" autocomplete="username" placeholder="votre.email@exemple.com" aria-label="Adresse email de connexion" required>
                                 <label for="nativeGuestLoginPassword">Mot de passe</label>
-                                <input type="password" id="nativeGuestLoginPassword" autocomplete="current-password" placeholder="••••••••" required>
-                                <button type="submit" class="btn btn-primary btn-lg">Se connecter</button>
+                                <input type="password" id="nativeGuestLoginPassword" autocomplete="current-password" placeholder="••••••••" aria-label="Mot de passe de connexion" required>
+                                <button type="submit" id="btnNativeGuestSubmit" class="btn btn-primary btn-lg" aria-label="Valider la connexion">Se connecter</button>
                             </form>
                         </div>
                     </div>

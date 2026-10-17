@@ -477,7 +477,8 @@
                     requestId: recent.requestId || null
                 }]);
             } else {
-                listContainer.innerHTML = '<div class="chat-empty-state" style="padding:48px 20px;text-align:center;"><strong>Impossible de charger les conversations.</strong><p>Vérifiez votre connexion, puis réessayez.</p><button type="button" class="btn btn-outline" id="chatRetryConversations" style="margin-top:16px;min-height:44px;">Réessayer</button></div>';
+                const detail = String((error && (error.message || error)) || 'erreur inconnue').replace(/[<>"']/g, '').slice(0, 180);
+                listContainer.innerHTML = '<div class="chat-empty-state" style="padding:48px 20px;text-align:center;"><strong>Impossible de charger les conversations.</strong><p>Vérifiez votre connexion, puis réessayez.</p><button type="button" class="btn btn-outline" id="chatRetryConversations" style="margin-top:16px;min-height:44px;" aria-label="Réessayer : ' + detail + '">Réessayer</button></div>';
                 listContainer.querySelector('#chatRetryConversations')?.addEventListener('click', () => renderConversationList());
             }
         }

@@ -365,7 +365,7 @@ function ensureMobileHamburgerDrawer() {
                     </div>
 
                     <div class="drawer-menu-group logged-in-only">
-                        <a href="#" class="drawer-direct-link" data-lyann-route="account">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="account" aria-label="Ouvrir Mon compte">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-user-circle"></i>
                                 <span>Mon compte</span>
@@ -375,7 +375,7 @@ function ensureMobileHamburgerDrawer() {
                     </div>
 
                     <div class="drawer-menu-group logged-in-only">
-                        <a href="#" class="drawer-direct-link" data-lyann-route="activity">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="activity" aria-label="Ouvrir Mon activité">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-clock-counter-clockwise"></i>
                                 <span>Mon activité</span>
@@ -395,7 +395,7 @@ function ensureMobileHamburgerDrawer() {
                     </div>
 
                     <div class="drawer-menu-group logged-in-only">
-                        <a href="#" class="drawer-direct-link" data-lyann-route="finances">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="finances" aria-label="Ouvrir Finances">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-credit-card"></i>
                                 <span>Finances</span>
@@ -5265,7 +5265,7 @@ safeDomReady(() => {
 
         const displayName = window.formatPublicName(userProf, null, 'Membre LYANN');
         const safeDisplayName = window.escapeHtmlAttr(displayName);
-        const userEmail = window.escapeHtmlAttr(userProf?.email || (window.LYANN_CURRENT_USER ? window.LYANN_CURRENT_USER.email : ''));
+        const userEmail = window.escapeHtmlAttr(userProf?.email || session.user.email || (window.LYANN_CURRENT_USER ? window.LYANN_CURRENT_USER.email : ''));
         const userPhone = window.escapeHtmlAttr(userProf?.phone || '');
         const avatarSrc = window.escapeHtmlAttr(window.resolveLyannAvatarSrc(userProf?.avatar_url));
         const userTerritory = window.escapeHtmlAttr(userProf?.territory || userProf?.city || 'Guadeloupe (971)');
