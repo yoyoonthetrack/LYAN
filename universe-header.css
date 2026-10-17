@@ -561,6 +561,22 @@ body[data-explorer-mode="lyanneurs"] .lyann-pill {
 }
 body.is-native-app .explorer-page .explorer-tools { margin: 8px 0 0 !important; }
 body.is-native-app .explorer-page .explorer-results-heading { margin: 2px 0 8px !important; }
+.bokantaj-header-desktop,
+.annonces-header-desktop,
+.lyanneurs-header-desktop { display: none; }
+@media (min-width: 1024px) {
+    body:not(.is-native-app).feed-page .bokantaj-header-art { display: none; }
+    body:not(.is-native-app).feed-page .bokantaj-header-desktop,
+    body:not(.is-native-app)[data-explorer-mode="annonces"] .annonces-header-desktop,
+    body:not(.is-native-app)[data-explorer-mode="lyanneurs"] .lyanneurs-header-desktop {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 28px;
+    }
+    body:not(.is-native-app)[data-explorer-mode="annonces"] .annonces-header-art,
+    body:not(.is-native-app)[data-explorer-mode="lyanneurs"] .lyanneurs-header-art { display: none; }
+}
 @media (min-width: 768px) {
     #bokantajFilterSheetModal.mobile-bottom-sheet {
         align-items: center !important;
