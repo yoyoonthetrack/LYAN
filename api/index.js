@@ -11,6 +11,7 @@
  */
 const { createClient } = require('@supabase/supabase-js');
 const { inspectStripeEnv, stagingBrowserOriginAllowed } = require('./stripe-policy');
+const { assertHostedIsolation } = require('./runtime-isolation');
 const app = require('./server.js');
 
 const IS_VERCEL_PRODUCTION = process.env.VERCEL_ENV === 'production';
@@ -203,6 +204,11 @@ module.exports = async function lyannApiGateway(req, res) {
     // production origin allowlist above has accepted them.
     if (req.method === 'OPTIONS') {
         return app(req, res);
+    }
+
+    const isolation = assertHostedIsolation(process.env);
+    if (!isolation.ok && (hasFinancialRoute || hasAdminRoute || hasStripeWebhook)) {
+        return jsonError(res, 503, isolation.code, isolation.message);
     }
 
     if (!IS_VERCEL_PRODUCTION && hasFinancialRoute && isProductionSupabaseConfigured()) {

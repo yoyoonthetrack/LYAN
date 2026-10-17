@@ -208,6 +208,14 @@ function requireConfiguredSupabaseUrl() {
     return url;
 }
 
+const { assertHostedIsolation } = require('./runtime-isolation');
+const hostedIsolation = assertHostedIsolation(process.env);
+if (!hostedIsolation.ok) {
+    console.error('❌ FATAL CONFIGURATION ERROR:', hostedIsolation.code, hostedIsolation.message);
+    if (require.main === module) process.exit(1);
+    throw new Error(hostedIsolation.message);
+}
+
 const supabaseUrl = requireConfiguredSupabaseUrl();
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 if (!supabaseServiceKey) {

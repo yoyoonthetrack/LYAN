@@ -119,6 +119,16 @@ Ouvrir un dossier déjà lié ne lance plus `initiate_lyann_help_conversation`. 
 
 Installation sur l’iPhone, sans TestFlight : brancher le téléphone, lui faire confiance, ouvrir `ios/App/App.xcodeproj`, schéma App, destination le téléphone, puis Run. Ne pas archiver et ne pas envoyer à App Store Connect. Le téléphone doit être sur le même réseau que le Mac pour joindre l’API `8098`. La messagerie et les missions passent par Supabase en HTTPS.
 
+## Phase 8.8 — Staging prêt à autoriser
+
+Rien n’est déployé. Le projet Vercel Production `lyan-app` n’est pas modifié : `vercel.json` ne contient pas de commande qui changerait ses déploiements. Le projet prévu est décrit par `vercel.staging.json`, nom `lyann-staging`. Si ce fichier était branché par erreur sur Production, `scripts/vercel-staging-ignore.js` ignore le build. `scripts/deploy-staging.sh` s’arrête sans `LYANN_AUTHORIZE_STAGING_DEPLOY=1`, et s’arrête aussi si le lien local s’appelle `lyan-app`.
+
+Une instance `LYANN_RUNTIME=staging` ou un Preview Vercel qui pointe vers Supabase Production, Stripe Live, une clé service d’un autre projet, ou `https://lyann.app` ne démarre pas. Les webhooks Staging exigent une signature. Les origines de navigateur inconnues sont refusées. Stripe, Apple et Supabase appellent l’API sans en-tête Origin : ces appels restent possibles. Il ne faut pas activer le mot de passe Vercel sur ce projet, sinon ces services seraient bloqués. L’accès des testeurs se limite aux comptes créés dans Supabase Staging.
+
+Le fichier d’association est au format Apple `appIDs` / `components`, sans redirection, servi plus tard en `https://staging.lyann.app/.well-known/apple-app-site-association`. `config/App.staging.entitlements` contient `applinks:staging.lyann.app` et n’est pas relié au build Debug installé. Si l’app est absente, le lien s’ouvre dans Safari sur le domaine Staging. Aucun retour externe n’est PASS.
+
+`node scripts/verify-staging-hosted.js` ne contacte rien tant que `LYANN_STAGING_PUBLIC_ORIGIN` n’est pas défini. Après mise en ligne, il contrôle HTTPS, l’absence de secret dans `/v1/payments/config`, le fichier d’association et le refus d’un webhook non signé. L’auth, le lien Safari et Connect restent des tests iPhone.
+
 ## Phase 8.7 — bêta sans le Mac
 
 Architecture proposée, non déployée : un projet Vercel distinct, ou un déploiement Preview, sur `https://staging.lyann.app`. Il réutilise `api/index.js` et `vercel.json`. Il ne partage pas le projet Production `lyann.app`.
