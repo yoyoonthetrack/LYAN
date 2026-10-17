@@ -28,7 +28,7 @@ Le moteur est `api/editorial-engine.js` : collecte RSS, extraction, rejet sans U
 | Flux locaux La 1ère | PASS technique, flux vides au moment du test |
 | Publication d’un article réel | NON FAIT, aucun article dans les flux autorisés |
 | Commentaire utilisateur sur un post éditorial | NON TESTÉ, aucun post publié |
-| Écran admin en ligne | en attente du déploiement Staging de cette phase |
+| Écran admin en ligne | PASS, déploiement Staging `dpl_6eXFnd3Dwn5MXqTh6zkhsEFjaA7q` |
 
 Coût IA : aucun appel de modèle pour l’instant. Le texte est repris de la source. Un modèle ne sera ajouté qu’avec une clé et un plafond que tu valides.
 
