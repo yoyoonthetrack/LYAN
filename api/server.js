@@ -1042,6 +1042,7 @@ async function verifyAdminPermission(req, requiredPermission = null) {
             return {
                 authorized: true,
                 userId,
+                email: authData.user.email || null,
                 role: member.admin_roles.code,
                 status: member.status || 'ACTIVE',
                 permissions: requiredPermission ? [requiredPermission] : [],
@@ -1058,6 +1059,7 @@ async function verifyAdminPermission(req, requiredPermission = null) {
                 return {
                     authorized: true,
                     userId,
+                    email: authData.user.email || null,
                     role: member.admin_roles?.code,
                     status: member.status || 'ACTIVE',
                     permissions: [requiredPermission],
@@ -1451,7 +1453,7 @@ app.all('/v1/editorial/collect', async (req, res) => {
 });
 
 app.post('/v1/admin/editorial/collect', async (req, res) => {
-    const authResult = await verifyAdminPermission(req);
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
     if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
         return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
@@ -1464,7 +1466,7 @@ app.post('/v1/admin/editorial/collect', async (req, res) => {
 });
 
 app.get('/v1/admin/editorial/bots', async (req, res) => {
-    const authResult = await verifyAdminPermission(req);
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
     const names = EDITORIAL_BOTS.map((bot) => bot.name);
     const { data, error } = await supabaseAdmin.from('lyann_agents').select('id, agent_name, status, zones, personality, system_instructions, linked_profile_id, last_activity_at').in('agent_name', names);
@@ -1488,7 +1490,7 @@ app.get('/v1/admin/editorial/bots', async (req, res) => {
 });
 
 app.get('/v1/admin/editorial/proposals', async (req, res) => {
-    const authResult = await verifyAdminPermission(req);
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
     const { data: agents } = await supabaseAdmin.from('lyann_agents').select('id, agent_name').in('agent_name', EDITORIAL_BOTS.map((bot) => bot.name));
     const ids = (agents || []).map((agent) => agent.id);
@@ -1512,7 +1514,7 @@ app.get('/v1/admin/editorial/proposals', async (req, res) => {
 });
 
 app.post('/v1/admin/editorial/proposals/:id/publish', async (req, res) => {
-    const authResult = await verifyAdminPermission(req);
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
     try {
         const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', req.params.id).maybeSingle();
@@ -1530,6 +1532,7 @@ app.post('/v1/admin/editorial/proposals/:id/publish', async (req, res) => {
         }
         const postId = await publishEditorialTask(supabaseAdmin, task, req.body?.content, {
             userId: authResult.userId,
+            email: authResult.email,
             actor: 'admin'
         });
         return res.json({ success: true, post_id: postId });
@@ -1539,7 +1542,7 @@ app.post('/v1/admin/editorial/proposals/:id/publish', async (req, res) => {
 });
 
 app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
-    const authResult = await verifyAdminPermission(req);
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
     const next = String(req.body?.content || '').trim();
     if (!next) return res.status(400).json({ success: false, error: 'Le texte corrigé est vide.' });
@@ -1559,7 +1562,7 @@ app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
 });
 
 app.post('/v1/admin/editorial/proposals/:id/reject', async (req, res) => {
-    const authResult = await verifyAdminPermission(req);
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
     const { error } = await supabaseAdmin.from('lyann_agent_tasks').update({ status: 'CANCELLED', approval_status: 'REJECTED', updated_at: new Date().toISOString() }).eq('id', req.params.id);
     if (error) return res.status(500).json({ success: false, error: error.message });
@@ -1567,7 +1570,7 @@ app.post('/v1/admin/editorial/proposals/:id/reject', async (req, res) => {
 });
 
 app.post('/v1/admin/editorial/bots/:id/status', async (req, res) => {
-    const authResult = await verifyAdminPermission(req);
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
     const status = req.body?.status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE';
     const { error } = await supabaseAdmin.from('lyann_agents').update({ status, updated_at: new Date().toISOString() }).eq('id', req.params.id);

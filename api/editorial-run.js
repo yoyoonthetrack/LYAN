@@ -12,7 +12,9 @@ const {
     matchesTerms,
     acceptRewrittenText,
     reviewEditorialText,
-    assertHumanApproval
+    assertHumanApproval,
+    editorialPassSlot,
+    guadeloupeDayStart
 } = require('./editorial-engine');
 const STAGING_PROJECT_ID = 'prj_FHIKUKYa8IwpiitigUma4gTtTF6q';
 const PRODUCTION_PROJECT_ID = 'prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM';
@@ -63,7 +65,7 @@ async function fetchText(url) {
     return response.text();
 }
 
-async function completeOnce(config, messages, fetchImpl = globalThis.fetch) {
+async function completeOnce(config, messages, fetchImpl) {
     const response = await fetchImpl(`${config.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
@@ -76,19 +78,6 @@ async function completeOnce(config, messages, fetchImpl = globalThis.fetch) {
     });
     if (!response.ok) return { ok: false, reason: `modèle indisponible (${response.status})` };
     return { ok: true, payload: await response.json() };
-}
-
-function parseDraftAnswer(raw) {
-    const value = String(raw || '').trim();
-    const start = value.indexOf('{');
-    const end = value.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-        try {
-            const data = JSON.parse(value.slice(start, end + 1));
-            if (data && data.texte) return { title: String(data.titre || '').trim(), text: String(data.texte).trim() };
-        } catch (_) {}
-    }
-    return { title: '', text: value };
 }
 
 async function rewriteDraft(draft, fetchImpl) {
@@ -109,34 +98,24 @@ async function rewriteDraft(draft, fetchImpl) {
                 'Conserve chaque chiffre, date, lieu, acteur et décision présents dans les faits. Ne les remplace pas par une formule vague.',
                 'Tu n’inventes aucun fait. Pas d’emoji, pas de créole forcé, pas de question, pas de conclusion artificielle.',
                 'Tu n’écris pas le nom du média. Tu gardes l’attribution si le fait est une décision, une déclaration ou une accusation.',
-                'Si le sujet touche la santé, parle d’un usage traditionnel ou d’une description botanique, jamais d’une efficacité établie. Aucun dosage ni promesse.',
-                'Réponds uniquement en JSON: {"titre":"...","texte":"..."}.'
+                'Si le sujet touche la santé, parle d’usage traditionnel, pas d’efficacité établie. Aucun dosage ni promesse.'
             ].join(' ')
         },
         { role: 'user', content: `Faits extraits:\n${factList}\n\nFaits source:\n${draft.facts}` }
     ], fetchImpl);
     if (!written.ok) return written;
     const payload = written.payload;
-    const parsedDraft = parseDraftAnswer(payload?.choices?.[0]?.message?.content);
-    const text = acceptRewrittenText(parsedDraft.text, draft);
+    const text = acceptRewrittenText(payload?.choices?.[0]?.message?.content, draft);
+    if (!text) return { ok: false, reason: 'réponse du modèle refusée' };
+    const review = reviewEditorialText({ text, facts: draft.facts, healthReview: draft.healthReview });
+    if (!review.ok) return { ok: false, reason: review.reasons.join(' ; ') };
     const usage = payload && payload.usage ? payload.usage : {};
-    const usageFields = {
-        model: config.model,
-        promptTokens: usage.prompt_tokens || 0,
-        completionTokens: usage.completion_tokens || 0
-    };
-    if (!text) return { ok: false, reason: 'réponse du modèle refusée', extractedFacts: factList, ...usageFields };
-    const review = reviewEditorialText({ text, title: parsedDraft.title, facts: draft.facts, healthReview: draft.healthReview });
-    if (!review.ok) {
-        return { ok: false, reason: review.reasons.join(' ; '), text, title: parsedDraft.title, extractedFacts: factList, review, ...usageFields };
-    }
     return {
         ok: true,
         text,
-        title: parsedDraft.title,
-        extractedFacts: factList,
-        review,
-        ...usageFields
+        model: config.model,
+        promptTokens: usage.prompt_tokens || 0,
+        completionTokens: usage.completion_tokens || 0
     };
 }
 
@@ -177,6 +156,37 @@ async function existingSourceUrls(supabase, agentId) {
         .filter(Boolean));
 }
 
+async function recordEditorialNote(supabase, agent, slot, outcome, detail) {
+    const { data: existing } = await supabase
+        .from('lyann_agent_tasks')
+        .select('id')
+        .eq('agent_id', agent.id)
+        .filter('metadata->>pass_slot', 'eq', slot)
+        .filter('metadata->>outcome', 'eq', outcome)
+        .limit(1);
+    if (existing && existing.length) return existing[0].id;
+    const nothing = outcome === 'nothing_to_propose';
+    const { data, error } = await supabase.from('lyann_agent_tasks').insert({
+        agent_id: agent.id,
+        title: nothing ? 'Rien à proposer' : 'Erreur de collecte',
+        instruction: nothing ? 'Rien à proposer' : String(detail || 'Collecte impossible.'),
+        task_type: 'POST_CREATION',
+        status: nothing ? 'CANCELLED' : 'FAILED',
+        requires_approval: false,
+        approval_status: 'REJECTED',
+        error: nothing ? null : String(detail || 'Collecte impossible.'),
+        metadata: {
+            editorial: true,
+            outcome,
+            pass_slot: slot,
+            collected_at: new Date().toISOString(),
+            profile_id: agent.linked_profile_id
+        }
+    }).select('id').single();
+    if (error) throw error;
+    return data.id;
+}
+
 async function collectEditorial(supabase, options = {}) {
     const names = EDITORIAL_BOTS.map((bot) => bot.name);
     const { data: agents, error } = await supabase.from('lyann_agents').select('id, agent_name, status, linked_profile_id').in('agent_name', names);
@@ -184,15 +194,35 @@ async function collectEditorial(supabase, options = {}) {
     const created = [];
     const skipped = [];
     const diagnoses = [];
+    const slot = options.scheduled ? editorialPassSlot(options.now) : null;
+    const dayStart = guadeloupeDayStart(options.now);
     for (const bot of EDITORIAL_BOTS) {
         const agent = (agents || []).find((row) => row.agent_name === bot.name);
         if (!agent) {
             skipped.push({ bot: bot.name, reason: 'absent' });
             continue;
         }
-        if (!canCollect(agent, 0)) {
-            skipped.push({ bot: bot.name, reason: agent.status });
+        const { count: todayCount } = await supabase
+            .from('lyann_agent_tasks')
+            .select('id', { count: 'exact', head: true })
+            .eq('agent_id', agent.id)
+            .gte('created_at', dayStart)
+            .eq('status', 'WAITING_APPROVAL');
+        if (!canCollect({ status: agent.status, maxPerDay: bot.maxPerDay }, todayCount || 0)) {
+            skipped.push({ bot: bot.name, reason: agent.status === 'ACTIVE' ? 'plafond du jour' : agent.status });
             continue;
+        }
+        if (slot) {
+            const { data: sameSlot } = await supabase
+                .from('lyann_agent_tasks')
+                .select('id')
+                .eq('agent_id', agent.id)
+                .filter('metadata->>pass_slot', 'eq', slot)
+                .limit(1);
+            if (sameSlot && sameSlot.length) {
+                skipped.push({ bot: bot.name, reason: 'passage déjà traité', slot });
+                continue;
+            }
         }
         const seen = await existingSourceUrls(supabase, agent.id);
         const sources = (bot.sources || []).filter((item) => !options.onlySlug || options.onlySlug === bot.slug);
@@ -221,6 +251,7 @@ async function collectEditorial(supabase, options = {}) {
                 const rewritten = await rewriteDraft(draft, options.fetchImpl || fetch);
                 if (!rewritten.ok) {
                     skipped.push({ bot: bot.name, reason: rewritten.reason, url: draft.sourceUrl });
+                    if (slot) await recordEditorialNote(supabase, agent, slot, 'collection_error', rewritten.reason);
                     drafted = true;
                     break;
                 }
@@ -248,7 +279,8 @@ async function collectEditorial(supabase, options = {}) {
                         generator: 'model',
                         model: rewritten.model,
                         prompt_tokens: rewritten.promptTokens,
-                        completion_tokens: rewritten.completionTokens
+                        completion_tokens: rewritten.completionTokens,
+                        pass_slot: slot
                     }
                 }).select('id').single();
                 if (insertError) throw insertError;
@@ -260,10 +292,19 @@ async function collectEditorial(supabase, options = {}) {
             if (drafted) break;
         }
         if (!drafted && !skipped.some((row) => row.bot === bot.name)) {
-            skipped.push({ bot: bot.name, reason: 'aucune source exploitable' });
+            const technical = diagnoses.filter((row) => row.bot === bot.name && ['inaccessible', 'flux invalide'].includes(row.status));
+            if (slot && technical.length) {
+                await recordEditorialNote(supabase, agent, slot, 'collection_error', technical.map((row) => `${row.source}: ${row.status}`).join(' ; '));
+                skipped.push({ bot: bot.name, reason: 'erreur de collecte' });
+            } else if (slot) {
+                await recordEditorialNote(supabase, agent, slot, 'nothing_to_propose', 'Rien à proposer');
+                skipped.push({ bot: bot.name, reason: 'Rien à proposer' });
+            } else {
+                skipped.push({ bot: bot.name, reason: 'aucune source exploitable' });
+            }
         }
     }
-    return { created, skipped, diagnoses };
+    return { created, skipped, diagnoses, slot, scheduled: Boolean(options.scheduled) };
 }
 
 async function publishEditorialTask(supabase, task, editorText, approver) {
@@ -271,6 +312,7 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
     if (!approval.ok) throw new Error(approval.reason);
     const metadata = task.metadata || {};
     if (!metadata.editorial) throw new Error('Cette tâche n’est pas une proposition éditoriale.');
+    if (metadata.published_post_id) return metadata.published_post_id;
     if (metadata.validation_status === 'HUMAN_REQUIRED' && !editorText) {
         // Human approval is the validation. The editor must send the text explicitly.
     }
@@ -279,13 +321,30 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
     const content = String(editorText || task.instruction || '').trim();
     if (!content || !metadata.source_url) throw new Error('La proposition n’a pas de source.');
     const body = content.replace(/\n*Source\s*:[\s\S]*$/i, '').trim();
-    const review = reviewEditorialText({
-        text: body,
-        title: metadata.subject || task.title || '',
-        facts: metadata.facts || '',
-        healthReview: metadata.validation_status === 'HUMAN_REQUIRED' || metadata.healthReview === true
-    });
-    if (!review.ok) throw new Error('Contrôle éditorial : ' + review.reasons.join(' ; '));
+    const { data: already } = await supabase
+        .from('bokantaj_posts')
+        .select('id')
+        .eq('author_id', agent.linked_profile_id)
+        .eq('source_url', metadata.source_url)
+        .limit(1);
+    if (already && already[0]) {
+        const now = new Date().toISOString();
+        await supabase.from('lyann_agent_tasks').update({
+            status: 'COMPLETED',
+            approval_status: 'APPROVED',
+            approved_by: approver.userId,
+            completed_at: task.completed_at || now,
+            updated_at: now,
+            metadata: Object.assign({}, metadata, {
+                published_post_id: already[0].id,
+                approved_at: metadata.approved_at || now,
+                approval_actor: 'admin',
+                human_validation: true,
+                approved_by_email: approver.email || metadata.approved_by_email || null
+            })
+        }).eq('id', task.id);
+        return already[0].id;
+    }
     const { data: post, error } = await supabase.from('bokantaj_posts').insert({
         author_id: agent.linked_profile_id,
         type: 'info',
@@ -315,10 +374,12 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
             revisions,
             approved_at: now,
             approval_actor: 'admin',
-            human_validation: true
+            human_validation: true,
+            published_post_id: post.id,
+            approved_by_email: approver.email || null
         })
     }).eq('id', task.id);
     return post.id;
 }
 
-module.exports = { collectEditorial, publishEditorialTask, providerConfig, oidcClaims, rewriteDraft };
+module.exports = { collectEditorial, publishEditorialTask, providerConfig, oidcClaims };

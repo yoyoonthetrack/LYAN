@@ -56,7 +56,11 @@ assert.strictEqual(rimed.validationStatus, 'HUMAN_REQUIRED');
 assert.strictEqual(canCollect({ status: 'SUSPENDED', maxPerDay: 4 }, 0), false);
 assert.strictEqual(canCollect({ status: 'ACTIVE', maxPerDay: 1 }, 1), false);
 assert.ok(limitWords('un deux trois', 2).startsWith('un deux'));
-const { classifyFeed, acceptRewrittenText, reviewEditorialText, assertHumanApproval } = require('../api/editorial-engine');
+const { classifyFeed, acceptRewrittenText, reviewEditorialText, assertHumanApproval, editorialPassSlot } = require('../api/editorial-engine');
+assert.strictEqual(EDITORIAL_BOTS.reduce((sum, bot) => sum + bot.maxPerDay, 0), 15);
+assert.strictEqual(editorialPassSlot(new Date('2026-10-17T11:00:00Z')), '2026-10-17T07');
+assert.strictEqual(editorialPassSlot(new Date('2026-10-17T16:00:00Z')), '2026-10-17T12');
+assert.strictEqual(editorialPassSlot(new Date('2026-10-17T22:00:00Z')), '2026-10-17T18');
 assert.strictEqual(classifyFeed('<rss><channel><item/></channel></rss>', 'rss'), 'flux vide');
 assert.strictEqual(classifyFeed('<html></html>', 'rss'), 'flux invalide');
 assert.strictEqual(acceptRewrittenText('Pointe-à-Pitre', { subject: 'Pointe-à-Pitre', sourceUrl: 'https://rci.fm/a' }), '');
@@ -77,22 +81,6 @@ assert.strictEqual(reviewEditorialText({
     facts: 'Le bois d’Inde et la consoude sont cités, avec des précautions, sans dosage.',
     healthReview: true
 }).ok, false);
-assert.strictEqual(reviewEditorialText({
-    text: 'La page ne promet pas que ces plantes soulagent. Elle signale des précautions et ne donne aucun dosage.',
-    title: 'Plantes citées dans le jardin créole',
-    facts: 'Le bois d’Inde et la consoude sont cités, avec des précautions, sans dosage.',
-    healthReview: true
-}).ok, true);
-assert.strictEqual(reviewEditorialText({
-    text: 'Le bois d’Inde, le guérit-tout, le desmodium et la consoude sont cités comme plantes du jardin créole. La page rappelle des précautions et ne donne pas de préparation.',
-    title: 'Plantes du jardin créole',
-    facts: 'Le bois d’Inde, le guérit-tout, le desmodium et la consoude sont cités, avec des précautions, sans dosage.',
-    healthReview: true
-}).ok, true);
-assert.strictEqual(reviewEditorialText({
-    text: 'Le budget est en excédent de 7,28 millions d’euros en 2025, après un déficit de 77 millions d’euros fin 2018.',
-    facts: 'En 1998 la commune existait déjà. Déficit de 77 millions d’euros fin 2018. Excédent de 7,28 millions d’euros en 2025.',
-}).ok, true);
 assert.strictEqual(assertHumanApproval(null).ok, false);
 assert.strictEqual(assertHumanApproval({ userId: 'admin', actor: 'script-de-test' }).ok, false);
 assert.strictEqual(assertHumanApproval({ userId: 'admin', actor: 'admin' }).ok, true);

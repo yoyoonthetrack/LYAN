@@ -274,9 +274,27 @@
                     <input type="text" id="globalAdminSearch" placeholder="Rechercher membre, mission, paiement, ticket ou bot... (⌘ K)" readonly>
                     <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">⌘ K</span>
                 </div>
-                <div class="admin-env-pill">
-                    <i class="ph-bold ph-circle-wavy-check"></i> Production • Tous les Territoires DOM
+                <div class="admin-env-pill" id="adminEnvPill">
+                    <i class="ph-bold ph-circle-wavy-check"></i> <span id="adminEnvPillLabel">Environnement</span>
                 </div>
+                <script>
+                    (function () {
+                        var host = String(location.hostname || '');
+                        var label = document.getElementById('adminEnvPillLabel');
+                        var pill = document.getElementById('adminEnvPill');
+                        var staging = host === 'staging.lyann.app' || host.indexOf('staging') !== -1;
+                        if (!label || !pill) return;
+                        if (staging) {
+                            label.textContent = 'STAGING — Environnement de test';
+                            pill.classList.add('is-staging');
+                        } else if (host === 'lyann.app' || host === 'www.lyann.app' || host === 'admin.lyann.app') {
+                            label.textContent = 'Production • Tous les Territoires DOM';
+                        } else {
+                            label.textContent = 'STAGING — Environnement de test';
+                            pill.classList.add('is-staging');
+                        }
+                    })();
+                </script>
             </div>
 
             <div class="admin-header-right">

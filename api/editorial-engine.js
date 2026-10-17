@@ -8,7 +8,7 @@ const EDITORIAL_BOTS = [
         name: 'LYANN Actu',
         specialty: 'Actualités locales',
         territories: ['guadeloupe', 'martinique'],
-        maxPerDay: 4,
+        maxPerDay: 3,
         healthReview: false,
         bio: 'Compte éditorial automatisé de LYANN. Il reprend des faits publiés par la presse locale et les sites officiels de Guadeloupe et de Martinique, avec la source.',
         sources: [
@@ -23,7 +23,7 @@ const EDITORIAL_BOTS = [
         name: 'LYANN Rimèd',
         specialty: 'Plantes et savoirs locaux',
         territories: ['guadeloupe', 'martinique'],
-        maxPerDay: 1,
+        maxPerDay: 3,
         healthReview: true,
         bio: 'Compte éditorial automatisé de LYANN. Il présente des plantes et des usages documentés par des sources botaniques. Toute indication de santé reste en attente d’une validation humaine.',
         sources: [
@@ -36,7 +36,7 @@ const EDITORIAL_BOTS = [
         name: 'LYANN Jardinaj',
         specialty: 'Jardin et agriculture tropicale',
         territories: ['guadeloupe', 'martinique'],
-        maxPerDay: 2,
+        maxPerDay: 3,
         healthReview: false,
         bio: 'Compte éditorial automatisé de LYANN. Il relaie des conseils de jardin et d’agriculture adaptés au climat tropical, à partir de sources agricoles publiques.',
         sources: [
@@ -50,7 +50,7 @@ const EDITORIAL_BOTS = [
         name: 'LYANN Trafik',
         specialty: 'Circulation',
         territories: ['guadeloupe'],
-        maxPerDay: 4,
+        maxPerDay: 3,
         healthReview: false,
         bio: 'Compte éditorial automatisé de LYANN. Il reprend les communiqués de circulation publiés par les autorités routières de Guadeloupe.',
         sources: [
@@ -129,6 +129,31 @@ function draftFromSource(item, bot) {
     };
 }
 
+function editorialPassSlot(now = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'America/Guadeloupe',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(now);
+    const value = (type) => parts.find((part) => part.type === type).value;
+    const hour = Number(value('hour'));
+    const slot = hour < 12 ? '07' : hour < 18 ? '12' : '18';
+    return `${value('year')}-${value('month')}-${value('day')}T${slot}`;
+}
+
+function guadeloupeDayStart(now = new Date()) {
+    const day = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Guadeloupe',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(now);
+    return new Date(`${day}T04:00:00.000Z`).toISOString();
+}
+
 function canCollect(bot, publishedToday) {
     if (!bot || bot.status === 'SUSPENDED' || bot.status === 'PAUSED') return false;
     return Number(publishedToday || 0) < Number(bot.maxPerDay || 1);
@@ -201,15 +226,9 @@ function matchesTerms(item, terms) {
 
 function essentialFacts(facts) {
     const text = String(facts || '');
+    const years = text.match(/\b(?:19|20)\d{2}\b/g) || [];
     const amounts = text.match(/\d+(?:[.,]\d+)?\s*millions?(?:\s*d['’]euros)?|\d+(?:[.,]\d+)?\s*(?:€|euros?)/gi) || [];
-    const years = [];
-    const yearRe = /\b(?:19|20)\d{2}\b/g;
-    let match;
-    while ((match = yearRe.exec(text))) {
-        const around = text.slice(Math.max(0, match.index - 28), match.index + match[0].length + 28);
-        if (/\d+(?:[.,]\d+)?\s*millions?|\d+\s*(?:€|euros?)/i.test(around)) years.push(match[0]);
-    }
-    return [...new Set([...amounts, ...years])];
+    return [...new Set([...years, ...amounts])];
 }
 
 function factAppears(text, token) {
@@ -217,22 +236,8 @@ function factAppears(text, token) {
     return compact(text).includes(compact(token));
 }
 
-function hasMedicalPromise(value) {
-    const text = String(value || '');
-    const claim = /soulage\w*|gu[ée]rit\w*|soigne\w*|apais\w*|efficac\w*|b[ée]n[ée]fiqu\w*/gi;
-    let match;
-    while ((match = claim.exec(text))) {
-        if (/^gu[ée]rit-tout/i.test(text.slice(match.index))) continue;
-        const before = text.slice(Math.max(0, match.index - 28), match.index).toLowerCase();
-        if (/\bne\b|\bpas\b|\baucun|\bsans\b|\bni\b/.test(before)) continue;
-        return true;
-    }
-    return /\bdosage\s+de\b|\bprenez\b/i.test(text);
-}
-
 function reviewEditorialText(input) {
     const text = String(input && input.text || '').trim();
-    const title = String(input && input.title || '').trim();
     const facts = String(input && input.facts || '').trim();
     const reasons = [];
     if (facts.length < 40) reasons.push('faits insuffisants');
@@ -240,8 +245,8 @@ function reviewEditorialText(input) {
     for (const token of essentialFacts(facts)) {
         if (!factAppears(text, token)) reasons.push('fait essentiel absent: ' + token);
     }
-    if (/il est important de|en conclusion|n['’]hésitez pas/i.test(text)) reasons.push('formule de remplissage');
-    if (input && input.healthReview && (hasMedicalPromise(text) || hasMedicalPromise(title))) {
+    if (/il est important de noter|en conclusion|n['’]hésitez pas/i.test(text)) reasons.push('formule de remplissage');
+    if (input && input.healthReview && /soulage|gu[ée]rit|efficace|b[ée]n[ée]fiques?|apais|soigne|dosage|pr[ée]paration/i.test(text)) {
         reasons.push('affirmation thérapeutique insuffisamment fondée');
     }
     return { ok: reasons.length === 0, reasons };
@@ -277,9 +282,10 @@ module.exports = {
     parseEventJsonLd,
     isFresh,
     matchesTerms,
+    editorialPassSlot,
+    guadeloupeDayStart,
     acceptRewrittenText,
     essentialFacts,
-    hasMedicalPromise,
     reviewEditorialText,
     assertHumanApproval
 };

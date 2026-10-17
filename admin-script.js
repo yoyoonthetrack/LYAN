@@ -3010,9 +3010,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const bots = await maisonJson('/v1/admin/editorial/bots');
             const proposals = await maisonJson('/v1/admin/editorial/proposals');
             const rows = proposals.proposals || [];
-            const pending = rows.filter((item) => item.approval_status === 'PENDING' && item.status !== 'CANCELLED');
+            const nothing = (item) => item.metadata && item.metadata.outcome === 'nothing_to_propose';
+            const collectionError = (item) => item.status === 'FAILED' || (item.metadata && item.metadata.outcome === 'collection_error');
+            const pending = rows.filter((item) => item.approval_status === 'PENDING' && item.status !== 'CANCELLED' && !nothing(item) && !collectionError(item));
             const approved = rows.filter((item) => item.approval_status === 'APPROVED');
-            const rejected = rows.filter((item) => item.approval_status === 'REJECTED' || item.status === 'CANCELLED');
+            const rejected = rows.filter((item) => (item.approval_status === 'REJECTED' || item.status === 'CANCELLED') && !nothing(item) && !collectionError(item));
+            const errors = rows.filter(collectionError);
+            const promptTokens = rows.reduce((sum, item) => sum + Number(item.metadata && item.metadata.prompt_tokens || 0), 0);
+            const completionTokens = rows.reduce((sum, item) => sum + Number(item.metadata && item.metadata.completion_tokens || 0), 0);
             const badge = document.getElementById('sidebarEditorialBadge');
             if (badge) badge.textContent = String(pending.length);
             const summary = document.getElementById('editorialSummary');
@@ -3022,7 +3027,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ['Validées', approved.length],
                     ['Refusées', rejected.length],
                     ['Agents', (bots.bots || []).length],
+                    ['Erreurs de collecte', errors.length],
                     ['Prochain passage', 'Désactivé'],
+                    ['Jetons déjà utilisés', `${promptTokens} + ${completionTokens}`],
                     ['Budget', '5 USD, sans remise à zéro']
                 ].map(([label, value]) => `<div class="admin-card" style="padding:12px;"><div class="maison-muted">${maisonEsc(label)}</div><strong>${maisonEsc(value)}</strong></div>`).join('');
             }
@@ -3032,15 +3039,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <h3 style="margin:8px 0 4px;">${maisonEsc(bot.agent_name)}</h3>
                     <p class="maison-muted">${maisonEsc(bot.status || '')} · ${maisonEsc(bot.badge || '')}</p>
                     <p class="maison-muted">Sources : ${(bot.sources || []).map((source) => maisonEsc(source.name)).join(' · ') || '—'}</p>
-                    <p class="maison-muted">Maximum : ${maisonEsc(bot.maxPerDay || '—')} / jour · passages préparés 07:00, 12:00, 18:00 (non activés)</p>
+                    <p class="maison-muted">Maximum : 3 propositions / jour · passages 07:00, 12:00, 18:00 (non activés)</p>
+                    <p class="maison-muted">${pending.some((item) => item.agent_name === bot.agent_name) ? 'Brouillon en attente' : 'Aucun brouillon en attente. Rien n’est inventé s’il n’y a rien à proposer.'}</p>
                     <button type="button" class="admin-btn admin-btn-secondary" data-editorial-status="${maisonEsc(bot.id)}" data-next="${bot.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED'}">${bot.status === 'SUSPENDED' ? 'Réactiver' : 'Suspendre'}</button>
                 </article>
             `).join('') || '<p class="maison-muted">Aucun compte éditorial.</p>';
+            const versionOf = (item) => {
+                const siblings = rows.filter((other) => other.agent_id === item.agent_id && other.metadata && item.metadata && other.metadata.source_url === item.metadata.source_url);
+                const newerPending = siblings.some((other) => other.id !== item.id && other.approval_status === 'PENDING' && other.status !== 'CANCELLED' && new Date(other.created_at) > new Date(item.created_at));
+                if (newerPending) return 'Ancienne version';
+                const hasOlder = siblings.some((other) => other.id !== item.id && new Date(other.created_at) < new Date(item.created_at));
+                return hasOlder ? 'Nouvelle proposition' : 'Proposition actuelle';
+            };
             const visible = pending.concat(approved, rejected);
-            listEl.innerHTML = `<h3 style="margin-top:0;">Propositions</h3>` + (visible.map((item) => `
+            listEl.innerHTML = `<h3 style="margin-top:0;">Propositions</h3>` + (errors.length ? `<p class="maison-muted">Erreurs de collecte : ${errors.map((item) => `${maisonEsc(item.agent_name || '')} — ${maisonEsc(item.error || item.instruction || '')}`).join(' · ')}</p>` : '') + (visible.map((item) => `
                 <article class="admin-card" style="padding:12px; margin-bottom:10px;" data-proposal="${maisonEsc(item.id)}">
                     <strong>${maisonEsc(item.agent_name || '')}</strong>
-                    <span class="maison-muted"> · ${maisonEsc(item.title || '')}</span>
+                    <span class="maison-muted"> · ${maisonEsc(versionOf(item))} · ${maisonEsc(item.title || '')}</span>
                     <p class="maison-muted">Statut : ${maisonEsc(item.approval_status || '')}${item.metadata?.human_validation ? '' : ' · pas encore validé par un administrateur'}</p>
                     <p>Source : <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a>${item.metadata?.original_published_at ? ` · ${maisonEsc(item.metadata.original_published_at)}` : ''}</p>
                     <p class="maison-muted">Faits : ${maisonEsc(item.metadata?.facts || '—')}</p>
@@ -3063,24 +3078,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             });
             listEl.querySelectorAll('[data-proposal]').forEach((card) => {
-                card.querySelector('.editorial-save')?.addEventListener('click', async () => {
-                    await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/revise`, {
-                        method: 'POST',
-                        body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
-                    });
-                    await loadEditorialDesk();
-                });
-                card.querySelector('.editorial-publish')?.addEventListener('click', async () => {
-                    await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/publish`, {
-                        method: 'POST',
-                        body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
-                    });
-                    await loadEditorialDesk();
-                });
-                card.querySelector('.editorial-reject')?.addEventListener('click', async () => {
-                    await maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/reject`, { method: 'POST', body: '{}' });
-                    await loadEditorialDesk();
-                });
+                const run = (action) => async () => {
+                    try {
+                        await action();
+                        await loadEditorialDesk();
+                    } catch (err) {
+                        alert(err.message);
+                    }
+                };
+                card.querySelector('.editorial-save')?.addEventListener('click', run(() => maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/revise`, {
+                    method: 'POST',
+                    body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
+                })));
+                card.querySelector('.editorial-publish')?.addEventListener('click', run(() => maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/publish`, {
+                    method: 'POST',
+                    body: JSON.stringify({ content: card.querySelector('.editorial-text')?.value || '' })
+                })));
+                card.querySelector('.editorial-reject')?.addEventListener('click', run(() => maisonJson(`/v1/admin/editorial/proposals/${card.getAttribute('data-proposal')}/reject`, { method: 'POST', body: '{}' })));
             });
         } catch (err) {
             botsEl.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;
