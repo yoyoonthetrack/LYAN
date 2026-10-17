@@ -232,6 +232,9 @@ window.runAdminAuthCheck = async function(reason = 'BOOT') {
                     window.adminDataLoaded = true;
                     loadAdminRealData();
                 }
+                if (window.location.hash === '#comptes-editoriaux') {
+                    document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.click();
+                }
                 return;
             }
         }
@@ -263,6 +266,9 @@ window.runAdminAuthCheck = async function(reason = 'BOOT') {
                         if (typeof loadAdminRealData === 'function' && !window.adminDataLoaded) {
                             window.adminDataLoaded = true;
                             loadAdminRealData();
+                        }
+                        if (window.location.hash === '#comptes-editoriaux') {
+                            document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.click();
                         }
                         return;
                     }
