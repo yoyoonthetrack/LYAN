@@ -2790,6 +2790,79 @@ safeDomReady(() => {
         overlay.hidden = false;
     }
 
+    window.renderBokantajCommentRow = function(comment, targetId) {
+        const author = comment.profiles;
+        const name = author ? window.formatPublicName(author, null, 'Lyanneur') : 'Lyanneur';
+        const avatar = window.getLyannAvatarUrl(author?.avatar_url) || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author_id}`;
+        const date = new Date(comment.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+        const isChild = !!comment.parent_comment_id;
+        const me = window.LYANN_AUTH_STATE?.getSnapshot?.()?.userId || window.CURRENT_USER_ID || '';
+        const mine = me && String(comment.author_id) === String(me);
+        const owner = mine ? `
+            <span class="comment-owner-actions">
+                <button type="button" class="btn-edit-own-comment" data-comment-id="${comment.id}" data-target-id="${targetId}">Modifier</button>
+                <button type="button" class="btn-delete-own-comment" data-comment-id="${comment.id}" data-target-id="${targetId}">Supprimer</button>
+            </span>` : '';
+        return `
+            <div class="comment-item-row" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
+                <img src="${avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" alt="">
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <strong style="color: #1E2822;">${escapeSearchHtml(name)}</strong>
+                        <span style="font-size: 0.75rem; color: #94A3B8;">${date}</span>
+                    </div>
+                    <div class="comment-body" style="color: #334155; margin-top: 2px;">${escapeSearchHtml(comment.content)}</div>
+                    <div style="margin-top: 6px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <button type="button" class="btn-reply-comment" data-comment-id="${comment.id}" data-target-id="${targetId}" data-author-name="${escapeSearchHtml(name)}" style="background: none; border: none; padding: 0; color: #4A7C59; font-size: 0.86rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 36px;">
+                            <i class="ph ph-arrow-u-up-left"></i> Répondre
+                        </button>
+                        ${owner}
+                    </div>
+                </div>
+            </div>`;
+    };
+
+    window.editMyComment = async function(commentId, currentText, targetId) {
+        if (!commentId) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client?.updateComment) return;
+        const next = window.lyannPrompt
+            ? await window.lyannPrompt('Modifier le commentaire', 'info', currentText || '')
+            : window.prompt('Modifier le commentaire', currentText || '');
+        if (next == null) return;
+        try {
+            await client.updateComment(commentId, next);
+            if (window.NotificationService) window.NotificationService.showToast('success', 'Commentaire mis à jour.');
+            const toggle = document.querySelector(`.btn-comments-toggle[data-target-id="${targetId}"]`);
+            const listEl = document.getElementById(`comments-list-${targetId}`);
+            if (listEl && client.getComments) {
+                const comments = await client.getComments(targetId, toggle?.dataset.targetType || 'POST');
+                listEl.innerHTML = comments.map((row) => window.renderBokantajCommentRow(row, targetId)).join('');
+            }
+        } catch (err) {
+            if (window.lyannAlert) window.lyannAlert(err.message || 'La modification n’a pas abouti.');
+        }
+    };
+
+    window.deleteMyComment = async function(commentId, targetId) {
+        if (!commentId) return;
+        const confirmed = window.lyannConfirm
+            ? await window.lyannConfirm('Vous êtes sûr de vouloir supprimer votre commentaire ?')
+            : window.confirm('Vous êtes sûr de vouloir supprimer votre commentaire ?');
+        if (!confirmed) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client?.deleteComment) return;
+        try {
+            const ok = await client.deleteComment(commentId);
+            if (!ok) throw new Error('La suppression n’a pas abouti.');
+            if (window.NotificationService) window.NotificationService.showToast('success', 'Commentaire supprimé.');
+            const row = document.querySelector(`.btn-delete-own-comment[data-comment-id="${commentId}"]`)?.closest('.comment-item-row');
+            if (row) row.remove();
+        } catch (err) {
+            if (window.lyannAlert) window.lyannAlert(err.message || 'La suppression n’a pas abouti.');
+        }
+    };
+
     window.editMyPost = async function(postId) {
         if (!postId) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
@@ -2811,8 +2884,8 @@ safeDomReady(() => {
     window.deleteMyPost = async function(postId) {
         if (!postId) return;
         const confirmed = window.lyannConfirm
-            ? await window.lyannConfirm('Supprimer cette publication ?')
-            : window.confirm('Supprimer cette publication ?');
+            ? await window.lyannConfirm('Vous êtes sûr de vouloir supprimer votre publication ?')
+            : window.confirm('Vous êtes sûr de vouloir supprimer votre publication ?');
         if (!confirmed) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
         if (!client?.deletePost) return;
@@ -2825,10 +2898,10 @@ safeDomReady(() => {
         }
     };
 
-    window.editMyAnnouncement = async function(requestId) {
+    window.openAnnouncementEditor = async function(requestId) {
         if (!requestId) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
-        if (!client?.getRequest || !client?.updateRequest) return;
+        if (!client?.getRequest || typeof window.openLyannWizard !== 'function') return;
         let current = null;
         try {
             current = await client.getRequest(requestId);
@@ -2836,29 +2909,52 @@ safeDomReady(() => {
             if (window.lyannAlert) window.lyannAlert(err.message || 'Annonce introuvable.');
             return;
         }
-        const title = window.lyannPrompt
-            ? await window.lyannPrompt('Titre de l’annonce', 'info', current?.title || '')
-            : window.prompt('Titre de l’annonce', current?.title || '');
-        if (title == null) return;
-        const description = window.lyannPrompt
-            ? await window.lyannPrompt('Description', 'info', current?.description || '')
-            : window.prompt('Description', current?.description || '');
-        if (description == null) return;
-        try {
-            await client.updateRequest(requestId, {
-                title: String(title).trim() || current?.title,
-                description: String(description).trim()
-            });
-            if (window.NotificationService) window.NotificationService.showToast('success', 'Annonce mise à jour.');
-            const session = window.LYANN_AUTH_STATE?.getSnapshot?.();
-            const userId = session?.userId || window.CURRENT_USER_ID;
-            if (userId && document.getElementById('monActiviteContainer') && typeof window.switchActivityTab === 'function') {
-                await window.switchActivityTab('requests', userId);
+        if (!current) return;
+        if (typeof window.closeLyannDetailSurface === 'function') window.closeLyannDetailSurface('edit');
+        if (typeof window.closeUserAccountModal === 'function') window.closeUserAccountModal();
+        window._lyannEditingRequestId = requestId;
+        await window.openLyannWizard({ editingRequestId: requestId });
+        const titleInput = document.getElementById('wizardTitleInput');
+        const descInput = document.getElementById('wizardDescInput');
+        const titleBlock = document.getElementById('wizardTitleBlock');
+        if (titleBlock) titleBlock.hidden = false;
+        if (titleInput) titleInput.value = current.title || '';
+        if (descInput) descInput.value = current.description || '';
+        const dateType = document.getElementById('wizardDateType');
+        if (dateType && current.date_mode) dateType.value = current.date_mode;
+        if (typeof window.updateWizardDateState === 'function') window.updateWizardDateState();
+        if (current.date_mode === 'EXACT' && current.scheduled_at) {
+            const when = new Date(current.scheduled_at);
+            if (!Number.isNaN(when.getTime())) {
+                const day = document.getElementById('wizardDateInput');
+                const time = document.getElementById('wizardTimeInput');
+                if (day) day.value = when.toISOString().slice(0, 10);
+                if (time) time.value = when.toISOString().slice(11, 16);
             }
-        } catch (err) {
-            if (window.lyannAlert) window.lyannAlert(err.message || 'La modification n’a pas abouti.');
         }
+        const choice = current.price_mode === 'FIXED' ? 'fixe' : current.price_mode === 'RANGE' ? 'fourchette' : 'devis';
+        window.wizardBudgetChoice = choice;
+        const radio = document.querySelector(`input[name="wizardBudget"][value="${choice}"]`);
+        if (radio) radio.checked = true;
+        if (current.budget != null) {
+            const amount = document.getElementById(choice === 'fourchette' ? 'wizardBudgetMinInput' : 'wizardBudgetInput');
+            if (amount) amount.value = current.budget;
+        }
+        if (current.budget_max != null) {
+            const max = document.getElementById('wizardBudgetMaxInput');
+            if (max) max.value = current.budget_max;
+        }
+        if (typeof window.updateWizardBudgetState === 'function') window.updateWizardBudgetState();
+        const citySelect = document.getElementById('wizardCitySelect');
+        const cityName = String(current.location || '').split('(')[0].trim();
+        if (citySelect && cityName) {
+            const option = Array.from(citySelect.options).find((item) => item.value === cityName || item.textContent.trim() === cityName);
+            if (option) citySelect.value = option.value;
+        }
+        const submit = document.getElementById('wizardBtnSubmit');
+        if (submit) submit.innerHTML = 'ENREGISTRER';
     };
+    window.editMyAnnouncement = window.openAnnouncementEditor;
 
     function bokantajOrigin(filters) {
         const geo = window.LYANN_GEO;
@@ -3177,19 +3273,23 @@ safeDomReady(() => {
                             `;
                         } else {
                             ctaRowHTML = `
-                                <div class="lyann-cta-row lyann-own-actions" style="display: grid; grid-template-columns: 1fr auto; gap: 10px; width: 100%; box-sizing: border-box; margin-top: 8px; align-items: center;">
-                                    ${secondaryCtaHTML}
-                                    <details class="lyann-post-menu">
-                                        <summary aria-label="Actions de l'annonce"><i class="ph ph-dots-three-bold"></i></summary>
-                                        <div class="lyann-post-menu-panel">
-                                            <button type="button" class="btn-edit-own-lyann" data-request-id="${targetId}">Modifier</button>
-                                            <button type="button" class="btn-delete-own-lyann" data-request-id="${targetId}">Supprimer</button>
-                                        </div>
-                                    </details>
+                                <div class="lyann-own-toolbar">
+                                    <button type="button" class="is-edit btn-open-lyann-detail" data-request-id="${targetId}"><i class="ph ph-eye"></i> Voir</button>
+                                    <button type="button" class="is-edit btn-edit-own-lyann" data-request-id="${targetId}"><i class="ph ph-pencil-simple"></i> Modifier</button>
+                                    <button type="button" class="is-delete btn-delete-own-lyann" data-request-id="${targetId}"><i class="ph ph-trash"></i> Supprimer</button>
                                 </div>
                             `;
                         }
                     }
+
+                    const reportMenuHTML = (!isOwnPost && !isOwnLyann && targetId) ? `
+                                    <details class="lyann-post-menu">
+                                        <summary aria-label="Plus d'actions"><i class="ph ph-dots-three-bold"></i></summary>
+                                        <div class="lyann-post-menu-panel">
+                                            <button type="button" class="btn-report-feed-item" data-target-id="${targetId}" data-target-type="${targetType}">Signaler</button>
+                                        </div>
+                                    </details>` : '';
+                    const ownPostToolbar = isOwnPost ? `<div class="lyann-own-toolbar"><button type="button" class="is-edit btn-edit-own-post" data-post-id="${targetId}"><i class="ph ph-pencil-simple"></i> Modifier</button><button type="button" class="is-delete btn-delete-own-post" data-post-id="${targetId}"><i class="ph ph-trash"></i> Supprimer</button></div>` : '';
 
                     return `
                         <div class="flash-card ${isLyann ? 'lyann-card' : ''}" id="${post.id || ''}" style="${isLyann ? 'background: #FAF6F0; border-radius: 20px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid rgba(74, 124, 89, 0.28); box-shadow: 0 4px 16px rgba(15, 23, 18, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03); width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;' : 'background: #FFFFFF; border-radius: 20px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid rgba(0, 0, 0, 0.12); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02); width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;'}">
@@ -3204,20 +3304,7 @@ safeDomReady(() => {
                                             <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${locationText ? `<i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ` : ''}${distanceLabel ? `${window.escapeHtmlAttr(distanceLabel)} · ` : ''}${timeAgoText}${budgetHTML}</span>
                                         </div>
                                     </div>
-                                    ${isOwnPost ? `
-                                    <details class="lyann-post-menu">
-                                        <summary aria-label="Actions de la publication"><i class="ph ph-dots-three-bold"></i></summary>
-                                        <div class="lyann-post-menu-panel">
-                                            <button type="button" class="btn-edit-own-post" data-post-id="${targetId}">Modifier</button>
-                                            <button type="button" class="btn-delete-own-post" data-post-id="${targetId}">Supprimer</button>
-                                        </div>
-                                    </details>` : (!isOwnLyann && targetId ? `
-                                    <details class="lyann-post-menu">
-                                        <summary aria-label="Plus d'actions"><i class="ph ph-dots-three-bold"></i></summary>
-                                        <div class="lyann-post-menu-panel">
-                                            <button type="button" class="btn-report-feed-item" data-target-id="${targetId}" data-target-type="${targetType}">Signaler</button>
-                                        </div>
-                                    </details>` : '')}
+                                    ${reportMenuHTML}
                                     <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-favorite-id="${targetId}" data-fav-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-fav-id="${targetId}" data-surface="bokantaj-feed" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                                         <i class="ph ph-bookmark-simple"></i>
                                     </button>
@@ -3248,6 +3335,7 @@ safeDomReady(() => {
                                     </div>
                                 </div>
 
+                                ${ownPostToolbar}
                                 <!-- L2: METIER CTA ROW (2 EQUAL WIDTH BUTTONS: VOIR + JE PEUX AIDER) -->
                                 ${ctaRowHTML}
                             </div>
@@ -3384,30 +3472,7 @@ safeDomReady(() => {
                         if (cmts.length === 0) {
                             return `<div style="font-size: 0.84rem; color: #94A3B8; text-align: center; padding: 6px 0;">Aucun commentaire pour le moment. Soyez le premier à répondre !</div>`;
                         }
-                        return cmts.map(c => {
-                            const author = c.profiles;
-                            const name = author ? window.formatPublicName(author, null, 'Lyanneur') : 'Lyanneur';
-                            const avatar = window.getLyannAvatarUrl(author?.avatar_url);
-                            const date = new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-                            const isChild = !!c.parent_comment_id;
-                            return `
-                                <div class="comment-item-row" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
-                                    <img src="${avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
-                                    <div style="flex: 1;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <strong style="color: #1E2822;">${escapeSearchHtml(name)}</strong>
-                                            <span style="font-size: 0.75rem; color: #94A3B8;">${date}</span>
-                                        </div>
-                                        <div style="color: #334155; margin-top: 2px;">${escapeSearchHtml(c.content)}</div>
-                                        <div style="margin-top: 4px; display: flex; align-items: center; gap: 12px;">
-                                            <button type="button" class="btn-reply-comment" data-comment-id="${c.id}" data-target-id="${targetId}" data-author-name="${escapeSearchHtml(name)}" style="background: none; border: none; padding: 0; color: #4A7C59; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                                                <i class="ph ph-arrow-u-up-left"></i> Répondre
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
+                        return cmts.map(c => window.renderBokantajCommentRow(c, targetId)).join('');
                     }
 
                     listEl.innerHTML = renderCommentItems(comments);
@@ -3419,6 +3484,20 @@ safeDomReady(() => {
         if (!window.commentReplyDelegatorBound) {
             window.commentReplyDelegatorBound = true;
             document.addEventListener('click', (e) => {
+                const editCommentBtn = e.target.closest('.btn-edit-own-comment');
+                if (editCommentBtn) {
+                    e.preventDefault();
+                    const row = editCommentBtn.closest('.comment-item-row');
+                    const current = row?.querySelector('.comment-body')?.textContent || '';
+                    window.editMyComment?.(editCommentBtn.dataset.commentId, current, editCommentBtn.dataset.targetId);
+                    return;
+                }
+                const deleteCommentBtn = e.target.closest('.btn-delete-own-comment');
+                if (deleteCommentBtn) {
+                    e.preventDefault();
+                    window.deleteMyComment?.(deleteCommentBtn.dataset.commentId, deleteCommentBtn.dataset.targetId);
+                    return;
+                }
                 const replyBtn = e.target.closest('.btn-reply-comment');
                 if (replyBtn) {
                     e.preventDefault();
@@ -3464,30 +3543,7 @@ safeDomReady(() => {
                         toggleBtnLabel.textContent = comments.length > 0 ? `Commenter (${comments.length})` : 'Commenter';
                     }
                     if (listEl) {
-                        listEl.innerHTML = comments.map(c => {
-                            const author = c.profiles;
-                            const name = author ? window.formatPublicName(author, null, 'Lyanneur') : 'Lyanneur';
-                            const avatar = author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.author_id}`;
-                            const date = new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-                            const isChild = !!c.parent_comment_id;
-                            return `
-                                <div class="comment-item-row" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
-                                    <img src="${avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
-                                    <div style="flex: 1;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <strong style="color: #1E2822;">${escapeSearchHtml(name)}</strong>
-                                            <span style="font-size: 0.75rem; color: #94A3B8;">${date}</span>
-                                        </div>
-                                        <div style="color: #334155; margin-top: 2px;">${escapeSearchHtml(c.content)}</div>
-                                        <div style="margin-top: 4px; display: flex; align-items: center; gap: 12px;">
-                                            <button type="button" class="btn-reply-comment" data-comment-id="${c.id}" data-target-id="${targetId}" data-author-name="${escapeSearchHtml(name)}" style="background: none; border: none; padding: 0; color: #4A7C59; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                                                <i class="ph ph-arrow-u-up-left"></i> Répondre
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
+                        listEl.innerHTML = comments.map(c => window.renderBokantajCommentRow(c, targetId)).join('');
                     }
                 } catch (err) {
                     if (window.NotificationService) {
@@ -5250,8 +5306,8 @@ safeDomReady(() => {
     window.deleteMyAnnouncement = async function(requestId) {
         if (!requestId) return;
         const confirmed = window.lyannConfirm
-            ? await window.lyannConfirm('Supprimer cette annonce ? Elle ne sera plus visible dans les Annonces.')
-            : window.confirm('Supprimer cette annonce ? Elle ne sera plus visible dans les Annonces.');
+            ? await window.lyannConfirm('Vous êtes sûr de vouloir supprimer votre lyann ?')
+            : window.confirm('Vous êtes sûr de vouloir supprimer votre lyann ?');
         if (!confirmed) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
         if (!client || typeof client.deleteRequest !== 'function') {
@@ -8457,6 +8513,7 @@ safeDomReady(() => {
     }
 
     window.openLyannWizard = async function(prefillQuery = null) {
+        if (!prefillQuery || !prefillQuery.editingRequestId) window._lyannEditingRequestId = null;
         const directAsk = prefillQuery && typeof prefillQuery === 'object' ? prefillQuery : null;
         window._lyannDirectAskContactId = directAsk?.directContactId || null;
         window._lyannDirectAskContactName = directAsk?.directContactName || '';
@@ -8553,7 +8610,7 @@ safeDomReady(() => {
             if (curBtnNext) curBtnNext.style.setProperty('display', 'none', 'important');
             if (curBtnSubmit) {
                 curBtnSubmit.style.setProperty('display', 'inline-flex', 'important');
-                curBtnSubmit.innerHTML = window._lyannDirectAskContactId ? 'ENVOYER' : 'PUBLIER';
+                curBtnSubmit.innerHTML = window._lyannEditingRequestId ? 'ENREGISTRER' : (window._lyannDirectAskContactId ? 'ENVOYER' : 'PUBLIER');
             }
             syncDirectAudience();
             
@@ -9223,10 +9280,40 @@ safeDomReady(() => {
             const urgencyVal = { ASAP: 'urgent', FLEXIBLE: 'flexible', EXACT: 'date', TO_AGREE: 'date' }[schedule.date_mode] || 'flexible';
             const location = `${cityVal} (${territoryVal})`;
 
+            const editingId = window._lyannEditingRequestId || null;
             btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<i class="ph ph-spinner spin"></i> Publication...';
+            btnSubmit.innerHTML = editingId
+                ? '<i class="ph ph-spinner spin"></i> Enregistrement...'
+                : '<i class="ph ph-spinner spin"></i> Publication...';
 
             try {
+                if (editingId) {
+                    const taxonomy = await window.LyanAI.fetchTaxonomyFromDB({ strict: true });
+                    const selectedTaxonomy = taxonomy.find(t => t.universe === document.getElementById('wizardDomain')?.value && t.category === categoryText && t.subcategory === subCatText);
+                    const updated = await window.LYANN_API_CLIENT.updateRequest(editingId, {
+                        title,
+                        description: desc,
+                        category: categoryText,
+                        taxonomy_id: selectedTaxonomy?.id || null,
+                        location,
+                        budget: price.budget,
+                        budget_max: price.budget_max,
+                        price_mode: price.price_mode,
+                        date_mode: schedule.date_mode,
+                        scheduled_at: schedule.scheduled_at,
+                        urgency: urgencyVal
+                    });
+                    window._lyannEditingRequestId = null;
+                    modalRequestHelp.classList.remove('active');
+                    document.body.style.overflow = '';
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = 'PUBLIER';
+                    if (window.NotificationService) window.NotificationService.showToast('success', 'Annonce mise à jour.');
+                    if (typeof window.loadBokantajFeedFromSupabase === 'function') window.loadBokantajFeedFromSupabase({ force: true });
+                    if (typeof window.loadExplorerResults === 'function') window.loadExplorerResults();
+                    if (updated && typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal(editingId, updated);
+                    return;
+                }
                 const taxonomy = await window.LyanAI.fetchTaxonomyFromDB({ strict: true });
                 const selectedTaxonomy = taxonomy.find(t => t.universe === document.getElementById('wizardDomain')?.value && t.category === categoryText && t.subcategory === subCatText);
                 // Call real Supabase DB API
@@ -9798,20 +9885,15 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
     if (footerEl) {
         if (isOwnLyann) {
             footerEl.innerHTML = `
-                <button type="button" class="btn btn-primary" id="btnManageMyLyann">
-                    <i class="ph ph-note-pencil"></i> Gérer mon annonce
-                </button>
-                <div class="lyann-detail-secondary">
-                    <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn">Fermer</button>
-                    <button type="button" class="btn btn-outline activity-delete-btn" id="btnDeleteMyAnnouncement"><i class="ph ph-trash"></i> Supprimer</button>
+                <div class="lyann-own-toolbar">
+                    <button type="button" class="is-edit" id="btnEditMyLyann"><i class="ph ph-pencil-simple"></i> Modifier</button>
+                    <button type="button" class="is-delete" id="btnDeleteMyAnnouncement"><i class="ph ph-trash"></i> Supprimer</button>
                 </div>
+                <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn">Fermer</button>
             `;
             bindLyannDetailFooterClose();
-            document.getElementById('btnManageMyLyann')?.addEventListener('click', () => {
-                window.closeLyannDetailSurface('manage');
-                if (typeof window.openAccountModalSubView === 'function') {
-                    window.openAccountModalSubView('activity');
-                }
+            document.getElementById('btnEditMyLyann')?.addEventListener('click', () => {
+                window.openAnnouncementEditor(requestData.id);
             });
             document.getElementById('btnDeleteMyAnnouncement')?.addEventListener('click', () => {
                 window.deleteMyAnnouncement(requestData.id);

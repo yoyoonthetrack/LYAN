@@ -1654,6 +1654,23 @@ const LYANN_API_CLIENT = {
         return data;
     },
 
+    async updateComment(commentId, content) {
+        if (!this.supabase) throw new Error('Supabase non initialisé');
+        const session = await this.getCurrentUser();
+        if (!session) throw new Error('Utilisateur non connecté');
+        const text = String(content || '').trim();
+        if (!text) throw new Error('Le commentaire est vide.');
+        const { data, error } = await this.supabase
+            .from('bokantaj_comments')
+            .update({ content: text })
+            .eq('id', commentId)
+            .eq('author_id', session.id)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+
     async deleteComment(commentId) {
         if (!this.supabase) return false;
         const session = await this.getCurrentUser();

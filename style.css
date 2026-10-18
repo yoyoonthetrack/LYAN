@@ -6003,6 +6003,66 @@ input:checked + .slider:before {
     align-items: center;
     gap: 16px;
 }
+.flash-actions-bar .flash-action-btn {
+    min-height: 44px !important;
+    font-size: 1rem !important;
+    gap: 8px !important;
+    padding: 6px 2px !important;
+}
+.flash-actions-bar .flash-action-btn i {
+    font-size: 1.65rem !important;
+}
+.lyann-own-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    margin-top: 8px;
+}
+.lyann-own-toolbar button {
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    font-family: inherit;
+}
+.lyann-own-toolbar button i { font-size: 1.2rem; }
+.lyann-own-toolbar .is-edit {
+    background: #fff;
+    border: 1.5px solid #4A7C59;
+    color: #1F3827;
+}
+.lyann-own-toolbar .is-delete {
+    background: #fff;
+    border: 1.5px solid #E7C4C0;
+    color: #9B3A32;
+}
+.comment-owner-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.comment-owner-actions button {
+    min-height: 36px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #D7E3DA;
+    color: #1F3827;
+    font-weight: 800;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+.comment-owner-actions .btn-delete-own-comment {
+    border-color: #E7C4C0;
+    color: #9B3A32;
+}
 
 .flash-action-btn {
     background: transparent;
