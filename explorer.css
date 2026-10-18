@@ -125,7 +125,7 @@ body.is-native-app.has-member-nav .explorer-card-actions .btn{scroll-margin-bott
 
 /* Phone, keyboard closed: bottom sheet stays within 90dvh and the actions stay on screen. */
 @media (max-width: 600px) {
-    body:not(.keyboard-open) #explorerFilters.explorer-filter-sheet {
+    body:not(.keyboard-open) #explorerFilters.explorer-filter-sheet[open] {
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -158,8 +158,8 @@ body.is-native-app.has-member-nav .explorer-card-actions .btn{scroll-margin-bott
 
 /* Annonces filter sheet: fill the visual viewport above the keyboard.
    Wide desktop keeps the centered dialog; the native app follows the keyboard in landscape too. */
-body.is-native-app.keyboard-open #explorerFilters.explorer-filter-sheet,
-body.keyboard-open #explorerFilters.explorer-filter-sheet {
+body.is-native-app.keyboard-open #explorerFilters.explorer-filter-sheet[open],
+body.keyboard-open #explorerFilters.explorer-filter-sheet[open] {
     position: fixed;
     top: var(--lyann-vv-offset, 0px);
     right: 0;
@@ -177,7 +177,7 @@ body.keyboard-open #explorerFilters.explorer-filter-sheet {
     padding: 12px 16px 12px;
 }
 @media (min-width: 601px) {
-    body.keyboard-open:not(.is-native-app) #explorerFilters.explorer-filter-sheet {
+    body.keyboard-open:not(.is-native-app) #explorerFilters.explorer-filter-sheet[open] {
         position: fixed;
         inset: 0;
         margin: auto;
@@ -234,4 +234,7 @@ body.keyboard-open #explorerFilters .explorer-sheet-actions {
         margin-top: 24px;
         padding-top: 0;
     }
+}
+#explorerFilters.explorer-filter-sheet:not([open]) {
+    display: none !important;
 }

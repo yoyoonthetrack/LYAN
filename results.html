@@ -22,7 +22,7 @@
     
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261017pale">
-    <link rel="stylesheet" href="explorer.css?v=20261017kb">
+    <link rel="stylesheet" href="explorer.css?v=20261018sheet">
     <link rel="stylesheet" href="universe-header.css?v=20261017pale">
 </head>
 <body class="results-page" data-explorer-mode="lyanneurs">
@@ -136,6 +136,11 @@
             </div>
         </header>
         <section id="explorerPanel" aria-labelledby="explorerTitle">
+            <form id="explorerSearchForm" class="explorer-search" role="search">
+                <label class="sr-only" for="explorerSearchInput">Rechercher</label>
+                <input id="explorerSearchInput" type="search" placeholder="Nom, activité ou commune" autocomplete="off">
+                <button type="submit" class="btn lyann-cta-primary" aria-label="Rechercher"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Rechercher</span></button>
+            </form>
             <div class="explorer-tools">
                 <div id="explorerCategoryPills" class="lyann-pills" aria-label="Catégories"></div>
                 <label class="explorer-category lyann-category-native">Catégorie
@@ -152,11 +157,6 @@
             <p id="explorerRanking" class="explorer-ranking">Annonces les plus récentes en premier.</p>
         </section>
         <dialog id="explorerFilters" class="explorer-filter-sheet" aria-labelledby="explorerFilterTitle">
-            <form id="explorerSearchForm" class="explorer-search explorer-search-dock" role="search">
-                <label class="sr-only" for="explorerSearchInput">Rechercher</label>
-                <input id="explorerSearchInput" type="search" placeholder="Nom, activité ou commune" autocomplete="off">
-                <button type="submit" class="btn lyann-cta-primary" aria-label="Rechercher"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Rechercher</span></button>
-            </form>
             <form method="dialog" id="explorerFilterForm">
                 <div class="explorer-sheet-heading"><h2 id="explorerFilterTitle">Affiner la recherche</h2><button type="button" id="explorerFiltersClose" aria-label="Fermer les filtres">×</button></div>
                 <div class="explorer-sheet-body">
