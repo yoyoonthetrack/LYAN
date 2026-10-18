@@ -18,6 +18,25 @@
         if (box) box.textContent = message || '';
     }
 
+    function leaveCheckoutForChat() {
+        if (global.LYANN_MESSAGING && typeof global.LYANN_MESSAGING.hideAllChildSurfaces === 'function') {
+            global.LYANN_MESSAGING.hideAllChildSurfaces();
+        } else {
+            const overlay = document.getElementById('chatCheckoutOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+    }
+
+    function explainPaymentFailure(message) {
+        setPaymentError(message);
+        leaveCheckoutForChat();
+        if (global.lyannAlert) {
+            Promise.resolve(global.lyannAlert(message, 'warning', 'Paiement non abouti')).catch(() => {});
+        } else if (typeof global.showToast === 'function') {
+            global.showToast(message, 'warning');
+        }
+    }
+
     function setPayReady(ready) {
         const submitBtn = document.getElementById('btnConfirmCheckoutPay');
         if (submitBtn) submitBtn.disabled = !ready;
@@ -200,27 +219,26 @@
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Délai dépassé lors de la confirmation Stripe.')), 20000))
             ]);
             if (result.error) {
-                const refused = 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous pouvez réessayer avec cette carte, ou annuler pour revenir au chat.';
-                setPaymentError(refused);
+                const refused = 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous êtes de retour dans la conversation : ouvrez le dossier pour réessayer.';
+                explainPaymentFailure(refused);
                 api.lastResult = { error: { message: refused } };
                 return api.lastResult;
             }
             const status = result.paymentIntent && result.paymentIntent.status;
-            if (status !== 'succeeded' && status !== 'requires_capture') {
-                const message = status === 'requires_action'
-                    ? 'Votre banque demande une confirmation. Terminez-la pour mettre le paiement en sécurité. Tant qu’elle n’est pas faite, aucun montant n’est bloqué.'
-                    : 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous pouvez réessayer, ou annuler pour revenir au chat.';
+            if (status === 'requires_action') {
+                const message = 'Votre banque demande une confirmation. Terminez-la sur cet écran pour mettre le paiement en sécurité. Tant qu’elle n’est pas faite, aucun montant n’est bloqué.';
                 setPaymentError(message);
                 api.lastResult = { error: { message } };
                 return api.lastResult;
             }
-            setPaymentError('');
-            if (global.LYANN_MESSAGING && typeof global.LYANN_MESSAGING.hideAllChildSurfaces === 'function') {
-                global.LYANN_MESSAGING.hideAllChildSurfaces();
-            } else {
-                const overlay = document.getElementById('chatCheckoutOverlay');
-                if (overlay) overlay.style.display = 'none';
+            if (status !== 'succeeded' && status !== 'requires_capture') {
+                const message = 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous êtes de retour dans la conversation : ouvrez le dossier pour réessayer.';
+                explainPaymentFailure(message);
+                api.lastResult = { error: { message } };
+                return api.lastResult;
             }
+            setPaymentError('');
+            leaveCheckoutForChat();
             // E5: never show FUNDED until server deal state validates it.
             let serverValidated = false;
             if (typeof global.lyannAwaitPaidQuote === 'function') {
@@ -255,8 +273,8 @@
             };
             return api.lastResult;
         } catch (err) {
-            const message = 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous pouvez réessayer, ou annuler pour revenir au chat.';
-            setPaymentError(message);
+            const message = 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous êtes de retour dans la conversation : ouvrez le dossier pour réessayer.';
+            explainPaymentFailure(message);
             api.lastResult = { error: { message } };
             return api.lastResult;
         } finally {
