@@ -20406,3 +20406,111 @@ html.lyann-page-leave body {
     }
 }
 
+#publicMemberProfileModal .lyann-profile-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px 10px 0;
+    background: linear-gradient(#f7f4ee 72%, rgba(247, 244, 238, 0));
+}
+#publicMemberProfileModal .lyann-profile-topbar .modal-close-btn {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important;
+    background: #fff !important;
+    color: #24352b !important;
+    border: 1px solid #e5dfd5 !important;
+}
+#publicMemberProfileModal .profile-modal-body { padding: 0 16px 28px; }
+#publicMemberProfileModal .modal-card-dashboard { background: #f7f4ee !important; }
+#publicMemberProfileModal .lyann-profile-hero-content,
+#publicMemberProfileModal .lyann-profile-hero-details,
+#publicMemberProfileModal .lyann-profile-name-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+}
+#publicMemberProfileModal .lyann-profile-display-name {
+    margin: 8px 0 0;
+    font-size: 1.45rem;
+    line-height: 1.2;
+    color: #1e2822;
+}
+#publicMemberProfileModal .lyann-profile-bio {
+    max-width: 36rem;
+    margin: 4px 0 0;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid #e7e1d6;
+    color: #24352b;
+    line-height: 1.45;
+}
+#publicMemberProfileModal .lyann-profile-cta-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 8px;
+}
+#publicMemberProfileModal .lyann-profile-cta-group .btn { min-height: 48px; border-radius: 999px; }
+#publicMemberProfileModal .lyann-profile-section,
+#publicMemberProfileModal .lyann-completion-card {
+    margin-top: 14px;
+    padding: 16px;
+    border-radius: 20px;
+    background: #fff;
+    border: 1px solid #e7e1d6;
+}
+#publicMemberProfileModal .lyann-section-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+#publicMemberProfileModal .lyann-section-title { margin: 0; font-size: 1.05rem; color: #1e2822; }
+#publicMemberProfileModal .lyann-profile-action,
+#publicMemberProfileModal .lyann-completion-chip {
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #4a7c59;
+    background: #fff;
+    color: #24352b;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+#publicMemberProfileModal .lyann-skills-flex {
+    display: grid !important;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+#publicMemberProfileModal .lyann-service-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 14px;
+    background: #f4f8f5;
+    border: 1px solid #d7e3da;
+    color: #1f3827;
+    font-weight: 700;
+}
+#publicMemberProfileModal .lyann-completion-header { margin: 0 0 10px; font-weight: 700; color: #24352b; }
+#publicMemberProfileModal .lyann-completion-items { display: flex; flex-wrap: wrap; gap: 8px; }
+#publicMemberProfileModal .lyann-avatar-edit-btn { min-width: 44px; min-height: 44px; }
+

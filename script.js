@@ -1366,17 +1366,15 @@ safeDomReady(() => {
         let completionCardHTML = '';
         if (isSelf) {
             let missingPrompts = [];
-            if (!pData.bio || pData.bio.trim().length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus"></i> Présentation</span>');
-            if (!userServices || userServices.length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus"></i> Compétences</span>');
-            if (!portfolioItems || portfolioItems.length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Réalisation</span>');
+            if (!pData.bio || pData.bio.trim().length === 0) missingPrompts.push('<button type="button" class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus" aria-hidden="true"></i> Présentation</button>');
+            if (!userServices || userServices.length === 0) missingPrompts.push('<button type="button" class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus" aria-hidden="true"></i> Compétences</button>');
+            if (!portfolioItems || portfolioItems.length === 0) missingPrompts.push('<button type="button" class="lyann-completion-chip" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus" aria-hidden="true"></i> Réalisation</button>');
 
             if (missingPrompts.length > 0) {
                 completionCardHTML = `
-                    <div class="lyann-completion-card" style="background: #FAF7F2; border: 1px solid #E4DDD2; border-radius: 16px; padding: 14px 18px; margin-bottom: 16px;">
-                        <div class="lyann-completion-header" style="font-weight: 700; font-size: 0.9rem; color: #3F5C49; margin-bottom: 8px;">
-                            <i class="ph ph-sparkle" style="color: #4A7C59;"></i> Quelques détails aident les voisins à te reconnaître
-                        </div>
-                        <div class="lyann-completion-items" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <div class="lyann-completion-card">
+                        <p class="lyann-completion-header">Quelques détails aident les voisins à te reconnaître</p>
+                        <div class="lyann-completion-items">
                             ${missingPrompts.join('')}
                         </div>
                     </div>
@@ -1390,21 +1388,21 @@ safeDomReady(() => {
         if (allSkills.length > 0) {
             servicesHTML = `
                 <div class="lyann-profile-section">
-                    <div class="lyann-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Je peux aider pour</h4>
-                        ${isSelf ? '<button type="button" class="btn btn-outline btn-sm" id="btnAddNewServiceHub">Ajouter un service</button>' : ''}
+                    <div class="lyann-section-header">
+                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving" aria-hidden="true"></i> Je peux aider pour</h4>
+                        ${isSelf ? '<button type="button" class="lyann-profile-action" id="btnAddNewServiceHub">Ajouter un service</button>' : ''}
                     </div>
-                    <div class="lyann-skills-flex" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        ${allSkills.map(s => `<span class="lyann-service-tag" style="background: rgba(74, 124, 89, 0.1); color: #1F3827; font-weight: 600; font-size: 0.84rem; padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(74, 124, 89, 0.2);"><i class="ph ph-check" style="font-size: 0.8rem; margin-right: 4px;"></i> ${window.escapeHtmlAttr(s)}</span>`).join('')}
-                    </div>
+                    <ul class="lyann-skills-flex">
+                        ${allSkills.map(s => `<li class="lyann-service-tag"><i class="ph ph-check" aria-hidden="true"></i> ${window.escapeHtmlAttr(s)}</li>`).join('')}
+                    </ul>
                 </div>
             `;
         } else if (isSelf) {
             servicesHTML = `
                 <div class="lyann-profile-section">
-                    <div class="lyann-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Je peux aider pour</h4>
-                        <button type="button" class="btn btn-outline btn-sm" id="btnAddNewServiceHub">Ajouter un service</button>
+                    <div class="lyann-section-header">
+                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving" aria-hidden="true"></i> Je peux aider pour</h4>
+                        <button type="button" class="lyann-profile-action" id="btnAddNewServiceHub">Ajouter un service</button>
                     </div>
                     <div class="lyann-zero-data" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="cursor:pointer; background: #FAF7F2; border: 1px dashed #E4DDD2; border-radius: 14px; padding: 16px; text-align: center;">
                         <span class="lyann-zero-data-title" style="font-size: 0.88rem; color: #475569; font-weight: 600;"><i class="ph ph-plus-circle"></i> Ajoute les compétences pour lesquelles tu peux aider</span>
@@ -1435,9 +1433,9 @@ safeDomReady(() => {
         if (portfolioItems && portfolioItems.length > 0) {
             portfolioHTML = `
                 <div class="lyann-profile-section">
-                    <div class="lyann-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h4 class="lyann-section-title"><i class="ph ph-images"></i> Réalisations</h4>
-                        ${isSelf ? '<button type="button" class="btn btn-outline btn-sm" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Ajouter</button>' : ''}
+                    <div class="lyann-section-header">
+                        <h4 class="lyann-section-title"><i class="ph ph-images" aria-hidden="true"></i> Réalisations</h4>
+                        ${isSelf ? '<button type="button" class="lyann-profile-action" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus" aria-hidden="true"></i> Ajouter</button>' : ''}
                     </div>
                     <div class="lyann-portfolio-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px;">
                         ${portfolioItems.map(item => `
@@ -1453,9 +1451,9 @@ safeDomReady(() => {
         } else if (isSelf) {
             portfolioHTML = `
                 <div class="lyann-profile-section">
-                    <div class="lyann-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h4 class="lyann-section-title"><i class="ph ph-images"></i> Réalisations</h4>
-                        <button type="button" class="btn btn-outline btn-sm" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Ajouter</button>
+                    <div class="lyann-section-header">
+                        <h4 class="lyann-section-title"><i class="ph ph-images" aria-hidden="true"></i> Réalisations</h4>
+                        <button type="button" class="lyann-profile-action" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus" aria-hidden="true"></i> Ajouter</button>
                     </div>
                     <div class="lyann-zero-data" onclick="window.lyannOpenAddPortfolioModal()" style="cursor:pointer; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 16px; text-align: center;">
                         <span class="lyann-zero-data-title" style="font-size: 0.88rem; color: #475569; font-weight: 600;"><i class="ph ph-image"></i> Ajoute des réalisations pour montrer ce que tu sais faire</span>
@@ -1500,14 +1498,14 @@ safeDomReady(() => {
 
         // Inject Full Layout into Modal with canonical .profile-modal-body scroller
         modalCard.innerHTML = `
-            <button class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer" onclick="if(document.getElementById('publicMemberProfileModal')) document.getElementById('publicMemberProfileModal').classList.remove('active'); document.body.style.overflow='auto'; if(typeof window.resetProfileModalScroll==='function') window.resetProfileModalScroll();" style="top:16px; right:16px; z-index:10;"><i class="ph ph-x"></i></button>
+            <div class="lyann-profile-topbar"><button type="button" class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer le profil" onclick="if(document.getElementById('publicMemberProfileModal')) document.getElementById('publicMemberProfileModal').classList.remove('active'); document.body.style.overflow='auto'; if(typeof window.resetProfileModalScroll==='function') window.resetProfileModalScroll();"><i class="ph ph-x" aria-hidden="true"></i></button></div>
 
             <div class="profile-modal-body">
                 <div class="lyann-profile-hero" style="margin-bottom: 16px;">
                     <div class="lyann-profile-hero-content">
                         <div class="lyann-profile-avatar-wrapper">
                             <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="lyann-profile-avatar-img">
-                            ${isSelf ? '<button type="button" class="lyann-avatar-edit-btn" onclick="window.lyannOpenAvatarModal()" title="Changer la photo"><i class="ph ph-camera"></i></button>' : ''}
+                            ${isSelf ? '<button type="button" class="lyann-avatar-edit-btn" onclick="window.lyannOpenAvatarModal()" aria-label="Changer la photo de profil"><i class="ph ph-camera" aria-hidden="true"></i></button>' : ''}
                         </div>
                         <div class="lyann-profile-hero-details">
                             <div class="lyann-profile-name-row">
