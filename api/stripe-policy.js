@@ -2156,6 +2156,12 @@ function stagingBrowserOriginAllowed(origin, env) {
     ]);
     const pub = stagingPublicOrigin(env);
     if (pub) allowed.add(pub);
+    if (env && (env.VERCEL_ENV === 'preview' || env.VERCEL_ENV === 'development')) {
+        [env.VERCEL_URL, env.VERCEL_BRANCH_URL].forEach((host) => {
+            const name = String(host || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+            if (name && name.endsWith('.vercel.app')) allowed.add('https://' + name);
+        });
+    }
     return allowed.has(String(origin));
 }
 

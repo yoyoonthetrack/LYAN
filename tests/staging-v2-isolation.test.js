@@ -92,6 +92,33 @@ test('HTML inject writes staging lock and never a service_role key', () => {
   assert.match(out, /lyann-runtime-config\.js/);
 });
 
+test('Vercel preview injects the staging project and still refuses production', () => {
+  const previous = {
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    LYANN_RUNTIME: process.env.LYANN_RUNTIME,
+    LYANN_E2E_ALLOW_WRITES: process.env.LYANN_E2E_ALLOW_WRITES,
+    LYANN_SUPABASE_URL: process.env.LYANN_SUPABASE_URL,
+    LYANN_SUPABASE_ANON_KEY: process.env.LYANN_SUPABASE_ANON_KEY,
+    LYANN_E2E_WRITE_PROJECT_REF: process.env.LYANN_E2E_WRITE_PROJECT_REF
+  };
+  delete process.env.LYANN_RUNTIME;
+  delete process.env.LYANN_E2E_ALLOW_WRITES;
+  process.env.VERCEL_ENV = 'preview';
+  process.env.LYANN_SUPABASE_URL = STAGING_URL;
+  process.env.LYANN_SUPABASE_ANON_KEY = STAGING_ANON;
+  process.env.LYANN_E2E_WRITE_PROJECT_REF = STAGING_V2_REF;
+  const preview = injectIsolatedSupabaseConfig('<script src="api-client.js"></script>');
+  assert.match(preview, new RegExp(STAGING_V2_REF));
+  assert.doesNotMatch(preview, /gzispjfoywklpqatjyop/);
+  process.env.LYANN_SUPABASE_URL = PRODUCTION_URL;
+  const blocked = injectIsolatedSupabaseConfig('<script src="api-client.js"></script>');
+  assert.doesNotMatch(blocked, /LYANN_SUPABASE_URL/);
+  Object.keys(previous).forEach((key) => {
+    if (previous[key] == null) delete process.env[key];
+    else process.env[key] = previous[key];
+  });
+});
+
 test('HTML inject refuses production host and Vercel production', () => {
   process.env.LYANN_E2E_ALLOW_WRITES = '1';
   process.env.LYANN_SUPABASE_URL = PRODUCTION_URL;

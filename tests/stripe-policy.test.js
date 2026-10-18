@@ -855,6 +855,12 @@ test('staging V2 return urls allow only 127.0.0.1:8098 and refuse lyann.app', ()
     assert.equal(stagingBrowserOriginAllowed('https://evil.example', withHost), false);
     assert.equal(stagingBrowserOriginAllowed('capacitor://localhost', withHost), true);
     assert.equal(stagingBrowserOriginAllowed('https://staging.lyann.app', withHost), true);
+    const previewHost = Object.assign({}, withHost, {
+        VERCEL_ENV: 'preview',
+        VERCEL_URL: 'lyan-git-feature-saved-cards-20261018-yoyo-d85d.vercel.app'
+    });
+    assert.equal(stagingBrowserOriginAllowed('https://lyan-git-feature-saved-cards-20261018-yoyo-d85d.vercel.app', previewHost), true);
+    assert.equal(stagingBrowserOriginAllowed('https://lyan-git-feature-saved-cards-20261018-yoyo-d85d.vercel.app', withHost), false);
 });
 
 function expectPricing(amount, customerFee, providerFee) {
