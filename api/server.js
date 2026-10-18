@@ -3146,7 +3146,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                 const paymentIntent = await stripe.paymentIntents.create({
                     amount: frozen.customer_total_cents,
                     currency: 'eur',
-                    automatic_payment_methods: { enabled: true },
+                    payment_method_types: ['card'],
                     metadata: {
                         payment_id: existingPayment.id,
                         milestone_id: milestone.id,
@@ -3257,7 +3257,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: Number(financials.customer_total_cents),
                 currency: 'eur',
-                automatic_payment_methods: { enabled: true },
+                payment_method_types: ['card'],
                 metadata: {
                     payment_id: paymentRecord.id,
                     milestone_id: milestone.id,
