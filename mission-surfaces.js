@@ -240,8 +240,13 @@
         return rejected[0] || quotes[0] || null;
     }
 
+    let dossierPaintPending = null;
+
     function paintDossierSheet(dossier, quotes) {
-        if (paintingDossier) return;
+        if (paintingDossier) {
+            dossierPaintPending = { dossier: dossier, quotes: quotes };
+            return;
+        }
         paintingDossier = true;
         try {
         const overlay = document.getElementById(DOSSIER_ID);
@@ -316,6 +321,11 @@
         }
         } finally {
             paintingDossier = false;
+            if (dossierPaintPending) {
+                const next = dossierPaintPending;
+                dossierPaintPending = null;
+                paintDossierSheet(next.dossier, next.quotes);
+            }
         }
     }
 

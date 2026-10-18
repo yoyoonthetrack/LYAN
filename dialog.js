@@ -177,11 +177,11 @@ window.alert = function(message) {
     window.lyannAlert(String(message == null ? '' : message));
 };
 
-window.lyannConfirm = function(message, type = 'warning') {
+window.lyannConfirm = function(message, type = 'warning', title) {
     return new Promise((resolve) => {
         showDialog({
             type: type,
-            title: getTitleForType(type),
+            title: title || getTitleForType(type),
             message: message,
             showInput: false,
             buttons: [

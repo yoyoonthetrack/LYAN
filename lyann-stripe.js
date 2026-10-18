@@ -438,24 +438,18 @@
             const sync = await global.lyannAwaitPaidQuote();
             serverValidated = !!(sync && (sync.serverValidated || sync.funded));
         }
-        const title = (document.getElementById('coPrestationTitle') || {}).textContent || 'cette mission';
-        const works = (document.getElementById('coDevisAmount') || {}).textContent || '';
-        const total = (document.getElementById('coTotalAmount') || {}).textContent || '';
+        if (serverValidated && typeof global.announcePaidMission === 'function') {
+            await global.announcePaidMission(intentId || paymentIntentId);
+        }
         const successMessage = serverValidated
-            ? [
-                'Paiement sécurisé.',
-                'Mission : ' + title + '.',
-                works ? ('Prestation : ' + works + '.') : '',
-                total ? ('Montant mis en sécurité : ' + total + '.') : '',
-                'L’argent est conservé par LYANN. Il n’est pas versé tout de suite au Lyanneur.',
-                'La mission peut maintenant commencer.',
-                'Quand la prestation sera terminée, vous la validerez dans ce même chat. Cela libérera les fonds pour le Lyanneur.'
-            ].filter(Boolean).join(' ')
+            ? 'Paiement sécurisé.'
             : 'Le paiement a été envoyé. Il n’est pas encore confirmé comme sécurisé. Restez dans cette conversation : l’état se met à jour dès que la banque a validé. Aucun fonds n’est libéré avant cette confirmation.';
-        if (global.lyannAlert) {
-            Promise.resolve(global.lyannAlert(successMessage, serverValidated ? 'success' : 'info', serverValidated ? 'Paiement sécurisé' : 'Paiement en cours')).catch(() => {});
+        if (serverValidated && typeof global.showToast === 'function') {
+            global.showToast(successMessage, 'success');
+        } else if (global.lyannAlert) {
+            Promise.resolve(global.lyannAlert(successMessage, 'info', 'Paiement en cours')).catch(() => {});
         } else if (typeof global.showToast === 'function') {
-            global.showToast(successMessage, serverValidated ? 'success' : 'info');
+            global.showToast(successMessage, 'info');
         }
         api.lastResult = {
             data: {
@@ -537,10 +531,16 @@
                 : { payment_method: { card: cardElement } };
             const returnUrl = checkoutReturnUrl();
             if (returnUrl) confirmData.return_url = returnUrl;
-            const result = await Promise.race([
-                stripe.confirmCardPayment(clientSecret, confirmData),
-                new Promise((_, reject) => setTimeout(() => reject(Object.assign(new Error('Délai dépassé lors de la confirmation Stripe.'), { code: 'lyann_confirm_timeout' })), CONFIRM_WAIT_MS))
-            ]);
+            if (typeof global.showChatWait === 'function') global.showChatWait('Paiement en cours…');
+            let result;
+            try {
+                result = await Promise.race([
+                    stripe.confirmCardPayment(clientSecret, confirmData),
+                    new Promise((_, reject) => setTimeout(() => reject(Object.assign(new Error('Délai dépassé lors de la confirmation Stripe.'), { code: 'lyann_confirm_timeout' })), CONFIRM_WAIT_MS))
+                ]);
+            } finally {
+                if (typeof global.hideChatWait === 'function') global.hideChatWait();
+            }
             if (result && result.error) {
                 if (staysOnForm(result.error)) {
                     setPaymentError(result.error.message || 'Vérifiez les informations de la carte.');

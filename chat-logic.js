@@ -1758,6 +1758,7 @@ async function runDealMutation(action, entityId, options = {}) {
         disableCardButtons(quoteId);
     }
     if (button) setButtonBusy(button, true);
+    showChatWait('Un instant…');
 
     let success = false;
     try {
@@ -1779,6 +1780,7 @@ async function runDealMutation(action, entityId, options = {}) {
     } finally {
         if (dealMutationGuard) dealMutationGuard.end(handle);
         const stillHere = !dealMutationGuard || dealMutationGuard.getActiveScope() === (handle.scope || dealMutationGuard.getActiveScope());
+        hideChatWait();
         if (!success || !keepLockedOnSuccess) {
             if (quoteId) quoteActionLocks.delete(String(quoteId));
             if (quoteId && stillHere) enableCardButtons(quoteId);
@@ -1833,11 +1835,17 @@ window.handleAcceptQuote = async function(quoteId, sourceQuote) {
                     : null;
                 const eurosLabel = (cents) => (Number(cents) / 100).toFixed(2).replace('.', ',') + ' €';
                 const amount = knownVersion && knownVersion.total_amount != null ? knownVersion.total_amount + ' €' : 'le montant affiché';
-                const feeSentence = forecast && forecast.lines.length
-                    ? ' Prestation ' + eurosLabel(forecast.serviceCents) + '. Frais de protection ' + eurosLabel(forecast.customerFeeCents) + (forecast.minimumCount ? ' (minimum 1,49 € par jalon).' : '.') + ' Total à régler ' + eurosLabel(forecast.customerTotalCents) + '.'
-                    : '';
+                const lines = ['Vous acceptez ce devis de ' + amount + '.'];
+                if (forecast && forecast.lines.length) {
+                    lines.push('');
+                    lines.push('Prestation : ' + eurosLabel(forecast.serviceCents));
+                    lines.push('Protection : ' + eurosLabel(forecast.customerFeeCents));
+                    lines.push('À payer : ' + eurosLabel(forecast.customerTotalCents));
+                }
+                lines.push('');
+                lines.push('La mission démarre ensuite.');
                 if (window.lyannConfirm) {
-                    const ok = await window.lyannConfirm('Accepter la version ' + acceptance.version + ' à ' + amount + ' ?' + feeSentence + ' Une mission sera créée. Une version plus ancienne ne peut plus être acceptée.');
+                    const ok = await window.lyannConfirm(lines.join('\n'), 'info', 'Accepter le devis');
                     if (!ok) {
                         const abort = new Error('__deal_mutation_cancelled__');
                         abort.dealMutationCancelled = true;
@@ -2345,6 +2353,35 @@ function quoteLooksFunded(quotes) {
     });
 }
 
+const paidMissionNotices = new Set();
+
+function announcePaidMission(intentId) {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    const myId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!contact || !contact.id || !myId) return null;
+    const key = String(intentId || contact.id);
+    if (paidMissionNotices.has(key)) return null;
+    try {
+        if (sessionStorage.getItem('lyann.paidNotice.' + key) === '1') {
+            paidMissionNotices.add(key);
+            return null;
+        }
+    } catch (_) {}
+    const box = document.getElementById('chatMessagesContainer');
+    if (box && box.textContent && box.textContent.indexOf('Le paiement est sécurisé. La mission peut commencer.') !== -1) {
+        paidMissionNotices.add(key);
+        return null;
+    }
+    paidMissionNotices.add(key);
+    try { sessionStorage.setItem('lyann.paidNotice.' + key, '1'); } catch (_) {}
+    return addMessageToContact(contact.id, {
+        type: 'text',
+        sender: myId,
+        text: 'Le paiement est sécurisé. La mission peut commencer.\n\nQuand elle sera accomplie, vous confirmerez tous les deux, ici, qu’elle est bien terminée et conforme. C’est cette confirmation qui libère les fonds.'
+    });
+}
+window.announcePaidMission = announcePaidMission;
+
 window.lyannAwaitPaidQuote = async function lyannAwaitPaidQuote() {
     // E5: never invent FUNDED — re-read server deal state after Stripe, including webhook lag.
     const waits = [0, 450, 900, 1600, 2400];
@@ -2400,7 +2437,30 @@ function milestoneFromOpenDossiers(preferredId, statuses) {
     return null;
 }
 
+function patchOpenMilestoneStatus(milestoneId, status) {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    if (!contact || !milestoneId || !status) return false;
+    let changed = false;
+    const visit = (quote) => {
+        (quote && quote.milestones || []).forEach((milestone) => {
+            if (!milestone || String(milestone.id) !== String(milestoneId)) return;
+            if (milestoneStatusCode(milestone) === String(status).toUpperCase()) return;
+            milestone.status = status;
+            rememberMilestoneStatus(milestone.id, status);
+            changed = true;
+        });
+    };
+    (contact.dossiers || []).forEach((dossier) => (dossier && dossier.quotes || []).forEach(visit));
+    if (contact.activeDossier) (contact.activeDossier.quotes || []).forEach(visit);
+    if (changed && typeof syncLiveDealActions === 'function') {
+        const quotes = (contact.activeDossier && contact.activeDossier.quotes) || [];
+        syncLiveDealActions(quotes);
+    }
+    return changed;
+}
+
 async function resolveChatMilestoneId(preferredId, statuses, scope) {
+    resolveChatMilestoneId.lastMatch = null;
     const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
     if (!window.LYANN_MESSAGING_REPOSITORY || !contact || !contact.id) {
         return milestoneFromOpenDossiers(preferredId, statuses);
@@ -2426,7 +2486,10 @@ async function resolveChatMilestoneId(preferredId, statuses, scope) {
         const explicit = eligible.find((milestone) => String(milestone.id) === String(preferredId));
         if (explicit) return explicit.id;
         const known = milestones.find((milestone) => String(milestone.id) === String(preferredId));
-        if (known) return null;
+        if (known) {
+            resolveChatMilestoneId.lastMatch = { id: known.id, status: milestoneStatusCode(known) };
+            return null;
+        }
         return milestoneFromOpenDossiers(preferredId, statuses);
     }
     if (eligible.length === 1) return eligible[0].id;
@@ -2671,6 +2734,11 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                 execute: async (handle) => {
                     const milestoneId = await resolveChatMilestoneId(preferred, ['FUNDED', 'IN_PROGRESS'], milestoneScope);
                     if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.submitMilestoneCompletion !== 'function') {
+                        const seen = resolveChatMilestoneId.lastMatch;
+                        if (seen && seen.status === 'COMPLETED') {
+                            patchOpenMilestoneStatus(seen.id, 'COMPLETED');
+                            throw new Error('Cette prestation est déjà déclarée terminée. Le demandeur doit la valider pour libérer le paiement.');
+                        }
                         throw new Error('Clôture indisponible : cette action n’est pas liée à un jalon enregistré.');
                     }
                     if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
@@ -2680,6 +2748,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                     }
                     const result = await window.LYANN_API_CLIENT.submitMilestoneCompletion(milestoneId);
                     if (result && result.error) throw result.error;
+                    patchOpenMilestoneStatus(milestoneId, 'COMPLETED');
                     return result;
                 },
                 apply: async (result) => {
@@ -2716,11 +2785,28 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                     return window.LYANN_API_CLIENT.releaseMilestonePayment(milestoneId);
                 },
                 apply: async (result) => {
-                    if (typeof window.showToast === 'function') {
-                        window.showToast((result && result.message) || 'Validation enregistrée.', 'success');
+                    closeAllOverlays();
+                    const contact = currentChatContact;
+                    const otherName = (contact && contact.name) || 'cette personne';
+                    if (contact && contact.id) {
+                        await addMessageToContact(contact.id, {
+                            type: 'text',
+                            sender: typeof getMyId === 'function' ? getMyId() : 'me',
+                            text: 'Bravo pour ce beau Lyannage ! Vous êtes de vrais Lyanneurs.\n\nNotez-vous l’un l’autre, ici dans le chat. Vous pouvez noter ' + otherName + ' dès maintenant.'
+                        });
                     }
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Bravo pour ce beau Lyannage !', 'success');
+                    }
+                    patchOpenMilestoneStatus(preferred, 'RELEASED');
                     invalidateActiveQuoteContext();
                     await refreshOpenBusinessCards();
+                    window.__lyannReviewNow = true;
+                    paintPendingActionBanner();
+                    const box = document.getElementById('chatMessagesContainer');
+                    const comment = document.getElementById('chatInlineReviewComment');
+                    if (comment) comment.scrollIntoView({ block: 'nearest' });
+                    if (box) box.scrollTop = box.scrollHeight;
                 }
             });
         } catch (err) {
@@ -2732,11 +2818,10 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
 
     else if (actionId === 'LEAVE_REVIEW') {
         closeAllOverlays();
-        const overlay = document.getElementById('chatLeaveReviewForm');
-        if (overlay) {
-            openChatChildSurface('chatLeaveReviewForm');
-            setChatContextCoveredByOverlay(true);
-        }
+        window.__lyannReviewNow = true;
+        paintInlineReview();
+        const comment = document.getElementById('chatInlineReviewComment');
+        if (comment) comment.scrollIntoView({ block: 'nearest' });
         return;
     }
 
@@ -3480,8 +3565,244 @@ window.paintDossierActions = paintDossierActions;
 let pendingActionsPanelUserOpen = null;
 
 function chatTodoPanelDefaultOpen() {
-    if (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches) return false;
     return true;
+}
+
+function threadHasSettledLyannage() {
+    return collectThreadQuotes().some((quote) => quote && quote.status === 'ACCEPTED' && quoteIsClosedDeal(quote));
+}
+
+const peerReviewsSent = new Set();
+const optimisticMilestoneStatus = new Map();
+const MILESTONE_STATUS_RANK = {
+    PENDING: 1,
+    FUNDED: 2,
+    IN_PROGRESS: 3,
+    COMPLETED: 4,
+    RELEASED: 5
+};
+
+function milestoneRank(status) {
+    return MILESTONE_STATUS_RANK[String(status || '').toUpperCase()] || 0;
+}
+
+function rememberMilestoneStatus(milestoneId, status) {
+    if (!milestoneId || !status) return;
+    optimisticMilestoneStatus.set(String(milestoneId), String(status).toUpperCase());
+}
+
+function applyOptimisticMilestoneStatus(quote) {
+    (quote && quote.milestones || []).forEach((milestone) => {
+        if (!milestone || !milestone.id) return;
+        const forced = optimisticMilestoneStatus.get(String(milestone.id));
+        if (!forced) return;
+        if (milestoneRank(forced) > milestoneRank(milestoneStatusCode(milestone))) milestone.status = forced;
+        else optimisticMilestoneStatus.delete(String(milestone.id));
+    });
+}
+
+function showChatWait(label) {
+    let pill = document.getElementById('chatWaitPill');
+    if (!pill) {
+        pill = document.createElement('div');
+        pill.id = 'chatWaitPill';
+        pill.className = 'chat-wait-pill';
+        pill.setAttribute('role', 'status');
+        pill.innerHTML = '<span class="chat-wait-spin" aria-hidden="true"></span><span class="chat-wait-label"></span>';
+        document.body.appendChild(pill);
+    }
+    const text = pill.querySelector('.chat-wait-label');
+    if (text) text.textContent = label || 'Un instant…';
+    pill.hidden = false;
+}
+
+function hideChatWait() {
+    const pill = document.getElementById('chatWaitPill');
+    if (pill) pill.hidden = true;
+}
+window.showChatWait = showChatWait;
+window.hideChatWait = hideChatWait;
+
+function peerReviewKey(contactId, missionId) {
+    return String(contactId || '') + ':' + String(missionId || '');
+}
+
+function currentReviewMissionId() {
+    const contact = currentChatContact;
+    const id = (contact && contact.threadMission && contact.threadMission.id) || (contact && contact.missionId) || null;
+    return isPersistedUuid(id) ? id : null;
+}
+
+async function publishPeerReview(rating, comment) {
+    const contact = currentChatContact;
+    const myId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!contact || !contact.id || !myId) throw new Error('Avis indisponible : aucune conversation ouverte.');
+    const note = Math.round(Number(rating));
+    const text = String(comment || '').trim();
+    if (!(note >= 1 && note <= 5)) throw new Error('Choisissez une note de 1 à 5.');
+    if (!text) throw new Error('Ajoutez un commentaire.');
+    const missionId = currentReviewMissionId();
+    const client = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    if (!client) throw new Error('Avis indisponible pour le moment.');
+    const row = {
+        author_id: myId,
+        target_id: contact.id,
+        rating: note,
+        comment: text
+    };
+    if (missionId) row.mission_id = missionId;
+    const { error } = await client.from('reviews').insert(row);
+    if (error && !/duplicate|unique|23505/i.test(String(error.message || error.code || ''))) {
+        throw new Error(error.message || 'Avis non enregistré.');
+    }
+    peerReviewsSent.add(peerReviewKey(contact.id, missionId));
+    const stars = '⭐'.repeat(note);
+    await addMessageToContact(contact.id, {
+        type: 'text',
+        sender: myId,
+        text: stars + ' Avis pour ' + (contact.name || 'ce membre') + ' : « ' + text + ' »'
+    });
+}
+
+function paintInlineReview() {
+    const box = document.getElementById('chatMessagesContainer');
+    if (!box) return;
+    const contact = currentChatContact;
+    const support = contact && typeof isLyannSupportContact === 'function' && isLyannSupportContact(contact.id);
+    const missionId = currentReviewMissionId();
+    const already = contact && peerReviewsSent.has(peerReviewKey(contact.id, missionId));
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    const stillBusy = pendingDossierActions(contact, userId).length > 0;
+    const offer = !!(contact && !support && !already && !stillBusy && (window.__lyannReviewNow || threadHasSettledLyannage()));
+    const existing = document.getElementById('chatInlineReview');
+    if (!offer) {
+        if (existing) existing.remove();
+        return;
+    }
+    if (existing && existing.dataset.contactId === String(contact.id)) {
+        box.appendChild(existing);
+        return;
+    }
+    if (existing) existing.remove();
+    const card = document.createElement('form');
+    card.id = 'chatInlineReview';
+    card.className = 'chat-inline-review';
+    card.dataset.contactId = String(contact.id);
+    const title = document.createElement('p');
+    title.className = 'chat-inline-review-title';
+    title.textContent = 'Noter ' + (contact.name || 'cette personne');
+    const stars = document.createElement('div');
+    stars.className = 'chat-inline-review-stars';
+    stars.setAttribute('role', 'radiogroup');
+    stars.setAttribute('aria-label', 'Note');
+    let selected = 5;
+    const buttons = [];
+    for (let value = 1; value <= 5; value += 1) {
+        const star = document.createElement('button');
+        star.type = 'button';
+        star.className = 'chat-inline-review-star' + (value <= selected ? ' is-on' : '');
+        star.setAttribute('role', 'radio');
+        star.setAttribute('aria-checked', value === selected ? 'true' : 'false');
+        star.setAttribute('aria-label', value + ' sur 5');
+        star.textContent = '★';
+        star.addEventListener('click', () => {
+            selected = value;
+            buttons.forEach((button, index) => {
+                const on = index < selected;
+                button.classList.toggle('is-on', on);
+                button.setAttribute('aria-checked', index + 1 === selected ? 'true' : 'false');
+            });
+        });
+        buttons.push(star);
+        stars.appendChild(star);
+    }
+    const field = document.createElement('textarea');
+    field.id = 'chatInlineReviewComment';
+    field.className = 'modal-input chat-inline-review-comment';
+    field.rows = 2;
+    field.required = true;
+    field.placeholder = 'Votre commentaire';
+    const send = document.createElement('button');
+    send.type = 'submit';
+    send.className = 'btn btn-primary';
+    send.textContent = 'Publier l’avis';
+    card.append(title, stars, field, send);
+    card.addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (send.disabled) return;
+        send.disabled = true;
+        publishPeerReview(selected, field.value).then(() => {
+            window.__lyannReviewNow = false;
+            card.remove();
+            if (typeof window.showToast === 'function') window.showToast('Merci, votre avis est publié.', 'success');
+            const thread = document.getElementById('chatMessagesContainer');
+            if (thread) thread.scrollTop = thread.scrollHeight;
+        }).catch((err) => {
+            send.disabled = false;
+            notifyActionUnavailable(err);
+        });
+    });
+    box.appendChild(card);
+}
+
+async function beginAnytimeQuote() {
+    const contact = currentChatContact;
+    if (!contact || !contact.id) return;
+    closeAllOverlays();
+    try {
+        if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.prepareDirectOffer === 'function') {
+            const prepared = await window.LYANN_API_CLIENT.prepareDirectOffer(contact.id);
+            if (prepared && prepared.invitation_id) {
+                contact.direct = true;
+                contact.requestId = prepared.request_id || null;
+                contact.invitationId = prepared.invitation_id;
+                if (contact.requestData && contact.requestData.requester_id) {
+                    contact.requestData = Object.assign({}, contact.requestData, { requester_id: null });
+                }
+            }
+        }
+    } catch (err) {
+        notifyActionUnavailable(err);
+        return;
+    }
+    await handleChatAction('MAKE_PROPOSAL');
+}
+
+function paintChatPairButtons() {
+    const thread = document.getElementById('chatMessagesContainer');
+    if (!thread || !thread.parentNode) return;
+    let row = document.getElementById('chatPairActions');
+    const contact = currentChatContact;
+    const support = contact && typeof isLyannSupportContact === 'function' && isLyannSupportContact(contact.id);
+    if (!contact || !contact.id || support) {
+        if (row) row.hidden = true;
+        return;
+    }
+    if (!row) {
+        row = document.createElement('div');
+        row.id = 'chatPairActions';
+        row.className = 'chat-pair-actions';
+        const ask = document.createElement('button');
+        ask.type = 'button';
+        ask.className = 'btn btn-outline';
+        ask.textContent = 'Demander un devis';
+        ask.addEventListener('click', () => {
+            closeAllOverlays();
+            handleChatAction('DIRECT_ASK');
+        });
+        const offer = document.createElement('button');
+        offer.type = 'button';
+        offer.className = 'btn btn-primary';
+        offer.textContent = 'Proposer un devis';
+        offer.addEventListener('click', () => { void beginAnytimeQuote(); });
+        row.append(ask, offer);
+    }
+    if (row.parentNode !== thread.parentNode || row.nextElementSibling !== thread) {
+        thread.parentNode.insertBefore(row, thread);
+    }
+    row.hidden = false;
+    const rate = row.querySelector('#chatPairRate');
+    if (rate) rate.hidden = true;
 }
 
 function pendingActionCopy(row, userId) {
@@ -3580,6 +3901,8 @@ function paintPendingActionBanner() {
     const contact = currentChatContact;
     const userId = typeof getMyId === 'function' ? getMyId() : null;
     const pending = pendingDossierActions(contact, userId);
+    paintChatPairButtons();
+    paintInlineReview();
     if (!pending.length) {
         bar.replaceChildren();
         bar.hidden = true;
@@ -3587,13 +3910,10 @@ function paintPendingActionBanner() {
     }
     bar.hidden = false;
     bar.replaceChildren();
-    const details = document.createElement('details');
+    const details = document.createElement('section');
     details.className = 'chat-todo-panel';
-    details.open = pendingActionsPanelUserOpen === null ? chatTodoPanelDefaultOpen() : pendingActionsPanelUserOpen;
-    details.addEventListener('toggle', () => {
-        pendingActionsPanelUserOpen = details.open;
-    });
-    const summary = document.createElement('summary');
+    details.open = chatTodoPanelDefaultOpen();
+    const summary = document.createElement('p');
     summary.className = 'chat-todo-summary';
     const count = pending.length;
     summary.textContent = 'Vos actions à faire (' + count + ')';
@@ -3632,9 +3952,14 @@ function paintPendingActionBanner() {
         action.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
-            void openMissionDossier({
+            setButtonBusy(action, true);
+            showChatWait('Ouverture…');
+            Promise.resolve(openMissionDossier({
                 requestId: row.dossier.requestId,
                 invitationId: row.dossier.invitationId
+            })).finally(() => {
+                hideChatWait();
+                if (action.isConnected) setButtonBusy(action, false);
             });
         });
         item.appendChild(action);
@@ -3643,6 +3968,7 @@ function paintPendingActionBanner() {
     list.addEventListener('pointerdown', (event) => event.stopPropagation());
     details.appendChild(list);
     bar.appendChild(details);
+    paintChatPairButtons();
 }
 
 function applyLiveQuotesToDossiers(quotes) {
@@ -3665,6 +3991,7 @@ function applyLiveQuotesToDossiers(quotes) {
             if (quote && quote.id) byId.set(String(quote.id), quote);
         });
         dossier.quotes = [...byId.values()];
+        dossier.quotes.forEach(applyOptimisticMilestoneStatus);
     });
     if (contact.activeDossier && contact.activeDossier.requestId) {
         const next = contact.dossiers.find((row) => String(row.requestId) === String(contact.activeDossier.requestId));
@@ -5002,6 +5329,7 @@ async function renderMessages(passedMessages = null, options = {}) {
     delete container.dataset.dealRecapFp;
 
     if (!Array.isArray(msgs) || (msgs.length === 0 && realQuotes.length === 0)) {
+        paintChatPairButtons();
         renderEmptyConversationState(container);
         armThreadHistory(0);
         // E5.1: empty chat text must not skip ActionPanel — same single owner as non-empty threads.
@@ -5009,7 +5337,8 @@ async function renderMessages(passedMessages = null, options = {}) {
         return;
     }
 
-    // Add Date Separator at top
+    // Add Date Separator at top. Quote buttons stay above it, outside the scroller.
+    paintChatPairButtons();
     const dateSep = document.createElement('div');
     dateSep.className = 'chat-date-separator';
     dateSep.innerHTML = `<span>Aujourd'hui</span>`;
@@ -5290,6 +5619,7 @@ async function renderMessages(passedMessages = null, options = {}) {
     pendingOptimistic.forEach((node) => {
         if (!node.isConnected) container.appendChild(node);
     });
+    paintInlineReview();
     armThreadHistory(Array.isArray(msgs) ? msgs.length : 0);
     scrollThreadToBottom(container, false);
 }
@@ -7809,7 +8139,7 @@ async function catchUpOpenThread(reason) {
         }
         const stick = threadIsNearBottom(container);
         const reasonText = String(reason || '');
-        if (/fanout|reconnect|subscribe|denied|recycle|postgres-dropped|realtime-miss/.test(reasonText)) {
+        if (/fanout|reconnect|subscribe|denied|recycle|postgres-dropped|realtime-miss|visible/.test(reasonText)) {
             window.LYANN_MESSAGING_REPOSITORY?.invalidateMessages?.(currentChatContact.conversationId);
             placePage(await getChatMessages(contactId, { fresh: true, limit: 50 }), stick);
             return;
@@ -8145,11 +8475,27 @@ async function bindInboxChatFanouts(conversationIds) {
 }
 window.bindInboxChatFanouts = bindInboxChatFanouts;
 
-async function publishChatFanout(conversationId, kind, requestId) {
+async function publishChatFanout(conversationId, kind, requestId, message) {
     if (!conversationId || !isUUID(conversationId)) return;
     const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
     if (!supabase || typeof supabase.channel !== 'function') return;
     const payload = chatFanoutWake(kind, conversationId, requestId || (currentChatContact && currentChatContact.requestId) || null);
+    if (message && message.id && message.conversation_id) {
+        payload.message = {
+            id: message.id,
+            conversation_id: message.conversation_id,
+            sender_id: message.sender_id || null,
+            content: typeof message.content === 'string' ? message.content : '',
+            created_at: message.created_at || null,
+            is_read: message.is_read === true,
+            message_type: message.message_type || null,
+            attachment_type: message.attachment_type || null,
+            attachment_url: message.attachment_url || '',
+            attachment_name: message.attachment_name || '',
+            entity_type: message.entity_type || null,
+            entity_id: message.entity_id || null
+        };
+    }
     if (payload.row || payload.content || payload.new) return;
     try {
         await ensureRealtimeAuth(supabase);
@@ -8175,6 +8521,7 @@ function applyFanoutWake(payload) {
     console.log('[CHAT] realtime fanout recv');
     if (!conversationAllowedForFanout(convId)) return;
     console.log('[CHAT] realtime insert');
+    if (payload.message && payload.message.id) applyIncomingMessageRow(payload.message, 'fanout');
     window.LYANN_MESSAGING_REPOSITORY?.invalidateMessages?.(convId);
     const openHere = openConversationIsVisible()
         && currentChatContact
@@ -8302,6 +8649,8 @@ function openConversationIsVisible() {
     );
     const modal = document.getElementById('chatModal');
     const modalOpen = !!(modal && (modal.classList.contains('active') || modal.style.display === 'flex'));
+    const thread = document.getElementById('chatMessagesContainer');
+    if (thread && thread.getClientRects && thread.getClientRects().length && (bodyOpen || modalOpen)) return true;
     if (!bodyOpen && !modalOpen) return false;
     const layout = document.querySelector('#chatModal .chat-modal-layout');
     if (!layout) return true;
@@ -8523,7 +8872,7 @@ watchChatAuthForRealtime();
 window.addEventListener('lyann:chat-persisted', (event) => {
     const row = event && event.detail;
     if (!row || !row.conversation_id) return;
-    void publishChatFanout(row.conversation_id, 'wake');
+    void publishChatFanout(row.conversation_id, 'wake', null, row);
 });
 window.addEventListener('lyann:deal-mutated', () => {
     const conversationId = currentChatContact && currentChatContact.conversationId;
@@ -8547,7 +8896,7 @@ setInterval(() => {
     const pace = window.LYANN_REALTIME_SESSION || {};
     const droppedGap = pace.DROPPED_CATCHUP_MS || 8000;
     const healthyGap = pace.HEALTHY_CATCHUP_MS || 30000;
-    const gap = realtimeDropped ? droppedGap : Math.min(healthyGap, 4000);
+    const gap = realtimeDropped ? droppedGap : Math.min(healthyGap, 2500);
     const now = Date.now();
     if (now - lastVisibleCatchupAt < gap) return;
     lastVisibleCatchupAt = now;

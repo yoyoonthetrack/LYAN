@@ -69,15 +69,17 @@ test('6.33 business gates stay on missionCard and dossierActionIds', () => {
     assert.equal(requesterIds.includes('propose'), false);
 });
 
-test('6.33 chat paints a collapsible todo panel that opens the dossier only', () => {
+test('6.33 chat keeps todo actions visible and offers quote buttons on the thread', () => {
     const chat = src('chat-logic.js');
     assert.match(chat, /Vos actions à faire/);
     assert.match(chat, /chat-todo-panel/);
-    assert.match(chat, /matchMedia\('\(max-width: 767px\)'\)/);
-    assert.match(chat, /pendingActionsPanelUserOpen/);
     assert.match(chat, /function pendingActionCopy/);
     assert.match(chat, /openMissionDossier\(\{\s*requestId: row\.dossier\.requestId/);
-    assert.doesNotMatch(chat.slice(chat.indexOf('function paintPendingActionBanner'), chat.indexOf('window.paintPendingActionBanner')), /bindMissionAction|handleChatAction|checkout|stripe/i);
+    assert.match(chat, /Demander un devis/);
+    assert.match(chat, /Proposer un devis/);
+    assert.match(chat, /Bravo pour ce beau Lyannage ! Vous êtes de vrais Lyanneurs\./);
+    assert.doesNotMatch(chat.slice(chat.indexOf('function paintPendingActionBanner'), chat.indexOf('window.paintPendingActionBanner')), /bindMissionAction|checkout|stripe/i);
+    assert.doesNotMatch(chat.slice(chat.indexOf('function paintPendingActionBanner'), chat.indexOf('window.paintPendingActionBanner')), /createElement\('details'\)/);
     assert.match(chat, /chat-notice-compact/);
     assert.doesNotMatch(chat, /Payer dans le dossier/);
     assert.match(chat, /button\.textContent = 'Voir le dossier'/);
