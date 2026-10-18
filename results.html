@@ -21,8 +21,9 @@
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20261007">
-    <link rel="stylesheet" href="explorer.css?v=20260922g">
+    <link rel="stylesheet" href="style.css?v=20261018own">
+    <link rel="stylesheet" href="explorer.css?v=20261018pub">
+    <link rel="stylesheet" href="universe-header.css?v=20261017pale">
 </head>
 <body class="results-page" data-explorer-mode="lyanneurs">
 
@@ -58,7 +59,8 @@
             <!-- Menu Navigation Desktop -->
             <div class="desktop-nav-menu">
                 <a href="index.html" class="desktop-nav-link"><i class="ph ph-house"></i> Accueil</a>
-                <a href="results.html" class="desktop-nav-link active"><i class="ph ph-magnifying-glass"></i> Explorer</a>
+                <a href="results.html?mode=lyanneurs" class="desktop-nav-link active" data-explorer-nav="lyanneurs"><i class="ph ph-users-three"></i> Lyanneurs</a>
+                <a href="results.html?mode=annonces" class="desktop-nav-link" data-explorer-nav="annonces"><i class="ph ph-list"></i> Annonces</a>
                 <a href="feed.html" class="desktop-nav-link nav-link-bokantaj"><i class="ph ph-broadcast" style="color: #E76F51;"></i> Bokantaj</a>
                 <a href="how-it-works.html" class="desktop-nav-link"><i class="ph ph-info"></i> Comment ça marche</a>
             </div>
@@ -91,15 +93,16 @@
                     <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
                 </div>
                 <nav class="mobile-nav-list">
-                    <a href="#" class="open-account-modal-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin: 6px 0;">
+                    <a href="#" class="open-account-modal-trigger" data-lyann-route="profile" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin: 6px 0;">
                         <img src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%20100%20100%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20rx%3D%2250%22%20fill%3D%22%234A7C59%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2254%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%23FFFFFF%22%20font-size%3D%2242%22%20font-family%3D%22sans-serif%22%20font-weight%3D%22bold%22%3EM%3C%2Ftext%3E%3C%2Fsvg%3E" class="drawer-profile-avatar" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
-                        MON PROFIL & RÉGLAGES
+                        PROFIL
                         <i class="ph ph-caret-right" style="margin-left: auto;"></i>
                     </a>
                     <a href="index.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-house" style="color: var(--primary); font-size: 1.2rem;"></i> ACCUEIL <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
-                    <a href="results.html" class="active" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-magnifying-glass" style="color: #E5B345; font-size: 1.2rem;"></i> RECHERCHER & EXPLORER <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="results.html?mode=lyanneurs" class="active" data-explorer-nav="lyanneurs" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> LYANNEURS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="results.html?mode=annonces" data-explorer-nav="annonces" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-list" style="color: #E5B345; font-size: 1.2rem;"></i> ANNONCES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="feed.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <span class="nav-live-dot"></span> <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
-                    <a href="#" class="open-chat-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGERIE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="#" class="open-chat-trigger" data-lyann-route="messages" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="about.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
@@ -117,56 +120,56 @@
         </div>
     </div>
 
-    <main id="explorer" class="explorer-page" data-mode="lyanneurs">
-        <header class="explorer-heading">
-            <h1>Explorer</h1>
-            <p>Des besoins et des talents près de chez vous</p>
+    <main id="explorer" class="explorer-page lyann-universe" data-mode="lyanneurs" data-universe="lyanneurs">
+        <header class="lyann-universe-header" data-universe="lyanneurs">
+            <img class="annonces-header-art" src="assets/universe/lyann-annonces-header.webp?v=20261017pale" alt="" width="1728" height="816">
+            <img class="lyanneurs-header-art" src="assets/universe/lyann-lyanneurs-header.webp?v=20261017pale" alt="" width="1728" height="999">
+            <img class="annonces-header-desktop" src="assets/universe/lyann-annonces-header-desktop.webp?v=20261017pale" alt="" width="3072" height="582">
+            <img class="lyanneurs-header-desktop" src="assets/universe/lyann-lyanneurs-header-desktop.webp?v=20261017pale" alt="" width="3072" height="660">
+            <div class="lyann-universe-frame">
+                <img id="universeArtWide" class="lyann-universe-art is-wide" src="assets/universe/lyanneurs-landscape.webp" alt="" width="1024" height="576">
+                <img id="universeArtTall" class="lyann-universe-art is-tall" src="assets/universe/lyanneurs-portrait.webp" alt="" width="759" height="1024">
+            </div>
+            <div class="lyann-universe-copy">
+                <h1 id="explorerTitle">Lyanneurs</h1>
+                <p id="explorerSubtitle">Des talents et des pros tout près de chez vous.</p>
+            </div>
         </header>
-        <p class="explorer-intent-label" id="explorerIntentLabel">Deux mondes à explorer</p>
-        <div class="explorer-modes explorer-worlds" role="tablist" aria-labelledby="explorerIntentLabel">
-            <button id="lyanneursTab" class="explorer-world-tab is-lyanneurs active" type="button" role="tab" aria-selected="true" aria-controls="explorerPanel" data-mode="lyanneurs">
-                <i class="ph-bold ph-users-three" aria-hidden="true"></i>
-                <span>Je cherche un Lyanneur</span>
-                <span class="sr-only">Lyanneurs</span>
-            </button>
-            <button id="annoncesTab" class="explorer-world-tab is-annonces" type="button" role="tab" aria-selected="false" aria-controls="explorerPanel" data-mode="annonces" tabindex="-1">
-                <i class="ph-bold ph-megaphone" aria-hidden="true"></i>
-                <span>Annonces</span>
-            </button>
-        </div>
-        <p class="explorer-swipe-hint">Glissez pour passer d’un monde à l’autre</p>
-        <section id="explorerPanel" role="tabpanel" aria-labelledby="lyanneursTab">
+        <section id="explorerPanel" aria-labelledby="explorerTitle">
             <form id="explorerSearchForm" class="explorer-search" role="search">
-                <label class="sr-only" for="explorerSearchInput">Rechercher dans les lyanneurs</label>
+                <label class="sr-only" for="explorerSearchInput">Rechercher</label>
                 <input id="explorerSearchInput" type="search" placeholder="Nom, activité ou commune" autocomplete="off">
                 <button type="submit" class="btn lyann-cta-primary" aria-label="Rechercher"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Rechercher</span></button>
             </form>
             <div class="explorer-tools">
-                <label class="explorer-category">Catégorie
+                <div id="explorerCategoryPills" class="lyann-pills" aria-label="Catégories"></div>
+                <label class="explorer-category lyann-category-native">Catégorie
                     <select id="explorerCategory"><option value="">Toutes les catégories</option></select>
                 </label>
                 <button id="explorerFiltersButton" class="btn btn-outline" aria-haspopup="dialog"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i> Filtres et zone</button>
             </div>
             <div id="explorerActiveFilters" class="explorer-active-filters" aria-label="Filtres actifs"></div>
             <div class="explorer-results-heading">
+                <button class="explorer-publish btn lyann-cta-primary" type="button" hidden><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>
                 <p id="explorerSummary" role="status" aria-live="polite"></p>
-                <button class="explorer-publish btn lyann-cta-primary" type="button">Publier un besoin</button>
             </div>
             <div id="explorerResults" class="explorer-grid" aria-busy="true"></div>
             <p id="explorerRanking" class="explorer-ranking">Annonces les plus récentes en premier.</p>
         </section>
         <dialog id="explorerFilters" class="explorer-filter-sheet" aria-labelledby="explorerFilterTitle">
             <form method="dialog" id="explorerFilterForm">
-                <div class="explorer-sheet-heading"><h2 id="explorerFilterTitle">Affiner la recherche</h2><button type="button" id="explorerFiltersClose" aria-label="Fermer les filtres">×</button></div>
-                <label>Service / sous-catégorie<select id="explorerService"><option value="">Tous les services</option></select></label>
-                <label id="explorerAreaLabel">Commune ou territoire<input id="explorerArea" type="text" placeholder="Ex. Le Gosier, Guadeloupe" autocomplete="address-level2"></label>
-                <div id="explorerProfileGeography"><label>Territoire<select id="explorerTerritory"></select></label><label>Commune<select id="explorerCommune"></select></label></div>
-                <p class="explorer-hint">Recherche par lieu renseigné. La distance affichée est approximative, calculée entre votre commune et celle de l'annonce.</p>
-                <button type="button" id="explorerSavedArea" class="btn btn-outline" hidden>Utiliser mon lieu de profil</button>
-                <div id="explorerRequestFilters">
-                    <label>Délai<select id="explorerUrgency"><option value="">Tous les délais</option></select></label>
-                    <label>Budget maximum (€)<input id="explorerBudget" type="number" min="0" step="1" placeholder="Sans limite"></label>
-                    <p class="explorer-hint">Avec un budget maximum, seules les annonces au budget renseigné sont affichées.</p>
+                <div class="explorer-sheet-heading"><div><h2 id="explorerFilterTitle">Filtrer</h2><p class="explorer-sheet-sub" id="explorerFilterSub">Choisissez ce que vous souhaitez voir.</p></div><button type="button" id="explorerFiltersClose" aria-label="Fermer les filtres">×</button></div>
+                <div class="explorer-sheet-body">
+                    <label>Service / sous-catégorie<select id="explorerService"><option value="">Tous les services</option></select></label>
+                    <label id="explorerAreaLabel">Commune ou territoire<input id="explorerArea" type="text" placeholder="Ex. Le Gosier, Guadeloupe" autocomplete="address-level2"></label>
+                    <div id="explorerProfileGeography"><label>Territoire<select id="explorerTerritory"></select></label><label>Commune<select id="explorerCommune"></select></label></div>
+                    <p class="explorer-hint">Recherche par lieu renseigné. La distance affichée est approximative, calculée entre votre commune et celle de l'annonce.</p>
+                    <button type="button" id="explorerSavedArea" class="btn btn-outline" hidden>Utiliser mon lieu de profil</button>
+                    <div id="explorerRequestFilters">
+                        <label>Délai<select id="explorerUrgency"><option value="">Tous les délais</option></select></label>
+                        <label>Budget maximum (€)<input id="explorerBudget" type="number" min="0" step="1" placeholder="Sans limite"></label>
+                        <p class="explorer-hint">Avec un budget maximum, seules les annonces au budget renseigné sont affichées.</p>
+                    </div>
                 </div>
                 <div class="explorer-sheet-actions"><button type="button" id="explorerReset" class="btn btn-outline">Réinitialiser</button><button value="apply" class="btn btn-primary">Afficher les résultats</button></div>
             </form>
@@ -396,7 +399,7 @@
                                 <i class="ph ph-user-circle"></i> Compléter mon profil maintenant
                             </button>
                             <button class="btn btn-outline" id="obBtnFinalAction" style="width: 100%; justify-content: center; font-weight: 700; color: #4A5568;">
-                                <i class="ph ph-compass"></i> Explorer d'abord (Compléter plus tard)
+                                <i class="ph ph-compass"></i> Découvrir d'abord (Compléter plus tard)
                             </button>
                         </div>
                     </div>
@@ -565,10 +568,31 @@
 
             <div class="chat-modal-layout">
                 <div class="chat-contacts-sidebar">
-                    <div class="chat-sidebar-header">
-                        <span style="display: inline-flex; align-items: center; gap: 8px; font-weight: 800;"><i class="ph-bold ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.25rem;"></i> Messagerie LYANN</span>
-                        <button type="button" class="chat-close-modal-btn close-chat-modal-trigger" aria-label="Fermer la messagerie" onclick="window.closeLyannChatModal(event)"><i class="ph ph-x"></i></button>
+                    <div class="chat-sidebar-header lyann-inbox-header">
+                        <div class="lyann-inbox-brand">
+                            <svg class="lyann-inbox-mark" viewBox="0 0 100 100" aria-hidden="true"><path d="M12 42 L50 14 L88 42" stroke="#4A7C59" stroke-width="8" stroke-linecap="round" fill="none"/><circle cx="34" cy="46" r="7" fill="#4A7C59"/><circle cx="50" cy="42" r="7" fill="#709C7D"/><circle cx="66" cy="46" r="7" fill="#E5B345"/><path d="M23 72 C23 60 31 56 38 56 C45 56 47 62 50 62 C53 62 55 56 62 56 C69 56 77 60 77 72" stroke="#4A7C59" stroke-width="7.5" stroke-linecap="round" fill="none"/></svg>
+                            <span class="lyann-inbox-word">LYANN</span>
+                        </div>
+                        <h2 class="lyann-inbox-title">Messages</h2>
+                        <p class="lyann-inbox-subtitle">Échangez avec vos voisins, talents et pros en toute simplicité.</p>
+                        <div class="lyann-inbox-motifs" aria-hidden="true">
+                            <svg class="lyann-inbox-motif is-leaf" viewBox="0 0 48 48"><path d="M24 40V22M24 28c-8-1-14-8-12-16 7 1 12 7 12 16zM24 26c8-1 13-7 11-14-7 1-11 6-11 14z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                            <svg class="lyann-inbox-motif is-bubble" viewBox="0 0 48 48"><path d="M10 14h20a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6H20l-6 5v-5h-4a6 6 0 0 1-6-6v-8a6 6 0 0 1 6-6z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                            <svg class="lyann-inbox-motif is-share" viewBox="0 0 48 48"><circle cx="14" cy="24" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="34" cy="14" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="34" cy="34" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M17 22 31 16M17 26 31 32" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                        </div>
                     </div>
+                    <div class="chat-search-wrapper">
+                        <i class="ph ph-magnifying-glass chat-search-icon"></i>
+                        <input type="text" id="chatSearchInput" class="chat-search-input" placeholder="Rechercher une conversation">
+                    </div>
+                    <div class="lyann-inbox-filters" role="tablist" aria-label="Filtrer les conversations">
+                        <button type="button" class="lyann-inbox-pill is-active" data-inbox-filter="all" aria-pressed="true"><i class="ph ph-chat-circle" aria-hidden="true"></i> Tous</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="unread" aria-pressed="false"><i class="ph ph-circle" aria-hidden="true"></i> Non lus</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="annonces" aria-pressed="false"><i class="ph ph-storefront" aria-hidden="true"></i> Annonces</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="devis" aria-pressed="false"><i class="ph ph-file-text" aria-hidden="true"></i> Devis</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="favoris" aria-pressed="false"><i class="ph ph-star" aria-hidden="true"></i> Favoris</button>
+                    </div>
+                    <button type="button" class="lyann-inbox-compose" aria-label="Nouvelle conversation"><i class="ph ph-pencil-simple" aria-hidden="true"></i></button>
                     <div class="chat-contacts-list" id="chatContactsList">
                         <div class="chat-empty-contacts" style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.88rem;">
                             <i class="ph ph-chat-circle-dots" style="font-size: 1.5rem; display: block; margin-bottom: 6px;"></i>
@@ -622,13 +646,9 @@
 
                     <!-- Role determined automatically by mission context -->
 
-                    <!-- MISSION CONTEXT HEADER -->
                     <div id="chatMissionContextBar" class="chat-mission-banner" style="display: none;"></div>
-                    <button type="button" class="btn btn-outline" id="chatViewMissionBtn" style="display: none; margin: 6px 16px; padding: 4px 10px; font-size: 0.75rem;">Voir la mission</button>
-
-                    <!-- CONTEXTUAL ACTIONS BAR (Proposer un prix, Accepter, etc.) -->
-                    <div id="chatContextualActionsBar" style="padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border-light); background: var(--bg-alt);">
-                    </div>
+                    <button type="button" class="btn btn-outline" id="chatViewMissionBtn" style="display: none;">Voir la mission</button>
+                    <div id="chatContextualActionsBar" class="chat-contextual-actions" style="display: none;"></div>
 
                     <!-- DEV AI BADGE (Hidden) -->
                     <div id="chatDevAiBadge" style="display: none;"></div>
@@ -645,11 +665,11 @@
                             <div style="display: flex; gap: 12px; justify-content: center;">
                                 <button type="button" class="btn btn-outline" id="btnChooseDirectPrice" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px;">
                                     <strong style="display: block; font-size: 1rem;">Tarif Direct</strong>
-                                    <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">Pour les petits montants (- de 200€)</span>
+                                    <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">Un montant unique pour votre prestation.</span>
                                 </button>
                                 <button type="button" class="btn btn-primary" id="btnChooseMilestoneDevis" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px; background: var(--primary);">
                                     <strong style="display: block; font-size: 1rem; color: white;">Devis par Jalons</strong>
-                                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.9; color: white;">Étapes de chantier et paiement progressif</span>
+                                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.9; color: white;">Plusieurs étapes avec paiements progressifs.</span>
                                 </button>
                             </div>
                             <button type="button" class="btn btn-outline close-overlay-btn" style="margin-top: 15px; border: none; font-size: 0.85rem;">Annuler</button>
@@ -659,14 +679,14 @@
                     <!-- OVERLAY: DIRECT PRICE FORM -->
                     <div id="chatDirectPriceForm" class="chat-overlay-pane" style="display: none;">
                         <form id="directPriceForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
-                            <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer un Tarif Direct (-200€)</h4>
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Tarif Direct</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Description de la prestation</label>
                                 <input type="text" id="dpDescription" class="modal-input" placeholder="Ex: Réparation fuite évier cuisine" required style="width: 100%; box-sizing: border-box;">
                             </div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant proposé (€)</label>
-                                <input type="number" id="dpAmount" class="modal-input" placeholder="Ex: 80" min="5" max="10000" step="any" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
+                                <input type="number" id="dpAmount" class="modal-input" placeholder="Ex: 80" min="0.01" step="0.01" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
                             </div>
                             <div style="display: flex; gap: 10px; margin-top: 8px;">
                                 <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
@@ -685,32 +705,24 @@
                             </div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant total (€)</label>
-                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="5" step="any" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
+                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="0.01" step="0.01" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
                             </div>
                             
                             <!-- Fixed Milestones Structure for Simple/Aesthetic UX -->
-                            <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 8px; color: var(--primary-dark);">Jalons de paiement (Répartition en %)</label>
-                                
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 1:</span>
-                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
+                                                        <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
+                                <div class="milestone-allocation-section">
+                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
+                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque jalon garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
+                                    <div id="mdMilestoneList" class="md-milestone-list"></div>
+                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un jalon</button>
+                                    <div id="mdAllocationSummary" class="md-allocation-summary">
+                                        <div class="md-allocation-row"><span>Total du devis</span><strong id="mdAllocationQuoteTotal">0,00 €</strong></div>
+                                        <div class="md-allocation-row"><span>Total réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
+                                        <div class="md-allocation-row"><span>Pourcentage réparti</span><strong id="mdAllocationPercentTotal">0 %</strong></div>
+                                        <div class="md-allocation-row"><span>Reste à répartir</span><strong id="mdAllocationRemaining">—</strong></div>
+                                    </div>
+                                    <p id="mdAllocationLive" class="md-allocation-live">La somme des montants doit égaler exactement le total.</p>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 2:</span>
-                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
-                                </div>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 3:</span>
-                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
-                                </div>
-                                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des jalons doit faire 100%.</p>
                             </div>
 
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -1026,18 +1038,9 @@
                 <!-- HUB 4 : FINANCES & PAIEMENTS -->
                 <div class="account-tab-content" id="tab-acc-finances">
                     <div class="profile-section-card">
-                        <h4 class="profile-section-title">💳 Tableau de Bord Stripe Connect & Solde</h4>
-                        <div class="profile-dashboard-grid" style="margin-bottom: 16px;">
-                            <div class="profile-kpi-card" style="background: #E8F5E9;">
-                                <span class="profile-kpi-val" id="accountKpiAvailableBalance" style="color: #2E7D32;">0,00 €</span>
-                                <span class="profile-kpi-label">Solde disponible</span>
-                            </div>
-                            <div class="profile-kpi-card" style="background: #FFF8E1;">
-                                <span class="profile-kpi-val" id="accountKpiPendingBalance" style="color: #D4A843;">0,00 €</span>
-                                <span class="profile-kpi-label">Paiements en cours</span>
-                            </div>
-                        </div>
-                        <button class="btn btn-primary" id="btnInstantPayoutHub">Virement instantané vers mon IBAN 🏦</button>
+                        <h4 class="profile-section-title">Activité financière</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">Un seul compte. Les gains et les dépenses restent séparés.</p>
+                        <div id="lyannUnifiedFinanceHub" data-unified-finance></div>
                     </div>
 
                     <div class="profile-section-card">
@@ -1149,20 +1152,30 @@
     <script src="matching-engine.js"></script>
     <script src="sentry-init.js?v=20260916"></script>
     <script src="surface-manager.js?v=20260922s"></script>
-    <script src="app-router.js?v=20260923a"></script>
+    <script src="app-router.js?v=20261018legal"></script>
     <script src="api-client.js"></script>
     <script src="session-store.js"></script>
     <script src="auth-state.js"></script>
     <script src="data-cache.js"></script>
-    <script src="dialog.js"></script>
+    <script src="dialog.js?v=20261018pay"></script>
         <script src="messaging-repository.js"></script>
-<script src="quote-payment-eligibility.js?v=20261007d"></script>
-<script src="chat-logic.js?v=20261007d"></script>
+<script src="quote-revision.js?v=20261012b"></script>
+<script src="mission-dossier.js?v=20261018pay"></script>
+<script src="mission-surfaces.js?v=20261015g"></script>
+<script src="finance-policy-ui.js"></script>
+<script src="quote-payment-eligibility.js?v=20261018pay"></script>
+<script src="deal-context-sync.js?v=20261013e4"></script>
+<script src="payout-prompt.js?v=20261018pay"></script>
+<script src="realtime-session.js?v=20261014p0"></script>
+<script src="quote-milestone-editor.js?v=20261015n"></script>
+<script src="chat-logic.js?v=20261018pay"></script>
     <script src="ai-classifier.js?v=20260922c"></script>
     <script src="platform-core.js"></script>
+    <script src="deal-notification-policy.js?v=20261014e6"></script>
     <script src="notification-engine.js"></script>
-    <script src="notifications-ui.js"></script>
-    <script src="app-shell.js"></script>
+    <script src="mission-reminders.js"></script>
+<script src="notifications-ui.js"></script>
+    <script src="app-shell.js?v=20261011c"></script>
     <script src="messaging-ui.js?v=20260923a"></script>
     <script src="maison-catalog.js?v=20260922c"></script>
     <script src="profile-repository.js?v=20260922c"></script>
@@ -1170,8 +1183,8 @@
     <script src="commune-geo.js?v=20260922e"></script>
     <script src="commune-distance.js?v=20260922e"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
-    <script src="explorer-ui.js?v=20260922g" defer></script>
-    <script src="script.js?v=20260922t"></script>
+    <script src="explorer-ui.js?v=20261018unify" defer></script>
+    <script src="script.js?v=20261018own"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->
     <div class="speed-dial-wrapper" id="speedDialWrapper">
@@ -1222,7 +1235,7 @@
                          La description complète, elle, n'apparaît que sur la page de l'annonce. -->
                     <div id="wizardTitleBlock" hidden style="margin-top: 20px;">
                         <p id="wizardTitleHeading" style="font-weight: 700; margin: 0 0 4px;">Choisissez un titre</p>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Trois propositions d’après votre besoin. Choisissez-en une, puis corrigez-la si besoin. 60 caractères maximum.</p>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Un titre court est repris de votre texte. Vous pouvez le corriger. 60 caractères maximum.</p>
                         <p id="wizardTitleStatus" class="wizard-title-status" hidden></p>
                         <div id="wizardTitleChoices" class="wizard-title-choices" role="radiogroup" aria-labelledby="wizardTitleHeading"></div>
                         <div id="wizardTitleEdit" hidden style="margin-top: 12px;">

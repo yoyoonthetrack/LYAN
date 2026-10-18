@@ -1,0 +1,188 @@
+{
+  "version": 2,
+  "name": "lyann-staging-preview",
+  "buildCommand": "node scripts/build-web.js",
+  "outputDirectory": ".",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "functions": {
+    "api/render.js": {
+      "includeFiles": "*.html"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/render?file=index.html"
+    },
+    {
+      "source": "/index.html",
+      "destination": "/api/render?file=index.html"
+    },
+    {
+      "source": "/feed",
+      "destination": "/api/render?file=feed.html"
+    },
+    {
+      "source": "/feed.html",
+      "destination": "/api/render?file=feed.html"
+    },
+    {
+      "source": "/results",
+      "destination": "/api/render?file=results.html"
+    },
+    {
+      "source": "/results.html",
+      "destination": "/api/render?file=results.html"
+    },
+    {
+      "source": "/payment-portal",
+      "destination": "/api/render?file=payment-portal.html"
+    },
+    {
+      "source": "/payment-portal.html",
+      "destination": "/api/render?file=payment-portal.html"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/api/render?file=pricing.html"
+    },
+    {
+      "source": "/pricing.html",
+      "destination": "/api/render?file=pricing.html"
+    },
+    {
+      "source": "/how-it-works",
+      "destination": "/api/render?file=how-it-works.html"
+    },
+    {
+      "source": "/how-it-works.html",
+      "destination": "/api/render?file=how-it-works.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/api/render?file=about.html"
+    },
+    {
+      "source": "/about.html",
+      "destination": "/api/render?file=about.html"
+    },
+    {
+      "source": "/confirm-signup",
+      "destination": "/api/render?file=confirm-signup.html"
+    },
+    {
+      "source": "/confirm-signup.html",
+      "destination": "/api/render?file=confirm-signup.html"
+    },
+    {
+      "source": "/legal",
+      "destination": "/api/render?file=legal.html"
+    },
+    {
+      "source": "/legal.html",
+      "destination": "/api/render?file=legal.html"
+    },
+    {
+      "source": "/confidentialite",
+      "destination": "/api/render?file=confidentialite.html"
+    },
+    {
+      "source": "/confidentialite.html",
+      "destination": "/api/render?file=confidentialite.html"
+    },
+    {
+      "source": "/auth/callback",
+      "destination": "/api/render?file=auth-callback.html"
+    },
+    {
+      "source": "/auth/callback.html",
+      "destination": "/api/render?file=auth-callback.html"
+    },
+    {
+      "source": "/v1/explorer/requests",
+      "destination": "/api"
+    },
+    {
+      "source": "/v1/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/v1",
+      "destination": "/api"
+    },
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "destination": "/config/apple-app-site-association.staging.json"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(js|css)",
+      "missing": [
+        {
+          "type": "query",
+          "key": "build"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(js|css)",
+      "has": [
+        {
+          "type": "query",
+          "key": "build"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(png|jpg|jpeg|gif|webp|avif|svg|ico|mp4|webm|woff2)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800, stale-while-revalidate=2592000"
+        }
+      ]
+    },
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300"
+        }
+      ]
+    }
+  ],
+  "ignoreCommand": "node scripts/vercel-staging-ignore.js",
+  "crons": [
+    { "path": "/v1/editorial/collect?scheduled=1", "schedule": "0 11 * * *" },
+    { "path": "/v1/editorial/collect?scheduled=1", "schedule": "0 16 * * *" },
+    { "path": "/v1/editorial/collect?scheduled=1", "schedule": "0 21 * * *" }
+  ]
+}

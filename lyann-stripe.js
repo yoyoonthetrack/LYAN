@@ -5,9 +5,6 @@
     let stripePromise = null;
     let stripe = null;
     let cardElement = null;
-    let paymentElement = null;
-    let paymentElements = null;
-    let usePaymentElement = false;
     let clientSecret = null;
     let paymentIntentId = null;
     let preparing = null;
@@ -19,6 +16,43 @@
     function setPaymentError(message) {
         const box = paymentErrorBox();
         if (box) box.textContent = message || '';
+    }
+
+    function leaveCheckoutForChat() {
+        if (global.LYANN_MESSAGING && typeof global.LYANN_MESSAGING.hideAllChildSurfaces === 'function') {
+            global.LYANN_MESSAGING.hideAllChildSurfaces();
+        } else {
+            const overlay = document.getElementById('chatCheckoutOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+    }
+
+    function explainPaymentFailure(message) {
+        setPaymentError(message);
+        leaveCheckoutForChat();
+        if (global.lyannAlert) {
+            Promise.resolve(global.lyannAlert(message, 'warning', 'Paiement non abouti')).catch(() => {});
+        } else if (typeof global.showToast === 'function') {
+            global.showToast(message, 'warning');
+        }
+    }
+
+    function setPayReady(ready) {
+        const submitBtn = document.getElementById('btnConfirmCheckoutPay');
+        if (submitBtn) submitBtn.disabled = !ready;
+        const mount = document.getElementById('lyannCardPaymentElement');
+        if (mount) mount.dataset.ready = ready ? 'true' : 'false';
+    }
+
+    function humanizeCheckoutError(err) {
+        const text = String((err && err.message) || err || '');
+        if (/Load failed|Failed to fetch|NetworkError|ECONN|timed out|timeout/i.test(text)) {
+            return 'Le serveur de paiement local n’est pas joignable. Restez sur le même Wi-Fi que le Mac, autorisez le réseau local, et vérifiez que l’API Staging écoute. Aucun versement n’a été confirmé.';
+        }
+        if (/Impossible de charger Stripe\.js|Stripe\.js indisponible/i.test(text)) {
+            return 'Le formulaire carte Stripe n’a pas pu se charger. Aucun versement n’a été confirmé.';
+        }
+        return text;
     }
 
     function loadScript(src) {
@@ -77,22 +111,17 @@
         if (cardElement && typeof cardElement.unmount === 'function') {
             try { cardElement.unmount(); } catch (e) {}
         }
-        if (paymentElement && typeof paymentElement.unmount === 'function') {
-            try { paymentElement.unmount(); } catch (e) {}
-        }
-        paymentElement = null;
-        paymentElements = null;
-        usePaymentElement = false;
         cardElement = null;
-        const info = document.getElementById('lyannSavedCardInfo');
-        if (info) info.hidden = true;
         clientSecret = null;
         paymentIntentId = null;
         setPaymentError('');
     }
 
     async function prepareCheckout(milestoneId) {
+        // E5: coalesce repeated pay initiation (double-click / retry) into one in-flight prepare.
+        if (preparing) return preparing;
         destroyCard();
+        setPayReady(false);
         const mount = document.getElementById('lyannCardPaymentElement');
         if (!isPersistedUuid(milestoneId)) {
             setPaymentError('Paiement indisponible : il faut un jalon PENDING.');
@@ -106,11 +135,12 @@
         }
 
         preparing = (async () => {
-            const stripeSdk = await getStripe();
             const result = await global.LYANN_API_CLIENT.createMilestonePaymentIntent(milestoneId);
             if (result && result.error) {
-                setPaymentError(result.error.message || 'Paiement indisponible.');
-                return result;
+                const message = humanizeCheckoutError(result.error) || 'Paiement indisponible.';
+                setPaymentError(message);
+                setPayReady(false);
+                return { error: { message }, data: result.data || null };
             }
             const payload = result && result.data ? result.data : {};
             const mockIntent = payload.mode === 'stripe_test_mock'
@@ -118,58 +148,17 @@
             if (mockIntent || !payload.client_secret) {
                 const message = 'Paiement indisponible : Stripe test n’est pas configuré sur ce serveur (STRIPE_SECRET_KEY). Aucun versement n’a été confirmé.';
                 setPaymentError(message);
-                return { error: { message } };
+                return { error: { message }, data: payload };
             }
-            clientSecret = payload.client_secret;
-            paymentIntentId = payload.payment_intent_id || null;
-            // The Payment Element owns its checkbox for explicit, optional card saving.
-            // If Customer Sessions are not available, preserve the existing card flow
-            // without claiming that card saving is active.
-            let customerSession = null;
+            if (payload.amounts && typeof global.applyServerCheckoutAmounts === 'function') {
+                global.applyServerCheckoutAmounts(payload.amounts);
+            }
             try {
-                const response = await global.LYANN_API_CLIENT.serverRequest(
-                    '/v1/payments/customer-session',
-                    { payment_intent_id: paymentIntentId }
-                );
-                customerSession = response?.customer_session_client_secret || null;
-            } catch (e) {
-                console.warn('Optional saved-card session unavailable; using card checkout.');
-            }
-            if (customerSession) {
-                try {
-                    paymentElements = stripeSdk.elements({
-                        clientSecret,
-                        customerSessionClientSecret: customerSession,
-                        locale: 'fr',
-                        appearance: {
-                            theme: 'stripe',
-                            variables: {
-                                colorPrimary: '#2E7D32',
-                                colorText: '#1F3827',
-                                borderRadius: '10px'
-                            }
-                        }
-                    });
-                    paymentElement = paymentElements.create('payment', {
-                        layout: { type: 'accordion', defaultCollapsed: false }
-                    });
-                    paymentElement.mount(mount);
-                    usePaymentElement = true;
-                    const info = document.getElementById('lyannSavedCardInfo');
-                    if (info) info.hidden = false;
-                } catch (err) {
-                    console.warn('Payment Element unavailable; using original card checkout.', err);
-                    if (paymentElement) {
-                        try { paymentElement.unmount(); } catch (e) {}
-                    }
-                    paymentElement = null;
-                    paymentElements = null;
-                    usePaymentElement = false;
-                }
-            }
-            if (!usePaymentElement) {
-                const legacyElements = stripeSdk.elements();
-                cardElement = legacyElements.create('card', {
+                const stripeSdk = await getStripe();
+                clientSecret = payload.client_secret;
+                paymentIntentId = payload.payment_intent_id || null;
+                const elements = stripeSdk.elements();
+                cardElement = elements.create('card', {
                     hidePostalCode: true,
                     style: {
                         base: {
@@ -185,16 +174,23 @@
                     setPaymentError(event.error ? event.error.message : '');
                     if (mount) mount.dataset.complete = event.complete ? 'true' : 'false';
                 });
+                setPayReady(true);
+                return { data: payload };
+            } catch (err) {
+                const message = humanizeCheckoutError(err);
+                setPaymentError(message);
+                setPayReady(false);
+                return { data: payload, error: { message } };
             }
-            return { data: payload };
         })();
 
         try {
             return await preparing;
         } catch (err) {
-            const message = err && err.message ? err.message : 'Paiement indisponible.';
+            const message = humanizeCheckoutError(err);
             setPaymentError(message);
-            return { error: { message: 'Paiement indisponible : ' + message } };
+            setPayReady(false);
+            return { error: { message: message.indexOf('Paiement indisponible') === 0 ? message : ('Paiement indisponible : ' + message) } };
         } finally {
             preparing = null;
         }
@@ -206,68 +202,79 @@
     }
 
     async function confirmCheckout() {
-        if (preparing && !cardElement && !paymentElement) {
+        if (preparing && !cardElement) {
             const prepared = await preparing;
             if (prepared && prepared.error) return prepared;
         }
-        if (!(cardElement || paymentElement) || !clientSecret || !stripe) {
+        if (!cardElement || !clientSecret || !stripe) {
             return { error: { message: 'Paiement indisponible : le formulaire carte Stripe n’est pas prêt. Aucun versement n’a été confirmé.' } };
         }
         const submitBtn = document.getElementById('btnConfirmCheckoutPay');
         if (submitBtn) submitBtn.disabled = true;
         try {
             const result = await Promise.race([
-                usePaymentElement
-                    ? stripe.confirmPayment({
-                        elements: paymentElements,
-                        clientSecret,
-                        confirmParams: {
-                            return_url: (function () {
-                                const host = /^https:\/\//i.test(location.origin)
-                                    ? location.origin
-                                    : (typeof global.getLyannBackendOrigin === 'function'
-                                        ? global.getLyannBackendOrigin()
-                                        : 'https://staging.lyann.app');
-                                return host.replace(/\/$/, '') + '/payment-portal';
-                            })()
-                        },
-                        redirect: 'if_required'
-                    })
-                    : stripe.confirmCardPayment(clientSecret, {
-                        payment_method: { card: cardElement }
-                    }),
+                stripe.confirmCardPayment(clientSecret, {
+                    payment_method: { card: cardElement }
+                }),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Délai dépassé lors de la confirmation Stripe.')), 20000))
             ]);
-            if (result && result.error) {
-                setPaymentError(result.error.message || 'Paiement refusé.');
-                api.lastResult = { error: { message: result.error.message || 'Paiement indisponible.' } };
+            if (result.error) {
+                const refused = 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous êtes de retour dans la conversation : ouvrez le dossier pour réessayer.';
+                explainPaymentFailure(refused);
+                api.lastResult = { error: { message: refused } };
                 return api.lastResult;
             }
-            const status = result?.paymentIntent?.status;
-            if (status !== 'succeeded' && status !== 'requires_capture') {
-                const message = 'Paiement indisponible : Stripe n’a pas confirmé la carte (statut ' + (status || 'inconnu') + ').';
+            const status = result.paymentIntent && result.paymentIntent.status;
+            if (status === 'requires_action') {
+                const message = 'Votre banque demande une confirmation. Terminez-la sur cet écran pour mettre le paiement en sécurité. Tant qu’elle n’est pas faite, aucun montant n’est bloqué.';
                 setPaymentError(message);
                 api.lastResult = { error: { message } };
                 return api.lastResult;
             }
+            if (status !== 'succeeded' && status !== 'requires_capture') {
+                const message = 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous êtes de retour dans la conversation : ouvrez le dossier pour réessayer.';
+                explainPaymentFailure(message);
+                api.lastResult = { error: { message } };
+                return api.lastResult;
+            }
             setPaymentError('');
-            if (global.LYANN_MESSAGING && typeof global.LYANN_MESSAGING.hideAllChildSurfaces === 'function') {
-                global.LYANN_MESSAGING.hideAllChildSurfaces();
-            } else {
-                const overlay = document.getElementById('chatCheckoutOverlay');
-                if (overlay) overlay.style.display = 'none';
+            leaveCheckoutForChat();
+            // E5: never show FUNDED until server deal state validates it.
+            let serverValidated = false;
+            if (typeof global.lyannAwaitPaidQuote === 'function') {
+                const sync = await global.lyannAwaitPaidQuote();
+                serverValidated = !!(sync && (sync.serverValidated || sync.funded));
             }
-            if (typeof global.lyannAwaitPaidQuote === 'function') global.lyannAwaitPaidQuote();
-            const successMessage = 'Paiement confirmé. Devis accepté s’affiche dans la conversation.';
-            if (typeof global.showToast === 'function') global.showToast(successMessage, 'success');
-            else if (global.lyannAlert) {
-                Promise.resolve(global.lyannAlert(successMessage)).catch(() => {});
+            const title = (document.getElementById('coPrestationTitle') || {}).textContent || 'cette mission';
+            const works = (document.getElementById('coDevisAmount') || {}).textContent || '';
+            const total = (document.getElementById('coTotalAmount') || {}).textContent || '';
+            const successMessage = serverValidated
+                ? [
+                    'Paiement sécurisé.',
+                    'Mission : ' + title + '.',
+                    works ? ('Prestation : ' + works + '.') : '',
+                    total ? ('Montant mis en sécurité : ' + total + '.') : '',
+                    'L’argent est conservé par LYANN. Il n’est pas versé tout de suite au Lyanneur.',
+                    'La mission peut maintenant commencer.',
+                    'Quand la prestation sera terminée, vous la validerez dans ce même chat. Cela libérera les fonds pour le Lyanneur.'
+                ].filter(Boolean).join(' ')
+                : 'Le paiement a été envoyé. Il n’est pas encore confirmé comme sécurisé. Restez dans cette conversation : l’état se met à jour dès que la banque a validé. Aucun fonds n’est libéré avant cette confirmation.';
+            if (global.lyannAlert) {
+                Promise.resolve(global.lyannAlert(successMessage, serverValidated ? 'success' : 'info', serverValidated ? 'Paiement sécurisé' : 'Paiement en cours')).catch(() => {});
+            } else if (typeof global.showToast === 'function') {
+                global.showToast(successMessage, serverValidated ? 'success' : 'info');
             }
-            api.lastResult = { data: { status, payment_intent_id: paymentIntentId || result.paymentIntent.id } };
+            api.lastResult = {
+                data: {
+                    status,
+                    payment_intent_id: paymentIntentId || result.paymentIntent.id,
+                    serverValidated
+                }
+            };
             return api.lastResult;
         } catch (err) {
-            const message = err && err.message ? err.message : 'Paiement indisponible.';
-            setPaymentError(message);
+            const message = 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous êtes de retour dans la conversation : ouvrez le dossier pour réessayer.';
+            explainPaymentFailure(message);
             api.lastResult = { error: { message } };
             return api.lastResult;
         } finally {

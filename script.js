@@ -1,4 +1,33 @@
 console.log("⚡ [BOOT 01] script.js loaded");
+(function installLyannPageTransitions() {
+    if (window.__lyannPageTransitions) return;
+    window.__lyannPageTransitions = true;
+    document.querySelectorAll('.nav-search-icon-link, .nav-msg-btn').forEach((el) => {
+        if (!el.getAttribute('aria-label') && el.getAttribute('title')) {
+            el.setAttribute('aria-label', el.getAttribute('title'));
+        }
+    });
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // pageswap exists only where the browser cross-fades full document changes itself.
+    // Same-document view transitions (older iOS) must keep this short leave fade.
+    const nativeDocumentChange = 'onpageswap' in window;
+    if (reduce || nativeDocumentChange) return;
+    document.addEventListener('click', (event) => {
+        if (event.defaultPrevented || event.button !== 0) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+        if (!link || link.hasAttribute('download')) return;
+        const target = link.getAttribute('target');
+        if (target && target !== '_self') return;
+        let url;
+        try { url = new URL(link.href, window.location.href); } catch (e) { return; }
+        if (url.origin !== window.location.origin) return;
+        if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+        event.preventDefault();
+        document.documentElement.classList.add('lyann-page-leave');
+        window.setTimeout(() => { window.location.href = url.href; }, 160);
+    }, true);
+})();
 console.log("[AUTH_REAL] app boot");
 window.__LYANN_AUTH_REAL__ = window.__LYANN_AUTH_REAL__ || {
     hasSession: false,
@@ -244,6 +273,22 @@ if (document.readyState === 'loading') {
     const LYANN_MEMBERS = [];
     window.LYANN_MEMBERS = LYANN_MEMBERS;
 
+function syncDrawerNavigation(overlay) {
+    if (!overlay) return;
+    const path = (window.location.pathname || '').split('/').pop() || 'index.html';
+    const mode = new URLSearchParams(window.location.search).get('mode') || '';
+    const onResults = path === 'results.html' || path === 'results';
+    const current = onResults
+        ? (mode === 'annonces' ? 'annonces' : 'lyanneurs')
+        : ((path === 'feed.html' || path === 'feed') ? 'bokantaj' : '');
+    overlay.querySelectorAll('[data-drawer-nav]').forEach((link) => {
+        const on = link.getAttribute('data-drawer-nav') === current;
+        link.classList.toggle('active', on);
+        if (on) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
+    });
+}
+
 function ensureMobileHamburgerDrawer() {
     let overlay = document.getElementById('mobileHamburgerDrawerOverlay');
     if (!overlay) {
@@ -271,6 +316,44 @@ function ensureMobileHamburgerDrawer() {
 
                 <div class="drawer-body">
 
+                    <nav class="drawer-primary-nav" aria-label="Navigation principale">
+                        <a href="feed.html" class="drawer-direct-link" data-lyann-route="bokantaj" data-drawer-nav="bokantaj">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-broadcast" aria-hidden="true"></i>
+                                <span>Bokantaj</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
+                        </a>
+                        <a href="results.html?mode=lyanneurs" class="drawer-direct-link" data-lyann-route="lyanneurs" data-drawer-nav="lyanneurs">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-users-three" aria-hidden="true"></i>
+                                <span>Lyanneurs</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
+                        </a>
+                        <a href="results.html?mode=annonces" class="drawer-direct-link" data-lyann-route="annonces" data-drawer-nav="annonces">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-list" aria-hidden="true"></i>
+                                <span>Annonces</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
+                        </a>
+                        <a href="#" class="drawer-direct-link" data-lyann-route="messages" data-drawer-nav="messages">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-chat-circle-dots" aria-hidden="true"></i>
+                                <span>Messages</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
+                        </a>
+                        <a href="#" class="drawer-direct-link" data-lyann-route="profile" data-drawer-nav="profil">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-user-circle" aria-hidden="true"></i>
+                                <span>Profil</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
+                        </a>
+                    </nav>
+
                     <div class="drawer-menu-group">
                         <a href="#" class="drawer-direct-link" data-lyann-route="publish">
                             <span class="drawer-accordion-label">
@@ -281,18 +364,8 @@ function ensureMobileHamburgerDrawer() {
                         </a>
                     </div>
 
-                    <div class="drawer-menu-group">
-                        <a href="results.html" class="drawer-direct-link" data-lyann-route="explorer">
-                            <span class="drawer-accordion-label">
-                                <i class="ph ph-magnifying-glass"></i>
-                                <span>Explorer</span>
-                            </span>
-                            <i class="ph ph-caret-right drawer-chevron"></i>
-                        </a>
-                    </div>
-
                     <div class="drawer-menu-group logged-in-only">
-                        <a href="#" class="drawer-direct-link" data-lyann-route="account">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="account" aria-label="Ouvrir Mon compte">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-user-circle"></i>
                                 <span>Mon compte</span>
@@ -302,7 +375,7 @@ function ensureMobileHamburgerDrawer() {
                     </div>
 
                     <div class="drawer-menu-group logged-in-only">
-                        <a href="#" class="drawer-direct-link" data-lyann-route="activity">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="activity" aria-label="Ouvrir Mon activité">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-clock-counter-clockwise"></i>
                                 <span>Mon activité</span>
@@ -322,7 +395,7 @@ function ensureMobileHamburgerDrawer() {
                     </div>
 
                     <div class="drawer-menu-group logged-in-only">
-                        <a href="#" class="drawer-direct-link" data-lyann-route="finances">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="finances" aria-label="Ouvrir Finances">
                             <span class="drawer-accordion-label">
                                 <i class="ph ph-credit-card"></i>
                                 <span>Finances</span>
@@ -332,21 +405,53 @@ function ensureMobileHamburgerDrawer() {
                     </div>
 
                     <div class="drawer-menu-group">
-                        <button class="drawer-accordion-btn" data-target="submenuHelp">
+                        <a href="legal.html" class="drawer-direct-link" data-lyann-route="legal">
                             <span class="drawer-accordion-label">
-                                <i class="ph ph-question"></i>
-                                <span>Aide & LYANN</span>
+                                <i class="ph ph-scales"></i>
+                                <span>CGU - Mentions légales</span>
                             </span>
                             <i class="ph ph-caret-right drawer-chevron"></i>
-                        </button>
-                        <div class="drawer-submenu" id="submenuHelp">
-                            <a href="#" class="drawer-sub-link" data-lyann-route="help"><i class="ph ph-book-open"></i> Comment ça marche</a>
-                            <a href="pricing.html" class="drawer-sub-link" data-lyann-route="pricing"><i class="ph ph-tag"></i> Tarifs</a>
-                            <a href="#" class="drawer-sub-link" data-lyann-route="support"><i class="ph ph-headset"></i> Support LYANN</a>
-                            <a href="legal.html" class="drawer-sub-link"><i class="ph ph-scales"></i> Conditions & informations légales</a>
-                            <a href="#" class="drawer-sub-link logged-in-only"><i class="ph ph-user-plus"></i> Inviter quelqu'un</a>
-                            <a href="#" class="drawer-sub-link" data-lyann-route="about"><i class="ph ph-info"></i> À propos de LYANN</a>
-                        </div>
+                        </a>
+                    </div>
+
+                    <div class="drawer-menu-group">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="help">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-book-open"></i>
+                                <span>Comment ça marche</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
+                    </div>
+
+                    <div class="drawer-menu-group">
+                        <a href="pricing.html" class="drawer-direct-link" data-lyann-route="pricing">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-tag"></i>
+                                <span>Tarifs</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
+                    </div>
+
+                    <div class="drawer-menu-group">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="support">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-headset"></i>
+                                <span>Support LYANN</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
+                    </div>
+
+                    <div class="drawer-menu-group">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="about">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-info"></i>
+                                <span>À propos de LYANN</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
                     </div>
 
                     <div class="drawer-menu-group logged-in-only">
@@ -382,6 +487,7 @@ function ensureMobileHamburgerDrawer() {
         document.body.appendChild(overlay);
     }
     initDrawerEvents(overlay);
+    syncDrawerNavigation(overlay);
 }
 
 window.openLyannHamburgerDrawer = function() {
@@ -400,6 +506,12 @@ window.openLyannHamburgerDrawer = function() {
 
     const overlay = document.getElementById('mobileHamburgerDrawerOverlay');
     if (overlay) {
+        // Always re-parent to <body> so messaging (z 9000) cannot cover the drawer.
+        if (overlay.parentElement !== document.body) document.body.appendChild(overlay);
+        else document.body.appendChild(overlay);
+        overlay.style.setProperty('z-index', '2147483000', 'important');
+        const card = overlay.querySelector('.hamburger-drawer-card') || document.getElementById('mobileHamburgerDrawer');
+        if (card) card.style.setProperty('z-index', '2147483001', 'important');
         overlay.classList.add('active');
         document.body.classList.add('drawer-open');
         document.body.style.overflow = 'hidden';
@@ -681,11 +793,43 @@ safeDomReady(() => {
     (function initKeyboardAvoidanceEngine() {
         let isKeyboardOpen = false;
 
+        const publishVisualViewport = () => {
+            if (!window.visualViewport) return;
+            document.documentElement.style.setProperty('--lyann-vv-height', window.visualViewport.height + 'px');
+            document.documentElement.style.setProperty('--lyann-vv-offset', window.visualViewport.offsetTop + 'px');
+        };
+
         document.addEventListener('focusin', (e) => {
             const tag = e.target.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
                 isKeyboardOpen = true;
                 document.body.classList.add('keyboard-open');
+                publishVisualViewport();
+                setTimeout(publishVisualViewport, 300);
+                const inbox = document.getElementById('chatModal');
+                const inThread = document.body.classList.contains('chat-conversation-open');
+                if (inbox && document.body.classList.contains('chat-list-open') && !inThread) {
+                    inbox.style.setProperty('bottom', '0px', 'important');
+                    inbox.style.setProperty('height', 'auto', 'important');
+                }
+                if (inThread) return;
+
+                const filterSheet = e.target.closest && e.target.closest('#explorerFilters');
+                if (filterSheet) {
+                    setTimeout(() => {
+                        const scroller = e.target.closest('.explorer-sheet-body');
+                        if (!scroller) return;
+                        const field = e.target.closest('label') || e.target;
+                        const fieldRect = field.getBoundingClientRect();
+                        const scrollerRect = scroller.getBoundingClientRect();
+                        if (fieldRect.top < scrollerRect.top + 8) {
+                            scroller.scrollTop -= scrollerRect.top + 8 - fieldRect.top;
+                        } else if (fieldRect.bottom > scrollerRect.bottom - 8) {
+                            scroller.scrollTop += fieldRect.bottom - (scrollerRect.bottom - 8);
+                        }
+                    }, 150);
+                    return;
+                }
 
                 // Smooth scroll active field to center of viewport with 16px breathing room
                 setTimeout(() => {
@@ -704,6 +848,8 @@ safeDomReady(() => {
                     if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
                         isKeyboardOpen = false;
                         document.body.classList.remove('keyboard-open');
+                        document.getElementById('chatModal')?.style.removeProperty('bottom');
+                        document.getElementById('chatModal')?.style.removeProperty('height');
                     }
                 }, 150);
             }
@@ -712,12 +858,39 @@ safeDomReady(() => {
         // VisualViewport API support for iOS Safari & Android WebViews
         if (window.visualViewport) {
             let originalHeight = window.visualViewport.height;
+            const pinThreadToViewport = () => {
+                const viewport = window.visualViewport;
+                const keyboard = window.innerHeight - viewport.height - viewport.offsetTop > 80;
+                document.documentElement.style.setProperty('--lyann-vv-height', viewport.height + 'px');
+                document.documentElement.style.setProperty('--lyann-vv-offset', viewport.offsetTop + 'px');
+                if (keyboard) {
+                    document.body.classList.add('keyboard-open');
+                    const thread = document.getElementById('chatMessagesContainer');
+                    if (thread && document.body.classList.contains('chat-conversation-open')) {
+                        const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 180;
+                        if (nearBottom) thread.scrollTop = thread.scrollHeight;
+                    }
+                } else if (!isKeyboardOpen) {
+                    document.body.classList.remove('keyboard-open');
+                    document.getElementById('chatModal')?.style.removeProperty('bottom');
+                    document.getElementById('chatModal')?.style.removeProperty('height');
+                }
+            };
+            window.visualViewport.addEventListener('resize', pinThreadToViewport);
+            window.visualViewport.addEventListener('scroll', pinThreadToViewport);
             window.visualViewport.addEventListener('resize', () => {
                 const currentHeight = window.visualViewport.height;
                 if (currentHeight < originalHeight * 0.8) {
                     document.body.classList.add('keyboard-open');
+                    const inbox = document.getElementById('chatModal');
+                    if (inbox && document.body.classList.contains('chat-list-open') && !document.body.classList.contains('chat-conversation-open')) {
+                        inbox.style.setProperty('bottom', '0px', 'important');
+                        inbox.style.setProperty('height', 'auto', 'important');
+                    }
                 } else if (currentHeight >= originalHeight * 0.95 && !isKeyboardOpen) {
                     document.body.classList.remove('keyboard-open');
+                    document.getElementById('chatModal')?.style.removeProperty('bottom');
+                    document.getElementById('chatModal')?.style.removeProperty('height');
                 }
             });
         }
@@ -1097,6 +1270,7 @@ safeDomReady(() => {
             if (profileOrFirstName.email === 'aide@lyann.app' || supportName === 'aide lyann' || supportName === 'support lyann') {
                 return 'Support LYANN';
             }
+            if (fn.toUpperCase() === 'LYANN' && ln) return `LYANN ${ln}`;
         } else {
             fn = (profileOrFirstName || '').trim();
             ln = (lastName || '').trim();
@@ -1104,28 +1278,32 @@ safeDomReady(() => {
         }
 
         const cleanFn = window.capitalizeLyannName(fn);
-        const cleanLnInit = ln ? ln.replace(/[^a-zA-Z]/g, '').charAt(0).toUpperCase() : '';
+        const initialFrom = (value) => {
+            const raw = String(value || '').trim();
+            const letter = raw.match(/[A-Za-zÀ-ÿ]/);
+            return letter ? letter[0].toUpperCase() : '';
+        };
+        const cleanLnInit = initialFrom(ln);
 
         if (cleanFn && cleanLnInit) {
-            return `${cleanFn}.${cleanLnInit}`;
+            return `${cleanFn} ${cleanLnInit}.`;
         }
         if (cleanFn) {
             return cleanFn;
         }
         if (dn && dn !== 'Lyanneur' && dn !== 'Membre LYANN') {
-            if (dn.includes('.') && !dn.endsWith('.')) {
-                const parts = dn.split('.');
-                const firstP = window.capitalizeLyannName(parts[0]);
-                const lastP = parts[1] ? parts[1].replace(/[^a-zA-Z]/g, '').charAt(0).toUpperCase() : '';
-                if (firstP && lastP) return `${firstP}.${lastP}`;
-                if (firstP) return firstP;
+            const dotted = dn.match(/^([^.\s]+)\s*\.\s*([A-Za-zÀ-ÿ])/);
+            if (dotted) {
+                const firstP = window.capitalizeLyannName(dotted[1]);
+                const lastP = dotted[2].toUpperCase();
+                if (firstP && lastP) return `${firstP} ${lastP}.`;
             }
             if (dn.includes(' ')) {
                 const parts = dn.trim().split(/\s+/);
                 if (parts.length > 1) {
                     const firstP = window.capitalizeLyannName(parts[0]);
-                    const lastP = parts[parts.length - 1].replace(/[^a-zA-Z]/g, '').charAt(0).toUpperCase();
-                    if (firstP && lastP) return `${firstP}.${lastP}`;
+                    const lastP = initialFrom(parts[parts.length - 1]);
+                    if (firstP && lastP) return `${firstP} ${lastP}.`;
                     if (firstP) return firstP;
                 }
             }
@@ -1161,6 +1339,14 @@ safeDomReady(() => {
 
         // Build Name Prénom N. using canonical formatter
         const formattedName = window.formatPublicName(pData, null, 'Lyanneur');
+        currentVisitingMember = {
+            id: pData.id,
+            user_id: pData.id,
+            name: formattedName,
+            role: pData.primary_activity || pData.headline || pData.role || 'Lyanneur',
+            avatar: pData.avatar_url || pData.avatar || ''
+        };
+        window.currentVisitingMember = currentVisitingMember;
         const safeDisplayName = window.escapeHtmlAttr(formattedName);
         const avatarSrc = window.escapeHtmlAttr(window.resolveLyannAvatarSrc(pData.avatar_url || pData.avatar));
 
@@ -1180,15 +1366,17 @@ safeDomReady(() => {
         if (trustItems.length > 0) {
             trustLineHTML = `<div class="lyann-trust-line-compact">${trustItems.join('<span class="lyann-trust-dot">•</span>')}</div>`;
         } else {
-            trustLineHTML = `<div class="lyann-trust-line-compact"><span class="lyann-badge lyann-badge-verified" style="background:#F1F5F9; color:#475569;"><i class="ph ph-sparkle"></i> Nouveau membre sur LYANN</span></div>`;
+            trustLineHTML = `<div class="lyann-trust-line-compact"><span class="lyann-badge lyann-badge-verified" style="background:#F3EFE6; color:#3F5C49;"><i class="ph ph-sparkle"></i> Nouveau membre sur LYANN</span></div>`;
         }
 
         // Build CTA Group
         let ctaHTML = '';
+        const shareProfileBtnHtml = `<button type="button" class="btn-share-profile" id="shareProfileBtn" aria-label="Partager le profil" title="Partager le profil" style="background: none; border: 1px solid #CBD5E1; border-radius: 50%; padding: 8px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #64748B; cursor: pointer; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;"><i class="ph ph-share-network"></i></button>`;
         if (isSelf) {
             ctaHTML = `
                 <div class="lyann-profile-cta-group">
                     <button type="button" class="btn btn-outline btn-sm" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();"><i class="ph ph-pencil-simple"></i> Modifier mon profil</button>
+                    ${shareProfileBtnHtml}
                 </div>
             `;
         } else {
@@ -1201,6 +1389,7 @@ safeDomReady(() => {
                     <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="PROFILE" data-favorite-id="${pData.id}" data-fav-type="PROFILE" data-fav-id="${pData.id}" data-surface="profile-modal" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: 1px solid #CBD5E1; border-radius: 50%; padding: 8px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #64748B; cursor: pointer; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                         <i class="ph ph-bookmark-simple"></i>
                     </button>
+                    ${shareProfileBtnHtml}
                 </div>
             `;
         }
@@ -1209,17 +1398,15 @@ safeDomReady(() => {
         let completionCardHTML = '';
         if (isSelf) {
             let missingPrompts = [];
-            if (!pData.bio || pData.bio.trim().length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus"></i> Presentation</span>');
-            if (!userServices || userServices.length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus"></i> Compétences</span>');
-            if (!portfolioItems || portfolioItems.length === 0) missingPrompts.push('<span class="lyann-completion-chip" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Réalisation</span>');
+            if (!pData.bio || pData.bio.trim().length === 0) missingPrompts.push('<button type="button" class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus" aria-hidden="true"></i> Présentation</button>');
+            if (!userServices || userServices.length === 0) missingPrompts.push('<button type="button" class="lyann-completion-chip" onclick="if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"><i class="ph ph-plus" aria-hidden="true"></i> Compétences</button>');
+            if (!portfolioItems || portfolioItems.length === 0) missingPrompts.push('<button type="button" class="lyann-completion-chip" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus" aria-hidden="true"></i> Réalisation</button>');
 
             if (missingPrompts.length > 0) {
                 completionCardHTML = `
-                    <div class="lyann-completion-card" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 14px 18px; margin-bottom: 16px;">
-                        <div class="lyann-completion-header" style="font-weight: 700; font-size: 0.9rem; color: #1E293B; margin-bottom: 8px;">
-                            <i class="ph ph-sparkle" style="color: #4A7C59;"></i> Ton profil peut être encore plus utile :
-                        </div>
-                        <div class="lyann-completion-items" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <div class="lyann-completion-card">
+                        <p class="lyann-completion-header">Quelques détails aident les voisins à te reconnaître</p>
+                        <div class="lyann-completion-items">
                             ${missingPrompts.join('')}
                         </div>
                     </div>
@@ -1229,25 +1416,27 @@ safeDomReady(() => {
 
         // Build Skills ("Je peux aider pour")
         let servicesHTML = '';
-        const allSkills = (userServices && userServices.length > 0) ? userServices.map(s => typeof s === 'string' ? s : (s.title || s.name || '')) : (Array.isArray(pData.skills) && pData.skills.length > 0 ? pData.skills : (Array.isArray(pData.intervention_zone) ? pData.intervention_zone : []));
+        const allSkills = (userServices && userServices.length > 0) ? userServices.map(s => typeof s === 'string' ? s : (s.title || s.name || '')) : (Array.isArray(pData.skills) ? pData.skills : []);
         if (allSkills.length > 0) {
             servicesHTML = `
                 <div class="lyann-profile-section">
                     <div class="lyann-section-header">
-                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Je peux aider pour</h4>
+                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving" aria-hidden="true"></i> Je peux aider pour</h4>
+                        ${isSelf ? '<button type="button" class="lyann-profile-action" id="btnAddNewServiceHub">Ajouter un service</button>' : ''}
                     </div>
-                    <div class="lyann-skills-flex" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        ${allSkills.map(s => `<span class="lyann-service-tag" style="background: rgba(74, 124, 89, 0.1); color: #1F3827; font-weight: 600; font-size: 0.84rem; padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(74, 124, 89, 0.2);"><i class="ph ph-check" style="font-size: 0.8rem; margin-right: 4px;"></i> ${window.escapeHtmlAttr(s)}</span>`).join('')}
-                    </div>
+                    <ul class="lyann-skills-flex">
+                        ${allSkills.map(s => `<li class="lyann-service-tag"><i class="ph ph-check" aria-hidden="true"></i> ${window.escapeHtmlAttr(s)}</li>`).join('')}
+                    </ul>
                 </div>
             `;
         } else if (isSelf) {
             servicesHTML = `
                 <div class="lyann-profile-section">
                     <div class="lyann-section-header">
-                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving"></i> Je peux aider pour</h4>
+                        <h4 class="lyann-section-title"><i class="ph ph-hand-waving" aria-hidden="true"></i> Je peux aider pour</h4>
+                        <button type="button" class="lyann-profile-action" id="btnAddNewServiceHub">Ajouter un service</button>
                     </div>
-                    <div class="lyann-zero-data" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="cursor:pointer; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 16px; text-align: center;">
+                    <div class="lyann-zero-data" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="cursor:pointer; background: #FAF7F2; border: 1px dashed #E4DDD2; border-radius: 14px; padding: 16px; text-align: center;">
                         <span class="lyann-zero-data-title" style="font-size: 0.88rem; color: #475569; font-weight: 600;"><i class="ph ph-plus-circle"></i> Ajoute les compétences pour lesquelles tu peux aider</span>
                     </div>
                 </div>
@@ -1262,7 +1451,7 @@ safeDomReady(() => {
                 <div class="lyann-section-header">
                     <h4 class="lyann-section-title"><i class="ph ph-navigation-arrow"></i> Zone</h4>
                 </div>
-                <div class="lyann-relocation-card" style="display: flex; align-items: center; gap: 10px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 12px 16px;">
+                <div class="lyann-relocation-card" style="display: flex; align-items: center; gap: 10px; background: #FAF7F2; border: 1px solid #E4DDD2; border-radius: 14px; padding: 12px 16px;">
                     <div class="lyann-relocation-icon" style="color: #4A7C59; font-size: 1.2rem;"><i class="ph ph-map-pin"></i></div>
                     <div class="lyann-relocation-text" style="font-size: 0.88rem; color: #1E293B;">
                         <strong>${window.escapeHtmlAttr(formattedLocation)}</strong><span style="color: #64748B;">${radiusText}</span>
@@ -1276,11 +1465,11 @@ safeDomReady(() => {
         if (portfolioItems && portfolioItems.length > 0) {
             portfolioHTML = `
                 <div class="lyann-profile-section">
-                    <div class="lyann-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h4 class="lyann-section-title"><i class="ph ph-images"></i> Réalisations</h4>
-                        ${isSelf ? '<button type="button" class="btn btn-outline btn-sm" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Ajouter</button>' : ''}
+                    <div class="lyann-section-header">
+                        <h4 class="lyann-section-title"><i class="ph ph-images" aria-hidden="true"></i> Réalisations</h4>
+                        ${isSelf ? '<button type="button" class="lyann-profile-action" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus" aria-hidden="true"></i> Ajouter</button>' : ''}
                     </div>
-                    <div class="lyann-portfolio-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                    <div class="lyann-portfolio-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px;">
                         ${portfolioItems.map(item => `
                             <div class="lyann-portfolio-card" onclick="window.lyannOpenLightbox('${item.image_url.replace(/'/g, "\\'")}', '${(item.title || '').replace(/'/g, "\\'")}', '${(item.caption || '').replace(/'/g, "\\'")}')" style="cursor: pointer; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid #E2E8F0;">
                                 <img src="${item.image_url}" alt="${window.escapeHtmlAttr(item.title || 'Réalisation')}" class="lyann-portfolio-img" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block;">
@@ -1294,9 +1483,9 @@ safeDomReady(() => {
         } else if (isSelf) {
             portfolioHTML = `
                 <div class="lyann-profile-section">
-                    <div class="lyann-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h4 class="lyann-section-title"><i class="ph ph-images"></i> Réalisations</h4>
-                        <button type="button" class="btn btn-outline btn-sm" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus"></i> Ajouter</button>
+                    <div class="lyann-section-header">
+                        <h4 class="lyann-section-title"><i class="ph ph-images" aria-hidden="true"></i> Réalisations</h4>
+                        <button type="button" class="lyann-profile-action" onclick="window.lyannOpenAddPortfolioModal()"><i class="ph ph-plus" aria-hidden="true"></i> Ajouter</button>
                     </div>
                     <div class="lyann-zero-data" onclick="window.lyannOpenAddPortfolioModal()" style="cursor:pointer; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 16px; text-align: center;">
                         <span class="lyann-zero-data-title" style="font-size: 0.88rem; color: #475569; font-weight: 600;"><i class="ph ph-image"></i> Ajoute des réalisations pour montrer ce que tu sais faire</span>
@@ -1309,12 +1498,12 @@ safeDomReady(() => {
         let reviewsHTML = `
             <div class="lyann-profile-section" id="profileAvis">
                 <div class="lyann-section-header" style="margin-bottom: 10px;">
-                    <h4 class="lyann-section-title"><i class="ph ph-star"></i> Avis (${reviewsCount})</h4>
+                    <h4 class="lyann-section-title"><i class="ph ph-star"></i> Avis et recommandations (${reviewsCount})</h4>
                 </div>
         `;
         if (reviewsList && reviewsList.length > 0) {
             reviewsHTML += reviewsList.map(r => `
-                <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:14px; padding:12px 16px; margin-bottom:10px;">
+                <div style="background:#FAF7F2; border:1px solid #E4DDD2; border-radius:14px; padding:12px 16px; margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <div style="width:32px; height:32px; border-radius:50%; background:#E6EFE9; color:#2D6A4F; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">${window.escapeHtmlAttr(r.name ? r.name.charAt(0) : 'M')}</div>
@@ -1341,14 +1530,14 @@ safeDomReady(() => {
 
         // Inject Full Layout into Modal with canonical .profile-modal-body scroller
         modalCard.innerHTML = `
-            <button class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer" onclick="if(document.getElementById('publicMemberProfileModal')) document.getElementById('publicMemberProfileModal').classList.remove('active'); document.body.style.overflow='auto'; if(typeof window.resetProfileModalScroll==='function') window.resetProfileModalScroll();" style="top:16px; right:16px; z-index:10;"><i class="ph ph-x"></i></button>
+            <div class="lyann-profile-topbar"><button type="button" class="modal-close-btn" id="closePublicProfileModalBtn" aria-label="Fermer le profil" onclick="if(document.getElementById('publicMemberProfileModal')) document.getElementById('publicMemberProfileModal').classList.remove('active'); document.body.style.overflow='auto'; if(typeof window.resetProfileModalScroll==='function') window.resetProfileModalScroll();"><i class="ph ph-x" aria-hidden="true"></i></button></div>
 
             <div class="profile-modal-body">
                 <div class="lyann-profile-hero" style="margin-bottom: 16px;">
                     <div class="lyann-profile-hero-content">
                         <div class="lyann-profile-avatar-wrapper">
                             <img src="${avatarSrc}" onerror="window.handleAvatarError(this)" alt="${safeDisplayName}" class="lyann-profile-avatar-img">
-                            ${isSelf ? '<button type="button" class="lyann-avatar-edit-btn" onclick="window.lyannOpenAvatarModal()" title="Changer la photo"><i class="ph ph-camera"></i></button>' : ''}
+                            ${isSelf ? '<button type="button" class="lyann-avatar-edit-btn" onclick="window.lyannOpenAvatarModal()" aria-label="Changer la photo de profil"><i class="ph ph-camera" aria-hidden="true"></i></button>' : ''}
                         </div>
                         <div class="lyann-profile-hero-details">
                             <div class="lyann-profile-name-row">
@@ -1358,8 +1547,9 @@ safeDomReady(() => {
                             <div class="lyann-profile-location">
                                 <i class="ph ph-map-pin"></i> ${window.escapeHtmlAttr(formattedLocation)}
                             </div>
+                            ${(pData.primary_activity || pData.headline) ? `<p class="lyann-profile-activity">${window.escapeHtmlAttr(pData.primary_activity || pData.headline)}</p>` : ''}
                             ${trustLineHTML}
-                            ${pData.bio ? `<p class="lyann-profile-bio" style="font-size:0.9rem; color:#475569; margin:8px 0;">${window.escapeHtmlAttr(pData.bio)}</p>` : ''}
+                            ${pData.bio ? `<p class="lyann-profile-bio" style="font-size:0.9rem; color:#3F4A42; margin:8px 0; line-height:1.45;">${window.escapeHtmlAttr(pData.bio)}</p>` : (isSelf ? '<p class="lyann-profile-bio" style="font-size:0.9rem; color:#6B7280; margin:8px 0;">Une courte présentation rassure les voisins.</p>' : '')}
                             ${ctaHTML}
                         </div>
                     </div>
@@ -1667,21 +1857,7 @@ safeDomReady(() => {
         });
     }
 
-    // Share profile
-    if (shareProfileBtn) {
-        shareProfileBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if (currentVisitingMember) {
-                const text = `Découvrez le profil de ${currentVisitingMember.name} (${currentVisitingMember.role}) sur LYANN !`;
-                const url = window.location.href;
-                const shared = await shareNative("Profil LYANN", text, url);
-                if (!shared && navigator.clipboard) {
-                    navigator.clipboard.writeText(url);
-                    window.lyannAlert(`🔗 Lien du profil de ${currentVisitingMember.name} copié dans votre presse-papier !`);
-                }
-            }
-        });
-    }
+    // Share profile — owned by window.shareProfile (OS sheet + chat LYANN).
 
     // Public tabs switcher
     const publicTabBtns = document.querySelectorAll('.public-tab-btn');
@@ -2379,9 +2555,17 @@ safeDomReady(() => {
     let currentFlashPosts = [];
     let activeFeedTypeFilter = 'all';
     let activeFeedTerritoryFilter = 'all';
+    let bokantajSortMode = 'recent';
+    let bokantajHasMore = false;
+    let bokantajCursor = null;
+    let bokantajLoadGen = 0;
+    let bokantajPaging = false;
+    let bokantajLocationAsked = false;
+    const bokantajFilters = { types: [], zone: 'all', radiusKm: 5, commune: '', period: 'all' };
     let attachedPhotos = [];
     let attachedPhotoFiles = [];
     let attachedVideo = null;
+    let attachedVideoFile = null;
     let bokantajFeedState = 'LOADING'; // 'LOADING' | 'ERROR' | 'EMPTY' | 'READY'
 
     const flashFeedContainer = document.getElementById('flashFeedContainer');
@@ -2423,7 +2607,7 @@ safeDomReady(() => {
 
     let bokantajFeedLoading = false;
     window.loadBokantajFeedFromSupabase = async function(options = {}) {
-        if (bokantajFeedLoading) return;
+        const gen = ++bokantajLoadGen;
         bokantajFeedLoading = true;
         const quiet = options.background === true && bokantajFeedState === 'READY' && currentFlashPosts.length > 0;
         console.log("[BOKANTAJ] init start");
@@ -2446,8 +2630,15 @@ safeDomReady(() => {
 
             const client = window.LYANN_API_CLIENT || window.apiClient;
             if (client?.advanceRequestLifecycle) client.advanceRequestLifecycle();
+            const profile = window.LYANN_CURRENT_USER_PROFILE;
+            if (profile && window.LYANN_GEO && typeof window.LYANN_GEO.setViewerLocation === 'function') {
+                window.LYANN_GEO.setViewerLocation(profile.city, profile.territory);
+            }
             const data = await window.LYANN_BOKANTAJ_REPOSITORY.load({ force: options.force === true });
+            if (gen !== bokantajLoadGen) return;
             currentFlashPosts = Array.isArray(data) ? data : [];
+            bokantajHasMore = window.LYANN_BOKANTAJ_REPOSITORY.hasMore();
+            bokantajCursor = currentFlashPosts.length ? currentFlashPosts[currentFlashPosts.length - 1].created_at : null;
             bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
         } catch (err) {
             console.error("[BOKANTAJ] Error during load:", err);
@@ -2459,8 +2650,10 @@ safeDomReady(() => {
                 bokantajFeedState = 'ERROR';
             }
         } finally {
-            renderFlashFeed();
-            window.renderTalentsSidebar(isExplicitDemoMode);
+            if (gen === bokantajLoadGen) {
+                renderFlashFeed();
+                window.renderTalentsSidebar(isExplicitDemoMode);
+            }
             bokantajFeedLoading = false;
         }
     };
@@ -2495,11 +2688,16 @@ safeDomReady(() => {
 
     if (flashVideoInput) {
         flashVideoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                attachedVideo = URL.createObjectURL(file);
-                updateMediaPreview();
-            }
+            const file = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (!file) return;
+            if (attachedVideo) URL.revokeObjectURL(attachedVideo);
+            attachedVideoFile = file;
+            attachedVideo = URL.createObjectURL(file);
+            attachedPhotos.forEach(url => URL.revokeObjectURL(url));
+            attachedPhotos = [];
+            attachedPhotoFiles = [];
+            updateMediaPreview();
         });
     }
 
@@ -2521,12 +2719,17 @@ safeDomReady(() => {
         } else if (attachedVideo) {
             if (mediaUploadBadge) {
                 mediaUploadBadge.style.display = 'inline';
-                mediaUploadBadge.textContent = `🎥 Vidéo 30s jointe`;
+                mediaUploadBadge.textContent = 'Vidéo jointe';
             }
             const vid = document.createElement('video');
             vid.src = attachedVideo;
             vid.className = 'flash-media-preview-thumb';
             vid.controls = true;
+            vid.playsInline = true;
+            vid.muted = true;
+            vid.setAttribute('playsinline', '');
+            vid.style.width = '96px';
+            vid.style.height = '96px';
             flashMediaPreviewContainer.appendChild(vid);
         } else {
             if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
@@ -2587,6 +2790,79 @@ safeDomReady(() => {
         overlay.hidden = false;
     }
 
+    window.renderBokantajCommentRow = function(comment, targetId) {
+        const author = comment.profiles;
+        const name = author ? window.formatPublicName(author, null, 'Lyanneur') : 'Lyanneur';
+        const avatar = window.getLyannAvatarUrl(author?.avatar_url) || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author_id}`;
+        const date = new Date(comment.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+        const isChild = !!comment.parent_comment_id;
+        const me = window.LYANN_AUTH_STATE?.getSnapshot?.()?.userId || window.CURRENT_USER_ID || '';
+        const mine = me && String(comment.author_id) === String(me);
+        const owner = mine ? `
+            <span class="comment-owner-actions">
+                <button type="button" class="btn-edit-own-comment" data-comment-id="${comment.id}" data-target-id="${targetId}">Modifier</button>
+                <button type="button" class="btn-delete-own-comment" data-comment-id="${comment.id}" data-target-id="${targetId}">Supprimer</button>
+            </span>` : '';
+        return `
+            <div class="comment-item-row" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
+                <img src="${avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" alt="">
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <strong style="color: #1E2822;">${escapeSearchHtml(name)}</strong>
+                        <span style="font-size: 0.75rem; color: #94A3B8;">${date}</span>
+                    </div>
+                    <div class="comment-body" style="color: #334155; margin-top: 2px;">${escapeSearchHtml(comment.content)}</div>
+                    <div style="margin-top: 6px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <button type="button" class="btn-reply-comment" data-comment-id="${comment.id}" data-target-id="${targetId}" data-author-name="${escapeSearchHtml(name)}" style="background: none; border: none; padding: 0; color: #4A7C59; font-size: 0.86rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 36px;">
+                            <i class="ph ph-arrow-u-up-left"></i> Répondre
+                        </button>
+                        ${owner}
+                    </div>
+                </div>
+            </div>`;
+    };
+
+    window.editMyComment = async function(commentId, currentText, targetId) {
+        if (!commentId) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client?.updateComment) return;
+        const next = window.lyannPrompt
+            ? await window.lyannPrompt('Modifier le commentaire', 'info', currentText || '')
+            : window.prompt('Modifier le commentaire', currentText || '');
+        if (next == null) return;
+        try {
+            await client.updateComment(commentId, next);
+            if (window.NotificationService) window.NotificationService.showToast('success', 'Commentaire mis à jour.');
+            const toggle = document.querySelector(`.btn-comments-toggle[data-target-id="${targetId}"]`);
+            const listEl = document.getElementById(`comments-list-${targetId}`);
+            if (listEl && client.getComments) {
+                const comments = await client.getComments(targetId, toggle?.dataset.targetType || 'POST');
+                listEl.innerHTML = comments.map((row) => window.renderBokantajCommentRow(row, targetId)).join('');
+            }
+        } catch (err) {
+            if (window.lyannAlert) window.lyannAlert(err.message || 'La modification n’a pas abouti.');
+        }
+    };
+
+    window.deleteMyComment = async function(commentId, targetId) {
+        if (!commentId) return;
+        const confirmed = window.lyannConfirm
+            ? await window.lyannConfirm('Vous êtes sûr de vouloir supprimer votre commentaire ?')
+            : window.confirm('Vous êtes sûr de vouloir supprimer votre commentaire ?');
+        if (!confirmed) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client?.deleteComment) return;
+        try {
+            const ok = await client.deleteComment(commentId);
+            if (!ok) throw new Error('La suppression n’a pas abouti.');
+            if (window.NotificationService) window.NotificationService.showToast('success', 'Commentaire supprimé.');
+            const row = document.querySelector(`.btn-delete-own-comment[data-comment-id="${commentId}"]`)?.closest('.comment-item-row');
+            if (row) row.remove();
+        } catch (err) {
+            if (window.lyannAlert) window.lyannAlert(err.message || 'La suppression n’a pas abouti.');
+        }
+    };
+
     window.editMyPost = async function(postId) {
         if (!postId) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
@@ -2608,8 +2884,8 @@ safeDomReady(() => {
     window.deleteMyPost = async function(postId) {
         if (!postId) return;
         const confirmed = window.lyannConfirm
-            ? await window.lyannConfirm('Supprimer cette publication ?')
-            : window.confirm('Supprimer cette publication ?');
+            ? await window.lyannConfirm('Vous êtes sûr de vouloir supprimer votre publication ?')
+            : window.confirm('Vous êtes sûr de vouloir supprimer votre publication ?');
         if (!confirmed) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
         if (!client?.deletePost) return;
@@ -2622,10 +2898,10 @@ safeDomReady(() => {
         }
     };
 
-    window.editMyAnnouncement = async function(requestId) {
+    window.openAnnouncementEditor = async function(requestId) {
         if (!requestId) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
-        if (!client?.getRequest || !client?.updateRequest) return;
+        if (!client?.getRequest || typeof window.openLyannWizard !== 'function') return;
         let current = null;
         try {
             current = await client.getRequest(requestId);
@@ -2633,31 +2909,174 @@ safeDomReady(() => {
             if (window.lyannAlert) window.lyannAlert(err.message || 'Annonce introuvable.');
             return;
         }
-        const title = window.lyannPrompt
-            ? await window.lyannPrompt('Titre de l’annonce', 'info', current?.title || '')
-            : window.prompt('Titre de l’annonce', current?.title || '');
-        if (title == null) return;
-        const description = window.lyannPrompt
-            ? await window.lyannPrompt('Description', 'info', current?.description || '')
-            : window.prompt('Description', current?.description || '');
-        if (description == null) return;
-        try {
-            await client.updateRequest(requestId, {
-                title: String(title).trim() || current?.title,
-                description: String(description).trim()
-            });
-            if (window.NotificationService) window.NotificationService.showToast('success', 'Annonce mise à jour.');
-            const session = window.LYANN_AUTH_STATE?.getSnapshot?.();
-            const userId = session?.userId || window.CURRENT_USER_ID;
-            if (userId && document.getElementById('monActiviteContainer') && typeof window.switchActivityTab === 'function') {
-                await window.switchActivityTab('requests', userId);
+        if (!current) return;
+        if (typeof window.closeLyannDetailSurface === 'function') window.closeLyannDetailSurface('edit');
+        if (typeof window.closeUserAccountModal === 'function') window.closeUserAccountModal();
+        window._lyannEditingRequestId = requestId;
+        await window.openLyannWizard({ editingRequestId: requestId });
+        const titleInput = document.getElementById('wizardTitleInput');
+        const descInput = document.getElementById('wizardDescInput');
+        const titleBlock = document.getElementById('wizardTitleBlock');
+        if (titleBlock) titleBlock.hidden = false;
+        if (titleInput) titleInput.value = current.title || '';
+        if (descInput) descInput.value = current.description || '';
+        const dateType = document.getElementById('wizardDateType');
+        if (dateType && current.date_mode) dateType.value = current.date_mode;
+        if (typeof window.updateWizardDateState === 'function') window.updateWizardDateState();
+        if (current.date_mode === 'EXACT' && current.scheduled_at) {
+            const when = new Date(current.scheduled_at);
+            if (!Number.isNaN(when.getTime())) {
+                const day = document.getElementById('wizardDateInput');
+                const time = document.getElementById('wizardTimeInput');
+                if (day) day.value = when.toISOString().slice(0, 10);
+                if (time) time.value = when.toISOString().slice(11, 16);
             }
-        } catch (err) {
-            if (window.lyannAlert) window.lyannAlert(err.message || 'La modification n’a pas abouti.');
         }
+        const choice = current.price_mode === 'FIXED' ? 'fixe' : current.price_mode === 'RANGE' ? 'fourchette' : 'devis';
+        window.wizardBudgetChoice = choice;
+        const radio = document.querySelector(`input[name="wizardBudget"][value="${choice}"]`);
+        if (radio) radio.checked = true;
+        if (current.budget != null) {
+            const amount = document.getElementById(choice === 'fourchette' ? 'wizardBudgetMinInput' : 'wizardBudgetInput');
+            if (amount) amount.value = current.budget;
+        }
+        if (current.budget_max != null) {
+            const max = document.getElementById('wizardBudgetMaxInput');
+            if (max) max.value = current.budget_max;
+        }
+        if (typeof window.updateWizardBudgetState === 'function') window.updateWizardBudgetState();
+        const citySelect = document.getElementById('wizardCitySelect');
+        const cityName = String(current.location || '').split('(')[0].trim();
+        if (citySelect && cityName) {
+            const option = Array.from(citySelect.options).find((item) => item.value === cityName || item.textContent.trim() === cityName);
+            if (option) citySelect.value = option.value;
+        }
+        const submit = document.getElementById('wizardBtnSubmit');
+        if (submit) submit.innerHTML = 'ENREGISTRER';
     };
+    window.editMyAnnouncement = window.openAnnouncementEditor;
+
+    function bokantajOrigin(filters) {
+        const geo = window.LYANN_GEO;
+        const active = filters || bokantajFilters;
+        if (!geo || typeof geo.referencePoint !== 'function') return null;
+        const point = geo.referencePoint();
+        if (point) return point;
+        if (active.zone === 'commune' && active.commune && typeof geo.coordinatesFor === 'function') {
+            return geo.coordinatesFor(active.commune, '');
+        }
+        return null;
+    }
+
+    function bokantajFiltersAreActive() {
+        return bokantajFilters.types.length > 0
+            || bokantajFilters.period !== 'all'
+            || bokantajFilters.zone === 'nearby'
+            || (bokantajFilters.zone === 'commune' && !!bokantajFilters.commune);
+    }
+
+    function annotateBokantajDistance(post, filters, sortMode) {
+        const geo = window.LYANN_GEO;
+        const active = filters || bokantajFilters;
+        const mode = sortMode || bokantajSortMode;
+        const origin = bokantajOrigin(active);
+        const showDistance = mode === 'nearby' || active.zone === 'nearby';
+        if (!showDistance || !geo || !origin || typeof geo.coordinatesFor !== 'function' || typeof geo.distanceKm !== 'function') {
+            post._distanceKm = null;
+            return post;
+        }
+        const target = geo.coordinatesFor(post.location || post.city || '', post.territory || post.territoryKey || '');
+        const km = target ? geo.distanceKm(origin, target) : null;
+        post._distanceKm = Number.isFinite(km) ? km : null;
+        return post;
+    }
+
+    function bokantajPassesSafety(post) {
+        const activeUserId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id;
+        const safetyEngine = window.LyannSafetyEngine || null;
+        if (activeUserId && safetyEngine && typeof safetyEngine.isUserBlocked === 'function') {
+            const authorId = post.author_id || post.memberId;
+            if (authorId && safetyEngine.isUserBlocked(activeUserId, authorId)) return false;
+        }
+        return true;
+    }
+
+    function bokantajVisiblePosts(filters, sortMode) {
+        const query = window.LYANN_BOKANTAJ_QUERY;
+        const active = filters || bokantajFilters;
+        const mode = sortMode || bokantajSortMode;
+        const now = new Date();
+        const list = currentFlashPosts.filter((post) => {
+            if (!post || !bokantajPassesSafety(post)) return false;
+            if (query && !query.postMatchesTypes(post, active.types)) return false;
+            if (query && !query.postWithinPeriod(post, active.period, now)) return false;
+            if (active.zone === 'commune' && active.commune && query && !query.communeMatches(post, active.commune)) return false;
+            annotateBokantajDistance(post, active, mode);
+            if (active.zone === 'nearby') {
+                if (!Number.isFinite(post._distanceKm)) return false;
+                if (post._distanceKm > Number(active.radiusKm || 0)) return false;
+            }
+            return true;
+        });
+        return query ? query.sortPosts(list, mode) : list;
+    }
+
+    function syncBokantajChrome() {
+        document.querySelectorAll('.bokantaj-sort-tab').forEach((btn) => {
+            const on = btn.dataset.sort === bokantajSortMode;
+            btn.classList.toggle('is-selected', on);
+            btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        const dot = document.getElementById('activeFilterBadge');
+        if (dot) dot.hidden = !bokantajFiltersAreActive();
+        const hint = document.getElementById('bokantajNearbyHint');
+        if (hint) hint.hidden = !(bokantajSortMode === 'nearby' && bokantajOrigin());
+        const applyBtn = document.getElementById('btnApplyBokantajSheetFilters');
+        if (applyBtn && document.getElementById('bokantajFilterSheetModal')?.classList.contains('active')) {
+            const draft = readBokantajFilterDraft();
+            const complete = (bokantajFeedState === 'READY' || bokantajFeedState === 'EMPTY') && !bokantajHasMore;
+            const count = complete ? bokantajVisiblePosts(draft, bokantajSortMode).length : null;
+            const plural = count === 0 || count > 1;
+            applyBtn.textContent = count == null
+                ? 'Afficher les publications'
+                : `Afficher ${count} publication${plural ? 's' : ''}`;
+        }
+    }
+
+    function bokantajLocationGateHtml() {
+        const denied = bokantajLocationAsked
+            ? '<p>La localisation n’est pas disponible. Choisissez une zone pour voir les publications proches.</p>'
+            : '<p>Pour classer les publications les plus proches, activez la localisation ou choisissez une zone.</p>';
+        return `
+            <div class="bokantaj-location-gate">
+                ${denied}
+                <div class="bokantaj-location-actions">
+                    <button type="button" class="btn btn-primary" id="bokantajEnableLocation">Activer la localisation</button>
+                    <button type="button" class="btn btn-outline" id="bokantajManualZone">Choisir une zone</button>
+                </div>
+            </div>
+        `;
+    }
+
+    async function hydrateBokantajReference() {
+        const geo = window.LYANN_GEO;
+        if (!geo) return false;
+        if (typeof geo.referencePoint === 'function' && geo.referencePoint()) return true;
+        let profile = window.LYANN_CURRENT_USER_PROFILE;
+        if (!profile?.city && window.LYANN_API_CLIENT?.getCurrentUser && window.LYANN_API_CLIENT.getUserProfile) {
+            try {
+                const user = await window.LYANN_API_CLIENT.getCurrentUser();
+                if (user?.id) profile = await window.LYANN_API_CLIENT.getUserProfile(user.id);
+            } catch (_) { profile = null; }
+        }
+        if (profile?.city && typeof geo.setViewerLocation === 'function') {
+            return geo.setViewerLocation(profile.city, profile.territory);
+        }
+        return Boolean(geo.referencePoint && geo.referencePoint());
+    }
 
     function renderFlashFeed() {
+        syncBokantajChrome();
         const feedContainer = document.getElementById('flashFeedContainer');
         if (!feedContainer) {
             console.warn("[BOKANTAJ] feed container NOT found (#flashFeedContainer)");
@@ -2690,6 +3109,13 @@ safeDomReady(() => {
             return;
         }
 
+        const needsOrigin = bokantajSortMode === 'nearby' || bokantajFilters.zone === 'nearby';
+        if (needsOrigin && !bokantajOrigin()) {
+            syncBokantajChrome();
+            feedContainer.innerHTML = bokantajLocationGateHtml();
+            return;
+        }
+
         if (bokantajFeedState === 'EMPTY') {
             feedContainer.innerHTML = `
                 <div class="text-center" style="padding: 50px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed var(--border);">
@@ -2703,40 +3129,17 @@ safeDomReady(() => {
         }
 
         try {
-            let filtered = currentFlashPosts.filter(post => {
-                if (!post) return false;
-                const pType = post.item_type === 'LYANN' ? 'besoin' : post.type;
+            syncBokantajChrome();
+            let filtered = bokantajVisiblePosts();
 
-                // V2 filter handling
-                let matchType = true;
-                if (activeFeedTypeFilter === 'post') {
-                    matchType = post.item_type === 'POST';
-                } else if (activeFeedTypeFilter === 'lyann') {
-                    matchType = post.item_type === 'LYANN';
-                } else if (activeFeedTypeFilter === 'dispo' || activeFeedTypeFilter === 'besoin' || activeFeedTypeFilter === 'reco' || activeFeedTypeFilter === 'info') {
-                    matchType = pType === activeFeedTypeFilter;
-                }
-
-                const matchTerritory = activeFeedTerritoryFilter === 'all' || (post.territoryKey && post.territoryKey.includes(activeFeedTerritoryFilter)) || activeFeedTerritoryFilter === post.territoryKey;
-                
-                // Step 14 Safety Filter: Exclude content from blocked users safely (browser compatible)
-                const activeUserId = window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id;
-                const safetyEngine = (typeof window !== 'undefined' ? window.LyannSafetyEngine : (typeof globalThis !== 'undefined' ? globalThis.LyannSafetyEngine : null));
-                if (activeUserId && safetyEngine && typeof safetyEngine.isUserBlocked === 'function') {
-                    const authorId = post.author_id || post.memberId;
-                    if (authorId && safetyEngine.isUserBlocked(activeUserId, authorId)) {
-                        return false;
-                    }
-                }
-                return matchType && matchTerritory;
-            });
-
-            if (filtered.length === 0) {
+                if (filtered.length === 0) {
+                const nearbyMiss = bokantajSortMode === 'nearby' && currentFlashPosts.length > 0 && !bokantajFiltersAreActive();
                 feedContainer.innerHTML = `
                     <div class="text-center" style="padding: 40px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed var(--border);">
                         <i class="ph ph-funnel" style="font-size: 2.2rem; color: var(--text-muted); margin-bottom: 10px;"></i>
-                        <h4 style="font-weight: 800; font-size: 1.05rem; margin-bottom: 4px; color: #1E293B;">Aucun contenu pour les filtres sélectionnés</h4>
-                        <p style="color: var(--text-muted); font-size: 0.88rem;">Essayez de modifier votre territoire ou type de publication.</p>
+                        <h4 style="font-weight: 800; font-size: 1.05rem; margin-bottom: 4px; color: #1E293B;">${nearbyMiss ? 'Aucune publication n’a de lieu précis.' : 'Aucun contenu pour ces filtres'}</h4>
+                        <p style="color: var(--text-muted); font-size: 0.88rem;">Essayez un autre type, une autre zone ou une autre période.</p>
+                        ${bokantajHasMore ? '<button type="button" class="btn btn-outline" id="bokantajLoadMore" style="margin-top:12px;">Charger des publications plus anciennes</button>' : ''}
                     </div>
                 `;
                 console.log("[BOKANTAJ] render complete (0 filtered items)");
@@ -2776,6 +3179,10 @@ safeDomReady(() => {
                     let mediaHTML = '';
                     const photoList = (post.images && post.images.length) ? post.images : (post.image ? [post.image] : []);
                     if (photoList.length) mediaHTML = bokantajPhotoGrid(photoList);
+                    const videoList = Array.isArray(post.videos) ? post.videos.filter(Boolean) : [];
+                    if (videoList.length) {
+                        mediaHTML += videoList.map((url) => `<video class="bokantaj-video" controls playsinline preload="metadata" src="${window.escapeHtmlAttr(url)}"></video>`).join('');
+                    }
 
                     let actionBtnHTML = '';
                     if (isLyann) {
@@ -2810,7 +3217,11 @@ safeDomReady(() => {
                     if (!authorDisplayName || isUUID(authorDisplayName)) authorDisplayName = 'Lyanneur';
                     const authorDisplayNameHtml = window.escapeHtmlAttr(authorDisplayName);
 
-                    const locationText = window.escapeHtmlAttr(post.author_city || post.location || 'Guadeloupe');
+                    const placeLabel = post.author_city || post.location || '';
+                    const locationText = placeLabel ? window.escapeHtmlAttr(placeLabel) : '';
+                    const distanceLabel = Number.isFinite(post._distanceKm) && window.LYANN_BOKANTAJ_QUERY
+                        ? window.LYANN_BOKANTAJ_QUERY.formatDistanceKm(post._distanceKm, window.LYANN_GEO?.hasPreciseLocation?.())
+                        : '';
                     const timeAgoText = post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : (post.timeAgo || 'Récemment');
                     
                     const rawTitle = (post.title || '').trim();
@@ -2835,10 +3246,13 @@ safeDomReady(() => {
 
                     const cardTitleHTML = cardHeadline ? `<div class="lyann-card-title" style="font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif; font-weight: 650; font-size: 1.15rem; color: #17231C; line-height: 1.3; letter-spacing: -0.015em; margin-bottom: 4px; word-break: break-word;">${window.escapeHtmlAttr(cardHeadline)}</div>` : '';
                     const cardBodyHTML = cardBody ? `<div class="lyann-card-description" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 450; font-size: 0.95rem; color: #334155; line-height: 1.5; word-break: break-word; margin-top: 2px;">${safeMentions(cardBody)}</div>` : '';
+                    const sourceDate = post.source_published_at ? new Date(post.source_published_at) : null;
+                    const sourceDateText = sourceDate && !Number.isNaN(sourceDate.getTime()) ? sourceDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                    const sourceHTML = post.source_url ? `<p class="lyann-post-source" style="margin:8px 0 0; font-size:0.75rem; color:#64748B;">Source · <a href="${window.escapeHtmlAttr(post.source_url)}" target="_blank" rel="noopener noreferrer">${window.escapeHtmlAttr(post.source_name || 'Publication originale')}</a>${sourceDateText ? ` · ${window.escapeHtmlAttr(sourceDateText)}` : ''}</p>` : '';
                     const budgetHTML = (isLyann && post.budget) ? ` · Budget : ${window.escapeHtmlAttr(post.budget)} €` : '';
 
                     let hasBodyContent = cardHeadline || cardBody || mediaHTML;
-                    let bodyBlockHTML = hasBodyContent ? `<div class="flash-card-body" style="margin-top: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">${cardTitleHTML}${cardBodyHTML}${mediaHTML}</div>` : '';
+                    let bodyBlockHTML = hasBodyContent || sourceHTML ? `<div class="flash-card-body" style="margin-top: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">${cardTitleHTML}${cardBodyHTML}${mediaHTML}${sourceHTML}</div>` : '';
 
                     let ctaRowHTML = '';
 
@@ -2859,19 +3273,23 @@ safeDomReady(() => {
                             `;
                         } else {
                             ctaRowHTML = `
-                                <div class="lyann-cta-row lyann-own-actions" style="display: grid; grid-template-columns: 1fr auto; gap: 10px; width: 100%; box-sizing: border-box; margin-top: 8px; align-items: center;">
-                                    ${secondaryCtaHTML}
-                                    <details class="lyann-post-menu">
-                                        <summary aria-label="Actions de l'annonce"><i class="ph ph-dots-three-bold"></i></summary>
-                                        <div class="lyann-post-menu-panel">
-                                            <button type="button" class="btn-edit-own-lyann" data-request-id="${targetId}">Modifier</button>
-                                            <button type="button" class="btn-delete-own-lyann" data-request-id="${targetId}">Supprimer</button>
-                                        </div>
-                                    </details>
+                                <div class="lyann-own-toolbar">
+                                    <button type="button" class="is-edit btn-open-lyann-detail" data-request-id="${targetId}"><i class="ph ph-eye"></i> Voir</button>
+                                    <button type="button" class="is-edit btn-edit-own-lyann" data-request-id="${targetId}"><i class="ph ph-pencil-simple"></i> Modifier</button>
+                                    <button type="button" class="is-delete btn-delete-own-lyann" data-request-id="${targetId}"><i class="ph ph-trash"></i> Supprimer</button>
                                 </div>
                             `;
                         }
                     }
+
+                    const reportMenuHTML = (!isOwnPost && !isOwnLyann && targetId) ? `
+                                    <details class="lyann-post-menu">
+                                        <summary aria-label="Plus d'actions"><i class="ph ph-dots-three-bold"></i></summary>
+                                        <div class="lyann-post-menu-panel">
+                                            <button type="button" class="btn-report-feed-item" data-target-id="${targetId}" data-target-type="${targetType}">Signaler</button>
+                                        </div>
+                                    </details>` : '';
+                    const ownPostToolbar = isOwnPost ? `<div class="lyann-own-toolbar"><button type="button" class="is-edit btn-edit-own-post" data-post-id="${targetId}"><i class="ph ph-pencil-simple"></i> Modifier</button><button type="button" class="is-delete btn-delete-own-post" data-post-id="${targetId}"><i class="ph ph-trash"></i> Supprimer</button></div>` : '';
 
                     return `
                         <div class="flash-card ${isLyann ? 'lyann-card' : ''}" id="${post.id || ''}" style="${isLyann ? 'background: #FAF6F0; border-radius: 20px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid rgba(74, 124, 89, 0.28); box-shadow: 0 4px 16px rgba(15, 23, 18, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03); width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;' : 'background: #FFFFFF; border-radius: 20px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid rgba(0, 0, 0, 0.12); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02); width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;'}">
@@ -2881,24 +3299,12 @@ safeDomReady(() => {
                                     <div class="flash-author-block trigger-quick-profile" role="button" tabindex="0" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
                                         <img src="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" onerror="window.handleAvatarError(this)" alt="${window.escapeHtmlAttr(authorDisplayName)}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
                                         <div class="flash-author-info" style="line-height: 1.25; min-width: 0; flex: 1;">
-                                            <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayNameHtml} <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i></strong>
-                                            <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ${timeAgoText}${budgetHTML}</span>
+                                            <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayNameHtml}${post.editorial ? '' : ' <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i>'}</strong>
+                                            ${post.editorial ? '<span style="display:block; font-size:0.72rem; font-weight:650; color:#35583F;">Compte éditorial LYANN</span>' : ''}
+                                            <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${locationText ? `<i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ` : ''}${distanceLabel ? `${window.escapeHtmlAttr(distanceLabel)} · ` : ''}${timeAgoText}${budgetHTML}</span>
                                         </div>
                                     </div>
-                                    ${isOwnPost ? `
-                                    <details class="lyann-post-menu">
-                                        <summary aria-label="Actions de la publication"><i class="ph ph-dots-three-bold"></i></summary>
-                                        <div class="lyann-post-menu-panel">
-                                            <button type="button" class="btn-edit-own-post" data-post-id="${targetId}">Modifier</button>
-                                            <button type="button" class="btn-delete-own-post" data-post-id="${targetId}">Supprimer</button>
-                                        </div>
-                                    </details>` : (!isOwnLyann && targetId ? `
-                                    <details class="lyann-post-menu">
-                                        <summary aria-label="Plus d'actions"><i class="ph ph-dots-three-bold"></i></summary>
-                                        <div class="lyann-post-menu-panel">
-                                            <button type="button" class="btn-report-feed-item" data-target-id="${targetId}" data-target-type="${targetType}">Signaler</button>
-                                        </div>
-                                    </details>` : '')}
+                                    ${reportMenuHTML}
                                     <button type="button" class="lyann-favorite-btn btn-fav-toggle" data-favorite-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-favorite-id="${targetId}" data-fav-type="${isLyann ? 'REQUEST' : 'BOKANTAJ_POST'}" data-fav-id="${targetId}" data-surface="bokantaj-feed" aria-label="Ajouter aux favoris" title="Ajouter aux favoris" style="background: none; border: none; padding: 10px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 1.3rem; cursor: pointer; border-radius: 50%; position: relative; z-index: 20; pointer-events: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-shrink: 0;">
                                         <i class="ph ph-bookmark-simple"></i>
                                     </button>
@@ -2929,6 +3335,7 @@ safeDomReady(() => {
                                     </div>
                                 </div>
 
+                                ${ownPostToolbar}
                                 <!-- L2: METIER CTA ROW (2 EQUAL WIDTH BUTTONS: VOIR + JE PEUX AIDER) -->
                                 ${ctaRowHTML}
                             </div>
@@ -2953,6 +3360,10 @@ safeDomReady(() => {
                     return '';
                 }
             }).join('');
+
+            if (bokantajHasMore) {
+                feedContainer.insertAdjacentHTML('beforeend', '<div class="bokantaj-load-more"><button type="button" class="btn btn-outline" id="bokantajLoadMore">Voir plus de publications</button></div>');
+            }
 
             attachFlashFeedListeners();
             if (typeof window.syncFavoriteButtonStates === 'function') {
@@ -3061,30 +3472,7 @@ safeDomReady(() => {
                         if (cmts.length === 0) {
                             return `<div style="font-size: 0.84rem; color: #94A3B8; text-align: center; padding: 6px 0;">Aucun commentaire pour le moment. Soyez le premier à répondre !</div>`;
                         }
-                        return cmts.map(c => {
-                            const author = c.profiles;
-                            const name = author ? window.formatPublicName(author, null, 'Lyanneur') : 'Lyanneur';
-                            const avatar = window.getLyannAvatarUrl(author?.avatar_url);
-                            const date = new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-                            const isChild = !!c.parent_comment_id;
-                            return `
-                                <div class="comment-item-row" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
-                                    <img src="${avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
-                                    <div style="flex: 1;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <strong style="color: #1E2822;">${escapeSearchHtml(name)}</strong>
-                                            <span style="font-size: 0.75rem; color: #94A3B8;">${date}</span>
-                                        </div>
-                                        <div style="color: #334155; margin-top: 2px;">${escapeSearchHtml(c.content)}</div>
-                                        <div style="margin-top: 4px; display: flex; align-items: center; gap: 12px;">
-                                            <button type="button" class="btn-reply-comment" data-comment-id="${c.id}" data-target-id="${targetId}" data-author-name="${escapeSearchHtml(name)}" style="background: none; border: none; padding: 0; color: #4A7C59; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                                                <i class="ph ph-arrow-u-up-left"></i> Répondre
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
+                        return cmts.map(c => window.renderBokantajCommentRow(c, targetId)).join('');
                     }
 
                     listEl.innerHTML = renderCommentItems(comments);
@@ -3096,6 +3484,20 @@ safeDomReady(() => {
         if (!window.commentReplyDelegatorBound) {
             window.commentReplyDelegatorBound = true;
             document.addEventListener('click', (e) => {
+                const editCommentBtn = e.target.closest('.btn-edit-own-comment');
+                if (editCommentBtn) {
+                    e.preventDefault();
+                    const row = editCommentBtn.closest('.comment-item-row');
+                    const current = row?.querySelector('.comment-body')?.textContent || '';
+                    window.editMyComment?.(editCommentBtn.dataset.commentId, current, editCommentBtn.dataset.targetId);
+                    return;
+                }
+                const deleteCommentBtn = e.target.closest('.btn-delete-own-comment');
+                if (deleteCommentBtn) {
+                    e.preventDefault();
+                    window.deleteMyComment?.(deleteCommentBtn.dataset.commentId, deleteCommentBtn.dataset.targetId);
+                    return;
+                }
                 const replyBtn = e.target.closest('.btn-reply-comment');
                 if (replyBtn) {
                     e.preventDefault();
@@ -3141,30 +3543,7 @@ safeDomReady(() => {
                         toggleBtnLabel.textContent = comments.length > 0 ? `Commenter (${comments.length})` : 'Commenter';
                     }
                     if (listEl) {
-                        listEl.innerHTML = comments.map(c => {
-                            const author = c.profiles;
-                            const name = author ? window.formatPublicName(author, null, 'Lyanneur') : 'Lyanneur';
-                            const avatar = author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.author_id}`;
-                            const date = new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-                            const isChild = !!c.parent_comment_id;
-                            return `
-                                <div class="comment-item-row" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
-                                    <img src="${avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
-                                    <div style="flex: 1;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <strong style="color: #1E2822;">${escapeSearchHtml(name)}</strong>
-                                            <span style="font-size: 0.75rem; color: #94A3B8;">${date}</span>
-                                        </div>
-                                        <div style="color: #334155; margin-top: 2px;">${escapeSearchHtml(c.content)}</div>
-                                        <div style="margin-top: 4px; display: flex; align-items: center; gap: 12px;">
-                                            <button type="button" class="btn-reply-comment" data-comment-id="${c.id}" data-target-id="${targetId}" data-author-name="${escapeSearchHtml(name)}" style="background: none; border: none; padding: 0; color: #4A7C59; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                                                <i class="ph ph-arrow-u-up-left"></i> Répondre
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
+                        listEl.innerHTML = comments.map(c => window.renderBokantajCommentRow(c, targetId)).join('');
                     }
                 } catch (err) {
                     if (window.NotificationService) {
@@ -3180,23 +3559,30 @@ safeDomReady(() => {
         document.querySelectorAll('.btn-share-post').forEach(btn => {
             if (btn.dataset.listenersBound === 'true') return;
             btn.dataset.listenersBound = 'true';
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
                 const targetId = btn.dataset.targetId;
                 const title = btn.dataset.title || 'Bokantaj LYANN';
                 const isLyannCard = btn.closest('.flash-card')?.classList.contains('lyann-card');
                 const paramName = isLyannCard ? 'request' : 'post';
                 const shareUrl = `${window.location.origin}/feed.html?${paramName}=${targetId}`;
-
-                if (navigator.share) {
-                    navigator.share({ title: title, text: `Découvrez cette publication sur Bokantaj LYANN :`, url: shareUrl }).catch(() => {});
-                } else {
-                    navigator.clipboard.writeText(shareUrl).then(() => {
-                        if (window.NotificationService) {
-                            window.NotificationService.showToast('success', "Lien copié dans le presse-papier !");
-                        }
-                    }).catch(() => {
-                        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(title + ' ' + shareUrl)}`, '_blank');
-                    });
+                const text = 'Découvrez cette publication sur Bokantaj LYANN';
+                const sharePlugin = window.Capacitor?.Plugins?.Share;
+                try {
+                    if (sharePlugin && typeof sharePlugin.share === 'function') {
+                        await sharePlugin.share({ title, text, url: shareUrl, dialogTitle: 'Partager' });
+                        return;
+                    }
+                    if (navigator.share) {
+                        await navigator.share({ title, text, url: shareUrl });
+                        return;
+                    }
+                    await navigator.clipboard.writeText(shareUrl);
+                    window.lyannToast?.('Lien copié.', 'success');
+                } catch (err) {
+                    if (err && (err.name === 'AbortError' || /cancel/i.test(String(err.message || '')))) return;
+                    window.lyannToast?.('Le partage n’a pas abouti. Réessayez.', 'warning');
                 }
             });
         });
@@ -3285,6 +3671,16 @@ safeDomReady(() => {
                     window.openQuickProfileModal(memberId);
                 }
             };
+            feedRoot.addEventListener('error', (event) => {
+                const video = event.target;
+                if (!video || video.tagName !== 'VIDEO' || !video.classList.contains('bokantaj-video')) return;
+                if (video.dataset.playbackError === '1') return;
+                video.dataset.playbackError = '1';
+                const note = document.createElement('p');
+                note.className = 'bokantaj-video-error';
+                note.textContent = 'Cette vidéo ne peut pas être lue sur cet appareil.';
+                video.after(note);
+            }, true);
             feedRoot.addEventListener('click', (event) => {
                 const photo = event.target.closest('.bokantaj-photo');
                 if (!photo || !feedRoot.contains(photo)) return;
@@ -3310,18 +3706,17 @@ safeDomReady(() => {
         createFlashForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = flashContentInput ? flashContentInput.value.trim() : '';
-            const type = document.getElementById('flashTypeSelect')?.value || 'info';
-            const location = document.getElementById('flashTerritorySelect')?.value || 'Guadeloupe (971)';
+            const type = document.querySelector('input[name="bokantajPostType"]:checked')?.value
+                || document.getElementById('flashTypeSelect')?.value
+                || 'info';
+            const profile = window.LYANN_CURRENT_USER_PROFILE || {};
+            const city = profile.city || null;
+            const territoryKey = profile.territory || null;
 
             if (!text && attachedPhotos.length === 0 && !attachedVideo) {
                 window.lyannAlert('Veuillez écrire un message ou ajouter une photo/vidéo à votre Lyann.');
                 return;
             }
-
-            let territoryKey = 'guadeloupe';
-            if (location.includes('Martinique')) territoryKey = 'martinique';
-            else if (location.includes('Guyane')) territoryKey = 'guyane';
-            else if (location.includes('Réunion')) territoryKey = 'reunion';
 
             const submitBtn = createFlashForm.querySelector('button[type="submit"]');
             if (submitBtn) {
@@ -3333,12 +3728,16 @@ safeDomReady(() => {
                 if (!window.LYANN_API_CLIENT?.createPost) throw new Error('Publication indisponible');
                 const mediaUrls = [];
                 for (const file of attachedPhotoFiles) mediaUrls.push(await window.LYANN_API_CLIENT.uploadPostPhoto(file));
+                if (submitBtn && attachedVideoFile) submitBtn.textContent = 'Envoi de la vidéo…';
+                if (attachedVideoFile && window.LYANN_API_CLIENT.uploadPostVideo) {
+                    mediaUrls.push(await window.LYANN_API_CLIENT.uploadPostVideo(attachedVideoFile));
+                }
                 if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.createPost === 'function') {
                     await window.LYANN_API_CLIENT.createPost({
                         content: text,
                         type: type,
                         territory: territoryKey,
-                        city: location,
+                        city: city,
                         media_urls: mediaUrls
                     });
                 }
@@ -3346,7 +3745,9 @@ safeDomReady(() => {
                 attachedPhotos.forEach(url => URL.revokeObjectURL(url));
                 attachedPhotos = [];
                 attachedPhotoFiles = [];
+                if (attachedVideo) URL.revokeObjectURL(attachedVideo);
                 attachedVideo = null;
+                attachedVideoFile = null;
                 if (flashMediaPreviewContainer) flashMediaPreviewContainer.innerHTML = '';
                 if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
 
@@ -3376,22 +3777,43 @@ safeDomReady(() => {
     }
 
     window.openBokantajComposer = function() {
+        const form = document.getElementById('createFlashForm');
+        const opener = document.getElementById('bokantajComposerOpen');
+        if (form) form.hidden = false;
+        if (opener) opener.setAttribute('aria-expanded', 'true');
         const input = document.getElementById('flashContentInput');
-        if (input) {
-            input.focus();
-            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        if (input) input.focus();
     };
     window.closeBokantajComposer = function() {
         const input = document.getElementById('flashContentInput');
         const count = document.getElementById('flashCharCount');
         const preview = document.getElementById('flashMediaPreviewContainer');
         const photo = document.getElementById('flashPhotoInput');
+        const video = document.getElementById('flashVideoInput');
+        const form = document.getElementById('createFlashForm');
+        const opener = document.getElementById('bokantajComposerOpen');
         if (input) input.value = '';
         if (count) count.textContent = '0';
         if (preview) preview.innerHTML = '';
         if (photo) photo.value = '';
+        if (video) video.value = '';
+        const infoType = document.querySelector('input[name="bokantajPostType"][value="info"]');
+        if (infoType) infoType.checked = true;
+        if (form) form.hidden = true;
+        if (opener) opener.setAttribute('aria-expanded', 'false');
     };
+    const composerOpenBtn = document.getElementById('bokantajComposerOpen');
+    if (composerOpenBtn) composerOpenBtn.addEventListener('click', () => window.openBokantajComposer());
+    const photoQuick = document.getElementById('btnComposerPhotoQuick');
+    if (photoQuick) photoQuick.addEventListener('click', () => {
+        window.openBokantajComposer();
+        document.getElementById('flashPhotoInput')?.click();
+    });
+    const videoQuick = document.getElementById('btnComposerVideoQuick');
+    if (videoQuick) videoQuick.addEventListener('click', () => {
+        window.openBokantajComposer();
+        document.getElementById('flashVideoInput')?.click();
+    });
     document.addEventListener('click', (event) => {
         const opener = event.target.closest('#btnEmptyBokantajShare');
         if (!opener) return;
@@ -3446,161 +3868,249 @@ safeDomReady(() => {
         });
     }
 
-    // === BOKANTAJ FILTER BOTTOM SHEET & COMPACT PILLS LOGIC (MOBILE UX POLISH V2) ===
-    const btnOpenFilterSheet = document.getElementById('btnOpenBokantajFilterSheet');
-    const filterSheetModal = document.getElementById('bokantajFilterSheetModal');
-    const closeFilterSheetBtn = document.getElementById('closeBokantajFilterSheetBtn');
-    const btnApplySheetFilters = document.getElementById('btnApplyBokantajSheetFilters');
-    const btnResetSheetFilters = document.getElementById('btnResetBokantajSheetFilters');
-    const sheetNearbyToggle = document.getElementById('sheetNearbyToggle');
+    function readBokantajFilterDraft() {
+        const types = [...document.querySelectorAll('#bokantajTypeChips .bokantaj-choice.is-selected')]
+            .map((btn) => btn.dataset.type)
+            .filter((type) => type && type !== 'all');
+        const zone = document.querySelector('#bokantajZoneChips .bokantaj-choice.is-selected')?.dataset.zone || 'all';
+        const radius = Number(document.querySelector('#bokantajRadiusChips .bokantaj-choice.is-selected')?.dataset.radius || bokantajFilters.radiusKm || 5);
+        const period = document.querySelector('#bokantajPeriodChips .bokantaj-choice.is-selected')?.dataset.period || 'all';
+        const commune = document.getElementById('bokantajZoneValue')?.value || '';
+        return {
+            types,
+            zone: zone === 'commune' && !commune ? 'all' : zone,
+            radiusKm: radius,
+            commune,
+            period
+        };
+    }
 
-    // 1. Open Filter Sheet
-    const openBokantajFilterSheetNow = (e) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
+    function paintBokantajFilterDraft() {
+        document.querySelectorAll('#bokantajTypeChips .bokantaj-choice').forEach((btn) => {
+            const type = btn.dataset.type;
+            const selected = type === 'all' ? bokantajFilters.types.length === 0 : bokantajFilters.types.includes(type);
+            btn.classList.toggle('is-selected', selected);
+        });
+        document.querySelectorAll('#bokantajZoneChips .bokantaj-choice').forEach((btn) => {
+            btn.classList.toggle('is-selected', btn.dataset.zone === bokantajFilters.zone);
+        });
+        document.querySelectorAll('#bokantajRadiusChips .bokantaj-choice').forEach((btn) => {
+            btn.classList.toggle('is-selected', Number(btn.dataset.radius) === Number(bokantajFilters.radiusKm));
+        });
+        document.querySelectorAll('#bokantajPeriodChips .bokantaj-choice').forEach((btn) => {
+            btn.classList.toggle('is-selected', btn.dataset.period === bokantajFilters.period);
+        });
+        const zoneValue = document.getElementById('bokantajZoneValue');
+        const zoneLabel = document.getElementById('bokantajZoneLabel');
+        if (zoneValue) zoneValue.value = bokantajFilters.commune || '';
+        if (zoneLabel) {
+            zoneLabel.hidden = !(bokantajFilters.zone === 'commune' && bokantajFilters.commune);
+            zoneLabel.textContent = bokantajFilters.commune || '';
         }
+        refreshBokantajRadiusRow();
+    }
+
+    function refreshBokantajRadiusRow() {
+        const zone = document.querySelector('#bokantajZoneChips .bokantaj-choice.is-selected')?.dataset.zone || 'all';
+        const radiusRow = document.getElementById('bokantajRadiusChips');
+        const note = document.getElementById('bokantajZoneNote');
+        const known = Boolean(bokantajOrigin(readBokantajFilterDraft()));
+        if (radiusRow) radiusRow.hidden = !(zone === 'nearby' && known);
+        if (note) note.hidden = !(zone === 'nearby' && !known);
+    }
+
+    function closeBokantajFilterSheet() {
+        const filterSheetModal = document.getElementById('bokantajFilterSheetModal');
+        if (!filterSheetModal) return;
+        filterSheetModal.classList.remove('active');
+        filterSheetModal.style.display = 'none';
+        filterSheetModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('sheet-open');
+    }
+
+    function openBokantajFilterSheetNow(event) {
+        const filterSheetModal = document.getElementById('bokantajFilterSheetModal');
+        if (!filterSheetModal) return;
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        paintBokantajFilterDraft();
         filterSheetModal.style.display = 'flex';
         filterSheetModal.classList.add('active');
         filterSheetModal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('sheet-open');
-    };
+        syncBokantajChrome();
+    }
 
-    // FILTER INTERACTION: pointer-up opens the sheet without waiting for click synthesis.
+    // FILTER INTERACTION: pointer-up opens the sheet without waiting for click synthesis
+    const btnOpenFilterSheet = document.getElementById('btnOpenBokantajFilterSheet');
+    const filterSheetModal = document.getElementById('bokantajFilterSheetModal');
     if (btnOpenFilterSheet && filterSheetModal) {
         let lastFilterPointerOpen = 0;
         btnOpenFilterSheet.addEventListener('pointerup', (e) => {
             lastFilterPointerOpen = Date.now();
             openBokantajFilterSheetNow(e);
         }, { passive: false });
-
-        // Keyboard / older browser fallback. Pointer-triggered clicks are de-duplicated.
-        btnOpenFilterSheet.addEventListener('click', (e) => {
+        btnOpenFilterSheet.addEventListener('click', (event) => {
             if (Date.now() - lastFilterPointerOpen < 500) {
-                e.preventDefault();
-                e.stopPropagation();
+                event.preventDefault();
+                event.stopPropagation();
                 return;
             }
-            openBokantajFilterSheetNow(e);
+            openBokantajFilterSheetNow(event);
         });
     }
+    document.getElementById('closeBokantajFilterSheetBtn')?.addEventListener('click', closeBokantajFilterSheet);
+    filterSheetModal?.addEventListener('click', (event) => {
+        if (event.target === filterSheetModal) closeBokantajFilterSheet();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && filterSheetModal?.classList.contains('active')) closeBokantajFilterSheet();
+    });
 
-    // 2. Close Filter Sheet
-    if (closeFilterSheetBtn && filterSheetModal) {
-        const closeSheet = () => {
-            filterSheetModal.classList.remove('active');
-            filterSheetModal.style.display = 'none';
-            document.body.classList.remove('sheet-open');
-        };
-        closeFilterSheetBtn.addEventListener('click', closeSheet);
-        filterSheetModal.addEventListener('click', (e) => {
-            if (e.target === filterSheetModal) closeSheet();
+    document.getElementById('bokantajTypeChips')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('.bokantaj-choice');
+        if (!btn) return;
+        const type = btn.dataset.type;
+        const chips = [...document.querySelectorAll('#bokantajTypeChips .bokantaj-choice')];
+        if (type === 'all') {
+            chips.forEach((chip) => chip.classList.toggle('is-selected', chip.dataset.type === 'all'));
+        } else {
+            btn.classList.toggle('is-selected');
+            const any = chips.some((chip) => chip.dataset.type !== 'all' && chip.classList.contains('is-selected'));
+            chips.forEach((chip) => {
+                if (chip.dataset.type === 'all') chip.classList.toggle('is-selected', !any);
+            });
+        }
+        syncBokantajChrome();
+    });
+    document.getElementById('bokantajZoneChips')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('.bokantaj-choice');
+        if (!btn) return;
+        document.querySelectorAll('#bokantajZoneChips .bokantaj-choice').forEach((chip) => {
+            chip.classList.toggle('is-selected', chip === btn);
         });
-    }
+        if (btn.dataset.zone === 'commune') {
+            const input = document.getElementById('bokantajZoneValue');
+            const label = document.getElementById('bokantajZoneLabel');
+            if (input && label && typeof window.openLyannCommuneDrawer === 'function') {
+                window.openLyannCommuneDrawer(input, label);
+            }
+        }
+        refreshBokantajRadiusRow();
+        syncBokantajChrome();
+    });
+    document.getElementById('bokantajZoneValue')?.addEventListener('change', () => {
+        const label = document.getElementById('bokantajZoneLabel');
+        const value = document.getElementById('bokantajZoneValue')?.value || '';
+        if (label) {
+            label.hidden = !value;
+            label.textContent = value;
+        }
+        refreshBokantajRadiusRow();
+        syncBokantajChrome();
+    });
+    document.getElementById('bokantajRadiusChips')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('.bokantaj-choice');
+        if (!btn) return;
+        document.querySelectorAll('#bokantajRadiusChips .bokantaj-choice').forEach((chip) => {
+            chip.classList.toggle('is-selected', chip === btn);
+        });
+        syncBokantajChrome();
+    });
+    document.getElementById('bokantajPeriodChips')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('.bokantaj-choice');
+        if (!btn) return;
+        document.querySelectorAll('#bokantajPeriodChips .bokantaj-choice').forEach((chip) => {
+            chip.classList.toggle('is-selected', chip === btn);
+        });
+        syncBokantajChrome();
+    });
+    document.getElementById('btnApplyBokantajSheetFilters')?.addEventListener('click', () => {
+        const draft = readBokantajFilterDraft();
+        bokantajFilters.types = draft.types;
+        bokantajFilters.zone = draft.zone;
+        bokantajFilters.radiusKm = draft.radiusKm;
+        bokantajFilters.commune = draft.commune;
+        bokantajFilters.period = draft.period;
+        activeFeedTypeFilter = draft.types[0] || 'all';
+        activeFeedTerritoryFilter = draft.zone === 'all' ? 'all' : draft.zone;
+        closeBokantajFilterSheet();
+        renderFlashFeed();
+    });
+    document.getElementById('btnResetBokantajSheetFilters')?.addEventListener('click', () => {
+        bokantajFilters.types = [];
+        bokantajFilters.zone = 'all';
+        bokantajFilters.radiusKm = 5;
+        bokantajFilters.commune = '';
+        bokantajFilters.period = 'all';
+        activeFeedTypeFilter = 'all';
+        activeFeedTerritoryFilter = 'all';
+        paintBokantajFilterDraft();
+        closeBokantajFilterSheet();
+        renderFlashFeed();
+    });
 
-    // 3. Sheet Type Buttons Toggle
-    const sheetTypeBtns = document.querySelectorAll('.sheet-type-btn');
-    sheetTypeBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            sheetTypeBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+    document.querySelectorAll('.bokantaj-sort-tab').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const next = btn.dataset.sort === 'nearby' ? 'nearby' : 'recent';
+            if (next === bokantajSortMode) return;
+            bokantajSortMode = next;
+            if (next === 'nearby') await hydrateBokantajReference();
+            renderFlashFeed();
         });
     });
 
-    // 4. Sheet Topic Tags Toggle
-    const sheetTopicTags = document.querySelectorAll('.sheet-topic-tag');
-    sheetTopicTags.forEach(tag => {
-        tag.addEventListener('click', () => {
-            tag.classList.toggle('active');
-        });
-    });
-
-    // 5. Apply Sheet Filters
-    if (btnApplySheetFilters) {
-        btnApplySheetFilters.addEventListener('click', () => {
-            // Apply selected type
-            const activeTypeBtn = document.querySelector('.sheet-type-btn.active');
-            if (activeTypeBtn) {
-                activeFeedTypeFilter = activeTypeBtn.dataset.type || 'all';
-                // Sync row 1 segment buttons
-                document.querySelectorAll('.bokantaj-segment-group .feed-pill').forEach(btn => {
-                    if (btn.dataset.filterV2 === activeFeedTypeFilter) {
-                        btn.classList.add('active');
-                    } else {
-                        btn.classList.remove('active');
-                    }
+    document.addEventListener('click', async (event) => {
+        if (event.target.closest('#bokantajLoadMore')) {
+            event.preventDefault();
+            if (!bokantajHasMore || !bokantajCursor || bokantajPaging) return;
+            bokantajPaging = true;
+            const gen = bokantajLoadGen;
+            const button = document.getElementById('bokantajLoadMore');
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Chargement…';
+            }
+            try {
+                const page = await window.LYANN_BOKANTAJ_REPOSITORY.load({ before: bokantajCursor });
+                if (gen !== bokantajLoadGen) return;
+                const items = Array.isArray(page) ? page : [];
+                const seen = new Set(currentFlashPosts.map((post) => post && post.id));
+                items.forEach((item) => {
+                    if (item && !seen.has(item.id)) currentFlashPosts.push(item);
                 });
-            }
-
-            // Apply nearby toggle
-            if (sheetNearbyToggle && sheetNearbyToggle.checked) {
-                activeFeedTerritoryFilter = 'nearby';
-                const nearbyChip = document.querySelector('.bokantaj-topic-scroller .chip-pill[data-filter-v2="nearby"]');
-                if (nearbyChip) nearbyChip.classList.add('active');
-            } else if (sheetNearbyToggle && !sheetNearbyToggle.checked && activeFeedTerritoryFilter === 'nearby') {
-                activeFeedTerritoryFilter = 'all';
-                const nearbyChip = document.querySelector('.bokantaj-topic-scroller .chip-pill[data-filter-v2="nearby"]');
-                if (nearbyChip) nearbyChip.classList.remove('active');
-            }
-
-            // Close sheet and re-render feed
-            if (filterSheetModal) {
-                filterSheetModal.classList.remove('active');
-                filterSheetModal.style.display = 'none';
-                document.body.classList.remove('sheet-open');
-            }
-
-            if (typeof renderFlashFeed === 'function') {
+                bokantajHasMore = items.length > 0 && window.LYANN_BOKANTAJ_REPOSITORY.hasMore();
+                if (items.length) bokantajCursor = items[items.length - 1].created_at;
+                if (!items.length) bokantajHasMore = false;
                 renderFlashFeed();
+            } catch (err) {
+                if (window.lyannAlert) window.lyannAlert('Les publications plus anciennes n’ont pas pu être chargées.');
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = 'Voir plus de publications';
+                }
+            } finally {
+                bokantajPaging = false;
             }
-        });
-    }
-
-    // 6. Reset Sheet Filters
-    if (btnResetSheetFilters) {
-        btnResetSheetFilters.addEventListener('click', () => {
-            activeFeedTypeFilter = 'all';
-            activeFeedTerritoryFilter = 'all';
-            if (sheetNearbyToggle) sheetNearbyToggle.checked = false;
-            sheetTypeBtns.forEach((b, i) => b.classList.toggle('active', i === 0));
-            sheetTopicTags.forEach(t => t.classList.remove('active'));
-            
-            document.querySelectorAll('.bokantaj-segment-group .feed-pill').forEach((btn, i) => {
-                btn.classList.toggle('active', i === 0);
-            });
-            document.querySelectorAll('.bokantaj-topic-scroller .chip-pill').forEach(chip => {
-                chip.classList.remove('active');
-            });
-
-            if (filterSheetModal) {
-                filterSheetModal.classList.remove('active');
-                filterSheetModal.style.display = 'none';
-                document.body.classList.remove('sheet-open');
-            }
-
-            if (typeof renderFlashFeed === 'function') {
-                renderFlashFeed();
-            }
-        });
-    }
-
-    // 7. Directly bind Row 1 & Row 2 Bokantaj segment & scroller buttons
-    document.querySelectorAll('.bokantaj-segment-group .feed-pill, .bokantaj-topic-scroller .chip-pill').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const filterVal = btn.dataset.filterV2;
-            if (filterVal === 'nearby') {
-                btn.classList.toggle('active');
-                activeFeedTerritoryFilter = btn.classList.contains('active') ? 'nearby' : 'all';
-                if (sheetNearbyToggle) sheetNearbyToggle.checked = btn.classList.contains('active');
-            } else if (filterVal) {
-                document.querySelectorAll('.bokantaj-segment-group .feed-pill').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                activeFeedTypeFilter = filterVal;
-            }
-            if (typeof renderFlashFeed === 'function') {
-                renderFlashFeed();
-            }
-        });
+            return;
+        }
+        if (event.target.closest('#bokantajEnableLocation')) {
+            event.preventDefault();
+            bokantajLocationAsked = true;
+            const fix = window.LYANN_GEO && typeof window.LYANN_GEO.requestPreciseLocation === 'function'
+                ? await window.LYANN_GEO.requestPreciseLocation()
+                : null;
+            if (!fix) await hydrateBokantajReference();
+            renderFlashFeed();
+            return;
+        }
+        if (event.target.closest('#bokantajManualZone')) {
+            event.preventDefault();
+            openBokantajFilterSheetNow();
+            document.querySelector('#bokantajZoneChips .bokantaj-choice[data-zone="commune"]')?.click();
+        }
     });
 
 
@@ -3705,12 +4215,88 @@ safeDomReady(() => {
             }
         }
 
+        syncQuickProfileSafety(member, displayName);
+
         if (quickProfileModal) {
             quickProfileModal.classList.add('active');
             quickProfileModal.style.display = 'flex';
         }
         document.body.style.overflow = 'hidden';
     };
+
+    function quickMemberId(member) {
+        const id = member && (member.id || member.user_id);
+        const ok = typeof window.isUUID === 'function'
+            ? window.isUUID(id)
+            : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ''));
+        return ok ? id : null;
+    }
+
+    function ensureQuickProfileSafety() {
+        if (!quickProfileModal || document.getElementById('quickProfileSafety')) return;
+        const body = quickProfileModal.querySelector('.quick-profile-body');
+        if (!body) return;
+        const row = document.createElement('div');
+        row.id = 'quickProfileSafety';
+        row.style.cssText = 'display:flex; justify-content:center; gap:8px; margin-top:12px;';
+        const blockBtn = document.createElement('button');
+        blockBtn.type = 'button';
+        blockBtn.id = 'quickBlockUserBtn';
+        blockBtn.className = 'btn btn-outline';
+        blockBtn.style.cssText = 'min-height:44px; color:#991B1B; border-color:#FECACA;';
+        blockBtn.textContent = 'Bloquer';
+        const reportBtn = document.createElement('button');
+        reportBtn.type = 'button';
+        reportBtn.id = 'quickReportUserBtn';
+        reportBtn.className = 'btn btn-outline';
+        reportBtn.style.cssText = 'min-height:44px;';
+        reportBtn.textContent = 'Signaler';
+        row.append(blockBtn, reportBtn);
+        body.appendChild(row);
+        blockBtn.addEventListener('click', async () => {
+            const member = currentQuickMember;
+            const id = quickMemberId(member);
+            if (!id || typeof window.blockUser !== 'function') return;
+            const name = window.formatPublicName ? window.formatPublicName(member, null, 'ce membre') : 'ce membre';
+            const blocked = window.isUserBlocked && window.isUserBlocked(id);
+            if (blocked) {
+                const ok = window.lyannConfirm ? await window.lyannConfirm(`Débloquer ${name} ? Vous pourrez à nouveau vous écrire.`) : true;
+                if (!ok) return;
+                const done = await window.unblockUser(id);
+                if (done) blockBtn.textContent = 'Bloquer';
+                return;
+            }
+            const ok = window.lyannConfirm
+                ? await window.lyannConfirm(`Bloquer ${name} ? Cette personne ne sera pas prévenue. Vous ne pourrez plus vous écrire. Les missions et paiements déjà en cours restent suivis.`)
+                : true;
+            if (!ok || typeof window.blockUser !== 'function') return;
+            const done = await window.blockUser(id, name);
+            if (done) blockBtn.textContent = 'Débloquer';
+        });
+        reportBtn.addEventListener('click', () => {
+            const member = currentQuickMember;
+            const id = quickMemberId(member);
+            const name = window.formatPublicName ? window.formatPublicName(member, null, 'ce membre') : 'ce membre';
+            if (typeof window.openReportModal === 'function') window.openReportModal(name, id, { source: 'profile' });
+        });
+    }
+
+    function syncQuickProfileSafety(member, displayName) {
+        ensureQuickProfileSafety();
+        const row = document.getElementById('quickProfileSafety');
+        const id = quickMemberId(member);
+        const myId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || window.CURRENT_USER_ID || null;
+        if (!row) return;
+        if (!id || (myId && String(id) === String(myId))) {
+            row.style.display = 'none';
+            return;
+        }
+        row.style.display = 'flex';
+        const blockBtn = document.getElementById('quickBlockUserBtn');
+        if (blockBtn) blockBtn.textContent = window.isUserBlocked && window.isUserBlocked(id) ? 'Débloquer' : 'Bloquer';
+        const reportBtn = document.getElementById('quickReportUserBtn');
+        if (reportBtn) reportBtn.setAttribute('aria-label', `Signaler ${displayName || 'ce membre'}`);
+    }
 
     if (quickStartChatBtn) {
         quickStartChatBtn.addEventListener('click', async () => {
@@ -3742,9 +4328,20 @@ safeDomReady(() => {
             if (quickProfileModal) quickProfileModal.classList.remove('active');
             const bookingModal = document.getElementById('bookingModal');
             const targetNameEl = document.getElementById('bookingTargetMemberName');
-            if (targetNameEl && currentQuickMember) {
-                targetNameEl.textContent = `Réserver avec ${currentQuickMember.name}`;
+            const memberId = currentQuickMember && (currentQuickMember.id || currentQuickMember.user_id);
+            if (bookingModal) {
+                if (memberId) bookingModal.dataset.targetUserId = memberId;
+                else delete bookingModal.dataset.targetUserId;
+                if (currentQuickMember && currentQuickMember.name) bookingModal.dataset.targetUserName = currentQuickMember.name;
             }
+            if (currentQuickMember) {
+                const bookingName = window.formatPublicName
+                    ? window.formatPublicName(currentQuickMember, null, currentQuickMember.name || currentQuickMember.full_name || 'ce Lyanneur')
+                    : (currentQuickMember.name || currentQuickMember.full_name || 'ce Lyanneur');
+                if (bookingModal) bookingModal.dataset.targetUserName = bookingName;
+                if (targetNameEl) targetNameEl.textContent = `Proposer une mission à ${bookingName}`;
+            }
+            if (typeof window.installBookingCommunePicker === 'function') window.installBookingCommunePicker();
             if (bookingModal) bookingModal.classList.add('active');
         });
     }
@@ -4044,6 +4641,156 @@ safeDomReady(() => {
         });
     }
 
+    window.installBookingCommunePicker = function installBookingCommunePicker() {
+        const input = document.getElementById('bookingLocation');
+        if (!input) return;
+        if (input.dataset.communeDrawer === '1') {
+            const existing = document.getElementById('bookingCommunePicker');
+            if (existing && !existing.dataset.bound) {
+                existing.dataset.bound = '1';
+                existing.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openBookingCommuneDrawer(input, existing);
+                });
+            }
+            return;
+        }
+        input.dataset.communeDrawer = '1';
+        input.type = 'hidden';
+        input.removeAttribute('required');
+        const fieldLabel = document.querySelector('label[for="bookingLocation"]');
+        if (fieldLabel) fieldLabel.textContent = 'Commune';
+        let button = document.getElementById('bookingCommunePicker');
+        if (!button) {
+            button = document.createElement('button');
+            button.type = 'button';
+            button.id = 'bookingCommunePicker';
+            button.className = 'modal-input lyann-commune-picker';
+            input.after(button);
+        }
+        button.textContent = input.value || 'Choisir une île, puis une commune';
+        if (!button.dataset.bound) {
+            button.dataset.bound = '1';
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                openBookingCommuneDrawer(input, button);
+            });
+        }
+    };
+    window.resetBookingCommunePicker = function resetBookingCommunePicker() {
+        const input = document.getElementById('bookingLocation');
+        const button = document.getElementById('bookingCommunePicker');
+        if (input) input.value = '';
+        if (button) button.textContent = 'Choisir une île, puis une commune';
+    };
+    function resolveBookingTerritoryContext() {
+        const dataset = window.LYANN_TERRITORY_DATASET || {};
+        let profile = window.LYANN_CURRENT_USER_PROFILE || window.LYANN_CURRENT_USER || {};
+        try {
+            if (!profile.territory && !profile.city) {
+                const raw = (typeof safeStorage !== 'undefined' ? safeStorage.getItem('lyan_user_profile') : null)
+                    || localStorage.getItem('lyan_user_profile');
+                if (raw) profile = Object.assign({}, profile, JSON.parse(raw));
+            }
+        } catch (_) {}
+        const profileTerritory = String(profile.territory || profile.location || '').trim();
+        const profileCity = String(profile.city || profile.commune || '').trim();
+        const matched = typeof window.findTerritoryAndIslandForCommune === 'function'
+            ? window.findTerritoryAndIslandForCommune(profileCity)
+            : null;
+        let territoryKey = matched && matched.territory;
+        if (!territoryKey && profileTerritory) {
+            territoryKey = Object.keys(dataset).find((key) => key === profileTerritory || key.startsWith(profileTerritory) || profileTerritory.includes(key.replace(/\s*\(\d+\)\s*$/, '').trim()));
+        }
+        if (!territoryKey || !dataset[territoryKey]) territoryKey = 'Guadeloupe (971)';
+        const islands = Object.keys(dataset[territoryKey] || {}).map((island) => ({
+            island,
+            territory: territoryKey,
+            communes: [...new Set(dataset[territoryKey][island] || [])]
+        }));
+        const preferredIsland = matched && matched.island
+            || islands.find((entry) => entry.communes.some((c) => c.toLowerCase() === profileCity.toLowerCase()))?.island
+            || null;
+        return { territoryKey, islands, preferredIsland };
+    }
+    function openBookingCommuneDrawer(input, button) {
+        const context = resolveBookingTerritoryContext();
+        let sheet = document.getElementById('lyannCommuneDrawer');
+        if (!sheet) {
+            sheet = document.createElement('div');
+            sheet.id = 'lyannCommuneDrawer';
+            sheet.className = 'lyann-commune-drawer';
+            sheet.innerHTML = '<div class="lyann-commune-card" role="dialog" aria-modal="true" aria-labelledby="lyannCommuneTitle"><div class="lyann-commune-head"><button type="button" class="lyann-commune-back" hidden aria-label="Retour aux îles"><i class="ph ph-arrow-left"></i></button><h3 id="lyannCommuneTitle">Choisir une île</h3><button type="button" class="lyann-commune-close" aria-label="Fermer"><i class="ph ph-x"></i></button></div><div class="lyann-commune-list"></div></div>';
+            sheet.addEventListener('click', (event) => {
+                if (event.target === sheet || event.target.closest('.lyann-commune-close')) sheet.hidden = true;
+            });
+            document.body.appendChild(sheet);
+        }
+        document.body.appendChild(sheet);
+        sheet.style.zIndex = '2147483020';
+        const list = sheet.querySelector('.lyann-commune-list');
+        const title = sheet.querySelector('#lyannCommuneTitle');
+        const back = sheet.querySelector('.lyann-commune-back');
+        const islands = context.islands;
+        function showIslands() {
+            title.textContent = 'Choisir une île';
+            back.hidden = true;
+            list.innerHTML = '';
+            if (!islands.length) {
+                const empty = document.createElement('p');
+                empty.className = 'lyann-commune-empty';
+                empty.textContent = 'Aucune île disponible pour le moment.';
+                list.appendChild(empty);
+                return;
+            }
+            islands.forEach((entry) => {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'lyann-commune-row' + (entry.island === context.preferredIsland ? ' is-preferred' : '');
+                row.innerHTML = '<strong></strong><span></span>';
+                row.querySelector('strong').textContent = entry.island;
+                row.querySelector('span').textContent = entry.communes.length + ' communes'
+                    + (entry.island === context.preferredIsland ? ' · Votre zone' : '');
+                row.addEventListener('click', () => showCommunes(entry));
+                list.appendChild(row);
+            });
+        }
+        function showCommunes(entry) {
+            title.textContent = 'Choisir une commune · ' + entry.island;
+            back.hidden = false;
+            list.innerHTML = '';
+            entry.communes.forEach((commune) => {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'lyann-commune-row';
+                row.textContent = commune;
+                row.addEventListener('click', () => {
+                    const shortTerritory = String(entry.territory || '').replace(/\s*\(\d+\)\s*$/, '').trim();
+                    const label = commune + ' · ' + entry.island + (shortTerritory ? ' · ' + shortTerritory : '');
+                    input.value = label;
+                    button.textContent = label;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    sheet.hidden = true;
+                });
+                list.appendChild(row);
+            });
+        }
+        back.onclick = (event) => {
+            event.stopPropagation();
+            showIslands();
+        };
+        // Prefill: jump straight to communes of the user's island when known.
+        const preferred = islands.find((entry) => entry.island === context.preferredIsland);
+        if (preferred) showCommunes(preferred);
+        else showIslands();
+        sheet.hidden = false;
+        sheet.style.display = 'flex';
+    }
+    window.openLyannCommuneDrawer = openBookingCommuneDrawer;
+    if (document.getElementById('bookingLocation')) window.installBookingCommunePicker();
+
     // Modal Booking (Prise de RDV)
     const bookingModal = document.getElementById('bookingModal');
     const closeBookingModalBtn = document.getElementById('closeBookingModalBtn');
@@ -4055,7 +4802,12 @@ safeDomReady(() => {
             e.preventDefault();
             const memberName = btn.dataset.memberName || 'ce Lyanneur';
             const targetNameEl = document.getElementById('bookingTargetMemberName');
+            if (bookingModal) {
+                if (btn.dataset.memberId) bookingModal.dataset.targetUserId = btn.dataset.memberId;
+                bookingModal.dataset.targetUserName = memberName;
+            }
             if (targetNameEl) targetNameEl.textContent = `Proposer une mission à ${memberName}`;
+            if (typeof window.installBookingCommunePicker === 'function') window.installBookingCommunePicker();
             if (bookingModal) bookingModal.classList.add('active');
         });
     });
@@ -4067,40 +4819,82 @@ safeDomReady(() => {
     }
 
     if (bookingForm) {
-        bookingForm.addEventListener('submit', (e) => {
+        bookingForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const targetNameEl = document.getElementById('bookingTargetMemberName');
-            let providerName = 'Prestataire LYANN';
-            if (targetNameEl && targetNameEl.textContent) {
-                providerName = targetNameEl.textContent.replace('Proposer une mission à ', '').replace('Réserver avec ', '');
+            const submitBtn = bookingForm.querySelector('button[type="submit"]');
+            if (submitBtn && submitBtn.dataset.sending === '1') return;
+            const memberId = bookingModal && bookingModal.dataset.targetUserId;
+            const memberName = (bookingModal && bookingModal.dataset.targetUserName) || 'cette personne';
+            const commune = (document.getElementById('bookingLocation')?.value || '').trim();
+            const notes = (document.getElementById('bookingNotes')?.value || '').trim();
+            const serviceSelect = document.getElementById('bookingServiceType');
+            const service = serviceSelect ? (serviceSelect.options[serviceSelect.selectedIndex]?.text || '').replace(/^[^\p{L}]+/u, '').trim() : 'Mission';
+            const dateValue = document.getElementById('bookingDate')?.value || '';
+            const slot = document.getElementById('bookingTimeSlot')?.value || '';
+            const uuid = (value) => typeof window.isUUID === 'function'
+                ? window.isUUID(value)
+                : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ''));
+            if (!commune) {
+                if (window.lyannAlert) window.lyannAlert('Choisissez la commune de la mission.');
+                return;
             }
-
-            // Déclencher les notifications de réservation via Twilio & SendGrid
-            if (window.LYANN_NOTIFICATIONS) {
-                // Notifier le prestataire par SMS
-                window.LYANN_NOTIFICATIONS.sendSMS(
-                    '+590690001122', 
-                    providerName, 
-                    `Bonjour ${providerName}, vous avez reçu une nouvelle demande de réservation. Connectez-vous à LYANN pour y répondre.`
-                );
-
-                // Notifier le prestataire par Email
-                window.LYANN_NOTIFICATIONS.sendEmail(
-                    'prestataire@lyann-dom.com',
-                    providerName,
-                    '🤝 Nouvelle demande de réservation sur LYANN DOM',
-                    `
-                    <p>Une nouvelle demande de rendez-vous a été déposée pour votre activité.</p>
-                    <p><strong>Détails du client :</strong> Client LYANN (Guadeloupe)</p>
-                    <p>Rendez-vous dans votre Espace Prestataire sur LYANN DOM pour envoyer votre devis par jalon et sécuriser le paiement.</p>
-                    `
-                );
+            if (!uuid(memberId)) {
+                if (window.lyannAlert) window.lyannAlert('Cette personne ne peut pas recevoir de mission pour le moment.');
+                return;
             }
-
-            window.lyannAlert('🎉 Votre demande de réservation et de devis a été transmise avec succès ! Vous recevrez une confirmation sous 2h.');
-            if (bookingModal) bookingModal.classList.remove('active');
-            bookingForm.reset();
+            if (!notes) {
+                if (window.lyannAlert) window.lyannAlert('Décrivez la mission.');
+                return;
+            }
+            if (submitBtn) {
+                submitBtn.dataset.sending = '1';
+                submitBtn.disabled = true;
+            }
+            try {
+                const created = await window.LYANN_API_CLIENT.createRequest({
+                    title: service.slice(0, 60) || 'Mission',
+                    description: [notes, slot ? `Créneau : ${slot}` : ''].filter(Boolean).join('\n'),
+                    category: service || 'Général',
+                    location: commune,
+                    visibility: 'DIRECT',
+                    target_user_id: memberId,
+                    date_mode: dateValue ? 'EXACT' : 'FLEXIBLE',
+                    scheduled_at: dateValue ? new Date(dateValue + 'T12:00:00').toISOString() : null,
+                    price_mode: 'QUOTE',
+                    urgency: 'flexible',
+                    status: 'OPEN'
+                });
+                if (created && created.id) {
+                    try {
+                        await window.LYANN_API_CLIENT.bindConversationRequest(created.id, memberId, 'DIRECT');
+                    } catch (bindErr) {
+                        console.warn('[MISSION] lien conversation', bindErr);
+                    }
+                }
+                if (bookingModal) bookingModal.classList.remove('active');
+                bookingForm.reset();
+                if (typeof window.resetBookingCommunePicker === 'function') window.resetBookingCommunePicker();
+                if (window.lyannAlert) window.lyannAlert('La mission a été créée.');
+                if (created && created.id && window.LYANN_MESSAGING) {
+                    await window.LYANN_MESSAGING.openConversation({
+                        contactId: memberId,
+                        name: memberName,
+                        requestId: created.id,
+                        initialNeed: { requestId: created.id, requesterId: window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null, title: service }
+                    });
+                }
+            } catch (err) {
+                console.error('[MISSION] création', err);
+                const message = window.lyannSanitizeUserMessage
+                    ? window.lyannSanitizeUserMessage(err && err.message)
+                    : 'La mission n’a pas pu être créée. Réessayez.';
+                if (window.lyannAlert) window.lyannAlert(message);
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    delete submitBtn.dataset.sending;
+                }
+            }
         });
     }
 
@@ -4123,50 +4917,106 @@ safeDomReady(() => {
         });
     }
 
+    if (reportForm && !document.getElementById('reportEvidence')) {
+        const field = document.createElement('div');
+        field.className = 'form-group';
+        const label = document.createElement('label');
+        label.htmlFor = 'reportEvidence';
+        label.textContent = 'Captures ou preuves, facultatif';
+        const input = document.createElement('input');
+        input.id = 'reportEvidence';
+        input.type = 'file';
+        input.accept = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
+        input.multiple = true;
+        input.className = 'modal-input';
+        const hint = document.createElement('p');
+        hint.style.cssText = 'margin:6px 0 0; font-size:0.78rem; color:var(--text-muted);';
+        hint.textContent = 'Jusqu’à 4 images. Elles restent privées et ne sont pas montrées à la personne signalée.';
+        field.append(label, input, hint);
+        const submitButton = reportForm.querySelector('button[type="submit"]');
+        if (submitButton) reportForm.insertBefore(field, submitButton);
+        else reportForm.appendChild(field);
+    }
+
     if (reportForm) {
-        reportForm.addEventListener('submit', (e) => {
+        reportForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const submitButton = reportForm.querySelector('button[type="submit"]');
+            if (submitButton && submitButton.dataset.sending === '1') return;
             const reasonSelect = document.getElementById('reportReason');
             const detailsInput = document.getElementById('reportDetails');
-            const reasonVal = reasonSelect ? reasonSelect.value : 'inapproprie';
-            const detailsVal = detailsInput ? detailsInput.value : '';
-            
-            const targetUser = (reportModal && reportModal.getAttribute('data-target-user')) ? reportModal.getAttribute('data-target-user') : 'Membre Signalé';
-            
+            const reasonVal = reasonSelect ? reasonSelect.value : 'autre';
+            const detailsVal = detailsInput ? detailsInput.value.trim() : '';
             const reasonLabels = {
-                'inapproprie': 'Propos inappropriés / Harcèlement',
-                'fausse_info': 'Profil inexact / Faux profil',
-                'spam': 'Démarchage abusif / Spam',
-                'fraude': 'Arnaque / Suspicion de fraude',
-                'autre': 'Autre problème de sérénité'
+                'inapproprie': 'Propos inappropriés ou harcèlement',
+                'fausse_info': 'Profil inexact ou faux profil',
+                'spam': 'Démarchage abusif ou spam',
+                'fraude': 'Arnaque ou suspicion de fraude',
+                'autre': 'Autre problème'
             };
-            
-            const newReport = {
-                id: 'REP-' + Math.floor(100000 + Math.random() * 900000),
-                reporterName: 'Utilisateur Connecté',
-                targetName: targetUser,
-                reason: reasonVal,
-                reasonLabel: reasonLabels[reasonVal] || 'Signalement de litige',
-                details: detailsVal || 'Aucune précision fournie',
-                timestamp: new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                status: 'En cours'
-            };
-            
+            const targetId = reportModal ? reportModal.getAttribute('data-target-user-id') : '';
+            const targetName = reportModal ? (reportModal.getAttribute('data-target-user') || 'ce membre') : 'ce membre';
+            const conversationId = reportModal ? reportModal.getAttribute('data-conversation-id') : '';
+            const conversationOk = typeof window.isUUID === 'function'
+                ? window.isUUID(conversationId)
+                : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(conversationId || ''));
+            const source = reportModal && reportModal.getAttribute('data-report-source') === 'conversation' ? 'conversation' : 'profile';
+            const uuidOk = typeof window.isUUID === 'function' ? window.isUUID(targetId) : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(targetId || ''));
+            if (!uuidOk || !window.LYANN_SAFETY_REPOSITORY) {
+                if (window.lyannAlert) window.lyannAlert('Choisissez le profil ou la conversation à signaler, puis réessayez.');
+                return;
+            }
+            if (detailsVal.length < 8) {
+                if (window.lyannAlert) window.lyannAlert('Décrivez brièvement ce qui s’est passé.');
+                return;
+            }
+            if (submitButton) {
+                submitButton.dataset.sending = '1';
+                submitButton.disabled = true;
+            }
             try {
-                const existing = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]');
-                existing.unshift(newReport);
-                localStorage.setItem('LYANN_REPORTS', JSON.stringify(existing));
-            } catch(err) {}
-
-            if (window.lyannAlert) {
-                window.lyannAlert(`🛡️ Votre signalement concernant ${targetUser} a été transmis à l'équipe de modération LYANN. Merci de contribuer à la sérénité du réseau !`);
+                const saved = await window.LYANN_SAFETY_REPOSITORY.report(
+                    targetId,
+                    reasonLabels[reasonVal] || 'Autre problème',
+                    detailsVal,
+                    { source, conversationId: conversationOk ? conversationId : null }
+                );
+                const reference = saved && saved.id ? String(saved.id).slice(0, 8) : '';
+                const evidenceInput = document.getElementById('reportEvidence');
+                const evidenceFiles = evidenceInput && evidenceInput.files ? Array.from(evidenceInput.files).slice(0, 4) : [];
+                let evidenceNote = '';
+                if (evidenceFiles.length && saved && saved.id && window.LYANN_SAFETY_REPOSITORY.attachReportEvidence) {
+                    try {
+                        await window.LYANN_SAFETY_REPOSITORY.attachReportEvidence(saved.id, evidenceFiles);
+                    } catch (evidenceError) {
+                        console.warn('[SAFETY] evidence upload failed', evidenceError);
+                        evidenceNote = ' Le signalement est transmis, mais les preuves n’ont pas pu être jointes.';
+                    }
+                }
+                if (window.lyannAlert) {
+                    window.lyannAlert((reference
+                        ? `Signalement transmis. Référence ${reference}. L’équipe de modération l’examinera. ${targetName} n’est pas prévenu.`
+                        : `Signalement transmis. L’équipe de modération l’examinera. ${targetName} n’est pas prévenu.`) + evidenceNote);
+                }
+                if (reportModal) {
+                    reportModal.classList.remove('active');
+                    reportModal.style.display = 'none';
+                    reportModal.removeAttribute('data-target-user-id');
+                    reportModal.removeAttribute('data-conversation-id');
+                }
+                reportForm.reset();
+            } catch (err) {
+                const message = err && err.message ? String(err.message) : '';
+                const friendly = /déjà en cours|limite de signalements|Signalement invalide/i.test(message)
+                    ? message
+                    : 'Le signalement n’a pas pu être transmis. Réessayez.';
+                if (window.lyannAlert) window.lyannAlert(friendly);
+            } finally {
+                if (submitButton) {
+                    submitButton.dataset.sending = '0';
+                    submitButton.disabled = false;
+                }
             }
-            if (reportModal) {
-                reportModal.classList.remove('active');
-                reportModal.style.display = 'none';
-            }
-            reportForm.reset();
-            window.dispatchEvent(new CustomEvent('lyann_report_added', { detail: newReport }));
         });
     }
 
@@ -4198,6 +5048,8 @@ safeDomReady(() => {
         let myRequests = [];
         let myMissions = [];
         let myOffers = [];
+        let myDossiers = [];
+        const dossierApi = window.LYANN_MISSION_DOSSIER;
 
         const client = window.LYANN_API_CLIENT || window.apiClient;
         if (client && client.supabase && currentUserId) {
@@ -4219,6 +5071,54 @@ safeDomReady(() => {
                 if (miss) myMissions = miss;
             } catch(e) {}
 
+            let myInvitations = [];
+            let myDossierQuotes = [];
+            let myDossierRequests = [];
+            try {
+                const { data: invs } = await client.supabase
+                    .from('request_invitations')
+                    .select('*')
+                    .or(`requester_id.eq.${currentUserId},recipient_id.eq.${currentUserId}`)
+                    .eq('status', 'ACCEPTED')
+                    .order('created_at', { ascending: false });
+                if (invs) myInvitations = invs;
+            } catch(e) {}
+            const invitationIds = myInvitations.map((row) => row.id).filter(Boolean);
+            const requestIds = [...new Set(myInvitations.map((row) => row.request_id).filter(Boolean)
+                .concat(myMissions.map((row) => row.related_request_id || row.request_id).filter(Boolean)))];
+            if (invitationIds.length) {
+                try {
+                    const { data: quotes } = await client.supabase.from('quotes').select('*').in('request_invitation_id', invitationIds);
+                    if (quotes) myDossierQuotes = quotes;
+                    const quoteIds = myDossierQuotes.map((row) => row.id).filter(Boolean);
+                    if (quoteIds.length) {
+                        const { data: steps } = await client.supabase.from('milestones').select('id,quote_id,status,title,amount').in('quote_id', quoteIds);
+                        const byQuote = new Map();
+                        (steps || []).forEach((step) => {
+                            if (!byQuote.has(step.quote_id)) byQuote.set(step.quote_id, []);
+                            byQuote.get(step.quote_id).push(step);
+                        });
+                        myDossierQuotes = myDossierQuotes.map((row) => Object.assign({}, row, { milestones: byQuote.get(row.id) || [] }));
+                    }
+                } catch(e) {}
+            }
+            if (requestIds.length) {
+                try {
+                    const { data: reqRows } = await client.supabase.from('requests').select('id,title,status,requester_id').in('id', requestIds);
+                    if (reqRows) myDossierRequests = reqRows;
+                } catch(e) {}
+            }
+            myDossiers = dossierApi && typeof dossierApi.listDossiers === 'function'
+                ? dossierApi.listDossiers({
+                    viewerId: currentUserId,
+                    invitations: myInvitations,
+                    missions: myMissions,
+                    quotes: myDossierQuotes,
+                    requests: myDossierRequests
+                })
+                : [];
+            window.__lyannMyDossiers = myDossiers;
+
             try {
                 const { data: offs } = await client.supabase
                     .from('quotes')
@@ -4230,7 +5130,7 @@ safeDomReady(() => {
         }
 
         const reqCount = myRequests.length;
-        const missCount = myMissions.length;
+        const missCount = myDossiers.length || myMissions.length;
         const offCount = myOffers.length;
 
         let tabsHTML = `
@@ -4283,7 +5183,9 @@ safeDomReady(() => {
                                 <label class="sr-only" for="annonce-status-${r.id}">Statut de l'annonce</label>
                                 <select id="annonce-status-${r.id}" class="annonce-status-select" data-request-id="${r.id}" onchange="event.stopPropagation(); window.setAnnouncementStatus('${r.id}', this.value);" onclick="event.stopPropagation();" style="font-size:0.78rem; font-weight:700; border-radius:12px; border:1px solid #E2E8F0; padding:4px 8px; background:#fff; color:#17231C;">
                                     <option value="OPEN" ${String(r.status || 'OPEN').toUpperCase() === 'OPEN' ? 'selected' : ''}>Ouverte</option>
+                                    <option value="IN_PROGRESS" ${String(r.status || '').toUpperCase() === 'IN_PROGRESS' ? 'selected' : ''}>En cours</option>
                                     <option value="PAUSED" ${String(r.status || '').toUpperCase() === 'PAUSED' ? 'selected' : ''}>En pause</option>
+                                    <option value="COMPLETED" ${String(r.status || '').toUpperCase() === 'COMPLETED' ? 'selected' : ''}>Terminée</option>
                                     <option value="CLOSED" ${String(r.status || '').toUpperCase() === 'CLOSED' ? 'selected' : ''}>Fermée</option>
                                 </select>
                                 <button type="button" class="activity-delete-btn" aria-label="Modifier cette annonce" onclick="event.stopPropagation(); window.editMyAnnouncement('${r.id}');">
@@ -4309,18 +5211,31 @@ safeDomReady(() => {
                 `;
             }
         } else if (activeTab === 'missions') {
-            if (myMissions.length > 0) {
-                const rowsHTML = myMissions.map(m => `
-                    <div class="account-v3-row account-touch-row">
-                        <div class="row-icon"><i class="ph ph-hand-heart"></i></div>
-                        <div class="row-content">
-                            <strong class="row-title">Mission #${m.id.slice(0, 8)}</strong>
-                            <span class="row-subtitle">Statut : ${m.status || 'En cours'}</span>
-                        </div>
-                        <i class="ph ph-caret-right row-chevron"></i>
-                    </div>
-                `).join('<div class="account-divider"></div>');
-                mainListHTML = `<div class="account-group-box">${rowsHTML}</div>`;
+            const source = myDossiers.length ? myDossiers : myMissions.map((m) => ({
+                missionId: m.id,
+                requestId: m.related_request_id || m.request_id,
+                invitationId: m.request_invitation_id || '',
+                title: m.title || 'Mission',
+                roleLabel: String(m.requester_id) === String(currentUserId) ? 'Vous demandez' : 'Vous êtes Lyanneur',
+                statusLabel: String(m.status || ''),
+                statusCode: 'in_progress',
+                otherId: String(m.requester_id) === String(currentUserId) ? (m.helper_id || '') : (m.requester_id || ''),
+                nextAction: 'Ouvrir le dossier'
+            }));
+            window.__lyannMyDossiers = dossierApi && typeof dossierApi.uniqueDossiers === 'function'
+                ? dossierApi.uniqueDossiers(source)
+                : source;
+            if (window.__lyannMyDossiers.length > 0) {
+                const filter = window.__lyannMissionBucket || 'open';
+                const query = window.__lyannMissionQuery || '';
+                const chips = [
+                    ['open', 'Ouvertes'],
+                    ['waiting', 'En attente'],
+                    ['active', 'En cours'],
+                    ['done', 'Terminées']
+                ].map(([id, label]) => `<button type="button" class="activity-tab-chip ${filter === id ? 'active' : ''}" data-mission-bucket-filter="${id}" onclick="window.applyMyMissionsBucket('${id}', '${currentUserId}')">${label}</button>`).join('');
+                const searchHTML = `<label class="sr-only" for="myMissionsSearch">Rechercher une mission</label><input id="myMissionsSearch" type="search" class="chat-mission-picker-search" placeholder="Rechercher une mission" value="${window.escapeHtmlAttr(query)}" oninput="window.applyMyMissionsSearch(this.value, '${currentUserId}')" onsearch="window.applyMyMissionsSearch(this.value, '${currentUserId}')" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.applyMyMissionsSearch(this.value, '${currentUserId}');}" style="margin-bottom:10px;">`;
+                mainListHTML = `${searchHTML}<div class="fav-filter-tabs" style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;">${chips}</div><div class="account-group-box" id="myMissionsResults"></div>`;
             } else {
                 mainListHTML = `
                     <div class="account-v3-empty" style="background:#FFFFFF; border:1px solid #EAE6DF; border-radius:18px; padding:32px 20px; text-align:center;">
@@ -4365,13 +5280,20 @@ safeDomReady(() => {
     };
 
     window.setAnnouncementStatus = async function(requestId, status) {
-        const allowed = ['OPEN', 'PAUSED', 'CLOSED'];
+        const allowed = ['OPEN', 'PAUSED', 'CLOSED', 'IN_PROGRESS', 'COMPLETED'];
         if (!requestId || !allowed.includes(status)) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
         if (!client?.updateRequest) return;
         try {
             await client.updateRequest(requestId, { status });
-            const label = status === 'OPEN' ? 'Ouverte' : (status === 'PAUSED' ? 'En pause' : 'Fermée');
+            const labels = {
+                OPEN: 'Ouverte',
+                PAUSED: 'En pause',
+                CLOSED: 'Fermée',
+                IN_PROGRESS: 'En cours',
+                COMPLETED: 'Terminée'
+            };
+            const label = labels[status] || status;
             if (window.NotificationService) window.NotificationService.showToast('success', `Annonce ${label.toLowerCase()}.`);
             window.LYANN_EXPLORER_REPOSITORY?.invalidate?.();
             if (typeof window.LYANN_EXPLORER?.refresh === 'function') window.LYANN_EXPLORER.refresh();
@@ -4384,8 +5306,8 @@ safeDomReady(() => {
     window.deleteMyAnnouncement = async function(requestId) {
         if (!requestId) return;
         const confirmed = window.lyannConfirm
-            ? await window.lyannConfirm('Supprimer cette annonce ? Elle ne sera plus visible dans Explorer.')
-            : window.confirm('Supprimer cette annonce ? Elle ne sera plus visible dans Explorer.');
+            ? await window.lyannConfirm('Vous êtes sûr de vouloir supprimer votre lyann ?')
+            : window.confirm('Vous êtes sûr de vouloir supprimer votre lyann ?');
         if (!confirmed) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
         if (!client || typeof client.deleteRequest !== 'function') {
@@ -4408,12 +5330,283 @@ safeDomReady(() => {
         }
     };
 
+    window.openMissionFromActivity = async function(missionId, contactId, requestId, invitationId) {
+        if (typeof window.closeUserAccountModal === 'function') window.closeUserAccountModal();
+        const messaging = window.LYANN_MESSAGING;
+        if (messaging && typeof messaging.openConversation === 'function' && contactId) {
+            await messaging.openConversation({
+                contactId: contactId,
+                requestId: requestId || null,
+                invitationId: invitationId || null,
+                missionId: missionId || null,
+                consult: true
+            });
+            if (typeof window.openMissionDossier === 'function' && requestId) {
+                window.openMissionDossier({ requestId, invitationId, missionId });
+            }
+            return;
+        }
+        if (window.LYANN_ROUTER && requestId) window.LYANN_ROUTER.go('mission', { requestId });
+    };
+
+    window.applyMyMissionsSearch = function(value, userId) {
+        window.__lyannMissionQuery = String(value || '');
+        window.paintMyMissionsList(userId);
+    };
+
+    window.applyMyMissionsBucket = function(bucket, userId) {
+        window.__lyannMissionBucket = bucket || 'open';
+        window.paintMyMissionsList(userId);
+    };
+
+    window.paintMyMissionsList = function(userId) {
+        const list = document.getElementById('myMissionsResults');
+        if (!list) return 0;
+        const dossierApi = window.LYANN_MISSION_DOSSIER;
+        const source = (dossierApi && typeof dossierApi.uniqueDossiers === 'function')
+            ? dossierApi.uniqueDossiers(window.__lyannMyDossiers || [])
+            : (window.__lyannMyDossiers || []);
+        window.__lyannMyDossiers = source;
+        const query = window.__lyannMissionQuery || '';
+        const filter = window.__lyannMissionBucket || 'open';
+        const action = window.__lyannMissionAction || '';
+        const filtered = (dossierApi && typeof dossierApi.filterDossiers === 'function')
+            ? dossierApi.filterDossiers(source, { query, bucket: filter, action: action })
+            : source.filter((row) => {
+                const hay = [row.title, row.statusLabel, row.roleLabel, row.nextAction].join(' ').toLowerCase();
+                if (query && hay.indexOf(String(query).toLowerCase()) === -1) return false;
+                return true;
+            });
+        document.querySelectorAll('[data-mission-bucket-filter]').forEach((chip) => {
+            chip.classList.toggle('active', chip.getAttribute('data-mission-bucket-filter') === filter);
+        });
+        const search = document.getElementById('myMissionsSearch');
+        if (search && search.value !== query) search.value = query;
+        list.replaceChildren();
+        if (action) {
+            const labels = {
+                quote_reply: 'devis à traiter',
+                payment_due: 'paiements à sécuriser',
+                client_validation: 'prestations à valider',
+                declare_done: 'prestations à déclarer terminées',
+                payout_setup: 'comptes de versement à terminer',
+                payment_wait: 'paiements en attente'
+            };
+            const note = document.createElement('div');
+            note.setAttribute('data-mission-action-filter', action);
+            note.style.cssText = 'padding:12px 14px;margin:0 0 8px;background:#FAF7F2;border:1px solid #E4DDD2;border-radius:14px;';
+            const line = document.createElement('p');
+            line.style.cssText = 'margin:0 0 8px;font-size:0.88rem;color:#3F5C49;';
+            line.textContent = filtered.length + ' mission' + (filtered.length > 1 ? 's' : '') + ' · ' + (labels[action] || 'cette action');
+            const clear = document.createElement('button');
+            clear.type = 'button';
+            clear.className = 'btn btn-outline btn-sm';
+            clear.textContent = 'Voir toutes les missions';
+            clear.addEventListener('click', () => {
+                window.__lyannMissionAction = '';
+                window.paintMyMissionsList(userId);
+            });
+            note.appendChild(line);
+            note.appendChild(clear);
+            list.appendChild(note);
+        }
+        if (!filtered.length) {
+            const empty = document.createElement('p');
+            empty.className = 'finance-muted';
+            empty.id = 'myMissionsEmpty';
+            empty.setAttribute('data-missions-empty', '1');
+            empty.style.padding = '16px';
+            empty.textContent = String(query).trim()
+                ? 'Aucune mission ne correspond à cette recherche.'
+                : 'Aucune mission dans ce filtre.';
+            list.appendChild(empty);
+            return 0;
+        }
+        filtered.forEach((row, index) => {
+            if (index) {
+                const divider = document.createElement('div');
+                divider.className = 'account-divider';
+                list.appendChild(divider);
+            }
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'account-v3-row account-touch-row';
+            btn.setAttribute('data-mission-request', row.requestId || '');
+            btn.setAttribute('data-mission-invitation', row.invitationId || '');
+            btn.setAttribute('data-mission-title', row.title || '');
+            btn.setAttribute('data-mission-bucket', (dossierApi && dossierApi.dossierBucket) ? dossierApi.dossierBucket(row) : '');
+            btn.style.cssText = 'width:100%;text-align:left;background:transparent;border:0;cursor:pointer;';
+            btn.addEventListener('click', () => {
+                window.openMissionFromActivity(row.missionId || '', row.otherId || '', row.requestId || '', row.invitationId || '');
+            });
+            const icon = document.createElement('div');
+            icon.className = 'row-icon';
+            icon.innerHTML = '<i class="ph ph-folder"></i>';
+            const content = document.createElement('div');
+            content.className = 'row-content';
+            content.style.cssText = 'flex:1; min-width:0;';
+            const title = document.createElement('strong');
+            title.className = 'row-title';
+            title.style.cssText = 'display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+            title.textContent = row.title || 'Mission';
+            const sub = document.createElement('span');
+            sub.className = 'row-subtitle';
+            sub.textContent = [row.roleLabel, row.statusLabel, row.nextAction || 'Ouvrir le dossier'].filter(Boolean).join(' · ');
+            content.appendChild(title);
+            content.appendChild(sub);
+            const pill = document.createElement('span');
+            pill.className = 'pill ' + (row.statusCode === 'done' ? 'pill-green' : 'pill-red');
+            pill.style.flexShrink = '0';
+            pill.textContent = row.statusLabel || '';
+            btn.appendChild(icon);
+            btn.appendChild(content);
+            btn.appendChild(pill);
+            list.appendChild(btn);
+        });
+        return filtered.length;
+    };
+
     window.switchActivityTab = async function(tabName, userId) {
         const container = document.getElementById('monActiviteContainer');
         if (!container) return;
         const html = await window.renderMonActiviteSubView(userId, tabName);
         container.outerHTML = html;
+        if (tabName === 'missions') window.paintMyMissionsList(userId);
     };
+
+    window.renderBlockedAccounts = async function() {
+        const host = document.getElementById('blockedAccountsList');
+        if (!host) return;
+        host.textContent = 'Chargement…';
+        try {
+            if (!window.LYANN_SAFETY_REPOSITORY || typeof window.LYANN_SAFETY_REPOSITORY.listBlockedProfiles !== 'function') {
+                host.textContent = 'La liste des comptes bloqués est indisponible.';
+                return;
+            }
+            const rows = await window.LYANN_SAFETY_REPOSITORY.listBlockedProfiles();
+            host.replaceChildren();
+            if (!rows.length) {
+                const empty = document.createElement('p');
+                empty.style.cssText = 'margin:8px 0 0; font-size:0.85rem; color:var(--text-muted);';
+                empty.textContent = 'Aucun compte bloqué.';
+                host.appendChild(empty);
+                return;
+            }
+            rows.forEach((profile) => {
+                const line = document.createElement('div');
+                line.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:8px;';
+                const name = document.createElement('span');
+                name.style.cssText = 'font-size:0.9rem; font-weight:700;';
+                name.textContent = window.formatPublicName ? window.formatPublicName(profile, null, 'Membre LYANN') : 'Membre LYANN';
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-outline btn-sm';
+                button.style.minHeight = '40px';
+                button.textContent = 'Débloquer';
+                button.addEventListener('click', async () => {
+                    const label = name.textContent || 'ce membre';
+                    const ok = window.lyannConfirm ? await window.lyannConfirm(`Débloquer ${label} ? Vous pourrez à nouveau vous écrire.`) : true;
+                    if (!ok || typeof window.unblockUser !== 'function') return;
+                    button.disabled = true;
+                    const done = await window.unblockUser(profile.id);
+                    if (!done) {
+                        button.disabled = false;
+                        return;
+                    }
+                    window.renderBlockedAccounts();
+                });
+                line.append(name, button);
+                host.appendChild(line);
+            });
+        } catch (err) {
+            console.warn('[SAFETY] blocked list failed', err);
+            host.textContent = 'Les comptes bloqués n’ont pas pu être chargés.';
+        }
+    };
+
+    function ensureFinancePolicy() {
+        if (window.LYANN_FINANCE_POLICY_UI && typeof window.LYANN_FINANCE_POLICY_UI.ledgerLines === 'function') {
+            return Promise.resolve();
+        }
+        return new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = 'finance-policy-ui.js';
+            script.onload = () => resolve();
+            script.onerror = () => resolve();
+            document.head.appendChild(script);
+        });
+    }
+
+    function eurosFromCents(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 'Montant indisponible';
+        return (n / 100).toFixed(2).replace('.', ',') + ' €';
+    }
+
+    window.mountUnifiedFinance = async function () {
+        const hosts = document.querySelectorAll('[data-unified-finance], #lyannUnifiedFinanceHub');
+        if (!hosts.length) return;
+        hosts.forEach((host) => { host.textContent = 'Chargement de vos mouvements…'; });
+        await ensureFinancePolicy();
+        const policy = window.LYANN_FINANCE_POLICY_UI;
+        const userId = window.CURRENT_USER_ID || window.LYANN_AUTH_STATE?.getSnapshot?.()?.userId;
+        const client = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+        if (!policy || !userId || !client) {
+            hosts.forEach((host) => { host.textContent = 'Connectez-vous pour voir vos gains et vos dépenses.'; });
+            return;
+        }
+        const columns = 'id, created_at, requester_id, provider_id, payment_status, transfer_status, stripe_transfer_id, service_amount_cents, customer_fee_cents, customer_total_cents, provider_fee_cents, provider_net_cents';
+        const { data, error } = await client.from('payments').select(columns).or('requester_id.eq.' + userId + ',provider_id.eq.' + userId).order('created_at', { ascending: false });
+        if (error) {
+            hosts.forEach((host) => { host.textContent = 'Vos mouvements n’ont pas pu être chargés.'; });
+            return;
+        }
+        const lines = policy.ledgerLines(userId, data || []);
+        hosts.forEach((host) => paintUnifiedFinance(host, lines, host.dataset.filter || 'all'));
+    };
+
+    function financeLineDetail(line) {
+        if (line.kind === 'expense') {
+            const parts = [];
+            if (line.serviceCents != null) parts.push('prestation ' + eurosFromCents(line.serviceCents));
+            if (line.customerFeeCents != null) parts.push('frais payés ' + eurosFromCents(line.customerFeeCents));
+            return parts.join(' · ') || 'Dépense';
+        }
+        const parts = [];
+        if (line.serviceCents != null) parts.push('brut ' + eurosFromCents(line.serviceCents));
+        if (line.providerFeeCents != null) parts.push('commission ' + eurosFromCents(line.providerFeeCents));
+        if (line.netCents != null) parts.push('net ' + eurosFromCents(line.netCents));
+        return parts.join(' · ') || 'Gain';
+    }
+
+    function paintUnifiedFinance(host, lines, filter) {
+        const shown = lines.filter((line) => filter === 'all' || (filter === 'gains' ? line.kind === 'gain' : line.kind === 'expense'));
+        const gainWaiting = lines.filter((line) => line.kind === 'gain' && line.cents != null && /À recevoir/.test(line.label)).reduce((sum, line) => sum + line.cents, 0);
+        const spent = lines.filter((line) => line.kind === 'expense' && line.cents != null && line.label === 'Paiement sécurisé').reduce((sum, line) => sum + line.cents, 0);
+        const refunded = lines.filter((line) => line.label === 'Remboursé' && line.cents != null).reduce((sum, line) => sum + line.cents, 0);
+        const filters = [
+            ['all', 'Tout'],
+            ['gains', 'Gains'],
+            ['expenses', 'Dépenses']
+        ].map(([id, label]) => '<button type="button" data-finance-filter="' + id + '" class="btn ' + (filter === id ? 'btn-primary' : 'btn-outline') + '" style="min-height:36px;">' + label + '</button>').join('');
+        const rows = shown.length
+            ? shown.map((line) => {
+                const title = line.label === 'Remboursé' ? 'Remboursé' : (line.kind === 'gain' ? 'Gain' : 'Dépense');
+                return '<article style="padding:12px 0;border-top:1px solid #E2E8F0;"><strong>' + title + '</strong> · ' + eurosFromCents(line.cents) + '<p style="margin:4px 0 0;color:#64748B;font-size:0.85rem;">' + financeLineDetail(line) + '</p><p style="margin:2px 0 0;color:#64748B;font-size:0.85rem;">' + line.label + '</p></article>';
+            }).join('')
+            : '<p style="color:#64748B;">' + (lines.length ? (filter === 'gains' ? 'Pas encore de gain.' : 'Pas encore de dépense.') : 'Pas encore de mouvement. Une mission payée ou réalisée apparaîtra ici, sans mélange des gains et des dépenses.') + '</p>';
+        host.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' + filters + '</div>'
+            + '<p style="font-size:0.88rem;margin:0 0 8px;">À recevoir : <strong>' + eurosFromCents(gainWaiting) + '</strong>. Dépenses sécurisées : <strong>' + eurosFromCents(spent) + '</strong>. Remboursé : <strong>' + eurosFromCents(refunded) + '</strong>. Ces montants ne se compensent pas.</p>'
+            + rows;
+        host.dataset.filter = filter;
+        host.querySelectorAll('[data-finance-filter]').forEach((button) => {
+            button.addEventListener('click', () => paintUnifiedFinance(host, lines, button.getAttribute('data-finance-filter')));
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (document.querySelector('[data-unified-finance]')) window.mountUnifiedFinance();
+    });
 
     window.openAccountModalSubView = async function(subViewName = 'account') {
         const session = await window.requireAuthSession(`Mon compte (${subViewName})`);
@@ -4421,6 +5614,10 @@ safeDomReady(() => {
 
         const modal = document.getElementById('userAccountModal');
         if (!modal) return;
+
+        if (typeof window.closeLyannHamburgerDrawer === 'function') window.closeLyannHamburgerDrawer();
+        if (modal.parentElement !== document.body) document.body.appendChild(modal);
+        modal.style.zIndex = '2147483030';
 
         let modalCard = modal.querySelector('.modal-card');
         if (!modalCard) modalCard = modal;
@@ -4436,7 +5633,8 @@ safeDomReady(() => {
 
         const displayName = window.formatPublicName(userProf, null, 'Membre LYANN');
         const safeDisplayName = window.escapeHtmlAttr(displayName);
-        const userEmail = window.escapeHtmlAttr(userProf?.email || (window.LYANN_CURRENT_USER ? window.LYANN_CURRENT_USER.email : ''));
+        const userEmail = window.escapeHtmlAttr(userProf?.email || session.user.email || (window.LYANN_CURRENT_USER ? window.LYANN_CURRENT_USER.email : ''));
+        const userPhone = window.escapeHtmlAttr(userProf?.phone || '');
         const avatarSrc = window.escapeHtmlAttr(window.resolveLyannAvatarSrc(userProf?.avatar_url));
         const userTerritory = window.escapeHtmlAttr(userProf?.territory || userProf?.city || 'Guadeloupe (971)');
 
@@ -4478,7 +5676,7 @@ safeDomReady(() => {
             }, 50);
         } else if (subViewName === 'finances') {
             titleText = 'Finances';
-            subtitleText = 'Solde, versements et formule LYANN.';
+            subtitleText = 'Gains et dépenses de vos missions, sur le même compte.';
             subViewContent = `
                 <div class="account-desktop-sections">
                     <section class="account-desktop-section">
@@ -4487,7 +5685,18 @@ safeDomReady(() => {
                                 <i class="ph ph-shield-check" style="font-size:1.6rem;" aria-hidden="true"></i>
                                 <strong style="font-size:1.15rem; color:white;">Paiements sécurisés</strong>
                             </div>
-                            <p style="margin:0; font-size:0.9rem; line-height:1.5; color:rgba(255,255,255,0.88);">Le montant de chaque mission est suivi dans sa conversation : devis, paiement, puis versement une fois la mission confirmée. Les fonds sont conservés par Stripe, notre partenaire de paiement.</p>
+                            <p style="margin:0; font-size:0.9rem; line-height:1.5; color:rgba(255,255,255,0.88);">Même compte pour demander et réaliser. Les gains et les dépenses restent séparés : rien n’est présenté comme un solde disponible.</p>
+                        </div>
+                        <div class="lyann-unified-finance" data-unified-finance style="margin-top:12px;"></div>
+                        <div class="account-group-box" style="margin-top:12px;">
+                            <button type="button" class="account-touch-row" style="width:100%;text-align:left;background:transparent;border:0;cursor:pointer;" onclick="window.openAccountModalSubView('activity').then(() => window.switchActivityTab('missions', window.CURRENT_USER_ID || window.LYANN_AUTH_STATE?.getSnapshot?.()?.userId));">
+                                <div class="row-icon"><i class="ph ph-briefcase"></i></div>
+                                <div class="row-content">
+                                    <strong class="row-title">Mes missions</strong>
+                                    <span class="row-subtitle">Retrouver le paiement, le remboursement et le litige dans la conversation</span>
+                                </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
+                            </button>
                         </div>
                     </section>
                     <section class="account-desktop-section">
@@ -4554,7 +5763,7 @@ safeDomReady(() => {
                 </div>
             `;
         } else if (subViewName === 'aboutLyann') {
-            titleText = 'À propos de LYANN';
+            titleText = 'CGU - Mentions légales';
             subtitleText = 'Conditions, données personnelles et mentions légales.';
             subViewContent = `
                 <div class="account-desktop-sections">
@@ -4622,6 +5831,15 @@ safeDomReady(() => {
                                     <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-top:6px;">
                                         <input type="checkbox" class="lyann-pref-bokantaj"> Nouveaux lyann sur Bokantaj
                                     </label>
+                                </div>
+                            </div>
+                            <div class="account-divider"></div>
+                            <div class="account-touch-row" style="align-items:flex-start;">
+                                <div class="row-icon"><i class="ph ph-prohibit"></i></div>
+                                <div class="row-content" style="flex:1;">
+                                    <strong class="row-title">Comptes bloqués</strong>
+                                    <span class="row-subtitle">Ces personnes ne sont pas prévenues. Les missions déjà en cours restent suivies.</span>
+                                    <div id="blockedAccountsList" style="margin-top:10px;"></div>
                                 </div>
                             </div>
                             <div class="account-divider"></div>
@@ -4735,7 +5953,7 @@ safeDomReady(() => {
                                 <div class="row-icon"><i class="ph ph-phone"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">Téléphone</strong>
-                                    <span class="row-subtitle">Vérification SMS bientôt disponible</span>
+                                    <span class="row-subtitle">${userPhone || 'Non renseigné'}</span>
                                 </div>
                             </div>
                         </div>
@@ -4794,10 +6012,10 @@ safeDomReady(() => {
                         <button type="button" class="sidebar-nav-btn ${subViewName === 'finances' ? 'active' : ''}" onclick="window.openAccountModalSubView('finances')">
                             <i class="ph ph-credit-card"></i> Finances
                         </button>
-                        <button type="button" class="sidebar-nav-btn ${subViewName === 'help' ? 'active' : ''}" onclick="window.openAccountModalSubView('help')">
-                            <i class="ph ph-question"></i> Aide & LYANN
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'aboutLyann' ? 'active' : ''}" onclick="window.openAccountModalSubView('aboutLyann')">
+                            <i class="ph ph-scales"></i> CGU - Mentions légales
                         </button>
-                        <button type="button" class="sidebar-nav-btn ${subViewName === 'settings' || subViewName === 'aboutLyann' ? 'active' : ''}" onclick="window.openAccountModalSubView('settings')">
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'settings' ? 'active' : ''}" onclick="window.openAccountModalSubView('settings')">
                             <i class="ph ph-gear"></i> Réglages
                         </button>
                     </nav>
@@ -4838,7 +6056,14 @@ safeDomReady(() => {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
-        if (subViewName === 'finances' && window.LYANN_PAYOUT_ACCOUNT) window.LYANN_PAYOUT_ACCOUNT.mount();
+        if (typeof window.paintMyMissionsList === 'function' && document.getElementById('myMissionsResults')) {
+            window.paintMyMissionsList(currentUserId);
+        }
+        if (subViewName === 'finances') {
+            if (window.LYANN_PAYOUT_ACCOUNT) window.LYANN_PAYOUT_ACCOUNT.mount();
+            if (typeof window.mountUnifiedFinance === 'function') window.mountUnifiedFinance();
+        }
+        if (subViewName === 'settings' && typeof window.renderBlockedAccounts === 'function') window.renderBlockedAccounts();
         if (typeof mountNotificationPreferenceControls === 'function') mountNotificationPreferenceControls();
         if (typeof bindNotificationPreferenceControls === 'function') bindNotificationPreferenceControls();
     };
@@ -4851,11 +6076,12 @@ safeDomReady(() => {
     window.closeUserAccountModal = function() {
         if (window.LYANN_SURFACES?.isOpen?.('account')) {
             window.LYANN_SURFACES.close('account', { reason: 'close' });
-            return;
         }
         const modal = document.getElementById('userAccountModal');
         if (modal) {
             modal.classList.remove('active', 'lyann-surface-active');
+            modal.style.setProperty('display', 'none', 'important');
+            modal.setAttribute('aria-hidden', 'true');
         }
         const menuStillOpen = document.getElementById('mobileHamburgerDrawerOverlay')?.classList.contains('active');
         if (!menuStillOpen && !document.body.classList.contains('lyann-messaging-open') && !window.LYANN_SURFACES?.current?.()) {
@@ -5305,7 +6531,7 @@ safeDomReady(() => {
             ? profileData.avatar_url
             : getInitialsAvatarSvg(displayName);
 
-        const avatarEls = document.querySelectorAll('.nav-profile-avatar, .drawer-profile-avatar, #accountModalAvatar, #drawerProfileAvatar');
+        const avatarEls = document.querySelectorAll('.nav-profile-avatar, .drawer-profile-avatar, #accountModalAvatar, #drawerProfileAvatar, #composerUserAvatar');
         avatarEls.forEach(img => {
             if (img) {
                 img.src = avatarUrl;
@@ -5397,10 +6623,7 @@ safeDomReady(() => {
             const userPhone = profileData?.phone || forcedSession?.user?.phone || '';
             kycList.innerHTML = `
                 <li>${isEmailConf}</li>
-                <li style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                    <span>📱 Numéro mobile : ${userPhone ? window.escapeHtmlAttr(userPhone) : 'Non renseigné'}</span>
-                    <span class="kyc-badge-deferred" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; background: #F1F5F9; color: #64748B; font-weight: 600;">Vérification SMS bientôt disponible</span>
-                </li>
+                <li>📱 Numéro mobile : ${userPhone ? window.escapeHtmlAttr(userPhone) : 'Non renseigné'}</li>
                 <li>⏳ Pièce d'identité non transmise</li>
             `;
         }
@@ -6061,6 +7284,12 @@ safeDomReady(() => {
                     window.CURRENT_USER_ID = session.user.id;
                 }
                 await updateHeaderAuthState();
+                if (window.LYANN_PUSH && typeof window.LYANN_PUSH.sync === 'function') {
+                    window.LYANN_PUSH.sync();
+                }
+                if (window.LYANN_PUSH && typeof window.LYANN_PUSH.openPending === 'function') {
+                    window.LYANN_PUSH.openPending();
+                }
             } else if (event === 'SIGNED_OUT') {
                 console.log('[AUTH_REAL] SIGNED_OUT explicitly processed.');
                 authInitializationComplete = true;
@@ -6478,7 +7707,9 @@ safeDomReady(() => {
                     type: 'signup',
                     email: email,
                     options: {
-                        emailRedirectTo: window.location.origin + '/confirm-signup.html'
+                        emailRedirectTo: (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+                            ? 'app.lyann.dom://confirm-signup'
+                            : window.location.origin + '/confirm-signup.html'
                     }
                 });
                 if (error) {
@@ -7282,6 +8513,7 @@ safeDomReady(() => {
     }
 
     window.openLyannWizard = async function(prefillQuery = null) {
+        if (!prefillQuery || !prefillQuery.editingRequestId) window._lyannEditingRequestId = null;
         const directAsk = prefillQuery && typeof prefillQuery === 'object' ? prefillQuery : null;
         window._lyannDirectAskContactId = directAsk?.directContactId || null;
         window._lyannDirectAskContactName = directAsk?.directContactName || '';
@@ -7315,6 +8547,15 @@ safeDomReady(() => {
     if (window.location.search.includes('openWizard=true')) {
         setTimeout(() => {
             if (window.openLyannWizard) window.openLyannWizard();
+        }, 300);
+    }
+
+    if (window.location.search.includes('action=new-post')) {
+        setTimeout(() => {
+            const flashInput = document.getElementById('flashContentInput');
+            if (!flashInput) return;
+            flashInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            flashInput.focus();
         }, 300);
     }
 
@@ -7369,7 +8610,7 @@ safeDomReady(() => {
             if (curBtnNext) curBtnNext.style.setProperty('display', 'none', 'important');
             if (curBtnSubmit) {
                 curBtnSubmit.style.setProperty('display', 'inline-flex', 'important');
-                curBtnSubmit.innerHTML = window._lyannDirectAskContactId ? 'ENVOYER' : 'PUBLIER';
+                curBtnSubmit.innerHTML = window._lyannEditingRequestId ? 'ENREGISTRER' : (window._lyannDirectAskContactId ? 'ENVOYER' : 'PUBLIER');
             }
             syncDirectAudience();
             
@@ -7549,6 +8790,61 @@ safeDomReady(() => {
     let titleSuggestedFor = '';
     let titleTimer = null;
     let titleRequestSeq = 0;
+    const TITLE_STOP = new Set(['bonjour','hello','salut','svp','stp','besoin','aide','quelqu','quelquun','maison','faites','faire','voudrais','pourrais','merci']);
+
+    function titleFromNeed(text, max) {
+        const limit = max || TITLE_MAX;
+        let raw = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!raw) return '';
+        raw = raw.replace(/^(bonjour|salut|hello|coucou)[,!.\s]+/i, '');
+        const sentence = (raw.split(/[.!?\n]/)[0] || raw).trim() || raw;
+        let out = sentence;
+        if (out.length > limit) {
+            out = out.slice(0, limit);
+            const sp = out.lastIndexOf(' ');
+            if (sp >= Math.min(18, limit - 10)) out = out.slice(0, sp);
+            out = out.replace(/[,;:\-–—]\s*$/, '');
+        }
+        if (!out) return '';
+        return (out.charAt(0).toUpperCase() + out.slice(1)).slice(0, limit);
+    }
+
+    function localTitleChoices(description) {
+        const primary = titleFromNeed(description);
+        const tokens = String(description || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9'\s]/g, ' ')
+            .split(/\s+/)
+            .filter((w) => w.length >= 4 && !TITLE_STOP.has(w));
+        const compact = titleFromNeed(tokens.slice(0, 6).join(' '));
+        const out = [];
+        [primary, compact].forEach((item) => {
+            if (item && item.length >= 3 && !out.includes(item)) out.push(item);
+        });
+        return out;
+    }
+
+    function applyWizardTitle(text, { picked = true } = {}) {
+        if (!titleInput || !text) return;
+        titleInput.value = String(text).slice(0, TITLE_MAX);
+        titlePicked = picked;
+        if (titleEdit) titleEdit.hidden = false;
+        if (titleBlock) titleBlock.hidden = false;
+        syncWizardTitleCounter();
+    }
+
+    function ensureWizardTitleFromNeed() {
+        if (!titleInput) return '';
+        let value = titleInput.value.trim();
+        if (value.length >= 3) return value;
+        value = titleFromNeed(descriptionInput ? descriptionInput.value : '');
+        if (value.length >= 3) applyWizardTitle(value);
+        return (titleInput.value || '').trim();
+    }
+    window.titleFromNeed = titleFromNeed;
+    window.ensureWizardTitleFromNeed = ensureWizardTitleFromNeed;
 
     function syncWizardTitleCounter() {
         if (titleCounter && titleInput) titleCounter.textContent = `${titleInput.value.length} / ${TITLE_MAX}`;
@@ -7594,7 +8890,7 @@ safeDomReady(() => {
     async function suggestWizardTitle({ force = false } = {}) {
         if (!titleInput || !descriptionInput) return;
         const description = descriptionInput.value.trim();
-        if (description.length < 15) return;
+        if (description.length < 8) return;
         if (!force && ((titlePicked || titleTouched) || description === titleSuggestedFor)) return;
         titleSuggestedFor = description;
         if (titleBlock) titleBlock.hidden = false;
@@ -7611,29 +8907,35 @@ safeDomReady(() => {
         if (!force && (titlePicked || titleTouched)) return;
 
         if (result?.titles?.length === 3) {
-            setWizardTitleStatus('Choisissez le titre qui convient le mieux.');
+            setWizardTitleStatus('Choisissez le titre qui convient le mieux, ou gardez le vôtre.');
             renderWizardTitleChoices(result.titles);
+            if (!titleInput.value.trim()) applyWizardTitle(result.titles[0]);
             if (titleSuggestBtn) titleSuggestBtn.hidden = false;
+            return;
+        }
+        const local = localTitleChoices(description);
+        if (local.length) {
+            renderWizardTitleChoices(local.length > 1 ? local : []);
+            if (!titleTouched || titleInput.value.trim().length < 3) applyWizardTitle(local[0]);
+            if (titleSuggestBtn) titleSuggestBtn.hidden = false;
+            setWizardTitleStatus('Titre repris de votre texte. Vous pouvez le corriger.');
             return;
         }
         renderWizardTitleChoices([]);
         if (titleEdit) titleEdit.hidden = false;
         if (titleSuggestBtn) titleSuggestBtn.hidden = false;
-        if (result?.error === 'AUTH') {
-            setWizardTitleStatus('Connectez-vous pour recevoir 3 titres proposés d’après votre besoin.', true);
-            return;
-        }
+        applyWizardTitle(titleFromNeed(description));
         if (result?.error === 'RATE') {
-            setWizardTitleStatus('Trop de propositions demandées. Réessayez dans quelques minutes.', true);
+            setWizardTitleStatus('Trop de propositions demandées. Votre texte sert de titre, vous pouvez le raccourcir.');
             return;
         }
-        setWizardTitleStatus('Les titres n’ont pas pu être proposés. Réessayez, ou écrivez le vôtre.', true);
+        setWizardTitleStatus('Titre repris de votre texte. Vous pouvez le corriger.');
     }
     window.suggestWizardTitle = suggestWizardTitle;
 
     if (descriptionInput) {
         descriptionInput.addEventListener('input', () => {
-            if (titleBlock && descriptionInput.value.trim().length >= 15) titleBlock.hidden = false;
+            if (titleBlock && descriptionInput.value.trim().length >= 8) titleBlock.hidden = false;
             clearTimeout(titleTimer);
             titleTimer = setTimeout(() => suggestWizardTitle(), 900);
         });
@@ -7791,10 +9093,11 @@ safeDomReady(() => {
                     alert("Veuillez décrire votre besoin.");
                     return;
                 }
-                const chosenTitle = (document.getElementById('wizardTitleInput')?.value || '').trim();
+                const chosenTitle = typeof ensureWizardTitleFromNeed === 'function'
+                    ? ensureWizardTitleFromNeed()
+                    : (document.getElementById('wizardTitleInput')?.value || '').trim();
                 if (chosenTitle.length < 3) {
-                    alert("Choisissez un des trois titres, puis corrigez-le si besoin.");
-                    if (typeof suggestWizardTitle === 'function') suggestWizardTitle({ force: true });
+                    alert('Ajoutez encore quelques mots pour décrire votre besoin.');
                     return;
                 }
                 
@@ -7977,10 +9280,40 @@ safeDomReady(() => {
             const urgencyVal = { ASAP: 'urgent', FLEXIBLE: 'flexible', EXACT: 'date', TO_AGREE: 'date' }[schedule.date_mode] || 'flexible';
             const location = `${cityVal} (${territoryVal})`;
 
+            const editingId = window._lyannEditingRequestId || null;
             btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<i class="ph ph-spinner spin"></i> Publication...';
+            btnSubmit.innerHTML = editingId
+                ? '<i class="ph ph-spinner spin"></i> Enregistrement...'
+                : '<i class="ph ph-spinner spin"></i> Publication...';
 
             try {
+                if (editingId) {
+                    const taxonomy = await window.LyanAI.fetchTaxonomyFromDB({ strict: true });
+                    const selectedTaxonomy = taxonomy.find(t => t.universe === document.getElementById('wizardDomain')?.value && t.category === categoryText && t.subcategory === subCatText);
+                    const updated = await window.LYANN_API_CLIENT.updateRequest(editingId, {
+                        title,
+                        description: desc,
+                        category: categoryText,
+                        taxonomy_id: selectedTaxonomy?.id || null,
+                        location,
+                        budget: price.budget,
+                        budget_max: price.budget_max,
+                        price_mode: price.price_mode,
+                        date_mode: schedule.date_mode,
+                        scheduled_at: schedule.scheduled_at,
+                        urgency: urgencyVal
+                    });
+                    window._lyannEditingRequestId = null;
+                    modalRequestHelp.classList.remove('active');
+                    document.body.style.overflow = '';
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = 'PUBLIER';
+                    if (window.NotificationService) window.NotificationService.showToast('success', 'Annonce mise à jour.');
+                    if (typeof window.loadBokantajFeedFromSupabase === 'function') window.loadBokantajFeedFromSupabase({ force: true });
+                    if (typeof window.loadExplorerResults === 'function') window.loadExplorerResults();
+                    if (updated && typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal(editingId, updated);
+                    return;
+                }
                 const taxonomy = await window.LyanAI.fetchTaxonomyFromDB({ strict: true });
                 const selectedTaxonomy = taxonomy.find(t => t.universe === document.getElementById('wizardDomain')?.value && t.category === categoryText && t.subcategory === subCatText);
                 // Call real Supabase DB API
@@ -8063,7 +9396,7 @@ safeDomReady(() => {
                 if (window.NotificationService) {
                     const successText = privateOnly
                         ? 'Demande envoyée uniquement à cette personne.'
-                        : (directId ? 'Demande envoyée à cette personne et publiée dans Explorer.' : 'Votre besoin a été publié.');
+                        : (directId ? 'Demande envoyée à cette personne et publiée dans les Annonces.' : 'Votre besoin a été publié.');
                     window.NotificationService.showToast('success', successText);
                 }
                 window._lyannDirectAskContactId = null;
@@ -8163,7 +9496,7 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
     const countNum = Number(insertedCount) || 0;
     const notificationMsg = countNum > 0
         ? `Nous l'avons également partagé à <strong>${countNum} Lyanneur${countNum > 1 ? 's' : ''}</strong> correspondant à ton besoin.`
-        : `Ton besoin est maintenant visible dans Explorer → Annonces. Aucun Lyanneur direct n'a encore été notifié.`;
+        : `Ton besoin est maintenant visible dans Annonces. Aucun Lyanneur direct n'a encore été notifié.`;
 
     stepPost.innerHTML = `
         <div style="text-align: center; padding: 10px 0;">
@@ -8171,7 +9504,7 @@ async function showWizardPostPublishStep(createdRequest, insertedCount = 0) {
                 <i class="ph-fill ph-check-circle" style="font-size: 36px; color: var(--primary);"></i>
             </div>
             <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--primary-dark); margin: 0 0 6px 0;">Votre Lyann est publié !</h3>
-            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 20px 0;">Votre besoin est maintenant visible dans Explorer, onglet Annonces.</p>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 20px 0;">Votre besoin est maintenant visible dans Annonces.</p>
             
             <div style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 18px; text-align: left; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
@@ -8445,7 +9778,10 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
         ageEl.textContent = age ? `· ${age}` : '';
         if (age) ageEl.title = `Publiée le ${dateStr}`;
     }
-    if (statusEl) statusEl.textContent = `● ${requestData.status || 'OPEN'}`;
+    if (statusEl) {
+        const statusBadge = window.getRequestStatusBadge?.(requestData.status);
+        statusEl.textContent = statusBadge?.label || 'Ouverte';
+    }
 
     const favDetailBtn = document.getElementById('lyannDetailFavBtn');
     if (favDetailBtn && requestData.id) {
@@ -8549,27 +9885,17 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
     if (footerEl) {
         if (isOwnLyann) {
             footerEl.innerHTML = `
-                <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn" style="flex: 1; justify-content: center;">Fermer</button>
-                <button type="button" class="btn btn-primary" id="btnManageMyLyann" style="flex: 2; justify-content: center; font-weight: 800;">
-                    <i class="ph ph-note-pencil"></i> Gérer mon annonce
-                </button>
+                <div class="lyann-own-toolbar">
+                    <button type="button" class="is-edit" id="btnEditMyLyann"><i class="ph ph-pencil-simple"></i> Modifier</button>
+                    <button type="button" class="is-delete" id="btnDeleteMyAnnouncement"><i class="ph ph-trash"></i> Supprimer</button>
+                </div>
+                <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn">Fermer</button>
             `;
-            footerEl.style.flexWrap = 'wrap';
             bindLyannDetailFooterClose();
-            document.getElementById('btnManageMyLyann')?.addEventListener('click', () => {
-                window.closeLyannDetailSurface('manage');
-                if (typeof window.openAccountModalSubView === 'function') {
-                    window.openAccountModalSubView('activity');
-                }
+            document.getElementById('btnEditMyLyann')?.addEventListener('click', () => {
+                window.openAnnouncementEditor(requestData.id);
             });
-            const deleteOwnBtn = document.createElement('button');
-            deleteOwnBtn.type = 'button';
-            deleteOwnBtn.className = 'btn btn-outline activity-delete-btn';
-            deleteOwnBtn.id = 'btnDeleteMyAnnouncement';
-            deleteOwnBtn.style.cssText = 'flex: 1; justify-content: center; color: #C45C4A; border-color: rgba(196,92,74,0.35);';
-            deleteOwnBtn.innerHTML = '<i class="ph ph-trash"></i> Supprimer';
-            footerEl.appendChild(deleteOwnBtn);
-            deleteOwnBtn.addEventListener('click', () => {
+            document.getElementById('btnDeleteMyAnnouncement')?.addEventListener('click', () => {
                 window.deleteMyAnnouncement(requestData.id);
             });
         } else if (requestData.status !== 'OPEN') {
@@ -8580,10 +9906,10 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
             bindLyannDetailFooterClose();
         } else {
             footerEl.innerHTML = `
-                <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn" style="flex: 1; justify-content: center;">Fermer</button>
-                <button type="button" class="btn btn-primary" id="btnHelpLyannFromModal" style="flex: 2; justify-content: center; font-weight: 800;">
+                <button type="button" class="btn btn-primary" id="btnHelpLyannFromModal">
                     <i class="ph ph-handshake"></i> Lyanner
                 </button>
+                <button type="button" class="btn btn-outline" id="closeLyannDetailFooterBtn">Fermer</button>
             `;
             bindLyannDetailFooterClose();
             document.getElementById('btnHelpLyannFromModal')?.addEventListener('click', () => {

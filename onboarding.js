@@ -248,7 +248,11 @@ runOnDomReady(() => {
         try {
             window.Capacitor.Plugins.App.addListener('appUrlOpen', async (data) => {
                 console.log('[NATIVE_OAUTH] appUrlOpen received URL:', data?.url);
-                if (data && data.url && (data.url.includes('google-auth') || data.url.startsWith('app.lyann.dom'))) {
+                if (data && data.url && window.LYANN_PAYOUT_ACCOUNT && typeof window.LYANN_PAYOUT_ACCOUNT.handleExternalReturn === 'function') {
+                    const returned = await window.LYANN_PAYOUT_ACCOUNT.handleExternalReturn(data.url);
+                    if (returned && (returned.ok || returned.code === 'PRODUCTION_URL_IGNORED')) return;
+                }
+                if (data && data.url && (data.url.includes('google-auth') || data.url.includes('confirm-signup') || data.url.startsWith('app.lyann.dom'))) {
                     try {
                         const normalizedUrl = data.url.replace(/^app\.lyann\.dom:\/\//i, 'https://app.lyann.dom/');
                         const urlObj = new URL(normalizedUrl);
@@ -471,9 +475,9 @@ runOnDomReady(() => {
                     return;
                 }
 
-                if (!pw || pw.length < 6) {
-                    if (window.lyannAlert) window.lyannAlert('Le mot de passe doit contenir au moins 6 caractères.');
-                    else alert('Le mot de passe doit contenir au moins 6 caractères.');
+                if (!pw || pw.length < 8) {
+                    if (window.lyannAlert) window.lyannAlert('Le mot de passe doit comporter au moins 8 caractères.');
+                    else alert('Le mot de passe doit comporter au moins 8 caractères.');
                     if (pwEl) pwEl.focus();
                     return;
                 }
@@ -489,13 +493,6 @@ runOnDomReady(() => {
                 // Check duplicate email
                 const users = getRegisteredUsers();
                 const duplicate = users.find(u => u.email.toLowerCase() === em.toLowerCase());
-                if (pw.length < 8) {
-                    if (window.lyannAlert) window.lyannAlert('Le mot de passe doit comporter au moins 8 caractères.');
-                    else alert('Le mot de passe doit comporter au moins 8 caractères.');
-                    if (pwEl) pwEl.focus();
-                    return;
-                }
-
                 if (duplicate) {
                     if (window.lyannAlert) window.lyannAlert(`L'adresse email ${em} est déjà enregistrée. Veuillez vous connecter.`);
                     else alert(`L'adresse email ${em} est déjà enregistrée. Veuillez vous connecter.`);

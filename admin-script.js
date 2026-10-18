@@ -8,14 +8,18 @@ window.currentAdminUser = null;
 window.adminDataLoaded = false;
 
 window.fetchWithAdminAuth = async function(url, options = {}) {
-    const headers = options.headers || {};
-    if (window.currentAdminUser && window.currentAdminUser.token) {
-        headers['Authorization'] = `Bearer ${window.currentAdminUser.token}`;
-    } else if (window.LYANN_API_CLIENT) {
+    const headers = Object.assign({}, options.headers || {});
+    let token = '';
+    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getSession === 'function') {
         const { data: sData } = await window.LYANN_API_CLIENT.getSession();
-        if (sData?.session?.access_token) {
-            headers['Authorization'] = `Bearer ${sData.session.access_token}`;
-        }
+        token = sData?.session?.access_token || '';
+    }
+    if (!token && window.currentAdminUser && window.currentAdminUser.token) {
+        token = window.currentAdminUser.token;
+    }
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        if (window.currentAdminUser) window.currentAdminUser.token = token;
     }
     return fetch(url, { ...options, headers });
 };
@@ -232,6 +236,9 @@ window.runAdminAuthCheck = async function(reason = 'BOOT') {
                     window.adminDataLoaded = true;
                     loadAdminRealData();
                 }
+                if (window.location.hash === '#comptes-editoriaux') {
+                    document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.click();
+                }
                 return;
             }
         }
@@ -263,6 +270,9 @@ window.runAdminAuthCheck = async function(reason = 'BOOT') {
                         if (typeof loadAdminRealData === 'function' && !window.adminDataLoaded) {
                             window.adminDataLoaded = true;
                             loadAdminRealData();
+                        }
+                        if (window.location.hash === '#comptes-editoriaux') {
+                            document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.click();
                         }
                         return;
                     }
@@ -549,6 +559,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 if (targetSectionId === 'sec-maison' && typeof window.loadMaisonStudio === 'function') {
                     window.loadMaisonStudio();
+                }
+                if (targetSectionId === 'sec-editorial' && typeof window.openEditorialDesk === 'function') {
+                    window.openEditorialDesk();
                 }
                 if (typeof window.loadAdminSection === 'function') {
                     window.loadAdminSection(targetSectionId);
@@ -1616,80 +1629,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // REGISTRE DE MODÉRATION & SIGNALEMENTS EN DIRECT
     // --------------------------------------------------------------------------
     function renderAdminReports() {
-        const tbody = document.getElementById('adminReportsTableBody');
-        const countBadge = document.getElementById('adminReportsCount');
-        if (!tbody) return;
-
-        let reports = [];
-        try {
-            reports = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]');
-        } catch(e) {}
-
-        // Reports come from /v1/admin/ops — never seed fake rows
-        if (!Array.isArray(reports)) reports = [];
-
-        if (countBadge) countBadge.textContent = reports.length;
-
-        tbody.innerHTML = reports.map(rep => {
-            const isSanctioned = rep.status === 'Sanctionné (Bloqué)';
-            const isDismissed = rep.status === 'Classé sans suite';
-
-            let statusBadgeClass = 'status-badge pending';
-            if (isSanctioned) statusBadgeClass = 'status-badge cancelled';
-            if (isDismissed) statusBadgeClass = 'status-badge verified';
-
-            return `
-                <tr id="admin-rep-row-${rep.id}">
-                    <td style="font-family: var(--admin-font-mono); font-size: 0.85rem;">${rep.id}</td>
-                    <td><strong>${rep.reporterName}</strong></td>
-                    <td><span style="color: #EF4444; font-weight: 700;">${rep.targetName}</span></td>
-                    <td><span class="status-badge pending" style="background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">${rep.reasonLabel}</span></td>
-                    <td style="max-width: 260px; font-size: 0.88rem; line-height: 1.3;">${rep.details || 'Aucune précision'}</td>
-                    <td style="font-size: 0.82rem; color: #64748B;">${rep.timestamp}</td>
-                    <td><span class="${statusBadgeClass}" id="admin-rep-badge-${rep.id}">${rep.status || 'En cours'}</span></td>
-                    <td>
-                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                            <button type="button" class="admin-btn admin-btn-sm" onclick="window.adminSanctionUser('${rep.id}', '${rep.targetName}')" style="background: #DC2626; color: white; border: none;" title="Bloquer le membre du réseau"><i class="ph-bold ph-user-minus"></i> Bloquer</button>
-                            <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminDismissReport('${rep.id}')" title="Classer le signalement sans suite"><i class="ph-bold ph-check"></i> Classer</button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        if (typeof window.loadAdminSection === 'function') window.loadAdminSection('sec-content');
     }
 
-    window.adminSanctionUser = function(repId, targetName) {
-        if (confirm(`🚨 Confirmer le blocage conservatoire de ${targetName} sur l'ensemble du réseau LYANN ?`)) {
-            let blocked = [];
-            try { blocked = JSON.parse(localStorage.getItem('LYANN_BLOCKED_USERS') || '[]'); } catch(e){}
-            if (!blocked.some(b => (typeof b === 'string' ? b === targetName : b.name === targetName))) {
-                blocked.push({ id: targetName, name: targetName, timestamp: new Date().toISOString() });
-                localStorage.setItem('LYANN_BLOCKED_USERS', JSON.stringify(blocked));
-            }
-
-            let reports = [];
-            try { reports = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]'); } catch(e){}
-            const rep = reports.find(r => r.id === repId);
-            if (rep) rep.status = 'Sanctionné (Bloqué)';
-            localStorage.setItem('LYANN_REPORTS', JSON.stringify(reports));
-
-            renderAdminReports();
-            if (typeof window.recordAdminAuditLog === 'function') {
-                window.recordAdminAuditLog('MEMBER_SANCTION_BLOCK', 'Modération', 'Membre', targetName, `Blocage conservatoire suite au signalement ${repId}`);
-            }
-            alert(`🚨 Membre ${targetName} bloqué et sanction enregistrée dans le registre de modération.`);
-        }
+    window.adminSanctionUser = function() {
+        alert('Le blocage d’un membre se fait depuis son profil. Ce registre ne sanctionne personne tout seul.');
     };
 
     window.adminDismissReport = function(repId) {
-        let reports = [];
-        try { reports = JSON.parse(localStorage.getItem('LYANN_REPORTS') || '[]'); } catch(e){}
-        const rep = reports.find(r => r.id === repId);
-        if (rep) rep.status = 'Classé sans suite';
-        localStorage.setItem('LYANN_REPORTS', JSON.stringify(reports));
-
-        renderAdminReports();
-        alert(`✅ Signalement ${repId} classé sans suite.`);
+        if (typeof window.adminUpdateReport === 'function') return window.adminUpdateReport(repId, 'user', 'DISMISSED');
     };
 
     // --------------------------------------------------------------------------
@@ -2455,21 +2403,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Approval Agent Task Handler
     window.approveAgentTask = async function(taskId, decision) {
         try {
-            const res = await fetch(`/v1/admin/agent-tasks/${taskId}/approve`, {
+            const res = await window.fetchWithAdminAuth(`/v1/admin/agent-tasks/${taskId}/approve`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ decision })
             });
-            if (res.ok) {
-                alert(`✅ Tâche ${taskId} ${decision === 'APPROVED' ? 'approuvée et exécutée' : 'refusée'}.`);
-            } else {
-                alert(`✅ Action enregistrée : Tâche ${taskId} ${decision === 'APPROVED' ? 'approuvée' : 'refusée'}.`);
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok || body.success === false) {
+                throw new Error(editorialFailureMessage(body, res.status));
             }
-        } catch(e) {
-            alert(`✅ Action enregistrée : Tâche ${taskId} ${decision === 'APPROVED' ? 'approuvée' : 'refusée'}.`);
+            const notice = document.getElementById('editorialNotice');
+            const message = body.message || (decision === 'APPROVED' ? 'Publication enregistrée.' : 'Brouillon refusé.');
+            if (notice) notice.textContent = message;
+            else alert(message);
+        } catch (e) {
+            const notice = document.getElementById('editorialNotice');
+            const message = e.message || 'Erreur serveur.';
+            if (notice) notice.textContent = message;
+            else alert(message);
         }
-        recordAdminAuditLog('AGENT_TASK_APPROVAL', 'Task Engine', 'Task', taskId, `Décision admin: ${decision}`);
-        loadAdminRealData();
+        if (typeof loadAdminRealData === 'function') loadAdminRealData();
+        if (typeof window.openEditorialDesk === 'function') window.openEditorialDesk();
     };
 
     // Tab Task Engine vs Approval Center toggle inside sec-agents
@@ -2780,7 +2734,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    const maisonEsc = (value) => String(value || '')
+    const maisonEsc = (value) => String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -2789,6 +2743,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     let maisonProfilesCache = [];
     let maisonSelectedId = null;
 
+    function editorialFailureMessage(body, status) {
+        const code = body && body.code;
+        if (status === 401 || code === 'ADMIN_AUTH_REQUIRED' || code === 'ADMIN_TOKEN_INVALID') return 'Session expirée.';
+        if (code === 'environment' || code === 'ORIGIN_NOT_ALLOWED') return 'Erreur d’environnement.';
+        if (status === 403 || code === 'ADMIN_ACCESS_DENIED') return 'Accès refusé.';
+        if (code === 'already_published') return 'Publication déjà effectuée.';
+        if (code === 'therapeutic') return 'Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifiez le texte avant validation.';
+        if (code === 'quality' || code === 'not_pending') return (body && body.error) || 'Texte non conforme.';
+        if (status >= 500) return 'Erreur serveur.';
+        return (body && body.error) || 'Erreur serveur.';
+    }
     async function maisonJson(url, options = {}) {
         const res = await window.fetchWithAdminAuth(url, {
             ...options,
@@ -2799,7 +2764,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok || body.success === false) {
-            throw new Error(body.error || `Action admin impossible (${res.status})`);
+            throw new Error(editorialFailureMessage(body, res.status));
         }
         return body;
     }
@@ -2844,14 +2809,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p class="maison-muted">${maisonEsc(profile.city || '')} ${maisonEsc(profile.territory || '')}</p>
                     </div>
                 </div>
+                <form id="maisonProfileForm" class="admin-card" style="padding:12px;">
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Modifier le profil</h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <input id="maisonFirstName" class="admin-input" value="${maisonEsc(profile.first_name || '')}" placeholder="Prénom" required>
+                        <input id="maisonLastName" class="admin-input" value="${maisonEsc(profile.last_name || '')}" placeholder="Nom" required>
+                        <input id="maisonCity" class="admin-input" value="${maisonEsc(profile.city || '')}" placeholder="Ville">
+                        <select id="maisonTerritory" class="admin-input">
+                            <option value="guadeloupe"${profile.territory === 'guadeloupe' ? ' selected' : ''}>Guadeloupe</option>
+                            <option value="martinique"${profile.territory === 'martinique' ? ' selected' : ''}>Martinique</option>
+                        </select>
+                    </div>
+                    <input id="maisonSkill" class="admin-input" value="${maisonEsc(profile.professional_status || '')}" placeholder="Métier" style="margin-top:8px; width:100%;">
+                    <textarea id="maisonBio" class="admin-input" rows="3" placeholder="Présentation" style="margin-top:8px; width:100%;">${maisonEsc(profile.bio || '')}</textarea>
+                    <button type="submit" class="admin-btn admin-btn-secondary" style="margin-top:10px;">Enregistrer le profil</button>
+                </form>
                 <div>
-                    <h3 style="margin:0 0 8px; font-size:1rem;">Publier dans Bokantaj</h3>
-                    <textarea id="maisonBokantajInput" class="admin-input" rows="3" placeholder="Écrire un Lyann au nom de ${maisonEsc(maisonName(profile))}…" style="width:100%;"></textarea>
-                    <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn" style="margin-top:10px;"><i class="ph-bold ph-paper-plane-tilt"></i> Publier</button>
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Publier dans Bokantaj au nom de ${maisonEsc(maisonName(profile))}</h3>
+                    <textarea id="maisonBokantajInput" class="admin-input" rows="3" placeholder="Écrire un Lyann…" style="width:100%;"></textarea>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                        <label class="admin-btn admin-btn-secondary">Photo<input id="maisonPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+                        <label class="admin-btn admin-btn-secondary">Vidéo<input id="maisonVideoInput" type="file" accept="video/mp4,video/quicktime,video/webm" hidden></label>
+                        <span class="maison-muted" id="maisonMediaLabel">Aucune photo ni vidéo</span>
+                    </div>
+                    <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn" style="margin-top:10px;"><i class="ph-bold ph-paper-plane-tilt"></i> Publier le Lyann</button>
                     ${posts.length ? `<p class="maison-muted" style="margin-top:10px;">Derniers posts : ${posts.map((p) => maisonEsc((p.content || '').slice(0, 42))).join(' · ')}</p>` : ''}
                 </div>
+                <form id="maisonRequestForm" class="admin-card" style="padding:12px;">
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Publier une annonce</h3>
+                    <input id="maisonRequestTitle" class="admin-input" placeholder="Titre de l’annonce" required style="width:100%;">
+                    <input id="maisonRequestCategory" class="admin-input" placeholder="Métier, par exemple Plomberie" style="margin-top:8px; width:100%;">
+                    <textarea id="maisonRequestDescription" class="admin-input" rows="3" placeholder="Décris le service proposé" required style="margin-top:8px; width:100%;"></textarea>
+                    <button type="submit" class="admin-btn admin-btn-primary" style="margin-top:10px;">Publier l’annonce</button>
+                </form>
                 <div>
-                    <h3 style="margin:0 0 8px; font-size:1rem;">Messagerie</h3>
+                    <h3 style="margin:0 0 8px; font-size:1rem;">Répondre à la place de ${maisonEsc(maisonName(profile))}</h3>
                     ${conversations.length ? conversations.map((c) => `
                         <div class="admin-card" style="padding:12px; margin-bottom:10px;" data-maison-conv="${maisonEsc(c.id)}">
                             <strong>${maisonEsc(c.counterpart?.name || 'Membre')}</strong>
@@ -2861,8 +2853,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 `).join('') || '<p class="maison-muted">Pas encore de messages.</p>'}
                             </div>
                             <div style="display:flex; gap:8px;">
-                                <input type="text" class="admin-input maison-reply-input" placeholder="Répondre…" style="flex:1;">
-                                <button type="button" class="admin-btn admin-btn-secondary maison-reply-btn">Envoyer</button>
+                                <input type="text" class="admin-input maison-reply-input" placeholder="Répondre en son nom…" style="flex:1;">
+                                <button type="button" class="admin-btn admin-btn-secondary maison-reply-btn">Répondre</button>
                             </div>
                         </div>
                     `).join('') : '<p class="maison-muted">Aucune conversation pour ce profil.</p>'}
@@ -2889,15 +2881,75 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
         `;
-        document.getElementById('maisonPublishBtn')?.addEventListener('click', async () => {
-            const input = document.getElementById('maisonBokantajInput');
+        const mediaLabel = document.getElementById('maisonMediaLabel');
+        const photoInput = document.getElementById('maisonPhotoInput');
+        const videoInput = document.getElementById('maisonVideoInput');
+        const refreshMediaLabel = () => {
+            if (!mediaLabel) return;
+            const parts = [];
+            if (photoInput?.files?.[0]) parts.push(photoInput.files[0].name);
+            if (videoInput?.files?.[0]) parts.push(videoInput.files[0].name);
+            mediaLabel.textContent = parts.length ? parts.join(' · ') : 'Aucune photo ni vidéo';
+        };
+        photoInput?.addEventListener('change', refreshMediaLabel);
+        videoInput?.addEventListener('change', refreshMediaLabel);
+        const readDataUrl = (file) => new Promise((resolve, reject) => {
+            if (!file) return resolve('');
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(new Error('Lecture du fichier impossible.'));
+            reader.readAsDataURL(file);
+        });
+        document.getElementById('maisonProfileForm')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
             try {
-                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
+                await maisonJson(`/v1/admin/maison/profiles/${profile.id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                        first_name: document.getElementById('maisonFirstName')?.value || '',
+                        last_name: document.getElementById('maisonLastName')?.value || '',
+                        city: document.getElementById('maisonCity')?.value || '',
+                        territory: document.getElementById('maisonTerritory')?.value || '',
+                        professional_status: document.getElementById('maisonSkill')?.value || '',
+                        bio: document.getElementById('maisonBio')?.value || ''
+                    })
+                });
+                await window.loadMaisonStudio();
+                await window.openMaisonDesk(profile.id);
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+        document.getElementById('maisonRequestForm')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            try {
+                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/requests`, {
                     method: 'POST',
-                    body: JSON.stringify({ content: input?.value || '', city: profile.city, territory: profile.territory })
+                    body: JSON.stringify({
+                        title: document.getElementById('maisonRequestTitle')?.value || '',
+                        category: document.getElementById('maisonRequestCategory')?.value || '',
+                        description: document.getElementById('maisonRequestDescription')?.value || ''
+                    })
                 });
                 await window.openMaisonDesk(profile.id);
             } catch (err) {
+                alert(err.message);
+            }
+        });
+        document.getElementById('maisonPublishBtn')?.addEventListener('click', async () => {
+            const input = document.getElementById('maisonBokantajInput');
+            const button = document.getElementById('maisonPublishBtn');
+            try {
+                if (button) button.disabled = true;
+                const photo = photoInput?.files?.[0] ? await readDataUrl(photoInput.files[0]) : '';
+                const video = videoInput?.files?.[0] ? await readDataUrl(videoInput.files[0]) : '';
+                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
+                    method: 'POST',
+                    body: JSON.stringify({ content: input?.value || '', city: profile.city, territory: profile.territory, photo, video })
+                });
+                await window.openMaisonDesk(profile.id);
+            } catch (err) {
+                if (button) button.disabled = false;
                 alert(err.message);
             }
         });
@@ -2969,6 +3021,152 @@ document.addEventListener('DOMContentLoaded', async () => {
             : maisonProfilesCache;
         renderMaisonRoster(filtered);
     });
+
+    async function loadEditorialDesk() {
+        const botsEl = document.getElementById('editorialBots');
+        const listEl = document.getElementById('editorialProposals');
+        if (!botsEl || !listEl) return;
+        botsEl.innerHTML = '<p class="maison-muted">Chargement…</p>';
+        try {
+            const bots = await maisonJson('/v1/admin/editorial/bots');
+            const proposals = await maisonJson('/v1/admin/editorial/proposals');
+            const rows = proposals.proposals || [];
+            const nothing = (item) => item.metadata && item.metadata.outcome === 'nothing_to_propose';
+            const collectionError = (item) => item.status === 'FAILED' || (item.metadata && item.metadata.outcome === 'collection_error');
+            const pending = rows.filter((item) => item.approval_status === 'PENDING' && item.status !== 'CANCELLED' && !nothing(item) && !collectionError(item));
+            const approved = rows.filter((item) => item.approval_status === 'APPROVED');
+            const rejected = rows.filter((item) => (item.approval_status === 'REJECTED' || item.status === 'CANCELLED') && !nothing(item) && !collectionError(item));
+            const errors = rows.filter(collectionError);
+            const badge = document.getElementById('sidebarEditorialBadge');
+            if (badge) badge.textContent = String(pending.length);
+            const summary = document.getElementById('editorialSummary');
+            const activeCount = (bots.bots || []).filter((bot) => bot.status === 'ACTIVE').length;
+            if (summary) {
+                summary.innerHTML = [
+                    ['En attente', pending.length],
+                    ['Validées', approved.length],
+                    ['Agents actifs', `${activeCount}/5`],
+                    ['Passages', '07:00 · 12:00 · 17:00']
+                ].map(([label, value]) => `<div class="admin-card" style="padding:14px 16px;"><div class="maison-muted">${maisonEsc(label)}</div><strong style="font-size:1.15rem;">${maisonEsc(value)}</strong></div>`).join('');
+            }
+            botsEl.innerHTML = (bots.bots || []).map((bot) => {
+                const waiting = pending.filter((item) => item.agent_name === bot.agent_name).length;
+                const active = bot.status === 'ACTIVE';
+                return `
+                <article class="admin-card" style="padding:16px; display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <img src="${maisonEsc(bot.profile?.avatar_url || '')}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;background:#F4F0E8;">
+                        <div style="min-width:0;">
+                            <h3 style="margin:0; font-size:1rem;">${maisonEsc(bot.agent_name)}</h3>
+                            <p class="maison-muted" style="margin:2px 0 0;">${active ? 'Actif' : 'Suspendu'} · 3 propositions / jour</p>
+                        </div>
+                    </div>
+                    <p class="maison-muted" style="margin:0;">${(bot.sources || []).map((source) => maisonEsc(source.name)).join(' · ') || '—'}</p>
+                    <p style="margin:0; font-weight:700;">${waiting ? `${waiting} en attente de ta validation` : 'Aucune proposition en attente'}</p>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-editorial-status="${maisonEsc(bot.id)}" data-next="${active ? 'SUSPENDED' : 'ACTIVE'}">${active ? 'Suspendre' : 'Activer'}</button>
+                </article>`;
+            }).join('') || '<p class="maison-muted">Aucun compte éditorial.</p>';
+            const versionOf = (item) => {
+                const siblings = rows.filter((other) => other.agent_id === item.agent_id && other.metadata && item.metadata && other.metadata.source_url === item.metadata.source_url);
+                const newerPending = siblings.some((other) => other.id !== item.id && other.approval_status === 'PENDING' && other.status !== 'CANCELLED' && new Date(other.created_at) > new Date(item.created_at));
+                if (newerPending) return 'Ancienne version';
+                const hasOlder = siblings.some((other) => other.id !== item.id && new Date(other.created_at) < new Date(item.created_at));
+                return hasOlder ? 'Nouvelle proposition' : 'Proposition actuelle';
+            };
+            const visible = pending.concat(approved, rejected);
+            const statusLabel = (item) => {
+                if (item.approval_status === 'PENDING' && item.status !== 'CANCELLED') return 'En attente — ignorée, elle reste ici';
+                if (item.approval_status === 'APPROVED') return 'Validée et publiée';
+                return 'Refusée — conservée';
+            };
+            listEl.innerHTML = `<h3 style="margin:0 0 12px;">Toutes les propositions</h3>` + (errors.length ? `<p class="maison-muted">Collecte sans texte : ${errors.map((item) => `${maisonEsc(item.agent_name || '')}`).join(' · ')}. Rien n’est inventé.</p>` : '') + (visible.map((item) => {
+                const pendingItem = item.approval_status === 'PENDING' && item.status !== 'CANCELLED';
+                return `
+                <article class="admin-card" style="padding:16px; margin-bottom:12px;" data-proposal="${maisonEsc(item.id)}">
+                    <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                        <strong>${maisonEsc(item.agent_name || '')}</strong>
+                        <span class="maison-muted">${maisonEsc(statusLabel(item))}</span>
+                    </div>
+                    <p style="margin:8px 0 4px; font-weight:700;">${maisonEsc(item.title || '')}</p>
+                    <p class="maison-muted" style="margin:0 0 8px;">${maisonEsc(versionOf(item))} · <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a></p>
+                    ${(item.controls && !item.controls.ok && (item.controls.reasons || []).some((reason) => /affirmation thérapeutique/.test(reason))) ? '<p class="editorial-warning">Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifie le texte avant validation.</p>' : ''}
+                    <textarea class="admin-input editorial-text" rows="5" style="width:100%;"${pendingItem ? '' : ' readonly'}>${maisonEsc(item.instruction || '')}</textarea>
+                    <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                        ${pendingItem ? '<button type="button" class="admin-btn admin-btn-secondary editorial-save">Modifier</button><button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider et publier</button>' : ''}
+                        <button type="button" class="admin-btn admin-btn-danger editorial-delete">Supprimer</button>
+                    </div>
+                </article>`;
+            }).join('') || '<p class="maison-muted">Aucune proposition pour le moment. Le prochain passage en prépare s’il y a une source réelle.</p>');
+            botsEl.querySelectorAll('[data-editorial-status]').forEach((button) => {
+                button.addEventListener('click', async () => {
+                    await maisonJson(`/v1/admin/editorial/bots/${button.getAttribute('data-editorial-status')}/status`, {
+                        method: 'POST',
+                        body: JSON.stringify({ status: button.getAttribute('data-next') })
+                    });
+                    await loadEditorialDesk();
+                });
+            });
+            listEl.querySelectorAll('[data-proposal]').forEach((card) => {
+                const notice = document.getElementById('editorialNotice');
+                const show = (message) => { if (notice) notice.textContent = message; };
+                const run = (button, pendingLabel, action) => async () => {
+                    const previous = button.textContent;
+                    button.disabled = true;
+                    button.textContent = pendingLabel;
+                    show(pendingLabel);
+                    try {
+                        const result = await action();
+                        show(result.message || 'Enregistré.');
+                        await loadEditorialDesk();
+                        const nextNotice = document.getElementById('editorialNotice');
+                        if (nextNotice) nextNotice.textContent = result.message || 'Enregistré.';
+                    } catch (err) {
+                        show(err.message || 'Erreur serveur.');
+                        button.disabled = false;
+                        button.textContent = previous;
+                    }
+                };
+                const id = card.getAttribute('data-proposal');
+                const text = () => card.querySelector('.editorial-text')?.value || '';
+                card.querySelector('.editorial-save')?.addEventListener('click', run(card.querySelector('.editorial-save'), 'Enregistrement…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/revise`, {
+                    method: 'POST',
+                    body: JSON.stringify({ content: text() })
+                }).then((body) => ({ message: body.message || 'Modification enregistrée.' }))));
+                card.querySelector('.editorial-publish')?.addEventListener('click', run(card.querySelector('.editorial-publish'), 'Publication…', async () => {
+                    await maisonJson(`/v1/admin/editorial/proposals/${id}/revise`, {
+                        method: 'POST',
+                        body: JSON.stringify({ content: text() })
+                    });
+                    return maisonJson(`/v1/admin/editorial/proposals/${id}/publish`, {
+                        method: 'POST',
+                        body: JSON.stringify({ content: text() })
+                    });
+                }));
+                card.querySelector('.editorial-delete')?.addEventListener('click', run(card.querySelector('.editorial-delete'), 'Suppression…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/delete`, { method: 'POST', body: '{}' }).then((body) => ({ message: body.message || 'Proposition supprimée.' }))));
+            });
+        } catch (err) {
+            botsEl.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;
+        }
+    }
+    document.getElementById('editorialCollectBtn')?.addEventListener('click', async () => {
+        const button = document.getElementById('editorialCollectBtn');
+        if (button) button.disabled = true;
+        try {
+            await maisonJson('/v1/admin/editorial/collect', { method: 'POST', body: '{}' });
+            await loadEditorialDesk();
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    });
+    window.openEditorialDesk = loadEditorialDesk;
+    document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.addEventListener('click', () => {
+        loadEditorialDesk();
+    });
+    if (window.location.hash === '#comptes-editoriaux') {
+        document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.click();
+    }
 
     window.loadAdminRealData = loadAdminRealData;
 
@@ -3065,6 +3263,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         window.loadAdminSection('sec-requests');
+    };
+
+    window.adminViewReportEvidence = async function(reportId) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/reports/${reportId}/evidence`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Preuves indisponibles.');
+            return;
+        }
+        const files = data.files || [];
+        if (!files.length) {
+            alert('Aucune preuve jointe.');
+            return;
+        }
+        files.forEach((file) => window.open(file.url, '_blank', 'noopener'));
     };
 
     window.adminUpdateReport = async function(reportId, source, status) {
@@ -3332,6 +3545,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td>${adminDate(row.created_at)}</td>
                     <td>${adminBadge(row.status)}</td>
                     <td>
+                        ${row.source === 'user' && row.evidence_count ? `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminViewReportEvidence('${row.id}')">Preuves (${row.evidence_count})</button>` : ''}
+                        ${row.source === 'user' && row.status === 'OPEN' ? `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminUpdateReport('${row.id}','user','IN_REVIEW')">Prendre en charge</button>` : ''}
                         <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminUpdateReport('${row.id}','${row.source}','RESOLVED')">Classer</button>
                     </td>
                 </tr>`).join('') : adminEmpty(8, 'Aucun signalement.');

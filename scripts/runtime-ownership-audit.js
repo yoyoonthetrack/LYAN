@@ -147,10 +147,11 @@ if (!sharedBuild.includes('gzispjfoywklpqatjyop.supabase.co')) {
 }
 
 const apiGateway = read('api/index.js');
-if (!apiGateway.includes("capacitor://localhost")) {
+const originPolicy = read('api/runtime-isolation.js');
+if (!originPolicy.includes("capacitor://localhost") || !originPolicy.includes("ionic://localhost")) {
   fail('production API gateway must allow Capacitor native Origin, not only lyann.app');
 }
-if (!apiGateway.includes('ALLOWED_NATIVE_ORIGINS')) {
+if (!apiGateway.includes('browserOriginAllowed') || !originPolicy.includes('function browserOriginAllowed')) {
   fail('production API gateway must distinguish native Capacitor origins from unknown browsers');
 }
 if (!apiGateway.includes("candidate.startsWith('/v1/')")) {

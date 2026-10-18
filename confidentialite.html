@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20261007">
+    <link rel="stylesheet" href="style.css?v=20261017pale">
 </head>
 <body class="legal-page legal-policy-page">
 
@@ -57,7 +57,8 @@
             <!-- Menu Navigation Desktop -->
             <div class="desktop-nav-menu">
                 <a href="index.html" class="desktop-nav-link"><i class="ph ph-house"></i> Accueil</a>
-                <a href="results.html" class="desktop-nav-link"><i class="ph ph-magnifying-glass"></i> Explorer</a>
+                <a href="results.html?mode=lyanneurs" class="desktop-nav-link" data-explorer-nav="lyanneurs"><i class="ph ph-users-three"></i> Lyanneurs</a>
+                <a href="results.html?mode=annonces" class="desktop-nav-link" data-explorer-nav="annonces"><i class="ph ph-list"></i> Annonces</a>
                 <a href="feed.html" class="desktop-nav-link nav-link-bokantaj"><i class="ph ph-broadcast" style="color: #E76F51;"></i> Bokantaj</a>
                 <a href="how-it-works.html" class="desktop-nav-link"><i class="ph ph-info"></i> Comment ça marche</a>
             </div>
@@ -90,15 +91,16 @@
                     <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
                 </div>
                 <nav class="mobile-nav-list">
-                    <a href="#" class="open-account-modal-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin: 6px 0;">
+                    <a href="#" class="open-account-modal-trigger" data-lyann-route="profile" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin: 6px 0;">
                         <img src="lyann-avatar-placeholder.svg" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
-                        MON PROFIL & RÉGLAGES
+                        PROFIL
                         <i class="ph ph-caret-right" style="margin-left: auto;"></i>
                     </a>
                     <a href="index.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-house" style="color: var(--primary); font-size: 1.2rem;"></i> ACCUEIL <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
-                    <a href="results.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-magnifying-glass" style="color: #E5B345; font-size: 1.2rem;"></i> RECHERCHER & EXPLORER <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="results.html?mode=lyanneurs" data-explorer-nav="lyanneurs" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> LYANNEURS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="results.html?mode=annonces" data-explorer-nav="annonces" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-list" style="color: #E5B345; font-size: 1.2rem;"></i> ANNONCES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="feed.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <span class="nav-live-dot"></span> <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
-                    <a href="#" class="open-chat-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGERIE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="#" class="open-chat-trigger" data-lyann-route="messages" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="about.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
@@ -781,7 +783,7 @@
                                 <i class="ph ph-user-circle"></i> Compléter mon profil maintenant
                             </button>
                             <button class="btn btn-outline" id="obBtnFinalAction" style="width: 100%; justify-content: center; font-weight: 700; color: #4A5568;">
-                                <i class="ph ph-compass"></i> Explorer d'abord (Compléter plus tard)
+                                <i class="ph ph-compass"></i> Découvrir d'abord (Compléter plus tard)
                             </button>
                         </div>
                     </div>
@@ -838,17 +840,27 @@
     <script src="explorer-repository.js"></script>
     <script src="dialog.js"></script>
         <script src="messaging-repository.js"></script>
+<script src="quote-revision.js?v=20261012b"></script>
+<script src="mission-dossier.js?v=20261015g"></script>
+<script src="mission-surfaces.js?v=20261015g"></script>
+<script src="finance-policy-ui.js"></script>
 <script src="quote-payment-eligibility.js?v=20261007d"></script>
-<script src="chat-logic.js?v=20261007d"></script>
+<script src="deal-context-sync.js?v=20261013e4"></script>
+<script src="payout-prompt.js?v=20261009a"></script>
+<script src="realtime-session.js?v=20261014p0"></script>
+<script src="quote-milestone-editor.js?v=20261015n"></script>
+<script src="chat-logic.js?v=20261015g"></script>
     <script src="ai-classifier.js"></script>
     <script src="platform-core.js"></script>
+    <script src="deal-notification-policy.js?v=20261014e6"></script>
     <script src="notification-engine.js"></script>
-    <script src="notifications-ui.js"></script>
-    <script src="app-shell.js"></script>
+    <script src="mission-reminders.js"></script>
+<script src="notifications-ui.js"></script>
+    <script src="app-shell.js?v=20261011c"></script>
     <script src="messaging-ui.js?v=20260923a"></script>
     <script src="maison-catalog.js?v=20260922c"></script>
     <script src="profile-repository.js?v=20260922c"></script>
-    <script src="script.js?v=20260922t"></script>
+    <script src="script.js?v=20261015f"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->
     <div class="speed-dial-wrapper" id="speedDialWrapper">
@@ -1012,18 +1024,9 @@
                 <!-- HUB 4 : FINANCES & PAIEMENTS -->
                 <div class="account-tab-content" id="tab-acc-finances">
                     <div class="profile-section-card">
-                        <h4 class="profile-section-title">💳 Tableau de Bord Stripe Connect & Solde</h4>
-                        <div class="profile-dashboard-grid" style="margin-bottom: 16px;">
-                            <div class="profile-kpi-card" style="background: #E8F5E9;">
-                                <span class="profile-kpi-val" id="accountKpiAvailableBalance" style="color: #2E7D32;">0,00 €</span>
-                                <span class="profile-kpi-label">Solde disponible</span>
-                            </div>
-                            <div class="profile-kpi-card" style="background: #FFF8E1;">
-                                <span class="profile-kpi-val" id="accountKpiPendingBalance" style="color: #D4A843;">0,00 €</span>
-                                <span class="profile-kpi-label">Paiements en cours</span>
-                            </div>
-                        </div>
-                        <button class="btn btn-primary" id="btnInstantPayoutHub">Virement instantané vers mon IBAN 🏦</button>
+                        <h4 class="profile-section-title">Activité financière</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">Un seul compte. Les gains et les dépenses restent séparés.</p>
+                        <div id="lyannUnifiedFinanceHub" data-unified-finance></div>
                     </div>
 
                     <div class="profile-section-card">
@@ -1118,7 +1121,7 @@
                          La description complète, elle, n'apparaît que sur la page de l'annonce. -->
                     <div id="wizardTitleBlock" hidden style="margin-top: 20px;">
                         <p id="wizardTitleHeading" style="font-weight: 700; margin: 0 0 4px;">Choisissez un titre</p>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Trois propositions d’après votre besoin. Choisissez-en une, puis corrigez-la si besoin. 60 caractères maximum.</p>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Un titre court est repris de votre texte. Vous pouvez le corriger. 60 caractères maximum.</p>
                         <p id="wizardTitleStatus" class="wizard-title-status" hidden></p>
                         <div id="wizardTitleChoices" class="wizard-title-choices" role="radiogroup" aria-labelledby="wizardTitleHeading"></div>
                         <div id="wizardTitleEdit" hidden style="margin-top: 12px;">
@@ -1403,14 +1406,31 @@
             <div class="chat-modal-layout">
                 <!-- Sidebar contacts -->
                 <div class="chat-contacts-sidebar">
-                    <div class="chat-sidebar-header">
-                        <span style="display: inline-flex; align-items: center; gap: 8px; font-weight: 800;"><i class="ph-bold ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.25rem;"></i> Messagerie LYANN</span>
-                        <button type="button" class="chat-close-modal-btn close-chat-modal-trigger" aria-label="Fermer la messagerie" onclick="window.closeLyannChatModal(event)"><i class="ph ph-x"></i></button>
+                    <div class="chat-sidebar-header lyann-inbox-header">
+                        <div class="lyann-inbox-brand">
+                            <svg class="lyann-inbox-mark" viewBox="0 0 100 100" aria-hidden="true"><path d="M12 42 L50 14 L88 42" stroke="#4A7C59" stroke-width="8" stroke-linecap="round" fill="none"/><circle cx="34" cy="46" r="7" fill="#4A7C59"/><circle cx="50" cy="42" r="7" fill="#709C7D"/><circle cx="66" cy="46" r="7" fill="#E5B345"/><path d="M23 72 C23 60 31 56 38 56 C45 56 47 62 50 62 C53 62 55 56 62 56 C69 56 77 60 77 72" stroke="#4A7C59" stroke-width="7.5" stroke-linecap="round" fill="none"/></svg>
+                            <span class="lyann-inbox-word">LYANN</span>
+                        </div>
+                        <h2 class="lyann-inbox-title">Messages</h2>
+                        <p class="lyann-inbox-subtitle">Échangez avec vos voisins, talents et pros en toute simplicité.</p>
+                        <div class="lyann-inbox-motifs" aria-hidden="true">
+                            <svg class="lyann-inbox-motif is-leaf" viewBox="0 0 48 48"><path d="M24 40V22M24 28c-8-1-14-8-12-16 7 1 12 7 12 16zM24 26c8-1 13-7 11-14-7 1-11 6-11 14z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                            <svg class="lyann-inbox-motif is-bubble" viewBox="0 0 48 48"><path d="M10 14h20a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6H20l-6 5v-5h-4a6 6 0 0 1-6-6v-8a6 6 0 0 1 6-6z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                            <svg class="lyann-inbox-motif is-share" viewBox="0 0 48 48"><circle cx="14" cy="24" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="34" cy="14" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="34" cy="34" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M17 22 31 16M17 26 31 32" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                        </div>
                     </div>
                     <div class="chat-search-wrapper">
                         <i class="ph ph-magnifying-glass chat-search-icon"></i>
-                        <input type="text" id="chatSearchInput" class="chat-search-input" placeholder="Rechercher une conversation...">
+                        <input type="text" id="chatSearchInput" class="chat-search-input" placeholder="Rechercher une conversation">
                     </div>
+                    <div class="lyann-inbox-filters" role="tablist" aria-label="Filtrer les conversations">
+                        <button type="button" class="lyann-inbox-pill is-active" data-inbox-filter="all" aria-pressed="true"><i class="ph ph-chat-circle" aria-hidden="true"></i> Tous</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="unread" aria-pressed="false"><i class="ph ph-circle" aria-hidden="true"></i> Non lus</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="annonces" aria-pressed="false"><i class="ph ph-storefront" aria-hidden="true"></i> Annonces</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="devis" aria-pressed="false"><i class="ph ph-file-text" aria-hidden="true"></i> Devis</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="favoris" aria-pressed="false"><i class="ph ph-star" aria-hidden="true"></i> Favoris</button>
+                    </div>
+                    <button type="button" class="lyann-inbox-compose" aria-label="Nouvelle conversation"><i class="ph ph-pencil-simple" aria-hidden="true"></i></button>
                     <div class="chat-contacts-list" id="chatContactsList">
                     </div>
                 </div>
@@ -1491,17 +1511,15 @@
                             <div class="choice-cards-container">
                                 <!-- CARTE 1: TARIF DIRECT -->
                                 <div class="choice-card-vertical">
-                                    <div class="choice-card-title">⚡ Tarif direct</div>
-                                    <div class="choice-card-desc">Pour une intervention simple ou un petit montant.</div>
-                                    <div class="choice-card-ex">Exemple : Montage meuble, dépannage, transport, petit service.</div>
+                                    <div class="choice-card-title">Tarif Direct</div>
+                                    <div class="choice-card-desc">Un montant unique pour votre prestation.</div>
                                     <button type="button" class="btn btn-primary choice-card-btn" id="btnChooseDirectPrice">Choisir le Tarif Direct</button>
                                 </div>
 
                                 <!-- CARTE 2: DEVIS PAR JALONS -->
                                 <div class="choice-card-vertical">
-                                    <div class="choice-card-title">📑 Devis par jalons</div>
-                                    <div class="choice-card-desc">Pour un projet plus important avec plusieurs étapes.</div>
-                                    <div class="choice-card-ex">Exemple : Rénovation, travaux, projet avec acomptes et étapes.</div>
+                                    <div class="choice-card-title">Devis par Jalons</div>
+                                    <div class="choice-card-desc">Plusieurs étapes avec paiements progressifs.</div>
                                     <button type="button" class="btn btn-outline choice-card-btn" id="btnChooseMilestoneDevis">Choisir le Devis par Jalons</button>
                                 </div>
                             </div>
@@ -1524,7 +1542,7 @@
                             <div class="mobile-form-group">
                                 <label class="mobile-form-label">Montant proposé</label>
                                 <div class="amount-input-wrapper">
-                                    <input type="number" id="dpAmount" class="amount-input-field" placeholder="80" min="5" max="10000" step="any" inputmode="decimal" required>
+                                    <input type="number" id="dpAmount" class="amount-input-field" placeholder="80" min="0.01" step="0.01" inputmode="decimal" required>
                                     <span class="amount-input-symbol">€</span>
                                 </div>
                             </div>
@@ -1599,31 +1617,23 @@
                             </div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant total (€)</label>
-                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="5" step="any" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
+                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="0.01" step="0.01" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
                             </div>
                             
-                            <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
-                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 8px; color: var(--primary-dark);">Jalons de paiement (Répartition en %)</label>
-                                
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 1:</span>
-                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
+                                                        <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
+                                <div class="milestone-allocation-section">
+                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
+                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque jalon garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
+                                    <div id="mdMilestoneList" class="md-milestone-list"></div>
+                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un jalon</button>
+                                    <div id="mdAllocationSummary" class="md-allocation-summary">
+                                        <div class="md-allocation-row"><span>Total du devis</span><strong id="mdAllocationQuoteTotal">0,00 €</strong></div>
+                                        <div class="md-allocation-row"><span>Total réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
+                                        <div class="md-allocation-row"><span>Pourcentage réparti</span><strong id="mdAllocationPercentTotal">0 %</strong></div>
+                                        <div class="md-allocation-row"><span>Reste à répartir</span><strong id="mdAllocationRemaining">—</strong></div>
+                                    </div>
+                                    <p id="mdAllocationLive" class="md-allocation-live">La somme des montants doit égaler exactement le total.</p>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 2:</span>
-                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
-                                </div>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <span style="font-size: 0.75rem; font-weight: bold; width: 50px;">Jalon 3:</span>
-                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="flex: 3; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="10" max="80" step="1" inputmode="numeric" required style="flex: 1; font-size: 0.8rem; height: 32px; padding: 2px 8px;">
-                                    <span style="font-size: 0.8rem;">%</span>
-                                </div>
-                                <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;"><i class="ph ph-info"></i> Le total des jalons doit faire 100%.</p>
                             </div>
 
                             <div style="display: flex; gap: 10px; margin-top: 10px;">

@@ -13,7 +13,7 @@ class LyanAIClassifier {
             { id: null, universe: "Maison & Travaux", category: "Bricolage", subcategory: "Montage meuble", synonyms: ["armoire", "lit", "étagère", "étagere", "vis", "montage", "meuble", "monter", "démonter", "demonter", "armoires", "lits", "ikea"], tags: ["#BRICOLAGE", "#MEUBLE", "#MONTAGE"], safety_level: "NORMAL" },
             { id: null, universe: "Maison & Travaux", category: "Plomberie", subcategory: "Fuite & Dépannage", synonyms: ["robinet", "tuyau", "évier", "evier", "fuite d eau", "fuite", "chasse d eau", "plombier", "sanitaire", "wc", "cumulus", "chauffe-eau", "fuites"], tags: ["#PLOMBERIE", "#FUITE", "#DEPANNAGE"], safety_level: "NORMAL" },
             { id: null, universe: "Maison & Travaux", category: "Électricité", subcategory: "Panne & Dépannage", synonyms: ["prise", "interrupteur", "disjoncteur", "lumière", "lumiere", "électricien", "electricien", "ampoule", "tableau électrique", "prise électrique", "electrique"], tags: ["#ELECTRICITE", "#PANNE"], safety_level: "PRO_REQUIRED" },
-            { id: null, universe: "Jardin & Extérieur", category: "Entretien Jardin", subcategory: "Débroussaillage", synonyms: ["herbe", "pelouse", "tonte", "tondre", "débroussailleuse", "debroussailleuse", "débroussailler", "debroussailler", "jardinier", "haie", "arbre", "elagage", "élagage", "tailler", "manguier", "taille haie"], tags: ["#JARDIN", "#DEBROUSSAILLAGE", "#TONTE"], safety_level: "NORMAL" },
+            { id: null, universe: "Jardin & Extérieur", category: "Entretien Jardin", subcategory: "Débroussaillage", synonyms: ["jardin", "jardins", "herbe", "pelouse", "tonte", "tondre", "débroussailleuse", "debroussailleuse", "débroussailler", "debroussailler", "jardinier", "haie", "arbre", "elagage", "élagage", "tailler", "manguier", "taille haie"], tags: ["#JARDIN", "#DEBROUSSAILLAGE", "#TONTE"], safety_level: "NORMAL" },
             { id: null, universe: "Auto & Mobilité", category: "Mécanique Automobile", subcategory: "Diagnostic & Démarrage", synonyms: ["voiture", "auto", "bagnole", "batterie", "démarrage", "demarrage", "démarre", "demarre", "panne", "moteur", "mécano", "mecano", "mécanicien", "freins", "freinage", "vidange", "roue", "pneu", "voitures"], tags: ["#AUTO", "#MECANIQUE", "#DIAGNOSTIC", "#BATTERIE"], safety_level: "NORMAL" },
             { id: null, universe: "Auto & Mobilité", category: "Mécanique & Entretien Deux-Roues", subcategory: "Réparation & Entretien Deux-Roues", synonyms: ["scooter", "scooters", "moto", "motos", "deux-roues", "deux roues", "mobylette", "cyclomoteur", "réparation scooter", "reparation scooter", "mécanique moto", "mecanique moto", "entretien scooter", "entretien moto"], tags: ["#SCOOTER", "#MOTO", "#DEUX_ROUES", "#MECANIQUE"], safety_level: "NORMAL" },
             { id: null, universe: "Transport & Livraison", category: "Covoiturage", subcategory: "Trajet local", synonyms: ["covoit", "covoiturage", "emmener", "déposer", "deposer", "trajet", "transport personne", "conduire", "amener"], tags: ["#TRANSPORT", "#COVOITURAGE", "#TRAJET"], safety_level: "NORMAL" },
@@ -149,15 +149,16 @@ class LyanAIClassifier {
 
             // Strict exact word token equality check (NO substring matching on partial words like "mon" -> "montage" or "car" -> "carrelage")
             for (const w of words) {
+                let wordScore = 0;
                 for (const syn of normSynonyms) {
                     const synWords = syn.split(/\s+/);
-                    if (synWords.includes(w) || syn === w) {
-                        score += 30;
-                    }
+                    if (syn === w) wordScore = Math.max(wordScore, 40);
+                    else if (synWords.includes(w)) wordScore = Math.max(wordScore, 30);
                 }
-                if (normSubcategory.split(/\s+/).includes(w)) score += 20;
-                if (normCategory.split(/\s+/).includes(w)) score += 25;
-                if (normUniverse.split(/\s+/).includes(w)) score += 10;
+                if (normSubcategory.split(/\s+/).includes(w)) wordScore = Math.max(wordScore, 22);
+                if (normCategory.split(/\s+/).includes(w)) wordScore = Math.max(wordScore, 18);
+                if (normUniverse.split(/\s+/).includes(w)) wordScore = Math.max(wordScore, 8);
+                score += wordScore;
             }
 
             if (score > bestScore) {

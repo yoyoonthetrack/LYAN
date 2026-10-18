@@ -17,7 +17,8 @@
 .explorer-results-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:24px 0 16px}
 .explorer-results-heading p{font-size:.9rem;color:#56665c}
 .explorer-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
-.explorer-card{background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px #24382b0a;display:flex;flex-direction:column;gap:12px;min-width:0;overflow-wrap:anywhere;border:1px solid #e3e9e5}
+.explorer-card{background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px #24382b0a;display:flex;flex-direction:column;gap:12px;min-width:0;overflow-wrap:anywhere;border:1px solid #e3e9e5;scroll-margin-top:calc(96px + env(safe-area-inset-top, 0px));scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
+.explorer-card h2,.explorer-card .explorer-quote-text,.explorer-card .explorer-skills-text{scroll-margin-top:calc(96px + env(safe-area-inset-top, 0px));scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
 .explorer-card h2{font-size:1.14rem;line-height:1.35;margin:0;color:var(--primary-dark)}
 .explorer-card p{margin:0;font-size:.92rem;line-height:1.5}
 .explorer-card-description{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:#536258}
@@ -25,7 +26,7 @@
 .explorer-person img{width:40px;height:40px;object-fit:cover;border-radius:50%}
 .explorer-person-zone{position:relative}
 .explorer-card>.explorer-person-zone{width:fit-content;max-width:100%}
-.explorer-person-overlay{position:absolute;inset:0;min-width:44px;min-height:44px;background:none;border:0;margin:0;padding:0;font:inherit;color:transparent;cursor:pointer;z-index:1}
+.explorer-person-overlay{position:absolute;top:0;left:0;width:44px;height:44px;min-width:44px;min-height:44px;background:none;border:0;margin:0;padding:0;font:inherit;color:transparent;cursor:pointer;z-index:1}
 .explorer-person-overlay:hover~img{filter:brightness(.94)}
 .explorer-person-overlay:hover~.explorer-person-name,.explorer-person-overlay:hover~div h2{text-decoration:underline}
 .explorer-person-overlay:focus-visible{outline:2px solid var(--primary,#4a7c59);outline-offset:3px;border-radius:12px}
@@ -37,7 +38,7 @@
    per line. The full description belongs to the Détails surface, never the card. */
 .explorer-annonce{gap:10px}
 .explorer-annonce .explorer-card-top{align-items:flex-start}
-.explorer-annonce-taxonomy{flex:1;min-width:0;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--primary-dark,#24382b);background:#EBF3EE;border-radius:6px;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.explorer-annonce-taxonomy{flex:1;min-width:0;max-width:100%;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--primary-dark,#24382b);background:#EBF3EE;border-radius:6px;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .explorer-annonce-age{flex-shrink:0;font-size:.74rem;color:#6B7A70;background:#F4F6F4;border-radius:6px;padding:4px 8px;white-space:nowrap}
 .explorer-annonce-facts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:.89rem;color:#42504a}
 .explorer-annonce-facts li{display:flex;align-items:baseline;gap:7px;min-width:0}
@@ -83,9 +84,9 @@
 .explorer-world-tab.is-lyanneurs.active{background:#E8F1EA;border-color:#C9D9CE;color:#35583F}
 .explorer-page[data-mode=annonces] .explorer-world-tab.is-annonces[aria-selected=true],
 .explorer-world-tab.is-annonces.active{background:#F6EEDD;border-color:#E5D4B0;color:#7A5C14}
-body.results-page{transition:background .45s ease}
-body.results-page[data-explorer-mode=annonces]{background:linear-gradient(180deg,#F8F3E8 0%,#FAF7F2 42%,#FAF7F2 100%)}
-body.results-page[data-explorer-mode=lyanneurs]{background:linear-gradient(180deg,#EEF4EF 0%,#FAF7F2 42%,#FAF7F2 100%)}
+body.results-page{transition:none}
+body.results-page[data-explorer-mode=annonces]{background:#FFF8E9}
+body.results-page[data-explorer-mode=lyanneurs]{background:#EFF7F0}
 .explorer-page[data-mode=annonces] .explorer-heading h1{color:#6F5A2A}
 .explorer-page[data-mode=lyanneurs] .explorer-heading h1{color:#35583F}
 .explorer-page[data-mode=annonces] .explorer-card{border-color:#E8DCC4}
@@ -98,6 +99,13 @@ body.results-page[data-explorer-mode=lyanneurs]{background:linear-gradient(180de
 .explorer-card-actions.explorer-profile-actions{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:8px!important;width:100%!important}
 .explorer-card-actions.explorer-profile-actions .btn{width:100%!important;min-width:100%!important;flex:none!important;box-sizing:border-box!important}
 .explorer-search .lyann-cta-primary{flex-shrink:0;padding:0 16px!important}
+body.is-native-app.has-member-nav .explorer-profile-actions .btn,
+body.is-native-app.has-member-nav .explorer-card-actions .btn{scroll-margin-bottom:calc(var(--m-bottom-nav-height, 72px) + 20px + env(safe-area-inset-bottom, 0px))}
+@media(max-width:420px){
+.explorer-page[data-mode=annonces] .explorer-results-heading{flex-direction:row;align-items:center;justify-content:flex-start;gap:12px}
+.explorer-page[data-mode=annonces] .explorer-results-heading .explorer-publish.lyann-cta-primary{width:auto!important;flex:0 0 auto;justify-content:flex-start;min-height:44px;padding:8px 14px!important;white-space:nowrap}
+.explorer-page[data-mode=annonces] .explorer-results-heading p{margin-left:auto;text-align:right}
+}
 @media(max-width:640px){
 .explorer-swipe-hint{display:block}
 .explorer-world-tab{font-size:.78rem;padding:8px 6px;gap:5px}
@@ -114,4 +122,218 @@ body.results-page[data-explorer-mode=lyanneurs]{background:linear-gradient(180de
     min-width: 100% !important;
     flex: none !important;
     box-sizing: border-box !important;
+}
+
+/* Phone, keyboard closed: bottom sheet stays within 90dvh and the actions stay on screen. */
+@media (max-width: 600px) {
+    body:not(.keyboard-open) #explorerFilters.explorer-filter-sheet[open] {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        height: fit-content;
+        max-height: 90dvh;
+        margin: auto 0 0;
+        top: auto;
+        bottom: 0;
+    }
+    body:not(.keyboard-open) #explorerFilters .explorer-search-dock,
+    body:not(.keyboard-open) #explorerFilters .explorer-sheet-heading,
+    body:not(.keyboard-open) #explorerFilters .explorer-sheet-actions {
+        flex: 0 0 auto;
+    }
+    body:not(.keyboard-open) #explorerFilters #explorerFilterForm {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+        margin: 0;
+    }
+    body:not(.keyboard-open) #explorerFilters .explorer-sheet-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Annonces filter sheet: fill the visual viewport above the keyboard.
+   Wide desktop keeps the centered dialog; the native app follows the keyboard in landscape too. */
+body.is-native-app.keyboard-open #explorerFilters.explorer-filter-sheet[open],
+body.keyboard-open #explorerFilters.explorer-filter-sheet[open] {
+    position: fixed;
+    top: var(--lyann-vv-offset, 0px);
+    right: 0;
+    left: 0;
+    bottom: auto;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    height: var(--lyann-vv-height, 90dvh);
+    max-height: var(--lyann-vv-height, 90dvh);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 20px 20px 0 0;
+    padding: 12px 16px 12px;
+}
+@media (min-width: 601px) {
+    body.keyboard-open:not(.is-native-app) #explorerFilters.explorer-filter-sheet[open] {
+        position: fixed;
+        inset: 0;
+        margin: auto;
+        width: calc(100% - 32px);
+        max-width: 480px;
+        height: fit-content;
+        max-height: 85dvh;
+        display: block;
+        overflow: auto;
+        border-radius: 20px;
+        padding: 24px;
+    }
+}
+body.is-native-app.keyboard-open #explorerFilters .explorer-search-dock,
+body.keyboard-open #explorerFilters .explorer-search-dock,
+body.is-native-app.keyboard-open #explorerFilters .explorer-sheet-heading,
+body.keyboard-open #explorerFilters .explorer-sheet-heading,
+body.is-native-app.keyboard-open #explorerFilters .explorer-sheet-actions,
+body.keyboard-open #explorerFilters .explorer-sheet-actions {
+    flex: 0 0 auto;
+}
+body.is-native-app.keyboard-open #explorerFilters #explorerFilterForm,
+body.keyboard-open #explorerFilters #explorerFilterForm {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    margin: 0;
+}
+body.is-native-app.keyboard-open #explorerFilters .explorer-sheet-body,
+body.keyboard-open #explorerFilters .explorer-sheet-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+body.is-native-app.keyboard-open #explorerFilters .explorer-sheet-actions,
+body.keyboard-open #explorerFilters .explorer-sheet-actions {
+    margin-top: 12px;
+    padding-top: 8px;
+    background: #fff;
+}
+@media (min-width: 601px) {
+    body.keyboard-open:not(.is-native-app) #explorerFilters #explorerFilterForm,
+    body.keyboard-open:not(.is-native-app) #explorerFilters .explorer-sheet-body {
+        display: block;
+        flex: none;
+        min-height: 0;
+        overflow: visible;
+    }
+    body.keyboard-open:not(.is-native-app) #explorerFilters .explorer-sheet-actions {
+        margin-top: 24px;
+        padding-top: 0;
+    }
+}
+#explorerFilters.explorer-filter-sheet:not([open]) {
+    display: none !important;
+}
+#explorerFilters.explorer-filter-sheet[open] {
+    background: #fffdf8;
+    color: #24352b;
+    border-radius: 24px 24px 0 0;
+    padding: 18px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+#explorerFilters .explorer-sheet-heading {
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(74, 124, 89, 0.15);
+}
+#explorerFilters .explorer-sheet-heading h2 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #35583f;
+}
+#explorerFilters .explorer-sheet-sub {
+    margin: 4px 0 0;
+    color: #5c6e62;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+#explorerFiltersClose {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    flex: 0 0 40px;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    margin: 0;
+    padding: 0;
+    border-radius: 50% !important;
+    border: 1px solid #e5dfd5 !important;
+    background: #fff !important;
+    color: #24352b !important;
+    font-size: 1.35rem !important;
+    line-height: 1;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+}
+#explorerFilters label {
+    margin: 14px 0 0;
+    gap: 8px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #5c6e62;
+}
+#explorerFilters select,
+#explorerFilters input[type="text"],
+#explorerFilters input[type="search"],
+#explorerFilters input[type="number"] {
+    min-height: 48px;
+    border-radius: 14px;
+    border: 1.5px solid #d7e3da;
+    background: #fff;
+    padding: 10px 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #24352b;
+}
+#explorerFilters .explorer-hint {
+    margin: 8px 0 0;
+    color: #5c6e62;
+    font-size: 0.84rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+}
+#explorerFilters .explorer-sheet-actions {
+    gap: 8px;
+    margin-top: 16px;
+}
+#explorerFilters .explorer-sheet-actions .btn {
+    min-height: 48px;
+    border-radius: 999px;
+    font-weight: 800;
+}
+#explorerFilters .explorer-sheet-actions .btn-outline {
+    flex: 1;
+    background: #fff !important;
+    color: #24352b !important;
+    border: 1.5px solid #d7e3da !important;
+}
+#explorerFilters .explorer-sheet-actions .btn-primary {
+    flex: 1.4;
+    background: linear-gradient(90deg, #4a7c59, #e5b345) !important;
+    color: #17231c !important;
+    border: 0 !important;
+    box-shadow: none !important;
 }

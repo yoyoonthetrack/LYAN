@@ -12,7 +12,21 @@
             category: params.get('category') || '', service: params.get('service') || '',
             area: params.get('area') ?? params.get('citySelect') ?? params.get('locationSelect') ?? '',
             territory: params.get('territory') || '', commune: params.get('commune') || '', urgency: params.get('urgency') || '', budget: params.get('budget') || '' };
+        const explicitFilter = ['query','searchInput','category','service','area','citySelect','locationSelect','territory','commune','urgency','budget'].some(key => params.has(key));
+        if (!explicitFilter) {
+            try {
+                const saved = JSON.parse(sessionStorage.getItem('lyann-explorer-filters:' + mode) || 'null');
+                if (saved && typeof saved === 'object') {
+                    filters = {
+                        query: saved.query || '', category: saved.category || '', service: saved.service || '',
+                        area: saved.area || '', territory: saved.territory || '', commune: saved.commune || '',
+                        urgency: saved.urgency || '', budget: saved.budget || ''
+                    };
+                }
+            } catch (_) {}
+        }
         let leaves = [], records = [], revision = 0, savedArea = '';
+        let showAllTrades = false;
         // The delay filter offers the same date modes the cards display, so a chosen
         // option always matches what a reader sees on the results.
         const dateModeLabel = value => window.LYANN_ANNONCE_FORMAT?.dateModeLabel(value) || value;
@@ -63,7 +77,7 @@
             return `<article class="explorer-card explorer-annonce" data-request-id="${escape(r.id)}">
                 <div class="explorer-card-top">
                     ${showType ? typePill('annonce') : ''}
-                    ${taxonomy ? `<span class="explorer-annonce-taxonomy">${escape(taxonomy)}</span>` : ''}
+                    ${taxonomy ? `<span class="explorer-annonce-taxonomy" title="${escape(taxonomy)}">${escape(taxonomy)}</span>` : ''}
                     ${age ? `<span class="explorer-annonce-age">${escape(age)}</span>` : ''}
                     ${favorite('REQUEST', r.id)}
                 </div>
@@ -79,17 +93,15 @@
         }
         function formatDisplayName(p) {
             if (!p) return 'Lyanneur';
-            if (p.first_name) {
-                const last = p.last_name ? ` ${p.last_name.trim().charAt(0)}.` : '';
-                return `${p.first_name.trim()}${last}`;
+            if (typeof window.formatPublicName === 'function') {
+                return window.formatPublicName(p, null, 'Lyanneur');
             }
-            const raw = String(p.name || 'Lyanneur').trim();
-            if (raw.includes('.')) return raw;
-            const parts = raw.split(' ');
-            if (parts.length >= 2) {
-                return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
-            }
-            return raw;
+            const first = window.capitalizeLyannName ? window.capitalizeLyannName(p.first_name || '') : String(p.first_name || '').trim();
+            const last = p.last_name ? String(p.last_name).trim() : '';
+            const initial = last.match(/[A-Za-zÀ-ÿ]/);
+            if (first && initial) return `${first} ${initial[0].toUpperCase()}.`;
+            if (first) return first;
+            return String(p.name || 'Lyanneur').trim();
         }
 
         function getSeedProfileMetadata(p) {
@@ -211,37 +223,64 @@
                 if (value || key === 'area') next.set(key, value);
             });
             history.replaceState(null, '', `${location.pathname}?${next}`);
+            try { sessionStorage.setItem('lyann-explorer-filters:' + mode, JSON.stringify(filters)); } catch (_) {}
         }
         function syncControls() {
             root.dataset.mode = mode;
             document.body.dataset.explorerMode = mode;
-            root.querySelectorAll('[role="tab"][data-mode]').forEach(tab => {
-                const active = tab.dataset.mode === mode;
-                tab.setAttribute('aria-selected', String(active));
-                tab.classList.toggle('active', active);
-                tab.tabIndex = active ? 0 : -1;
+            const title = $('explorerTitle');
+            const subtitle = $('explorerSubtitle');
+            const copy = mode === 'annonces'
+                ? { title: 'Annonces', subtitle: 'Publiez un besoin et recevez des réponses près de chez vous.', art: 'annonces' }
+                : { title: 'Lyanneurs', subtitle: 'Des talents et des pros tout près de chez vous.', art: 'lyanneurs' };
+            if (title) title.textContent = copy.title;
+            if (subtitle) subtitle.textContent = copy.subtitle;
+            const filterTitle = $('explorerFilterTitle');
+            const filterSub = $('explorerFilterSub');
+            if (filterTitle) filterTitle.textContent = mode === 'annonces' ? 'Filtrer les annonces' : 'Filtrer les Lyanneurs';
+            if (filterSub) filterSub.textContent = mode === 'annonces'
+                ? 'Affinez le service, le lieu ou le budget.'
+                : 'Affinez le métier, le territoire ou la commune.';
+            root.dataset.universe = copy.art;
+            const header = root.querySelector('.lyann-universe-header');
+            if (header) header.dataset.universe = copy.art;
+            const wide = $('universeArtWide');
+            const tall = $('universeArtTall');
+            if (wide) wide.src = `assets/universe/${copy.art}-landscape.webp`;
+            if (tall) tall.src = `assets/universe/${copy.art}-portrait.webp`;
+            document.querySelectorAll('[data-explorer-nav]').forEach(link => {
+                link.classList.toggle('active', link.getAttribute('data-explorer-nav') === mode);
             });
-            $('explorerPanel').setAttribute('aria-labelledby', `${mode}Tab`);
+            $('explorerPanel').setAttribute('aria-labelledby', 'explorerTitle');
             $('explorerSearchInput').placeholder = mode === 'annonces' ? 'De quoi avez-vous besoin ?' : 'Nom, activité ou commune';
             const publishBtn = root.querySelector('.explorer-results-heading .explorer-publish');
-            if (publishBtn) {
-                publishBtn.hidden = mode === 'lyanneurs';
-                publishBtn.textContent = 'Publier un besoin';
-            }
+            if (publishBtn) publishBtn.hidden = mode === 'lyanneurs';
             root.querySelector('label[for="explorerSearchInput"]').textContent = `Rechercher dans les ${mode}`;
             $('explorerSearchInput').value = filters.query;
-            $('explorerCategory').innerHTML = '<option value="">Toutes les catégories</option>' + [...new Set(leaves.map(t => t.category))].sort((a,b) => a.localeCompare(b,'fr')).map(c => `<option value="${escape(c)}">${escape(c)}</option>`).join('');
+            const fold = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const tradeFirst = ['plomb', 'electr', 'macon', 'menuis', 'peint', 'clim', 'jardin', 'couvr', 'carrel', 'serrur', 'chauff', 'bricol'];
+            const rank = label => {
+                const name = fold(label);
+                const index = tradeFirst.findIndex(key => name.includes(key));
+                return index === -1 ? tradeFirst.length : index;
+            };
+            const categories = [...new Set(leaves.map(t => t.category))].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, 'fr'));
+            $('explorerCategory').innerHTML = '<option value="">Toutes les catégories</option>' + categories.map(c => `<option value="${escape(c)}">${escape(c)}</option>`).join('');
             $('explorerCategory').value = filters.category;
-            $('explorerService').innerHTML = '<option value="">Tous les services</option>' + leaves.filter(t => !filters.category || t.category === filters.category).map(t => `<option value="${escape(t.id)}">${escape(t.category)} — ${escape(t.subcategory)}</option>`).join('');
-            $('explorerService').value = filters.service;
-            for (const key of ['area','urgency','budget']) $('explorer' + key[0].toUpperCase() + key.slice(1)).value = filters[key];
+            renderCategoryPills();
             $('explorerRequestFilters').hidden = mode !== 'annonces';
             $('explorerAreaLabel').hidden = mode !== 'annonces';
             $('explorerProfileGeography').hidden = mode !== 'lyanneurs';
             $('explorerSavedArea').hidden = mode !== 'annonces' || !savedArea;
-            $('explorerTerritory').innerHTML = '<option value="">Tous les territoires</option>' + territories().map(t => `<option value="${escape(t)}">${escape(t.replace(/\s*\(\d+\)/, '').replace('La Réunion', 'Réunion'))}</option>`).join('');
-            $('explorerTerritory').value = filters.territory;
-            syncCommunes(filters.territory, filters.commune);
+            // A refresh must not discard a territory the reader has chosen but not applied yet.
+            if (!$('explorerFilters')?.open) {
+                $('explorerService').innerHTML = '<option value="">Tous les services</option>' + leaves.filter(t => !filters.category || t.category === filters.category).map(t => `<option value="${escape(t.id)}">${escape(t.category)} — ${escape(t.subcategory)}</option>`).join('');
+                $('explorerService').value = filters.service;
+                for (const key of ['area','urgency','budget']) $('explorer' + key[0].toUpperCase() + key.slice(1)).value = filters[key];
+                $('explorerTerritory').innerHTML = '<option value="">Tous les territoires</option>' + territories().map(t => `<option value="${escape(t)}">${escape(t.replace(/\s*\(\d+\)/, '').replace('La Réunion', 'Réunion'))}</option>`).join('');
+                $('explorerTerritory').value = filters.territory;
+                syncCommunes(filters.territory, filters.commune);
+            }
             const chips = [];
             for (const key of ['query','category','service','area','territory','commune','urgency','budget']) {
                 if (!filters[key] || mode === 'lyanneurs' && ['area','urgency','budget'].includes(key) || mode === 'annonces' && ['territory','commune'].includes(key)) continue;
@@ -249,6 +288,34 @@
                 chips.push(`<button data-remove="${key}" aria-label="Retirer le filtre ${escape(label)}">${escape(label)} ×</button>`);
             }
             $('explorerActiveFilters').innerHTML = chips.join('');
+        }
+        function renderCategoryPills() {
+            const host = $('explorerCategoryPills');
+            const select = $('explorerCategory');
+            if (!host || !select) return;
+            const options = [...select.options];
+            const selected = options.find((option) => (option.value || '') === (filters.category || ''));
+            let visible = options;
+            if (mode === 'lyanneurs' && !showAllTrades) {
+                visible = options.slice(0, 3);
+                if (selected && !visible.includes(selected)) visible = [options[0], selected].filter(Boolean);
+            }
+            const pills = visible.map((option) => {
+                const value = option.value || '';
+                const label = value ? option.textContent : 'Tout';
+                const active = (filters.category || '') === value;
+                return `<button type="button" class="lyann-pill${active ? ' is-active' : ''}" data-category="${escape(value)}" aria-pressed="${active ? 'true' : 'false'}">${escape(label)}</button>`;
+            }).join('');
+            const more = mode === 'lyanneurs' && !showAllTrades && options.length > 3
+                ? `<button type="button" class="lyann-pill lyann-pill-more" data-action="more-trades">Voir plus</button>`
+                : '';
+            host.innerHTML = pills + more;
+        }
+        function refineCard() {
+            if (mode === 'annonces') {
+                return `<article class="explorer-refine"><h2>Vous cherchez un besoin précis ?</h2><p>Affinez votre recherche par mot-clé, catégorie, commune ou budget.</p><button type="button" class="btn lyann-cta-primary" data-action="refine">Affiner ma recherche</button></article>`;
+            }
+            return `<article class="explorer-refine"><h2>Vous cherchez un talent en particulier ?</h2><p>Affinez votre recherche par métier, commune ou disponibilité.</p><button type="button" class="btn lyann-cta-primary" data-action="refine">Affiner ma recherche</button></article>`;
         }
         function render() {
             syncControls(); syncUrl();
@@ -260,22 +327,13 @@
             $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
             const container = $('explorerResults');
             container.dataset.state = results.length ? 'SUCCESS' : 'EMPTY';
-            container.innerHTML = results.length ? results.map(mode === 'annonces' ? requestCard : profileCard).join('') : `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish">Publier un besoin</button>' : ''}</div>`;
-            window.syncFavoriteButtonStates?.();
-        }
-        function renderMixed(people, ads) {
-            syncControls();
-            const bits = [];
-            if (people.length) bits.push(`${people.length} profil${people.length > 1 ? 's' : ''}`);
-            if (ads.length) bits.push(`${ads.length} annonce${ads.length > 1 ? 's' : ''}`);
-            $('explorerSummary').textContent = `${bits.join(' · ') || 'Aucun résultat'} · Tous les lieux`;
-            $('explorerRanking').textContent = 'Un profil se contacte. Une annonce se lyanne.';
-            const container = $('explorerResults');
-            records = people.concat(ads);
-            container.dataset.state = records.length ? 'SUCCESS' : 'EMPTY';
-            container.innerHTML = records.length
-                ? `${people.length ? `<h3 class="explorer-mixed-title">Profils</h3>${people.map(p => profileCard(p, true)).join('')}` : ''}${ads.length ? `<h3 class="explorer-mixed-title">Annonces</h3>${ads.map(r => requestCard(r, true)).join('')}` : ''}`
-                : `<div class="explorer-state"><h2>Aucun profil ni annonce pour « ${escape(filters.query)} ».</h2><p>Essayez un autre nom.</p><button class="btn btn-outline" data-action="reset">Effacer la recherche</button></div>`;
+            if (!results.length) {
+                container.innerHTML = `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish"><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>' : ''}</div>${refineCard()}`;
+            } else {
+                const cards = results.map(mode === 'annonces' ? requestCard : profileCard);
+                cards.splice(Math.min(5, cards.length), 0, refineCard());
+                container.innerHTML = cards.join('');
+            }
             window.syncFavoriteButtonStates?.();
         }
         async function search(force = false, quiet = false) {
@@ -290,17 +348,6 @@
             }
             try {
                 await window.LYANN_AUTH_STATE?.ready?.();
-                if (String(filters.query || '').trim()) {
-                    const [profiles, requests, taxonomy] = await Promise.all([repo.load({force}), repo.loadRequests({force}), repo.taxonomy(force)]);
-                    if (token !== revision) return;
-                    leaves = taxonomy;
-                    const nameFilters = { ...filters, territory: '', commune: '', area: '', urgency: '', budget: '' };
-                    renderMixed(
-                        repo.discover(profiles, leaves, nameFilters, 'lyanneurs'),
-                        repo.discover(requests, leaves, nameFilters, 'annonces')
-                    );
-                    return;
-                }
                 const [data, taxonomy] = await Promise.all([mode === 'annonces' ? repo.loadRequests({force}) : repo.load({force}), repo.taxonomy(force)]);
                 if (token !== revision) return;
                 records = data; leaves = taxonomy;
@@ -329,18 +376,34 @@
             }
             const button = event.target.closest('button');
             if (!button) return;
-            if (button.dataset.mode) { mode = button.dataset.mode; search(); return; }
+            if (button.dataset.action === 'more-trades') {
+                showAllTrades = true;
+                renderCategoryPills();
+                return;
+            }
+            if (button.dataset.mode) { mode = button.dataset.mode; showAllTrades = false; search(); return; }
             if (button.dataset.remove) {
                 filters[button.dataset.remove] = '';
                 if (button.dataset.remove === 'territory') filters.commune = '';
                 if (button.dataset.remove === 'category') filters.service = '';
                 search(); return;
             }
+            if (button.classList.contains('lyann-pill')) {
+                filters.category = button.dataset.category || '';
+                filters.service = '';
+                search();
+                return;
+            }
             if (button.classList.contains('explorer-publish')) { window.openLyannWizard(filters.query); return; }
             const row = records.find(r => r.id === button.dataset.id);
             switch (button.dataset.action) {
                 case 'retry': search(true); break;
                 case 'reset': reset(); break;
+                case 'refine':
+                    syncControls();
+                    $('explorerFilters').showModal();
+                    $('explorerSearchInput')?.focus();
+                    break;
                 case 'detail': if (row) window.openLyannDetailModal(row.id, row); break;
                 case 'profile':
                     if (button.dataset.id) window.openPublicMemberProfile?.(button.dataset.id);
@@ -355,42 +418,30 @@
                     break;
             }
         });
-        root.querySelector('.explorer-modes').addEventListener('keydown', event => {
-            if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+        $('explorerSearchInput').addEventListener('input', () => { filters.query = $('explorerSearchInput').value; });
+        $('explorerSearchForm').addEventListener('submit', event => {
             event.preventDefault();
-            mode = event.key === 'Home' ? 'annonces' : event.key === 'End' ? 'lyanneurs' : mode === 'annonces' ? 'lyanneurs' : 'annonces';
-            search(); $(`${mode}Tab`).focus();
-        });
-        let swipeX = 0, swipeY = 0, swipeOn = false;
-        root.addEventListener('pointerdown', event => {
-            if (event.pointerType === 'mouse' && event.button !== 0) return;
-            if (event.target.closest('input, select, textarea, dialog, button, a, .explorer-filter-sheet')) return;
-            swipeOn = true;
-            swipeX = event.clientX;
-            swipeY = event.clientY;
-        });
-        root.addEventListener('pointerup', event => {
-            if (!swipeOn) return;
-            swipeOn = false;
-            const dx = event.clientX - swipeX;
-            const dy = event.clientY - swipeY;
-            if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.35) return;
-            const next = dx < 0 ? 'annonces' : 'lyanneurs';
-            if (next === mode) return;
-            mode = next;
+            filters.query = $('explorerSearchInput').value.trim();
+            $('explorerFilters')?.close();
             search();
         });
-        root.addEventListener('pointercancel', () => { swipeOn = false; });
-        $('explorerSearchInput').addEventListener('input', () => { filters.query = $('explorerSearchInput').value; });
-        $('explorerSearchForm').addEventListener('submit', event => { event.preventDefault(); filters.query = $('explorerSearchInput').value.trim(); search(); });
         $('explorerCategory').addEventListener('change', () => { filters.category = $('explorerCategory').value; filters.service = ''; search(); });
         $('explorerFiltersButton').addEventListener('click', () => { syncControls(); $('explorerFilters').showModal(); });
         $('explorerFiltersClose').addEventListener('click', () => $('explorerFilters').close());
-        $('explorerFilterForm').addEventListener('submit', event => {
-            if (event.submitter?.value !== 'apply') return;
+        const readFilterSheet = () => {
             const keys = mode === 'annonces' ? ['service','area','urgency','budget'] : ['service','territory','commune'];
             for (const key of keys) filters[key] = $('explorer' + key[0].toUpperCase() + key.slice(1)).value.trim();
-            search();
+        };
+        // Read the sheet on click, before the dialog closes and can restore the
+        // values from when it opened. Otherwise the applied territory is stale.
+        document.querySelector('#explorerFilterForm button[value="apply"]')?.addEventListener('click', readFilterSheet, true);
+        $('explorerFilterForm').addEventListener('submit', event => {
+            event.preventDefault();
+            if (event.submitter?.value === 'apply') {
+                readFilterSheet();
+                search();
+            }
+            $('explorerFilters').close();
         });
         $('explorerFilters').addEventListener('click', event => { if (event.target === $('explorerFilters')) $('explorerFilters').close(); });
         $('explorerReset').addEventListener('click', () => { $('explorerFilters').close(); reset(); });

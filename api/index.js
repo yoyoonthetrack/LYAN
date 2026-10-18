@@ -10,25 +10,24 @@
  * deleted in a later cleanup after regression validation.
  */
 const { createClient } = require('@supabase/supabase-js');
-const { inspectStripeEnv } = require('./stripe-policy');
+const { inspectStripeEnv, stagingBrowserOriginAllowed } = require('./stripe-policy');
+const { assertHostedIsolation, browserOriginAllowed } = require('./runtime-isolation');
 const app = require('./server.js');
 
 const IS_VERCEL_PRODUCTION = process.env.VERCEL_ENV === 'production';
 const IS_PRODUCTION = IS_VERCEL_PRODUCTION || process.env.NODE_ENV === 'production';
 const LYANN_PRODUCTION_SUPABASE_HOST = 'gzispjfoywklpqatjyop.supabase.co';
+const LYANN_STAGING_SUPABASE_HOST = 'tdktfbtqceldlaeqjtow.supabase.co';
 
-const ALLOWED_WEB_ORIGINS = new Set([
-    'https://lyann.app',
-    'https://www.lyann.app',
-    'https://admin.lyann.app'
-]);
-
-const ALLOWED_NATIVE_ORIGINS = new Set([
-    'capacitor://localhost',
-    'ionic://localhost',
-    'http://localhost',
-    'https://localhost'
-]);
+function isStagingSupabaseConfigured() {
+    const url = process.env.SUPABASE_URL || process.env.LYANN_SUPABASE_URL;
+    if (!url) return false;
+    try {
+        return new URL(url).hostname === LYANN_STAGING_SUPABASE_HOST;
+    } catch (e) {
+        return false;
+    }
+}
 
 const PRODUCTION_DISABLED_ROUTES = new Set([
     '/v1/auth/login',
@@ -46,6 +45,7 @@ const PRODUCTION_FINANCIAL_ROUTES = new Set([
     '/v1/payments/connect/onboarding-link',
     '/v1/payments/connect/express-dashboard-link',
     '/v1/payments/connect/status',
+    '/v1/payments/connect/peer-status',
     '/v1/payments/refund-untransferred',
     '/v1/milestones/start-work',
     '/v1/milestones/submit-completion',
@@ -103,7 +103,8 @@ function isFinancialRoute(path) {
 }
 
 function isProductionSupabaseConfigured() {
-    const url = process.env.SUPABASE_URL || `https://${LYANN_PRODUCTION_SUPABASE_HOST}`;
+    const url = process.env.SUPABASE_URL;
+    if (!url) return false;
     try {
         return new URL(url).hostname === LYANN_PRODUCTION_SUPABASE_HOST;
     } catch (e) {
@@ -173,19 +174,23 @@ module.exports = async function lyannApiGateway(req, res) {
     // Native Capacitor WebViews send Origin: capacitor://localhost (or ionic://).
     // Requests with no Origin header remain allowed (non-browser / native HTTP).
     // Browser requests in production must originate from a LYANN-owned origin.
-    if (
-        IS_VERCEL_PRODUCTION
-        && origin
-        && !ALLOWED_WEB_ORIGINS.has(origin)
-        && !ALLOWED_NATIVE_ORIGINS.has(origin)
-    ) {
+    if (IS_VERCEL_PRODUCTION && origin && !browserOriginAllowed(origin, process.env)) {
         return jsonError(res, 403, 'ORIGIN_NOT_ALLOWED', 'Origine non autorisée.');
+    }
+
+    if (!IS_VERCEL_PRODUCTION && isStagingSupabaseConfigured() && origin && !stagingBrowserOriginAllowed(origin, process.env)) {
+        return jsonError(res, 403, 'STAGING_ORIGIN_NOT_ALLOWED', 'Origine non autorisée pour Staging.');
     }
 
     // Let legitimate browser preflights reach Express CORS only after the
     // production origin allowlist above has accepted them.
     if (req.method === 'OPTIONS') {
         return app(req, res);
+    }
+
+    const isolation = assertHostedIsolation(process.env);
+    if (!isolation.ok && (hasFinancialRoute || hasAdminRoute || hasStripeWebhook)) {
+        return jsonError(res, 503, isolation.code, isolation.message);
     }
 
     if (!IS_VERCEL_PRODUCTION && hasFinancialRoute && isProductionSupabaseConfigured()) {
@@ -223,7 +228,7 @@ module.exports = async function lyannApiGateway(req, res) {
 
     // Webhooks are authoritative financial inputs. In production, accepting an
     // unsigned body because a secret is missing is forbidden: fail closed.
-    if (IS_PRODUCTION && hasStripeWebhook) {
+    if ((IS_PRODUCTION || isStagingSupabaseConfigured()) && hasStripeWebhook) {
         if (!process.env.STRIPE_WEBHOOK_SECRET) {
             return jsonError(res, 503, 'STRIPE_WEBHOOK_CONFIG_MISSING', 'Configuration webhook Stripe incomplète.');
         }

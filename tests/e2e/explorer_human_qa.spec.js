@@ -1,6 +1,7 @@
 const {test, expect} = require('@playwright/test');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const {installRequestFixtures, OPEN_REQUEST_ID, CLOSED_REQUEST_ID} = require('./helpers/qa-fixtures');
 
 async function ready(page, mode='annonces') {
   await page.goto(`/results.html?mode=${mode}&area=`);
@@ -58,8 +59,17 @@ for(const width of [390,1440]) test(`Territory and dependent commune at ${width}
   await territory.selectOption('Guadeloupe (971)');await commune.selectOption('Le Gosier');
   await page.getByRole('button',{name:'Afficher les résultats'}).click();
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
-  const expected=await page.evaluate(async()=> (await window.LYANN_EXPLORER_REPOSITORY.load()).filter(p=>p.territory?.replace(/\s*\(\d+\)/g,'')==='Guadeloupe'&&p.city?.replace(/\s*\(\d+\)/g,'')==='Le Gosier').map(p=>p.id).sort());
-  expect(await page.locator('[data-member-id]').evaluateAll(es=>es.map(e=>e.dataset.memberId).sort())).toEqual(expected);
+  const expected=await page.evaluate(async()=> {
+    const repo=window.LYANN_EXPLORER_REPOSITORY;
+    const [profiles,taxonomy]=await Promise.all([repo.load(), repo.taxonomy()]);
+    return repo.discover(profiles, taxonomy, {query:'',category:'',service:'',area:'',territory:'Guadeloupe (971)',commune:'Le Gosier',urgency:'',budget:''}, 'lyanneurs').map(p=>p.id).sort();
+  });
+  const shown=await page.locator('#explorerResults [data-member-id]').evaluateAll(es=>es.map(e=>e.dataset.memberId).sort());
+  expect(shown).toEqual(expected);
+  expect(shown.length).toBeGreaterThan(0);
+  const places=await page.locator('#explorerResults .explorer-meta').allTextContents();
+  expect(places.length).toBe(shown.length);
+  expect(places.every(text=>/Le Gosier/i.test(text)&&/Guadeloupe/i.test(text))).toBe(true);
   await page.reload();await page.getByRole('button',{name:'Filtres et zone'}).click();
   await expect(territory).toHaveValue('Guadeloupe (971)');await expect(commune).toHaveValue('Le Gosier');
   await territory.selectOption('Martinique (972)');await expect(commune).toHaveValue('');
@@ -76,39 +86,46 @@ for(const width of [390,1440]) test(`Territory and dependent commune at ${width}
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
-test('Segmented selector and centered introduction support keyboard and clear selected state',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await ready(page);
-  await expect(page.locator('.explorer-heading')).toContainText('Des besoins et des talents près de chez vous');
-  expect(await page.locator('.explorer-heading').evaluate(e=>getComputedStyle(e).textAlign)).toBe('center');
-  const first=page.getByRole('tab',{name:/Annonces/}), second=page.getByRole('tab',{name:/Lyanneurs/});
-  expect((await first.boundingBox()).height).toBeGreaterThanOrEqual(60);
-  expect((await first.boundingBox()).width).toBeGreaterThan(140);
-  expect(await first.evaluate(e=>getComputedStyle(e).color)).not.toBe(await second.evaluate(e=>getComputedStyle(e).color));
-  await first.focus();await first.press('ArrowRight');
-  await expect(second).toBeFocused();await expect(second).toHaveAttribute('aria-selected','true');
-  expect(await second.evaluate(e=>getComputedStyle(e).outlineStyle)).not.toBe('none');
-  await second.press('Home');await expect(first).toBeFocused();await expect(first).toHaveAttribute('aria-selected','true');
+test('Each Explorer space keeps its own title and the annonce publish action',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await ready(page,'lyanneurs');
+  await expect(page.locator('#explorerSubtitle')).toHaveText('Des talents et des pros tout près de chez vous.');
+  await expect(page.locator('#explorerTitle')).toHaveText('Lyanneurs');
+  await expect(page.locator('.lyann-universe-frame')).toBeVisible();
+  await expect(page.locator('#explorer [role="tab"]')).toHaveCount(0);
+  await expect(page.locator('.explorer-results-heading .explorer-publish')).toBeHidden();
+  await page.goto('/results.html?mode=annonces&area=', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#explorerTitle')).toHaveText('Annonces');
+  await expect(page.locator('.explorer-results-heading .explorer-publish')).toHaveText(/Publier une annonce/);
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
   await page.screenshot({path:'artifacts/explorer/human-qa-mobile.png',fullPage:true});
 });
 
-test('Authenticated Activity reads all own historical Requests while Explorer restricts discovery',async({page})=>{
+test('Activity lists the signed-in account open and closed annonces while Explorer keeps public discovery',async({page})=>{
   await page.goto('/index.html');
   const email=process.env.LYANN_E2E_QA_A_EMAIL,password=process.env.LYANN_E2E_QA_A_PASSWORD;
   expect(email).toBeTruthy();expect(password).toBeTruthy();
-  const result=await page.evaluate(async({email,password})=>{
+  const user=await page.evaluate(async({email,password})=>{
     const client=window.LYANN_API_CLIENT;
     const auth=await client.login(email,password);if(auth.error)throw auth.error;
     await window.LYANN_AUTH_STATE.ready();
+    return (await client.supabase.auth.getSession()).data.session.user.id;
+  },{email,password});
+  // Account A has no stored annonce. The activity list and the public discovery
+  // query are answered from the browser so the status split can be checked.
+  await installRequestFixtures(page, user);
+  const result=await page.evaluate(async()=>{
+    const client=window.LYANN_API_CLIENT;
     const id=(await client.supabase.auth.getSession()).data.session.user.id;
     const {data,error}=await client.supabase.from('requests').select('id,status').eq('requester_id',id);
     if(error)throw error;
     const html=await window.renderMonActiviteSubView(id,'requests');
     const discovery=await window.LYANN_EXPLORER_REPOSITORY.loadRequests({force:true});
     return {rows:data,html,discovery:discovery.map(r=>({id:r.id,status:r.status,safety:r.safety_status,target:r.target_user_id,classification:r.classification_status}))};
-  },{email,password});
-  expect(result.rows.length).toBeGreaterThan(0);
+  });
+  expect(result.rows.map(row=>row.id).sort()).toEqual([OPEN_REQUEST_ID, CLOSED_REQUEST_ID].sort());
   for(const row of result.rows)expect(result.html).toContain(row.id);
-  expect(result.discovery.length).toBeGreaterThan(0);
+  expect(result.discovery.some(row=>row.id===OPEN_REQUEST_ID)).toBe(true);
+  expect(result.discovery.some(row=>row.id===CLOSED_REQUEST_ID)).toBe(false);
   for(const row of result.discovery){expect(row.status).toBe('OPEN');expect(row.safety).toBe('SAFE');expect(row.target).toBeNull();expect(['CLASSIFIED','UNCLASSIFIED']).toContain(row.classification);}
 });

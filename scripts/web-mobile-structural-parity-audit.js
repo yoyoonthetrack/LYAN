@@ -54,7 +54,7 @@ if (!surfaces.includes('window.LYANN_SURFACES')) {
 for (const page of pages) {
   const html = read(page);
   if (!html.includes('id="chatModal"')) continue;
-  const count = (html.match(/<script src="messaging-ui\.js"><\/script>/g) || []).length;
+  const count = (html.match(/<script src="messaging-ui\.js(?:\?[^"]*)?"><\/script>/g) || []).length;
   if (count !== 1) {
     fail(`${page}: expected exactly one canonical messaging-ui.js include, found ${count}`);
   }

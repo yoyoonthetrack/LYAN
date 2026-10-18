@@ -266,16 +266,15 @@ test('five photos and a repeated photo stay distinct', async ({ page }) => {
   });
   await expect.poll(() => page.evaluate(() => (window.__lyannRealtimeHandlers || []).length)).toBeGreaterThan(0);
 
-  const chooserPromise = page.waitForEvent('filechooser');
-  await page.locator('#chatAttachBtn').click();
-  await page.locator('[onclick*="handleGuardedAttachment(\'photo\')"]').click();
-  await (await chooserPromise).setFiles({ name: 'shot.png', mimeType: 'image/png', buffer: PNG });
-  for (let index = 1; index < 5; index += 1) {
-    const nextChooser = page.waitForEvent('filechooser');
+  async function sendPhotoFromSheet() {
+    const chooserPromise = page.waitForEvent('filechooser');
     await page.locator('#chatAttachBtn').click();
-    await page.locator('[onclick*="handleGuardedAttachment(\'photo\')"]').click();
-    await (await nextChooser).setFiles({ name: 'shot.png', mimeType: 'image/png', buffer: PNG });
+    await page.locator('#chatActionsBottomSheet').getByRole('button', { name: 'Photo', exact: true }).click();
+    await (await chooserPromise).setFiles({ name: 'shot.png', mimeType: 'image/png', buffer: PNG });
+    await page.locator('#chatAttachPreview').getByRole('button', { name: 'Envoyer' }).click();
   }
+  await sendPhotoFromSheet();
+  for (let index = 1; index < 5; index += 1) await sendPhotoFromSheet();
   await expect.poll(() => page.evaluate(() => window.__sendGate.length)).toBe(5);
   await page.evaluate(() => {
     [...window.__sentRows].reverse().forEach((row) => window.__lyannRealtimeHandlers.forEach((handler) => handler({ new: row })));
@@ -307,8 +306,9 @@ test('a failed upload stays visible and retry sends it once', async ({ page }) =
   });
   const chooserPromise = page.waitForEvent('filechooser');
   await page.locator('#chatAttachBtn').click();
-  await page.locator('[onclick*="handleGuardedAttachment(\'photo\')"]').click();
+  await page.locator('#chatActionsBottomSheet').getByRole('button', { name: 'Photo', exact: true }).click();
   await (await chooserPromise).setFiles({ name: 'shot.png', mimeType: 'image/png', buffer: PNG });
+  await page.locator('#chatAttachPreview').getByRole('button', { name: 'Envoyer' }).click();
   await expect(page.locator('#chatMessagesContainer')).toContainText("Échec de l'envoi");
   await expect(page.locator('#chatMessagesContainer .chat-msg-bubble-wrap')).toHaveCount(1);
   await page.locator('[data-chat-retry]').click();
@@ -322,8 +322,9 @@ test('a pdf keeps its name, escapes html, and opens through a signed url', async
   const hostile = '<img src=x onerror=alert(1)>.pdf';
   const chooserPromise = page.waitForEvent('filechooser');
   await page.locator('#chatAttachBtn').click();
-  await page.locator('[onclick*="handleGuardedAttachment(\'file\')"]').click();
+  await page.locator('#chatActionsBottomSheet').getByRole('button', { name: 'Document', exact: true }).click();
   await (await chooserPromise).setFiles({ name: hostile, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') });
+  await page.locator('#chatAttachPreview').getByRole('button', { name: 'Envoyer' }).click();
   const name = page.locator('.chat-msg-doc-name');
   await expect(name).toHaveText(hostile);
   expect(await name.locator('img, script').count()).toBe(0);
@@ -457,4 +458,112 @@ test('an open thread does not poll messages for 30 seconds', async ({ page }) =>
   await page.clock.fastForward(30000);
   const after = await page.evaluate(() => window.__messageReads);
   expect(after).toBe(before);
+});
+
+test('the plus button offers photo, video and document, then previews before send', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await bootChat(page);
+  await page.locator('#chatAttachBtn').click();
+  const sheet = page.locator('#chatActionsBottomSheet');
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Vidéo', exact: true })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Document', exact: true })).toBeVisible();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: 'artifacts/media-audit/chat-plus-sheet-390.png' });
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    sheet.getByRole('button', { name: 'Photo', exact: true }).click()
+  ]);
+  await chooser.setFiles({ name: 'terrasse.png', mimeType: 'image/png', buffer: PNG });
+  await expect(page.locator('#chatAttachPreview img')).toBeVisible();
+  await page.screenshot({ path: 'artifacts/media-audit/chat-photo-preview-390.png' });
+  await page.locator('#chatAttachPreview').getByRole('button', { name: 'Envoyer' }).click();
+  await expect(page.locator('img.chat-msg-photo')).toBeVisible();
+  await page.screenshot({ path: 'artifacts/media-audit/chat-photo-sent-390.png' });
+});
+
+test('a received video plays inline and a pdf can be opened', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await bootChat(page);
+  await page.evaluate(() => {
+    window.appendLiveChatMessage({
+      id: 'vid-1',
+      sender_id: '22222222-2222-4222-a222-222222222222',
+      content: '',
+      attachment_type: 'video',
+      attachment_url: '33333333-3333-4333-a333-333333333333/22222222-2222-4222-a222-222222222222/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.mp4',
+      created_at: new Date().toISOString()
+    });
+    window.appendLiveChatMessage({
+      id: 'pdf-1',
+      sender_id: '22222222-2222-4222-a222-222222222222',
+      content: '',
+      attachment_type: 'document',
+      attachment_name: 'devis.pdf',
+      attachment_url: '33333333-3333-4333-a333-333333333333/22222222-2222-4222-a222-222222222222/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.pdf',
+      created_at: new Date().toISOString()
+    });
+  });
+  const video = page.locator('video.chat-msg-video');
+  await expect(video).toBeVisible();
+  await expect(video).toHaveAttribute('controls', '');
+  await expect(page.getByRole('button', { name: 'Ouvrir' })).toBeVisible();
+  await page.screenshot({ path: 'artifacts/media-audit/chat-video-pdf-390.png' });
+  await video.screenshot({ path: 'artifacts/media-audit/chat-video-player-390.png' });
+});
+
+test('a failed upload stays in the thread as an error', async ({ page }) => {
+  await bootChat(page);
+  await page.evaluate(() => {
+    window.LYANN_API_CLIENT.uploadChatAttachment = async () => ({ error: { message: 'Réseau indisponible.' } });
+  });
+  await page.locator('#chatAttachBtn').click();
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.locator('#chatActionsBottomSheet').getByRole('button', { name: 'Photo', exact: true }).click()
+  ]);
+  await chooser.setFiles({ name: 'terrasse.png', mimeType: 'image/png', buffer: PNG });
+  await page.locator('#chatAttachPreview').getByRole('button', { name: 'Envoyer' }).click();
+  await expect(page.locator('.chat-message-send-failed')).toBeVisible();
+  await page.screenshot({ path: 'artifacts/media-audit/chat-upload-error-390.png' });
+});
+
+test('bokantaj previews a video and renders a player for an existing post', async ({ page }) => {
+  await page.route('**/rest/v1/bokantaj_posts*', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify([{
+      id: '11111111-1111-4111-a111-111111111111',
+      author_id: null,
+      content: 'Vague du matin',
+      type: 'info',
+      media_urls: ['https://example.test/vague.mp4'],
+      created_at: '2026-10-01T12:00:00.000Z',
+      territory: 'Guadeloupe',
+      city: 'Sainte-Anne'
+    }])
+  }));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/feed.html');
+  await page.waitForLoadState('domcontentloaded');
+  await page.evaluate(() => {
+    document.body.classList.remove('user-is-logged-out', 'auth-resolving');
+    document.body.classList.add('user-is-logged-in', 'auth-ready');
+  });
+  await page.locator('#flashVideoInput').setInputFiles({
+    name: 'vague.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.from('00000018667479706d70343200000000', 'hex')
+  });
+  const preview = page.locator('#flashMediaPreviewContainer video');
+  await preview.scrollIntoViewIfNeeded();
+  await expect(preview).toBeVisible();
+  await preview.screenshot({ path: 'artifacts/media-audit/bokantaj-video-preview-390.png' });
+  const player = page.locator('video.bokantaj-video');
+  await expect(player).toBeVisible();
+  await expect(player).toHaveAttribute('controls', '');
+  await expect(player).toHaveAttribute('playsinline', '');
+  await player.scrollIntoViewIfNeeded();
+  await player.screenshot({ path: 'artifacts/media-audit/bokantaj-video-player-390.png' });
+  await page.screenshot({ path: 'artifacts/media-audit/bokantaj-feed-390.png' });
 });

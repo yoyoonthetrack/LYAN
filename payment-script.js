@@ -47,6 +47,20 @@
 
     const DEFAULT_TRANSACTIONS = [];
 
+    // The ledger has no stored quote type. Only an explicit quoteType is honored.
+    function decideQuoteMilestones(quoteData) {
+        const raw = quoteData && quoteData.quoteType;
+        const type = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+        if (type === 'direct') {
+            return { ok: true, quoteType: 'direct', requiresMilestones: false, milestones: [] };
+        }
+        if (type === 'milestones') {
+            const milestones = Array.isArray(quoteData.milestones) ? quoteData.milestones : [];
+            return { ok: true, quoteType: 'milestones', requiresMilestones: true, milestones: milestones };
+        }
+        return { ok: false, code: 'quote_type_missing' };
+    }
+
     // --------------------------------------------------------------------------
     // 2. LOGIQUE D\'ACCÈS ET SAUVEGARDE DB
     // --------------------------------------------------------------------------
@@ -80,6 +94,7 @@
             const event = new CustomEvent('lyann_payment_' + name);
             window.dispatchEvent(event);
         },
+        decideQuoteMilestones: decideQuoteMilestones,
         financialUnavailable: function(actionLabel) {
             const msg = (actionLabel || 'Opération') + ' indisponible : ce portail n’est pas raccordé à Stripe. Aucun solde ni versement n’est simulé.';
             if (window.showToast) window.showToast(msg, 'error');
@@ -217,10 +232,11 @@
                 notes: quoteData.notes || ""
             };
 
-            // Jalons requis si total > 200€
-            if (tx.amount > 200) {
+            const decision = decideQuoteMilestones(quoteData);
+            if (decision.ok && decision.quoteType === 'milestones') {
+                tx.quoteDetails.quoteType = 'milestones';
                 tx.requiresMilestones = true;
-                tx.milestones = quoteData.milestones.map((m, i) => ({
+                tx.milestones = decision.milestones.map((m, i) => ({
                     id: i + 1,
                     title: m.title,
                     description: m.description,
@@ -231,7 +247,8 @@
                     deliverables: m.deliverables || "",
                     photos: []
                 }));
-            } else {
+            } else if (decision.ok && decision.quoteType === 'direct') {
+                tx.quoteDetails.quoteType = 'direct';
                 tx.requiresMilestones = false;
                 tx.milestones = [];
             }

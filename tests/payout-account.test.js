@@ -22,6 +22,20 @@ test('no payout account offers setup', () => {
     assert.equal(view.readyVisible, false);
 });
 
+test('pending verification is distinct from incomplete onboarding', () => {
+    assert.equal(payoutAccountState({
+        success: true,
+        ready: false,
+        account_created: true,
+        onboarding_completed: true,
+        transfers_active: false
+    }), 'pending');
+    const view = renderPayoutAccount('pending');
+    assert.equal(view.subtitle, 'Vérification en cours');
+    assert.equal(view.actionVisible, false);
+    assert.equal(view.readyVisible, false);
+});
+
 test('incomplete onboarding is not shown as active', () => {
     assert.equal(payoutAccountState({
         success: true,
@@ -40,7 +54,7 @@ test('active matches the server payable rule and ignores payouts_enabled', () =>
     assert.equal(payoutAccountState(ready), 'active');
     assert.equal(payoutAccountState({ ...ready, payouts_enabled: false }), 'active');
     assert.equal(payoutAccountState({ ...ready, ready: false, payouts_enabled: true }), 'incomplete');
-    assert.equal(payoutAccountState({ ...ready, transfers_active: false }), 'incomplete');
+    assert.equal(payoutAccountState({ ...ready, transfers_active: false }), 'pending');
     assert.equal(payoutAccountState({ ...ready, onboarding_completed: false }), 'incomplete');
     const active = renderPayoutAccount('active');
     assert.equal(active.title, 'Compte de versement actif');
@@ -57,6 +71,17 @@ test('active matches the server payable rule and ignores payouts_enabled', () =>
 });
 
 test('return and refresh urls stay on the finances page', () => {
+    const { payoutReturnUrlsFromLocation } = require('../payout-account.js');
+    const local = payoutReturnUrlsFromLocation('http://127.0.0.1:8098/feed.html');
+    assert.equal(local.return_url, 'http://127.0.0.1:8098/feed.html?action=finances&connect=return');
+    assert.equal(local.refresh_url, 'http://127.0.0.1:8098/feed.html?action=finances&connect=refresh');
+    const staging = payoutReturnUrlsFromLocation('https://staging.lyann.app/feed.html');
+    assert.equal(staging.return_url, 'https://staging.lyann.app/feed.html?action=finances&connect=return');
+    assert.equal(staging.refresh_url, 'https://staging.lyann.app/feed.html?action=finances&connect=refresh');
+    const native = payoutReturnUrlsFromLocation('capacitor://localhost/index.html');
+    assert.equal(native.blocked, true);
+    assert.equal(native.reason, 'NATIVE_RETURN_UNAVAILABLE');
+    assert.equal(native.return_url, undefined);
     const urls = payoutReturnUrls();
     assert.equal(urls.return_url, 'https://lyann.app/?action=finances&connect=return');
     assert.equal(urls.refresh_url, 'https://lyann.app/?action=finances&connect=refresh');
