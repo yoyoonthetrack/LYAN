@@ -57,6 +57,13 @@ test('6.29 dossierActionIds follows existing métier, never mixes roles', () => 
         hasReportableMilestone: true,
         cardActionIds: ['done']
     }), ['done']);
+
+    assert.deepEqual(api.dossierActionIds({
+        roleCode: 'lyanneur',
+        quoteStatus: 'ACCEPTED',
+        canPropose: true,
+        cardActionIds: []
+    }), []);
 });
 
 test('6.29 missionCard keeps pay/done/release on existing quote only', () => {

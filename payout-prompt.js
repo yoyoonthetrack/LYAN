@@ -230,9 +230,16 @@
             };
         }
         if (kind === 'payment_secured') {
+            if (role === 'requester') {
+                return {
+                    title: 'Paiement sécurisé',
+                    body: 'Le paiement de « ' + title + ' » est mis en sécurité par LYANN. Il n’est pas versé tout de suite au Lyanneur. La mission peut commencer. Quand elle sera terminée, vous la validerez dans ce chat pour libérer les fonds.',
+                    open: 'Voir le dossier'
+                };
+            }
             return {
                 title: 'Paiement sécurisé',
-                body: 'Le paiement de « ' + title + ' » est sécurisé par LYANN.',
+                body: 'Le paiement de « ' + title + ' » est sécurisé par LYANN. Vous pouvez réaliser la prestation, puis la déclarer terminée.',
                 open: 'Voir le dossier'
             };
         }

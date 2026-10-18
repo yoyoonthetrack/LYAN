@@ -200,13 +200,16 @@
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Délai dépassé lors de la confirmation Stripe.')), 20000))
             ]);
             if (result.error) {
-                setPaymentError(result.error.message || 'Paiement refusé.');
-                api.lastResult = { error: { message: result.error.message || 'Paiement indisponible.' } };
+                const refused = 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous pouvez réessayer avec cette carte, ou annuler pour revenir au chat.';
+                setPaymentError(refused);
+                api.lastResult = { error: { message: refused } };
                 return api.lastResult;
             }
             const status = result.paymentIntent && result.paymentIntent.status;
             if (status !== 'succeeded' && status !== 'requires_capture') {
-                const message = 'Paiement indisponible : Stripe n’a pas confirmé la carte (statut ' + (status || 'inconnu') + ').';
+                const message = status === 'requires_action'
+                    ? 'Votre banque demande une confirmation. Terminez-la pour mettre le paiement en sécurité. Tant qu’elle n’est pas faite, aucun montant n’est bloqué.'
+                    : 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous pouvez réessayer, ou annuler pour revenir au chat.';
                 setPaymentError(message);
                 api.lastResult = { error: { message } };
                 return api.lastResult;
@@ -218,18 +221,30 @@
                 const overlay = document.getElementById('chatCheckoutOverlay');
                 if (overlay) overlay.style.display = 'none';
             }
-            // E5: never show FUNDED / "paiement confirmé" until server deal state validates it.
+            // E5: never show FUNDED until server deal state validates it.
             let serverValidated = false;
             if (typeof global.lyannAwaitPaidQuote === 'function') {
                 const sync = await global.lyannAwaitPaidQuote();
                 serverValidated = !!(sync && (sync.serverValidated || sync.funded));
             }
+            const title = (document.getElementById('coPrestationTitle') || {}).textContent || 'cette mission';
+            const works = (document.getElementById('coDevisAmount') || {}).textContent || '';
+            const total = (document.getElementById('coTotalAmount') || {}).textContent || '';
             const successMessage = serverValidated
-                ? 'Paiement sécurisé. L’état de la mission est à jour.'
-                : 'Paiement envoyé. L’état se met à jour après validation serveur.';
-            if (typeof global.showToast === 'function') global.showToast(successMessage, serverValidated ? 'success' : 'info');
-            else if (global.lyannAlert) {
-                Promise.resolve(global.lyannAlert(successMessage)).catch(() => {});
+                ? [
+                    'Paiement sécurisé.',
+                    'Mission : ' + title + '.',
+                    works ? ('Prestation : ' + works + '.') : '',
+                    total ? ('Montant mis en sécurité : ' + total + '.') : '',
+                    'L’argent est conservé par LYANN. Il n’est pas versé tout de suite au Lyanneur.',
+                    'La mission peut maintenant commencer.',
+                    'Quand la prestation sera terminée, vous la validerez dans ce même chat. Cela libérera les fonds pour le Lyanneur.'
+                ].filter(Boolean).join(' ')
+                : 'Le paiement a été envoyé. Il n’est pas encore confirmé comme sécurisé. Restez dans cette conversation : l’état se met à jour dès que la banque a validé. Aucun fonds n’est libéré avant cette confirmation.';
+            if (global.lyannAlert) {
+                Promise.resolve(global.lyannAlert(successMessage, serverValidated ? 'success' : 'info', serverValidated ? 'Paiement sécurisé' : 'Paiement en cours')).catch(() => {});
+            } else if (typeof global.showToast === 'function') {
+                global.showToast(successMessage, serverValidated ? 'success' : 'info');
             }
             api.lastResult = {
                 data: {
@@ -240,7 +255,7 @@
             };
             return api.lastResult;
         } catch (err) {
-            const message = err && err.message ? err.message : 'Paiement indisponible.';
+            const message = 'Le paiement n’a pas abouti. Aucun montant n’a été mis en sécurité. Vous pouvez réessayer, ou annuler pour revenir au chat.';
             setPaymentError(message);
             api.lastResult = { error: { message } };
             return api.lastResult;

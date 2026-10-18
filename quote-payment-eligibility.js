@@ -305,7 +305,7 @@
                     actorToAct = 'provider';
                     context = role === 'provider'
                         ? 'Le paiement est sécurisé par LYANN. Réalisez la prestation puis déclarez-la terminée.'
-                        : 'Le paiement est sécurisé par LYANN. Le Lyanneur peut commencer la prestation.';
+                        : 'Paiement sécurisé. L’argent est mis en sécurité par LYANN et n’est pas encore versé au Lyanneur. La mission peut commencer. Quand elle sera terminée, vous la validerez dans ce même chat pour libérer les fonds.';
                 } else if (phase === 'validation') {
                     status = 'Prestation à valider';
                     actorToAct = 'requester';
@@ -343,7 +343,9 @@
                         context = 'Sécurisez le paiement du prochain jalon.';
                     } else if (firstAction.id === 'done') {
                         status = 'Paiement sécurisé';
-                        context = 'Le paiement est sécurisé par LYANN. Réalisez la prestation puis déclarez-la terminée.';
+                        context = role === 'provider'
+                            ? 'Le paiement est sécurisé par LYANN. Réalisez la prestation puis déclarez-la terminée.'
+                            : 'Paiement sécurisé. L’argent est mis en sécurité par LYANN et n’est pas encore versé au Lyanneur. La mission peut commencer. Quand elle sera terminée, vous la validerez dans ce même chat pour libérer les fonds.';
                     } else if (firstAction.id === 'release') {
                         status = 'Prestation à valider';
                         context = 'Le Lyanneur a déclaré la prestation terminée. Vérifiez le travail avant de confirmer.';

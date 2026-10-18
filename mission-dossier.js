@@ -392,8 +392,9 @@
         const role = str(input && input.roleCode);
         const quoteStatus = str(input && input.quoteStatus).toUpperCase();
         const pendingQuote = quoteStatus === 'SENT' || quoteStatus === 'VIEWED' || quoteStatus === 'REVISED';
+        const acceptedQuote = quoteStatus === 'ACCEPTED';
         const ids = Array.isArray(input && input.cardActionIds) ? input.cardActionIds.filter(Boolean).slice() : [];
-        if (input && input.canPropose && role === 'lyanneur' && !pendingQuote && !ids.includes('propose')) {
+        if (input && input.canPropose && role === 'lyanneur' && !pendingQuote && !acceptedQuote && !ids.includes('propose')) {
             ids.push('propose');
         }
         if (input && input.reviseOk && role === 'lyanneur' && pendingQuote && !ids.includes('revise')) {
@@ -412,7 +413,7 @@
             quote_declined: 'Devis refusé',
             mission_completed: 'Mission terminée',
             mission_cancelled: 'Mission annulée',
-            payment_secured: 'Fonds sécurisés',
+            payment_secured: 'Paiement sécurisé',
             payment_requested: 'Paiement demandé',
             milestone_completed: 'Prestation terminée'
         };

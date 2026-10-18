@@ -1391,8 +1391,9 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
             const helpRes = await window.LYANN_API_CLIENT.initiateLyannHelp(initialNeed.requestId);
             if (helpRes && helpRes.error) {
                 console.warn('[INITIATE HELP REJECTED]', helpRes.error.message || helpRes.error);
-                if (typeof window.showToast === 'function') {
-                    window.showToast(helpRes.error.message || 'Action non autorisée sur ce Lyann', 'error');
+                const raw = String(helpRes.error.message || '');
+                if (!isRpcNoiseMessage(raw) && typeof window.showToast === 'function') {
+                    window.showToast(raw || 'Action non autorisée sur ce Lyann', 'error');
                 }
             } else if (helpRes && helpRes.data && helpRes.data.conversation_id) {
                 currentChatContact.conversationId = helpRes.data.conversation_id;
@@ -2216,10 +2217,21 @@ function isRpcNoiseMessage(text) {
     return /n['’]est plus ouvert aux propositions|La demande liée n['’]est plus ouverte|statut actuel:\s*[A-Z_]+/i.test(raw);
 }
 
+function dealAlreadyMoving() {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    const quotes = [];
+    const push = (list) => (list || []).forEach((quote) => { if (quote) quotes.push(quote); });
+    (contact && contact.dossiers || []).forEach((dossier) => push(dossier.quotes));
+    push(contact && contact.activeDossier && contact.activeDossier.quotes);
+    return quotes.some((quote) => String(quote.status || '').toUpperCase() === 'ACCEPTED');
+}
+
 function notifyQuoteUnavailable(err) {
     const raw = (err && err.message) ? String(err.message) : 'Proposition indisponible.';
     if (isRpcNoiseMessage(raw)) {
-        const human = 'Cette demande n’accepte plus de nouvelles propositions pour le moment.';
+        const human = dealAlreadyMoving()
+            ? 'Un devis est déjà accepté pour cette mission. Vous n’avez pas à en envoyer un nouveau.'
+            : 'Cette demande n’accepte plus de nouvelles propositions pour le moment.';
         if (window.showToast) window.showToast(human, 'info');
         else if (window.lyannAlert) window.lyannAlert(human);
         return;

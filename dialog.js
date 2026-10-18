@@ -159,11 +159,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-window.lyannAlert = function(message, type = 'info') {
+window.lyannAlert = function(message, type = 'info', title) {
     return new Promise((resolve) => {
         showDialog({
             type: type,
-            title: getTitleForType(type),
+            title: title || getTitleForType(type),
             message: message,
             showInput: false,
             buttons: [
