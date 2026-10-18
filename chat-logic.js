@@ -2359,11 +2359,43 @@ function isPersistedUuid(id) {
         : (typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
 }
 
-async function resolveChatMilestoneId(preferredId, statuses) {
+function milestoneStatusCode(milestone) {
+    return String(milestone && milestone.status || '').toUpperCase();
+}
+
+function milestoneFromOpenDossiers(preferredId, statuses) {
+    if (!isPersistedUuid(preferredId)) return null;
     const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
-    if (!window.LYANN_MESSAGING_REPOSITORY || !contact || !contact.id) return null;
+    const dossiers = contact && Array.isArray(contact.dossiers) ? contact.dossiers : [];
+    const wanted = Array.isArray(statuses) && statuses.length
+        ? new Set(statuses.map((status) => String(status).toUpperCase()))
+        : null;
+    for (let i = 0; i < dossiers.length; i += 1) {
+        const quotes = (dossiers[i] && dossiers[i].quotes) || [];
+        for (let q = 0; q < quotes.length; q += 1) {
+            const milestones = (quotes[q] && quotes[q].milestones) || [];
+            for (let m = 0; m < milestones.length; m += 1) {
+                const milestone = milestones[m];
+                if (!milestone || String(milestone.id) !== String(preferredId)) continue;
+                if (wanted && !wanted.has(milestoneStatusCode(milestone))) return null;
+                return milestone.id;
+            }
+        }
+    }
+    return null;
+}
+
+async function resolveChatMilestoneId(preferredId, statuses, scope) {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    if (!window.LYANN_MESSAGING_REPOSITORY || !contact || !contact.id) {
+        return milestoneFromOpenDossiers(preferredId, statuses);
+    }
+    const options = threadQuoteContextOptions({ fresh: true });
+    if (scope && scope.requestId) options.requestId = scope.requestId;
+    if (scope && scope.invitationId) options.invitationId = scope.invitationId;
+    if (scope && scope.missionId) options.missionId = scope.missionId;
     const quotes = applyQuoteContextMeta(
-        await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), contact.id, threadQuoteContextOptions({ fresh: true })),
+        await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), contact.id, options),
         contact
     );
     const milestones = (quotes || []).flatMap((quote) => (quote.milestones || []).map((milestone) => ({
@@ -2371,11 +2403,16 @@ async function resolveChatMilestoneId(preferredId, statuses) {
         quoteId: quote.id,
         quoteStatus: quote.status
     })));
-    const wanted = Array.isArray(statuses) && statuses.length ? statuses : null;
-    const eligible = milestones.filter((milestone) => milestone && isPersistedUuid(milestone.id) && (!wanted || wanted.includes(milestone.status)));
+    const wanted = Array.isArray(statuses) && statuses.length
+        ? statuses.map((status) => String(status).toUpperCase())
+        : null;
+    const eligible = milestones.filter((milestone) => milestone && isPersistedUuid(milestone.id) && (!wanted || wanted.includes(milestoneStatusCode(milestone))));
     if (isPersistedUuid(preferredId)) {
-        const explicit = eligible.find((milestone) => milestone.id === preferredId);
-        return explicit ? explicit.id : null;
+        const explicit = eligible.find((milestone) => String(milestone.id) === String(preferredId));
+        if (explicit) return explicit.id;
+        const known = milestones.find((milestone) => String(milestone.id) === String(preferredId));
+        if (known) return null;
+        return milestoneFromOpenDossiers(preferredId, statuses);
     }
     if (eligible.length === 1) return eligible[0].id;
     const accepted = eligible.filter((milestone) => milestone.quoteStatus === 'ACCEPTED');
@@ -2395,6 +2432,11 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
     if (!await window.LYANN_ROUTER.requireAuthForInteraction('proposal', { actionId, contactId: currentChatContact?.id, requestId: currentChatContact?.requestId })) return;
     const extraData = (missionOrExtra && missionOrExtra.quoteId) ? missionOrExtra : (extraDataInput || {});
     const mission = (missionOrExtra && !missionOrExtra.quoteId) ? missionOrExtra : null;
+    const milestoneScope = {
+        requestId: extraData.requestId || (mission && mission.requestId) || null,
+        invitationId: extraData.invitationId || (mission && mission.invitationId) || null,
+        missionId: (mission && mission.id) || extraData.id || null
+    };
     const contactId = currentChatContact ? currentChatContact.id : null;
     if (!contactId) return;
     const isMissionUuid = (id) => typeof window.isUUID === 'function'
@@ -2553,7 +2595,8 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                     }
                     const milestoneId = await resolveChatMilestoneId(
                         extraData.milestoneId || (mission && mission.milestoneId),
-                        ['PENDING']
+                        ['PENDING'],
+                        milestoneScope
                     );
                     if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
                         const stale = new Error('__deal_mutation_stale__');
@@ -2611,7 +2654,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         try {
             await runDealMutation('done', lockKey, {
                 execute: async (handle) => {
-                    const milestoneId = await resolveChatMilestoneId(preferred, ['FUNDED', 'IN_PROGRESS']);
+                    const milestoneId = await resolveChatMilestoneId(preferred, ['FUNDED', 'IN_PROGRESS'], milestoneScope);
                     if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.submitMilestoneCompletion !== 'function') {
                         throw new Error('Clôture indisponible : cette action n’est pas liée à un jalon enregistré.');
                     }
@@ -2646,7 +2689,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         try {
             await runDealMutation('confirm', lockKey, {
                 execute: async (handle) => {
-                    const milestoneId = await resolveChatMilestoneId(preferred, ['COMPLETED']);
+                    const milestoneId = await resolveChatMilestoneId(preferred, ['COMPLETED'], milestoneScope);
                     if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.releaseMilestonePayment !== 'function') {
                         throw new Error('Validation indisponible : cette action n’est pas liée à un jalon enregistré.');
                     }
@@ -2697,7 +2740,8 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
         if (!reason) return;
         const milestoneId = await resolveChatMilestoneId(
             extraData.milestoneId || (mission && mission.milestoneId),
-            null
+            null,
+            milestoneScope
         );
         if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.raiseMilestoneDispute !== 'function') {
             return refuseUnlinkedMission('Signalement');
@@ -3870,6 +3914,8 @@ function bindMissionAction(parent, quote, action) {
         const run = () => handleChatAction(action.id === 'pay' ? 'PAY_MISSION' : action.id === 'done' ? 'MARK_DONE' : 'CONFIRM_DONE', {
             id: quote.mission_id,
             milestoneId: action.milestoneId,
+            requestId: quote.request_id || quote.requestId || null,
+            invitationId: quote.request_invitation_id || null,
             title: quote.description
         });
         if (action.id === 'pay') {
