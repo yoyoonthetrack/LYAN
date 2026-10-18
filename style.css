@@ -20514,3 +20514,20 @@ html.lyann-page-leave body {
 #publicMemberProfileModal .lyann-completion-items { display: flex; flex-wrap: wrap; gap: 8px; }
 #publicMemberProfileModal .lyann-avatar-edit-btn { min-width: 44px; min-height: 44px; }
 
+/* Secondary native pages: the title bar stays a solid strip, never over the text. */
+body.is-native-app .navbar.native-page-header,
+body.is-native-app .navbar.native-page-header.scrolled {
+    top: 0 !important;
+    min-height: 0 !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-bottom: 8px !important;
+    background: #FDFCF9 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom: 1px solid rgba(36, 53, 43, 0.08) !important;
+    box-shadow: none !important;
+}
+body.is-native-app .navbar.native-page-header .native-header-row {
+    background: #FDFCF9;
+}
+

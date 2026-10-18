@@ -491,6 +491,8 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
         }
     });
     
+    navbar.classList.toggle('native-page-header', !isPrimaryTab && viewType !== 'ACCUEIL_GUEST');
+
     // STABILIZATION V1: Set sentinel marker after successful header injection
     navbar.setAttribute('data-native-header-active', viewType);
     navbar.style.display = '';
