@@ -102,8 +102,9 @@ body.results-page[data-explorer-mode=lyanneurs]{background:#EFF7F0}
 body.is-native-app.has-member-nav .explorer-profile-actions .btn,
 body.is-native-app.has-member-nav .explorer-card-actions .btn{scroll-margin-bottom:calc(var(--m-bottom-nav-height, 72px) + 20px + env(safe-area-inset-bottom, 0px))}
 @media(max-width:420px){
-.explorer-page[data-mode=annonces] .explorer-results-heading{flex-direction:column;align-items:stretch;gap:10px}
-.explorer-page[data-mode=annonces] .explorer-results-heading .explorer-publish.lyann-cta-primary{width:100%!important;justify-content:center;white-space:nowrap}
+.explorer-page[data-mode=annonces] .explorer-results-heading{flex-direction:row;align-items:center;justify-content:flex-start;gap:12px}
+.explorer-page[data-mode=annonces] .explorer-results-heading .explorer-publish.lyann-cta-primary{width:auto!important;flex:0 0 auto;justify-content:flex-start;min-height:44px;padding:8px 14px!important;white-space:nowrap}
+.explorer-page[data-mode=annonces] .explorer-results-heading p{margin-left:auto;text-align:right}
 }
 @media(max-width:640px){
 .explorer-swipe-hint{display:block}
