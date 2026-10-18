@@ -1381,6 +1381,12 @@
                         </p>
                         <button class="btn btn-outline" id="btnOpenFullSettings">Ouvrir les Paramètres Détaillés</button>
                     </div>
+                    <section id="lyannSavedCardsSettings" style="padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #FFFFFF; margin-top: 14px;">
+                        <h4 style="font-weight: 800; color: var(--primary-dark);">Mes moyens de paiement</h4>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 8px 0 12px;">Retrouvez vos cartes enregistrées avec votre accord pour vos prochains Lyanns. Vous pouvez les supprimer à tout moment. Stripe protège vos données bancaires.</p>
+                        <button type="button" id="lyannLoadSavedCards" class="btn btn-outline">Afficher mes cartes enregistrées</button>
+                        <div id="lyannSavedCardsList" aria-live="polite" style="margin-top: 12px; font-size: 0.85rem;"></div>
+                    </section>
                     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border);">
                         <h4 style="font-weight: 800; font-size: 1rem; color: #E63B2E; margin-bottom: 10px;">Zone de Test</h4>
                         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">Réinitialisez toutes les données locales (chat, historique, cache) pour recommencer un parcours propre.</p>
@@ -2787,6 +2793,7 @@
     <script src="surface-manager.js?v=20260922s"></script>
     <script src="app-router.js?v=20260923a"></script>
     <script src="api-client.js"></script>
+    <script src="saved-cards-settings.js?v=20261018"></script>
     <script src="session-store.js"></script>
     <script src="auth-state.js"></script>
     <script src="data-cache.js"></script>
