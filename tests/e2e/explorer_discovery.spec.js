@@ -210,7 +210,7 @@ test('Filter sheet Enter applies the search; Escape discards unapplied edits', a
   await page.getByRole('button',{name:'Filtres et zone'}).click();
   await page.locator('#explorerArea').fill('CommuneIntrouvable');
   await page.locator('#explorerArea').press('Enter');
-  await expect(page.getByRole('dialog',{name:'Affiner la recherche'})).not.toBeVisible();
+  await expect(page.getByRole('dialog',{name:'Filtrer les annonces'})).not.toBeVisible();
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','EMPTY');
   await expect(page).toHaveURL(/area=CommuneIntrouvable/);
   await page.getByRole('button',{name:'Filtres et zone'}).click();
