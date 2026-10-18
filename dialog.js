@@ -55,6 +55,7 @@ const LYANN_TOAST_COLORS = { success: '#7FC79A', warning: '#F2C14E', error: '#F2
 
 window.lyannToast = function(message, type = 'info') {
     if (!message || !document.body) return;
+    if (/devis actif\s*\(SENT|existe déjà pour cette invitation/i.test(String(message))) return;
     const kind = LYANN_TOAST_ICONS[type] ? type : 'info';
     let container = document.getElementById('lyanToastContainer');
     if (!container) {
