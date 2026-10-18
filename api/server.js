@@ -101,6 +101,7 @@ const LYANN_PRODUCTION_SUPABASE_REF = 'gzispjfoywklpqatjyop';
 const PAYMENT_WRITE_PATHS = [
     '/v1/payments/create-milestone-intent',
     '/v1/payments/customer-session',
+    '/v1/payments/saved-cards',
     '/v1/milestones/start-work',
     '/v1/milestones/submit-completion',
     '/v1/milestones/release-payment',
@@ -198,7 +199,7 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-    if (req.method !== 'POST') return next();
+    if (!['POST', 'DELETE'].includes(req.method)) return next();
     if (rejectPaymentWritesOnProductionFromDev(req, res)) return;
     next();
 });
@@ -2941,6 +2942,69 @@ async function stripeCustomerForAuthenticatedUser(stripe, user) {
     if (linkedError || !linked?.stripe_customer_id) throw new Error('Profil de paiement indisponible.');
     return linked.stripe_customer_id;
 }
+
+// Saved cards: an authenticated member can list or remove only their own cards.
+// Stripe stores the PAN and CVC; LYANN returns limited brand/expiry/last-four only.
+app.get('/v1/payments/saved-cards', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const { data: mapping, error } = await supabaseAdmin
+            .from('lyann_payment_customers')
+            .select('stripe_customer_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (error) return res.status(503).json({ error: 'Cartes enregistrées indisponibles.' });
+        if (!mapping) return res.json({ cards: [] });
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) return res.status(503).json({ error: 'Stripe indisponible.' });
+        const cards = await runtime.stripe.paymentMethods.list({
+            customer: mapping.stripe_customer_id, type: 'card', limit: 50
+        });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({
+            cards: cards.data.filter(pm => pm.allow_redisplay === 'always').map(pm => ({
+                id: pm.id,
+                brand: pm.card?.brand || 'carte',
+                last4: pm.card?.last4 || '',
+                exp_month: pm.card?.exp_month,
+                exp_year: pm.card?.exp_year
+            }))
+        });
+    } catch (err) {
+        console.error('Saved cards list unavailable:', err?.message || err);
+        return res.status(503).json({ error: 'Cartes enregistrées indisponibles.' });
+    }
+});
+
+app.delete('/v1/payments/saved-cards/:paymentMethodId', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const methodId = String(req.params.paymentMethodId || '');
+        if (!/^pm_[A-Za-z0-9]+$/.test(methodId)) {
+            return res.status(400).json({ error: 'Carte invalide.' });
+        }
+        const { data: mapping, error } = await supabaseAdmin
+            .from('lyann_payment_customers')
+            .select('stripe_customer_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (error || !mapping) return res.status(404).json({ error: 'Carte introuvable.' });
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) return res.status(503).json({ error: 'Stripe indisponible.' });
+        const method = await runtime.stripe.paymentMethods.retrieve(methodId);
+        const methodCustomerId = typeof method.customer === 'string' ? method.customer : method.customer?.id;
+        if (methodCustomerId !== mapping.stripe_customer_id || method.type !== 'card') {
+            return res.status(404).json({ error: 'Carte introuvable.' });
+        }
+        await runtime.stripe.paymentMethods.detach(methodId);
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Saved card removal unavailable:', err?.message || err);
+        return res.status(503).json({ error: 'Suppression de la carte indisponible.' });
+    }
+});
 
 app.post('/v1/payments/customer-session', async (req, res) => {
     try {
