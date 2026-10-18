@@ -140,7 +140,7 @@ function editorialPassSlot(now = new Date()) {
     }).formatToParts(now);
     const value = (type) => parts.find((part) => part.type === type).value;
     const hour = Number(value('hour'));
-    const slot = hour < 12 ? '07' : hour < 18 ? '12' : '18';
+    const slot = hour < 12 ? '07' : hour < 17 ? '12' : '17';
     return `${value('year')}-${value('month')}-${value('day')}T${slot}`;
 }
 

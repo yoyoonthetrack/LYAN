@@ -60,7 +60,8 @@ const { classifyFeed, acceptRewrittenText, reviewEditorialText, assertHumanAppro
 assert.strictEqual(EDITORIAL_BOTS.reduce((sum, bot) => sum + bot.maxPerDay, 0), 15);
 assert.strictEqual(editorialPassSlot(new Date('2026-10-17T11:00:00Z')), '2026-10-17T07');
 assert.strictEqual(editorialPassSlot(new Date('2026-10-17T16:00:00Z')), '2026-10-17T12');
-assert.strictEqual(editorialPassSlot(new Date('2026-10-17T22:00:00Z')), '2026-10-17T18');
+assert.strictEqual(editorialPassSlot(new Date('2026-10-17T21:00:00Z')), '2026-10-17T17');
+assert.strictEqual(editorialPassSlot(new Date('2026-10-17T22:00:00Z')), '2026-10-17T17');
 assert.strictEqual(classifyFeed('<rss><channel><item/></channel></rss>', 'rss'), 'flux vide');
 assert.strictEqual(classifyFeed('<html></html>', 'rss'), 'flux invalide');
 assert.strictEqual(acceptRewrittenText('Pointe-à-Pitre', { subject: 'Pointe-à-Pitre', sourceUrl: 'https://rci.fm/a' }), '');

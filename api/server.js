@@ -1445,7 +1445,12 @@ app.all('/v1/editorial/collect', async (req, res) => {
         return res.status(401).json({ success: false, error: 'Collecte éditoriale non autorisée.' });
     }
     try {
-        const report = await collectEditorial(supabaseAdmin);
+        const schedule = require('./../config/editorial-schedule.json');
+        const asked = String(req.query.scheduled || '') === '1';
+        if (asked && schedule.enabled === false) {
+            return res.json({ success: true, skipped: 'schedule-disabled', created: [], skippedRows: [] });
+        }
+        const report = await collectEditorial(supabaseAdmin, { scheduled: asked && schedule.enabled !== false });
         return res.json({ success: true, ...report });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Collecte impossible.' });
@@ -1495,7 +1500,7 @@ app.get('/v1/admin/editorial/proposals', async (req, res) => {
     const { data: agents } = await supabaseAdmin.from('lyann_agents').select('id, agent_name').in('agent_name', EDITORIAL_BOTS.map((bot) => bot.name));
     const ids = (agents || []).map((agent) => agent.id);
     if (!ids.length) return res.json({ success: true, proposals: [] });
-    const { data, error } = await supabaseAdmin.from('lyann_agent_tasks').select('id, agent_id, title, instruction, status, approval_status, metadata, created_at').in('agent_id', ids).order('created_at', { ascending: false }).limit(40);
+    const { data, error } = await supabaseAdmin.from('lyann_agent_tasks').select('id, agent_id, title, instruction, status, approval_status, metadata, created_at').in('agent_id', ids).order('created_at', { ascending: false }).limit(300);
     if (error) return res.status(500).json({ success: false, error: error.message });
     const names = {};
     (agents || []).forEach((agent) => { names[agent.id] = agent.agent_name; });
@@ -1610,6 +1615,27 @@ app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
     }).eq('id', req.params.id);
     if (updateError) return res.status(500).json({ success: false, error: updateError.message });
     return res.json({ success: true });
+});
+
+app.post('/v1/admin/editorial/proposals/:id/delete', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+        return res.status(403).json({ success: false, error: 'Suppression éditoriale interdite sur Production.' });
+    }
+    const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('id, metadata').eq('id', req.params.id).maybeSingle();
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    if (!task || !task.metadata || !task.metadata.editorial) {
+        return res.status(404).json({ success: false, error: 'Proposition introuvable.' });
+    }
+    const postId = task.metadata.published_post_id;
+    if (postId) {
+        const { error: postError } = await supabaseAdmin.from('bokantaj_posts').delete().eq('id', postId);
+        if (postError) return res.status(500).json({ success: false, error: postError.message });
+    }
+    const { error: deleteError } = await supabaseAdmin.from('lyann_agent_tasks').delete().eq('id', task.id);
+    if (deleteError) return res.status(500).json({ success: false, error: deleteError.message });
+    return res.json({ success: true, message: 'Proposition supprimée.' });
 });
 
 app.post('/v1/admin/editorial/proposals/:id/reject', async (req, res) => {

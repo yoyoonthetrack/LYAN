@@ -3037,34 +3037,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             const approved = rows.filter((item) => item.approval_status === 'APPROVED');
             const rejected = rows.filter((item) => (item.approval_status === 'REJECTED' || item.status === 'CANCELLED') && !nothing(item) && !collectionError(item));
             const errors = rows.filter(collectionError);
-            const promptTokens = rows.reduce((sum, item) => sum + Number(item.metadata && item.metadata.prompt_tokens || 0), 0);
-            const completionTokens = rows.reduce((sum, item) => sum + Number(item.metadata && item.metadata.completion_tokens || 0), 0);
             const badge = document.getElementById('sidebarEditorialBadge');
             if (badge) badge.textContent = String(pending.length);
             const summary = document.getElementById('editorialSummary');
+            const activeCount = (bots.bots || []).filter((bot) => bot.status === 'ACTIVE').length;
             if (summary) {
                 summary.innerHTML = [
                     ['En attente', pending.length],
                     ['Validées', approved.length],
-                    ['Refusées', rejected.length],
-                    ['Agents', (bots.bots || []).length],
-                    ['Erreurs de collecte', errors.length],
-                    ['Prochain passage', 'Désactivé'],
-                    ['Jetons déjà utilisés', `${promptTokens} + ${completionTokens}`],
-                    ['Budget', '5 USD, sans remise à zéro']
-                ].map(([label, value]) => `<div class="admin-card" style="padding:12px;"><div class="maison-muted">${maisonEsc(label)}</div><strong>${maisonEsc(value)}</strong></div>`).join('');
+                    ['Agents actifs', `${activeCount}/5`],
+                    ['Passages', '07:00 · 12:00 · 17:00']
+                ].map(([label, value]) => `<div class="admin-card" style="padding:14px 16px;"><div class="maison-muted">${maisonEsc(label)}</div><strong style="font-size:1.15rem;">${maisonEsc(value)}</strong></div>`).join('');
             }
-            botsEl.innerHTML = (bots.bots || []).map((bot) => `
-                <article class="admin-card" style="padding:14px;">
-                    <img src="${maisonEsc(bot.profile?.avatar_url || '')}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">
-                    <h3 style="margin:8px 0 4px;">${maisonEsc(bot.agent_name)}</h3>
-                    <p class="maison-muted">${maisonEsc(bot.status || '')} · ${maisonEsc(bot.badge || '')}</p>
-                    <p class="maison-muted">Sources : ${(bot.sources || []).map((source) => maisonEsc(source.name)).join(' · ') || '—'}</p>
-                    <p class="maison-muted">Maximum : 3 propositions / jour · passages 07:00, 12:00, 18:00 (non activés)</p>
-                    <p class="maison-muted">${pending.some((item) => item.agent_name === bot.agent_name) ? 'Brouillon en attente' : 'Aucun brouillon en attente. Rien n’est inventé s’il n’y a rien à proposer.'}</p>
-                    <button type="button" class="admin-btn admin-btn-secondary" data-editorial-status="${maisonEsc(bot.id)}" data-next="${bot.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED'}">${bot.status === 'SUSPENDED' ? 'Réactiver' : 'Suspendre'}</button>
-                </article>
-            `).join('') || '<p class="maison-muted">Aucun compte éditorial.</p>';
+            botsEl.innerHTML = (bots.bots || []).map((bot) => {
+                const waiting = pending.filter((item) => item.agent_name === bot.agent_name).length;
+                const active = bot.status === 'ACTIVE';
+                return `
+                <article class="admin-card" style="padding:16px; display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <img src="${maisonEsc(bot.profile?.avatar_url || '')}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;background:#F4F0E8;">
+                        <div style="min-width:0;">
+                            <h3 style="margin:0; font-size:1rem;">${maisonEsc(bot.agent_name)}</h3>
+                            <p class="maison-muted" style="margin:2px 0 0;">${active ? 'Actif' : 'Suspendu'} · 3 propositions / jour</p>
+                        </div>
+                    </div>
+                    <p class="maison-muted" style="margin:0;">${(bot.sources || []).map((source) => maisonEsc(source.name)).join(' · ') || '—'}</p>
+                    <p style="margin:0; font-weight:700;">${waiting ? `${waiting} en attente de ta validation` : 'Aucune proposition en attente'}</p>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-editorial-status="${maisonEsc(bot.id)}" data-next="${active ? 'SUSPENDED' : 'ACTIVE'}">${active ? 'Suspendre' : 'Activer'}</button>
+                </article>`;
+            }).join('') || '<p class="maison-muted">Aucun compte éditorial.</p>';
             const versionOf = (item) => {
                 const siblings = rows.filter((other) => other.agent_id === item.agent_id && other.metadata && item.metadata && other.metadata.source_url === item.metadata.source_url);
                 const newerPending = siblings.some((other) => other.id !== item.id && other.approval_status === 'PENDING' && other.status !== 'CANCELLED' && new Date(other.created_at) > new Date(item.created_at));
@@ -3073,23 +3074,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return hasOlder ? 'Nouvelle proposition' : 'Proposition actuelle';
             };
             const visible = pending.concat(approved, rejected);
-            listEl.innerHTML = `<h3 style="margin-top:0;">Propositions</h3>` + (errors.length ? `<p class="maison-muted">Erreurs de collecte : ${errors.map((item) => `${maisonEsc(item.agent_name || '')} — ${maisonEsc(item.error || item.instruction || '')}`).join(' · ')}</p>` : '') + (visible.map((item) => `
-                <article class="admin-card" style="padding:12px; margin-bottom:10px;" data-proposal="${maisonEsc(item.id)}">
-                    <strong>${maisonEsc(item.agent_name || '')}</strong>
-                    <span class="maison-muted"> · ${maisonEsc(versionOf(item))} · ${maisonEsc(item.title || '')}</span>
-                    <p class="maison-muted">Statut : ${maisonEsc(item.approval_status || '')}${item.metadata?.human_validation ? '' : ' · pas encore validé par un administrateur'}</p>
-                    <p>Source : <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a>${item.metadata?.original_published_at ? ` · ${maisonEsc(item.metadata.original_published_at)}` : ''}</p>
-                    <p class="maison-muted">Faits : ${maisonEsc(item.metadata?.facts || '—')}</p>
-                    <p class="maison-muted">Contrôle : ${(item.controls && item.controls.ok) ? 'conforme' : maisonEsc((item.controls && item.controls.reasons || []).join(' · ') || 'non vérifié')}</p>
-                    ${(item.controls && !item.controls.ok && (item.controls.reasons || []).some((reason) => /affirmation thérapeutique/.test(reason))) ? '<p class="editorial-warning">Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifiez le texte avant validation.</p>' : ''}
-                    <textarea class="admin-input editorial-text" rows="6" style="width:100%;">${maisonEsc(item.instruction || '')}</textarea>
-                    ${item.approval_status === 'PENDING' && item.status !== 'CANCELLED' ? `<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
-                        <button type="button" class="admin-btn admin-btn-secondary editorial-save">Modifier</button>
-                        <button type="button" class="admin-btn admin-btn-danger editorial-reject">Refuser</button>
-                        <button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider et publier</button>
-                    </div>` : '<p class="maison-muted">Ce brouillon n’est plus en attente. Le bouton de publication n’est plus proposé.</p>'}
-                </article>
-            `).join('') || '<p class="maison-muted">Aucune proposition pour le moment.</p>');
+            const statusLabel = (item) => {
+                if (item.approval_status === 'PENDING' && item.status !== 'CANCELLED') return 'En attente — ignorée, elle reste ici';
+                if (item.approval_status === 'APPROVED') return 'Validée et publiée';
+                return 'Refusée — conservée';
+            };
+            listEl.innerHTML = `<h3 style="margin:0 0 12px;">Toutes les propositions</h3>` + (errors.length ? `<p class="maison-muted">Collecte sans texte : ${errors.map((item) => `${maisonEsc(item.agent_name || '')}`).join(' · ')}. Rien n’est inventé.</p>` : '') + (visible.map((item) => {
+                const pendingItem = item.approval_status === 'PENDING' && item.status !== 'CANCELLED';
+                return `
+                <article class="admin-card" style="padding:16px; margin-bottom:12px;" data-proposal="${maisonEsc(item.id)}">
+                    <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                        <strong>${maisonEsc(item.agent_name || '')}</strong>
+                        <span class="maison-muted">${maisonEsc(statusLabel(item))}</span>
+                    </div>
+                    <p style="margin:8px 0 4px; font-weight:700;">${maisonEsc(item.title || '')}</p>
+                    <p class="maison-muted" style="margin:0 0 8px;">${maisonEsc(versionOf(item))} · <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a></p>
+                    ${(item.controls && !item.controls.ok && (item.controls.reasons || []).some((reason) => /affirmation thérapeutique/.test(reason))) ? '<p class="editorial-warning">Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifie le texte avant validation.</p>' : ''}
+                    <textarea class="admin-input editorial-text" rows="5" style="width:100%;"${pendingItem ? '' : ' readonly'}>${maisonEsc(item.instruction || '')}</textarea>
+                    <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                        ${pendingItem ? '<button type="button" class="admin-btn admin-btn-secondary editorial-save">Modifier</button><button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider et publier</button>' : ''}
+                        <button type="button" class="admin-btn admin-btn-danger editorial-delete">Supprimer</button>
+                    </div>
+                </article>`;
+            }).join('') || '<p class="maison-muted">Aucune proposition pour le moment. Le prochain passage en prépare s’il y a une source réelle.</p>');
             botsEl.querySelectorAll('[data-editorial-status]').forEach((button) => {
                 button.addEventListener('click', async () => {
                     await maisonJson(`/v1/admin/editorial/bots/${button.getAttribute('data-editorial-status')}/status`, {
@@ -3135,7 +3142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         body: JSON.stringify({ content: text() })
                     });
                 }));
-                card.querySelector('.editorial-reject')?.addEventListener('click', run(card.querySelector('.editorial-reject'), 'Refus…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/reject`, { method: 'POST', body: '{}' }).then(() => ({ message: 'Brouillon refusé.' }))));
+                card.querySelector('.editorial-delete')?.addEventListener('click', run(card.querySelector('.editorial-delete'), 'Suppression…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/delete`, { method: 'POST', body: '{}' }).then((body) => ({ message: body.message || 'Proposition supprimée.' }))));
             });
         } catch (err) {
             botsEl.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;

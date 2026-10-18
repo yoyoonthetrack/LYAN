@@ -179,5 +179,10 @@
       ]
     }
   ],
-  "ignoreCommand": "node scripts/vercel-staging-ignore.js"
+  "ignoreCommand": "node scripts/vercel-staging-ignore.js",
+  "crons": [
+    { "path": "/v1/editorial/collect?scheduled=1", "schedule": "0 11 * * *" },
+    { "path": "/v1/editorial/collect?scheduled=1", "schedule": "0 16 * * *" },
+    { "path": "/v1/editorial/collect?scheduled=1", "schedule": "0 21 * * *" }
+  ]
 }

@@ -1,11 +1,11 @@
 {
   "timezone": "America/Guadeloupe",
-  "enabled": false,
-  "reason": "Les trois passages quotidiens restent éteints tant que le back-office n’est pas validé.",
+  "enabled": true,
+  "reason": "Chaque agent prépare au plus une proposition par passage. Rien n’est publié sans validation humaine. Une proposition ignorée reste en attente.",
   "passes": [
     { "local": "07:00", "utc": "11:00", "cron": "0 11 * * *" },
     { "local": "12:00", "utc": "16:00", "cron": "0 16 * * *" },
-    { "local": "18:00", "utc": "22:00", "cron": "0 22 * * *" }
+    { "local": "17:00", "utc": "21:00", "cron": "0 21 * * *" }
   ],
   "agents": 5,
   "maxProposalsPerPass": 5,
