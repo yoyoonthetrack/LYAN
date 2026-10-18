@@ -790,6 +790,9 @@ function getMyId() {
 }
 
 function closeAllOverlays() {
+    if (window.LYANN_STRIPE && typeof window.LYANN_STRIPE.destroyCard === 'function') {
+        window.LYANN_STRIPE.destroyCard();
+    }
     if (window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.hideAllChildSurfaces === 'function') {
         window.LYANN_MESSAGING.hideAllChildSurfaces();
         setChatContextCoveredByOverlay(false);
@@ -2627,7 +2630,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                         }
                         return new Promise((resolve, reject) => {
                             const script = document.createElement('script');
-                            script.src = 'lyann-stripe.js?v=20261018pay2';
+                            script.src = 'lyann-stripe.js?v=20261018-savedcards2';
                             script.addEventListener('load', resolve, { once: true });
                             script.addEventListener('error', () => reject(new Error('Stripe checkout unavailable')), { once: true });
                             document.head.appendChild(script);
@@ -6980,7 +6983,7 @@ document.addEventListener('touchstart', (e) => {
                     } else {
                         await new Promise((resolve, reject) => {
                             const script = document.createElement('script');
-                            script.src = 'lyann-stripe.js?v=20261018pay2';
+                            script.src = 'lyann-stripe.js?v=20261018-savedcards2';
                             script.addEventListener('load', resolve, { once: true });
                             script.addEventListener('error', () => reject(new Error('Stripe checkout unavailable')), { once: true });
                             document.head.appendChild(script);

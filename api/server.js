@@ -63,6 +63,14 @@ const {
     postTransferFinancialExecutionEnabled
 } = require('./stripe-policy');
 const {
+    isSavedCardId,
+    isPaymentIntentId,
+    visibleSavedCards,
+    canDetachSavedCard,
+    paymentIntentConsentUpdate,
+    customerSessionParams
+} = require('./saved-cards');
+const {
     createRequest: createPostTransferRefundRequest,
     replyRequest: replyPostTransferRefundRequest,
     viewRequest: viewPostTransferRefundRequest,
@@ -89,8 +97,12 @@ const {
 const { apnsConfig, sendApns } = require('./apns-send');
 const { automaticPushEnabled, cronAuthorized, drainQueue, pushAudience } = require('./push-queue');
 const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-build');
-require('dotenv').config();
-require('dotenv').config({ path: path.join(__dirname, '..', '.env.local'), override: true });
+if (process.env.LYANN_DOTENV_PATH) {
+    require('dotenv').config({ path: process.env.LYANN_DOTENV_PATH, override: true });
+} else {
+    require('dotenv').config();
+    require('dotenv').config({ path: path.join(__dirname, '..', '.env.local'), override: true });
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -312,7 +324,7 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-    if (req.method !== 'POST') return next();
+    if (req.method !== 'POST' && req.method !== 'DELETE') return next();
     if (rejectPaymentWritesOnProductionFromDev(req, res)) return;
     next();
 });
@@ -3839,6 +3851,155 @@ app.post('/v1/payments/create-intent', async (req, res) => {
     }
 });
 
+async function stripeCustomerForAuthenticatedUser(stripe, user, mode) {
+    if (mode !== 'test' && mode !== 'live') {
+        throw new Error('Profil de paiement indisponible.');
+    }
+    const { data: existing, error: lookupError } = await supabaseAdmin
+        .from('lyann_payment_customers')
+        .select('stripe_customer_id')
+        .eq('user_id', user.id)
+        .eq('stripe_mode', mode)
+        .maybeSingle();
+    if (lookupError) throw new Error('La migration lyann_payment_customers doit être appliquée en test.');
+    if (existing?.stripe_customer_id) {
+        try {
+            await stripe.customers.retrieve(existing.stripe_customer_id);
+            return existing.stripe_customer_id;
+        } catch (error) {
+            if (!error || error.code !== 'resource_missing') throw error;
+        }
+    }
+    const customer = await stripe.customers.create({
+        email: user.email || undefined,
+        metadata: { lyann_user_id: user.id, lyann_stripe_mode: mode }
+    }, { idempotencyKey: 'lyann_payment_customer_' + mode + '_' + user.id });
+    const { error: insertError } = await supabaseAdmin
+        .from('lyann_payment_customers')
+        .upsert({ user_id: user.id, stripe_mode: mode, stripe_customer_id: customer.id }, {
+            onConflict: 'user_id,stripe_mode'
+        });
+    if (insertError) throw new Error('Enregistrement du profil de paiement indisponible.');
+    return customer.id;
+}
+
+async function ownedSavedCardMapping(userId) {
+    const mode = inspectStripeEnv(process.env).mode;
+    if (mode !== 'test' && mode !== 'live') return { error: 'mode' };
+    const { data, error } = await supabaseAdmin
+        .from('lyann_payment_customers')
+        .select('stripe_customer_id')
+        .eq('user_id', userId)
+        .eq('stripe_mode', mode)
+        .maybeSingle();
+    if (error) return { error: 'lookup' };
+    return { mapping: data || null };
+}
+
+app.get('/v1/payments/saved-cards', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const owned = await ownedSavedCardMapping(user.id);
+        if (owned.error) return res.status(503).json({ error: 'Cartes enregistrées indisponibles.' });
+        if (!owned.mapping) return res.json({ cards: [] });
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) return res.status(503).json({ error: 'Stripe indisponible.' });
+        const cards = await runtime.stripe.paymentMethods.list({
+            customer: owned.mapping.stripe_customer_id,
+            type: 'card',
+            limit: 50
+        });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({ cards: visibleSavedCards(cards) });
+    } catch (err) {
+        console.error('Saved cards list unavailable:', err?.message || err);
+        return res.status(503).json({ error: 'Cartes enregistrées indisponibles.' });
+    }
+});
+
+app.delete('/v1/payments/saved-cards/:paymentMethodId', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const methodId = String(req.params.paymentMethodId || '');
+        if (!isSavedCardId(methodId)) return res.status(400).json({ error: 'Carte invalide.' });
+        const owned = await ownedSavedCardMapping(user.id);
+        if (owned.error || !owned.mapping) return res.status(404).json({ error: 'Carte introuvable.' });
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) return res.status(503).json({ error: 'Stripe indisponible.' });
+        const method = await runtime.stripe.paymentMethods.retrieve(methodId);
+        if (!canDetachSavedCard(method, owned.mapping.stripe_customer_id)) {
+            return res.status(404).json({ error: 'Carte introuvable.' });
+        }
+        await runtime.stripe.paymentMethods.detach(methodId);
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Saved card removal unavailable:', err?.message || err);
+        return res.status(503).json({ error: 'Suppression de la carte indisponible.' });
+    }
+});
+
+app.post('/v1/payments/customer-session', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const intentId = req.body?.payment_intent_id;
+        if (!isPaymentIntentId(intentId)) return res.status(400).json({ error: 'Identifiant de paiement invalide.' });
+        const saveCard = req.body?.save_card === true;
+        const { data: payment, error: paymentError } = await supabaseAdmin
+            .from('payments')
+            .select('id, requester_id, payment_status, stripe_payment_intent_id')
+            .eq('stripe_payment_intent_id', intentId)
+            .eq('requester_id', user.id)
+            .maybeSingle();
+        if (paymentError || !payment) return res.status(404).json({ error: 'Paiement introuvable.' });
+        if (!['CREATED', 'REQUIRES_ACTION'].includes(payment.payment_status)) {
+            return res.status(409).json({ error: 'Ce paiement ne peut plus être modifié.' });
+        }
+        const runtime = stripeRuntime();
+        if (!runtime.stripe || runtime.inspected.mode === 'live' && process.env.STRIPE_LIVE_ENABLED !== 'true') {
+            return res.status(503).json({ error: 'Stripe indisponible en environnement de test.' });
+        }
+        const stripe = runtime.stripe;
+        const intent = await stripe.paymentIntents.retrieve(intentId);
+        if (!['requires_payment_method', 'requires_confirmation', 'requires_action'].includes(intent.status)) {
+            return res.status(409).json({ error: 'Paiement déjà en cours ou confirmé.' });
+        }
+        const customerId = await stripeCustomerForAuthenticatedUser(stripe, user, runtime.inspected.mode);
+        const attachedId = typeof intent.customer === 'string' ? intent.customer : intent.customer?.id;
+        if (attachedId && attachedId !== customerId) {
+            return res.status(409).json({ error: 'Le paiement est associé à un autre compte.' });
+        }
+        try {
+            await stripe.paymentIntents.update(intentId, paymentIntentConsentUpdate(saveCard, customerId));
+        } catch (updateError) {
+            if (saveCard) throw updateError;
+            await stripe.paymentIntents.update(intentId, {
+                customer: customerId,
+                metadata: { lyann_save_card: '0' }
+            });
+        }
+        let customerSessionClientSecret = null;
+        try {
+            const session = await stripe.customerSessions.create(customerSessionParams(customerId));
+            customerSessionClientSecret = session.client_secret || null;
+        } catch (sessionError) {
+            console.warn('Stripe customer session unavailable:', sessionError?.message || sessionError);
+        }
+        const cards = await stripe.paymentMethods.list({ customer: customerId, type: 'card', limit: 50 });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({
+            save_available: true,
+            cards: visibleSavedCards(cards),
+            customer_session_client_secret: customerSessionClientSecret
+        });
+    } catch (err) {
+        console.error('Stripe customer session unavailable:', err?.message || err);
+        return res.status(503).json({ error: 'Cartes enregistrées momentanément indisponibles.' });
+    }
+});
+
 /**
  * 6.1 CANONICAL MILESTONE PAYMENT INTENT CREATION (STEP 1)
  * POST /v1/payments/create-milestone-intent
@@ -3995,7 +4156,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                 const paymentIntent = await stripe.paymentIntents.create({
                     amount: frozen.customer_total_cents,
                     currency: 'eur',
-                    automatic_payment_methods: { enabled: true },
+                    automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
                     metadata: {
                         payment_id: existingPayment.id,
                         milestone_id: milestone.id,
@@ -4106,7 +4267,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: Number(financials.customer_total_cents),
                 currency: 'eur',
-                automatic_payment_methods: { enabled: true },
+                automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
                 metadata: {
                     payment_id: paymentRecord.id,
                     milestone_id: milestone.id,
@@ -5519,6 +5680,26 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                     }
 
                     await announceAcceptedQuoteInConversation(payment.milestone_id);
+
+                    if (paymentIntent.metadata && paymentIntent.metadata.lyann_save_card === '1') {
+                        try {
+                            const runtime = stripeRuntime();
+                            const methodId = typeof paymentIntent.payment_method === 'string'
+                                ? paymentIntent.payment_method
+                                : paymentIntent.payment_method && paymentIntent.payment_method.id;
+                            const intentCustomer = typeof paymentIntent.customer === 'string'
+                                ? paymentIntent.customer
+                                : paymentIntent.customer && paymentIntent.customer.id;
+                            if (runtime.stripe && methodId && intentCustomer) {
+                                const method = await runtime.stripe.paymentMethods.retrieve(methodId);
+                                if (canDetachSavedCard(method, intentCustomer) && method.allow_redisplay !== 'always') {
+                                    await runtime.stripe.paymentMethods.update(methodId, { allow_redisplay: 'always' });
+                                }
+                            }
+                        } catch (saveErr) {
+                            console.warn('[PAYMENT CORE] saved card redisplay skipped', saveErr && saveErr.message);
+                        }
+                    }
 
                     console.log(`🔒 [PAYMENT CORE] Milestone ${payment.milestone_id} est à présent FUNDED. Transfer status: PENDING_VALIDATION.`);
                 }

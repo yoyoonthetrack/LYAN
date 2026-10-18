@@ -3,7 +3,9 @@
 ## Fonctionnement
 
 - Le paiement continue de reposer sur le PaymentIntent canonique du jalon.
-- Le Payment Element Stripe affiche une option d'enregistrement volontaire (désactivée par défaut par Stripe) et les cartes déjà autorisées.
+- Le formulaire carte existant affiche la case « Enregistrer cette carte pour mes prochains Lyanns », décochée par défaut. Le serveur n’active `setup_future_usage: on_session` que si cette case est cochée.
+- Une Customer Session Stripe autorise l’enregistrement volontaire, la réaffichage et la suppression. Aucun débit hors session n’est créé.
+- Au paiement suivant, la personne choisit une carte enregistrée ou une nouvelle carte, puis confirme. La carte enregistrée n’est jamais débitée seule.
 - Stripe collecte et conserve les données bancaires. LYANN ne stocke que l'identifiant Stripe Customer, la marque et les quatre derniers chiffres sont affichés dans les paramètres.
 - La réutilisation exige **toujours** l'action de l'utilisateur, y compris la vérification 3D Secure si nécessaire. Aucun paiement hors session n'est autorisé.
 - Le lien compte LYANN/Stripe est partitionné entre les environnements Stripe test et live.

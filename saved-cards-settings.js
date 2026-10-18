@@ -1,10 +1,12 @@
 // LYANN — member-owned stored card management (masked metadata only).
 (function () {
     'use strict';
-    document.addEventListener('DOMContentLoaded', () => {
-        const button = document.getElementById('lyannLoadSavedCards');
+
+    function boot() {
         const output = document.getElementById('lyannSavedCardsList');
-        if (!button || !output) return;
+        const section = document.getElementById('lyannSavedCardsSettings');
+        if (!output || !section) return;
+        let loading = false;
 
         async function request(path, method) {
             const api = window.LYANN_API_CLIENT;
@@ -22,11 +24,16 @@
         }
 
         function message(value) {
-            output.textContent = value;
+            output.replaceChildren();
+            const note = document.createElement('p');
+            note.style.cssText = 'margin:0;color:var(--text-muted);';
+            note.textContent = value;
+            output.appendChild(note);
         }
 
         async function refresh() {
-            button.disabled = true;
+            if (loading) return;
+            loading = true;
             message('Chargement des cartes enregistrées…');
             try {
                 const data = await request('/v1/payments/saved-cards', 'GET');
@@ -38,25 +45,28 @@
                 }
                 cards.forEach((card) => {
                     const row = document.createElement('div');
-                    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);';
+                    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:12px 0;border-bottom:1px solid var(--border);';
                     const info = document.createElement('span');
                     const brand = String(card.brand || 'Carte').replace(/[^a-z0-9 -]/gi, '').slice(0, 20);
-                    const tail = String(card.last4 || '').replace(/[^0-9]/g, '').slice(-4);
-                    info.textContent = brand.toUpperCase() + ' •••• ' + tail + ' — exp. ' + card.exp_month + '/' + card.exp_year;
+                    const pretty = brand ? brand.charAt(0).toUpperCase() + brand.slice(1) : 'Carte';
+                    const tail = String(card.last4 || '').replace(/\D/g, '').slice(-4);
+                    const month = String(card.exp_month || '').padStart(2, '0');
+                    info.textContent = pretty + ' •••• ' + tail + ' — exp. ' + month + '/' + card.exp_year;
                     const remove = document.createElement('button');
                     remove.type = 'button';
                     remove.className = 'btn btn-outline';
                     remove.textContent = 'Supprimer';
+                    remove.style.color = '#B42318';
                     remove.setAttribute('aria-label', 'Supprimer la carte se terminant par ' + tail);
                     remove.addEventListener('click', async () => {
-                        if (!window.confirm('Supprimer cette carte de vos futurs paiements LYANN ?')) return;
+                        const confirmed = window.confirm('Supprimer la carte se terminant par ' + tail + ' de vos futurs paiements LYANN ?');
+                        if (!confirmed) return;
                         remove.disabled = true;
                         try {
                             await request('/v1/payments/saved-cards/' + encodeURIComponent(card.id), 'DELETE');
                             await refresh();
                         } catch (err) {
                             message(err.message || 'Suppression indisponible.');
-                            remove.disabled = false;
                         }
                     });
                     row.append(info, remove);
@@ -65,9 +75,22 @@
             } catch (err) {
                 message(err.message || 'Cartes indisponibles.');
             } finally {
-                button.disabled = false;
+                loading = false;
             }
         }
-        button.addEventListener('click', refresh);
-    });
+
+        const button = document.getElementById('lyannLoadSavedCards');
+        if (button) button.addEventListener('click', refresh);
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) refresh();
+            }, { threshold: 0.2 });
+            observer.observe(section);
+        } else {
+            refresh();
+        }
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
 })();

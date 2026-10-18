@@ -1845,6 +1845,8 @@ function constructStripeWebhookEvent(stripe, rawBody, signature, env = process.e
 function paymentWritePaths() {
     return [
         '/v1/payments/create-milestone-intent',
+        '/v1/payments/customer-session',
+        '/v1/payments/saved-cards',
         '/v1/payments/refund-untransferred',
         '/v1/payments/post-transfer-refund-requests',
         '/v1/admin/post-transfer-refund-requests',

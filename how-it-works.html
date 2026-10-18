@@ -1474,7 +1474,7 @@
 
                     <!-- OVERLAY: CHECKOUT / SECURE PAYMENT -->
                     <div id="chatCheckoutOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
-                        <div style="padding: 20px; overflow-y: auto; max-height: 380px;">
+                        <div style="padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); overflow-y: auto; max-height: min(78dvh, 640px); -webkit-overflow-scrolling: touch;">
                             <h4 style="font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; color: var(--primary-dark);">
                                 <i class="ph ph-shield-check"></i> Paiement Sécurisé LYANN
                             </h4>
@@ -1500,6 +1500,13 @@
                                     <label for="lyannCardPaymentElement" style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 6px;">Carte bancaire</label>
                                     <div id="lyannCardPaymentElement" style="min-height: 48px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff;"></div>
                                     <p id="lyannCardPaymentError" role="alert" style="min-height: 1.2em; margin: 8px 0 0; font-size: 0.78rem; color: #B42318;"></p>
+                                    <fieldset id="lyannSavedCardChooser" hidden style="border:0;margin:8px 0 0;padding:0;"></fieldset>
+                                    <p id="lyannSaveCardUnavailable" hidden style="font-size: 0.78rem; color: var(--text-muted); margin: 8px 0 0;">L’enregistrement de carte est momentanément indisponible. Vous pouvez quand même payer.</p>
+                                    <label id="lyannSaveCardLabel" for="lyannSaveCardConsent" hidden style="display:flex; align-items:center; gap:10px; min-height:44px; margin-top:10px; font-size:0.85rem; line-height:1.35; color:#1F3827;">
+                                        <input type="checkbox" id="lyannSaveCardConsent" style="width:22px; height:22px; accent-color:#2E7D32; flex:0 0 auto;">
+                                        <span>Enregistrer cette carte pour mes prochains Lyanns</span>
+                                    </label>
+                                    <p id="lyannSavedCardInfo" hidden style="font-size: 0.75rem; color: var(--text-muted); margin: 6px 0 0;">Votre carte est enregistrée en toute sécurité par Stripe. Vous pouvez la supprimer à tout moment dans vos paramètres.</p>
                                 </div>
                                 <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
                                     Paiement sécurisé via Stripe. Les numéros de carte ne transitent pas par LYANN.
