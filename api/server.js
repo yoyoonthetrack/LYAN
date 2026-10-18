@@ -2914,11 +2914,12 @@ app.post('/v1/payments/create-intent', async (req, res) => {
  * Security: authenticate with Supabase, authorize ownership of the payment row,
  * never accept customer IDs or amounts from the browser.
  */
-async function stripeCustomerForAuthenticatedUser(stripe, user) {
+async function stripeCustomerForAuthenticatedUser(stripe, user, stripeMode) {
     const { data: existing, error: lookupError } = await supabaseAdmin
         .from('lyann_payment_customers')
         .select('stripe_customer_id')
         .eq('user_id', user.id)
+        .eq('stripe_mode', stripeMode)
         .maybeSingle();
     if (lookupError) throw new Error('La migration lyann_payment_customers doit être appliquée en test.');
     if (existing?.stripe_customer_id) return existing.stripe_customer_id;
@@ -2926,11 +2927,11 @@ async function stripeCustomerForAuthenticatedUser(stripe, user) {
     const customer = await stripe.customers.create({
         email: user.email || undefined,
         metadata: { lyann_user_id: user.id }
-    }, { idempotencyKey: 'lyann_payment_customer_' + user.id });
+    }, { idempotencyKey: 'lyann_payment_customer_' + stripeMode + '_' + user.id });
     const { error: insertError } = await supabaseAdmin
         .from('lyann_payment_customers')
-        .upsert({ user_id: user.id, stripe_customer_id: customer.id }, {
-            onConflict: 'user_id',
+        .upsert({ user_id: user.id, stripe_mode: stripeMode, stripe_customer_id: customer.id }, {
+            onConflict: 'user_id,stripe_mode',
             ignoreDuplicates: true
         });
     if (insertError) throw new Error('Enregistrement du profil de paiement indisponible.');
@@ -2938,6 +2939,7 @@ async function stripeCustomerForAuthenticatedUser(stripe, user) {
         .from('lyann_payment_customers')
         .select('stripe_customer_id')
         .eq('user_id', user.id)
+        .eq('stripe_mode', stripeMode)
         .single();
     if (linkedError || !linked?.stripe_customer_id) throw new Error('Profil de paiement indisponible.');
     return linked.stripe_customer_id;
@@ -2953,6 +2955,8 @@ app.get('/v1/payments/saved-cards', async (req, res) => {
             .from('lyann_payment_customers')
             .select('stripe_customer_id')
             .eq('user_id', user.id)
+            .eq('stripe_mode', inspectStripeEnv(process.env).mode)
+        .eq('stripe_mode', stripeMode)
             .maybeSingle();
         if (error) return res.status(503).json({ error: 'Cartes enregistrées indisponibles.' });
         if (!mapping) return res.json({ cards: [] });
@@ -2989,6 +2993,8 @@ app.delete('/v1/payments/saved-cards/:paymentMethodId', async (req, res) => {
             .from('lyann_payment_customers')
             .select('stripe_customer_id')
             .eq('user_id', user.id)
+            .eq('stripe_mode', inspectStripeEnv(process.env).mode)
+        .eq('stripe_mode', stripeMode)
             .maybeSingle();
         if (error || !mapping) return res.status(404).json({ error: 'Carte introuvable.' });
         const runtime = stripeRuntime();
@@ -3031,7 +3037,7 @@ app.post('/v1/payments/customer-session', async (req, res) => {
         if (!['requires_payment_method', 'requires_confirmation', 'requires_action'].includes(intent.status)) {
             return res.status(409).json({ error: 'Paiement déjà en cours ou confirmé.' });
         }
-        const customerId = await stripeCustomerForAuthenticatedUser(stripe, user);
+        const customerId = await stripeCustomerForAuthenticatedUser(stripe, user, runtime.inspected.mode);
         if (intent.customer && (typeof intent.customer === 'string' ? intent.customer : intent.customer.id) !== customerId) {
             return res.status(409).json({ error: 'Le paiement est associé à un autre compte.' });
         }
