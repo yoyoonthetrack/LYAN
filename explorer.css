@@ -238,3 +238,101 @@ body.keyboard-open #explorerFilters .explorer-sheet-actions {
 #explorerFilters.explorer-filter-sheet:not([open]) {
     display: none !important;
 }
+#explorerFilters.explorer-filter-sheet[open] {
+    background: #fffdf8;
+    color: #24352b;
+    border-radius: 24px 24px 0 0;
+    padding: 18px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+#explorerFilters .explorer-sheet-heading {
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(74, 124, 89, 0.15);
+}
+#explorerFilters .explorer-sheet-heading h2 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #35583f;
+}
+#explorerFilters .explorer-sheet-sub {
+    margin: 4px 0 0;
+    color: #5c6e62;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+#explorerFiltersClose {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    flex: 0 0 40px;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    margin: 0;
+    padding: 0;
+    border-radius: 50% !important;
+    border: 1px solid #e5dfd5 !important;
+    background: #fff !important;
+    color: #24352b !important;
+    font-size: 1.35rem !important;
+    line-height: 1;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+}
+#explorerFilters label {
+    margin: 14px 0 0;
+    gap: 8px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #5c6e62;
+}
+#explorerFilters select,
+#explorerFilters input[type="text"],
+#explorerFilters input[type="search"],
+#explorerFilters input[type="number"] {
+    min-height: 48px;
+    border-radius: 14px;
+    border: 1.5px solid #d7e3da;
+    background: #fff;
+    padding: 10px 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #24352b;
+}
+#explorerFilters .explorer-hint {
+    margin: 8px 0 0;
+    color: #5c6e62;
+    font-size: 0.84rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+}
+#explorerFilters .explorer-sheet-actions {
+    gap: 8px;
+    margin-top: 16px;
+}
+#explorerFilters .explorer-sheet-actions .btn {
+    min-height: 48px;
+    border-radius: 999px;
+    font-weight: 800;
+}
+#explorerFilters .explorer-sheet-actions .btn-outline {
+    flex: 1;
+    background: #fff !important;
+    color: #24352b !important;
+    border: 1.5px solid #d7e3da !important;
+}
+#explorerFilters .explorer-sheet-actions .btn-primary {
+    flex: 1.4;
+    background: linear-gradient(90deg, #4a7c59, #e5b345) !important;
+    color: #17231c !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}

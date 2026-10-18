@@ -416,6 +416,18 @@ body.feed-page .bokantaj-location-actions {
 #bokantajFilterSheetModal .bottom-sheet-header {
     align-items: flex-start;
 }
+#bokantajFilterSheetModal .bottom-sheet-header .modal-close-btn {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    flex: 0 0 40px;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    border: 1px solid #e5dfd5 !important;
+    background: #fff !important;
+    color: #24352b !important;
+}
 #bokantajFilterSheetModal .bottom-sheet-header h3 {
     font-size: 1.15rem;
 }

@@ -166,7 +166,7 @@ for (const width of [390,1440]) {
     await page.setViewportSize({width,height:900});
     await ready(page);
     await page.getByRole('button',{name:'Filtres et zone'}).click();
-    await expect(page.getByRole('dialog',{name:'Affiner la recherche'})).toBeVisible();
+    await expect(page.getByRole('dialog',{name:'Filtrer les annonces'})).toBeVisible();
     await page.locator('#explorerArea').fill('CommuneIntrouvable');
     await page.getByRole('button',{name:'Afficher les résultats'}).click();
     await expect(page.getByRole('dialog')).not.toBeVisible();

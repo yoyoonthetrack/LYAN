@@ -235,6 +235,12 @@
                 : { title: 'Lyanneurs', subtitle: 'Des talents et des pros tout près de chez vous.', art: 'lyanneurs' };
             if (title) title.textContent = copy.title;
             if (subtitle) subtitle.textContent = copy.subtitle;
+            const filterTitle = $('explorerFilterTitle');
+            const filterSub = $('explorerFilterSub');
+            if (filterTitle) filterTitle.textContent = mode === 'annonces' ? 'Filtrer les annonces' : 'Filtrer les Lyanneurs';
+            if (filterSub) filterSub.textContent = mode === 'annonces'
+                ? 'Affinez le service, le lieu ou le budget.'
+                : 'Affinez le métier, le territoire ou la commune.';
             root.dataset.universe = copy.art;
             const header = root.querySelector('.lyann-universe-header');
             if (header) header.dataset.universe = copy.art;
