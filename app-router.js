@@ -135,7 +135,7 @@
   // Product policy: reading is public; mutations and personal surfaces require a session.
   const interactionPolicy = Object.freeze({
     home: 'public', explorer: 'public', bokantaj: 'public', requestDetail: 'public',
-    publicProfile: 'public', search: 'public', filters: 'public', pricing: 'public', help: 'public', about: 'public',
+    publicProfile: 'public', search: 'public', filters: 'public', pricing: 'public', help: 'public', about: 'public', legal: 'public',
     favorite: 'context', messages: 'continue', support: 'continue', requestHelp: 'context', requestAuthor: 'context', publish: 'continue',
     comment: 'context', reaction: 'context', communityPublish: 'context', proposal: 'context',
     missionAction: 'context', profile: 'continue', account: 'continue', activity: 'continue',
@@ -286,7 +286,7 @@
     closeDrawer();
     // Account / publish / help must not open under the menu or behind chat.
     if (!['messages', 'support'].includes(name)) {
-      if (['account', 'activity', 'favorites', 'finances', 'settings', 'profile', 'publish', 'help', 'about', 'pricing'].includes(name)) {
+      if (['account', 'activity', 'favorites', 'finances', 'settings', 'profile', 'publish', 'help', 'about', 'pricing', 'legal'].includes(name)) {
         dismissMessagingChrome();
       }
     }
@@ -390,7 +390,14 @@
   register('settings', () => openAccountSection('settings'));
   register('pricing', () => hardNavigate('pricing.html'));
   register('payment', () => hardNavigate('payment-portal.html'));
-  register('help', () => hardNavigate('how-it-works.html'));
+  register('help', () => {
+    prepareForegroundSurface();
+    return hardNavigate('how-it-works.html');
+  });
+  register('legal', () => {
+    prepareForegroundSurface();
+    return hardNavigate('legal.html');
+  });
   register('support', async () => {
     if (knownLoggedOut()) return openLoginPrompt();
     const client = window.LYANN_API_CLIENT || window.apiClient;

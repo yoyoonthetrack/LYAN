@@ -19677,7 +19677,7 @@ html body #lyannDetailModal.modal-overlay.active,
 html body #lyannDetailModal.modal-overlay.lyann-surface-active,
 html body #publicMemberProfileModal.modal-overlay.active,
 html body #quickProfileModal.modal-overlay.active {
-    z-index: 2147483010 !important;
+    z-index: 2147483030 !important;
     opacity: 1 !important;
     visibility: visible !important;
     pointer-events: auto !important;

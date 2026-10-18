@@ -405,21 +405,53 @@ function ensureMobileHamburgerDrawer() {
                     </div>
 
                     <div class="drawer-menu-group">
-                        <button class="drawer-accordion-btn" data-target="submenuHelp">
+                        <a href="legal.html" class="drawer-direct-link" data-lyann-route="legal">
                             <span class="drawer-accordion-label">
-                                <i class="ph ph-question"></i>
-                                <span>Aide & LYANN</span>
+                                <i class="ph ph-scales"></i>
+                                <span>CGU - Mentions légales</span>
                             </span>
                             <i class="ph ph-caret-right drawer-chevron"></i>
-                        </button>
-                        <div class="drawer-submenu" id="submenuHelp">
-                            <a href="#" class="drawer-sub-link" data-lyann-route="help"><i class="ph ph-book-open"></i> Comment ça marche</a>
-                            <a href="pricing.html" class="drawer-sub-link" data-lyann-route="pricing"><i class="ph ph-tag"></i> Tarifs</a>
-                            <a href="#" class="drawer-sub-link" data-lyann-route="support"><i class="ph ph-headset"></i> Support LYANN</a>
-                            <a href="legal.html" class="drawer-sub-link"><i class="ph ph-scales"></i> Conditions & informations légales</a>
-                            <a href="#" class="drawer-sub-link logged-in-only"><i class="ph ph-user-plus"></i> Inviter quelqu'un</a>
-                            <a href="#" class="drawer-sub-link" data-lyann-route="about"><i class="ph ph-info"></i> À propos de LYANN</a>
-                        </div>
+                        </a>
+                    </div>
+
+                    <div class="drawer-menu-group">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="help">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-book-open"></i>
+                                <span>Comment ça marche</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
+                    </div>
+
+                    <div class="drawer-menu-group">
+                        <a href="pricing.html" class="drawer-direct-link" data-lyann-route="pricing">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-tag"></i>
+                                <span>Tarifs</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
+                    </div>
+
+                    <div class="drawer-menu-group">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="support">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-headset"></i>
+                                <span>Support LYANN</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
+                    </div>
+
+                    <div class="drawer-menu-group">
+                        <a href="#" class="drawer-direct-link" data-lyann-route="about">
+                            <span class="drawer-accordion-label">
+                                <i class="ph ph-info"></i>
+                                <span>À propos de LYANN</span>
+                            </span>
+                            <i class="ph ph-caret-right drawer-chevron"></i>
+                        </a>
                     </div>
 
                     <div class="drawer-menu-group logged-in-only">
@@ -5527,6 +5559,10 @@ safeDomReady(() => {
         const modal = document.getElementById('userAccountModal');
         if (!modal) return;
 
+        if (typeof window.closeLyannHamburgerDrawer === 'function') window.closeLyannHamburgerDrawer();
+        if (modal.parentElement !== document.body) document.body.appendChild(modal);
+        modal.style.zIndex = '2147483030';
+
         let modalCard = modal.querySelector('.modal-card');
         if (!modalCard) modalCard = modal;
 
@@ -5671,7 +5707,7 @@ safeDomReady(() => {
                 </div>
             `;
         } else if (subViewName === 'aboutLyann') {
-            titleText = 'À propos de LYANN';
+            titleText = 'CGU - Mentions légales';
             subtitleText = 'Conditions, données personnelles et mentions légales.';
             subViewContent = `
                 <div class="account-desktop-sections">
@@ -5920,10 +5956,10 @@ safeDomReady(() => {
                         <button type="button" class="sidebar-nav-btn ${subViewName === 'finances' ? 'active' : ''}" onclick="window.openAccountModalSubView('finances')">
                             <i class="ph ph-credit-card"></i> Finances
                         </button>
-                        <button type="button" class="sidebar-nav-btn ${subViewName === 'help' ? 'active' : ''}" onclick="window.openAccountModalSubView('help')">
-                            <i class="ph ph-question"></i> Aide & LYANN
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'aboutLyann' ? 'active' : ''}" onclick="window.openAccountModalSubView('aboutLyann')">
+                            <i class="ph ph-scales"></i> CGU - Mentions légales
                         </button>
-                        <button type="button" class="sidebar-nav-btn ${subViewName === 'settings' || subViewName === 'aboutLyann' ? 'active' : ''}" onclick="window.openAccountModalSubView('settings')">
+                        <button type="button" class="sidebar-nav-btn ${subViewName === 'settings' ? 'active' : ''}" onclick="window.openAccountModalSubView('settings')">
                             <i class="ph ph-gear"></i> Réglages
                         </button>
                     </nav>
