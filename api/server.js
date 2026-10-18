@@ -100,6 +100,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 const LYANN_PRODUCTION_SUPABASE_REF = 'gzispjfoywklpqatjyop';
 const PAYMENT_WRITE_PATHS = [
     '/v1/payments/create-milestone-intent',
+    '/v1/payments/customer-session',
     '/v1/milestones/start-work',
     '/v1/milestones/submit-completion',
     '/v1/milestones/release-payment',
@@ -2903,6 +2904,95 @@ app.post('/v1/payments/create-intent', async (req, res) => {
     } catch (e) {
         console.error("Stripe Create Intent Server Error:", e);
         res.status(500).json({ error: "Erreur lors de la création du paiement Stripe." });
+    }
+});
+
+/**
+ * Stripe Payment Element customer session for optional saved cards.
+ * A card is stored only when the buyer opts in inside Stripe's Payment Element.
+ * Security: authenticate with Supabase, authorize ownership of the payment row,
+ * never accept customer IDs or amounts from the browser.
+ */
+async function stripeCustomerForAuthenticatedUser(stripe, user) {
+    const { data: existing, error: lookupError } = await supabaseAdmin
+        .from('lyann_payment_customers')
+        .select('stripe_customer_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+    if (lookupError) throw new Error('La migration lyann_payment_customers doit être appliquée en test.');
+    if (existing?.stripe_customer_id) return existing.stripe_customer_id;
+
+    const customer = await stripe.customers.create({
+        email: user.email || undefined,
+        metadata: { lyann_user_id: user.id }
+    }, { idempotencyKey: 'lyann_payment_customer_' + user.id });
+    const { error: insertError } = await supabaseAdmin
+        .from('lyann_payment_customers')
+        .upsert({ user_id: user.id, stripe_customer_id: customer.id }, {
+            onConflict: 'user_id',
+            ignoreDuplicates: true
+        });
+    if (insertError) throw new Error('Enregistrement du profil de paiement indisponible.');
+    const { data: linked, error: linkedError } = await supabaseAdmin
+        .from('lyann_payment_customers')
+        .select('stripe_customer_id')
+        .eq('user_id', user.id)
+        .single();
+    if (linkedError || !linked?.stripe_customer_id) throw new Error('Profil de paiement indisponible.');
+    return linked.stripe_customer_id;
+}
+
+app.post('/v1/payments/customer-session', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const intentId = req.body?.payment_intent_id;
+        if (typeof intentId !== 'string' || !/^pi_[A-Za-z0-9]+$/.test(intentId)) {
+            return res.status(400).json({ error: 'Identifiant de paiement invalide.' });
+        }
+        const { data: payment, error: paymentError } = await supabaseAdmin
+            .from('payments')
+            .select('id, requester_id, payment_status, stripe_payment_intent_id')
+            .eq('stripe_payment_intent_id', intentId)
+            .eq('requester_id', user.id)
+            .maybeSingle();
+        if (paymentError || !payment) return res.status(404).json({ error: 'Paiement introuvable.' });
+        if (!['CREATED', 'REQUIRES_ACTION'].includes(payment.payment_status)) {
+            return res.status(409).json({ error: 'Ce paiement ne peut plus être modifié.' });
+        }
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) return res.status(503).json({ error: 'Stripe indisponible en environnement de test.' });
+        const stripe = runtime.stripe;
+        const intent = await stripe.paymentIntents.retrieve(intentId);
+        if (!['requires_payment_method', 'requires_confirmation', 'requires_action'].includes(intent.status)) {
+            return res.status(409).json({ error: 'Paiement déjà en cours ou confirmé.' });
+        }
+        const customerId = await stripeCustomerForAuthenticatedUser(stripe, user);
+        if (intent.customer && (typeof intent.customer === 'string' ? intent.customer : intent.customer.id) !== customerId) {
+            return res.status(409).json({ error: 'Le paiement est associé à un autre compte.' });
+        }
+        if (!intent.customer) {
+            await stripe.paymentIntents.update(intentId, { customer: customerId });
+        }
+        const session = await stripe.customerSessions.create({
+            customer: customerId,
+            components: {
+                payment_element: {
+                    enabled: true,
+                    features: {
+                        payment_method_save: 'enabled',
+                        payment_method_save_usage: 'on_session',
+                        payment_method_redisplay: 'enabled',
+                        payment_method_remove: 'enabled'
+                    }
+                }
+            }
+        });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({ customer_session_client_secret: session.client_secret });
+    } catch (err) {
+        console.error('Stripe customer session unavailable:', err?.message || err);
+        return res.status(503).json({ error: 'Cartes enregistrées momentanément indisponibles.' });
     }
 });
 
