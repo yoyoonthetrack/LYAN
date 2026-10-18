@@ -909,7 +909,7 @@
 
                     <!-- OVERLAY: CHECKOUT / SECURE PAYMENT -->
                     <div id="chatCheckoutOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
-                        <div style="padding: 20px; overflow-y: auto; max-height: 380px;">
+                        <div style="padding: 20px; overflow-y: auto; max-height: min(72dvh, 560px);">
                             <h4 style="font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; color: var(--primary-dark);">
                                 <i class="ph ph-shield-check"></i> Paiement Sécurisé LYANN
                             </h4>
@@ -935,6 +935,7 @@
                                     <label for="lyannCardPaymentElement" style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 6px;">Carte bancaire</label>
                                     <div id="lyannCardPaymentElement" style="min-height: 48px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff;"></div>
                                     <p id="lyannCardPaymentError" role="alert" style="min-height: 1.2em; margin: 8px 0 0; font-size: 0.78rem; color: #B42318;"></p>
+                                    <p id="lyannSavedCardInfo" hidden style="font-size: 0.78rem; color: var(--text-muted); margin: 8px 0 0;">Vous pouvez choisir d’enregistrer votre carte pour vos prochains Lyanns. Cette option est facultative et gérée en toute sécurité par Stripe. Vos futurs paiements devront toujours être confirmés.</p>
                                 </div>
                                 <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
                                     Paiement sécurisé via Stripe. Les numéros de carte ne transitent pas par LYANN.
