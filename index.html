@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20261019-trace">
+    <link rel="stylesheet" href="style.css?v=20261019-swipe-hold">
     <script>
         (function () {
             var cap = window.Capacitor;
@@ -184,94 +184,176 @@
                 </div>
             </section>
 
-            <section class="native-guest-slide native-guest-how" data-slide="1" aria-label="Comment ça marche ?">
+            <section class="native-guest-slide native-guest-demo-slide" data-slide="1" aria-label="Bokantaj, la vie du quartier">
                 <div class="native-guest-slide-inner">
-                    <h2>Comment ça marche ?</h2>
-                    <p class="native-guest-lead">Un service simple, sécurisé et local.</p>
-                    <ol class="native-guest-steps">
-                        <li>
-                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-pencil-simple"></i></span>
-                            <div>
-                                <strong>Publiez votre besoin</strong>
-                                <p>Décrivez simplement ce dont vous avez besoin.</p>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-chats-circle"></i></span>
-                            <div>
-                                <strong>Échangez avec un Lyanneur</strong>
-                                <p>Recevez des propositions, discutez et choisissez la bonne personne.</p>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-lock-simple"></i></span>
-                            <div>
-                                <strong>Payez en toute sécurité</strong>
-                                <p>Le paiement est sécurisé par Stripe pendant la réalisation de la prestation.</p>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-wrench"></i></span>
-                            <div>
-                                <strong>Le travail est réalisé</strong>
-                                <p>Le Lyanneur réalise la prestation convenue.</p>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-check-circle"></i></span>
-                            <div>
-                                <strong>Vous libérez les fonds</strong>
-                                <p>Une fois la prestation terminée et validée, vous déclenchez la libération des fonds.</p>
-                            </div>
-                        </li>
-                    </ol>
+                    <h2>Bokantaj, la vie du quartier</h2>
+                    <p class="native-guest-lead">Partagez vos idées, vos bons plans et vos petits coups de main avec les habitants près de chez vous.</p>
+                    <div class="native-guest-stage">
+                        <div class="native-guest-stage-body">
+                            <p class="native-guest-here"><i class="ph-fill ph-broadcast" aria-hidden="true"></i><span>Vous êtes dans Bokantaj</span><span class="sr-only">. Illustration de l’onglet sélectionné. Ces messages ne sont pas de vraies publications.</span></p>
+                            <article class="native-guest-post">
+                                <header>
+                                    <img src="onboarding-avatar-luc.jpg" alt="" width="44" height="44">
+                                    <div>
+                                        <strong>Luc V. <i class="ph-fill ph-check-circle" aria-hidden="true"></i></strong>
+                                        <span><i class="ph ph-map-pin" aria-hidden="true"></i> Saint-François · Aujourd’hui</span>
+                                    </div>
+                                </header>
+                                <em>Bon plan</em>
+                                <p>Je donne des avocats à Saint-François. Si ça intéresse quelqu’un, faites-moi signe !</p>
+                                <img class="native-guest-photo" src="onboarding-avocats.jpg" alt="Photo d’avocats, illustration">
+                                <div class="native-guest-social" aria-hidden="true"><span><i class="ph-fill ph-heart"></i> 12 J’aime</span><span><i class="ph ph-chat-circle"></i> Commenter</span><span><i class="ph ph-share-network"></i> Partager</span></div>
+                            </article>
+                            <article class="native-guest-post">
+                                <header>
+                                    <img src="onboarding-avatar-nadia.jpg" alt="" width="44" height="44">
+                                    <div>
+                                        <strong>Nadia M. <i class="ph-fill ph-check-circle" aria-hidden="true"></i></strong>
+                                        <span><i class="ph ph-map-pin" aria-hidden="true"></i> Sainte-Anne · Hier</span>
+                                    </div>
+                                </header>
+                                <em>Coup de main</em>
+                                <p>Quelqu’un pourrait m’acheter une bouteille de gaz et me la ramener dans le bourg de Sainte-Anne ? Je n’ai pas de voiture.</p>
+                                <div class="native-guest-social" aria-hidden="true"><span><i class="ph-fill ph-heart"></i> 4 J’aime</span><span><i class="ph ph-chat-circle"></i> Commenter</span><span><i class="ph ph-share-network"></i> Partager</span></div>
+                            </article>
+                            <article class="native-guest-post">
+                                <header>
+                                    <img src="onboarding-avatar-jean.jpg" alt="" width="44" height="44">
+                                    <div>
+                                        <strong>Jean L. <i class="ph-fill ph-check-circle" aria-hidden="true"></i></strong>
+                                        <span><i class="ph ph-map-pin" aria-hidden="true"></i> Petit-Bourg · Cette semaine</span>
+                                    </div>
+                                </header>
+                                <em>Bon plan</em>
+                                <p>Le jus de canne du monsieur au rond-point de Petit-Bourg est excellent !</p>
+                                <img class="native-guest-photo" src="onboarding-jus-canne.jpg" alt="Photo d’un jus de canne, illustration">
+                                <div class="native-guest-social" aria-hidden="true"><span><i class="ph-fill ph-heart"></i> 9 J’aime</span><span><i class="ph ph-chat-circle"></i> Commenter</span><span><i class="ph ph-share-network"></i> Partager</span></div>
+                            </article>
+                        </div>
+                        <div class="native-guest-tabbar" aria-hidden="true">
+                            <span class="native-guest-tab is-active"><i class="ph-fill ph-broadcast"></i><span>Bokantaj</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-users-three"></i><span>Lyanneurs</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-list"></i><span>Annonces</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-chat-circle-dots"></i><span>Messages</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-user"></i><span>Profil</span></span>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <section class="native-guest-slide native-guest-how native-guest-spaces" data-slide="2" aria-label="Deux espaces, une même communauté">
+            <section class="native-guest-slide native-guest-demo-slide" data-slide="2" aria-label="Les talents sont tout près">
                 <div class="native-guest-slide-inner">
-                    <h2>Deux espaces, une même communauté</h2>
-                    <p class="native-guest-lead">Lyanneurs et Annonces pour trouver, Bokantaj pour partager.</p>
-                    <ul class="native-guest-steps">
-                        <li>
-                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-magnifying-glass"></i></span>
-                            <div>
-                                <span class="native-guest-space-tag">Lyanneurs</span>
-                                <strong>Trouvez le bon Lyanneur</strong>
-                                <p>Plomberie, jardinage, beauté, cours… des talents près de chez vous.</p>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="native-guest-step-emoji" aria-hidden="true"><i class="ph ph-clipboard-text"></i></span>
-                            <div>
-                                <span class="native-guest-space-tag">Annonces</span>
-                                <strong>Consultez les annonces</strong>
-                                <p>Repérez les besoins de votre quartier et proposez votre aide.</p>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="native-guest-step-emoji is-boka" aria-hidden="true"><i class="ph ph-broadcast"></i></span>
-                            <div>
-                                <span class="native-guest-space-tag is-boka">Bokantaj</span>
-                                <strong>Partagez avec la communauté</strong>
-                                <p>Réalisations, conseils, questions et bons plans du coin.</p>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="native-guest-step-emoji is-boka" aria-hidden="true"><i class="ph ph-heart"></i></span>
-                            <div>
-                                <span class="native-guest-space-tag is-boka">Bokantaj</span>
-                                <strong>Recommandez les talents locaux</strong>
-                                <p>Aimez, commentez et faites connaître ceux qui comptent.</p>
-                            </div>
-                        </li>
-                    </ul>
+                    <h2>Les talents sont tout près</h2>
+                    <p class="native-guest-lead">Trouvez la bonne personne, découvrez ses compétences et contactez-la directement.</p>
+                    <div class="native-guest-stage">
+                        <div class="native-guest-stage-body">
+                            <p class="native-guest-here"><i class="ph-fill ph-users-three" aria-hidden="true"></i><span>Vous êtes dans Lyanneurs</span><span class="sr-only">. Illustration de l’onglet sélectionné. Ces profils sont des exemples.</span></p>
+                            <div class="native-guest-search" aria-hidden="true"><i class="ph ph-magnifying-glass"></i><span>Rechercher un talent</span></div>
+                            <article class="native-guest-person">
+                                <img src="onboarding-avatar-aline.jpg" alt="" width="44" height="44">
+                                <div>
+                                    <strong>Aline</strong>
+                                    <p>Jardinage · Sainte-Anne</p>
+                                </div>
+                                <span class="native-guest-chip">Voir le profil</span>
+                            </article>
+                            <article class="native-guest-person">
+                                <img src="onboarding-avatar-patrick.jpg" alt="" width="44" height="44">
+                                <div>
+                                    <strong>Patrick</strong>
+                                    <p>Plomberie · Baie-Mahault</p>
+                                </div>
+                                <span class="native-guest-chip">Contacter</span>
+                            </article>
+                            <article class="native-guest-person">
+                                <img src="onboarding-avatar-sophie.jpg" alt="" width="44" height="44">
+                                <div>
+                                    <strong>Sophie</strong>
+                                    <p>Coiffure · Le Lamentin</p>
+                                </div>
+                                <span class="native-guest-chip">Voir le profil</span>
+                            </article>
+                        </div>
+                        <div class="native-guest-tabbar" aria-hidden="true">
+                            <span class="native-guest-tab"><i class="ph ph-broadcast"></i><span>Bokantaj</span></span>
+                            <span class="native-guest-tab is-active"><i class="ph-fill ph-users-three"></i><span>Lyanneurs</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-list"></i><span>Annonces</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-chat-circle-dots"></i><span>Messages</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-user"></i><span>Profil</span></span>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <section class="native-guest-slide native-guest-how native-guest-login-slide" data-slide="3" aria-label="Bienvenue sur LYANN">
+            <section class="native-guest-slide native-guest-demo-slide" data-slide="3" aria-label="Un besoin ? Publiez-le !">
                 <div class="native-guest-slide-inner">
-                    <h2>Bienvenue sur<br><span class="text-gradient">LYANN</span></h2>
+                    <h2>Un besoin ? Publiez-le !</h2>
+                    <p class="native-guest-lead">Expliquez ce que vous recherchez et trouvez quelqu’un pour vous aider.</p>
+                    <div class="native-guest-stage">
+                        <div class="native-guest-stage-body">
+                            <p class="native-guest-here"><i class="ph-fill ph-list" aria-hidden="true"></i><span>Vous êtes dans Annonces</span><span class="sr-only">. Illustration de l’onglet sélectionné. Ces demandes sont des exemples.</span></p>
+                            <article class="native-guest-annonce">
+                                <span>Maison</span>
+                                <h3>Je cherche quelqu’un pour monter un meuble</h3>
+                                <p><i class="ph ph-map-pin" aria-hidden="true"></i> Le Gosier</p>
+                                <b>80 €</b>
+                            </article>
+                            <article class="native-guest-annonce">
+                                <span>Jardin</span>
+                                <h3>Besoin d’aide pour entretenir mon jardin</h3>
+                                <p><i class="ph ph-map-pin" aria-hidden="true"></i> Fort-de-France</p>
+                                <b>60 €</b>
+                            </article>
+                            <span class="native-guest-publish">Publier un besoin</span>
+                        </div>
+                        <div class="native-guest-tabbar" aria-hidden="true">
+                            <span class="native-guest-tab"><i class="ph ph-broadcast"></i><span>Bokantaj</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-users-three"></i><span>Lyanneurs</span></span>
+                            <span class="native-guest-tab is-active"><i class="ph-fill ph-list"></i><span>Annonces</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-chat-circle-dots"></i><span>Messages</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-user"></i><span>Profil</span></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="native-guest-slide native-guest-demo-slide" data-slide="4" aria-label="Tout se passe dans la conversation">
+                <div class="native-guest-slide-inner">
+                    <h2>Tout se passe dans la conversation</h2>
+                    <p class="native-guest-lead">Discutez, validez votre devis et suivez votre mission au même endroit.</p>
+                    <div class="native-guest-stage">
+                        <div class="native-guest-stage-body">
+                            <p class="native-guest-here"><i class="ph-fill ph-chat-circle-dots" aria-hidden="true"></i><span>Vous êtes dans Messages</span><span class="sr-only">. Illustration de l’onglet sélectionné. Aucun paiement n’est lancé.</span></p>
+                            <div class="native-guest-thread">
+                                <p class="is-sent">Bonjour, vous seriez disponible samedi ?</p>
+                                <p class="is-received">Oui, je peux intervenir samedi matin.</p>
+                                <article class="native-guest-deal">
+                                    <header><strong>Devis proposé</strong><b>100 €</b></header>
+                                    <span>Voir le devis</span>
+                                </article>
+                                <p class="native-guest-step-line">Devis accepté</p>
+                                <article class="native-guest-deal">
+                                    <header><strong>Payer en toute sécurité</strong></header>
+                                </article>
+                                <p class="native-guest-step-line">Prestation terminée</p>
+                                <p class="native-guest-step-line is-done">Tout est bon</p>
+                            </div>
+                        </div>
+                        <div class="native-guest-tabbar" aria-hidden="true">
+                            <span class="native-guest-tab"><i class="ph ph-broadcast"></i><span>Bokantaj</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-users-three"></i><span>Lyanneurs</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-list"></i><span>Annonces</span></span>
+                            <span class="native-guest-tab is-active"><i class="ph-fill ph-chat-circle-dots"></i><span>Messages</span></span>
+                            <span class="native-guest-tab"><i class="ph ph-user"></i><span>Profil</span></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="native-guest-slide native-guest-how native-guest-login-slide" data-slide="5" aria-label="Prêt à rejoindre LYANN ?">
+                <div class="native-guest-slide-inner">
+                    <h2>Prêt à rejoindre<br><span class="text-gradient">LYANN ?</span></h2>
+                    <p class="native-guest-lead">Rejoignez une communauté qui partage ses talents, ses idées et ses coups de main.</p>
                     <div class="native-guest-welcome" id="nativeGuestWelcome">
                         <div class="native-guest-auth">
                             <button type="button" class="btn btn-primary btn-lg" id="btnGuestSignup">S'inscrire</button>
@@ -289,12 +371,24 @@
                                 <input type="password" id="nativeGuestLoginPassword" autocomplete="current-password" placeholder="••••••••" aria-label="Mot de passe de connexion" required>
                                 <button type="submit" id="btnNativeGuestSubmit" class="btn btn-primary btn-lg" aria-label="Valider la connexion">Se connecter</button>
                             </form>
+                            <p class="native-guest-signoff">LYANN — Sé Lyann a lòt.</p>
                         </div>
                     </div>
                 </div>
             </section>
         </div>
+        <div class="native-guest-progress">
+        <div class="native-guest-swipe" id="nativeGuestSwipe" hidden>
+            <span class="native-guest-swipe-finger" aria-hidden="true">
+                <span class="native-guest-swipe-trail"></span>
+                <svg viewBox="0 0 24 24" width="26" height="26" focusable="false">
+                    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M14.6 3.2a1.5 1.5 0 0 1 1.5 1.5V11c1.5.4 2.6 1.8 2.6 3.5 0 2.7-2.3 4.8-5.3 4.8-2.6 0-4.6-1.5-5.1-3.7-.2-.8.4-1.6 1.2-1.6h1.2V7.2a1.4 1.4 0 0 1 2.8 0V11h.1V4.7a1.5 1.5 0 0 1 1-1.5z"/>
+                </svg>
+            </span>
+            <span class="native-guest-swipe-label">Faites glisser pour découvrir LYANN</span>
+        </div>
         <div class="native-guest-dots" id="nativeGuestDots" role="tablist" aria-label="Slides"></div>
+        </div>
         <div class="native-guest-cta">
             <button type="button" class="btn btn-outline btn-lg" id="btnNativeLogin">Se connecter</button>
             <button type="button" class="btn btn-primary btn-lg" id="btnNativeJoin">S'inscrire</button>
@@ -779,6 +873,8 @@
                     var onLast = activeIndex === slides.length - 1;
                     document.querySelector('.native-guest-cta')?.classList.toggle('is-hidden', onLast);
                     dotsWrap.classList.toggle('is-last', onLast);
+                    if (activeIndex !== 0 && typeof dismissDiscoveryPeek === 'function') dismissDiscoveryPeek();
+                    else if (typeof armSwipeHint === 'function') armSwipeHint();
                 };
                 var nearestIndex = function () {
                     var width = pager.clientWidth || 1;
@@ -795,7 +891,7 @@
                 var snapTimer = 0;
                 var pointerDown = false;
                 var settleSlide = function () {
-                    if (!pager || !slides.length || snapLock || pointerDown) return;
+                    if (peeking || !pager || !slides.length || snapLock || pointerDown) return;
                     var width = pager.clientWidth || 1;
                     var index = nearestIndex();
                     var target = Math.round(index * width);
@@ -816,16 +912,86 @@
                 pager.addEventListener('pointerdown', function () {
                     pointerDown = true;
                     window.clearTimeout(snapTimer);
+                    pauseDiscoveryPeek();
                 }, { passive: true });
                 pager.addEventListener('pointerup', function () {
                     pointerDown = false;
                     scheduleSettle();
+                    if (!peekDismissed && nearestIndex() === 0 && pager.scrollLeft <= 1) schedulePeek(5000);
                 }, { passive: true });
                 pager.addEventListener('pointercancel', function () {
                     pointerDown = false;
                     scheduleSettle();
+                    if (!peekDismissed && nearestIndex() === 0 && pager.scrollLeft <= 1) schedulePeek(5000);
                 }, { passive: true });
+                var peeking = false;
+                var peekDismissed = false;
+                var peekPlayed = false;
+                var peekGuard = false;
+                var peekTimer = 0;
+                var peekFrame = 0;
+                var peekStartedAt = 0;
+                var swipeHint = document.getElementById('nativeGuestSwipe');
+                var motionReduced = function () {
+                    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+                };
+                var paintSwipe = function (opacity, x) {
+                    if (!swipeHint) return;
+                    swipeHint.style.setProperty('--swipe-o', String(opacity));
+                    swipeHint.style.setProperty('--swipe-x', x + 'px');
+                };
+                var placeSwipeHint = function () {
+                    if (!swipeHint || swipeHint.hidden) return;
+                    var story = document.querySelector('#nativeGuestVideoSlot .hero-story, #nativeGuestVideoSlot video, #nativeGuestVideoSlot img');
+                    var dots = document.getElementById('nativeGuestDots');
+                    if (!story || !dots) return;
+                    var storyBottom = story.getBoundingClientRect().bottom;
+                    var dotsTop = dots.getBoundingClientRect().top;
+                    var hintH = swipeHint.offsetHeight || 34;
+                    var top = (storyBottom + dotsTop) / 2 - hintH / 2;
+                    var minTop = storyBottom + 8;
+                    var maxTop = dotsTop - hintH - 8;
+                    if (maxTop > minTop) top = Math.max(minTop, Math.min(maxTop, top));
+                    swipeHint.style.position = 'fixed';
+                    swipeHint.style.left = '20px';
+                    swipeHint.style.right = '20px';
+                    swipeHint.style.bottom = 'auto';
+                    swipeHint.style.top = Math.round(top) + 'px';
+                };
+                var armSwipeHint = function () {
+                    if (!swipeHint) return;
+                    var show = !peekDismissed && !motionReduced() && nearestIndex() === 0;
+                    swipeHint.hidden = !show;
+                    if (!show) paintSwipe(0, 14);
+                };
+                var releasePeekGuard = function () {
+                    peekGuard = true;
+                    window.requestAnimationFrame(function () {
+                        if (!peeking && pager.scrollLeft <= 1) peekGuard = false;
+                    });
+                };
+                var pauseDiscoveryPeek = function () {
+                    window.clearTimeout(peekTimer);
+                    peekTimer = 0;
+                    window.cancelAnimationFrame(peekFrame);
+                    peekFrame = 0;
+                    paintSwipe(0, 14);
+                    if (!peeking) return;
+                    releasePeekGuard();
+                    pager.scrollLeft = 0;
+                    pager.style.scrollSnapType = '';
+                    peeking = false;
+                    setActiveDot(0);
+                };
+                var dismissDiscoveryPeek = function () {
+                    if (peekDismissed) return;
+                    peekDismissed = true;
+                    pauseDiscoveryPeek();
+                    armSwipeHint();
+                };
                 pager.addEventListener('scroll', function () {
+                    if (peeking || peekGuard) return;
+                    if (!peekDismissed && (pager.scrollLeft > 1 || nearestIndex() !== 0)) dismissDiscoveryPeek();
                     syncDotsFromScroll();
                     if (!pointerDown && !snapLock) scheduleSettle();
                 }, { passive: true });
@@ -834,10 +1000,103 @@
                 });
                 window.addEventListener('resize', function () {
                     if (!pager || !slides.length) return;
-                    var index = nearestIndex();
-                    pager.scrollLeft = Math.round(index * (pager.clientWidth || 1));
+                    if (!peeking) {
+                        var index = nearestIndex();
+                        pager.scrollLeft = Math.round(index * (pager.clientWidth || 1));
+                    }
+                    placeSwipeHint();
                 });
                 syncDotsFromScroll();
+                var schedulePeek = function (delay) {
+                    if (peekDismissed || motionReduced() || nearestIndex() !== 0 || document.hidden) return;
+                    window.clearTimeout(peekTimer);
+                    peekTimer = window.setTimeout(playDiscoveryPeek, delay);
+                };
+                var playDiscoveryPeek = function () {
+                    if (peekDismissed || peeking || !pager || slides.length < 2 || document.hidden) return;
+                    if (motionReduced() || pointerDown || nearestIndex() !== 0) {
+                        if (nearestIndex() !== 0) dismissDiscoveryPeek();
+                        return;
+                    }
+                    peeking = true;
+                    peekPlayed = true;
+                    peekStartedAt = window.performance.now();
+                    armSwipeHint();
+                    placeSwipeHint();
+                    var snap = pager.style.scrollSnapType;
+                    pager.style.scrollSnapType = 'none';
+                    var start = 0;
+                    var finishPeek = function (dismiss) {
+                        window.cancelAnimationFrame(peekFrame);
+                        peekFrame = 0;
+                        releasePeekGuard();
+                        pager.scrollLeft = 0;
+                        pager.style.scrollSnapType = snap;
+                        peeking = false;
+                        paintSwipe(0, 14);
+                        setActiveDot(0);
+                        if (dismiss || nearestIndex() !== 0) {
+                            dismissDiscoveryPeek();
+                            return;
+                        }
+                        if (pointerDown || document.hidden) return;
+                        var elapsed = window.performance.now() - peekStartedAt;
+                        schedulePeek(Math.max(0, 5000 - elapsed));
+                    };
+                    var frame = function (now) {
+                        if (!start) start = now;
+                        if (peekDismissed || pointerDown || document.hidden || nearestIndex() !== 0) {
+                            finishPeek(!(pointerDown || document.hidden));
+                            return;
+                        }
+                        var elapsedMs = now - start;
+                        var gestureT = Math.min(1, elapsedMs / 800);
+                        var fadeIn = 200;
+                        var visibleUntil = 2000;
+                        var totalMs = 2500;
+                        var fade = elapsedMs < fadeIn ? elapsedMs / fadeIn : (elapsedMs > visibleUntil ? Math.max(0, (totalMs - elapsedMs) / (totalMs - visibleUntil)) : 1);
+                        var finger = Math.min(1, gestureT / 0.7);
+                        if (gestureT < 1) pager.scrollLeft = Math.round(Math.sin(gestureT * Math.PI) * 40);
+                        else if (pager.scrollLeft !== 0) {
+                            pager.scrollLeft = 0;
+                            pager.style.scrollSnapType = snap;
+                        }
+                        paintSwipe(fade, Math.round(16 - finger * 34));
+                        if (elapsedMs < totalMs) peekFrame = window.requestAnimationFrame(frame);
+                        else finishPeek(false);
+                    };
+                    peekFrame = window.requestAnimationFrame(frame);
+                };
+                var resumeDiscoveryPeek = function () {
+                    if (peekDismissed || motionReduced() || pointerDown || nearestIndex() !== 0 || document.hidden) return;
+                    schedulePeek(peekPlayed ? 5000 : 2000);
+                };
+                document.addEventListener('visibilitychange', function () {
+                    if (document.hidden) pauseDiscoveryPeek();
+                    else resumeDiscoveryPeek();
+                });
+                var capApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+                if (capApp && typeof capApp.addListener === 'function') {
+                    capApp.addListener('appStateChange', function (state) {
+                        if (!state || !state.isActive) pauseDiscoveryPeek();
+                        else resumeDiscoveryPeek();
+                    });
+                }
+                if (window.matchMedia) {
+                    var motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+                    if (!motionQuery.matches) schedulePeek(2000);
+                    if (motionQuery.addEventListener) {
+                        motionQuery.addEventListener('change', function (event) {
+                            if (event.matches) {
+                                pauseDiscoveryPeek();
+                                armSwipeHint();
+                            } else resumeDiscoveryPeek();
+                        });
+                    }
+                } else {
+                    schedulePeek(2000);
+                }
+                armSwipeHint();
                 document.getElementById('btnNativeLogin')?.addEventListener('click', function () {
                     var last = slides.indexOf(document.querySelector('.native-guest-login-slide'));
                     if (last >= 0) goToSlide(last);
