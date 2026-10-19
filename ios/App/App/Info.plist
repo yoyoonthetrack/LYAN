@@ -49,16 +49,8 @@
 	<string>LYANN a besoin d'accéder à votre bibliothèque pour sélectionner des photos et des vidéos dans vos conversations et votre profil.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>LYANN a besoin du micro uniquement si vous enregistrez une vidéo à envoyer dans une conversation.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>LYANN utilise le réseau local uniquement en Staging pour joindre l’API de paiement sur votre Mac. Aucune donnée de carte n’y transite.</string>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_http._tcp</string>
-	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>js.stripe.com</key>

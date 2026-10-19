@@ -18,7 +18,7 @@ test('no payout account offers setup', () => {
     assert.equal(payoutAccountState({ success: true, account_created: false, payouts_enabled: false }), 'none');
     const view = renderPayoutAccount('none');
     assert.equal(view.subtitle, 'À configurer');
-    assert.equal(view.actionLabel, 'Configurer');
+    assert.equal(view.actionLabel, 'Configurer mon compte de versement');
     assert.equal(view.readyVisible, false);
 });
 
@@ -65,7 +65,7 @@ test('active matches the server payable rule and ignores payouts_enabled', () =>
     assert.equal(active.intent, 'update');
     assert.equal(payoutLinkPath('update'), '/v1/payments/connect/express-dashboard-link');
     assert.equal(renderPayoutAccount('none').title, 'Compte de versement');
-    assert.equal(renderPayoutAccount('none').actionLabel, 'Configurer');
+    assert.equal(renderPayoutAccount('none').actionLabel, 'Configurer mon compte de versement');
     assert.equal(renderPayoutAccount('incomplete').actionLabel, 'Continuer');
     assert.equal(payoutLinkPath('onboarding'), '/v1/payments/connect/onboarding-link');
 });

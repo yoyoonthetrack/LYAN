@@ -71,7 +71,7 @@
 
     const COPY = {
         loading: { title: 'Compte de versement', subtitle: 'Vérification…', action: '', ready: false, intent: 'onboarding' },
-        none: { title: 'Compte de versement', subtitle: 'À configurer', action: 'Configurer', ready: false, intent: 'onboarding' },
+        none: { title: 'Compte de versement', subtitle: 'À configurer', action: 'Configurer mon compte de versement', ready: false, intent: 'onboarding' },
         incomplete: { title: 'Compte de versement', subtitle: 'Configuration à terminer', action: 'Continuer', ready: false, intent: 'onboarding' },
         pending: { title: 'Compte de versement', subtitle: 'Vérification en cours', action: '', ready: false, intent: '' },
         active: {

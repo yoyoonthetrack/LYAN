@@ -5720,7 +5720,7 @@ safeDomReady(() => {
                                     <strong class="row-title" id="payoutAccountTitle">Compte de versement</strong>
                                     <span class="row-subtitle" id="payoutAccountState">Vérification…</span>
                                 </div>
-                                <button type="button" class="btn btn-outline" id="payoutAccountAction" hidden style="min-height:44px;flex:none;">Configurer</button>
+                                <button type="button" class="btn btn-outline" id="payoutAccountAction" hidden style="min-height:44px;flex:none;">Configurer mon compte de versement</button>
                                 <span id="payoutAccountReady" hidden><i class="ph-fill ph-check-circle" style="color:#4A7C59;font-size:1.35rem;" aria-hidden="true"></i></span>
                             </div>
                             <div class="account-divider"></div>
