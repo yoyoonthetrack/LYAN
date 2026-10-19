@@ -23,8 +23,11 @@ test('fanout wake never includes message or quote bodies', () => {
     assert.equal(deal.kind, 'deal');
     assert.equal(wake.content, undefined);
     assert.equal(wake.row, undefined);
-    assert.match(chat, /publishChatFanout\(row\.conversation_id, 'wake'\)/);
+    assert.match(chat, /publishChatFanout\(row\.conversation_id, 'wake', null, row\)/);
     assert.match(chat, /publishChatFanout\(conversationId, 'deal'/);
+    assert.match(chat, /payload\.message = \{/);
+    assert.match(chat, /message: payload\.message \|\| null/);
+    assert.doesNotMatch(chat, /payload = row/);
     assert.doesNotMatch(chat, /publishChatFanout\([^)]*kind: 'message', row/);
     assert.match(chat, /if \(payload\.row \|\| payload\.content \|\| payload\.new\) return;/);
     assert.match(chat, /source === 'fanout'/);

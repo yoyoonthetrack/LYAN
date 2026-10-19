@@ -2077,6 +2077,7 @@ const LYANN_API_CLIENT = {
             if (!res.ok) {
                 return { error: { message: data.error || "Erreur lors de la déclaration de réalisation." } };
             }
+            emitLyannClientEvent('lyann:deal-mutated', { rpc: 'submitMilestoneCompletion', milestoneId });
             return { data };
         } catch (err) {
             return { error: { message: err.message || "Erreur de connexion serveur." } };
@@ -2425,9 +2426,15 @@ const LYANN_API_CLIENT = {
     async suggestRequestTitles(description) {
         const text = String(description || '').trim();
         if (text.length < 10) return { error: 'INVALID' };
-        if (!this.supabase) return { error: 'AUTH' };
+        let supabase = null;
         try {
-            const { data: { session } } = await this.supabase.auth.getSession();
+            supabase = this.supabase;
+        } catch (_) {
+            return { error: 'AUTH' };
+        }
+        if (!supabase) return { error: 'AUTH' };
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) return { error: 'AUTH' };
             const fetcher = typeof window.lyannBackendFetch === 'function' ? window.lyannBackendFetch : fetch;
             const response = await fetcher('/v1/requests/summary', {
@@ -2739,6 +2746,7 @@ const LYANN_API_CLIENT = {
         if (!response.ok) {
             throw new Error(resData.error || "Erreur lors de la libération du paiement");
         }
+        emitLyannClientEvent('lyann:deal-mutated', { rpc: 'releaseMilestonePayment', milestoneId });
         return resData;
     },
 
