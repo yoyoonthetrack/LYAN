@@ -17,6 +17,19 @@
     let viewerCommune = null;
     let viewerCode = null;
 
+    function departmentCode(value) {
+        const text = String(value || '');
+        const coded = text.match(/\b(97\d)\b/);
+        if (coded) return coded[1];
+        const folded = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (folded.includes('guadeloupe')) return '971';
+        if (folded.includes('martinique')) return '972';
+        if (folded.includes('guyane')) return '973';
+        if (folded.includes('reunion')) return '974';
+        if (folded.includes('mayotte')) return '976';
+        return null;
+    }
+
     function normalize(value) {
         return String(value || '')
             .normalize('NFD')
@@ -33,7 +46,7 @@
     function parseLocation(text, territoryHint) {
         const raw = String(text || '').trim();
         if (!raw) return null;
-        const code = (raw.match(/\b(97\d)\b/) || String(territoryHint || '').match(/\b(97\d)\b/) || [])[1] || null;
+        const code = (raw.match(/\b(97\d)\b/) || [])[1] || departmentCode(territoryHint);
         const commune = normalize(raw.replace(/\s*\([^)]*\)\s*/g, ''));
         if (!commune) return null;
         return { commune, code };
@@ -43,10 +56,7 @@
         const dataset = window.LYANN_COMMUNE_GEO;
         const parsed = parseLocation(text, territoryHint);
         if (!dataset || !parsed) return null;
-        if (parsed.code) {
-            const exact = dataset[`${parsed.code}|${parsed.commune}`];
-            if (exact) return exact;
-        }
+        if (parsed.code) return dataset[`${parsed.code}|${parsed.commune}`] || null;
         // Without a department code, accept the commune name only when it is unique
         // across territories: "Sainte-Anne" and "Saint-Denis" exist in several.
         const suffix = `|${parsed.commune}`;

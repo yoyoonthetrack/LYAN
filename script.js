@@ -740,6 +740,20 @@ function safeDomReady(fn) {
 }
 
 safeDomReady(() => {
+    window.lyannCommunesForTerritory = function(value) {
+        const labels = {
+            guadeloupe: 'Guadeloupe (971)',
+            martinique: 'Martinique (972)',
+            guyane: 'Guyane (973)',
+            reunion: 'La Réunion (974)'
+        };
+        const dataset = window.LYANN_TERRITORY_DATASET || {};
+        const key = labels[value];
+        if (key && dataset[key]) {
+            return [...new Set(Object.values(dataset[key]).flat())].sort((a, b) => a.localeCompare(b, 'fr'));
+        }
+        return [];
+    };
     if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.domContentLoadedReached = true;
     logLyannTrace("DOMContentLoaded_reached");
     console.log("⚡ [BOOT 02] DOM ready");
@@ -3134,6 +3148,18 @@ safeDomReady(() => {
 
                 if (filtered.length === 0) {
                 const nearbyMiss = bokantajSortMode === 'nearby' && currentFlashPosts.length > 0 && !bokantajFiltersAreActive();
+                const localEmpty = bokantajFilters.zone === 'nearby' || (bokantajFilters.zone === 'commune' && bokantajFilters.commune);
+                if (localEmpty && !nearbyMiss) {
+                    feedContainer.innerHTML = `
+                        <div class="text-center" style="padding: 50px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed var(--border);">
+                            <i class="ph ph-chats-teardrop" style="font-size: 2.5rem; color: var(--primary-light); margin-bottom: 12px;"></i>
+                            <h4 style="font-weight: 800; font-size: 1.1rem; margin-bottom: 6px; color: #1E293B;">Le Bokantaj est encore calme par ici.</h4>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 18px;">Soyez parmi les premiers à partager quelque chose dans votre commune.</p>
+                            <button type="button" class="btn btn-primary" id="btnEmptyBokantajShare" style="font-weight: 700;">Écrire un Lyann</button>
+                        </div>
+                    `;
+                    return;
+                }
                 feedContainer.innerHTML = `
                     <div class="text-center" style="padding: 40px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px dashed var(--border);">
                         <i class="ph ph-funnel" style="font-size: 2.2rem; color: var(--text-muted); margin-bottom: 10px;"></i>
@@ -4709,13 +4735,13 @@ safeDomReady(() => {
         } catch (_) {}
         const profileTerritory = String(profile.territory || profile.location || '').trim();
         const profileCity = String(profile.city || profile.commune || '').trim();
+        let territoryKey = typeof window.lyannTerritoryKeyFromHint === 'function'
+            ? window.lyannTerritoryKeyFromHint(profileTerritory)
+            : '';
         const matched = typeof window.findTerritoryAndIslandForCommune === 'function'
-            ? window.findTerritoryAndIslandForCommune(profileCity)
+            ? window.findTerritoryAndIslandForCommune(profileCity, territoryKey || profileTerritory)
             : null;
-        let territoryKey = matched && matched.territory;
-        if (!territoryKey && profileTerritory) {
-            territoryKey = Object.keys(dataset).find((key) => key === profileTerritory || key.startsWith(profileTerritory) || profileTerritory.includes(key.replace(/\s*\(\d+\)\s*$/, '').trim()));
-        }
+        if (!territoryKey) territoryKey = matched && matched.territory;
         if (!territoryKey || !dataset[territoryKey]) territoryKey = 'Guadeloupe (971)';
         const islands = Object.keys(dataset[territoryKey] || {}).map((island) => ({
             island,
@@ -6643,23 +6669,24 @@ safeDomReady(() => {
         return profileData;
     }
 
-    // E.164 Normalization Helper (Guadeloupe & French West Indies Default +590)
+    // E.164 prefixes of the four DROM, then metropolitan France.
     window.normalizeToE164 = function(rawPhone) {
         if (!rawPhone || typeof rawPhone !== 'string') return '';
         let cleaned = rawPhone.replace(/\s+/g, '').replace(/[-().]/g, '');
-        if (cleaned.startsWith('0690') || cleaned.startsWith('0590') || cleaned.startsWith('0691')) {
-            return '+590' + cleaned.substring(1);
+        if (cleaned.startsWith('00')) cleaned = '+' + cleaned.slice(2);
+        if (cleaned.startsWith('+')) return cleaned;
+        const prefixes = [
+            [/^(?:0690|0691|0590)/, '+590'],
+            [/^(?:0696|0697|0596)/, '+596'],
+            [/^(?:0694|0594)/, '+594'],
+            [/^(?:0692|0693|0262)/, '+262'],
+            [/^(?:0639|0269)/, '+262'],
+            [/^(?:06|07|01|02|03|04|05)/, '+33']
+        ];
+        for (let i = 0; i < prefixes.length; i++) {
+            if (prefixes[i][0].test(cleaned)) return prefixes[i][1] + cleaned.substring(1);
         }
-        if (cleaned.startsWith('06') || cleaned.startsWith('07') || cleaned.startsWith('01') || cleaned.startsWith('02') || cleaned.startsWith('03') || cleaned.startsWith('04') || cleaned.startsWith('05')) {
-            return '+33' + cleaned.substring(1);
-        }
-        if (cleaned.startsWith('0')) {
-            return '+590' + cleaned.substring(1);
-        }
-        if (!cleaned.startsWith('+') && cleaned.length >= 9) {
-            return '+590' + cleaned;
-        }
-        return cleaned;
+        return cleaned.length >= 9 ? '+' + cleaned : cleaned;
     };
 
     // Canonical Phone Verification Service (Account Linking via updateUser({ phone }))
@@ -8073,13 +8100,29 @@ safeDomReady(() => {
         ]
     };
 
+    function communesForTerritoryValue(value) {
+        const labels = {
+            guadeloupe: 'Guadeloupe (971)',
+            martinique: 'Martinique (972)',
+            guyane: 'Guyane (973)',
+            reunion: 'La Réunion (974)'
+        };
+        const dataset = window.LYANN_TERRITORY_DATASET || {};
+        const key = labels[value];
+        if (key && dataset[key]) {
+            return [...new Set(Object.values(dataset[key]).flat())].sort((a, b) => a.localeCompare(b, 'fr'));
+        }
+        return TERRITORY_CITIES[value] || [];
+    }
+    window.lyannCommunesForTerritory = communesForTerritoryValue;
+
     function updateCityDropdown() {
         const locationSelect = document.getElementById('locationSelect');
         const citySelect = document.getElementById('citySelect');
         if (!locationSelect || !citySelect) return;
 
         const selectedTerritory = locationSelect.value;
-        const cities = TERRITORY_CITIES[selectedTerritory] || [];
+        const cities = communesForTerritoryValue(selectedTerritory);
 
         // Save selected city
         const oldVal = citySelect.value;
@@ -9104,27 +9147,29 @@ safeDomReady(() => {
         });
     }
 
-    // Dynamic Commune selector for Wizard
-    const wizardTerritorySelect = document.getElementById('wizardTerritorySelect');
-    const wizardCitySelect = document.getElementById('wizardCitySelect');
-    if (wizardTerritorySelect && wizardCitySelect) {
-        wizardTerritorySelect.addEventListener('change', () => {
-            const terr = wizardTerritorySelect.value || 'guadeloupe';
-            const cities = TERRITORY_CITIES[terr] || TERRITORY_CITIES.guadeloupe;
-            wizardCitySelect.innerHTML = '';
-            const placeholder = document.createElement('option');
-            placeholder.value = '';
-            placeholder.textContent = 'Choisir une commune';
-            placeholder.selected = true;
-            wizardCitySelect.appendChild(placeholder);
-            cities.forEach((c) => {
-                const opt = document.createElement('option');
-                opt.value = c;
-                opt.textContent = c;
-                wizardCitySelect.appendChild(opt);
-            });
+    function fillWizardCommunes() {
+        const territorySelect = document.getElementById('wizardTerritorySelect');
+        const citySelect = document.getElementById('wizardCitySelect');
+        if (!territorySelect || !citySelect) return;
+        const previous = citySelect.value;
+        const cities = (window.lyannCommunesForTerritory || (() => []))(territorySelect.value || 'guadeloupe');
+        citySelect.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Choisir une commune';
+        citySelect.appendChild(placeholder);
+        cities.forEach((c) => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            citySelect.appendChild(opt);
         });
+        if (cities.includes(previous)) citySelect.value = previous;
     }
+    document.addEventListener('change', (event) => {
+        if (event.target && event.target.id === 'wizardTerritorySelect') fillWizardCommunes();
+    });
+    setTimeout(fillWizardCommunes, 0);
 
     if(btnNext) {
         btnNext.addEventListener('click', async () => {

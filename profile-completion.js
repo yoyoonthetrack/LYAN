@@ -28,20 +28,21 @@
             ]
         },
         "Martinique (972)": {
-            "Centre-Martinique": ["Fort-de-France", "Le Lamentin", "Schoelcher", "Saint-Joseph"],
-            "Nord-Caraïbe": ["Le Carbet", "Case-Pilote", "Bellefontaine", "Saint-Pierre", "Le Prêcheur", "Le Morne-Rouge", "Le Morne-Vert"],
-            "Nord-Atlantique": ["Sainte-Marie", "La Trinité", "Le Robert", "Gros-Morne", "Ajoupa-Bouillon", "Basse-Pointe", "Macouba", "Grand'Rivière"],
-            "Sud-Martinique": ["Les Trois-Îlets", "Le Diamant", "Sainte-Luce", "Le Marin", "Sainte-Anne", "Les Anses-d'Arlet", "Rivière-Salée", "Rivière-Pilote", "Le François", "Le Vauclin"]
+            "Centre-Martinique": ["Fort-de-France", "Le Lamentin", "Schoelcher", "Saint-Joseph", "Ducos"],
+            "Nord-Caraïbe": ["Le Carbet", "Case-Pilote", "Bellefontaine", "Saint-Pierre", "Le Prêcheur", "Le Morne-Rouge", "Le Morne-Vert", "Fonds-Saint-Denis"],
+            "Nord-Atlantique": ["Sainte-Marie", "La Trinité", "Le Robert", "Gros-Morne", "Ajoupa-Bouillon", "Basse-Pointe", "Macouba", "Grand'Rivière", "Le Lorrain", "Le Marigot"],
+            "Sud-Martinique": ["Les Trois-Îlets", "Le Diamant", "Sainte-Luce", "Le Marin", "Sainte-Anne", "Les Anses-d'Arlet", "Rivière-Salée", "Rivière-Pilote", "Le François", "Le Vauclin", "Saint-Esprit"]
         },
         "Guyane (973)": {
-            "Littoral / Centre": ["Cayenne", "Matoury", "Rémire-Montjoly", "Kourou", "Macouria", "Montsinéry-Tonnegrande"],
-            "Est / Oyapock": ["Saint-Georges", "Ouanary", "Roura", "Régina"],
-            "Ouest / Maroni": ["Saint-Laurent-du-Maroni", "Mana", "Awala-Yalimapo", "Apatou", "Grand-Santi", "Papaichton", "Maripasoula"]
+            "Littoral / Centre": ["Cayenne", "Matoury", "Rémire-Montjoly", "Kourou", "Macouria", "Montsinéry-Tonnegrande", "Iracoubo", "Sinnamary"],
+            "Est / Oyapock": ["Saint-Georges", "Ouanary", "Roura", "Régina", "Camopi"],
+            "Ouest / Maroni": ["Saint-Laurent-du-Maroni", "Mana", "Awala-Yalimapo", "Apatou", "Grand-Santi", "Papaichton", "Maripasoula"],
+            "Intérieur": ["Saül", "Saint-Élie"]
         },
         "La Réunion (974)": {
             "Nord": ["Saint-Denis", "Sainte-Marie", "Sainte-Suzanne"],
-            "Ouest": ["Saint-Paul", "Le Port", "La Possession", "Trois-Bassins", "Saint-Leu"],
-            "Sud": ["Saint-Pierre", "Le Tampon", "Saint-Joseph", "Saint-Philippe", "Petite-Île", "Entre-Deux", "Cilaos"],
+            "Ouest": ["Saint-Paul", "Le Port", "La Possession", "Trois-Bassins", "Saint-Leu", "Les Avirons", "L'Étang-Salé"],
+            "Sud": ["Saint-Pierre", "Le Tampon", "Saint-Joseph", "Saint-Philippe", "Petite-Île", "Entre-Deux", "Cilaos", "Saint-Louis"],
             "Est": ["Saint-Benoît", "Bras-Panon", "Saint-André", "Salazie", "Plaine-des-Palmistes", "Sainte-Rose"]
         },
         "Mayotte (976)": {
@@ -61,19 +62,49 @@
 
     window.LYANN_TERRITORY_DATASET = LYANN_TERRITORY_DATASET;
 
-    function findTerritoryAndIslandForCommune(communeStr) {
-        if (!communeStr) return null;
-        const cleanStr = String(communeStr).replace(/\s*\(\d+\)\s*/g, '').trim().toLowerCase();
+    function territoryKeyFromHint(hint) {
+        const text = String(hint || '');
+        const coded = text.match(/\b(97\d)\b/);
+        const folded = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const code = coded ? coded[1]
+            : folded.includes('guadeloupe') ? '971'
+            : folded.includes('martinique') ? '972'
+            : folded.includes('guyane') ? '973'
+            : folded.includes('reunion') ? '974'
+            : folded.includes('mayotte') ? '976'
+            : '';
+        if (!code) return '';
+        return Object.keys(LYANN_TERRITORY_DATASET).find((key) => key.includes('(' + code + ')')) || '';
+    }
+    window.lyannTerritoryKeyFromHint = territoryKeyFromHint;
 
-        for (const [terrName, islands] of Object.entries(LYANN_TERRITORY_DATASET)) {
+    function findTerritoryAndIslandForCommune(communeStr, territoryHint) {
+        if (!communeStr) return null;
+        const preferred = territoryKeyFromHint(territoryHint);
+        const names = Object.keys(LYANN_TERRITORY_DATASET);
+        const ordered = preferred ? [preferred, ...names.filter((name) => name !== preferred)] : names;
+
+        const fold = (value) => String(value || '')
+            .replace(/\s*\([^)]*\)\s*/g, ' ')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+        const bare = (value) => fold(value).replace(/^(le|la|les|l|du|de|des) /, '');
+        const wanted = fold(communeStr);
+        const wantedBare = bare(communeStr);
+
+        for (const terrName of ordered) {
+            const islands = LYANN_TERRITORY_DATASET[terrName];
             for (const [islandName, communes] of Object.entries(islands)) {
                 for (const c of communes) {
-                    const cleanC = c.replace(/\s*\(\d+\)\s*/g, '').trim().toLowerCase();
-                    if (cleanC === cleanStr || cleanStr.includes(cleanC) || cleanC.includes(cleanStr)) {
+                    if (fold(c) === wanted || bare(c) === wantedBare) {
                         return { territory: terrName, island: islandName, commune: c };
                     }
                 }
             }
+            if (preferred && terrName === preferred) break;
         }
         return null;
     }
@@ -408,21 +439,59 @@
         if (gpsBtn) {
             gpsBtn.addEventListener('click', async () => {
                 gpsBtn.innerHTML = '<i class="ph ph-spinner-gap spin-animation"></i> GPS...';
-                const applyGpsCity = (communeName) => {
-                    const match = findTerritoryAndIslandForCommune(communeName) || { territory: 'Guadeloupe (971)', island: 'Grande-Terre', commune: communeName };
+                const applyGpsCity = (communeName, territoryHint) => {
+                    const match = findTerritoryAndIslandForCommune(communeName, territoryHint);
+                    if (!match) {
+                        gpsBtn.innerHTML = '<i class="ph ph-crosshair"></i> GPS';
+                        if (window.lyannAlert) window.lyannAlert('La commune n’a pas pu être reconnue. Choisis ton territoire et ta commune.');
+                        return;
+                    }
                     setupLocationCascading(match.territory, match.island, match.commune);
                     gpsBtn.innerHTML = '<i class="ph ph-check"></i> Détecté';
                     setTimeout(() => { gpsBtn.innerHTML = '<i class="ph ph-crosshair"></i> GPS'; }, 2000);
                 };
+                const nearestCommune = (latitude, longitude) => {
+                    const geo = window.LYANN_COMMUNE_GEO;
+                    const distance = window.LYANN_GEO && window.LYANN_GEO.distanceKm;
+                    if (!geo || typeof distance !== 'function') return null;
+                    let bestKey = '';
+                    let bestKm = Infinity;
+                    Object.keys(geo).forEach((key) => {
+                        const km = distance([latitude, longitude], geo[key]);
+                        if (km < bestKm) {
+                            bestKm = km;
+                            bestKey = key;
+                        }
+                    });
+                    if (!bestKey || bestKm > 250) return null;
+                    const code = bestKey.slice(0, 3);
+                    const territory = Object.keys(LYANN_TERRITORY_DATASET).find((name) => name.includes('(' + code + ')'));
+                    if (!territory) return null;
+                    const wanted = bestKey.slice(4);
+                    const fold = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+                    for (const communes of Object.values(LYANN_TERRITORY_DATASET[territory])) {
+                        for (const commune of communes) {
+                            if (fold(commune) === wanted) return { commune, territory };
+                        }
+                    }
+                    return null;
+                };
 
                 if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(() => {
-                        applyGpsCity("Saint-François");
+                    navigator.geolocation.getCurrentPosition((position) => {
+                        const found = nearestCommune(position.coords.latitude, position.coords.longitude);
+                        if (!found) {
+                            gpsBtn.innerHTML = '<i class="ph ph-crosshair"></i> GPS';
+                            if (window.lyannAlert) window.lyannAlert('La commune n’a pas pu être reconnue. Choisis ton territoire et ta commune.');
+                            return;
+                        }
+                        applyGpsCity(found.commune, found.territory);
                     }, () => {
-                        applyGpsCity("Saint-François");
-                    });
+                        gpsBtn.innerHTML = '<i class="ph ph-crosshair"></i> GPS';
+                        if (window.lyannAlert) window.lyannAlert('La position n’est pas disponible. Choisis ton territoire et ta commune.');
+                    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
                 } else {
-                    applyGpsCity("Saint-François");
+                    gpsBtn.innerHTML = '<i class="ph ph-crosshair"></i> GPS';
                 }
             });
         }
