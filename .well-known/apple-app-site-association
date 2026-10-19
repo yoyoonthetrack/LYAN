@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appID": "YOUR_TEAM_ID.app.lyann.mobile",
+        "appID": "WLV4WC47U2.app.lyann.mobile",
         "paths": [
           "/profile/*",
           "/service/*",

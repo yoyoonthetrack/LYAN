@@ -542,7 +542,7 @@
                     providerWallet.releasedPayments += totalRemainingEscrow;
                     providerWallet.completedPaymentsCount++;
                 }
-                this.logSecurityAudit("LITIGE_RESOLU_PRESTATAIRE", `Libération des fonds séquestrés de ${totalRemainingEscrow}€ vers le prestataire ${tx.providerName} pour la transaction ${tx.id}.`);
+                this.logSecurityAudit("LITIGE_RESOLU_PRESTATAIRE", `Transfert de ${totalRemainingEscrow}€ vers le prestataire ${tx.providerName} pour la transaction ${tx.id}.`);
             } else if (decision === "resolved_split") {
                 tx.status = "termine";
                 const clientPart = totalRemainingEscrow * 0.5;
