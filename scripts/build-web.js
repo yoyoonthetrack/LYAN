@@ -11,7 +11,14 @@ if (!process.env.VERCEL && !process.argv.includes('--force')) {
   process.exit(1);
 }
 
-const pages = fs.readdirSync(root).filter((f) => f.endsWith('.html') && !/^admin/.test(f));
+if (String(process.env.LYANN_RUNTIME || '').toLowerCase() === 'staging') {
+  const source = path.join(root, 'config', 'apple-app-site-association.staging.json');
+  const target = path.join(root, '.well-known', 'apple-app-site-association');
+  fs.copyFileSync(source, target);
+  console.log('build-web: AASA Staging');
+}
+
+const pages = fs.readdirSync(root).filter((f) => f.endsWith('.html'));
 for (const page of pages) {
   buildHtmlFile(path.join(root, page));
 }

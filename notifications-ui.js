@@ -67,6 +67,15 @@ async function refreshMessageBadge(currentUserId) {
 }
 window.refreshMessageBadge = refreshMessageBadge;
 
+function bumpMessageBadge() {
+    const badge = document.querySelector('#tab-messages .msg-badge-count, #btnHeaderChat .msg-badge-count, .nav-msg-btn .msg-badge-count');
+    const current = badge && badge.classList.contains('is-on') ? parseInt(badge.textContent, 10) : 0;
+    const next = (Number.isFinite(current) ? current : 0) + 1;
+    paintMessageBadge(Math.max(1, next));
+}
+window.bumpMessageBadge = bumpMessageBadge;
+window.paintMessageBadge = paintMessageBadge;
+
 let lyannNotifEscapeHandler = null;
 
 function clearNotificationEscape() {
@@ -110,7 +119,10 @@ function notificationKind(type) {
         QUOTE_SENT: ['Proposition de devis', 'ph-file-text'],
         QUOTE_PROPOSAL: ['Proposition de devis', 'ph-file-text'],
         QUOTE_REVISED: ['Proposition de devis', 'ph-file-text'],
+        QUOTE_RECEIVED: ['Proposition de devis', 'ph-file-text'],
         QUOTE_ACCEPTED: ['Devis accepté', 'ph-check-circle'],
+        MISSION_ACCEPTED: ['Mission acceptée', 'ph-flag-checkered'],
+        WORK_TO_VALIDATE: ['Travail à valider', 'ph-flag-checkered'],
         BOKANTAJ: ['Bokantaj', 'ph-broadcast'],
         NEW_MESSAGE: ['Message', 'ph-chat-circle-dots'],
         REQUEST_CLOSING: ['Annonce', 'ph-clock'],
@@ -119,9 +131,11 @@ function notificationKind(type) {
         REVIEW: ['Avis', 'ph-star'],
         SAFETY_REPORT_CONFIRMATION: ['Signalement', 'ph-warning-circle'],
         SANCTION_NOTICE: ['Modération', 'ph-warning-circle'],
-        SYSTEM: ['LYANN', 'ph-bell']
+        SYSTEM: ['LYANN', 'ph-bell'],
+        PAYOUT_READY: ['Compte de versement', 'ph-bank']
     };
     if (exact[key]) return { label: exact[key][0], icon: exact[key][1] };
+    if (key.startsWith('REMINDER_')) return { label: 'Rappel', icon: 'ph-bell-ringing' };
     if (key.startsWith('PAYMENT')) return { label: 'Paiement', icon: 'ph-credit-card' };
     if (key.startsWith('QUOTE')) return { label: 'Proposition de devis', icon: 'ph-file-text' };
     if (key.startsWith('MISSION')) return { label: 'Mission', icon: 'ph-flag-checkered' };
@@ -135,10 +149,60 @@ function openNotificationTarget(notif) {
     const entityId = notif?.entity_id ? String(notif.entity_id) : '';
     const nType = String(notif?.type || '');
     if (nType === 'REQUEST_CLOSING') return false;
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    if (policy && typeof policy.planNotificationNavigation === 'function') {
+        const plan = policy.planNotificationNavigation(notif, { viewerId: lyannNotificationUserId() });
+        if (!plan.open) return false;
+        if (plan.route === 'finances') {
+            window.LYANN_ROUTER?.go?.('finances');
+            return true;
+        }
+        if (plan.route === 'messages' && plan.payload && plan.payload.contactId && window.LYANN_ROUTER) {
+            window.LYANN_ROUTER.go('messages', {
+                ...plan.payload,
+                name: plan.payload.contactId === window.LYANN_SUPPORT_USER_ID ? 'Support LYANN' : undefined
+            });
+            return true;
+        }
+        if (plan.route === 'mission' && plan.payload && plan.payload.requestId) {
+            if (window.LYANN_ROUTER) window.LYANN_ROUTER.go('mission', plan.payload);
+            else if (typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal(plan.payload.requestId);
+            else if (typeof window.openRequestDetails === 'function') window.openRequestDetails(plan.payload.requestId);
+            return true;
+        }
+        if (plan.route === 'bokantaj') {
+            const onFeed = /feed\.html/i.test(window.location.pathname);
+            const card = entityId ? document.getElementById(entityId) : null;
+            if (onFeed && card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return true;
+            }
+            if (!onFeed) {
+                window.LYANN_ROUTER?.go?.('bokantaj');
+                return true;
+            }
+            return false;
+        }
+        return false;
+    }
+    if (nType === 'PAYOUT_READY') {
+        window.LYANN_ROUTER?.go?.('finances');
+        return true;
+    }
+    if (nType === 'QUOTE_RECEIVED' || nType === 'MISSION_ACCEPTED' || nType === 'WORK_TO_VALIDATE') {
+        const parts = entityId.split(':');
+        const contactId = parts[0];
+        const requestId = parts[2] || window.LYANN_DEAL_NOTIFICATION_POLICY?.requestIdFromNotification?.(notif);
+        if (contactId && window.LYANN_ROUTER) {
+            window.LYANN_ROUTER.go('messages', { contactId, requestId: requestId || undefined, scopeSource: 'notification' });
+            return true;
+        }
+    }
     if ((entityType === 'conversation' || nType === 'NEW_MESSAGE') && entityId) {
         window.LYANN_ROUTER?.go?.('messages', {
             contactId: entityId,
-            name: entityId === window.LYANN_SUPPORT_USER_ID ? 'Support LYANN' : undefined
+            name: entityId === window.LYANN_SUPPORT_USER_ID ? 'Support LYANN' : undefined,
+            scopeSource: 'notification'
         });
         return true;
     }
@@ -177,6 +241,11 @@ function openNotificationsModal() {
         return;
     }
     renderNotificationsModal();
+    if (window.LYANN_MISSION_REMINDERS?.loadContext) {
+        window.LYANN_MISSION_REMINDERS.loadContext(currentUserId).then(() => {
+            if (document.getElementById('notificationsModal')?.classList.contains('active')) renderNotificationsModal();
+        }).catch(() => {});
+    }
     if (window.LyannNotificationEngine?.hydrateFromServer) {
         window.LyannNotificationEngine.hydrateFromServer(currentUserId).then(() => {
             if (document.getElementById('notificationsModal')?.classList.contains('active')) renderNotificationsModal();
@@ -212,7 +281,37 @@ function renderNotificationsModal() {
     notifs = notifs
         .filter((n) => n && n.user_id === currentUserId && n.type !== 'NEW_MESSAGE')
         .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-    const unreadCount = notifs.filter((n) => !n.read).length;
+    const reminderApi = window.LYANN_MISSION_REMINDERS;
+    if (reminderApi && typeof reminderApi.reminderCandidates === 'function') {
+        let prefs = {};
+        try { prefs = window.LyannNotificationEngine?.getUserPreferences?.(currentUserId) || {}; } catch (_) {}
+        const candidates = reminderApi.reminderCandidates({
+            userId: currentUserId,
+            quotes: window.__lyannReminderQuotes || [],
+            readiness: window.__lyannReminderReadiness || {},
+            prefs,
+            now: Date.now()
+        });
+        const view = reminderApi.visibleReminders(notifs, candidates);
+        const reminders = view.extra.map((item) => ({
+                id: 'reminder:' + item.kind + ':' + item.entityId,
+                user_id: currentUserId,
+                type: item.type,
+                title: item.title,
+                body: item.body,
+                entity_type: 'request',
+                entity_id: item.entityId,
+                request_id: item.requestId,
+                invitation_id: item.invitationId,
+                contact_id: item.contactId,
+                grouped: item.grouped === true,
+                read: false,
+                created_at: new Date().toISOString(),
+                cta: { label: 'Ouvrir le dossier' }
+        }));
+        notifs = reminders.concat(view.persisted);
+    }
+    const unreadCount = notifs.filter((n) => !n.read && String(n.type || '').indexOf('REMINDER_') !== 0).length;
 
     modal.innerHTML = `
         <div class="lyann-notif-sheet" role="dialog" aria-modal="true" aria-labelledby="lyannNotifTitle">
@@ -243,8 +342,13 @@ function renderNotificationsModal() {
                     const notifId = escapeNotificationText(n.id);
                     const entityType = escapeNotificationText(n.entity_type || '');
                     const entityId = escapeNotificationText(n.entity_id || '');
+                    const notifType = escapeNotificationText(n.type || '');
+                    const requestId = escapeNotificationText(n.request_id || '');
+                    const invitationId = escapeNotificationText(n.invitation_id || '');
+                    const contactId = escapeNotificationText(n.contact_id || '');
+                    const grouped = n.grouped ? '1' : '';
                     return `
-                        <div class="notif-item-card${isUnread ? ' is-unread' : ''}" role="button" tabindex="0" data-notif-id="${notifId}" data-entity-type="${entityType}" data-entity-id="${entityId}">
+                        <div class="notif-item-card${isUnread ? ' is-unread' : ''}" role="button" tabindex="0" data-notif-id="${notifId}" data-notif-type="${notifType}" data-entity-type="${entityType}" data-entity-id="${entityId}" data-request-id="${requestId}" data-invitation-id="${invitationId}" data-contact-id="${contactId}" data-grouped="${grouped}">
                             <span class="lyann-notif-icon" aria-hidden="true"><i class="ph ${icon}"></i></span>
                             <div class="lyann-notif-copy">
                                 ${kind ? `<span class="lyann-notif-kind">${escapeNotificationText(kind.label)}</span>` : ''}
@@ -334,8 +438,42 @@ function renderNotificationsModal() {
             const notifId = card.getAttribute('data-notif-id');
             const entityType = card.getAttribute('data-entity-type');
             const entityId = card.getAttribute('data-entity-id');
-            const nType = (window.LyannNotificationEngine?.getUserNotifications?.(currentUserId, currentUserId) || [])
-                .find((item) => String(item.id) === String(notifId))?.type;
+            const nType = card.getAttribute('data-notif-type')
+                || (window.LyannNotificationEngine?.getUserNotifications?.(currentUserId, currentUserId) || [])
+                    .find((item) => String(item.id) === String(notifId))?.type;
+
+            if (String(nType || '').indexOf('REMINDER_') === 0 && card.getAttribute('data-grouped') === '1') {
+                closeModal();
+                const userId = currentUserId;
+                window.__lyannMissionAction = String(nType).replace(/^REMINDER_/, '').toLowerCase();
+                window.__lyannMissionBucket = 'open';
+                window.__lyannMissionQuery = '';
+                const openMissions = window.openAccountModalSubView
+                    ? window.openAccountModalSubView('activity')
+                    : Promise.resolve();
+                Promise.resolve(openMissions).then(() => {
+                    if (typeof window.switchActivityTab === 'function') window.switchActivityTab('missions', userId);
+                }).catch(() => {});
+                return;
+            }
+
+            if (String(nType || '').indexOf('REMINDER_') === 0) {
+                const requestId = card.getAttribute('data-request-id');
+                const invitationId = card.getAttribute('data-invitation-id');
+                const contactId = card.getAttribute('data-contact-id');
+                closeModal();
+                const openReminder = async () => {
+                    if (contactId && window.LYANN_MESSAGING && typeof window.LYANN_MESSAGING.openConversation === 'function') {
+                        try { await window.LYANN_MESSAGING.openConversation({ contactId, requestId: requestId || null }); } catch (_) {}
+                    }
+                    const surfaces = window.LYANN_MISSION_SURFACES;
+                    if (surfaces && typeof surfaces.openDossier === 'function' && (requestId || invitationId)) {
+                        try { await surfaces.openDossier({ requestId: requestId || null, invitationId: invitationId || null }); } catch (_) {}
+                    }
+                };
+                openReminder();
+                return;
+            }
 
             if (nType === 'REQUEST_CLOSING') return;
 
@@ -362,6 +500,10 @@ function renderNotificationsModal() {
         });
     });
 
+    // Keep notifications above messaging / account chrome (portal to body + max z-index).
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    else document.body.appendChild(modal);
+    modal.style.setProperty('z-index', '2147483002', 'important');
     modal.classList.add('active');
     if (!wasOpen) {
         if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();
@@ -456,27 +598,45 @@ async function syncLyannNotificationsFromServer() {
 let lyannNotificationChannel = null;
 let lyannNotificationPoll = null;
 let lyannNotificationChannelLive = false;
+const notificationRealtimeSlot = window.LYANN_REALTIME_SESSION
+    ? window.LYANN_REALTIME_SESSION.createRealtimeSlot()
+    : null;
 
-function stopLyannNotificationLiveFeed() {
+async function stopLyannNotificationLiveFeed() {
     const client = window.LYANN_API_CLIENT || window.apiClient;
-    if (lyannNotificationChannel && client?.supabase) {
-        try { client.supabase.removeChannel(lyannNotificationChannel); } catch (_) {}
-    }
     lyannNotificationChannel = null;
     lyannNotificationChannelLive = false;
+    window.LYANN_NOTIFICATION_LIVE = false;
     if (lyannNotificationPoll) {
         clearInterval(lyannNotificationPoll);
         lyannNotificationPoll = null;
     }
+    if (notificationRealtimeSlot) {
+        await notificationRealtimeSlot.release((channel) => (
+            client?.supabase?.removeChannel ? client.supabase.removeChannel(channel) : null
+        ));
+        return;
+    }
 }
 
-function startLyannNotificationLiveFeed() {
+async function startLyannNotificationLiveFeed(options) {
     const userId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null;
     const client = window.LYANN_API_CLIENT || window.apiClient;
-    stopLyannNotificationLiveFeed();
+    const generation = notificationRealtimeSlot
+        ? await notificationRealtimeSlot.release((channel) => (
+            client?.supabase?.removeChannel ? client.supabase.removeChannel(channel) : null
+        ), options)
+        : 0;
+    if (lyannNotificationPoll) {
+        clearInterval(lyannNotificationPoll);
+        lyannNotificationPoll = null;
+    }
+    lyannNotificationChannelLive = false;
+    window.LYANN_NOTIFICATION_LIVE = false;
     if (!userId || !client?.supabase) return;
+    if (notificationRealtimeSlot && notificationRealtimeSlot.generation() !== generation) return;
 
-    lyannNotificationChannel = client.supabase
+    const channel = client.supabase
         .channel('lyann-user-notifications')
         .on('postgres_changes', {
             event: 'INSERT',
@@ -484,14 +644,40 @@ function startLyannNotificationLiveFeed() {
             table: 'notifications',
             filter: `user_id=eq.${userId}`
         }, (payload) => {
+            const row = payload.new;
             if (window.LyannNotificationEngine?.ingestServerNotification) {
-                window.LyannNotificationEngine.ingestServerNotification(payload.new, userId, { chime: true });
+                window.LyannNotificationEngine.ingestServerNotification(row, userId, { chime: true });
+            }
+            const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+            const contactId = policy?.contactIdFromNotification?.(row);
+            const activeId = window.LYANN_ACTIVE_CHAT_CONTACT?.id || window.LYANN_ACTIVE_CHAT_CONTACT?.contactId;
+            if (policy?.isKeptDealType?.(row?.type) && contactId && activeId && String(contactId) === String(activeId)) {
+                window.refreshDealContext?.('notif-deal');
             }
             updateHeaderNotificationBadge();
-        })
-        .subscribe((status) => {
-            lyannNotificationChannelLive = status === 'SUBSCRIBED';
         });
+    lyannNotificationChannel = channel;
+    if (notificationRealtimeSlot) notificationRealtimeSlot.hold(channel);
+    let notificationJoined = false;
+    channel.subscribe((status) => {
+        if (notificationRealtimeSlot && notificationRealtimeSlot.current() !== channel) return;
+        if (status === 'SUBSCRIBED') {
+            notificationJoined = true;
+            lyannNotificationChannelLive = true;
+            window.LYANN_NOTIFICATION_LIVE = true;
+            if (notificationRealtimeSlot) notificationRealtimeSlot.markHealthy();
+            return;
+        }
+        lyannNotificationChannelLive = false;
+        window.LYANN_NOTIFICATION_LIVE = false;
+        if (status === 'CLOSED' && !notificationJoined) return;
+        if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
+        if (!notificationRealtimeSlot) return;
+        notificationRealtimeSlot.scheduleRetry(() => {
+            if (window.LYANN_AUTH_STATE?.getSnapshot?.().userId !== userId) return;
+            return startLyannNotificationLiveFeed({ keepAttempt: true });
+        });
+    });
 
     // Realtime is the primary path; the poll only covers a channel that is down.
     lyannNotificationPoll = setInterval(() => {
@@ -515,15 +701,20 @@ document.addEventListener('lyann:auth-state', (event) => {
     if (authenticated) {
         syncLyannNotificationsFromServer().then(() => startLyannNotificationLiveFeed());
     } else {
-        stopLyannNotificationLiveFeed();
+        void stopLyannNotificationLiveFeed();
     }
 });
 document.addEventListener('lyann_notifications_updated', () => updateHeaderNotificationBadge());
 window.addEventListener('focus', () => updateHeaderNotificationBadge({ messages: false }));
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;
+    // Badge only on tab return — hydrate is silent (no notification chime).
     updateHeaderNotificationBadge();
-    hydrateLyannNotifications(window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null);
+    const userId = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || null;
+    hydrateLyannNotifications(userId);
+    if (userId && !lyannNotificationChannelLive && notificationRealtimeSlot && !notificationRealtimeSlot.hasRetry()) {
+        void startLyannNotificationLiveFeed();
+    }
 });
 document.addEventListener('pointerdown', unlockLyannNotificationSound, { once: true, capture: true });
 document.addEventListener('keydown', unlockLyannNotificationSound, { once: true, capture: true });

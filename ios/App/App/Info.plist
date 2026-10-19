@@ -2,12 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CAPACITOR_DEBUG</key>
+	<key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>LYANN</string>
+	<string>LYANN</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -20,8 +20,6 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -33,27 +31,82 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>LYANN a besoin d'accéder à votre appareil photo pour vous permettre de prendre des photos de vos réalisations et de votre profil.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>LYANN utilise votre position uniquement lorsque l'application est ouverte, pour vous proposer des personnes et des annonces près de chez vous. LYANN ne suit pas votre position en arrière-plan.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>LYANN utilise votre position uniquement lorsque l'application est ouverte, pour vous proposer des personnes et des annonces près de chez vous.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>LYANN a besoin de sauvegarder des photos capturées dans votre bibliothèque.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>LYANN a besoin d'accéder à votre bibliothèque pour sélectionner des photos et des vidéos dans vos conversations et votre profil.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>LYANN a besoin du micro uniquement si vous enregistrez une vidéo à envoyer dans une conversation.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>LYANN utilise le réseau local uniquement en Staging pour joindre l’API de paiement sur votre Mac. Aucune donnée de carte n’y transite.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>js.stripe.com</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+			</dict>
+			<key>stripe.com</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+			</dict>
+			<key>stripe.network</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
-    <false/>
-    <key>UISceneConfigurations</key>
-    <dict>
-      <key>UIWindowSceneSessionRoleApplication</key>
-      <array>
-        <dict>
-            <key>UISceneConfigurationName</key>
-            <string>Default Configuration</string>
-            <key>UISceneDelegateClassName</key>
-            <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
-            <key>UISceneStoryboardFile</key>
-            <string>Main</string>
-        </dict>
-      </array>
-    </dict>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -65,8 +118,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
@@ -77,15 +128,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>NSCameraUsageDescription</key>
-	<string>LYANN a besoin d'accéder à votre appareil photo pour vous permettre de prendre des photos de vos réalisations et de votre profil.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>LYANN a besoin d'accéder à votre bibliothèque pour vous permettre de sélectionner des photos de vos réalisations et de votre profil.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>LYANN a besoin de sauvegarder des photos capturées dans votre bibliothèque.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>LYANN a besoin de votre localisation pour vous proposer des professionnels et des lyanneurs à proximité de chez vous.</string>
 </dict>
 </plist>

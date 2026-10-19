@@ -118,6 +118,13 @@
     if (!scrollHeld || !deltaY) return false;
     const el = eventTargetElement(target);
     if (el?.closest?.('input, textarea, select, [contenteditable="true"]')) return false;
+    // Body is already position:fixed while messaging/modals are open. Never steal
+    // touchmove from the chat thread / inbox list — iOS nested overflow needs it.
+    if (el?.closest?.(
+      '#chatMessagesContainer, .chat-messages-scroll, #chatContactsList, .chat-contacts-list, .chat-contacts-sidebar'
+    )) {
+      return false;
+    }
     const scroller = scrollableParent(target);
     if (!scroller) return true;
     const atTop = scroller.scrollTop <= 0;
@@ -176,7 +183,7 @@
 
   function hideElement(el) {
     if (!el) return;
-    el.classList.remove('active', 'lyann-surface-active');
+    el.classList.remove('active', 'lyann-surface-active', 'is-open');
     el.style.setProperty('display', 'none', 'important');
     el.setAttribute('aria-hidden', 'true');
   }

@@ -21,24 +21,38 @@ const calls = {
 };
 
 const bodyClassList = {
-  contains(name) { return name === 'user-is-logged-in'; }
+  contains(name) { return name === 'user-is-logged-in'; },
+  add() {},
+  remove() {}
 };
 
 const document = {
   readyState: 'loading',
+  documentElement: { classList: { remove() {} } },
+  head: { appendChild() {} },
   body: { classList: bodyClassList, style: {} },
   addEventListener(type, handler) {
     if (!listeners.has(type)) listeners.set(type, []);
     listeners.get(type).push(handler);
   },
+  createElement() { return {}; },
   getElementById() { return null; },
-  querySelector() { return null; }
+  querySelector() { return null; },
+  querySelectorAll() { return []; }
 };
 
 let authenticated = true;
 const window = {
   addEventListener() {},
   dispatchEvent() {},
+  setTimeout(fn, ms) {
+    if (ms === 140) {
+      fn();
+      return 0;
+    }
+    return setTimeout(fn, ms);
+  },
+  clearTimeout,
   LYANN_AUTH_STATE: { isAuthenticated: () => authenticated, getSnapshot: () => ({status:'ready', authenticated}) },
   location: {
     href: 'https://lyann.app/index.html',
@@ -56,14 +70,22 @@ const window = {
 };
 window.window = window;
 
+let navigationClock = Date.now();
 const context = {
   window,
   document,
+  Date: class extends Date { static now() { return navigationClock; } },
   CustomEvent: class { constructor(type, options) { this.type=type; this.detail=options?.detail; } },
   URL,
   URLSearchParams,
   console,
-  setTimeout,
+  setTimeout(fn, ms) {
+    if (ms === 140) {
+      fn();
+      return 0;
+    }
+    return setTimeout(fn, ms);
+  },
   clearTimeout
 };
 
@@ -148,8 +170,14 @@ window.LYANN_API_CLIENT = {
 click({ explicit: fakeElement({ 'data-lyann-route': 'support' }) });
 assert(window.LYANN_ROUTER.has('support'), 'Aide LYANN must be a canonical router route');
 
+click({ selector: '#tab-lyanneurs' });
+navigationClock += 500;
+click({ selector: '#tab-annonces' });
+navigationClock += 500;
 click({ selector: '#tab-explorer' });
-assert(navigations.includes('results.html'), 'Explorer must remain routable through the canonical router');
+assert(navigations.includes('results.html?mode=lyanneurs'), 'Lyanneurs must remain routable through the canonical router');
+assert(navigations.includes('results.html?mode=annonces'), 'Annonces must remain routable through the canonical router');
+assert(navigations.includes('results.html'), 'The former Explorer route must keep opening results.html');
 
 // Verify a logged-out protected route produces a visible login action instead of a silent no-op.
 authenticated = false;

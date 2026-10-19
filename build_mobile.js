@@ -1,7 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { buildHtml } = require('./shared-html-build');
+process.env.LYANN_MOBILE_BUILD = '1';
+process.env.LYANN_NATIVE_BUILD_AT = new Date().toISOString();
+process.env.LYANN_NATIVE_BUILD_ID = process.env.LYANN_NATIVE_BUILD_ID
+  || ('ios-' + Date.now().toString(36) + '-' + crypto.randomBytes(3).toString('hex'));
+const { buildHtml, injectIsolatedSupabaseConfig, resolveInjectedBackendOrigin } = require('./shared-html-build');
 
 const srcDir = __dirname;
 const sharedDist = path.join(__dirname, 'www');
@@ -9,7 +13,23 @@ const iosPublic = path.join(__dirname, 'ios', 'App', 'App', 'public');
 const androidPublic = path.join(__dirname, 'android', 'app', 'src', 'main', 'assets', 'public');
 
 const ROOT_EXTENSIONS = new Set(['.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.webp', '.gif', '.mp4']);
-const EXCLUDED_ROOT_FILES = new Set(['shared-html-build.js']);
+// Never ship tooling, secrets-adjacent configs, harnesses or local tests into www/iOS public.
+const EXCLUDED_ROOT_FILES = new Set([
+  'shared-html-build.js',
+  'build_mobile.js',
+  'watch.js',
+  'server.js',
+  'playwright.config.js',
+  'package.json',
+  'package-lock.json',
+  'capacitor.config.json',
+  'vercel.json',
+  '.mcp.json',
+  'test_audit_parity.js',
+  'test_invitation_flow_full.js',
+  'test_load.js'
+]);
+const EXCLUDED_ROOT_PREFIXES = ['test_', 'scratch'];
 
 function resetDir(dir) {
   if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
@@ -19,7 +39,7 @@ function resetDir(dir) {
 function copyFileBuilt(sourcePath, destinationPath) {
   const ext = path.extname(sourcePath).toLowerCase();
   if (ext === '.html') {
-    const html = buildHtml(fs.readFileSync(sourcePath, 'utf8'));
+    const html = injectIsolatedSupabaseConfig(buildHtml(fs.readFileSync(sourcePath, 'utf8')));
     fs.writeFileSync(destinationPath, html, 'utf8');
   } else {
     fs.copyFileSync(sourcePath, destinationPath);
@@ -62,6 +82,8 @@ resetDir(sharedDist);
 
 const rootFiles = fs.readdirSync(srcDir)
   .filter((file) => !EXCLUDED_ROOT_FILES.has(file))
+  .filter((file) => !EXCLUDED_ROOT_PREFIXES.some((prefix) => file.startsWith(prefix)))
+  .filter((file) => !file.endsWith('.test.js'))
   .filter((file) => ROOT_EXTENSIONS.has(path.extname(file).toLowerCase()))
   .filter((file) => fs.statSync(path.join(srcDir, file)).isFile());
 
@@ -69,10 +91,19 @@ for (const file of rootFiles) {
   copyFileBuilt(path.join(srcDir, file), path.join(sharedDist, file));
 }
 
-for (const dir of ['vendor']) {
+for (const dir of ['vendor', 'assets']) {
   const source = path.join(srcDir, dir);
   if (fs.existsSync(source)) fs.cpSync(source, path.join(sharedDist, dir), { recursive: true, force: true });
 }
+
+const stamp = {
+  id: process.env.LYANN_NATIVE_BUILD_ID,
+  at: process.env.LYANN_NATIVE_BUILD_AT,
+  lock: process.env.LYANN_E2E_WRITE_PROJECT_REF || process.env.LYANN_SUPABASE_LOCK || '',
+  backend: resolveInjectedBackendOrigin()
+};
+fs.writeFileSync(path.join(sharedDist, 'lyann-native-build.json'), JSON.stringify(stamp) + '\n');
+console.log('LYANN native build stamp', stamp.id, stamp.at, 'backend=' + (stamp.backend || '(empty)'));
 
 // Capacitor consumes the exact shared artifact. No iOS/Android-specific HTML or JS mutation is allowed here.
 if (fs.existsSync(path.dirname(iosPublic))) {

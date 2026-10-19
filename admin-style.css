@@ -269,6 +269,12 @@ body.admin-body::before {
     color: var(--admin-primary-dark);
 }
 
+.admin-env-pill.is-staging {
+    background: rgba(229, 179, 69, 0.18);
+    border-color: rgba(180, 120, 20, 0.45);
+    color: #8A5A00;
+}
+
 .admin-header-right {
     display: flex;
     align-items: center;

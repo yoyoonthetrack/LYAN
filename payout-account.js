@@ -6,6 +6,7 @@
     'use strict';
 
     // Same payable rule as connectPayoutReady: ready does not depend on payouts_enabled.
+    // pending = account exists, onboarding done, transfers not yet active (verification).
     function payoutAccountState(status) {
         if (!status || status.success === false) return 'error';
         const payable = status.ready === true
@@ -13,15 +14,48 @@
             && status.onboarding_completed === true
             && status.transfers_active === true;
         if (payable) return 'active';
+        if (status.account_created === true && status.onboarding_completed === true && status.transfers_active !== true) {
+            return 'pending';
+        }
         if (status.account_created === true) return 'incomplete';
         return 'none';
     }
 
-    function payoutReturnUrls() {
+    function payoutReturnUrlsFromLocation(href) {
+        try {
+            const url = new URL(String(href || ''));
+            if (url.protocol === 'capacitor:' || url.protocol === 'ionic:') {
+                return {
+                    blocked: true,
+                    reason: 'NATIVE_RETURN_UNAVAILABLE'
+                };
+            }
+            if (url.hostname === '127.0.0.1' && String(url.port || '') === '8098') {
+                const page = url.pathname && url.pathname !== '/' ? url.pathname : '/feed.html';
+                const base = 'http://127.0.0.1:8098' + page;
+                return {
+                    return_url: base + '?action=finances&connect=return',
+                    refresh_url: base + '?action=finances&connect=refresh'
+                };
+            }
+            if (url.hostname === 'staging.lyann.app') {
+                const page = url.pathname && url.pathname !== '/' ? url.pathname : '/';
+                const base = 'https://staging.lyann.app' + page;
+                return {
+                    return_url: base + '?action=finances&connect=return',
+                    refresh_url: base + '?action=finances&connect=refresh'
+                };
+            }
+        } catch (_) {}
         return {
             return_url: 'https://lyann.app/?action=finances&connect=return',
             refresh_url: 'https://lyann.app/?action=finances&connect=refresh'
         };
+    }
+
+    function payoutReturnUrls() {
+        const href = typeof window !== 'undefined' && window.location ? window.location.href : '';
+        return payoutReturnUrlsFromLocation(href);
     }
 
     function readConnectParam(search) {
@@ -39,6 +73,7 @@
         loading: { title: 'Compte de versement', subtitle: 'Vérification…', action: '', ready: false, intent: 'onboarding' },
         none: { title: 'Compte de versement', subtitle: 'À configurer', action: 'Configurer', ready: false, intent: 'onboarding' },
         incomplete: { title: 'Compte de versement', subtitle: 'Configuration à terminer', action: 'Continuer', ready: false, intent: 'onboarding' },
+        pending: { title: 'Compte de versement', subtitle: 'Vérification en cours', action: '', ready: false, intent: '' },
         active: {
             title: 'Compte de versement actif',
             subtitle: 'Vos informations de versement sont configurées.',
@@ -46,7 +81,7 @@
             ready: true,
             intent: 'update'
         },
-        error: { title: 'Compte de versement', subtitle: 'Impossible de vérifier votre compte de versement.', action: 'Réessayer', ready: false, intent: 'onboarding' }
+        error: { title: 'Compte de versement', subtitle: 'Impossible de vérifier votre compte de versement. Vérifiez votre connexion, puis réessayez.', action: 'Réessayer', ready: false, intent: 'onboarding' }
     };
 
     function payoutLinkPath(intent) {
@@ -76,7 +111,63 @@
         return { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
     }
 
+    const SIM_KEY = 'lyann_connect_sim';
+
+    function connectSimulationBody(state) {
+        const base = {
+            success: true,
+            ready: false,
+            account_created: false,
+            onboarding_completed: false,
+            transfers_active: false,
+            payouts_enabled: false,
+            charges_enabled: false
+        };
+        if (state === 'none') return base;
+        if (state === 'incomplete') return Object.assign({}, base, { account_created: true });
+        if (state === 'pending') return Object.assign({}, base, { account_created: true, onboarding_completed: true });
+        if (state === 'active') {
+            return Object.assign({}, base, {
+                ready: true,
+                account_created: true,
+                onboarding_completed: true,
+                transfers_active: true
+            });
+        }
+        if (state === 'error') return { success: false };
+        return null;
+    }
+
+    function readConnectSimulation() {
+        try {
+            const raw = sessionStorage.getItem(SIM_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            return parsed && parsed.state ? String(parsed.state) : '';
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function simulateConnect(state) {
+        try {
+            if (!state) sessionStorage.removeItem(SIM_KEY);
+            else sessionStorage.setItem(SIM_KEY, JSON.stringify({ state: String(state) }));
+        } catch (_) {}
+        return readConnectSimulation();
+    }
+
     async function connectRequest(path, options) {
+        const method = String((options && options.method) || 'GET').toUpperCase();
+        const sim = readConnectSimulation();
+        if (sim && method === 'GET' && /\/v1\/payments\/connect\/(status|peer-status)/.test(String(path || ''))) {
+            if (sim === 'unknown') {
+                const error = new Error('unknown');
+                error.code = 'unknown';
+                throw error;
+            }
+            const body = connectSimulationBody(sim);
+            if (body) return body;
+        }
         const headers = await authHeader();
         if (!headers) {
             const error = new Error('auth');
@@ -84,7 +175,15 @@
             throw error;
         }
         const fetcher = window.lyannBackendFetch || window.fetch.bind(window);
-        const response = await fetcher(path, Object.assign({ headers }, options || {}));
+        let response;
+        try {
+            response = await fetcher(path, Object.assign({ headers }, options || {}));
+        } catch (networkError) {
+            const error = new Error('network');
+            error.code = 0;
+            error.cause = networkError;
+            throw error;
+        }
         let body = {};
         try { body = await response.json(); } catch (_) {}
         if (response.status === 401) {
@@ -105,8 +204,48 @@
             || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
     }
 
-    function openStripe(url) {
+    const RETURN_KEY = 'lyann_payout_return';
+
+    function rememberPayoutReturn(hint) {
+        const payload = hint && typeof hint === 'object' ? {
+            requestId: hint.requestId || null,
+            invitationId: hint.invitationId || null,
+            contactId: hint.contactId || null,
+            conversationId: hint.conversationId || null,
+            contactName: hint.contactName || '',
+            at: Date.now()
+        } : null;
+        try {
+            if (payload && (payload.requestId || payload.invitationId || payload.contactId)) {
+                sessionStorage.setItem(RETURN_KEY, JSON.stringify(payload));
+            }
+            sessionStorage.setItem('lyann_payout_setup', '1');
+        } catch (_) {}
+        return payload;
+    }
+
+    function readPayoutReturn() {
+        try {
+            const raw = sessionStorage.getItem(RETURN_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function clearPayoutReturn() {
+        try { sessionStorage.removeItem(RETURN_KEY); } catch (_) {}
+    }
+
+    async function openStripe(url) {
         try { sessionStorage.setItem('lyann_payout_setup', '1'); } catch (_) {}
+        const app = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+        if (isNative() && app && typeof app.openUrl === 'function') {
+            try {
+                await app.openUrl({ url: url });
+                return;
+            } catch (_) {}
+        }
         if (isNative()) {
             const opened = window.open(url, '_blank');
             if (!opened) window.location.assign(url);
@@ -115,15 +254,50 @@
         window.location.assign(url);
     }
 
+    async function fetchReadiness(userId) {
+        const sim = readConnectSimulation();
+        if (sim === 'unknown') return 'unknown';
+        if (sim === 'error') return 'error';
+        if (sim) return payoutAccountState(connectSimulationBody(sim));
+        const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+        const session = supabase ? await supabase.auth.getSession() : null;
+        const mine = session && session.data && session.data.session && session.data.session.user && session.data.session.user.id;
+        const path = mine && String(userId) === String(mine)
+            ? '/v1/payments/connect/status'
+            : '/v1/payments/connect/peer-status?user_id=' + encodeURIComponent(String(userId || ''));
+        const body = await connectRequest(path);
+        return payoutAccountState(body);
+    }
+
+    async function beginPayoutSetup(hint) {
+        rememberPayoutReturn(hint);
+        try {
+            await startOnboarding();
+        } catch (error) {
+            if (error && error.code === 401 && typeof window.requireAuthSession === 'function') {
+                window.requireAuthSession('Compte de versement');
+            }
+            throw error;
+        }
+    }
+
     async function startOnboarding() {
+        const urls = payoutReturnUrls();
+        if (urls.blocked) {
+            const subtitle = document.getElementById('payoutAccountState');
+            if (subtitle) subtitle.textContent = 'Le retour depuis Stripe n’est pas encore relié à cette installation. Le compte n’est pas activé.';
+            const error = new Error('native-return');
+            error.code = 'NATIVE_RETURN_UNAVAILABLE';
+            throw error;
+        }
         const status = await connectRequest('/v1/payments/connect/status');
         if (!status.account_created) await connectRequest('/v1/payments/connect/account', { method: 'POST', body: '{}' });
         const link = await connectRequest('/v1/payments/connect/onboarding-link', {
             method: 'POST',
-            body: JSON.stringify(payoutReturnUrls())
+            body: JSON.stringify({ return_url: urls.return_url, refresh_url: urls.refresh_url })
         });
         if (!link.url) throw new Error('api');
-        openStripe(link.url);
+        await openStripe(link.url);
     }
 
     async function startAccountUpdate() {
@@ -132,7 +306,7 @@
             body: '{}'
         });
         if (!link.url) throw new Error('api');
-        openStripe(link.url);
+        await openStripe(link.url);
     }
 
     function paint(view) {
@@ -191,6 +365,30 @@
         return refresh();
     }
 
+    function stagingLock() {
+        return typeof window !== 'undefined' ? String(window.LYANN_SUPABASE_LOCK || '') : '';
+    }
+
+    function handleExternalReturn(rawUrl) {
+        let url;
+        try {
+            const normalized = String(rawUrl || '').replace(/^app\.lyann\.dom:\/\//i, 'https://app.lyann.dom/');
+            url = new URL(normalized);
+        } catch (_) {
+            return Promise.resolve({ ok: false, code: 'BAD_URL' });
+        }
+        const host = String(url.hostname || '').toLowerCase();
+        const lock = stagingLock();
+        if ((host === 'lyann.app' || host === 'www.lyann.app') && lock && lock !== 'gzispjfoywklpqatjyop') {
+            return Promise.resolve({ ok: false, code: 'PRODUCTION_URL_IGNORED' });
+        }
+        const connect = url.searchParams.get('connect');
+        if (connect !== 'return' && connect !== 'refresh') {
+            return Promise.resolve({ ok: false, code: 'IGNORED' });
+        }
+        return refresh().then((state) => ({ ok: true, code: 'CONNECT_REFRESHED', state: state || 'error' }));
+    }
+
     function consumeReturn() {
         const mode = readConnectParam(window.location.search);
         if (!mode) return;
@@ -203,20 +401,37 @@
             return null;
         };
         Promise.resolve(open()).then(async () => {
+            const hint = readPayoutReturn();
             const state = await refresh();
+            try {
+                window.dispatchEvent(new CustomEvent('lyann:payout-readiness', { detail: { state: state || 'error', hint: hint || null } }));
+                window.dispatchEvent(new CustomEvent('lyann:payout-return', { detail: { state: state || 'error', hint: hint || null } }));
+            } catch (_) {}
+            if (hint && (hint.requestId || hint.invitationId)) return;
             if (mode === 'refresh' && state !== 'active' && state !== 'error') {
                 try { await startOnboarding(); } catch (_) { paint(renderPayoutAccount('error')); }
             }
         });
     }
 
+    async function resumeSetup() {
+        let pending = '';
+        try { pending = sessionStorage.getItem('lyann_payout_setup') || ''; } catch (_) {}
+        if (pending !== '1') return null;
+        if (typeof window.openAccountModalSubView === 'function') {
+            try { await window.openAccountModalSubView('finances'); } catch (_) {}
+        }
+        const hint = readPayoutReturn();
+        const state = await refresh();
+        try {
+            window.dispatchEvent(new CustomEvent('lyann:payout-readiness', { detail: { state: state || 'error', hint: hint || null } }));
+            window.dispatchEvent(new CustomEvent('lyann:payout-return', { detail: { state: state || 'error', hint: hint || null } }));
+        } catch (_) {}
+        return state;
+    }
+
     function watchAppReturn() {
-        const resume = () => {
-            let pending = '';
-            try { pending = sessionStorage.getItem('lyann_payout_setup') || ''; } catch (_) {}
-            if (pending !== '1') return;
-            if (document.getElementById('payoutAccountState')) refresh();
-        };
+        const resume = () => { resumeSetup(); };
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) resume();
         });
@@ -232,10 +447,13 @@
         const boot = () => {
             watchAppReturn();
             consumeReturn();
+            if (!readConnectParam(window.location.search)) {
+                Promise.resolve(resumeSetup()).catch(() => {});
+            }
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
         else boot();
     }
 
-    return { payoutAccountState, payoutReturnUrls, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh };
+    return { payoutAccountState, payoutReturnUrls, payoutReturnUrlsFromLocation, payoutLinkPath, readConnectParam, clearConnectParam, renderPayoutAccount, mount, refresh, fetchReadiness, beginPayoutSetup, resumeSetup, rememberPayoutReturn, readPayoutReturn, clearPayoutReturn, simulateConnect, connectSimulationBody, readConnectSimulation, handleExternalReturn };
 });

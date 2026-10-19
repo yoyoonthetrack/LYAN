@@ -1,0 +1,4 @@
+-- Rollback note for 54_deal_notification_skip.sql (Lyann-test only).
+-- Restore lyann_notify_on_message() and lyann_enqueue_push_from_notification()
+-- from 49_push_delivery_queue.sql. Do not apply on Supabase Production.
+-- This file does not execute statements on its own.

@@ -210,6 +210,7 @@ async function injectMobileInterface() {
     const path = window.location.pathname;
     const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
     const isExplorer = path.includes('results.html');
+    const explorerMode = new URLSearchParams(window.location.search).get('mode') === 'annonces' ? 'annonces' : 'lyanneurs';
     const isBokantaj = path.includes('feed.html');
     const isLoggedIn = window.LYANN_AUTH_STATE ? window.LYANN_AUTH_STATE.isAuthenticated() : document.body.classList.contains('user-is-logged-in');
 
@@ -239,31 +240,28 @@ async function injectMobileInterface() {
         document.body.classList.add('has-member-nav');
         const bottomNav = document.createElement('div');
         bottomNav.className = 'mobile-bottom-nav';
+        bottomNav.setAttribute('role', 'tablist');
+        bottomNav.setAttribute('aria-label', 'Navigation principale');
 
+        const memberTab = (tag, id, href, icon, label, active, extra = '') => {
+            const hrefAttr = href ? ` href="${href}"` : '';
+            const current = active ? ' aria-current="page"' : '';
+            return `<${tag}${hrefAttr} class="nav-tab${active ? ' active' : ''}" id="${id}" role="tab" aria-selected="${active ? 'true' : 'false'}" aria-label="${label}"${current}${extra}>
+                <i class="ph ${icon}" aria-hidden="true"></i>
+                <span aria-hidden="true">${label}</span>
+            </${tag}>`;
+        };
+        // ph-list is in the bundled Phosphor font. ph-list-bullets is not.
         bottomNav.innerHTML = `
-            <a href="feed.html" class="nav-tab ${isBokantaj ? 'active' : ''}" id="tab-bokantaj">
-                <i class="ph ph-broadcast"></i>
-                <span>Bokantaj</span>
-            </a>
-            <a href="results.html" class="nav-tab ${isExplorer ? 'active' : ''}" id="tab-explorer">
-                <i class="ph ph-magnifying-glass"></i>
-                <span>Explorer</span>
-            </a>
-            <div class="nav-tab nav-tab-central-item" id="tab-create-item">
-                <button type="button" class="btn-central-action" id="tab-create" aria-label="Créer">
-                    <i class="ph ph-plus"></i>
-                </button>
-                <span class="central-tab-label">Créer</span>
-            </div>
-            <button type="button" class="nav-tab" id="tab-messages" aria-label="Messages" style="position: relative;">
-                <i class="ph ph-chat-circle-dots"></i>
-                <span class="msg-badge-count" style="position: absolute; top: 4px; right: 18%; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 50%; align-items: center; justify-content: center; display: none;"></span>
-                <span>Messages</span>
+            ${memberTab('a', 'tab-bokantaj', 'feed.html', 'ph-broadcast', 'Bokantaj', isBokantaj)}
+            ${memberTab('a', 'tab-lyanneurs', 'results.html?mode=lyanneurs', 'ph-users-three', 'Lyanneurs', isExplorer && explorerMode === 'lyanneurs')}
+            ${memberTab('a', 'tab-annonces', 'results.html?mode=annonces', 'ph-list', 'Annonces', isExplorer && explorerMode === 'annonces')}
+            <button type="button" class="nav-tab" id="tab-messages" role="tab" aria-selected="false" aria-label="Messages" style="position: relative;">
+                <i class="ph ph-chat-circle-dots" aria-hidden="true"></i>
+                <span class="msg-badge-count" aria-hidden="true" style="position: absolute; top: 4px; right: 18%; background: #C95140; color: white; font-size: 0.68rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 50%; align-items: center; justify-content: center; display: none;"></span>
+                <span aria-hidden="true">Messages</span>
             </button>
-            <button type="button" class="nav-tab" id="tab-profile" aria-label="Profil">
-                <i class="ph ph-user"></i>
-                <span>Profil</span>
-            </button>
+            ${memberTab('button', 'tab-profile', '', 'ph-user', 'Profil', false, ' type="button"')}
         `;
         document.body.appendChild(bottomNav);
         if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.bottomNavCreated = true;
@@ -273,127 +271,19 @@ async function injectMobileInterface() {
         bottomNav.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 try { if (typeof triggerHaptic === 'function') triggerHaptic('light'); } catch(e) {}
+                // Optimistic tab highlight only — Messages opens a modal (no page leave).
+                // Hard navigations use #lyann-page-veil from the router, not body opacity.
+                try {
+                    if (tab.id === 'tab-messages') return;
+                    bottomNav.querySelectorAll('.nav-tab').forEach((item) => {
+                        item.classList.toggle('active', item === tab);
+                        item.setAttribute('aria-selected', item === tab ? 'true' : 'false');
+                    });
+                } catch (_) {}
             });
         });
 
-        // Bokantaj, Explorer, Messages and Profil are owned by app-router.js.
-    }
-
-    // 2. Central Action Bottom Sheet (3 grandes actions)
-    if (!document.getElementById('centralActionSheet')) {
-        const backdrop = document.createElement('div');
-        backdrop.className = 'sheet-backdrop';
-        backdrop.id = 'sheetBackdrop';
-        document.body.appendChild(backdrop);
-
-        const sheet = document.createElement('div');
-        sheet.className = 'mobile-bottom-sheet';
-        sheet.id = 'centralActionSheet';
-        sheet.innerHTML = `
-            <div class="sheet-handle"></div>
-            <h3 class="sheet-title">Que souhaitez-vous faire ?</h3>
-            <div class="sheet-options-grid">
-                <button type="button" class="sheet-option-btn" id="btnSheetNeedHelp">
-                    <span class="sheet-option-icon"><i class="ph ph-magnifying-glass"></i></span>
-                    <div class="sheet-option-info">
-                        <h4>Publier un besoin</h4>
-                        <p>Publiez ce dont vous avez besoin.</p>
-                    </div>
-                </button>
-                <button type="button" class="sheet-option-btn" id="btnSheetOfferHelp">
-                    <span class="sheet-option-icon"><i class="ph ph-hand-heart"></i></span>
-                    <div class="sheet-option-info">
-                        <h4>Proposer quelque chose</h4>
-                        <p>Partagez un service, une compétence ou une disponibilité.</p>
-                    </div>
-                </button>
-                <button type="button" class="sheet-option-btn" id="btnSheetBokantaj">
-                    <span class="sheet-option-icon"><i class="ph ph-broadcast"></i></span>
-                    <div class="sheet-option-info">
-                        <h4>Publier sur Bokantaj</h4>
-                        <p>Partagez quelque chose avec la communauté.</p>
-                    </div>
-                </button>
-            </div>
-            <button type="button" class="btn btn-outline" id="btnCloseSheet" style="margin-top: 15px; width: 100%; justify-content: center;">Fermer</button>
-        `;
-        document.body.appendChild(sheet);
-
-        const tabCreate = document.getElementById('tab-create');
-        if (tabCreate) {
-            tabCreate.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const loggedIn = document.body.classList.contains('user-is-logged-in')
-                    || window.LYANN_AUTH_STATE?.isAuthenticated?.() === true;
-                if (!loggedIn) {
-                    if (typeof window.openLoginModal === 'function') window.openLoginModal();
-                    else document.querySelector('.open-login-trigger')?.click();
-                    return;
-                }
-                backdrop.classList.add('active');
-                sheet.classList.add('active');
-            });
-        }
-
-        const closeSheet = () => {
-            backdrop.classList.remove('active');
-            sheet.classList.remove('active');
-        };
-
-        backdrop.addEventListener('click', closeSheet);
-        document.getElementById('btnCloseSheet')?.addEventListener('click', closeSheet);
-
-        // Action 1: Besoin d'un coup de main → ouvre le Wizard IA
-        document.getElementById('btnSheetNeedHelp')?.addEventListener('click', () => {
-            closeSheet();
-            triggerHaptic('light');
-            if (typeof window.openLyannWizard === 'function') {
-                window.openLyannWizard();
-            } else {
-                const wizardModal = document.getElementById('modal-request-help');
-                if (wizardModal) {
-                    wizardModal.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    window.location.href = 'feed.html?openWizard=true';
-                }
-            }
-        });
-
-        // Action 2: Proposer
-        document.getElementById('btnSheetOfferHelp')?.addEventListener('click', () => {
-            closeSheet();
-            triggerHaptic('light');
-            if (document.body.classList.contains('user-is-logged-in')) {
-                const addServiceBtn = document.querySelector('.btn-add-service') || document.getElementById('btnAddService');
-                if (addServiceBtn) {
-                    addServiceBtn.click();
-                } else if (typeof window.openAddServiceModal === 'function') {
-                    window.openAddServiceModal();
-                } else {
-                    window.location.href = 'index.html?action=add-service';
-                }
-            } else {
-                window.lyannAlert("🔑 Veuillez vous connecter pour proposer vos services.");
-                document.querySelector('.open-login-trigger')?.click();
-            }
-        });
-
-        // Action 3: Bokantaj
-        document.getElementById('btnSheetBokantaj')?.addEventListener('click', () => {
-            closeSheet();
-            triggerHaptic('light');
-            if (window.location.pathname.includes('feed.html')) {
-                const textInput = document.getElementById('flashContentInput');
-                if (textInput) {
-                    textInput.focus();
-                    textInput.scrollIntoView({ behavior: 'smooth' });
-                }
-            } else {
-                window.location.href = 'feed.html?action=new-post';
-            }
-        });
+        // Bokantaj, Lyanneurs, Annonces, Messages and Profil are owned by app-router.js.
     }
 }
 window.injectMobileInterface = injectMobileInterface;
@@ -601,6 +491,8 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
         }
     });
     
+    navbar.classList.toggle('native-page-header', !isPrimaryTab && viewType !== 'ACCUEIL_GUEST');
+
     // STABILIZATION V1: Set sentinel marker after successful header injection
     navbar.setAttribute('data-native-header-active', viewType);
     navbar.style.display = '';

@@ -37,6 +37,16 @@
     document.body.style.overflow = '';
   }
 
+  function ensurePageVeil() {
+    let veil = document.getElementById('lyann-page-veil');
+    if (veil) return veil;
+    veil = document.createElement('div');
+    veil.id = 'lyann-page-veil';
+    veil.setAttribute('aria-hidden', 'true');
+    (document.body || document.documentElement).appendChild(veil);
+    return veil;
+  }
+
   function hardNavigate(target) {
     if (!target) return false;
     const now = Date.now();
@@ -46,7 +56,13 @@
     document.querySelectorAll('video').forEach((video) => {
       try { video.pause(); } catch (_) {}
     });
-    window.location.assign(target);
+    const goNow = () => { window.location.assign(target); };
+    try {
+      // Overlay fade — do not touch body opacity/transform (breaks fixed chat).
+      const veil = ensurePageVeil();
+      veil.classList.add('is-on');
+    } catch (_) {}
+    window.setTimeout(goNow, 140);
     return true;
   }
 
@@ -61,6 +77,35 @@
     if (typeof window.closeLyannHamburgerDrawer === 'function') {
       window.closeLyannHamburgerDrawer();
     }
+  }
+
+  // Menu sits at z-index ~2e9; chat shell also hides Mon Compte while open.
+  // Always clear both before opening account / publish / help surfaces.
+  function dismissMessagingChrome() {
+    try {
+      if (typeof window.LYANN_MESSAGING?.close === 'function') {
+        window.LYANN_MESSAGING.close();
+      }
+    } catch (_) { /* ignore */ }
+    document.body?.classList?.remove(
+      'lyann-messaging-open',
+      'in-chat-active',
+      'chat-list-open',
+      'chat-conversation-open',
+      'lyann-messaging-child-open',
+      'lyann-messaging-transition'
+    );
+    const chat = document.getElementById('chatModal');
+    if (chat) {
+      chat.classList.remove('active', 'lyann-surface-active');
+      chat.style.setProperty('display', 'none', 'important');
+      chat.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function prepareForegroundSurface() {
+    closeDrawer();
+    dismissMessagingChrome();
   }
 
   function openLoginPrompt() {
@@ -90,7 +135,7 @@
   // Product policy: reading is public; mutations and personal surfaces require a session.
   const interactionPolicy = Object.freeze({
     home: 'public', explorer: 'public', bokantaj: 'public', requestDetail: 'public',
-    publicProfile: 'public', search: 'public', filters: 'public', pricing: 'public', help: 'public', about: 'public',
+    publicProfile: 'public', search: 'public', filters: 'public', pricing: 'public', help: 'public', about: 'public', legal: 'public',
     favorite: 'context', messages: 'continue', support: 'continue', requestHelp: 'context', requestAuthor: 'context', publish: 'continue',
     comment: 'context', reaction: 'context', communityPublish: 'context', proposal: 'context',
     missionAction: 'context', profile: 'continue', account: 'continue', activity: 'continue',
@@ -195,9 +240,7 @@
   }
 
   function openAccountSection(section = 'account') {
-    const nativeMenu = document.body?.classList.contains('is-native-app')
-      && document.getElementById('mobileHamburgerDrawerOverlay')?.classList.contains('active');
-    if (!nativeMenu) closeDrawer();
+    prepareForegroundSurface();
 
     if (knownLoggedOut()) return openLoginPrompt();
 
@@ -238,6 +281,14 @@
     if (!handler) {
       console.warn('[ROUTER] unknown route', name);
       return false;
+    }
+    // Capture-phase routing stops drawer click handlers — always close here.
+    closeDrawer();
+    // Account / publish / help must not open under the menu or behind chat.
+    if (!['messages', 'support'].includes(name)) {
+      if (['account', 'activity', 'favorites', 'finances', 'settings', 'profile', 'publish', 'help', 'about', 'pricing', 'legal'].includes(name)) {
+        dismissMessagingChrome();
+      }
     }
     try {
       const action = name === 'messages' && payload.requestId ? 'requestHelp' : name;
@@ -283,14 +334,18 @@
   };
 
   register('home', () => hardNavigate('index.html'));
-  register('explorer', (payload = {}) => {
+  function openExplorer(mode, payload = {}) {
     const params = new URLSearchParams();
+    if (mode) params.set('mode', mode);
+    else if (payload.mode) params.set('mode', payload.mode);
     if (payload.query) params.set('query', payload.query);
-    if (payload.mode) params.set('mode', payload.mode);
     if (payload.category) params.set('category', payload.category);
     const suffix = params.toString();
     return hardNavigate(`results.html${suffix ? `?${suffix}` : ''}`);
-  });
+  }
+  register('explorer', (payload = {}) => openExplorer(payload.mode || '', payload));
+  register('lyanneurs', (payload = {}) => openExplorer('lyanneurs', payload));
+  register('annonces', (payload = {}) => openExplorer('annonces', payload));
   register('bokantaj', () => hardNavigate('feed.html'));
   register('messages', (payload = {}) => {
     if (knownLoggedOut()) return openLoginPrompt();
@@ -298,7 +353,6 @@
     const messaging = window.LYANN_MESSAGING;
     if (messaging) {
       if (contactId) return messaging.openConversation({ ...payload, contactId });
-      if (typeof messaging.openInbox === 'function') return messaging.openInbox();
       return messaging.openList();
     }
     const params = new URLSearchParams({ action: 'messages' });
@@ -307,6 +361,7 @@
     return hardNavigate(`feed.html?${params.toString()}`);
   });
   register('publish', (payload = {}) => {
+    prepareForegroundSurface();
     if (typeof window.openLyannWizard === 'function') return window.openLyannWizard(payload.query);
     if (typeof window.openNeedWizard === 'function') return window.openNeedWizard();
     return hardNavigate('index.html?action=publish');
@@ -320,7 +375,7 @@
     return false;
   });
   register('profile', () => {
-    closeDrawer();
+    prepareForegroundSurface();
     if (knownLoggedOut()) return openLoginPrompt();
     if (typeof window.openPublicProfileModal === 'function') {
       window.openPublicProfileModal();
@@ -335,7 +390,14 @@
   register('settings', () => openAccountSection('settings'));
   register('pricing', () => hardNavigate('pricing.html'));
   register('payment', () => hardNavigate('payment-portal.html'));
-  register('help', () => hardNavigate('how-it-works.html'));
+  register('help', () => {
+    prepareForegroundSurface();
+    return hardNavigate('how-it-works.html');
+  });
+  register('legal', () => {
+    prepareForegroundSurface();
+    return hardNavigate('legal.html');
+  });
   register('support', async () => {
     if (knownLoggedOut()) return openLoginPrompt();
     const client = window.LYANN_API_CLIENT || window.apiClient;
@@ -358,15 +420,25 @@
     return hardNavigate(`feed.html?${params.toString()}`);
   });
   register('about', () => hardNavigate('about.html'));
+  register('member', (payload = {}) => {
+    const memberId = payload.memberId || payload.id || payload.entityId;
+    if (memberId && typeof window.openPublicMemberProfile === 'function') {
+      window.openPublicMemberProfile(memberId);
+      return true;
+    }
+    return false;
+  });
 
   const selectorRouteMap = [
     ['#tab-bokantaj', 'bokantaj'],
+    ['#tab-lyanneurs', 'lyanneurs'],
+    ['#tab-annonces', 'annonces'],
     ['#tab-explorer', 'explorer'],
     ['#tab-profile', 'profile'],
     ['#tab-messages, [data-lyann-messages], .open-chat-trigger', 'messages'],
     ['#btnHeaderSupport, [data-lyann-support]', 'support'],
     ['.nav-msg-btn:not(#btnHeaderNotif):not(#btnHeaderSupport), .btn-open-chat-direct, .btn-contact-member, .btn-help-lyann, a[href*="action=messages"], a[href*="action=openchat"]', 'messages'],
-    ['#tab-create, [data-lyann-publish], .open-request-help-trigger, .btn-trigger-wizard-shortcut, .explorer-publish, #btnLaunchNeedWizard', 'publish'],
+    ['[data-lyann-publish], .open-request-help-trigger, .btn-trigger-wizard-shortcut, .explorer-publish, #btnLaunchNeedWizard', 'publish'],
     ['.open-account-modal-trigger, .nav-profile-btn', 'account'],
     ['#btnDashboardAvatar', 'profile']
   ];
@@ -477,6 +549,9 @@
     if (action === 'messages' || action === 'openchat') {
       const contactId = params.get('contact') || params.get('member') || params.get('chat');
       go('messages', { contactId, name: params.get('name') || undefined });
+    } else if (action === 'member') {
+      const memberId = params.get('id') || params.get('profile') || params.get('user');
+      if (memberId) go('member', { memberId });
     } else if (action === 'publish') {
       go('publish');
     } else if (['account', 'activity', 'favorites', 'finances', 'settings', 'profile', 'support'].includes(action)) {

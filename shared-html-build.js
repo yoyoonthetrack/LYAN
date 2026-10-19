@@ -1,16 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
 
 const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260922w" defer></script>';
 const SHARED_RUNTIME_TAGS = [
   '<script src="sentry-init.js?v=20260916-5"></script>',
-  '<script src="surface-manager.js?v=20260922s"></script>',
+  '<script src="surface-manager.js?v=20261015j"></script>',
   '<script src="app-router.js?v=20260916-5"></script>',
   '<script src="safety-repository.js?v=20260916-5"></script>',
   '<script src="legacy-compat.js?v=20260916-5"></script>',
   '<script src="pull-to-refresh.js?v=20261007a"></script>',
-  '<script src="payout-account.js?v=20261007c"></script>'
+  '<script src="payout-account.js?v=20261015j"></script>',
+  '<script src="finance-policy-ui.js"></script>'
 ];
 const SHARED_RUNTIME_ANCHORS = [
   'sentry-init.js',
@@ -55,8 +57,18 @@ function isAuthCallbackPage(html) {
   return String(html || '').includes('data-lyann-auth-callback');
 }
 
+function injectRuntimeConfigScript(html) {
+  let out = String(html || '');
+  if (out.includes('lyann-runtime-config.js') || !out.includes('api-client.js')) return out;
+  const tag = '    <script src="lyann-runtime-config.js"></script>\n';
+  const apiAt = out.indexOf('api-client.js');
+  const scriptAt = out.lastIndexOf('<script', apiAt);
+  if (scriptAt >= 0) return `${out.slice(0, scriptAt)}${tag}${out.slice(scriptAt)}`;
+  return out;
+}
+
 function injectSharedRuntime(html) {
-  const out = String(html || '');
+  const out = injectRuntimeConfigScript(String(html || ''));
   if (isAuthCallbackPage(out)) return out;
   const missingTags = SHARED_RUNTIME_TAGS.filter((tag) => {
     const match = tag.match(/src="([^"]+)"/);
@@ -101,6 +113,12 @@ function injectSharedStylesheet(html) {
   if (isAuthCallbackPage(out)) return out;
   // Ignore admin pages which use admin-style.css
   if (out.includes('admin-style.css')) return out;
+  if (out.includes('style.css') && !out.includes('finance-desk.css')) {
+    out = out.replace(
+      /(<link rel="stylesheet" href="style\.css[^"]*">)/,
+      '$1\n    <link rel="stylesheet" href="finance-desk.css">'
+    );
+  }
   if (!out.includes('style.css')) {
     const stylesheetTag = '    <link rel="stylesheet" href="style.css?v=20261007">';
     return out.includes('</head>')
@@ -132,7 +150,7 @@ const BOOT_SPLASH_MARKUP = `<div id="lyannBootSplash" class="lyann-boot-splash" 
     setTimeout(function(){ if(el&&el.parentNode) el.remove(); }, 380);
   }
   var shownAt=Date.now();
-  function hideWhenReady(){ setTimeout(hide, Math.max(0, 1200-(Date.now()-shownAt))); }
+  function hideWhenReady(){ setTimeout(hide, Math.max(0, 220-(Date.now()-shownAt))); }
   if(document.readyState==='complete') hideWhenReady(); else window.addEventListener('load', hideWhenReady, {once:true});
   setTimeout(hide, 4000);
 })();
@@ -154,20 +172,16 @@ function injectBootSplash(html) {
   return out;
 }
 
-let cachedAssetVersion = null;
 function assetVersion() {
-  if (cachedAssetVersion) return cachedAssetVersion;
   const fromEnv = process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || '';
   if (fromEnv) {
-    cachedAssetVersion = fromEnv.replace(/[^A-Za-z0-9]/g, '').slice(-12);
-    return cachedAssetVersion;
+    return fromEnv.replace(/[^A-Za-z0-9]/g, '').slice(-12);
   }
   const hash = crypto.createHash('sha1');
   for (const file of fs.readdirSync(__dirname).filter((f) => /\.(js|css)$/.test(f)).sort()) {
     hash.update(file).update(fs.readFileSync(path.join(__dirname, file)));
   }
-  cachedAssetVersion = hash.digest('hex').slice(0, 12);
-  return cachedAssetVersion;
+  return hash.digest('hex').slice(0, 12);
 }
 
 const QUIET_CONSOLE_SCRIPT = "(function(){try{var h=location.hostname,p=location.protocol;var prod=h==='lyann.app'||h==='www.lyann.app'||p==='capacitor:';if(!prod||/lyann_debug=1/.test(location.search)||localStorage.getItem('lyann_debug')==='1')return;var n=function(){};console.log=n;console.debug=n;console.info=n;}catch(e){}})();";
@@ -200,11 +214,74 @@ function injectDataCache(html) {
   return out;
 }
 
+function lanIpv4() {
+  try {
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets || {})) {
+      for (const net of nets[name] || []) {
+        const family = net.family === 'IPv4' || net.family === 4;
+        if (family && !net.internal && net.address && !net.address.startsWith('169.254.')) return net.address;
+      }
+    }
+  } catch (_) {}
+  return '';
+}
+
+function isLoopbackHttpOrigin(value) {
+  return /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(String(value || '').replace(/\/$/, ''));
+}
+
+function nativeBuildStamp() {
+  const id = String(process.env.LYANN_NATIVE_BUILD_ID || '').trim();
+  const at = String(process.env.LYANN_NATIVE_BUILD_AT || '').trim();
+  if (!id) return null;
+  return { id, at };
+}
+
+function resolveInjectedBackendOrigin() {
+  if (String(process.env.LYANN_RUNTIME || '').toLowerCase() === 'staging') {
+    const origin = String(process.env.LYANN_STAGING_PUBLIC_ORIGIN || '').replace(/\/$/, '');
+    return origin === 'https://staging.lyann.app' ? origin : '';
+  }
+  let backend = process.env.LYANN_E2E_BASE_URL != null
+    ? String(process.env.LYANN_E2E_BASE_URL).replace(/\/$/, '')
+    : '';
+  if (process.env.LYANN_MOBILE_BUILD !== '1') return backend;
+  if (!isLoopbackHttpOrigin(backend)) return backend;
+  const portMatch = String(backend).match(/:(\d+)$/);
+  const port = portMatch ? portMatch[1] : '8098';
+  const lan = String(process.env.LYANN_NATIVE_BACKEND_ORIGIN || '').replace(/\/$/, '') || lanIpv4();
+  if (!lan) return '';
+  if (/^https?:\/\//i.test(lan)) return isLoopbackHttpOrigin(lan) ? '' : lan;
+  return 'http://' + lan.replace(/^\[|\]$/g, '') + ':' + port;
+}
+
+function jwtRole(token) {
+  try {
+    const payload = JSON.parse(Buffer.from(String(token).split('.')[1], 'base64url').toString('utf8'));
+    return payload.role || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function jwtRef(token) {
+  try {
+    const payload = JSON.parse(Buffer.from(String(token).split('.')[1], 'base64url').toString('utf8'));
+    return payload.ref || null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function injectIsolatedSupabaseConfig(html) {
-  if (process.env.VERCEL_ENV === 'production') return html;
-  if (process.env.LYANN_E2E_ALLOW_WRITES !== '1') return html;
-  const url = String(process.env.LYANN_SUPABASE_URL || '').replace(/\/$/, '');
-  const anon = process.env.LYANN_SUPABASE_ANON_KEY || '';
+  const stagingRuntime = String(process.env.LYANN_RUNTIME || '').toLowerCase() === 'staging';
+  const previewRuntime = process.env.VERCEL_ENV === 'preview' || process.env.VERCEL_ENV === 'development';
+  if (process.env.VERCEL_ENV === 'production' && !stagingRuntime) return html;
+  if (!stagingRuntime && !previewRuntime && process.env.LYANN_E2E_ALLOW_WRITES !== '1') return html;
+  const url = String(process.env.LYANN_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '');
+  const anon = process.env.LYANN_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+  const lock = String(process.env.LYANN_E2E_WRITE_PROJECT_REF || process.env.LYANN_SUPABASE_LOCK || '');
   if (!url || !anon) return html;
   let host = '';
   try {
@@ -212,11 +289,30 @@ function injectIsolatedSupabaseConfig(html) {
   } catch (e) {
     return html;
   }
-  if (host === 'gzispjfoywklpqatjyop.supabase.co') return html;
+  if (host === 'gzispjfoywklpqatjyop.supabase.co' || host.includes('gzispjfoywklpqatjyop')) return html;
   if (!host.endsWith('.supabase.co')) return html;
+  if (lock === 'gzispjfoywklpqatjyop') return html;
+  if (jwtRole(anon) === 'service_role') {
+    throw new Error('injectIsolatedSupabaseConfig: refused service_role in browser inject');
+  }
+  if (jwtRef(anon) === 'gzispjfoywklpqatjyop') return html;
+  const projectRef = host.replace(/\.supabase\.co$/i, '');
+  const backend = resolveInjectedBackendOrigin();
   let out = String(html || '');
   if (out.includes('window.LYANN_SUPABASE_URL')) return out;
-  const tag = `    <script>window.LYANN_SUPABASE_URL=${JSON.stringify(url)};window.LYANN_SUPABASE_ANON_KEY=${JSON.stringify(anon)};</script>\n`;
+  if (!out.includes('lyann-runtime-config.js')) {
+    const runtimeTag = '    <script src="lyann-runtime-config.js"></script>\n';
+    const apiAt = out.indexOf('api-client.js');
+    if (apiAt > 0) {
+      const scriptAt = out.lastIndexOf('<script', apiAt);
+      if (scriptAt >= 0) out = `${out.slice(0, scriptAt)}${runtimeTag}${out.slice(scriptAt)}`;
+    }
+  }
+  const stamp = nativeBuildStamp();
+  const stampAssign = stamp
+    ? `window.LYANN_NATIVE_BUILD_ID=${JSON.stringify(stamp.id)};window.LYANN_NATIVE_BUILD_AT=${JSON.stringify(stamp.at)};`
+    : '';
+  const tag = `    <script>window.LYANN_SUPABASE_URL=${JSON.stringify(url)};window.LYANN_SUPABASE_ANON_KEY=${JSON.stringify(anon)};window.LYANN_SUPABASE_LOCK=${JSON.stringify(lock || projectRef)};window.LYANN_BACKEND_ORIGIN=${JSON.stringify(backend)};${stampAssign}</script>\n`;
   const apiClientAt = out.indexOf('api-client.js');
   if (apiClientAt > 0) {
     const scriptAt = out.lastIndexOf('<script', apiClientAt);
@@ -242,7 +338,10 @@ function buildHtml(html) {
 }
 
 function buildHtmlFile(sourcePath, destinationPath = sourcePath) {
-  const html = buildHtml(fs.readFileSync(sourcePath, 'utf8'));
+  // Preview/isolated builds inject Staging config into static HTML because
+  // Vercel serves built files before /api/render rewrites. Production
+  // (VERCEL_ENV=production) is a no-op inside injectIsolatedSupabaseConfig.
+  const html = injectIsolatedSupabaseConfig(buildHtml(fs.readFileSync(sourcePath, 'utf8')));
   fs.writeFileSync(destinationPath, html, 'utf8');
   return html;
 }
@@ -255,7 +354,10 @@ module.exports = {
   injectSharedRuntime,
   injectProductionHygiene,
   injectIsolatedSupabaseConfig,
+  injectRuntimeConfigScript,
   injectBootSplash,
+  resolveInjectedBackendOrigin,
+  nativeBuildStamp,
   buildHtml,
   buildHtmlFile
 };

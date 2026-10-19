@@ -224,7 +224,9 @@ function initializeNativeFeatures() {
         appPlugin.addListener('backButton', (data) => {
             const activeModal = document.querySelector('.modal-overlay.active');
             if (activeModal) {
-                if (activeModal.id === 'chatModal' && typeof window.closeLyannChatModal === 'function') {
+                if (activeModal.id === 'chatModal' && document.body.classList.contains('chat-conversation-open') && typeof window.backToChatContacts === 'function') {
+                    window.backToChatContacts();
+                } else if (activeModal.id === 'chatModal' && typeof window.closeLyannChatModal === 'function') {
                     window.closeLyannChatModal();
                 } else {
                     activeModal.classList.remove('active');
@@ -249,34 +251,242 @@ function initializeNativeFeatures() {
 
 async function setupNativePushNotifications() {
     const push = getNativePlugin('PushNotifications');
-    if (push) {
-        try {
-            let perm = await push.checkPermissions();
-            if (perm.receive !== 'granted') {
-                perm = await push.requestPermissions();
+    if (!push) return;
+    window.LYANN_PUSH = {
+        deactivate: deactivatePushDevice,
+        sync: function () { return registerPushDevice(latestPushToken); },
+        openPending: openPendingPushNotification
+    };
+    try {
+        let perm = await push.checkPermissions();
+        if (perm.receive === 'denied') return;
+        if (perm.receive !== 'granted') perm = await push.requestPermissions();
+        if (perm.receive !== 'granted') return;
+        await push.register();
+        push.addListener('registration', (event) => {
+            latestPushToken = (event && event.value) || '';
+            registerPushDevice(latestPushToken).catch(() => {});
+        });
+        push.addListener('registrationError', () => {
+            console.warn('Push registration failed');
+        });
+        push.addListener('pushNotificationReceived', (event) => {
+            const data = event && (event.data || (event.notification && event.notification.data));
+            if (shouldSkipForegroundPushToast(data)) return;
+            if (typeof window.showLyanToast === 'function') {
+                window.showLyanToast('Nouvelle notification LYANN', '🔔');
             }
-            if (perm.receive === 'granted') {
-                await push.register();
-                
-                push.addListener('registration', (token) => {
-                    console.log('📲 Device Token registered:', token.value);
-                });
-                
-                push.addListener('registrationError', (err) => {
-                    console.error('📲 Device Token registration error:', err);
-                });
-                
-                push.addListener('pushNotificationReceived', (notification) => {
-                    console.log('📲 Notification received:', notification);
-                    if (window.lyannAlert) {
-                        window.lyannAlert(`🔔 ${notification.title}: ${notification.body}`);
-                    }
-                });
-            }
-        } catch(e) {
-            console.warn("Push setup failed or not supported in simulator/browser:", e);
-        }
+        });
+        push.addListener('pushNotificationActionPerformed', (event) => {
+            const data = event && event.notification && (event.notification.data || event.notification);
+            openPushNotification(data);
+        });
+    } catch (error) {
+        console.warn('Push setup failed');
     }
+}
+
+let latestPushToken = '';
+
+function pushInstallationId() {
+    const key = 'lyann_install_id';
+    try {
+        const existing = localStorage.getItem(key);
+        if (existing && /^[0-9a-f-]{36}$/i.test(existing)) return existing;
+        const created = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : '';
+        if (!created) return '';
+        localStorage.setItem(key, created);
+        return created;
+    } catch (_) {
+        return '';
+    }
+}
+
+function pushEnvironment() {
+    const debug = window.Capacitor && window.Capacitor.DEBUG;
+    return debug ? 'sandbox' : 'production';
+}
+
+async function pushAuthHeader() {
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    const session = supabase ? await supabase.auth.getSession() : null;
+    const token = session && session.data && session.data.session && session.data.session.access_token;
+    if (!token) return null;
+    return { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+}
+
+async function registerPushDevice(deviceToken) {
+    const installationId = pushInstallationId();
+    if (!installationId || !deviceToken) return;
+    const headers = await pushAuthHeader();
+    if (!headers) return;
+    const fetcher = window.lyannBackendFetch || window.fetch.bind(window);
+    await fetcher('/v1/notifications/devices', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            installation_id: installationId,
+            token: deviceToken,
+            apns_environment: pushEnvironment(),
+            platform: 'ios'
+        })
+    });
+}
+
+function pushThreadAlreadyOpen(data) {
+    return shouldSkipForegroundPushToast(data);
+}
+
+function shouldSkipForegroundPushToast(data) {
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    const active = window.LYANN_ACTIVE_CHAT_CONTACT;
+    const chatOpen = document.body.classList.contains('lyann-messaging-open');
+    const context = {
+        appVisible: typeof document === 'undefined' || !document.hidden,
+        realtimeLive: window.LYANN_NOTIFICATION_LIVE === true
+    };
+    const surface = {
+        chatOpen,
+        contactId: active && (active.id || active.contactId),
+        requestId: active && active.requestId
+    };
+    if (policy && typeof policy.shouldSkipForegroundToast === 'function') {
+        return policy.shouldSkipForegroundToast(data, surface, context);
+    }
+    if (policy && typeof policy.parseNotificationTarget === 'function' && typeof policy.isTargetDisplayed === 'function') {
+        return policy.isTargetDisplayed(policy.parseNotificationTarget(data), surface);
+    }
+    const contactId = data && data.contactId;
+    return Boolean(contactId && active && String(contactId) === String(active.id) && chatOpen);
+}
+
+async function pushResourceVisible(route, targetId, sessionUserId) {
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    if (!supabase || !targetId) return false;
+    if (route === 'messages') {
+        if (sessionUserId) {
+            const mine = await supabase
+                .from('conversation_participants')
+                .select('conversation_id')
+                .eq('user_id', sessionUserId);
+            if (mine.error || !Array.isArray(mine.data) || !mine.data.length) return false;
+            const ids = mine.data.map((row) => row.conversation_id).filter(Boolean);
+            const peer = await supabase
+                .from('conversation_participants')
+                .select('conversation_id')
+                .eq('user_id', targetId)
+                .in('conversation_id', ids)
+                .limit(1);
+            return !peer.error && Array.isArray(peer.data) && peer.data.length > 0;
+        }
+        const { data, error } = await supabase
+            .from('conversation_participants')
+            .select('conversation_id')
+            .eq('user_id', targetId)
+            .limit(1);
+        return !error && Array.isArray(data) && data.length > 0;
+    }
+    if (route === 'mission') {
+        const { data, error } = await supabase
+            .from('requests')
+            .select('id')
+            .eq('id', targetId)
+            .limit(1);
+        return !error && Array.isArray(data) && data.length > 0;
+    }
+    return false;
+}
+
+async function notificationResourceAllowed(plan, sessionUserId) {
+    if (!plan || !plan.open || !plan.target) return false;
+    if (plan.target.access && plan.target.access.authorized === true) return false;
+    if (plan.route === 'finances') return true;
+    if (plan.route === 'messages') {
+        if (!plan.payload || !plan.payload.contactId) return false;
+        if (!await pushResourceVisible('messages', plan.payload.contactId, sessionUserId)) return false;
+        if (plan.payload.requestId && !await pushResourceVisible('mission', plan.payload.requestId, sessionUserId)) return false;
+        return true;
+    }
+    if (plan.route === 'mission') {
+        return pushResourceVisible('mission', plan.payload && plan.payload.requestId, sessionUserId);
+    }
+    return false;
+}
+
+async function openPushNotification(data) {
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    const sessionUser = window.CURRENT_USER_ID
+        || window.LYANN_AUTH_STATE?.getSnapshot?.().userId
+        || null;
+    if (!sessionUser) {
+        try {
+            const raw = policy && typeof policy.serializePendingPushTarget === 'function'
+                ? policy.serializePendingPushTarget(data)
+                : JSON.stringify({
+                    route: (data && data.route) || '',
+                    contactId: (data && data.contactId) || '',
+                    requestId: (data && data.requestId) || '',
+                    invitationId: (data && data.invitationId) || '',
+                    quoteId: (data && data.quoteId) || '',
+                    missionId: (data && data.missionId) || '',
+                    milestoneId: (data && data.milestoneId) || ''
+                });
+            sessionStorage.setItem('lyann_push_target', raw);
+        } catch (_) {}
+        if (typeof window.openLoginModal === 'function') window.openLoginModal();
+        return false;
+    }
+    if (!window.LYANN_ROUTER || typeof window.LYANN_ROUTER.go !== 'function') return false;
+    const plan = policy && typeof policy.planNotificationNavigation === 'function'
+        ? policy.planNotificationNavigation(data, { viewerId: sessionUser })
+        : null;
+    if (plan) {
+        if (!plan.open) return false;
+        if (!await notificationResourceAllowed(plan, sessionUser)) return false;
+        if (plan.route === 'finances') return window.LYANN_ROUTER.go('finances');
+        if (plan.route === 'messages') return window.LYANN_ROUTER.go('messages', plan.payload);
+        if (plan.route === 'mission') return window.LYANN_ROUTER.go('mission', plan.payload);
+        return false;
+    }
+    const route = data && data.route;
+    const contactId = data && data.contactId;
+    const requestId = data && data.requestId;
+    if (contactId && String(contactId) === String(sessionUser)) return false;
+    if (route === 'finances') return window.LYANN_ROUTER.go('finances');
+    if (route === 'messages') {
+        if (!await pushResourceVisible('messages', contactId, sessionUser)) return false;
+        return window.LYANN_ROUTER.go('messages', { contactId, requestId: requestId || undefined, scopeSource: 'notification' });
+    }
+    if (route === 'mission') {
+        if (!await pushResourceVisible('mission', requestId, sessionUser)) return false;
+        return window.LYANN_ROUTER.go('mission', { requestId });
+    }
+    return false;
+}
+
+function openPendingPushNotification() {
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    let pending = null;
+    try { pending = JSON.parse(sessionStorage.getItem('lyann_push_target') || 'null'); } catch (_) {}
+    if (policy && typeof policy.parsePendingPushTarget === 'function') {
+        pending = policy.parsePendingPushTarget(pending);
+    }
+    if (!pending || !pending.route) return false;
+    try { sessionStorage.removeItem('lyann_push_target'); } catch (_) {}
+    return openPushNotification(pending);
+}
+
+async function deactivatePushDevice() {
+    const installationId = pushInstallationId();
+    if (!installationId) return;
+    const headers = await pushAuthHeader();
+    if (!headers) return;
+    const fetcher = window.lyannBackendFetch || window.fetch.bind(window);
+    await fetcher('/v1/notifications/devices/deactivate', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ installation_id: installationId })
+    });
 }
 
 // === HAPTIC VIBRATION UTILITY ===

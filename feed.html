@@ -16,7 +16,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20261007">
+    <link rel="stylesheet" href="style.css?v=20261019-trace">
+    <link rel="stylesheet" href="universe-header.css?v=20261018sheet2">
     
     <!-- Phosphor Icons -->
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
@@ -64,7 +65,8 @@
             <!-- Menu Navigation Desktop -->
             <div class="desktop-nav-menu">
                 <a href="index.html" class="desktop-nav-link"><i class="ph ph-house"></i> Accueil</a>
-                <a href="results.html" class="desktop-nav-link"><i class="ph ph-magnifying-glass"></i> Explorer</a>
+                <a href="results.html?mode=lyanneurs" class="desktop-nav-link" data-explorer-nav="lyanneurs"><i class="ph ph-users-three"></i> Lyanneurs</a>
+                <a href="results.html?mode=annonces" class="desktop-nav-link" data-explorer-nav="annonces"><i class="ph ph-list"></i> Annonces</a>
                 <a href="feed.html" class="desktop-nav-link nav-link-bokantaj active"><i class="ph ph-broadcast" style="color: #E76F51;"></i> Bokantaj</a>
                 <a href="how-it-works.html" class="desktop-nav-link"><i class="ph ph-info"></i> Comment ça marche</a>
             </div>
@@ -97,15 +99,16 @@
                     <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
                 </div>
                 <nav class="mobile-nav-list">
-                    <a href="#" class="open-account-modal-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin: 6px 0;">
+                    <a href="#" class="open-account-modal-trigger" data-lyann-route="profile" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin: 6px 0;">
                         <img src="lyann-avatar-placeholder.svg" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
-                        MON PROFIL & RÉGLAGES
+                        PROFIL
                         <i class="ph ph-caret-right" style="margin-left: auto;"></i>
                     </a>
                     <a href="index.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-house" style="color: var(--primary); font-size: 1.2rem;"></i> ACCUEIL <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
-                    <a href="results.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-magnifying-glass" style="color: #E5B345; font-size: 1.2rem;"></i> RECHERCHER & EXPLORER <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="results.html?mode=lyanneurs" data-explorer-nav="lyanneurs" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> LYANNEURS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="results.html?mode=annonces" data-explorer-nav="annonces" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-list" style="color: #E5B345; font-size: 1.2rem;"></i> ANNONCES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="feed.html" class="active" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
-                    <a href="#" class="open-chat-trigger logged-in-only" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGERIE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="#" class="open-chat-trigger" data-lyann-route="messages" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="about.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
@@ -124,12 +127,10 @@
     </div>
 
     <!-- ========== HERO PAGE BOKANTAJ ========== -->
-    <section class="feed-hero-section">
-        <div class="container">
-            <div class="feed-hero-content text-center" style="max-width: 760px; margin: 0 auto;">
-                <h1 class="feed-page-title">Quoi de neuf <br class="desktop-only-br"><span class="text-gradient">près de chez vous ?</span></h1>
-                <p class="feed-page-subtitle">Partagez un Lyann, une dispo ou une idée avec le quartier.</p>
-            </div>
+    <section class="feed-hero-section lyann-universe-header" data-universe="bokantaj">
+        <div class="container lyann-universe" data-universe="bokantaj">
+            <img class="bokantaj-header-art" src="assets/universe/lyann-bokantaj-header-en-direct.webp?v=20261017pale" alt="Bokantaj, en direct. Partagez une actu, une idée ou un bon plan avec vos voisins." width="1728" height="834">
+            <img class="bokantaj-header-desktop" src="assets/universe/lyann-bokantaj-header-desktop.webp?v=20261017pale" alt="" width="3072" height="582">
         </div>
     </section>
 
@@ -146,48 +147,60 @@
                         <a href="#login" class="btn btn-primary open-login-trigger">Se connecter</a>
                     </div>
 
-                    <!-- BLOC COMPOSITEUR SOCIAL (BOKANTAJ V2) -->
-                    <div class="flash-composer-card" id="flashComposerCard" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
-                        <div class="composer-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-                            <img id="composerUserAvatar" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" onerror="window.handleAvatarError(this)" alt="Avatar" class="user-avatar-circle" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-light);">
-                            <div class="composer-title-block">
-                                <h4 style="font-size: 1rem; font-weight: 800; color: #17231C; margin: 0;">Quoi de neuf près de chez vous ?</h4>
-                                <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Partagez une idée, une réalisation ou une disponibilité</p>
-                            </div>
+                    <div class="flash-composer-card bokantaj-composer" id="flashComposerCard">
+                        <div class="bokantaj-composer-bar">
+                            <button type="button" class="bokantaj-composer-open" id="bokantajComposerOpen" aria-expanded="false" aria-controls="createFlashForm">
+                                <img id="composerUserAvatar" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" onerror="window.handleAvatarError(this)" alt="" class="user-avatar-circle">
+                                <span>Partager une idée, une info, un bon plan…</span>
+                            </button>
+                            <button type="button" class="bokantaj-composer-media" id="btnComposerPhotoQuick" aria-label="Photo">
+                                <i class="ph ph-image" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="bokantaj-composer-media" id="btnComposerVideoQuick" aria-label="Vidéo">
+                                <i class="ph ph-play-circle" aria-hidden="true"></i>
+                            </button>
                         </div>
 
-                        <form id="createFlashForm" onsubmit="event.preventDefault();">
-                            <div class="composer-textarea-wrapper" style="margin-bottom: 10px;">
-                                <textarea id="flashContentInput" placeholder="Écrivez votre Lyann…" maxlength="280" required style="width: 100%; border-radius: 14px; padding: 10px 12px; border: 1px solid #E2E8F0; font-size: 0.92rem; resize: none; box-sizing: border-box; font-family: inherit;"></textarea>
-                                <div class="composer-char-counter" style="text-align: right; font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;"><span id="flashCharCount">0</span>/280</div>
+                        <form id="createFlashForm" hidden>
+                            <div class="bokantaj-type-picks" role="radiogroup" aria-label="Type de publication">
+                                <label><input type="radio" name="bokantajPostType" value="info" checked> Infos locales</label>
+                                <label><input type="radio" name="bokantajPostType" value="alerte"> Alertes</label>
+                                <label><input type="radio" name="bokantajPostType" value="bon_plan"> Bons plans</label>
+                                <label><input type="radio" name="bokantajPostType" value="evenement"> Événements</label>
+                                <label><input type="radio" name="bokantajPostType" value="astuce"> Astuces</label>
+                                <label><input type="radio" name="bokantajPostType" value="avis"> Avis</label>
                             </div>
-
+                            <div class="composer-textarea-wrapper">
+                                <textarea id="flashContentInput" placeholder="Écrivez votre Lyann…" maxlength="280"></textarea>
+                                <div class="composer-char-counter"><span id="flashCharCount">0</span>/280</div>
+                            </div>
                             <div class="flash-media-preview-container" id="flashMediaPreviewContainer"></div>
-
-                            <div class="composer-actions-bar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-top: 8px; border-top: 1px solid #F1F5F9;">
-                                <label class="media-upload-btn" id="btnComposerPhoto" title="Joindre une photo" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 0.85rem; font-weight: 700; color: #334155; cursor: pointer; min-height: 40px;">
-                                    <i class="ph ph-image" style="color: #4A7C59; font-size: 1.1rem;"></i>
+                            <div class="composer-actions-bar">
+                                <label class="media-upload-btn" id="btnComposerPhoto" title="Joindre une photo">
+                                    <i class="ph ph-image" aria-hidden="true"></i>
                                     <span>Photo</span>
-                                    <input type="file" id="flashPhotoInput" accept="image/*" multiple style="display: none;">
+                                    <input type="file" id="flashPhotoInput" accept="image/jpeg,image/png,image/webp" multiple>
                                 </label>
-
-                                <button type="submit" class="btn lyann-cta-primary btn-publish-flash" style="padding: 8px 20px; font-weight: 800; border-radius: 20px; font-size: 0.92rem; min-height: 40px; width: auto;">Publier</button>
+                                <label class="media-upload-btn" title="Joindre une vidéo">
+                                    <i class="ph ph-play-circle" aria-hidden="true"></i>
+                                    <span>Vidéo</span>
+                                    <input type="file" id="flashVideoInput" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm">
+                                </label>
+                                <button type="submit" class="btn lyann-cta-primary btn-publish-flash">Publier</button>
                             </div>
                         </form>
                     </div>
 
-                    <!-- BARRE DE FILTRES BOKANTAJ ELEGANT (ONE CLEAR CONTROL: FILTRES) -->
-                    <div class="bokantaj-top-filter-row" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0 16px 0; padding: 12px 16px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 700; font-size: 0.92rem; color: #1E293B;"><i class="ph-bold ph-newspaper-clipping" style="color: #4A7C59; font-size: 1.1rem;"></i> Flux Bokantaj</span>
-                            <span id="activeFilterSummary" style="font-size: 0.78rem; color: #64748B; background: #F1F5F9; padding: 3px 10px; border-radius: 12px; font-weight: 600;">Tout • Partout</span>
-                        </div>
-                        <button type="button" class="btn-bokantaj-filter-sheet" id="btnOpenBokantajFilterSheet" aria-label="Filtres avancés" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(74, 124, 89, 0.1); border: 1px solid rgba(74, 124, 89, 0.25); border-radius: 20px; color: #2D5A39; font-weight: 700; font-size: 0.88rem; cursor: pointer;">
-                            <i class="ph ph-sliders-horizontal" style="font-size: 1.05rem;"></i>
+                    <div class="bokantaj-sort-bar" role="tablist" aria-label="Ordre du Bokantaj">
+                        <button type="button" class="bokantaj-sort-tab is-selected" id="bokantajSortRecent" role="tab" aria-selected="true" data-sort="recent">Publications récentes</button>
+                        <button type="button" class="bokantaj-sort-tab" id="bokantajSortNearby" role="tab" aria-selected="false" data-sort="nearby">Autour de moi</button>
+                        <button type="button" class="bokantaj-sort-filters" id="btnOpenBokantajFilterSheet" aria-label="Filtres">
+                            <i class="ph ph-sliders-horizontal" aria-hidden="true"></i>
                             <span>Filtres</span>
-                            <span id="activeFilterBadge" class="filter-count-badge" style="display: none; background: #4A7C59; color: white; width: 18px; height: 18px; border-radius: 50%; font-size: 0.72rem; align-items: center; justify-content: center;">0</span>
+                            <span id="activeFilterBadge" class="bokantaj-filter-dot" hidden></span>
                         </button>
                     </div>
+                    <p class="bokantaj-nearby-hint" id="bokantajNearbyHint" hidden>Les publications les plus proches de vous</p>
 
                     <!-- FLUX BOKANTAJ UNIFIÉ (INJECTÉ DYNAMIQUEMENT) -->
                     <div class="flash-feed-list" id="flashFeedContainer">
@@ -500,7 +513,7 @@
                                 <i class="ph ph-user-circle"></i> Compléter mon profil maintenant
                             </button>
                             <button class="btn btn-outline" id="obBtnFinalAction" style="width: 100%; justify-content: center; font-weight: 700; color: #4A5568;">
-                                <i class="ph ph-compass"></i> Explorer d'abord (Compléter plus tard)
+                                <i class="ph ph-compass"></i> Découvrir d'abord (Compléter plus tard)
                             </button>
                         </div>
                     </div>
@@ -658,22 +671,37 @@
 
             <div class="chat-modal-layout">
                 <div class="chat-contacts-sidebar">
-                    <div class="chat-sidebar-header">
-                        <span style="display: inline-flex; align-items: center; gap: 8px; font-weight: 800;"><i class="ph-bold ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.25rem;"></i> Messagerie LYANN</span>
-                        <button type="button" class="chat-close-modal-btn close-chat-modal-trigger" aria-label="Fermer la messagerie" onclick="window.closeLyannChatModal(event)"><i class="ph ph-x"></i></button>
-                    </div>
-                    <div class="chat-sidebar-search-wrap" style="padding: 10px 14px; border-bottom: 1px solid #E2E8F0; background: #FFFFFF;">
-                        <div style="position: relative; display: flex; align-items: center;">
-                            <i class="ph ph-magnifying-glass" style="position: absolute; left: 10px; color: #94A3B8; font-size: 0.95rem;"></i>
-                            <input type="text" id="chatSearchInput" class="modal-input chat-search-input" placeholder="Rechercher une conversation" style="width: 100%; padding-left: 32px; height: 36px; font-size: 0.82rem; border-radius: 18px; border: 1px solid #E2E8F0; background: #F8FAFC; outline: none;">
+                    <div class="chat-sidebar-header lyann-inbox-header">
+                        <div class="lyann-inbox-brand">
+                            <svg class="lyann-inbox-mark" viewBox="0 0 100 100" aria-hidden="true"><path d="M12 42 L50 14 L88 42" stroke="#4A7C59" stroke-width="8" stroke-linecap="round" fill="none"/><circle cx="34" cy="46" r="7" fill="#4A7C59"/><circle cx="50" cy="42" r="7" fill="#709C7D"/><circle cx="66" cy="46" r="7" fill="#E5B345"/><path d="M23 72 C23 60 31 56 38 56 C45 56 47 62 50 62 C53 62 55 56 62 56 C69 56 77 60 77 72" stroke="#4A7C59" stroke-width="7.5" stroke-linecap="round" fill="none"/></svg>
+                            <span class="lyann-inbox-word">LYANN</span>
+                        </div>
+                        <h2 class="lyann-inbox-title">Messages</h2>
+                        <p class="lyann-inbox-subtitle">Échangez avec vos voisins, talents et pros en toute simplicité.</p>
+                        <div class="lyann-inbox-motifs" aria-hidden="true">
+                            <svg class="lyann-inbox-motif is-leaf" viewBox="0 0 48 48"><path d="M24 40V22M24 28c-8-1-14-8-12-16 7 1 12 7 12 16zM24 26c8-1 13-7 11-14-7 1-11 6-11 14z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                            <svg class="lyann-inbox-motif is-bubble" viewBox="0 0 48 48"><path d="M10 14h20a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6H20l-6 5v-5h-4a6 6 0 0 1-6-6v-8a6 6 0 0 1 6-6z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                            <svg class="lyann-inbox-motif is-share" viewBox="0 0 48 48"><circle cx="14" cy="24" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="34" cy="14" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="34" cy="34" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M17 22 31 16M17 26 31 32" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
                         </div>
                     </div>
+                    <div class="chat-search-wrapper">
+                        <i class="ph ph-magnifying-glass chat-search-icon"></i>
+                        <input type="text" id="chatSearchInput" class="chat-search-input" placeholder="Rechercher une conversation">
+                    </div>
+                    <div class="lyann-inbox-filters" role="tablist" aria-label="Filtrer les conversations">
+                        <button type="button" class="lyann-inbox-pill is-active" data-inbox-filter="all" aria-pressed="true"><i class="ph ph-chat-circle" aria-hidden="true"></i> Tous</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="unread" aria-pressed="false"><i class="ph ph-circle" aria-hidden="true"></i> Non lus</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="annonces" aria-pressed="false"><i class="ph ph-storefront" aria-hidden="true"></i> Annonces</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="devis" aria-pressed="false"><i class="ph ph-file-text" aria-hidden="true"></i> Devis</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="favoris" aria-pressed="false"><i class="ph ph-star" aria-hidden="true"></i> Favoris</button>
+                    </div>
+                    <button type="button" class="lyann-inbox-compose" aria-label="Nouvelle conversation"><i class="ph ph-pencil-simple" aria-hidden="true"></i></button>
                     <div class="chat-contacts-list" id="chatContactsList">
                     </div>
                 </div>
 
                 <!-- Chat Main Area -->
-                <div class="chat-main-area">
+                <div class="chat-main-area chat-main-pane">
                     <!-- HEADER BAR -->
                     <div class="chat-header-bar">
                         <div class="chat-header-user">
@@ -689,9 +717,10 @@
                         </div>
 
                         <!-- HEADER ACTIONS (Options + Quitter) -->
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            
-                            
+                        <div id="chatHeaderActions" style="display: flex; align-items: center; gap: 6px;">
+                            <button type="button" class="chat-fav-header-btn" id="chatToggleFavoriteBtn" aria-label="Favori" title="Ajouter aux favoris" style="background: none; border: none; font-size: 1.3rem; color: var(--primary); cursor: pointer; padding: 4px 6px; display: flex; align-items: center;">
+                                <i class="ph ph-heart" id="chatFavHeaderIcon"></i>
+                            </button>
                             <!-- MORE OPTIONS MENU (•••) -->
                             <div style="position: relative;">
                                 <button type="button" class="chat-more-btn" id="chatMoreOptionsBtn" aria-label="Options" onclick="window.toggleChatHeaderDropdown(event)">
@@ -699,6 +728,7 @@
                                 </button>
                                 <div class="chat-header-dropdown" id="chatHeaderDropdownMenu" style="display: none;">
                                     <button type="button" class="chat-dropdown-item" id="chatDropViewProfile"><i class="ph ph-user"></i> Voir le profil</button>
+                                    <button type="button" class="chat-dropdown-item" id="chatDropAddFavorite"><i class="ph ph-heart" style="color: var(--primary);"></i> Ajouter aux favoris</button>
                                     <button type="button" class="chat-dropdown-item" id="chatDropViewMission" style="display: none;"><i class="ph ph-briefcase"></i> Voir la mission</button>
                                     <button type="button" class="chat-dropdown-item" id="chatDropShareProfile"><i class="ph ph-share-network"></i> Partager le profil</button>
                                     <div class="chat-dropdown-divider"></div>
@@ -711,15 +741,9 @@
                         </div>
                     </div>
 
-                    <!-- Role determined automatically by mission context -->
-
-                    <!-- MISSION CONTEXT HEADER -->
                     <div id="chatMissionContextBar" class="chat-mission-banner" style="display: none;"></div>
-                    <button type="button" class="btn btn-outline" id="chatViewMissionBtn" style="display: none; margin: 6px 16px; padding: 4px 10px; font-size: 0.75rem;">Voir la mission</button>
-
-                    <!-- CONTEXTUAL ACTIONS BAR (Proposer un prix, Accepter, etc.) -->
-                    <div id="chatContextualActionsBar" style="padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border-light); background: var(--bg-alt);">
-                    </div>
+                    <button type="button" class="btn btn-outline" id="chatViewMissionBtn" style="display: none;">Voir la mission</button>
+                    <div id="chatContextualActionsBar" class="chat-contextual-actions" style="display: none;"></div>
 
                     <!-- DEV AI BADGE (Hidden) -->
                     <div id="chatDevAiBadge" style="display: none;"></div>
@@ -736,11 +760,11 @@
                             <div style="display: flex; gap: 12px; justify-content: center;">
                                 <button type="button" class="btn btn-outline" id="btnChooseDirectPrice" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px;">
                                     <strong style="display: block; font-size: 1rem;">Tarif Direct</strong>
-                                    <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">Pour les petits montants (- de 200€)</span>
+                                    <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">Un montant unique pour votre prestation.</span>
                                 </button>
                                 <button type="button" class="btn btn-primary" id="btnChooseMilestoneDevis" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px; background: var(--primary);">
                                     <strong style="display: block; font-size: 1rem; color: white;">Devis par Jalons</strong>
-                                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.9; color: white;">Étapes de chantier et paiement progressif</span>
+                                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.9; color: white;">Plusieurs étapes avec paiements progressifs.</span>
                                 </button>
                             </div>
                             <button type="button" class="btn btn-outline close-overlay-btn" style="margin-top: 15px; border: none; font-size: 0.85rem;">Annuler</button>
@@ -750,14 +774,14 @@
                     <!-- OVERLAY: DIRECT PRICE FORM -->
                     <div id="chatDirectPriceForm" class="chat-overlay-pane" style="display: none;">
                         <form id="directPriceForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
-                            <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer un Tarif Direct (-200€)</h4>
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Tarif Direct</h4>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Description de la prestation</label>
                                 <input type="text" id="dpDescription" class="modal-input" placeholder="Ex: Réparation fuite évier cuisine" required style="width: 100%; box-sizing: border-box;">
                             </div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant proposé (€)</label>
-                                <input type="number" id="dpAmount" class="modal-input" placeholder="Ex: 80" min="5" max="199" required style="width: 100%; box-sizing: border-box;">
+                                <input type="number" id="dpAmount" class="modal-input" placeholder="Ex: 80" min="0.01" step="0.01" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
                             </div>
                             <div style="display: flex; gap: 10px; margin-top: 8px;">
                                 <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
@@ -776,100 +800,23 @@
                             </div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant total (€)</label>
-                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="200" required style="width: 100%; box-sizing: border-box;">
+                                <input type="text" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" inputmode="decimal" required autocomplete="off" style="width: 100%; box-sizing: border-box;">
                             </div>
                             
-                            <!-- Fixed Milestones Structure for Simple/Aesthetic UX -->
                             <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
-                                <div class="milestone-allocation-section" style="width:100%; max-width:520px; margin:0 auto; display:flex; flex-direction:column; gap:10px; box-sizing:border-box;">
-                                <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px;">
-                                    <div>
-                                        <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
-                                        <span style="font-size:0.7rem; color:var(--text-muted);">Saisissez le pourcentage ou le montant : l’autre valeur se calcule automatiquement.</span>
+                                <div class="milestone-allocation-section">
+                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
+                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque jalon garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
+                                    <div id="mdMilestoneList" class="md-milestone-list"></div>
+                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un jalon</button>
+                                    <div id="mdAllocationSummary" class="md-allocation-summary">
+                                        <div class="md-allocation-row"><span>Total du devis</span><strong id="mdAllocationQuoteTotal">0,00 €</strong></div>
+                                        <div class="md-allocation-row"><span>Total réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
+                                        <div class="md-allocation-row"><span>Pourcentage réparti</span><strong id="mdAllocationPercentTotal">0 %</strong></div>
+                                        <div class="md-allocation-row"><span>Reste à répartir</span><strong id="mdAllocationRemaining">—</strong></div>
                                     </div>
+                                    <p id="mdAllocationLive" class="md-allocation-live">La somme des montants doit égaler exactement le total.</p>
                                 </div>
-
-                                <div class="milestone-allocation-card" style="width:100%; box-sizing:border-box; padding:12px; border:1px solid #E6E1D9; border-radius:14px; background:#FFFFFF; display:flex; flex-direction:column; gap:10px;">
-                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                                        <strong style="font-size:0.78rem; color:var(--primary-dark);">Jalon 1</strong>
-                                        <span style="font-size:0.7rem; color:var(--text-muted);">% ↔ €</span>
-                                    </div>
-                                    <input type="text" id="mdJ1Title" class="modal-input" placeholder="Titre (ex: Préparation)" required style="width:100%; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
-                                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr); align-items:end; gap:8px; width:100%;">
-                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
-                                            Pourcentage
-                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
-                                                <input type="number" id="mdJ1Percent" class="modal-input" placeholder="30" min="0" max="100" step="0.01" inputmode="decimal" aria-label="Pourcentage du jalon 1" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
-                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">%</span>
-                                            </div>
-                                        </label>
-                                        <span aria-hidden="true" style="height:38px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-weight:800;">↔</span>
-                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
-                                            Montant
-                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
-                                                <input type="number" id="mdJ1Amount" class="modal-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" aria-label="Montant du jalon 1" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
-                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">€</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div class="milestone-allocation-card" style="width:100%; box-sizing:border-box; padding:12px; border:1px solid #E6E1D9; border-radius:14px; background:#FFFFFF; display:flex; flex-direction:column; gap:10px;">
-                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                                        <strong style="font-size:0.78rem; color:var(--primary-dark);">Jalon 2</strong>
-                                        <span style="font-size:0.7rem; color:var(--text-muted);">% ↔ €</span>
-                                    </div>
-                                    <input type="text" id="mdJ2Title" class="modal-input" placeholder="Titre (ex: Gros oeuvre)" required style="width:100%; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
-                                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr); align-items:end; gap:8px; width:100%;">
-                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
-                                            Pourcentage
-                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
-                                                <input type="number" id="mdJ2Percent" class="modal-input" placeholder="40" min="0" max="100" step="0.01" inputmode="decimal" aria-label="Pourcentage du jalon 2" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
-                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">%</span>
-                                            </div>
-                                        </label>
-                                        <span aria-hidden="true" style="height:38px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-weight:800;">↔</span>
-                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
-                                            Montant
-                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
-                                                <input type="number" id="mdJ2Amount" class="modal-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" aria-label="Montant du jalon 2" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
-                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">€</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div class="milestone-allocation-card" style="width:100%; box-sizing:border-box; padding:12px; border:1px solid #E6E1D9; border-radius:14px; background:#FFFFFF; display:flex; flex-direction:column; gap:10px;">
-                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                                        <strong style="font-size:0.78rem; color:var(--primary-dark);">Jalon 3</strong>
-                                        <span style="font-size:0.7rem; color:var(--text-muted);">% ↔ €</span>
-                                    </div>
-                                    <input type="text" id="mdJ3Title" class="modal-input" placeholder="Titre (ex: Finitions)" required style="width:100%; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
-                                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr); align-items:end; gap:8px; width:100%;">
-                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
-                                            Pourcentage
-                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
-                                                <input type="number" id="mdJ3Percent" class="modal-input" placeholder="30" min="0" max="100" step="0.01" inputmode="decimal" aria-label="Pourcentage du jalon 3" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
-                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">%</span>
-                                            </div>
-                                        </label>
-                                        <span aria-hidden="true" style="height:38px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-weight:800;">↔</span>
-                                        <label style="display:flex; flex-direction:column; gap:4px; min-width:0; font-size:0.68rem; font-weight:700; color:#64748B;">
-                                            Montant
-                                            <div style="display:flex; align-items:center; gap:6px; min-width:0;">
-                                                <input type="number" id="mdJ3Amount" class="modal-input" placeholder="0,00" min="0" step="0.01" inputmode="decimal" aria-label="Montant du jalon 3" style="width:100%; min-width:0; box-sizing:border-box; font-size:0.82rem; height:38px; padding:6px 10px;">
-                                                <span style="font-size:0.78rem; font-weight:700; color:#475569;">€</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="mdAllocationSummary" style="width:100%; box-sizing:border-box; margin-top:2px; padding:10px 12px; border-radius:12px; background:#F8FAFC; border:1px solid #E2E8F0; font-size:0.76rem; color:#475569; line-height:1.45;">
-                                    <div style="display:flex; justify-content:space-between; gap:12px;"><span>Répartition</span><strong id="mdAllocationPercentTotal">0 %</strong></div>
-                                    <div style="display:flex; justify-content:space-between; gap:12px;"><span>Montant réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
-                                    <div style="display:flex; justify-content:space-between; gap:12px;"><span>Reste à répartir</span><strong id="mdAllocationRemaining">—</strong></div>
-                                </div>
-                                <p style="font-size:0.72rem; color:var(--text-muted); margin:0;"><i class="ph ph-info"></i> La répartition doit correspondre à 100 % du montant total.</p>
-                            </div>
                             </div>
 
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -909,7 +856,7 @@
 
                     <!-- OVERLAY: CHECKOUT / SECURE PAYMENT -->
                     <div id="chatCheckoutOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
-                        <div style="padding: 20px; overflow-y: auto; max-height: 380px;">
+                        <div style="padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); overflow-y: auto; max-height: min(78dvh, 640px); -webkit-overflow-scrolling: touch;">
                             <h4 style="font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; color: var(--primary-dark);">
                                 <i class="ph ph-shield-check"></i> Paiement Sécurisé LYANN
                             </h4>
@@ -935,13 +882,20 @@
                                     <label for="lyannCardPaymentElement" style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 6px;">Carte bancaire</label>
                                     <div id="lyannCardPaymentElement" style="min-height: 48px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff;"></div>
                                     <p id="lyannCardPaymentError" role="alert" style="min-height: 1.2em; margin: 8px 0 0; font-size: 0.78rem; color: #B42318;"></p>
+                                                                        <fieldset id="lyannSavedCardChooser" hidden style="border:0;margin:8px 0 0;padding:0;"></fieldset>
+                                    <p id="lyannSaveCardUnavailable" hidden style="font-size: 0.78rem; color: var(--text-muted); margin: 8px 0 0;">L’enregistrement de carte est momentanément indisponible. Vous pouvez quand même payer.</p>
+                                    <label id="lyannSaveCardLabel" for="lyannSaveCardConsent" hidden style="display:flex; align-items:center; gap:10px; min-height:44px; margin-top:10px; font-size:0.85rem; line-height:1.35; color:#1F3827;">
+                                        <input type="checkbox" id="lyannSaveCardConsent" style="width:22px; height:22px; accent-color:#2E7D32; flex:0 0 auto;">
+                                        <span>Enregistrer cette carte pour mes prochains Lyanns</span>
+                                    </label>
+                                    <p id="lyannSavedCardInfo" hidden style="font-size: 0.75rem; color: var(--text-muted); margin: 6px 0 0;">Votre carte est enregistrée en toute sécurité par Stripe. Vous pouvez la supprimer à tout moment dans vos paramètres.</p>
                                 </div>
                                 <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
                                     Paiement sécurisé via Stripe. Les numéros de carte ne transitent pas par LYANN.
                                 </div>
                                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                                     <button type="button" id="btnCancelCheckout" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
-                                    <button type="submit" id="btnConfirmCheckoutPay" class="btn btn-primary" style="flex: 1; justify-content: center; background: #2E7D32;">Payer & Bloquer</button>
+                                    <button type="submit" id="btnConfirmCheckoutPay" class="btn btn-primary" style="flex: 1; justify-content: center; background: #2E7D32;" disabled>Payer & Bloquer</button>
                                 </div>
                             </form>
                         </div>
@@ -982,6 +936,9 @@
                             </button>
                             <button type="button" class="chat-attach-menu-item" onclick="window.handleGuardedAttachment('file')">
                                 <i class="ph ph-file-text"></i> Fichier
+                            </button>
+                            <button type="button" class="chat-attach-menu-item" onclick="window.handleGuardedAttachment('video')">
+                                <i class="ph ph-video"></i> Vidéo
                             </button>
                             <button type="button" class="chat-attach-menu-item" onclick="window.handleGuardedAttachment('camera')">
                                 <i class="ph ph-camera"></i> Prendre une photo
@@ -1196,18 +1153,9 @@
                 <!-- HUB 4 : FINANCES & PAIEMENTS -->
                 <div class="account-tab-content" id="tab-acc-finances">
                     <div class="profile-section-card">
-                        <h4 class="profile-section-title">💳 Tableau de Bord Stripe Connect & Solde</h4>
-                        <div class="profile-dashboard-grid" style="margin-bottom: 16px;">
-                            <div class="profile-kpi-card" style="background: #E8F5E9;">
-                                <span class="profile-kpi-val" id="accountKpiAvailableBalance" style="color: #2E7D32;">0,00 €</span>
-                                <span class="profile-kpi-label">Solde disponible</span>
-                            </div>
-                            <div class="profile-kpi-card" style="background: #FFF8E1;">
-                                <span class="profile-kpi-val" id="accountKpiPendingBalance" style="color: #D4A843;">0,00 €</span>
-                                <span class="profile-kpi-label">Paiements en cours</span>
-                            </div>
-                        </div>
-                        <button class="btn btn-primary" id="btnInstantPayoutHub">Virement instantané vers mon IBAN 🏦</button>
+                        <h4 class="profile-section-title">Activité financière</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">Un seul compte. Les gains et les dépenses restent séparés.</p>
+                        <div id="lyannUnifiedFinanceHub" data-unified-finance></div>
                     </div>
 
                     <div class="profile-section-card">
@@ -1357,7 +1305,7 @@
                          La description complète, elle, n'apparaît que sur la page de l'annonce. -->
                     <div id="wizardTitleBlock" hidden style="margin-top: 20px;">
                         <p id="wizardTitleHeading" style="font-weight: 700; margin: 0 0 4px;">Choisissez un titre</p>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Trois propositions d’après votre besoin. Choisissez-en une, puis corrigez-la si besoin. 60 caractères maximum.</p>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Un titre court est repris de votre texte. Vous pouvez le corriger. 60 caractères maximum.</p>
                         <p id="wizardTitleStatus" class="wizard-title-status" hidden></p>
                         <div id="wizardTitleChoices" class="wizard-title-choices" role="radiogroup" aria-labelledby="wizardTitleHeading"></div>
                         <div id="wizardTitleEdit" hidden style="margin-top: 12px;">
@@ -1707,18 +1655,16 @@
 
     <!-- ========== MODAL FICHE DÉTAILLÉE LYANN ========== -->
     <div class="modal-overlay" id="lyannDetailModal" style="display: none;">
-        <div class="modal-card modal-card-xl" style="max-width: 620px; border-radius: var(--radius-xl);">
-            <button class="modal-close-btn" id="closeLyannDetailModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
-            <div class="modal-header" style="padding-bottom: 14px; border-bottom: 1px solid #E2E8F0;">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                    <span class="flash-badge-default" id="lyannDetailBadge" style="background: rgba(74, 124, 89, 0.12); color: #4A7C59; font-weight: 800; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem;">
+        <div class="modal-card modal-card-xl lyann-detail-card">
+            <div class="modal-header lyann-detail-header">
+                <div class="lyann-detail-top">
+                    <span class="flash-badge-default lyann-detail-kicker" id="lyannDetailBadge">
                         <i class="ph ph-hand-heart"></i> LYANN
                     </span>
-                    <span id="lyannDetailStatus" style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">● OPEN</span>
+                    <button class="modal-close-btn" id="closeLyannDetailModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
                 </div>
-                <h3 class="step-title" id="lyannDetailTitle" style="font-size: 1.35rem; margin-top: 10px; font-weight: 800; color: #1E2822;">
-                    Titre du Lyann
-                </h3>
+                <h3 class="step-title" id="lyannDetailTitle">Titre du Lyann</h3>
+                <span id="lyannDetailStatus" class="lyann-detail-status">Ouverte</span>
             </div>
             <div class="modal-body" id="lyannDetailBody" style="padding: 18px 0; font-size: 0.95rem; line-height: 1.6;">
                 <!-- Dynamically populated by script.js -->
@@ -1729,54 +1675,59 @@
         </div>
     </div>
 
-    <!-- ========== BOTTOM SHEET FILTRES BOKANTAJ ========== -->
-    <div class="modal-overlay mobile-bottom-sheet" id="bokantajFilterSheetModal" style="display: none;">
-        <div class="mobile-bottom-sheet-card">
+    <div class="modal-overlay mobile-bottom-sheet" id="bokantajFilterSheetModal" style="display: none;" aria-hidden="true">
+        <div class="mobile-bottom-sheet-card bokantaj-filter-card" role="dialog" aria-modal="true" aria-labelledby="bokantajFilterTitle">
             <div class="bottom-sheet-header">
-                <h3><i class="ph ph-sliders-horizontal" style="color: #4A7C59;"></i> Filtrer le Bokantaj</h3>
+                <div>
+                    <h3 id="bokantajFilterTitle">Filtrer Bokantaj</h3>
+                    <p class="bokantaj-filter-sub">Choisissez ce que vous souhaitez voir.</p>
+                </div>
                 <button class="modal-close-btn" id="closeBokantajFilterSheetBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
             </div>
             <div class="bottom-sheet-body">
-                <!-- Localisation -->
                 <div class="filter-sheet-section">
-                    <h4>Localisation</h4>
-                    <label class="filter-sheet-toggle-label">
-                        <input type="checkbox" id="sheetNearbyToggle" class="filter-sheet-checkbox">
-                        <span>📍 Près de moi uniquement</span>
-                    </label>
-                </div>
-
-                <!-- Type -->
-                <div class="filter-sheet-section">
-                    <h4>Type de contenu</h4>
-                    <div class="filter-sheet-type-options">
-                        <button type="button" class="sheet-type-btn active" data-type="all">Tout</button>
-                        <button type="button" class="sheet-type-btn" data-type="post">📄 Publications</button>
-                        <a href="results.html?mode=annonces" class="btn btn-outline">Voir les annonces dans Explorer</a>
+                    <h4>Type</h4>
+                    <div class="bokantaj-chip-grid" id="bokantajTypeChips">
+                        <button type="button" class="bokantaj-choice is-selected" data-type="all">Tout</button>
+                        <button type="button" class="bokantaj-choice" data-type="info">Infos locales</button>
+                        <button type="button" class="bokantaj-choice" data-type="alerte">Alertes</button>
+                        <button type="button" class="bokantaj-choice" data-type="bon_plan">Bons plans</button>
+                        <button type="button" class="bokantaj-choice" data-type="evenement">Événements</button>
+                        <button type="button" class="bokantaj-choice" data-type="astuce">Astuces</button>
+                        <button type="button" class="bokantaj-choice" data-type="avis">Avis &amp; recommandations</button>
                     </div>
                 </div>
-
-                <!-- Sujets & Catégories -->
                 <div class="filter-sheet-section">
-                    <h4>Sujets & Catégories</h4>
-                    <div class="filter-sheet-tags-grid">
-                        <button type="button" class="sheet-topic-tag" data-query="Plomberie">#Plomberie</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Climatisation">#Climatisation</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Jardinage">#Jardinage</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Bricolage">#Bricolage</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Transport">#Transport</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Électricité">#Électricité</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Peinture">#Peinture</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Ménage">#Ménage</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Aide à la personne">#AideAuxSeniors</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Garde d'enfants">#GardeEnfants</button>
-                        <button type="button" class="sheet-topic-tag" data-query="Informatique">#Informatique</button>
+                    <h4>Zone</h4>
+                    <div class="bokantaj-chip-grid" id="bokantajZoneChips">
+                        <button type="button" class="bokantaj-choice is-selected" data-zone="all">Partout</button>
+                        <button type="button" class="bokantaj-choice" data-zone="nearby">Autour de moi</button>
+                        <button type="button" class="bokantaj-choice" data-zone="commune" id="bokantajChooseZone">Choisir une zone</button>
+                    </div>
+                    <p class="bokantaj-zone-label" id="bokantajZoneLabel" hidden></p>
+                    <input type="hidden" id="bokantajZoneValue" value="">
+                    <div class="bokantaj-chip-grid" id="bokantajRadiusChips" hidden>
+                        <button type="button" class="bokantaj-choice" data-radius="2">2 km</button>
+                        <button type="button" class="bokantaj-choice is-selected" data-radius="5">5 km</button>
+                        <button type="button" class="bokantaj-choice" data-radius="10">10 km</button>
+                        <button type="button" class="bokantaj-choice" data-radius="20">20 km</button>
+                        <button type="button" class="bokantaj-choice" data-radius="50">50 km</button>
+                    </div>
+                    <p class="bokantaj-zone-note" id="bokantajZoneNote" hidden>Activez la localisation ou choisissez une zone pour limiter le rayon.</p>
+                </div>
+                <div class="filter-sheet-section">
+                    <h4>Période</h4>
+                    <div class="bokantaj-chip-grid" id="bokantajPeriodChips">
+                        <button type="button" class="bokantaj-choice is-selected" data-period="all">Toutes les dates</button>
+                        <button type="button" class="bokantaj-choice" data-period="today">Aujourd’hui</button>
+                        <button type="button" class="bokantaj-choice" data-period="7">7 derniers jours</button>
+                        <button type="button" class="bokantaj-choice" data-period="30">30 derniers jours</button>
                     </div>
                 </div>
             </div>
-            <div class="bottom-sheet-footer">
-                <button type="button" class="btn btn-outline" id="btnResetBokantajSheetFilters" style="flex: 1; justify-content: center;">Réinitialiser</button>
-                <button type="button" class="btn btn-primary" id="btnApplyBokantajSheetFilters" style="flex: 2; justify-content: center; font-weight: 800;">Appliquer les filtres</button>
+            <div class="bottom-sheet-footer bokantaj-filter-footer">
+                <button type="button" class="btn btn-outline" id="btnResetBokantajSheetFilters">Réinitialiser</button>
+                <button type="button" class="btn btn-primary bokantaj-apply-filters" id="btnApplyBokantajSheetFilters">Afficher les publications</button>
             </div>
         </div>
     </div>
@@ -1789,30 +1740,41 @@
     <script src="matching-engine.js"></script>
     <script src="sentry-init.js?v=20260916"></script>
     <script src="surface-manager.js?v=20260922s"></script>
-    <script src="app-router.js?v=20260923a"></script>
-    <script src="api-client.js?v=20260907-DOM-OBSERVER-FIX"></script>
+    <script src="app-router.js?v=20261018legal"></script>
+    <script src="api-client.js?v=20261019-coherence"></script>
     <script src="session-store.js"></script>
     <script src="auth-state.js"></script>
     <script src="data-cache.js"></script>
     <script src="maison-catalog.js?v=20260922c"></script>
     <script src="profile-repository.js?v=20260922c"></script>
-    <script src="bokantaj-repository.js"></script>
+    <script src="bokantaj-repository.js?v=20261017act"></script>
+    <script src="bokantaj-feed-query.js"></script>
     <script src="annonce-format.js?v=20260922e"></script>
     <script src="commune-geo.js?v=20260922e"></script>
     <script src="commune-distance.js?v=20260922e"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="feature-loader.js"></script>
-    <script src="dialog.js"></script>
+    <script src="dialog.js?v=20261019-quiet"></script>
         <script src="messaging-repository.js"></script>
-<script src="quote-payment-eligibility.js?v=20261007d"></script>
-<script src="chat-logic.js?v=20261007d"></script>
-    <script src="ai-classifier.js"></script>
+<script src="quote-revision.js?v=20261012b"></script>
+<script src="quote-milestone-editor.js?v=20261015n"></script>
+<script src="mission-dossier.js?v=20261018pay"></script>
+<script src="mission-surfaces.js?v=20261015k"></script>
+<script src="finance-policy-ui.js"></script>
+<script src="quote-payment-eligibility.js?v=20261019-coherence"></script>
+<script src="deal-context-sync.js?v=20261013e4"></script>
+<script src="payout-prompt.js?v=20261018pay"></script>
+<script src="realtime-session.js?v=20261014p0"></script>
+<script src="chat-logic.js?v=20261019-coherence"></script>
+    <script src="ai-classifier.js?v=20261019-titles"></script>
     <script src="platform-core.js"></script>
+    <script src="deal-notification-policy.js?v=20261014e6"></script>
     <script src="notification-engine.js"></script>
-    <script src="notifications-ui.js"></script>
-    <script src="app-shell.js"></script>
-    <script src="messaging-ui.js?v=20260923a"></script>
-    <script src="script.js?v=20260922t"></script>
+    <script src="mission-reminders.js"></script>
+<script src="notifications-ui.js"></script>
+    <script src="app-shell.js?v=20261011c"></script>
+    <script src="messaging-ui.js?v=20261015j"></script>
+    <script src="script.js?v=20261019-trace"></script>
     <script src="onboarding.js"></script>
     <script src="profile-completion.js"></script>
 

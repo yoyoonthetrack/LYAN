@@ -24,15 +24,85 @@ const {
     legacyPaymentColumns,
     quoteFullyReleased,
     providerCanBePaid,
+    canDeclareWorkDone,
+    canValidateRelease,
+    canClaimTransfer,
+    transferIdempotencyKey,
+    transferLockAcquireFrom,
+    planTransferLock,
+    stripeTransferFailureAction,
+    releasePaymentDecision,
+    admitStripeWebhookEvent,
     evaluateTransfer,
-    evaluateRefund,
+    refundReservationId,
+    refundIdempotencyKey,
+    refundAmountFromPayment,
+    stripeRefundFailureAction,
+    isRefundReservation,
+    raiseDisputeDecision,
+    stripeChargeId,
+    applyPaymentProcessing,
+    applyPaymentFailed,
+    applyChargeRefunded,
+    routePostTransferWebhook,
+    postTransferWebhookPersistDecision,
+    constructStripeWebhookEvent,
+    paymentWritePaths,
     applyPaymentSucceeded,
+    applyChargeDisputeCreated,
+    applyChargeDisputeUpdated,
+    applyChargeDisputeClosed,
+    applyAccountUpdated,
+    preparePreTransferRefund,
+    admitPreTransferRefundDispatch,
+    webhookEventWriteRow,
+    webhookEventLegacyPayloadRow,
+    shouldFallbackWebhookPayloadColumn,
     claimWebhookDecision,
-    safeStripeReturnUrl
+    safeStripeReturnUrl,
+    postTransferFinancialExecutionEnabled
 } = require('./stripe-policy');
+const {
+    isSavedCardId,
+    isPaymentIntentId,
+    visibleSavedCards,
+    canDetachSavedCard,
+    paymentIntentConsentUpdate,
+    customerSessionParams
+} = require('./saved-cards');
+const {
+    createRequest: createPostTransferRefundRequest,
+    replyRequest: replyPostTransferRefundRequest,
+    viewRequest: viewPostTransferRefundRequest,
+    decideRequest: decidePostTransferRefundRequest,
+    listHistory: listPostTransferRefundHistory,
+    listMyRequests: listPostTransferRefundRequests,
+    createSupabaseStore
+} = require('./post-transfer-refund-flow');
+const { executeAdminPostTransfer } = require('./post-transfer-admin-execute');
+const { attachServerStripeTestRuntime } = require('./post-transfer-stripe-test-http');
+const {
+    loadPreTransferRefundGrant,
+    evaluatePreTransferRefundGrant,
+    grantFactsFromPayment,
+    STRIPE_TEST_PLATFORM_ACCOUNT
+} = require('./pre-transfer-refund-grant');
+const { quoteStillNeedsPayout, payoutReadyCopy } = require('../payout-prompt');
+const financePolicyUi = require('../finance-policy-ui');
+const {
+    buildTestPayload,
+    testSendAllowed,
+    validDeviceRegistration
+} = require('./apns');
+const { apnsConfig, sendApns } = require('./apns-send');
+const { automaticPushEnabled, cronAuthorized, drainQueue, pushAudience } = require('./push-queue');
 const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-build');
-require('dotenv').config();
-require('dotenv').config({ path: path.join(__dirname, '..', '.env.local'), override: true });
+if (process.env.LYANN_DOTENV_PATH) {
+    require('dotenv').config({ path: process.env.LYANN_DOTENV_PATH, override: true });
+} else {
+    require('dotenv').config();
+    require('dotenv').config({ path: path.join(__dirname, '..', '.env.local'), override: true });
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,7 +131,17 @@ const PRODUCT_HTML = {
     '/about': 'about.html',
     '/about.html': 'about.html',
     '/confirm-signup': 'confirm-signup.html',
-    '/confirm-signup.html': 'confirm-signup.html'
+    '/confirm-signup.html': 'confirm-signup.html',
+    '/legal': 'legal.html',
+    '/legal.html': 'legal.html',
+    '/confidentialite': 'confidentialite.html',
+    '/confidentialite.html': 'confidentialite.html',
+    '/auth/callback': 'auth-callback.html',
+    '/auth-callback.html': 'auth-callback.html',
+    '/admin': 'admin.html',
+    '/admin.html': 'admin.html',
+    '/admin-login': 'admin-login.html',
+    '/admin-login.html': 'admin-login.html'
 };
 
 app.get(Object.keys(PRODUCT_HTML), (req, res, next) => {
@@ -95,21 +175,67 @@ app.use((req, res, next) => {
 });
 
 // Supabase Admin Client (Service Role for Payment Core DB Operations)
-const supabaseUrl = process.env.SUPABASE_URL || 'https://gzispjfoywklpqatjyop.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'placeholder_service_key';
 const LYANN_PRODUCTION_SUPABASE_REF = 'gzispjfoywklpqatjyop';
-const PAYMENT_WRITE_PATHS = [
-    '/v1/payments/create-milestone-intent',
-    '/v1/milestones/start-work',
-    '/v1/milestones/submit-completion',
-    '/v1/milestones/release-payment',
-    '/v1/milestones/claim-transfer',
-    '/v1/milestones/raise-dispute',
-    '/v1/payments/webhook',
-    '/v1/webhooks/stripe',
-    '/payments/webhook',
-    '/webhooks/stripe'
-];
+const STAGING_V2_SUPABASE_REF = 'tdktfbtqceldlaeqjtow';
+
+function requireConfiguredSupabaseUrl() {
+    const url = String(process.env.SUPABASE_URL || process.env.LYANN_SUPABASE_URL || '').replace(/\/$/, '');
+    if (!url) {
+        const error = new Error('SUPABASE_URL is required. Refusing the production fallback.');
+        console.error('❌ FATAL CONFIGURATION ERROR:', error.message);
+        if (require.main === module) process.exit(1);
+        throw error;
+    }
+    let host = '';
+    try {
+        host = new URL(url).hostname;
+    } catch (e) {
+        const error = new Error('SUPABASE_URL is invalid.');
+        console.error('❌ FATAL CONFIGURATION ERROR:', error.message);
+        if (require.main === module) process.exit(1);
+        throw error;
+    }
+    const writeRef = String(process.env.LYANN_E2E_WRITE_PROJECT_REF || '');
+    if (writeRef && writeRef !== LYANN_PRODUCTION_SUPABASE_REF) {
+        if (host === `${LYANN_PRODUCTION_SUPABASE_REF}.supabase.co` || url.includes(LYANN_PRODUCTION_SUPABASE_REF)) {
+            const error = new Error('Isolated runtime refused production Supabase gzispjfoywklpqatjyop.');
+            console.error('❌ FATAL CONFIGURATION ERROR:', error.message);
+            if (require.main === module) process.exit(1);
+            throw error;
+        }
+        if (writeRef === STAGING_V2_SUPABASE_REF && host !== `${STAGING_V2_SUPABASE_REF}.supabase.co`) {
+            const error = new Error('Staging V2 runtime must target tdktfbtqceldlaeqjtow.');
+            console.error('❌ FATAL CONFIGURATION ERROR:', error.message);
+            if (require.main === module) process.exit(1);
+            throw error;
+        }
+        const stripe = inspectStripeEnv(process.env);
+        if (stripe.liveBlocked || stripe.mode === 'live') {
+            const error = new Error('Stripe Live is forbidden in the isolated/staging runtime.');
+            console.error('❌ FATAL CONFIGURATION ERROR:', error.message);
+            if (require.main === module) process.exit(1);
+            throw error;
+        }
+    }
+    return url;
+}
+
+const { assertHostedIsolation } = require('./runtime-isolation');
+const hostedIsolation = assertHostedIsolation(process.env);
+if (!hostedIsolation.ok) {
+    console.error('❌ FATAL CONFIGURATION ERROR:', hostedIsolation.code, hostedIsolation.message);
+    if (require.main === module) process.exit(1);
+    throw new Error(hostedIsolation.message);
+}
+
+const supabaseUrl = requireConfiguredSupabaseUrl();
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+if (!supabaseServiceKey) {
+    console.error('❌ FATAL CONFIGURATION ERROR: SUPABASE_SERVICE_ROLE_KEY is required. Refusing a placeholder or silent production key.');
+    if (require.main === module) process.exit(1);
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required');
+}
+const PAYMENT_WRITE_PATHS = paymentWritePaths();
 
 function isHostedProductionRuntime() {
     // Vercel preview also sets NODE_ENV=production. Only the production
@@ -161,7 +287,8 @@ app.use((req, res, next) => {
     if (url.includes('webhook')) {
         express.raw({ type: '*/*' })(req, res, next);
     } else {
-        express.json()(req, res, next);
+        const maisonMedia = url.includes('/v1/admin/maison/');
+        express.json({ limit: maisonMedia ? '16mb' : '1mb' })(req, res, next);
     }
 });
 
@@ -197,7 +324,7 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-    if (req.method !== 'POST') return next();
+    if (req.method !== 'POST' && req.method !== 'DELETE') return next();
     if (rejectPaymentWritesOnProductionFromDev(req, res)) return;
     next();
 });
@@ -207,6 +334,69 @@ function stripeRuntime() {
     if (!inspected.allowsSecretUse) return { inspected, stripe: null };
     return { inspected, stripe: require('stripe')(process.env.STRIPE_SECRET_KEY) };
 }
+
+app.get('/v1/payments/finance-snapshot', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ success: false, code: 'AUTH_REQUIRED', error: 'Authentification requise.' });
+        const paymentId = String((req.query && req.query.payment_id) || '').trim();
+        if (!paymentId) return res.status(400).json({ success: false, code: 'PAYMENT_ID_REQUIRED', error: 'payment_id requis.' });
+        const { data: payment, error } = await supabaseAdmin
+            .from('payments')
+            .select('id, payment_status, transfer_status, stripe_payment_intent_id, stripe_transfer_id, stripe_refund_id, client_validated_at, service_amount_cents, customer_fee_cents, customer_total_cents, provider_net_cents, milestone_id, requester_id, provider_id')
+            .eq('id', paymentId)
+            .maybeSingle();
+        if (error) return res.status(500).json({ success: false, code: 'READ_FAILED', error: 'Lecture impossible.' });
+        if (!payment) return res.status(404).json({ success: false, code: 'PAYMENT_NOT_FOUND', error: 'Paiement introuvable.' });
+        const admin = await verifyAdminPermission(req, 'finance.refund');
+        const isParty = user.id === payment.requester_id || user.id === payment.provider_id;
+        if (!isParty && !admin.authorized) {
+            return res.status(403).json({ success: false, code: 'FORBIDDEN', error: 'Accès refusé.' });
+        }
+        let milestone = null;
+        let mission = null;
+        if (payment.milestone_id) {
+            const milestoneRead = await supabaseAdmin
+                .from('milestones')
+                .select('id, status, title, mission_id')
+                .eq('id', payment.milestone_id)
+                .maybeSingle();
+            milestone = milestoneRead.data || null;
+            if (milestone && milestone.mission_id) {
+                const missionRead = await supabaseAdmin
+                    .from('missions')
+                    .select('id, status, title')
+                    .eq('id', milestone.mission_id)
+                    .maybeSingle();
+                mission = missionRead.data || null;
+            }
+        }
+        const display = financePolicyUi.classifyFinanceDisplay({ payment, milestone, mission });
+        return res.json({
+            success: true,
+            demo: false,
+            stripe_called: false,
+            write: false,
+            payment: {
+                id: payment.id,
+                payment_status: payment.payment_status,
+                transfer_status: payment.transfer_status,
+                stripe_transfer_id: payment.stripe_transfer_id || null,
+                stripe_refund_id: payment.stripe_refund_id || null,
+                service_amount_cents: payment.service_amount_cents,
+                customer_fee_cents: payment.customer_fee_cents,
+                customer_total_cents: payment.customer_total_cents,
+                provider_net_cents: payment.provider_net_cents
+            },
+            milestone: milestone && { id: milestone.id, status: milestone.status, title: milestone.title },
+            mission: mission && { id: mission.id, status: mission.status, title: mission.title },
+            display: display,
+            bank_payout_confirmed: false
+        });
+    } catch (e) {
+        return res.status(500).json({ success: false, code: 'SNAPSHOT_FAILED', error: 'Lecture impossible.' });
+    }
+});
 
 app.get('/v1/payments/config', (req, res) => {
     const inspected = inspectStripeEnv(process.env);
@@ -233,6 +423,165 @@ async function requireBearerUser(req) {
     if (error || !data?.user) return null;
     return data.user;
 }
+
+const recentPushTests = new Map();
+
+app.post('/v1/notifications/devices', async (req, res) => {
+    const user = await requireBearerUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+    const registration = validDeviceRegistration(req.body || {});
+    if (!registration.ok) return res.status(400).json({ code: registration.code, error: 'Appareil invalide.' });
+    const released = await supabaseAdmin.from('device_push_tokens').update({
+        active: false,
+        updated_at: new Date().toISOString()
+    }).eq('token', registration.token).neq('user_id', user.id);
+    if (released.error) return res.status(500).json({ error: 'Enregistrement impossible.' });
+    const { error } = await supabaseAdmin.from('device_push_tokens').upsert({
+        user_id: user.id,
+        installation_id: registration.installationId,
+        token: registration.token,
+        platform: registration.platform,
+        apns_environment: registration.environment,
+        active: true,
+        updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,installation_id' });
+    if (error) return res.status(500).json({ error: 'Enregistrement impossible.' });
+    return res.json({ success: true });
+});
+
+app.post('/v1/notifications/devices/deactivate', async (req, res) => {
+    const user = await requireBearerUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+    const installationId = String(req.body && req.body.installation_id || '');
+    if (!/^[0-9a-f-]{36}$/i.test(installationId)) return res.status(400).json({ error: 'Appareil invalide.' });
+    const { error } = await supabaseAdmin.from('device_push_tokens').update({
+        active: false,
+        updated_at: new Date().toISOString()
+    }).eq('user_id', user.id).eq('installation_id', installationId);
+    if (error) return res.status(500).json({ error: 'Désactivation impossible.' });
+    return res.json({ success: true });
+});
+
+async function handlePushDrain(req, res) {
+    if (!cronAuthorized(req.headers.authorization || req.headers.Authorization, process.env)) {
+        return res.status(401).json({ code: 'PUSH_CRON_UNAUTHORIZED', error: 'Appel non autorisé.' });
+    }
+    const audience = pushAudience(process.env);
+    if (!audience.enabled) {
+        return res.json({ success: true, enabled: false, processed: 0, code: 'PUSH_AUTOMATIC_DISABLED' });
+    }
+    const config = apnsConfig(process.env);
+    if (!config) return res.status(503).json({ code: 'APNS_NOT_CONFIGURED', error: 'APNs n’est pas configuré.' });
+    try {
+        const outcome = await drainQueue({
+            enabled: true,
+            allowlist: audience.allowlist,
+            customSound: process.env.PUSH_CUSTOM_SOUND !== 'false',
+            workerId: 'drain-' + Date.now(),
+            claim: async ({ workerId, limit }) => {
+                const { data, error } = await supabaseAdmin.rpc('lyann_claim_push_deliveries', {
+                    p_worker: workerId,
+                    p_limit: limit
+                });
+                if (error) throw error;
+                return (data || []).map((row) => ({
+                    id: row.id,
+                    recipientId: row.user_id,
+                    title: row.title,
+                    body: row.body,
+                    route: row.route,
+                    contactId: row.contact_id,
+                    requestId: row.request_id,
+                    entityId: row.entity_id,
+                    eventType: row.event_type,
+                    attempts: row.attempts,
+                    maxAttempts: row.max_attempts,
+                    lockToken: row.lock_token,
+                    apnsId: row.apns_id
+                }));
+            },
+            tokensForUser: async (userId) => {
+                const { data, error } = await supabaseAdmin.from('device_push_tokens')
+                    .select('id, token, apns_environment')
+                    .eq('user_id', userId)
+                    .eq('active', true)
+                    .limit(5);
+                if (error) throw error;
+                return (data || []).map((device) => ({
+                    id: device.id,
+                    token: device.token,
+                    environment: device.apns_environment
+                }));
+            },
+            send: async ({ deviceToken, environment, payload }) => {
+                const result = await sendApns({ config, deviceToken, environment, payload });
+                if (result && result.status === 400) result.deactivate = true;
+                return result;
+            },
+            deactivateTokens: async (ids) => {
+                if (!ids.length) return;
+                await supabaseAdmin.from('device_push_tokens').update({
+                    active: false,
+                    updated_at: new Date().toISOString()
+                }).in('id', ids);
+            },
+            complete: async (row, settled) => {
+                if (!row.lockToken) return;
+                await supabaseAdmin.from('push_deliveries').update({
+                    status: settled.status,
+                    last_error: settled.lastError,
+                    next_attempt_at: settled.nextAttemptAt ? new Date(settled.nextAttemptAt).toISOString() : new Date().toISOString(),
+                    lock_token: null,
+                    updated_at: new Date().toISOString()
+                }).eq('id', row.id).eq('lock_token', row.lockToken).eq('status', 'processing');
+            }
+        });
+        return res.json({ success: true, enabled: true, processed: outcome.processed, code: outcome.code });
+    } catch (_) {
+        console.error(JSON.stringify({ scope: 'push_drain', code: 'PUSH_QUEUE_UNAVAILABLE' }));
+        return res.status(503).json({ code: 'PUSH_QUEUE_UNAVAILABLE', error: 'File indisponible.' });
+    }
+}
+
+app.get('/v1/notifications/push-drain', handlePushDrain);
+app.post('/v1/notifications/push-drain', handlePushDrain);
+
+app.post('/v1/notifications/push-test', async (req, res) => {
+    const user = await requireBearerUser(req);
+    if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+    const allowed = testSendAllowed({
+        enabled: process.env.PUSH_TEST_ENABLED === 'true',
+        allowUserId: process.env.PUSH_TEST_USER_ID || '',
+        callerId: user.id
+    });
+    if (!allowed.ok) return res.status(403).json({ code: allowed.code, error: 'Notification de test désactivée.' });
+    const config = apnsConfig(process.env);
+    if (!config) return res.status(503).json({ code: 'APNS_NOT_CONFIGURED', error: 'APNs n’est pas configuré.' });
+    const installationId = String(req.body && req.body.installation_id || '');
+    let query = supabaseAdmin.from('device_push_tokens').select('id, token, apns_environment, installation_id').eq('user_id', user.id).eq('active', true);
+    if (installationId) query = query.eq('installation_id', installationId);
+    const { data: devices, error } = await query.limit(1);
+    if (error) return res.status(500).json({ error: 'Appareil illisible.' });
+    const device = devices && devices[0];
+    if (!device) return res.status(404).json({ error: 'Aucun appareil actif.' });
+    const cooldownKey = user.id + ':' + device.installation_id;
+    if (Date.now() - (recentPushTests.get(cooldownKey) || 0) < 60000) {
+        return res.status(429).json({ code: 'PUSH_TEST_COOLDOWN', error: 'Un essai vient déjà d’être envoyé.' });
+    }
+    recentPushTests.set(cooldownKey, Date.now());
+    const result = await sendApns({
+        config,
+        deviceToken: device.token,
+        environment: device.apns_environment,
+        payload: buildTestPayload()
+    });
+    if (result.deactivate) {
+        await supabaseAdmin.from('device_push_tokens').update({ active: false, updated_at: new Date().toISOString() }).eq('id', device.id);
+    }
+    console.log(JSON.stringify({ scope: 'apns_test', code: result.code, status: result.status, deactivate: result.deactivate }));
+    if (!result.ok) return res.status(502).json({ code: result.code, error: 'Envoi impossible.' });
+    return res.json({ success: true });
+});
 
 async function loadOwnConnectAccount(userId) {
     const { data: profile, error } = await supabaseAdmin
@@ -298,8 +647,8 @@ app.post('/v1/payments/connect/onboarding-link', async (req, res) => {
         }
         const link = await runtime.stripe.v2.core.accountLinks.create(buildAccountLinkParams(
             loaded.profile.stripe_account_id,
-            safeStripeReturnUrl(req.body?.return_url),
-            safeStripeReturnUrl(req.body?.refresh_url)
+            safeStripeReturnUrl(req.body?.return_url, process.env),
+            safeStripeReturnUrl(req.body?.refresh_url, process.env)
         ));
         return res.json({ success: true, url: link.url });
     } catch (e) {
@@ -348,6 +697,131 @@ app.post('/v1/payments/connect/express-dashboard-link', async (req, res) => {
     }
 });
 
+async function conversationIdForQuote(quote) {
+    if (quote && quote.conversation_id) return quote.conversation_id;
+    if (!quote || !quote.request_invitation_id) return null;
+    const { data } = await supabaseAdmin
+        .from('request_invitations')
+        .select('conversation_id')
+        .eq('id', quote.request_invitation_id)
+        .maybeSingle();
+    return data && data.conversation_id ? data.conversation_id : null;
+}
+
+async function notifyPayoutReady(requesterId, providerId, copy) {
+    const entityId = String(providerId);
+    const { error } = await supabaseAdmin.rpc('lyann_insert_notification', {
+        p_user_id: requesterId,
+        p_type: 'PAYOUT_READY',
+        p_title: copy.notificationTitle,
+        p_body: copy.notificationBody,
+        p_entity_type: 'conversation',
+        p_entity_id: entityId
+    });
+    if (!error) return;
+    const existing = await supabaseAdmin
+        .from('notifications')
+        .select('id')
+        .eq('user_id', requesterId)
+        .eq('type', 'PAYOUT_READY')
+        .eq('entity_id', entityId)
+        .maybeSingle();
+    if (existing.data) return;
+    await supabaseAdmin.from('notifications').insert({
+        user_id: requesterId,
+        type: 'PAYOUT_READY',
+        title: copy.notificationTitle,
+        body: copy.notificationBody,
+        entity_type: 'conversation',
+        entity_id: entityId
+    });
+}
+
+async function announcePayoutReady(providerId) {
+    try {
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, first_name')
+            .eq('id', providerId)
+            .maybeSingle();
+        if (!profile) return;
+        const { data: quotes, error } = await supabaseAdmin
+            .from('quotes')
+            .select('id, status, requester_id, provider_id, conversation_id, request_invitation_id')
+            .eq('provider_id', providerId)
+            .in('status', ['SENT', 'ACCEPTED'])
+            .order('created_at', { ascending: false })
+            .limit(40);
+        if (error || !quotes || !quotes.length) return;
+        const quoteIds = quotes.map((quote) => quote.id);
+        const [milestones, payments] = await Promise.all([
+            supabaseAdmin.from('milestones').select('quote_id, status').in('quote_id', quoteIds),
+            supabaseAdmin.from('payments').select('quote_id, payment_status').in('quote_id', quoteIds)
+        ]);
+        const milestonesByQuote = new Map();
+        (milestones.data || []).forEach((row) => {
+            if (!milestonesByQuote.has(row.quote_id)) milestonesByQuote.set(row.quote_id, []);
+            milestonesByQuote.get(row.quote_id).push(row);
+        });
+        const paymentsByQuote = new Map();
+        (payments.data || []).forEach((row) => {
+            if (!paymentsByQuote.has(row.quote_id)) paymentsByQuote.set(row.quote_id, []);
+            paymentsByQuote.get(row.quote_id).push(row);
+        });
+        const waiting = quotes.filter((quote) => quoteStillNeedsPayout({
+            ...quote,
+            milestones: milestonesByQuote.get(quote.id) || [],
+            payments: paymentsByQuote.get(quote.id) || []
+        }));
+        if (!waiting.length) return;
+        const copy = payoutReadyCopy(profile.first_name);
+        const conversations = new Map();
+        for (const quote of waiting) {
+            if (!quote.requester_id || quote.requester_id === providerId) continue;
+            const conversationId = await conversationIdForQuote(quote);
+            if (!conversationId) continue;
+            if (!conversations.has(conversationId)) conversations.set(conversationId, new Set());
+            conversations.get(conversationId).add(quote.requester_id);
+        }
+        for (const [conversationId, requesterIds] of conversations) {
+            const inserted = await supabaseAdmin.from('messages').insert({
+                conversation_id: conversationId,
+                sender_id: providerId,
+                content: copy.message,
+                message_type: 'text',
+                metadata: { kind: 'payout_ready', provider_id: providerId },
+                client_message_id: 'payout-ready:' + conversationId,
+                is_read: false
+            }).select('id').maybeSingle();
+            if (inserted.error && inserted.error.code !== '23505') {
+                console.error(JSON.stringify({ scope: 'payout_ready_announce', code: inserted.error.code || null }));
+            }
+            for (const requesterId of requesterIds) {
+                await notifyPayoutReady(requesterId, providerId, copy);
+            }
+        }
+    } catch (error) {
+        console.error(JSON.stringify({ scope: 'payout_ready_announce', code: error && error.code || null }));
+    }
+}
+
+async function sharesConversation(userId, otherId) {
+    const { data: mine, error } = await supabaseAdmin
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId);
+    if (error || !mine || !mine.length) return false;
+    const ids = mine.map((row) => row.conversation_id).filter(Boolean);
+    if (!ids.length) return false;
+    const { data: match } = await supabaseAdmin
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', otherId)
+        .in('conversation_id', ids)
+        .limit(1);
+    return Boolean(match && match.length);
+}
+
 app.get('/v1/payments/connect/status', async (req, res) => {
     try {
         const user = await requireBearerUser(req);
@@ -365,10 +839,42 @@ app.get('/v1/payments/connect/status', async (req, res) => {
             include: ['configuration.recipient']
         });
         const ready = connectPayoutReady(account);
+        if (ready.ok) await announcePayoutReady(user.id);
         return res.json({ success: true, ready: ready.ok, ...ready.status });
     } catch (e) {
         console.error('Connect status error');
         return res.status(502).json({ code: 'CONNECT_UNAVAILABLE', error: 'Compte Connect illisible dans cet environnement Stripe.' });
+    }
+});
+
+app.get('/v1/payments/connect/peer-status', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const otherId = String(req.query.user_id || '');
+        if (!/^[0-9a-f-]{36}$/i.test(otherId) || otherId === user.id) {
+            return res.status(404).json({ error: 'Introuvable.' });
+        }
+        const allowed = await sharesConversation(user.id, otherId);
+        if (!allowed) return res.status(404).json({ error: 'Introuvable.' });
+        const loaded = await loadOwnConnectAccount(otherId);
+        if (loaded.error) return res.status(404).json({ error: 'Introuvable.' });
+        if (!loaded.profile.stripe_account_id) {
+            return res.json({ success: true, ready: false, ...connectStatus(null) });
+        }
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) {
+            return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
+        }
+        const account = await runtime.stripe.v2.core.accounts.retrieve(loaded.profile.stripe_account_id, {
+            include: ['configuration.recipient']
+        });
+        const ready = providerCanBePaid(loaded.profile, account);
+        const status = ready.status || connectStatus(null);
+        return res.json({ success: true, ready: ready.ok === true, ...status });
+    } catch (e) {
+        console.error(JSON.stringify({ scope: 'connect_peer_status', code: e && e.code || null }));
+        return res.status(502).json({ code: 'CONNECT_UNAVAILABLE', error: 'Compte de versement illisible.' });
     }
 });
 
@@ -545,7 +1051,15 @@ async function verifyAdminPermission(req, requiredPermission = null) {
             .maybeSingle();
 
         if (member && member.admin_roles && ['SUPER_ADMIN', 'OWNER'].includes(member.admin_roles.code)) {
-            return { authorized: true, userId, role: member.admin_roles.code, member };
+            return {
+                authorized: true,
+                userId,
+                email: authData.user.email || null,
+                role: member.admin_roles.code,
+                status: member.status || 'ACTIVE',
+                permissions: requiredPermission ? [requiredPermission] : [],
+                member
+            };
         }
 
         if (member && requiredPermission) {
@@ -554,7 +1068,15 @@ async function verifyAdminPermission(req, requiredPermission = null) {
                 p_permission_code: requiredPermission
             });
             if (hasPerm === true) {
-                return { authorized: true, userId, role: member.admin_roles?.code, member };
+                return {
+                    authorized: true,
+                    userId,
+                    email: authData.user.email || null,
+                    role: member.admin_roles?.code,
+                    status: member.status || 'ACTIVE',
+                    permissions: [requiredPermission],
+                    member
+                };
             }
         }
 
@@ -571,7 +1093,7 @@ async function requireMaisonOperator(req) {
 async function loadMaisonProfile(profileId) {
     const { data, error } = await supabaseAdmin
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, city, territory, email, bio, account_type, created_at')
+        .select('id, first_name, last_name, avatar_url, city, territory, email, bio, professional_status, account_type, created_at')
         .eq('id', profileId)
         .maybeSingle();
     if (error) throw error;
@@ -679,6 +1201,108 @@ app.get('/v1/admin/maison/profiles/:id/desk', async (req, res) => {
     }
 });
 
+function maisonMediaFile(payload, kind) {
+    const raw = String(payload || '');
+    const match = raw.match(/^data:([^;]+);base64,(.+)$/);
+    const mime = (match ? match[1] : '').toLowerCase();
+    const body = match ? match[2] : raw;
+    if (!body) return null;
+    let buffer;
+    try { buffer = Buffer.from(body, 'base64'); } catch (_) { return { error: 'Fichier illisible.' }; }
+    if (kind === 'photo') {
+        const allowed = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+        if (!allowed[mime]) return { error: 'Choisis une photo JPG, PNG ou WEBP.' };
+        if (buffer.length > 5 * 1024 * 1024) return { error: 'La photo doit faire moins de 5 Mo.' };
+        return { buffer, mime, ext: allowed[mime] };
+    }
+    const allowed = { 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' };
+    if (!allowed[mime]) return { error: 'Choisis une vidéo MP4, MOV ou WebM.' };
+    if (buffer.length > 10 * 1024 * 1024) return { error: 'La vidéo doit faire moins de 10 Mo.' };
+    return { buffer, mime, ext: allowed[mime] };
+}
+
+async function maisonStoreMedia(profileId, file) {
+    const path = `${profileId}/${require('crypto').randomUUID()}.${file.ext}`;
+    const { error } = await supabaseAdmin.storage.from('bokantaj-media').upload(path, file.buffer, { contentType: file.mime, upsert: false });
+    if (error) throw new Error('Le fichier n’a pas pu être enregistré.');
+    return supabaseAdmin.storage.from('bokantaj-media').getPublicUrl(path).data.publicUrl;
+}
+
+app.patch('/v1/admin/maison/profiles/:id', async (req, res) => {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const profile = await loadMaisonProfile(req.params.id);
+        if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        const first = String(req.body?.first_name || '').trim();
+        const last = String(req.body?.last_name || '').trim();
+        const city = String(req.body?.city || '').trim();
+        const territory = String(req.body?.territory || '').trim().toLowerCase();
+        const bio = String(req.body?.bio || '').trim();
+        const skill = String(req.body?.professional_status || '').trim();
+        if (!first || !last) return res.status(400).json({ success: false, error: 'Le prénom et le nom sont requis.' });
+        if (!['guadeloupe', 'martinique'].includes(territory)) {
+            return res.status(400).json({ success: false, error: 'Le territoire doit être la Guadeloupe ou la Martinique.' });
+        }
+        const { error } = await supabaseAdmin.from('profiles').update({
+            first_name: first,
+            last_name: last,
+            city: city || null,
+            territory,
+            bio: bio || null,
+            professional_status: skill || null,
+            updated_at: new Date().toISOString()
+        }).eq('id', profile.id).eq('account_type', 'seed');
+        if (error) throw error;
+        await recordMaisonAudit(authResult.userId, 'MAISON_UPDATE_PROFILE', profile.id, { city, territory });
+        return res.json({ success: true });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Modification impossible.' });
+    }
+});
+
+app.post('/v1/admin/maison/profiles/:id/requests', async (req, res) => {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const profile = await loadMaisonProfile(req.params.id);
+        if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        const title = String(req.body?.title || '').trim().slice(0, 80);
+        const description = String(req.body?.description || '').trim();
+        if (!title || !description) {
+            return res.status(400).json({ success: false, error: 'Le titre et la description de l’annonce sont requis.' });
+        }
+        const row = {
+            requester_id: profile.id,
+            visibility: 'PUBLIC',
+            title,
+            description,
+            category: String(req.body?.category || 'Général').trim() || 'Général',
+            location: profile.city || 'Guadeloupe',
+            urgency: 'Normale',
+            status: 'OPEN',
+            price_mode: 'QUOTE',
+            date_mode: 'FLEXIBLE'
+        };
+        let inserted = await supabaseAdmin.from('requests').insert(row).select('id').single();
+        if (inserted.error && /column/i.test(inserted.error.message || '')) {
+            delete row.visibility;
+            delete row.price_mode;
+            delete row.date_mode;
+            inserted = await supabaseAdmin.from('requests').insert(row).select('id').single();
+        }
+        if (inserted.error) throw inserted.error;
+        await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_REQUEST', profile.id, { request_id: inserted.data.id });
+        return res.json({ success: true, request_id: inserted.data.id });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Annonce impossible.' });
+    }
+});
+
 app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
     const authResult = await requireMaisonOperator(req);
     if (!authResult.authorized) {
@@ -688,14 +1312,21 @@ app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
         const profile = await loadMaisonProfile(req.params.id);
         if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
         const content = String(req.body?.content || '').trim();
-        if (!content) return res.status(400).json({ success: false, error: 'Écris le Lyann à publier.' });
+        const photo = req.body?.photo ? maisonMediaFile(req.body.photo, 'photo') : null;
+        const video = req.body?.video ? maisonMediaFile(req.body.video, 'video') : null;
+        if (photo?.error) return res.status(400).json({ success: false, error: photo.error });
+        if (video?.error) return res.status(400).json({ success: false, error: video.error });
+        if (!content && !photo && !video) return res.status(400).json({ success: false, error: 'Écris un Lyann ou ajoute une photo ou une vidéo.' });
+        const mediaUrls = [];
+        if (photo) mediaUrls.push(await maisonStoreMedia(profile.id, photo));
+        if (video) mediaUrls.push(await maisonStoreMedia(profile.id, video));
         const { data, error } = await supabaseAdmin.from('bokantaj_posts').insert({
             author_id: profile.id,
             type: req.body?.type || 'info',
-            content,
+            content: content || 'Lyann',
             city: req.body?.city || profile.city || null,
             territory: req.body?.territory || profile.territory || null,
-            media_urls: []
+            media_urls: mediaUrls
         }).select('id').single();
         if (error) throw error;
         await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_BOKANTAJ', profile.id, { post_id: data.id });
@@ -806,6 +1437,235 @@ async function actOnMaisonQuote(req, res, action) {
         return res.status(500).json({ success: false, error: e.message || 'Action mission impossible.' });
     }
 }
+
+const { collectEditorial, publishEditorialTask } = require('./editorial-run');
+const { EDITORIAL_BOTS, EDITORIAL_BADGE, reviewEditorialText } = require('./editorial-engine');
+
+function editorialAuthorized(req) {
+    const expected = String(process.env.EDITORIAL_CRON_SECRET || process.env.CRON_SECRET || '');
+    const header = String(req.headers.authorization || '');
+    const supplied = header.startsWith('Bearer ') ? header.slice(7) : String(req.headers['x-lyann-editorial-secret'] || '');
+    if (!expected || supplied.length !== expected.length) return false;
+    return require('crypto').timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+}
+
+app.all('/v1/editorial/collect', async (req, res) => {
+    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+        return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
+    }
+    if (!editorialAuthorized(req)) {
+        return res.status(401).json({ success: false, error: 'Collecte éditoriale non autorisée.' });
+    }
+    try {
+        const schedule = require('./../config/editorial-schedule.json');
+        const asked = String(req.query.scheduled || '') === '1';
+        if (asked && schedule.enabled === false) {
+            return res.json({ success: true, skipped: 'schedule-disabled', created: [], skippedRows: [] });
+        }
+        const report = await collectEditorial(supabaseAdmin, { scheduled: asked && schedule.enabled !== false });
+        return res.json({ success: true, ...report });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Collecte impossible.' });
+    }
+});
+
+app.post('/v1/admin/editorial/collect', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+        return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
+    }
+    try {
+        return res.json({ success: true, ...(await collectEditorial(supabaseAdmin)) });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Collecte impossible.' });
+    }
+});
+
+app.get('/v1/admin/editorial/bots', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const names = EDITORIAL_BOTS.map((bot) => bot.name);
+    const { data, error } = await supabaseAdmin.from('lyann_agents').select('id, agent_name, status, zones, personality, system_instructions, linked_profile_id, last_activity_at').in('agent_name', names);
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    const ids = (data || []).map((row) => row.linked_profile_id);
+    const { data: profiles } = ids.length
+        ? await supabaseAdmin.from('profiles').select('id, avatar_url, bio, city, territory').in('id', ids)
+        : { data: [] };
+    const bots = (data || []).map((agent) => {
+        const definition = EDITORIAL_BOTS.find((bot) => bot.name === agent.agent_name);
+        return {
+            ...agent,
+            badge: EDITORIAL_BADGE,
+            sources: definition ? definition.sources : [],
+            maxPerDay: definition ? definition.maxPerDay : null,
+            healthReview: definition ? definition.healthReview : false,
+            profile: (profiles || []).find((profile) => profile.id === agent.linked_profile_id) || null
+        };
+    });
+    return res.json({ success: true, bots });
+});
+
+app.get('/v1/admin/editorial/proposals', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const { data: agents } = await supabaseAdmin.from('lyann_agents').select('id, agent_name').in('agent_name', EDITORIAL_BOTS.map((bot) => bot.name));
+    const ids = (agents || []).map((agent) => agent.id);
+    if (!ids.length) return res.json({ success: true, proposals: [] });
+    const { data, error } = await supabaseAdmin.from('lyann_agent_tasks').select('id, agent_id, title, instruction, status, approval_status, metadata, created_at').in('agent_id', ids).order('created_at', { ascending: false }).limit(300);
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    const names = {};
+    (agents || []).forEach((agent) => { names[agent.id] = agent.agent_name; });
+    return res.json({
+        success: true,
+        proposals: (data || []).map((row) => {
+            const bot = EDITORIAL_BOTS.find((item) => item.slug === (row.metadata && row.metadata.slug) || item.name === names[row.agent_id]);
+            const review = reviewEditorialText({
+                text: row.instruction,
+                facts: (row.metadata && row.metadata.facts) || '',
+                healthReview: Boolean(bot && bot.healthReview)
+            });
+            return { ...row, agent_name: names[row.agent_id], controls: review };
+        })
+    });
+});
+
+async function publishStoredEditorialProposal(res, task, content, approver) {
+    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+        return res.status(403).json({ success: false, code: 'environment', error: 'Erreur d’environnement.' });
+    }
+    if (!task || !task.metadata || !task.metadata.editorial) {
+        return res.status(404).json({ success: false, code: 'not_editorial', error: 'Proposition introuvable.' });
+    }
+    if (task.metadata.published_post_id || task.approval_status === 'APPROVED') {
+        return res.status(409).json({
+            success: false,
+            code: 'already_published',
+            error: 'Publication déjà effectuée.',
+            post_id: task.metadata.published_post_id || null
+        });
+    }
+    if (task.approval_status !== 'PENDING' || task.status === 'CANCELLED') {
+        return res.status(409).json({ success: false, code: 'not_pending', error: 'Ce brouillon n’est plus en attente.' });
+    }
+    const text = String(content || task.instruction || '').trim();
+    if (text && text !== String(task.instruction || '').trim()) {
+        const now = new Date().toISOString();
+        const revisions = Array.isArray(task.metadata.revisions) ? task.metadata.revisions.slice() : [];
+        revisions.push({ at: now, by: approver.userId, previous: task.instruction, next: text });
+        const { error: saveError } = await supabaseAdmin.from('lyann_agent_tasks').update({
+            instruction: text,
+            updated_at: now,
+            metadata: Object.assign({}, task.metadata, { revisions })
+        }).eq('id', task.id).eq('approval_status', 'PENDING');
+        if (saveError) {
+            return res.status(500).json({ success: false, code: 'server', error: 'Erreur serveur.' });
+        }
+        task.instruction = text;
+        task.metadata = Object.assign({}, task.metadata, { revisions });
+    }
+    const stored = String(task.instruction || '').trim();
+    const bot = EDITORIAL_BOTS.find((item) => item.slug === (task.metadata && task.metadata.slug) || item.name === task.agent_name);
+    const review = reviewEditorialText({
+        text: stored,
+        facts: (task.metadata && task.metadata.facts) || '',
+        healthReview: Boolean(bot && bot.healthReview) || (task.metadata && task.metadata.validation_status === 'HUMAN_REQUIRED')
+    });
+    if (!review.ok) {
+        const therapeutic = review.reasons.some((reason) => /affirmation thérapeutique/.test(reason));
+        return res.status(409).json({
+            success: false,
+            code: therapeutic ? 'therapeutic' : 'quality',
+            error: therapeutic
+                ? 'Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifiez le texte avant validation.'
+                : 'Texte non conforme. ' + review.reasons.join(' ; ')
+        });
+    }
+    const postId = await publishEditorialTask(supabaseAdmin, task, stored, approver);
+    return res.json({ success: true, post_id: postId, message: 'Publié sur le Bokantaj de Staging.' });
+}
+
+app.post('/v1/admin/editorial/proposals/:id/publish', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) {
+        const expired = authResult.status === 401;
+        return res.status(authResult.status).json({
+            success: false,
+            code: expired ? 'ADMIN_TOKEN_INVALID' : 'ADMIN_ACCESS_DENIED',
+            error: expired ? 'Session expirée.' : 'Accès refusé.'
+        });
+    }
+    try {
+        const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', req.params.id).maybeSingle();
+        if (error) throw error;
+        if (!task) return res.status(404).json({ success: false, error: 'Proposition introuvable.' });
+        return await publishStoredEditorialProposal(res, task, req.body?.content, {
+            userId: authResult.userId,
+            email: authResult.email,
+            actor: 'admin'
+        });
+    } catch (e) {
+        return res.status(500).json({ success: false, code: 'server', error: 'Erreur serveur.' });
+    }
+});
+
+app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const next = String(req.body?.content || '').trim();
+    if (!next) return res.status(400).json({ success: false, error: 'Le texte corrigé est vide.' });
+    const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('instruction, metadata, approval_status').eq('id', req.params.id).maybeSingle();
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    if (!task || task.approval_status !== 'PENDING') return res.status(409).json({ success: false, error: 'Ce brouillon n’est plus modifiable.' });
+    const now = new Date().toISOString();
+    const revisions = Array.isArray(task.metadata && task.metadata.revisions) ? task.metadata.revisions.slice() : [];
+    revisions.push({ at: now, by: authResult.userId, previous: task.instruction, next });
+    const { error: updateError } = await supabaseAdmin.from('lyann_agent_tasks').update({
+        instruction: next,
+        updated_at: now,
+        metadata: Object.assign({}, task.metadata, { revisions })
+    }).eq('id', req.params.id);
+    if (updateError) return res.status(500).json({ success: false, error: updateError.message });
+    return res.json({ success: true });
+});
+
+app.post('/v1/admin/editorial/proposals/:id/delete', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+        return res.status(403).json({ success: false, error: 'Suppression éditoriale interdite sur Production.' });
+    }
+    const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('id, metadata').eq('id', req.params.id).maybeSingle();
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    if (!task || !task.metadata || !task.metadata.editorial) {
+        return res.status(404).json({ success: false, error: 'Proposition introuvable.' });
+    }
+    const postId = task.metadata.published_post_id;
+    if (postId) {
+        const { error: postError } = await supabaseAdmin.from('bokantaj_posts').delete().eq('id', postId);
+        if (postError) return res.status(500).json({ success: false, error: postError.message });
+    }
+    const { error: deleteError } = await supabaseAdmin.from('lyann_agent_tasks').delete().eq('id', task.id);
+    if (deleteError) return res.status(500).json({ success: false, error: deleteError.message });
+    return res.json({ success: true, message: 'Proposition supprimée.' });
+});
+
+app.post('/v1/admin/editorial/proposals/:id/reject', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const { error } = await supabaseAdmin.from('lyann_agent_tasks').update({ status: 'CANCELLED', approval_status: 'REJECTED', updated_at: new Date().toISOString() }).eq('id', req.params.id);
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    return res.json({ success: true });
+});
+
+app.post('/v1/admin/editorial/bots/:id/status', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const status = req.body?.status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE';
+    const { error } = await supabaseAdmin.from('lyann_agents').update({ status, updated_at: new Date().toISOString() }).eq('id', req.params.id);
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    return res.json({ success: true, status });
+});
 
 app.post('/v1/admin/maison/profiles/:id/quotes/:quoteId/accept', (req, res) => actOnMaisonQuote(req, res, 'accept'));
 app.post('/v1/admin/maison/profiles/:id/quotes/:quoteId/reject', (req, res) => actOnMaisonQuote(req, res, 'reject'));
@@ -1146,6 +2006,14 @@ app.get('/v1/admin/ops', async (req, res) => {
                 ...userReports.flatMap((row) => [row.reporter_id, row.target_user_id]),
                 ...bokReports.map((row) => row.reporter_id)
             ]);
+            const reportIds = userReports.map((row) => row.id).filter(Boolean);
+            const evidenceRows = reportIds.length
+                ? await adminSafeSelect('report_evidence', 'report_id', (q) => q.in('report_id', reportIds))
+                : [];
+            const evidenceCount = {};
+            evidenceRows.forEach((row) => {
+                evidenceCount[row.report_id] = (evidenceCount[row.report_id] || 0) + 1;
+            });
             return res.json({
                 success: true,
                 rows: [
@@ -1157,7 +2025,8 @@ app.get('/v1/admin/ops', async (req, res) => {
                         reason: row.reason,
                         details: row.details,
                         status: row.status,
-                        created_at: row.created_at
+                        created_at: row.created_at,
+                        evidence_count: evidenceCount[row.id] || 0
                     })),
                     ...bokReports.map((row) => ({
                         id: row.id,
@@ -1330,6 +2199,7 @@ app.post('/v1/admin/ops/reports/:id', async (req, res) => {
         return res.status(400).json({ success: false, error: 'Statut de signalement invalide.' });
     }
     try {
+        const previous = await supabaseAdmin.from(source).select('status').eq('id', req.params.id).maybeSingle();
         const payload = source === 'user_reports'
             ? { status: nextStatus, updated_at: new Date().toISOString() }
             : { status: nextStatus };
@@ -1341,10 +2211,63 @@ app.post('/v1/admin/ops/reports/:id', async (req, res) => {
             .maybeSingle();
         if (error) return res.status(500).json({ success: false, error: error.message });
         if (!data) return res.status(404).json({ success: false, error: 'Signalement introuvable.' });
-        await recordMaisonAudit(authResult.userId, 'REPORT_UPDATED', req.params.id, { status: nextStatus, source });
-        return res.json({ success: true, row: data });
+        const { error: auditError } = await supabaseAdmin.from('admin_audit_events').insert({
+            actor_type: 'ADMIN',
+            actor_id: authResult.userId,
+            actor_name: 'Modération',
+            action: 'REPORT_STATUS',
+            module_name: 'Modération',
+            target_type: source,
+            target_id: req.params.id,
+            before_state: { status: previous.data?.status || null },
+            after_state: { status: nextStatus },
+            reason: String(req.body?.note || '').trim().slice(0, 500) || null,
+            metadata: { source }
+        });
+        if (auditError) console.warn('Report decision audit skipped:', auditError.message);
+        return res.json({ success: true, row: data, audit_stored: !auditError });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Impossible de mettre à jour le signalement.' });
+    }
+});
+
+app.get('/v1/admin/ops/reports/:id/evidence', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'moderation.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const { data: rows, error } = await supabaseAdmin
+            .from('report_evidence')
+            .select('id, storage_path, mime_type, byte_size, created_at')
+            .eq('report_id', req.params.id)
+            .order('created_at', { ascending: true });
+        if (error) return res.status(503).json({ success: false, error: 'Preuves indisponibles.' });
+        const files = [];
+        for (const row of rows || []) {
+            const signed = await supabaseAdmin.storage.from('report-evidence').createSignedUrl(row.storage_path, 120);
+            if (signed.error || !signed.data?.signedUrl) continue;
+            files.push({
+                id: row.id,
+                mime_type: row.mime_type,
+                byte_size: row.byte_size,
+                created_at: row.created_at,
+                url: signed.data.signedUrl
+            });
+        }
+        await supabaseAdmin.from('admin_audit_events').insert({
+            actor_type: 'ADMIN',
+            actor_id: authResult.userId,
+            actor_name: 'Modération',
+            action: 'REPORT_EVIDENCE_VIEWED',
+            module_name: 'Modération',
+            target_type: 'user_report',
+            target_id: req.params.id,
+            metadata: { count: files.length }
+        });
+        return res.json({ success: true, files });
+    } catch (e) {
+        return res.status(503).json({ success: false, error: 'Preuves indisponibles.' });
     }
 });
 
@@ -1720,34 +2643,56 @@ app.get('/v1/admin/agent-tasks', async (req, res) => {
 });
 
 app.post('/v1/admin/agent-tasks/:id/approve', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.approve');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({
+            success: false,
+            code: authResult.status === 401 ? 'ADMIN_TOKEN_INVALID' : 'ADMIN_ACCESS_DENIED',
+            error: authResult.status === 401 ? 'Session expirée.' : 'Accès refusé.'
+        });
+    }
     try {
         const { id } = req.params;
         const { decision } = req.body;
-        const newStatus = decision === 'APPROVED' ? 'COMPLETED' : 'CANCELLED';
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
-        let updatedTask = null;
-        if (isUuid) {
-            const { data } = await supabaseAdmin
-                .from('lyann_agent_tasks')
-                .update({
-                    status: newStatus,
-                    approval_status: decision === 'APPROVED' ? 'APPROVED' : 'REJECTED',
-                    completed_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select()
-                .maybeSingle();
-            updatedTask = data;
+        const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', id).maybeSingle();
+        if (error) throw error;
+        if (!task) return res.status(404).json({ success: false, error: 'Tâche introuvable.' });
+        if (task.metadata && task.metadata.editorial) {
+            if (decision === 'APPROVED') {
+                return await publishStoredEditorialProposal(res, task, task.instruction, {
+                    userId: authResult.userId,
+                    email: authResult.email,
+                    actor: 'admin'
+                });
+            }
+            const { error: rejectError } = await supabaseAdmin.from('lyann_agent_tasks').update({
+                status: 'CANCELLED',
+                approval_status: 'REJECTED',
+                updated_at: new Date().toISOString()
+            }).eq('id', id).eq('approval_status', 'PENDING');
+            if (rejectError) throw rejectError;
+            return res.json({ success: true, message: 'Brouillon refusé.' });
         }
-
-        res.json({
+        const newStatus = decision === 'APPROVED' ? 'COMPLETED' : 'CANCELLED';
+        const { data: updatedTask, error: updateError } = await supabaseAdmin
+            .from('lyann_agent_tasks')
+            .update({
+                status: newStatus,
+                approval_status: decision === 'APPROVED' ? 'APPROVED' : 'REJECTED',
+                approved_by: decision === 'APPROVED' ? authResult.userId : null,
+                completed_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select()
+            .maybeSingle();
+        if (updateError) throw updateError;
+        return res.json({
             success: true,
-            task: updatedTask || { id, status: newStatus, approval_status: decision },
-            message: `Tâche ${decision === 'APPROVED' ? 'approuvée et exécutée' : 'rejetée'}.`
+            task: updatedTask,
+            message: decision === 'APPROVED' ? 'Tâche approuvée.' : 'Tâche refusée.'
         });
     } catch (e) {
-        res.status(500).json({ error: "Erreur validation tâche agent." });
+        return res.status(500).json({ success: false, code: 'server', error: 'Erreur serveur.' });
     }
 });
 
@@ -2906,6 +3851,155 @@ app.post('/v1/payments/create-intent', async (req, res) => {
     }
 });
 
+async function stripeCustomerForAuthenticatedUser(stripe, user, mode) {
+    if (mode !== 'test' && mode !== 'live') {
+        throw new Error('Profil de paiement indisponible.');
+    }
+    const { data: existing, error: lookupError } = await supabaseAdmin
+        .from('lyann_payment_customers')
+        .select('stripe_customer_id')
+        .eq('user_id', user.id)
+        .eq('stripe_mode', mode)
+        .maybeSingle();
+    if (lookupError) throw new Error('La migration lyann_payment_customers doit être appliquée en test.');
+    if (existing?.stripe_customer_id) {
+        try {
+            await stripe.customers.retrieve(existing.stripe_customer_id);
+            return existing.stripe_customer_id;
+        } catch (error) {
+            if (!error || error.code !== 'resource_missing') throw error;
+        }
+    }
+    const customer = await stripe.customers.create({
+        email: user.email || undefined,
+        metadata: { lyann_user_id: user.id, lyann_stripe_mode: mode }
+    }, { idempotencyKey: 'lyann_payment_customer_' + mode + '_' + user.id });
+    const { error: insertError } = await supabaseAdmin
+        .from('lyann_payment_customers')
+        .upsert({ user_id: user.id, stripe_mode: mode, stripe_customer_id: customer.id }, {
+            onConflict: 'user_id,stripe_mode'
+        });
+    if (insertError) throw new Error('Enregistrement du profil de paiement indisponible.');
+    return customer.id;
+}
+
+async function ownedSavedCardMapping(userId) {
+    const mode = inspectStripeEnv(process.env).mode;
+    if (mode !== 'test' && mode !== 'live') return { error: 'mode' };
+    const { data, error } = await supabaseAdmin
+        .from('lyann_payment_customers')
+        .select('stripe_customer_id')
+        .eq('user_id', userId)
+        .eq('stripe_mode', mode)
+        .maybeSingle();
+    if (error) return { error: 'lookup' };
+    return { mapping: data || null };
+}
+
+app.get('/v1/payments/saved-cards', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const owned = await ownedSavedCardMapping(user.id);
+        if (owned.error) return res.status(503).json({ error: 'Cartes enregistrées indisponibles.' });
+        if (!owned.mapping) return res.json({ cards: [] });
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) return res.status(503).json({ error: 'Stripe indisponible.' });
+        const cards = await runtime.stripe.paymentMethods.list({
+            customer: owned.mapping.stripe_customer_id,
+            type: 'card',
+            limit: 50
+        });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({ cards: visibleSavedCards(cards) });
+    } catch (err) {
+        console.error('Saved cards list unavailable:', err?.message || err);
+        return res.status(503).json({ error: 'Cartes enregistrées indisponibles.' });
+    }
+});
+
+app.delete('/v1/payments/saved-cards/:paymentMethodId', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const methodId = String(req.params.paymentMethodId || '');
+        if (!isSavedCardId(methodId)) return res.status(400).json({ error: 'Carte invalide.' });
+        const owned = await ownedSavedCardMapping(user.id);
+        if (owned.error || !owned.mapping) return res.status(404).json({ error: 'Carte introuvable.' });
+        const runtime = stripeRuntime();
+        if (!runtime.stripe) return res.status(503).json({ error: 'Stripe indisponible.' });
+        const method = await runtime.stripe.paymentMethods.retrieve(methodId);
+        if (!canDetachSavedCard(method, owned.mapping.stripe_customer_id)) {
+            return res.status(404).json({ error: 'Carte introuvable.' });
+        }
+        await runtime.stripe.paymentMethods.detach(methodId);
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Saved card removal unavailable:', err?.message || err);
+        return res.status(503).json({ error: 'Suppression de la carte indisponible.' });
+    }
+});
+
+app.post('/v1/payments/customer-session', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const intentId = req.body?.payment_intent_id;
+        if (!isPaymentIntentId(intentId)) return res.status(400).json({ error: 'Identifiant de paiement invalide.' });
+        const saveCard = req.body?.save_card === true;
+        const { data: payment, error: paymentError } = await supabaseAdmin
+            .from('payments')
+            .select('id, requester_id, payment_status, stripe_payment_intent_id')
+            .eq('stripe_payment_intent_id', intentId)
+            .eq('requester_id', user.id)
+            .maybeSingle();
+        if (paymentError || !payment) return res.status(404).json({ error: 'Paiement introuvable.' });
+        if (!['CREATED', 'REQUIRES_ACTION'].includes(payment.payment_status)) {
+            return res.status(409).json({ error: 'Ce paiement ne peut plus être modifié.' });
+        }
+        const runtime = stripeRuntime();
+        if (!runtime.stripe || runtime.inspected.mode === 'live' && process.env.STRIPE_LIVE_ENABLED !== 'true') {
+            return res.status(503).json({ error: 'Stripe indisponible en environnement de test.' });
+        }
+        const stripe = runtime.stripe;
+        const intent = await stripe.paymentIntents.retrieve(intentId);
+        if (!['requires_payment_method', 'requires_confirmation', 'requires_action'].includes(intent.status)) {
+            return res.status(409).json({ error: 'Paiement déjà en cours ou confirmé.' });
+        }
+        const customerId = await stripeCustomerForAuthenticatedUser(stripe, user, runtime.inspected.mode);
+        const attachedId = typeof intent.customer === 'string' ? intent.customer : intent.customer?.id;
+        if (attachedId && attachedId !== customerId) {
+            return res.status(409).json({ error: 'Le paiement est associé à un autre compte.' });
+        }
+        try {
+            await stripe.paymentIntents.update(intentId, paymentIntentConsentUpdate(saveCard, customerId));
+        } catch (updateError) {
+            if (saveCard) throw updateError;
+            await stripe.paymentIntents.update(intentId, {
+                customer: customerId,
+                metadata: { lyann_save_card: '0' }
+            });
+        }
+        let customerSessionClientSecret = null;
+        try {
+            const session = await stripe.customerSessions.create(customerSessionParams(customerId));
+            customerSessionClientSecret = session.client_secret || null;
+        } catch (sessionError) {
+            console.warn('Stripe customer session unavailable:', sessionError?.message || sessionError);
+        }
+        const cards = await stripe.paymentMethods.list({ customer: customerId, type: 'card', limit: 50 });
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({
+            save_available: true,
+            cards: visibleSavedCards(cards),
+            customer_session_client_secret: customerSessionClientSecret
+        });
+    } catch (err) {
+        console.error('Stripe customer session unavailable:', err?.message || err);
+        return res.status(503).json({ error: 'Cartes enregistrées momentanément indisponibles.' });
+    }
+});
+
 /**
  * 6.1 CANONICAL MILESTONE PAYMENT INTENT CREATION (STEP 1)
  * POST /v1/payments/create-milestone-intent
@@ -2992,9 +4086,15 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
         }
         const payable = providerCanBePaid(payableProfile, payableAccount);
         if (!payable.ok) {
+            const payoutWaitCopy = {
+                CONNECT_REQUIRED: 'Le compte de versement du Lyanneur n’est pas encore configuré. Le devis reste accepté : le paiement pourra être sécurisé ensuite.',
+                CONNECT_NOT_READY: 'Le compte de versement du Lyanneur n’est pas encore prêt. Le devis reste accepté : le paiement pourra être sécurisé ensuite.',
+                PROVIDER_NOT_PAYABLE: 'Ce compte ne peut pas recevoir de versement. Aucun paiement n’a été créé.',
+                WRONG_CONNECT_ACCOUNT: 'Le compte de versement ne correspond pas. Aucun paiement n’a été créé.'
+            };
             return res.status(409).json({
                 code: payable.code,
-                error: 'Paiement refusé : le Lyanneur ne peut pas encore recevoir un versement.'
+                error: payoutWaitCopy[payable.code] || 'Le paiement ne peut pas être sécurisé pour le moment. Aucun paiement n’a été créé.'
             });
         }
 
@@ -3056,7 +4156,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                 const paymentIntent = await stripe.paymentIntents.create({
                     amount: frozen.customer_total_cents,
                     currency: 'eur',
-                    automatic_payment_methods: { enabled: true },
+                    automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
                     metadata: {
                         payment_id: existingPayment.id,
                         milestone_id: milestone.id,
@@ -3167,7 +4267,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: Number(financials.customer_total_cents),
                 currency: 'eur',
-                automatic_payment_methods: { enabled: true },
+                automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
                 metadata: {
                     payment_id: paymentRecord.id,
                     milestone_id: milestone.id,
@@ -3273,7 +4373,7 @@ app.post('/v1/milestones/start-work', async (req, res) => {
 
         // 4. Role Check: Only assigned Lyanneur (helper_id / provider_id) can start work
         const assignedHelperId = mission.helper_id || quote.provider_id;
-        if (assignedHelperId !== authUid) {
+        if (!canDeclareWorkDone(authUid, assignedHelperId)) {
             return res.status(403).json({ error: "Seul le Lyanneur assigné à la mission peut démarrer les travaux." });
         }
 
@@ -3379,7 +4479,7 @@ app.post('/v1/milestones/submit-completion', async (req, res) => {
 
         // 4. Role Check: Only assigned Lyanneur (helper_id / provider_id) can submit completion
         const assignedHelperId = mission.helper_id || quote.provider_id;
-        if (assignedHelperId !== authUid) {
+        if (!canDeclareWorkDone(authUid, assignedHelperId)) {
             return res.status(403).json({ error: "Seul le Lyanneur assigné à la mission peut déclarer la prestation terminée." });
         }
 
@@ -3462,7 +4562,7 @@ app.post('/v1/milestones/submit-completion', async (req, res) => {
  * Used by:
  * - Client release endpoint (POST /v1/milestones/release-payment)
  * - Lyanneur claim endpoint (POST /v1/milestones/claim-transfer)
- * - Webhook account.updated listener
+ * account.updated must not call this helper.
  */
 async function closeRequestWhenQuoteIsSettled(quote) {
     if (!quote || !quote.id || !quote.request_id) return;
@@ -3474,11 +4574,13 @@ async function closeRequestWhenQuoteIsSettled(quote) {
     await supabaseAdmin
         .from('requests')
         .update({
-            status: 'CLOSED',
+            status: 'COMPLETED',
             auto_close_at: null,
-            close_notice_sent: true
+            close_notice_sent: true,
+            updated_at: new Date().toISOString()
         })
-        .eq('id', quote.request_id);
+        .eq('id', quote.request_id)
+        .in('status', ['OPEN', 'PAUSED', 'ASSIGNED', 'IN_PROGRESS', 'CLOSED']);
     if (quote.mission_id) {
         await supabaseAdmin
             .from('missions')
@@ -3537,10 +4639,11 @@ async function retryMilestoneTransfer(milestoneId) {
     }
 
     // Already transferred idempotent check
-    if (payment.transfer_status === 'TRANSFERRED' && payment.stripe_transfer_id) {
+        if (payment.transfer_status === 'TRANSFERRED' && payment.stripe_transfer_id) {
         await closeRequestWhenQuoteIsSettled(quote);
         return {
             success: true,
+            already_transferred: true,
             idempotent: true,
             status: "RELEASED",
             transfer_id: payment.stripe_transfer_id,
@@ -3548,9 +4651,13 @@ async function retryMilestoneTransfer(milestoneId) {
         };
     }
 
-    // Must be in PENDING_VALIDATION or TRANSFER_FAILED (or TRANSFER_PROCESSING retry)
-    if (!['PENDING_VALIDATION', 'TRANSFER_FAILED', 'TRANSFER_PROCESSING'].includes(payment.transfer_status)) {
-        return { success: false, error: `Statut de transfert invalide (${payment.transfer_status}).`, code: "INVALID_TRANSFER_STATUS" };
+    const lockPlan = planTransferLock(payment.transfer_status);
+    if (payment.stripe_refund_id || payment.payment_status === 'REFUNDED') {
+        return { success: false, error: "Remboursement en cours ou déjà effectué.", code: "REFUND_BLOCKS_TRANSFER" };
+    }
+
+    if (lockPlan.action === 'reject') {
+        return { success: false, error: `Statut de transfert invalide (${payment.transfer_status}).`, code: lockPlan.code };
     }
 
     // 3. Fetch Provider Profile for Stripe Account ID
@@ -3616,21 +4723,30 @@ async function retryMilestoneTransfer(milestoneId) {
         }
     }
 
-    // 5. Transfer Lock Transition: PENDING_VALIDATION / TRANSFER_FAILED -> TRANSFER_PROCESSING
-    const { data: lockedPayment, error: lockErr } = await supabaseAdmin
-        .from('payments')
-        .update({ transfer_status: 'TRANSFER_PROCESSING' })
-        .eq('id', payment.id)
-        .in('transfer_status', ['PENDING_VALIDATION', 'TRANSFER_FAILED', 'TRANSFER_PROCESSING'])
-        .select()
-        .single();
+    // 5. Atomic lock: only PENDING_VALIDATION / TRANSFER_FAILED can become TRANSFER_PROCESSING.
+    // TRANSFER_PROCESSING resumes with the same Stripe idempotency key (no second lock).
+    let lockedPayment = payment;
+    if (lockPlan.action === 'acquire') {
+        const acquired = await supabaseAdmin
+            .from('payments')
+            .update({ transfer_status: 'TRANSFER_PROCESSING' })
+            .eq('id', payment.id)
+            .in('transfer_status', transferLockAcquireFrom())
+            .eq('payment_status', 'SUCCEEDED')
+            .is('stripe_refund_id', null)
+            .is('stripe_transfer_id', null)
+            .not('client_validated_at', 'is', null)
+            .select()
+            .maybeSingle();
 
-    if (lockErr || !lockedPayment) {
-        return { success: false, error: "Échec du verrouillage de transfert (concurrence).", code: "CONCURRENCY_LOCK_FAILED" };
+        if (acquired.error || !acquired.data) {
+            return { success: false, error: "Échec du verrouillage de transfert (concurrence).", code: "CONCURRENCY_LOCK_FAILED" };
+        }
+        lockedPayment = acquired.data;
     }
 
     // 6. Execute Stripe Transfer (Separate Charges & Transfers with Deterministic Idempotency Key)
-    const stripeIdempotencyKey = `tr_milestone_${milestone.id}`;
+    const stripeIdempotencyKey = transferIdempotencyKey(milestone.id);
     const transferAmountCents = Number(payment.provider_net_cents);
 
     if (process.env.STRIPE_SECRET_KEY) {
@@ -3648,7 +4764,8 @@ async function retryMilestoneTransfer(milestoneId) {
                     provider_id: providerId
                 }
             };
-            if (payment.stripe_charge_id) transferParams.source_transaction = payment.stripe_charge_id;
+            const sourceChargeId = stripeChargeId(payment.stripe_charge_id);
+            if (sourceChargeId) transferParams.source_transaction = sourceChargeId;
             const transferDecision = evaluateTransfer({
                 payment,
                 milestone,
@@ -3656,6 +4773,10 @@ async function retryMilestoneTransfer(milestoneId) {
                 destinationAccountId: stripeAccountId
             });
             if (!transferDecision.ok) {
+                await supabaseAdmin
+                    .from('payments')
+                    .update({ transfer_status: lockPlan.revertTo })
+                    .eq('id', payment.id);
                 return { success: false, error: "Versement refusé.", code: transferDecision.code };
             }
             const transfer = await stripe.transfers.create(transferParams, {
@@ -3692,11 +4813,33 @@ async function retryMilestoneTransfer(milestoneId) {
             };
         } catch (trErr) {
             console.error("❌ Erreur Stripe Transfer:", trErr);
-            
-            // On Stripe API failure, update transfer_status to TRANSFER_FAILED (keep client_validated_at set!)
+            const recovered = trErr && (trErr.transfer || (trErr.raw && trErr.raw.transfer));
+            const failure = stripeTransferFailureAction(recovered && recovered.id ? recovered : null);
+            if (failure.action === 'complete') {
+                const nowIso = new Date().toISOString();
+                await supabaseAdmin
+                    .from('payments')
+                    .update({
+                        stripe_transfer_id: failure.transferId,
+                        transfer_status: 'TRANSFERRED',
+                        released_at: nowIso
+                    })
+                    .eq('id', payment.id);
+                await supabaseAdmin
+                    .from('milestones')
+                    .update({ status: 'RELEASED', updated_at: nowIso })
+                    .eq('id', milestone.id);
+                await closeRequestWhenQuoteIsSettled(quote);
+                return {
+                    success: true,
+                    status: "RELEASED",
+                    transfer_id: failure.transferId,
+                    message: "Versement autorisé et libéré."
+                };
+            }
             await supabaseAdmin
                 .from('payments')
-                .update({ transfer_status: 'TRANSFER_FAILED' })
+                .update({ transfer_status: failure.nextStatus })
                 .eq('id', payment.id);
 
             return {
@@ -3792,13 +4935,8 @@ app.post('/v1/milestones/release-payment', async (req, res) => {
         }
 
         // 4. Role Check: Only Requester (Client) can validate milestone
-        if (mission.requester_id !== authUid) {
+        if (!canValidateRelease(authUid, mission.requester_id)) {
             return res.status(403).json({ error: "Seul le demandeur (client) peut valider la Partie." });
-        }
-
-        // 5. Verification Checks
-        if (milestone.status !== 'COMPLETED') {
-            return res.status(400).json({ error: `La Partie doit être au statut COMPLETED pour être validée (statut actuel: ${milestone.status}).` });
         }
 
         const { data: payment, error: pErr } = await supabaseAdmin
@@ -3811,8 +4949,32 @@ app.post('/v1/milestones/release-payment', async (req, res) => {
             return res.status(404).json({ error: "Enregistrement de paiement introuvable pour cette Partie." });
         }
 
-        if (payment.payment_status !== 'SUCCEEDED') {
-            return res.status(400).json({ error: "Le paiement de cette Partie doit être au statut SUCCEEDED." });
+        const decision = releasePaymentDecision({
+            authUid,
+            requesterId: mission.requester_id,
+            milestone,
+            payment
+        });
+        if (decision.action === 'forbidden') {
+            return res.status(403).json({ error: "Seul le demandeur (client) peut valider la Partie." });
+        }
+        if (decision.action === 'already_transferred') {
+            return res.json({
+                success: true,
+                already_transferred: true,
+                idempotent: true,
+                status: 'RELEASED',
+                transfer_id: decision.transfer_id,
+                message: 'Versement déjà effectué.'
+            });
+        }
+        if (decision.action === 'reject') {
+            if (decision.code === 'PAYMENT_NOT_SUCCEEDED') {
+                return res.status(400).json({ error: "Le paiement de cette Partie doit être au statut SUCCEEDED." });
+            }
+            return res.status(400).json({
+                error: `La Partie doit être au statut COMPLETED pour être validée (statut actuel: ${milestone.status}).`
+            });
         }
 
         // 6. RECORD CLIENT VALIDATION AT (Definitive Business Event)
@@ -3824,18 +4986,27 @@ app.post('/v1/milestones/release-payment', async (req, res) => {
                     client_validated_at: nowIso,
                     validation_comment: validation_comment || null
                 })
-                .eq('id', payment.id);
+                .eq('id', payment.id)
+                .is('stripe_refund_id', null)
+                .is('stripe_transfer_id', null);
 
             if (valUpdateErr) {
                 await supabaseAdmin
                     .from('payments')
                     .update({ client_validated_at: nowIso })
-                    .eq('id', payment.id);
+                    .eq('id', payment.id)
+                    .is('stripe_refund_id', null)
+                    .is('stripe_transfer_id', null);
             }
         }
 
-        // 7. Execute Transfer Release via common helper
+        // 7. Execute Transfer Release via common helper.
+        // A failed transfer must not look like a successful release to the chat.
         const result = await retryMilestoneTransfer(milestone_id);
+        if (result && result.success === false) {
+            const http = result.code === 'CONCURRENCY_LOCK_FAILED' ? 409 : 400;
+            return res.status(http).json(result);
+        }
         return res.json(result);
 
     } catch (e) {
@@ -3885,7 +5056,7 @@ app.post('/v1/milestones/claim-transfer', async (req, res) => {
         }
 
         const providerId = quote.provider_id;
-        if (providerId !== authUid) {
+        if (!canClaimTransfer(authUid, providerId)) {
             return res.status(403).json({ error: "Seul le Lyanneur prestataire peut réclamer ce versement." });
         }
 
@@ -3948,51 +5119,74 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
             return res.status(400).json({ error: "Mission associée introuvable." });
         }
 
-        if (mission.requester_id !== authUid) {
-            return res.status(403).json({ error: "Seul le demandeur (client) peut signaler un litige sur cette Partie." });
-        }
-
-        if (milestone.status !== 'COMPLETED') {
-            return res.status(400).json({ error: `Un litige ne peut être ouvert que sur une Partie réalisée (statut actuel: ${milestone.status}).` });
-        }
-
         const { data: payment, error: pErr } = await supabaseAdmin
             .from('payments')
             .select('*')
             .eq('milestone_id', milestone_id)
             .single();
 
-        if (pErr || !payment) {
+        const dispute = raiseDisputeDecision({
+            authUid,
+            requesterId: mission.requester_id,
+            milestone,
+            payment: payment || null
+        });
+        if (dispute.action === 'forbidden') {
+            return res.status(403).json({ error: "Seul le demandeur (client) peut signaler un litige sur cette Partie." });
+        }
+        if (dispute.action === 'not_found' || pErr || !payment) {
             return res.status(404).json({ error: "Paiement introuvable pour cette Partie." });
         }
-
-        if (payment.client_validated_at) {
-            return res.status(400).json({
-                error: "Cette Partie a déjà été validée. Vous ne pouvez plus ouvrir un litige standard.",
-                code: "ALREADY_VALIDATED"
+        if (dispute.action === 'already') {
+            return res.json({
+                success: true,
+                idempotent: true,
+                status: 'DISPUTED',
+                milestone_id: milestone.id,
+                message: "Signalement de litige déjà enregistré. Le versement reste gelé."
             });
         }
-
-        if (payment.payment_status !== 'SUCCEEDED' || payment.transfer_status !== 'PENDING_VALIDATION') {
+        if (dispute.action === 'reject') {
+            if (dispute.code === 'ALREADY_VALIDATED') {
+                return res.status(400).json({
+                    error: "Cette Partie a déjà été validée. Vous ne pouvez plus ouvrir un litige standard.",
+                    code: "ALREADY_VALIDATED"
+                });
+            }
+            if (dispute.code === 'MILESTONE_NOT_COMPLETED') {
+                return res.status(400).json({ error: `Un litige ne peut être ouvert que sur une Partie réalisée (statut actuel: ${milestone.status}).` });
+            }
             return res.status(400).json({ error: "Le statut du paiement ne permet pas l'ouverture d'un litige." });
         }
 
         const nowIso = new Date().toISOString();
+        const frozen = await supabaseAdmin
+            .from('payments')
+            .update({
+                payment_status: 'DISPUTED',
+                dispute_reason: reason || null
+            })
+            .eq('id', payment.id)
+            .eq('payment_status', 'SUCCEEDED')
+            .eq('transfer_status', 'PENDING_VALIDATION')
+            .is('client_validated_at', null)
+            .is('stripe_transfer_id', null)
+            .is('stripe_refund_id', null)
+            .select()
+            .maybeSingle();
+
+        if (frozen.error || !frozen.data) {
+            return res.status(409).json({ code: 'CONCURRENCY_LOCK_FAILED', error: "Le versement n'a pas pu être gelé (concurrence)." });
+        }
+
         await supabaseAdmin
             .from('milestones')
             .update({
                 status: 'DISPUTED',
                 updated_at: nowIso
             })
-            .eq('id', milestone.id);
-
-        await supabaseAdmin
-            .from('payments')
-            .update({
-                payment_status: 'DISPUTED',
-                dispute_reason: reason || null
-            })
-            .eq('id', payment.id);
+            .eq('id', milestone.id)
+            .eq('status', 'COMPLETED');
 
         console.log(`⚠️ [DISPUTE RAISED] Litige ouvert par le client sur Partie ${milestone.id}. Raison: ${reason}`);
 
@@ -4055,15 +5249,11 @@ app.post('/v1/payments/validate-and-transfer', async (req, res) => {
     }
 });
 
-// 8. DISPUTE / LITIGE FREEZE ENDPOINT
-app.post('/v1/payments/dispute', (req, res) => {
-    const { missionId, reason } = req.body;
-    console.log(`⚠️ [LITIGE LYANN] Mission ${missionId} en litige. Raison: ${reason}. Virement bloqué.`);
-    res.json({
-        success: true,
-        missionId,
-        providerTransferStatus: 'DISPUTED',
-        message: "Signalement de litige enregistré. Virement gelé jusqu'à médiation."
+app.post('/v1/payments/dispute', (_req, res) => {
+    return res.status(410).json({
+        success: false,
+        code: 'LEGACY_ENDPOINT_DISABLED',
+        error: 'Cette route historique est désactivée. Utiliser POST /v1/milestones/raise-dispute.'
     });
 });
 
@@ -4071,6 +5261,145 @@ async function announceAcceptedQuoteInConversation() {
     // Quote and payment timeline events already describe the step.
     // A second text message only repeated "Devis accepté".
 }
+
+function postTransferRefundStore() {
+    return createSupabaseStore(supabaseAdmin);
+}
+
+app.post('/v1/payments/post-transfer-refund-requests', async (req, res) => {
+    try {
+        if (rejectPaymentWritesOnProductionFromDev(req, res)) return;
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const result = await createPostTransferRefundRequest(postTransferRefundStore(), {
+            authUid: user.id,
+            paymentId: req.body && req.body.payment_id,
+            milestoneId: req.body && req.body.milestone_id,
+            requestedCents: req.body && req.body.requested_cents,
+            reason: req.body && req.body.reason
+        });
+        return res.status(result.http).json(result.body);
+    } catch (e) {
+        return res.status(500).json({ error: 'Demande impossible.' });
+    }
+});
+
+app.get('/v1/payments/post-transfer-refund-requests', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const result = await listPostTransferRefundRequests(postTransferRefundStore(), { authUid: user.id });
+        return res.status(result.http).json(result.body);
+    } catch (e) {
+        return res.status(500).json({ error: 'Lecture impossible.' });
+    }
+});
+
+app.get('/v1/payments/post-transfer-refund-requests/:id', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const result = await viewPostTransferRefundRequest(postTransferRefundStore(), {
+            authUid: user.id,
+            requestId: req.params.id
+        });
+        return res.status(result.http).json(result.body);
+    } catch (e) {
+        return res.status(500).json({ error: 'Lecture impossible.' });
+    }
+});
+
+app.post('/v1/payments/post-transfer-refund-requests/:id/reply', async (req, res) => {
+    try {
+        if (rejectPaymentWritesOnProductionFromDev(req, res)) return;
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const result = await replyPostTransferRefundRequest(postTransferRefundStore(), {
+            authUid: user.id,
+            requestId: req.params.id,
+            response: req.body && req.body.response,
+            reason: req.body && req.body.reason
+        });
+        return res.status(result.http).json(result.body);
+    } catch (e) {
+        return res.status(500).json({ error: 'Réponse impossible.' });
+    }
+});
+
+app.get('/v1/admin/post-transfer-refund-requests/:id', async (req, res) => {
+    const admin = await verifyAdminPermission(req, 'finance.refund');
+    if (!admin.authorized) return res.status(admin.status).json({ error: admin.error });
+    const result = await viewPostTransferRefundRequest(postTransferRefundStore(), {
+        authUid: admin.userId,
+        requestId: req.params.id,
+        admin
+    });
+    return res.status(result.http).json(result.body);
+});
+
+app.get('/v1/admin/post-transfer-refund-requests/:id/history', async (req, res) => {
+    const admin = await verifyAdminPermission(req, 'finance.refund');
+    if (!admin.authorized) return res.status(admin.status).json({ error: admin.error });
+    const result = await listPostTransferRefundHistory(postTransferRefundStore(), {
+        authUid: admin.userId,
+        requestId: req.params.id,
+        admin
+    });
+    return res.status(result.http).json(result.body);
+});
+
+app.post('/v1/admin/post-transfer-refund-requests/:id/execute', async (req, res) => {
+    try {
+        if (rejectPaymentWritesOnProductionFromDev(req, res)) return;
+        const admin = await verifyAdminPermission(req, 'finance.refund');
+        if (!admin.authorized) {
+            return res.status(admin.status).json({
+                error: admin.error,
+                execute: false,
+                createReversal: false,
+                createRefund: false
+            });
+        }
+        const result = await executeAdminPostTransfer(postTransferRefundStore(), {
+            admin,
+            requestId: req.params.id,
+            expected: req.body && req.body.expected,
+            requestedCents: req.body && req.body.requested_cents,
+            body: req.body,
+            httpRoute: true,
+            ...attachServerStripeTestRuntime({ supabaseAdmin, env: process.env })
+        });
+        return res.status(result.http).json(result.body);
+    } catch (e) {
+        return res.status(500).json({
+            error: 'Exécution impossible.',
+            execute: false,
+            createReversal: false,
+            createRefund: false
+        });
+    }
+});
+
+app.post('/v1/admin/post-transfer-refund-requests/:id/decide', async (req, res) => {
+    try {
+        if (rejectPaymentWritesOnProductionFromDev(req, res)) return;
+        const admin = await verifyAdminPermission(req, 'finance.refund');
+        if (!admin.authorized) return res.status(admin.status).json({ error: admin.error });
+        if (postTransferFinancialExecutionEnabled()) {
+            return res.status(409).json({ code: 'EXECUTION_DISABLED_REQUIRED', execute: false });
+        }
+        const result = await decidePostTransferRefundRequest(postTransferRefundStore(), {
+            requestId: req.params.id,
+            action: req.body && req.body.action,
+            requestedCents: req.body && req.body.requested_cents,
+            reason: req.body && req.body.reason,
+            admin
+        });
+        return res.status(result.http).json(result.body);
+    } catch (e) {
+        return res.status(500).json({ error: 'Décision impossible.' });
+    }
+});
 
 app.post('/v1/payments/refund-untransferred', async (req, res) => {
     try {
@@ -4080,29 +5409,145 @@ app.post('/v1/payments/refund-untransferred', async (req, res) => {
         if (!milestoneId) return res.status(400).json({ error: 'Le paramètre milestone_id est obligatoire.' });
         const { data: milestone } = await supabaseAdmin.from('milestones').select('*, quotes(*)').eq('id', milestoneId).maybeSingle();
         if (!milestone) return res.status(404).json({ error: 'Partie introuvable.' });
-        const { data: mission } = await supabaseAdmin.from('missions').select('id, requester_id').eq('id', milestone.quotes?.mission_id).maybeSingle();
-        if (!mission || mission.requester_id !== user.id) {
-            return res.status(403).json({ error: 'Seul le demandeur peut annuler ce paiement.' });
+        const { data: mission } = await supabaseAdmin.from('missions').select('id, requester_id, status').eq('id', milestone.quotes?.mission_id).maybeSingle();
+        if (!mission) {
+            return res.status(400).json({ error: 'Mission associée introuvable.' });
         }
         const { data: payment } = await supabaseAdmin.from('payments').select('*').eq('milestone_id', milestoneId).maybeSingle();
-        const decision = evaluateRefund(payment, milestone);
-        if (!decision.ok && decision.idempotent) {
-            return res.json({ success: true, idempotent: true, code: 'ALREADY_REFUNDED', refund_id: decision.refundId });
+        const grant = loadPreTransferRefundGrant();
+        const facts = grantFactsFromPayment(payment, {
+            requesterId: mission.requester_id,
+            env: process.env,
+            livemode: String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_'),
+            stripeAccount: String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_')
+                ? STRIPE_TEST_PLATFORM_ACCOUNT
+                : null
+        });
+        const prepared = preparePreTransferRefund({
+            authUid: user.id,
+            requesterId: mission.requester_id,
+            payment,
+            milestone,
+            mission,
+            body: req.body,
+            headers: req.headers,
+            query: req.query,
+            livemode: facts.livemode,
+            grantActive: grant.active === true,
+            grantEvaluation: evaluatePreTransferRefundGrant(grant, facts)
+        });
+        if (prepared.code === 'FORBIDDEN') {
+            return res.status(403).json({ error: 'Seul le demandeur peut annuler ce paiement.', code: prepared.code });
         }
-        if (!decision.ok) return res.status(409).json({ code: decision.code, error: 'Remboursement impossible.' });
+        if (prepared.code === 'ALREADY_REFUNDED') {
+            return res.json({ success: true, idempotent: true, code: 'ALREADY_REFUNDED', refund_id: prepared.refund_id });
+        }
+        if (prepared.reconcile === true && prepared.refund_id) {
+            const nowIso = new Date().toISOString();
+            await supabaseAdmin.from('payments').update({
+                payment_status: 'REFUNDED',
+                amount_refunded_cents: prepared.amount_cents,
+                stripe_refund_id: prepared.refund_id
+            }).eq('id', payment.id);
+            await supabaseAdmin.from('milestones').update({ status: 'CANCELLED', updated_at: nowIso }).eq('id', milestone.id);
+            return res.json({ success: true, code: 'RECONCILE_EXISTING_REFUND', refund_id: prepared.refund_id, create: false });
+        }
+        if (prepared.execute !== true) {
+            return res.status(prepared.http).json({
+                code: prepared.code,
+                error: prepared.code === 'EXECUTION_DISABLED'
+                    ? 'Remboursement pré-Transfer non activé.'
+                    : 'Remboursement impossible.',
+                create: false
+            });
+        }
         const runtime = stripeRuntime();
         if (!runtime.stripe) return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
-        const refund = await runtime.stripe.refunds.create({
-            payment_intent: payment.stripe_payment_intent_id
-        }, { idempotencyKey: `re_payment_${payment.id}` });
-        const nowIso = new Date().toISOString();
-        await supabaseAdmin.from('payments').update({
-            payment_status: 'REFUNDED',
-            amount_refunded_cents: Number(payment.customer_total_cents),
-            stripe_refund_id: refund.id
-        }).eq('id', payment.id).eq('payment_status', 'SUCCEEDED');
-        await supabaseAdmin.from('milestones').update({ status: 'CANCELLED', updated_at: nowIso }).eq('id', milestone.id);
-        return res.json({ success: true, code: 'REFUNDED', refund_id: refund.id });
+
+        let listedRefunds = [];
+        try {
+            const listed = await runtime.stripe.refunds.list({
+                payment_intent: payment.stripe_payment_intent_id,
+                limit: 10
+            });
+            listedRefunds = (listed.data || []).filter((row) => row && row.id && row.status !== 'canceled');
+        } catch (_) {
+            return res.status(500).json({ code: 'STRIPE_READ_UNCERTAIN', error: 'Lecture Stripe incertaine.', create: false });
+        }
+        if (listedRefunds.length) {
+            const nowIso = new Date().toISOString();
+            await supabaseAdmin.from('payments').update({
+                payment_status: 'REFUNDED',
+                amount_refunded_cents: refundAmountFromPayment(payment),
+                stripe_refund_id: listedRefunds[0].id
+            }).eq('id', payment.id);
+            await supabaseAdmin.from('milestones').update({ status: 'CANCELLED', updated_at: nowIso }).eq('id', milestone.id);
+            return res.json({ success: true, code: 'RECONCILE_EXISTING_REFUND', refund_id: listedRefunds[0].id, create: false });
+        }
+
+        let locked = payment;
+        if (prepared.action === 'acquire') {
+            const reserved = await supabaseAdmin
+                .from('payments')
+                .update({ stripe_refund_id: refundReservationId(payment.id) })
+                .eq('id', payment.id)
+                .eq('payment_status', 'SUCCEEDED')
+                .eq('transfer_status', 'PENDING_VALIDATION')
+                .is('stripe_transfer_id', null)
+                .is('client_validated_at', null)
+                .is('stripe_refund_id', null)
+                .select()
+                .maybeSingle();
+            if (reserved.error || !reserved.data) {
+                return res.status(409).json({ code: 'CONCURRENCY_LOCK_FAILED', error: 'Remboursement impossible (concurrence).' });
+            }
+            locked = reserved.data;
+        }
+
+        const amountCents = refundAmountFromPayment(payment);
+        if (!Number.isFinite(amountCents) || amountCents <= 0) {
+            return res.status(409).json({ code: 'AMOUNT_UNAVAILABLE', error: 'Montant remboursable introuvable.' });
+        }
+        const admitted = admitPreTransferRefundDispatch(prepared, { found: false, searchComplete: true });
+        if (!admitted.ok || admitted.createRefund !== true) {
+            return res.status(409).json({
+                code: admitted.code || 'EXECUTION_DISABLED',
+                error: 'Remboursement pré-Transfer non admis.',
+                create: false
+            });
+        }
+
+        try {
+            const refund = await runtime.stripe.refunds.create({
+                payment_intent: payment.stripe_payment_intent_id,
+                amount: amountCents
+            }, { idempotencyKey: refundIdempotencyKey(payment.id) });
+            const nowIso = new Date().toISOString();
+            await supabaseAdmin.from('payments').update({
+                payment_status: 'REFUNDED',
+                amount_refunded_cents: amountCents,
+                stripe_refund_id: refund.id
+            }).eq('id', payment.id);
+            await supabaseAdmin.from('milestones').update({ status: 'CANCELLED', updated_at: nowIso }).eq('id', milestone.id);
+            return res.json({ success: true, code: 'REFUNDED', refund_id: refund.id });
+        } catch (trErr) {
+            const recovered = trErr && (trErr.refund || (trErr.raw && trErr.raw.refund));
+            const failure = stripeRefundFailureAction(recovered && recovered.id ? recovered : null);
+            if (failure.action === 'complete') {
+                const nowIso = new Date().toISOString();
+                await supabaseAdmin.from('payments').update({
+                    payment_status: 'REFUNDED',
+                    amount_refunded_cents: amountCents,
+                    stripe_refund_id: failure.refundId
+                }).eq('id', payment.id);
+                await supabaseAdmin.from('milestones').update({ status: 'CANCELLED', updated_at: nowIso }).eq('id', milestone.id);
+                return res.json({ success: true, code: 'REFUNDED', refund_id: failure.refundId, recovered: true });
+            }
+            return res.status(500).json({
+                error: 'Remboursement impossible.',
+                code: failure.code || 'STRIPE_UNCERTAIN_KEEP_LOCK'
+            });
+        }
     } catch (e) {
         console.error('Refund error');
         return res.status(500).json({ error: 'Remboursement impossible.' });
@@ -4112,29 +5557,34 @@ app.post('/v1/payments/refund-untransferred', async (req, res) => {
 // 9. STRIPE WEBHOOK LISTENER (Server-side Source of Truth & Signed Idempotent Event Processor)
 app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/webhooks/stripe', '/api/payments/webhook', '/api/webhooks/stripe'], async (req, res) => {
     const sig = req.headers['stripe-signature'];
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     const runtime = stripeRuntime();
-    if (!webhookSecret || !runtime.stripe) {
+    if (!runtime.stripe) {
         return res.status(503).json({ code: 'STRIPE_WEBHOOK_CONFIG_MISSING', error: 'Configuration webhook Stripe incomplète.' });
     }
 
-    let event;
-    try {
-        event = runtime.stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } catch (_) {
-        return res.status(400).json({ code: 'STRIPE_SIGNATURE_INVALID', error: 'Signature Stripe invalide.' });
+    const constructed = constructStripeWebhookEvent(runtime.stripe, req.body, sig, process.env);
+    if (!constructed.ok) {
+        const http = constructed.code === 'STRIPE_WEBHOOK_CONFIG_MISSING' ? 503 : 400;
+        return res.status(http).json({
+            code: constructed.code,
+            error: constructed.code === 'STRIPE_SIGNATURE_INVALID' ? 'Signature Stripe invalide.' : 'Configuration webhook Stripe incomplète.'
+        });
+    }
+    const event = constructed.event;
+
+    const admission = admitStripeWebhookEvent(event, process.env);
+    if (!admission.ok) {
+        return res.status(409).json({ code: admission.code, error: 'Événement Stripe refusé par l’isolation.' });
     }
 
     if (event && event.id) {
-        const payload = event.data ? event.data.object : {};
-        const { error: eventInsertErr } = await supabaseAdmin
-            .from('stripe_webhook_events')
-            .insert({
-                stripe_event_id: event.id,
-                event_type: event.type,
-                status: 'processing',
-                payload
-            });
+        const write = webhookEventWriteRow(event);
+        let eventInsertErr = (await supabaseAdmin.from('stripe_webhook_events').insert(write)).error;
+        if (shouldFallbackWebhookPayloadColumn(eventInsertErr)) {
+            eventInsertErr = (await supabaseAdmin
+                .from('stripe_webhook_events')
+                .insert(webhookEventLegacyPayloadRow(write))).error;
+        }
 
         if (eventInsertErr && eventInsertErr.code === '23505') {
             const { data: existing } = await supabaseAdmin
@@ -4145,11 +5595,15 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
             const claim = claimWebhookDecision(existing || { status: 'processed' });
             if (claim.action === 'duplicate') return res.json({ received: true, duplicate: true });
         } else if (eventInsertErr && /status/.test(eventInsertErr.message || '')) {
-            const { error: legacyErr } = await supabaseAdmin.from('stripe_webhook_events').insert({
-                stripe_event_id: event.id,
-                event_type: event.type,
-                payload
-            });
+            const legacyRow = { stripe_event_id: write.stripe_event_id, event_type: write.event_type, payload_summary: write.payload_summary };
+            let legacyErr = (await supabaseAdmin.from('stripe_webhook_events').insert(legacyRow)).error;
+            if (shouldFallbackWebhookPayloadColumn(legacyErr)) {
+                legacyErr = (await supabaseAdmin.from('stripe_webhook_events').insert({
+                    stripe_event_id: write.stripe_event_id,
+                    event_type: write.event_type,
+                    payload: write.payload_summary
+                })).error;
+            }
             if (legacyErr && legacyErr.code === '23505') return res.json({ received: true, duplicate: true });
             if (legacyErr) return res.status(500).json({ error: 'Webhook non enregistré.' });
         } else if (eventInsertErr) {
@@ -4174,25 +5628,83 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                     if (!funded.ok) {
                         throw new Error(funded.code);
                     }
-                    await supabaseAdmin
-                        .from('payments')
-                        .update({
+                    if (funded.preserve_payment !== true && funded.apply !== false) {
+                        const paymentUpdate = {
                             payment_status: funded.payment_status,
-                            transfer_status: funded.transfer_status,
-                            funded_at: new Date().toISOString(),
+                            funded_at: payment.funded_at || new Date().toISOString(),
                             stripe_charge_id: funded.stripe_charge_id
-                        })
-                        .eq('id', payment.id);
+                        };
+                        if (!funded.preserve_transfer) paymentUpdate.transfer_status = funded.transfer_status;
+                        await supabaseAdmin
+                            .from('payments')
+                            .update(paymentUpdate)
+                            .eq('id', payment.id);
+                    }
+                    if (funded.milestone_status === 'FUNDED') {
+                        await supabaseAdmin
+                            .from('milestones')
+                            .update({
+                                status: 'FUNDED',
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', payment.milestone_id)
+                            .in('status', ['PENDING', 'IN_PROGRESS', 'FUNDED']);
+                    }
 
-                    await supabaseAdmin
-                        .from('milestones')
-                        .update({
-                            status: 'FUNDED',
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', payment.milestone_id);
+                    // Annonce → en cours (hors recherche publique OPEN).
+                    try {
+                        const { data: fundedMilestone } = await supabaseAdmin
+                            .from('milestones')
+                            .select('quote_id, quotes(request_id, mission_id)')
+                            .eq('id', payment.milestone_id)
+                            .maybeSingle();
+                        const quoteRow = fundedMilestone && fundedMilestone.quotes;
+                        let requestId = quoteRow && quoteRow.request_id;
+                        if (!requestId && quoteRow && quoteRow.mission_id) {
+                            const { data: missionRow } = await supabaseAdmin
+                                .from('missions')
+                                .select('related_request_id')
+                                .eq('id', quoteRow.mission_id)
+                                .maybeSingle();
+                            requestId = missionRow && missionRow.related_request_id;
+                        }
+                        if (requestId) {
+                            await supabaseAdmin
+                                .from('requests')
+                                .update({
+                                    status: 'IN_PROGRESS',
+                                    auto_close_at: null,
+                                    close_notice_sent: true,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', requestId)
+                                .in('status', ['OPEN', 'PAUSED', 'ASSIGNED']);
+                        }
+                    } catch (requestStatusErr) {
+                        console.warn('[PAYMENT CORE] request IN_PROGRESS update skipped', requestStatusErr);
+                    }
 
                     await announceAcceptedQuoteInConversation(payment.milestone_id);
+
+                    if (paymentIntent.metadata && paymentIntent.metadata.lyann_save_card === '1') {
+                        try {
+                            const runtime = stripeRuntime();
+                            const methodId = typeof paymentIntent.payment_method === 'string'
+                                ? paymentIntent.payment_method
+                                : paymentIntent.payment_method && paymentIntent.payment_method.id;
+                            const intentCustomer = typeof paymentIntent.customer === 'string'
+                                ? paymentIntent.customer
+                                : paymentIntent.customer && paymentIntent.customer.id;
+                            if (runtime.stripe && methodId && intentCustomer) {
+                                const method = await runtime.stripe.paymentMethods.retrieve(methodId);
+                                if (canDetachSavedCard(method, intentCustomer) && method.allow_redisplay !== 'always') {
+                                    await runtime.stripe.paymentMethods.update(methodId, { allow_redisplay: 'always' });
+                                }
+                            }
+                        } catch (saveErr) {
+                            console.warn('[PAYMENT CORE] saved card redisplay skipped', saveErr && saveErr.message);
+                        }
+                    }
 
                     console.log(`🔒 [PAYMENT CORE] Milestone ${payment.milestone_id} est à présent FUNDED. Transfer status: PENDING_VALIDATION.`);
                 }
@@ -4203,52 +5715,158 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                 const paymentIntent = event.data.object;
                 console.log(`❌ [STRIPE WEBHOOK] PaymentIntent échoué: ${paymentIntent.id}`);
 
-                await supabaseAdmin
+                const { data: existingFailed } = await supabaseAdmin
                     .from('payments')
-                    .update({ payment_status: 'FAILED' })
-                    .eq('stripe_payment_intent_id', paymentIntent.id);
+                    .select('*')
+                    .eq('stripe_payment_intent_id', paymentIntent.id)
+                    .maybeSingle();
+                const failed = applyPaymentFailed(existingFailed);
+                if (failed.apply) {
+                    await supabaseAdmin
+                        .from('payments')
+                        .update({ payment_status: 'FAILED' })
+                        .eq('id', existingFailed.id)
+                        .in('payment_status', ['CREATED', 'REQUIRES_ACTION', 'PROCESSING']);
+                }
+                break;
+            }
+
+            case 'charge.refunded': {
+                const charge = event.data.object;
+                const { data: refundedPayment } = await supabaseAdmin
+                    .from('payments')
+                    .select('*')
+                    .eq('stripe_charge_id', charge && charge.id)
+                    .maybeSingle();
+                const synced = applyChargeRefunded(refundedPayment, charge);
+                if (synced.apply && refundedPayment && synced.persist !== false) {
+                    await supabaseAdmin
+                        .from('payments')
+                        .update({
+                            payment_status: synced.payment_status,
+                            stripe_refund_id: synced.stripe_refund_id
+                        })
+                        .eq('id', refundedPayment.id);
+                }
+                break;
+            }
+
+            case 'transfer.reversed': {
+                const transfer = event.data && event.data.object;
+                const { data: reversedPayment } = await supabaseAdmin
+                    .from('payments')
+                    .select('*')
+                    .eq('stripe_transfer_id', transfer && transfer.id)
+                    .maybeSingle();
+                const routed = routePostTransferWebhook(event, reversedPayment);
+                const persist = postTransferWebhookPersistDecision(routed);
+                if (persist.persist && routed.apply && reversedPayment) {
+                    await supabaseAdmin
+                        .from('payments')
+                        .update({
+                            transfer_status: routed.transfer_status,
+                            stripe_reversal_id: routed.stripe_reversal_id
+                        })
+                        .eq('id', reversedPayment.id);
+                }
                 break;
             }
 
             case 'payment_intent.processing': {
                 const paymentIntent = event.data.object;
-                await supabaseAdmin
+                const { data: existingProcessing } = await supabaseAdmin
                     .from('payments')
-                    .update({ payment_status: 'PROCESSING' })
-                    .eq('stripe_payment_intent_id', paymentIntent.id);
+                    .select('*')
+                    .eq('stripe_payment_intent_id', paymentIntent.id)
+                    .maybeSingle();
+                const processing = applyPaymentProcessing(existingProcessing);
+                if (processing.apply && existingProcessing) {
+                    await supabaseAdmin
+                        .from('payments')
+                        .update({ payment_status: 'PROCESSING' })
+                        .eq('id', existingProcessing.id)
+                        .in('payment_status', ['CREATED', 'REQUIRES_ACTION']);
+                }
+                break;
+            }
+
+            case 'charge.dispute.created':
+            case 'charge.dispute.updated': {
+                const dispute = event.data && event.data.object;
+                const chargeFilter = String(dispute && dispute.charge || '');
+                const piFilter = String(dispute && dispute.payment_intent || '');
+                let disputedQuery = supabaseAdmin.from('payments').select('*');
+                if (chargeFilter && piFilter) {
+                    disputedQuery = disputedQuery.or('stripe_charge_id.eq.' + chargeFilter + ',stripe_payment_intent_id.eq.' + piFilter);
+                } else if (chargeFilter) {
+                    disputedQuery = disputedQuery.eq('stripe_charge_id', chargeFilter);
+                } else if (piFilter) {
+                    disputedQuery = disputedQuery.eq('stripe_payment_intent_id', piFilter);
+                } else {
+                    break;
+                }
+                const { data: disputedPayment } = await disputedQuery.maybeSingle();
+                const frozen = event.type === 'charge.dispute.updated'
+                    ? applyChargeDisputeUpdated(disputedPayment)
+                    : applyChargeDisputeCreated(disputedPayment);
+                if (frozen.apply && disputedPayment) {
+                    await supabaseAdmin
+                        .from('payments')
+                        .update({ payment_status: 'DISPUTED' })
+                        .eq('id', disputedPayment.id)
+                        .in('payment_status', ['SUCCEEDED', 'PARTIALLY_REFUNDED']);
+                    if (disputedPayment.milestone_id) {
+                        await supabaseAdmin
+                            .from('milestones')
+                            .update({ status: 'DISPUTED', updated_at: new Date().toISOString() })
+                            .eq('id', disputedPayment.milestone_id)
+                            .in('status', ['FUNDED', 'IN_PROGRESS', 'COMPLETED']);
+                    }
+                }
+                void chargeId;
+                break;
+            }
+
+            case 'charge.dispute.closed': {
+                const closed = event.data && event.data.object;
+                const { data: closedPayment } = await supabaseAdmin
+                    .from('payments')
+                    .select('*')
+                    .eq('stripe_charge_id', closed && closed.charge)
+                    .maybeSingle();
+                applyChargeDisputeClosed(closedPayment);
                 break;
             }
 
             case 'account.updated': {
                 const accountId = event.data && event.data.object && event.data.object.id;
                 if (!accountId) break;
-                const account = await runtime.stripe.v2.core.accounts.retrieve(accountId, {
-                    include: ['configuration.recipient']
-                });
-                if (connectPayoutReady(account).ok) {
-                    const { data: providerProfile } = await supabaseAdmin
-                        .from('profiles')
-                        .select('id')
-                        .eq('stripe_account_id', account.id)
-                        .maybeSingle();
-
-                    if (providerProfile) {
-                        const { data: pendingPayments } = await supabaseAdmin
-                            .from('payments')
-                            .select('milestone_id, provider_net_cents')
-                            .eq('provider_id', providerProfile.id)
-                            .not('client_validated_at', 'is', null)
-                            .eq('payment_status', 'SUCCEEDED')
-                            .eq('transfer_status', 'TRANSFER_FAILED')
-                            .is('stripe_transfer_id', null);
-
-                        if (pendingPayments && pendingPayments.length > 0) {
-                            console.log(`🔄 [ACCOUNT.UPDATED] ${pendingPayments.length} paiement(s) en attente à réessayer pour le provider ${providerProfile.id}`);
-                            for (const p of pendingPayments) {
-                                await retryMilestoneTransfer(p.milestone_id);
-                            }
-                        }
-                    }
+                let account = event.data.object;
+                try {
+                    account = await runtime.stripe.v2.core.accounts.retrieve(accountId, {
+                        include: ['configuration.recipient']
+                    });
+                } catch (_) {
+                    account = event.data.object;
+                }
+                const { data: providerProfile } = await supabaseAdmin
+                    .from('profiles')
+                    .select('id')
+                    .eq('stripe_account_id', accountId)
+                    .maybeSingle();
+                let pendingPayments = [];
+                if (providerProfile) {
+                    const listed = await supabaseAdmin
+                        .from('payments')
+                        .select('id, milestone_id, payment_status, transfer_status, stripe_transfer_id, stripe_refund_id')
+                        .eq('provider_id', providerProfile.id)
+                        .eq('transfer_status', 'TRANSFER_FAILED')
+                        .is('stripe_transfer_id', null);
+                    pendingPayments = listed.data || [];
+                }
+                const decided = applyAccountUpdated({ account, payments: pendingPayments });
+                if (decided.announcePayoutReady && providerProfile) {
+                    await announcePayoutReady(providerProfile.id);
                 }
                 break;
             }
@@ -4272,9 +5890,12 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
 
 // Start Server
 if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`🚀 LYANN DOM API Engine en écoute sur http://localhost:${PORT}/v1`);
-    });
+    const bind = process.env.LYANN_API_BIND || undefined;
+    const onListen = () => {
+        console.log(`🚀 LYANN DOM API Engine en écoute sur http://${bind || 'localhost'}:${PORT}/v1`);
+    };
+    if (bind) app.listen(PORT, bind, onListen);
+    else app.listen(PORT, onListen);
 }
 
 module.exports = app;

@@ -24,14 +24,35 @@
   }
 
   function set(namespace, id, value, ttlMs = DEFAULT_TTL_MS) {
+    const ttl = ttlMs === 0 ? 0 : (Number(ttlMs) || DEFAULT_TTL_MS);
+    if (ttl <= 0) {
+      entries.delete(key(namespace, id));
+      return value;
+    }
     entries.set(key(namespace, id), {
       value,
-      expiresAt: now() + Math.max(0, Number(ttlMs) || DEFAULT_TTL_MS)
+      expiresAt: now() + Math.max(0, ttl)
     });
     return value;
   }
 
+  function dropInFlight(namespace, id) {
+    if (id === undefined) {
+      const prefix = `${namespace}:`;
+      [...inFlight.keys()].forEach((entryKey) => {
+        if (entryKey.startsWith(prefix)) inFlight.delete(entryKey);
+      });
+      return;
+    }
+    inFlight.delete(key(namespace, id));
+    const extra = `${namespace}:${String(id)}:`;
+    [...inFlight.keys()].forEach((entryKey) => {
+      if (entryKey.startsWith(extra)) inFlight.delete(entryKey);
+    });
+  }
+
   function invalidate(namespace, id) {
+    dropInFlight(namespace, id);
     if (id === undefined) {
       const prefix = `${namespace}:`;
       [...entries.keys()].forEach((entryKey) => {
@@ -40,6 +61,10 @@
       return;
     }
     entries.delete(key(namespace, id));
+    const extra = `${namespace}:${String(id)}:`;
+    [...entries.keys()].forEach((entryKey) => {
+      if (entryKey.startsWith(extra)) entries.delete(entryKey);
+    });
   }
 
   async function dedupe(namespace, id, loader, ttlMs = DEFAULT_TTL_MS) {
@@ -90,6 +115,7 @@
     get,
     set,
     invalidate,
+    dropInFlight,
     dedupe,
     installApiProfileCache
   };

@@ -3,9 +3,10 @@
  * Production Supabase client. No local mock business-data fallback is permitted.
  */
 
-// Global Supabase init
-const SUPABASE_URL = 'https://gzispjfoywklpqatjyop.supabase.co'; 
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6aXNwamZveXdrbHBxYXRqeW9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0MTE4ODcsImV4cCI6MjEwMTk4Nzg4N30.oPJvkDVffQ4EaxDy2V7Jj7veusCVGTnM2BUBKXnoQ0A';
+const LYANN_PRODUCTION_ORIGIN = 'https://lyann.app';
+const LYANN_PRODUCTION_SUPABASE_REF = 'gzispjfoywklpqatjyop';
+const LYANN_PRODUCTION_SUPABASE_URL = 'https://gzispjfoywklpqatjyop.supabase.co';
+const LYANN_PRODUCTION_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6aXNwamZveXdrbHBxYXRqeW9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0MTE4ODcsImV4cCI6MjEwMTk4Nzg4N30.oPJvkDVffQ4EaxDy2V7Jj7veusCVGTnM2BUBKXnoQ0A';
 
 let supabaseClient;
 function isUUID(str) {
@@ -29,6 +30,13 @@ function isMissingColumnError(error) {
     return /column .* does not exist|could not find the .* column/i.test(String(error.message || ''));
 }
 
+function emitLyannClientEvent(name, detail) {
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+    try {
+        window.dispatchEvent(new CustomEvent(name, { detail: detail || null }));
+    } catch (_) {}
+}
+
 function isPublishedService(row) {
     if (!row) return false;
     if (row.is_active === false || row.active === false) return false;
@@ -37,6 +45,22 @@ function isPublishedService(row) {
 
 function slugifyServiceTitle(title) {
     return String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'service';
+}
+
+function uniqueServiceSlug(userId, title) {
+    const base = slugifyServiceTitle(title);
+    const owner = String(userId || '').replace(/-/g, '').slice(0, 8);
+    return owner ? `${base}-${owner}` : `${base}-${Date.now().toString(36)}`;
+}
+
+function isRetryableServiceInsertError(error) {
+    if (!error) return false;
+    if (isMissingColumnError(error)) return true;
+    const code = String(error.code || '');
+    const message = String(error.message || '');
+    if (code === '23502' || /null value in column/i.test(message)) return true;
+    if (code === '23505' || /duplicate key/i.test(message)) return true;
+    return false;
 }
 
 // Production `services` stores category / is_active. The later canonical shape
@@ -69,12 +93,23 @@ function canonicalServiceInsert(userId, title, extra = {}) {
 }
 
 async function insertServicesForOwner(supabase, userId, items) {
-    const production = items.map(item => productionServiceInsert(userId, item.title, item));
-    let result = await supabase.from('services').insert(production).select();
-    if (!result.error) return result;
-    if (!isMissingColumnError(result.error)) return result;
-    const canonical = items.map(item => canonicalServiceInsert(userId, item.title, item));
-    return supabase.from('services').insert(canonical).select();
+    const attempts = [
+        items.map((item) => productionServiceInsert(userId, item.title, item)),
+        items.map((item) => Object.assign({}, productionServiceInsert(userId, item.title, item), {
+            slug: uniqueServiceSlug(userId, item.title),
+            active: true
+        })),
+        items.map((item) => canonicalServiceInsert(userId, item.title, Object.assign({}, item, {
+            slug: uniqueServiceSlug(userId, item.title)
+        })))
+    ];
+    let result = { error: { message: 'insert failed' } };
+    for (let i = 0; i < attempts.length; i += 1) {
+        result = await supabase.from('services').insert(attempts[i]).select();
+        if (!result.error) return result;
+        if (!isRetryableServiceInsertError(result.error)) return result;
+    }
+    return result;
 }
 
 function presentService(row) {
@@ -90,8 +125,6 @@ function presentService(row) {
     };
 }
 
-const LYANN_PRODUCTION_ORIGIN = 'https://lyann.app';
-
 function isCapacitorRuntime() {
     if (typeof window === 'undefined') return false;
     try {
@@ -103,47 +136,176 @@ function isCapacitorRuntime() {
     return protocol === 'capacitor:' || protocol === 'ionic:' || protocol === 'file:';
 }
 
-function getLyannSupabaseUrl() {
-    if (typeof window !== 'undefined' && window.LYANN_SUPABASE_URL) {
-        return String(window.LYANN_SUPABASE_URL).replace(/\/$/, '');
+function resolveLyannClientBinding() {
+    const runtime = (typeof window !== 'undefined' && window.LyannRuntimeConfig)
+        || (typeof globalThis !== 'undefined' && globalThis.LyannRuntimeConfig);
+    const location = (typeof window !== 'undefined' && window.location) || {};
+    const input = {
+        injectedUrl: typeof window !== 'undefined' ? window.LYANN_SUPABASE_URL : '',
+        injectedAnon: typeof window !== 'undefined' ? window.LYANN_SUPABASE_ANON_KEY : '',
+        lock: typeof window !== 'undefined' ? (window.LYANN_SUPABASE_LOCK || window.LYANN_E2E_WRITE_PROJECT_REF) : '',
+        hostname: location.hostname || '',
+        isNative: isCapacitorRuntime(),
+    };
+    if (typeof window !== 'undefined' && Object.prototype.hasOwnProperty.call(window, 'LYANN_BACKEND_ORIGIN')) {
+        input.backendOrigin = window.LYANN_BACKEND_ORIGIN;
     }
-    return SUPABASE_URL;
+    if (runtime && typeof runtime.resolveLyannRuntimeConfig === 'function') {
+        return runtime.resolveLyannRuntimeConfig(input);
+    }
+    const lock = String(input.lock || '');
+    const injectedUrl = String(input.injectedUrl || '').replace(/\/$/, '');
+    if (injectedUrl) {
+        if (lock && lock !== LYANN_PRODUCTION_SUPABASE_REF && injectedUrl.indexOf(LYANN_PRODUCTION_SUPABASE_REF) !== -1) {
+            return { ok: false, code: 'SUPABASE_PRODUCTION_BLOCKED', url: '', anonKey: '', backendOrigin: '' };
+        }
+        return {
+            ok: true,
+            code: 'INJECTED',
+            url: injectedUrl,
+            anonKey: String(input.injectedAnon || ''),
+            backendOrigin: Object.prototype.hasOwnProperty.call(input, 'backendOrigin')
+                ? String(input.backendOrigin || '').replace(/\/$/, '')
+                : (lock && lock !== LYANN_PRODUCTION_SUPABASE_REF ? '' : (input.isNative ? LYANN_PRODUCTION_ORIGIN : ''))
+        };
+    }
+    if (lock && lock !== LYANN_PRODUCTION_SUPABASE_REF) {
+        return { ok: false, code: 'SUPABASE_CONFIG_REQUIRED', url: '', anonKey: '', backendOrigin: '' };
+    }
+    const deployed = input.hostname === 'lyann.app' || input.hostname === 'www.lyann.app' || input.hostname === 'admin.lyann.app';
+    if (deployed || (input.isNative && !lock)) {
+        return {
+            ok: true,
+            code: deployed ? 'DEPLOYED_WEB' : 'SHIPPED_NATIVE',
+            url: LYANN_PRODUCTION_SUPABASE_URL,
+            anonKey: LYANN_PRODUCTION_ANON_KEY,
+            backendOrigin: input.isNative ? LYANN_PRODUCTION_ORIGIN : ''
+        };
+    }
+    return { ok: false, code: 'SUPABASE_CONFIG_REQUIRED', url: '', anonKey: '', backendOrigin: '' };
+}
+
+function getLyannSupabaseUrl() {
+    const binding = resolveLyannClientBinding();
+    if (!binding.ok || !binding.url) {
+        throw new Error('Configuration Supabase manquante. Aucun basculement silencieux vers la production.');
+    }
+    return binding.url;
 }
 
 function getLyannSupabaseAnonKey() {
-    if (typeof window !== 'undefined' && window.LYANN_SUPABASE_ANON_KEY) {
-        return String(window.LYANN_SUPABASE_ANON_KEY);
+    const binding = resolveLyannClientBinding();
+    if (!binding.ok || !binding.anonKey) {
+        throw new Error('Clé Supabase anonyme manquante. Aucun basculement silencieux vers la production.');
     }
-    return SUPABASE_ANON_KEY;
+    return binding.anonKey;
+}
+
+function isLoopbackHttpOrigin(value) {
+    return /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(String(value || '').replace(/\/$/, ''));
+}
+
+function pageHttpOrigin() {
+    try {
+        const loc = typeof window !== 'undefined' ? window.location : null;
+        if (!loc || (loc.protocol !== 'http:' && loc.protocol !== 'https:')) return '';
+        return String(loc.origin || '').replace(/\/$/, '');
+    } catch (_) {
+        return '';
+    }
 }
 
 function getLyannBackendOrigin() {
-    if (typeof window !== 'undefined' && window.LYANN_BACKEND_ORIGIN) {
-        return String(window.LYANN_BACKEND_ORIGIN).replace(/\/$/, '');
+    const binding = resolveLyannClientBinding();
+    if (!binding.ok) {
+        throw new Error('Configuration Supabase manquante. Le backend production n’est pas utilisé par défaut.');
     }
-    if (isCapacitorRuntime()) return LYANN_PRODUCTION_ORIGIN;
-    return '';
+    const origin = binding.backendOrigin || '';
+    if (isCapacitorRuntime() && isLoopbackHttpOrigin(origin)) {
+        console.warn('[LYANN] native-build ignored loopback backend', origin);
+        return '';
+    }
+    // Chrome blocks 127.0.0.1 fetches from a LAN page (192.168.x / 10.x). The API
+    // already serves that page, so payment must stay same-origin.
+    const pageOrigin = pageHttpOrigin();
+    if (!isCapacitorRuntime() && origin && isLoopbackHttpOrigin(origin) && pageOrigin && !isLoopbackHttpOrigin(pageOrigin)) {
+        return pageOrigin;
+    }
+    return origin;
 }
 
 function lyannBackendFetch(path, options) {
     const origin = getLyannBackendOrigin();
     const url = /^https?:\/\//i.test(path) ? path : `${origin}${path}`;
+    const opts = options || {};
+    const cap = typeof window !== 'undefined' ? window.Capacitor : null;
+    const Http = cap && cap.Plugins && cap.Plugins.CapacitorHttp;
+    const native = !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+    if (native && Http && typeof Http.request === 'function' && /^https?:\/\//i.test(url)) {
+        const headers = {};
+        const rawHeaders = opts.headers;
+        if (rawHeaders && typeof rawHeaders.forEach === 'function') {
+            rawHeaders.forEach((value, key) => { headers[key] = value; });
+        } else if (rawHeaders && typeof rawHeaders === 'object') {
+            Object.keys(rawHeaders).forEach((key) => { headers[key] = rawHeaders[key]; });
+        }
+        let data = opts.body;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (_) {}
+        }
+        return Http.request({
+            url,
+            method: String(opts.method || 'GET').toUpperCase(),
+            headers,
+            data,
+            connectTimeout: 15000,
+            readTimeout: 20000
+        }).then((res) => {
+            const payload = res && Object.prototype.hasOwnProperty.call(res, 'data') ? res.data : {};
+            const bodyText = typeof payload === 'string' ? payload : JSON.stringify(payload == null ? {} : payload);
+            const status = Number(res && res.status) || 0;
+            return {
+                ok: status >= 200 && status < 300,
+                status,
+                json: async () => {
+                    if (payload && typeof payload === 'object') return payload;
+                    try { return JSON.parse(bodyText || '{}'); } catch (_) { return {}; }
+                },
+                text: async () => bodyText
+            };
+        });
+    }
     return fetch(url, options);
 }
 
 window.getLyannBackendOrigin = getLyannBackendOrigin;
 window.getLyannSupabaseUrl = getLyannSupabaseUrl;
 window.lyannBackendFetch = lyannBackendFetch;
+window.resolveLyannClientBinding = resolveLyannClientBinding;
+try {
+    if (isCapacitorRuntime()) {
+        console.warn('[LYANN] native-build', window.LYANN_NATIVE_BUILD_ID || window.LYANN_ASSET_VERSION || 'unversioned', {
+            at: window.LYANN_NATIVE_BUILD_AT || '',
+            lock: window.LYANN_SUPABASE_LOCK || '',
+            backend: getLyannBackendOrigin()
+        });
+    }
+} catch (_) {}
 if (window.supabase) {
-    supabaseClient = window.supabase.createClient(getLyannSupabaseUrl(), getLyannSupabaseAnonKey(), {
-        auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true
-        }
-    });
-    console.log("⚡ Supabase client initialized with session persistence.");
-    console.log("⚡ [BOOT 03] Supabase ready");
+    try {
+        supabaseClient = window.supabase.createClient(getLyannSupabaseUrl(), getLyannSupabaseAnonKey(), {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        });
+        console.log("⚡ Supabase client initialized with session persistence.");
+        console.log("⚡ [BOOT 03] Supabase ready");
+    } catch (error) {
+        console.error("⚠️ Supabase n’a pas été initialisé :", error && error.message);
+        console.log("⚡ [BOOT 03] Supabase unavailable");
+    }
 } else {
     console.error("⚠️ Supabase JS SDK missing. Production data features are unavailable.");
     console.log("⚡ [BOOT 03] Supabase unavailable");
@@ -304,7 +466,9 @@ const LYANN_API_CLIENT = {
             password,
             options: {
                 data: metadata,
-                emailRedirectTo: window.location.origin + '/confirm-signup.html'
+                emailRedirectTo: isCapacitorRuntime()
+                    ? 'app.lyann.dom://confirm-signup'
+                    : window.location.origin + '/confirm-signup.html'
             }
         });
         if (res.error) {
@@ -367,6 +531,9 @@ const LYANN_API_CLIENT = {
 
     async logout() {
         if (!this.supabase) return { error: null };
+        if (window.LYANN_PUSH && typeof window.LYANN_PUSH.deactivate === 'function') {
+            try { await window.LYANN_PUSH.deactivate(); } catch (_) {}
+        }
         return await this.supabase.auth.signOut();
     },
 
@@ -612,10 +779,18 @@ const LYANN_API_CLIENT = {
 
         try {
             // Fetch current services state from canonical public.services table
-            const { data: existing, error: fetchErr } = await this.supabase
+            let existingRes = await this.supabase
                 .from('services')
-                .select('id, title')
+                .select('id, title, description, base_price, indicative_price, price_type, pricing_model')
                 .eq('owner_id', userId);
+            if (existingRes.error && isMissingColumnError(existingRes.error)) {
+                existingRes = await this.supabase
+                    .from('services')
+                    .select('id, title')
+                    .eq('owner_id', userId);
+            }
+            const existing = existingRes.data;
+            const fetchErr = existingRes.error;
 
             if (fetchErr) {
                 console.error(`[ProfileSkillsSave]\nuserId=${userId}\nselectedCount=${selectedSkills.length}\naddedCount=0\nremovedCount=0\nresult=ERROR\nerrorCode=${fetchErr.code || 'FETCH_ERR'}\nerrorMessage=${fetchErr.message}`);
@@ -624,21 +799,31 @@ const LYANN_API_CLIENT = {
 
             const existingMap = new Map();
             (existing || []).forEach(item => {
-                if (item.title) existingMap.set(item.title.toLowerCase().trim(), item.id);
+                if (item.title) existingMap.set(item.title.toLowerCase().trim(), item);
             });
 
             const nextSet = new Set(selectedSkills.map(s => s.toLowerCase().trim()));
 
             const idsToDelete = [];
-            existingMap.forEach((id, titleLower) => {
-                if (!nextSet.has(titleLower)) idsToDelete.push(id);
+            existingMap.forEach((item, titleLower) => {
+                if (nextSet.has(titleLower)) return;
+                const priced = item.base_price != null || item.indicative_price != null || item.price_type || item.pricing_model;
+                const desc = String(item.description || '').trim();
+                const title = String(item.title || '').trim();
+                const stub = !priced && (!desc || desc === title);
+                if (stub) idsToDelete.push(item.id);
             });
 
             const skillsToInsert = [];
             selectedSkills.forEach(title => {
                 const titleLower = title.toLowerCase().trim();
                 if (!existingMap.has(titleLower)) {
-                    skillsToInsert.push({ title, description: title, category: title });
+                    skillsToInsert.push({
+                        title,
+                        description: title,
+                        category: title,
+                        slug: uniqueServiceSlug(userId, title)
+                    });
                 }
             });
 
@@ -890,16 +1075,22 @@ const LYANN_API_CLIENT = {
             }
 
             if (data && (data.request || data.direct)) {
+                const requestId = data.request_id;
+                const hint = requestIdHint ? String(requestIdHint) : '';
                 return {
                     invitationId: data.invitation_id,
                     invitationStatus: data.invitation_status,
-                    requestId: data.request_id,
+                    requestId: requestId,
                     requesterId: data.requester_id,
                     helperId: data.helper_id,
                     request: data.request || null,
                     requesterProfile: data.requester_profile,
                     direct: Boolean(data.direct),
-                    startedBy: data.started_by || null
+                    startedBy: data.started_by || null,
+                    // Hint is never used as an authorization bypass. When it disagrees
+                    // with the RPC's latest invitation, the caller must load the hinted
+                    // request via RLS instead of treating this row as the active dossier.
+                    mismatchedHint: Boolean(hint && requestId && String(requestId) !== hint)
                 };
             }
 
@@ -914,8 +1105,9 @@ const LYANN_API_CLIENT = {
         if (!this.supabase || !isUUID(targetUserId)) return null;
         const { data, error } = await this.supabase.rpc('open_direct_conversation', { p_target_user_id: targetUserId });
         if (error) {
-            console.warn('[DIRECT CONV]', error.message || error);
-            return null;
+            const failure = new Error(error.message || 'Conversation indisponible');
+            failure.code = error.code || error.hint || '';
+            throw failure;
         }
         return data;
     },
@@ -952,16 +1144,24 @@ const LYANN_API_CLIENT = {
 
     async getUserProfile(userId) {
         if (!this.supabase || !userId || !isUUID(userId)) return null;
-        try {
-            const { data } = await this.supabase
-                .from('profiles')
-                .select('id, first_name, last_name, avatar_url, city, territory')
-                .eq('id', userId)
-                .maybeSingle();
-            return data;
-        } catch (e) {
-            return null;
+        const columns = [
+            'id, first_name, last_name, avatar_url, bio, city, territory, is_pro',
+            'id, first_name, last_name, avatar_url, city, territory'
+        ];
+        for (const select of columns) {
+            try {
+                const { data, error } = await this.supabase
+                    .from('profiles')
+                    .select(select)
+                    .eq('id', userId)
+                    .maybeSingle();
+                if (!error && data) return data;
+                if (error && !/column|schema cache/i.test(error.message || '')) return null;
+            } catch (e) {
+                return null;
+            }
         }
+        return null;
     },
 
     async getUserConversations(myUserId) {
@@ -1023,8 +1223,12 @@ const LYANN_API_CLIENT = {
         }
         if (result.error && result.error.code === '23505' && extra?.clientMessageId) {
             const existing = await this.supabase.from('messages').select('*').eq('sender_id', activeSenderId).eq('client_message_id', String(extra.clientMessageId)).maybeSingle();
-            if (existing.data) return { data: existing.data, error: null };
+            if (existing.data) {
+                emitLyannClientEvent('lyann:chat-persisted', existing.data);
+                return { data: existing.data, error: null };
+            }
         }
+        if (result.data) emitLyannClientEvent('lyann:chat-persisted', result.data);
         return result;
     },
 
@@ -1038,14 +1242,48 @@ const LYANN_API_CLIENT = {
         return { data };
     },
 
-    async uploadChatAttachment(path, file, mime) {
+    async uploadChatAttachment(path, file, mime, hooks) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
-        const { error } = await this.supabase.storage.from('chat-attachments').upload(path, file, {
-            contentType: mime || file.type || undefined,
-            upsert: false
+        const onProgress = hooks && hooks.onProgress;
+        const signal = hooks && hooks.signal;
+        if (!onProgress && !signal) {
+            const { error } = await this.supabase.storage.from('chat-attachments').upload(path, file, {
+                contentType: mime || file.type || undefined,
+                upsert: false
+            });
+            if (error) return { error };
+            return { data: { path } };
+        }
+        const session = await this.supabase.auth.getSession();
+        const token = session && session.data && session.data.session && session.data.session.access_token;
+        const base = String(this.supabase.supabaseUrl || (typeof getLyannSupabaseUrl === 'function' ? getLyannSupabaseUrl() : '')).replace(/\/$/, '');
+        const apiKey = this.supabase.supabaseKey || (typeof getLyannSupabaseAnonKey === 'function' ? getLyannSupabaseAnonKey() : '');
+        if (!token || !base || !apiKey) return { error: { message: 'Connexion requise pour envoyer le fichier.' } };
+        return await new Promise((resolve) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', base + '/storage/v1/object/chat-attachments/' + path.split('/').map(encodeURIComponent).join('/'));
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+            xhr.setRequestHeader('apikey', apiKey);
+            xhr.setRequestHeader('Content-Type', mime || file.type || 'application/octet-stream');
+            xhr.setRequestHeader('x-upsert', 'false');
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total);
+            };
+            if (signal) {
+                if (signal.aborted) {
+                    resolve({ error: { message: 'Envoi annulé.', cancelled: true } });
+                    return;
+                }
+                signal.addEventListener('abort', () => xhr.abort(), { once: true });
+            }
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) resolve({ data: { path } });
+                else resolve({ error: { message: 'Le fichier n’a pas pu être envoyé.' } });
+            };
+            xhr.onerror = () => resolve({ error: { message: 'Réseau indisponible.' } });
+            xhr.onabort = () => resolve({ error: { message: 'Envoi annulé.', cancelled: true } });
+            xhr.send(file);
         });
-        if (error) return { error };
-        return { data: { path } };
     },
 
     async removeChatAttachment(path) {
@@ -1084,6 +1322,7 @@ const LYANN_API_CLIENT = {
     },
 
     async getFeed() {
+        const pageOptions = (arguments.length && arguments[0] && typeof arguments[0] === 'object') ? arguments[0] : {};
         function extractTerritoryKey(locationStr, profileTerritory) {
             const combined = ((locationStr || '') + ' ' + (profileTerritory || '')).toLowerCase();
             if (combined.includes('martinique') || combined.includes('972')) return 'martinique';
@@ -1097,11 +1336,13 @@ const LYANN_API_CLIENT = {
 
         try {
             // 1. Fetch Bokantaj Posts
-            const { data: postsData, error: postsError } = await this.supabase
+            let postsQuery = this.supabase
                 .from('bokantaj_posts')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(LYANN_FEED_PAGE_SIZE);
+            if (pageOptions.before) postsQuery = postsQuery.lt('created_at', pageOptions.before);
+            const { data: postsData, error: postsError } = await postsQuery;
 
             if (postsError) throw postsError;
             const posts = postsData || [];
@@ -1113,7 +1354,7 @@ const LYANN_API_CLIENT = {
                 try {
                     const { data: pubProfs } = await this.supabase
                         .from('public_profiles')
-                        .select('id, first_name, last_name, avatar_url, city, territory')
+                        .select('id, first_name, last_name, avatar_url, city, territory, bio')
                         .in('id', authorIds);
                     if (pubProfs && Array.isArray(pubProfs)) {
                         pubProfs.forEach(p => { profilesMap[p.id] = p; });
@@ -1196,11 +1437,19 @@ const LYANN_API_CLIENT = {
                     badge: p.type === 'dispo' ? 'Disponibilité' : (p.type === 'besoin' ? 'Besoin' : 'Info Bokantaj'),
                     badgeIcon: p.type === 'dispo' ? 'ph-lightning' : (p.type === 'besoin' ? 'ph-magnifying-glass' : 'ph-newspaper'),
                     type: p.type,
+                    city: p.city || '',
+                    territory: p.territory || authorProf?.territory || '',
                     location: p.city || p.territory || authorProf?.city || '',
                     territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
                     created_at: p.created_at,
                     content: p.content,
-                    images: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url)),
+                    title: p.headline || '',
+                    source_name: p.source_name || '',
+                    source_url: p.source_url || '',
+                    source_published_at: p.source_published_at || '',
+                    editorial: /Compte éditorial LYANN/i.test(authorProf?.bio || ''),
+                    images: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
+                    videos: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
                     likes: (postLikesCountMap[p.id] !== undefined) ? postLikesCountMap[p.id] : (p.likes_count || 0),
                     user_has_liked: userLikedPostsSet.has(p.id),
                     comments_count: postCommentsCountMap[p.id] || p.replies_count || 0,
@@ -1210,7 +1459,7 @@ const LYANN_API_CLIENT = {
 
             const unifiedFeed = formattedPosts;
 
-            return { data: unifiedFeed, error: null };
+            return { data: unifiedFeed, error: null, hasMore: posts.length === LYANN_FEED_PAGE_SIZE };
         } catch (err) {
             console.error("❌ Error loading unified Bokantaj feed:", err);
             return { data: [], error: err.message || "Erreur serveur" };
@@ -1218,6 +1467,32 @@ const LYANN_API_CLIENT = {
     },
 
     // --- BOKANTAJ SOCIAL API METHODS ---
+
+    async uploadPostVideo(file) {
+        if (!this.supabase || !file) throw new Error('Vidéo indisponible');
+        const user = await this.getCurrentUser();
+        if (!user) throw new Error('Veuillez vous connecter');
+        const mime = String(file.type || '').toLowerCase();
+        const allowed = { 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' };
+        if (!allowed[mime] || file.size > 10 * 1024 * 1024) {
+            throw new Error('Choisissez une vidéo MP4, MOV ou WebM de moins de 10 Mo.');
+        }
+        const duration = await new Promise((resolve) => {
+            const url = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = () => { const value = video.duration; URL.revokeObjectURL(url); resolve(value); };
+            video.onerror = () => { URL.revokeObjectURL(url); resolve(NaN); };
+            video.src = url;
+        });
+        if (!Number.isFinite(duration) || duration <= 0 || duration > 60) {
+            throw new Error('La vidéo doit durer 60 secondes au plus.');
+        }
+        const path = `${user.id}/${crypto.randomUUID()}.${allowed[mime]}`;
+        const { error } = await this.supabase.storage.from('bokantaj-media').upload(path, file, { contentType: mime });
+        if (error) throw new Error('La vidéo n’a pas pu être envoyée. Réessayez avant de publier.');
+        return this.supabase.storage.from('bokantaj-media').getPublicUrl(path).data.publicUrl;
+    },
 
     async uploadPostPhoto(file) {
         if (!this.supabase || !file) throw new Error('Photo indisponible');
@@ -1387,6 +1662,23 @@ const LYANN_API_CLIENT = {
         return data;
     },
 
+    async updateComment(commentId, content) {
+        if (!this.supabase) throw new Error('Supabase non initialisé');
+        const session = await this.getCurrentUser();
+        if (!session) throw new Error('Utilisateur non connecté');
+        const text = String(content || '').trim();
+        if (!text) throw new Error('Le commentaire est vide.');
+        const { data, error } = await this.supabase
+            .from('bokantaj_comments')
+            .update({ content: text })
+            .eq('id', commentId)
+            .eq('author_id', session.id)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+
     async deleteComment(commentId) {
         if (!this.supabase) return false;
         const session = await this.getCurrentUser();
@@ -1455,19 +1747,24 @@ const LYANN_API_CLIENT = {
     // Gets the active mission between two users
     
     async getActiveMissionBetween(userId1, userId2) {
-        if (!isUUID(userId1) || !isUUID(userId2) || !this.supabase) return null;
+        const missions = await this.listMissionsBetween(userId1, userId2);
+        return missions[0] || null;
+    },
+
+    async listMissionsBetween(userId1, userId2) {
+        if (!isUUID(userId1) || !isUUID(userId2) || !this.supabase) return [];
         try {
             const { data, error } = await this.supabase
                 .from('missions')
                 .select('*')
                 .or(`and(requester_id.eq.${userId1},helper_id.eq.${userId2}),and(requester_id.eq.${userId2},helper_id.eq.${userId1})`)
                 .order('created_at', { ascending: false })
-                .limit(1);
+                .limit(20);
             if (error) throw error;
-            return data && data.length > 0 ? data[0] : null;
+            return Array.isArray(data) ? data : [];
         } catch (error) {
-            console.error('[MISSIONS] active mission query failed', error);
-            return null;
+            console.error('[MISSIONS] pair mission query failed', error);
+            return [];
         }
     },
 
@@ -1486,15 +1783,42 @@ const LYANN_API_CLIENT = {
             p_milestones_json: milestonesJson || []
         });
         if (error) throw error;
+        emitLyannClientEvent('lyann:deal-mutated', { rpc: 'createRequestQuote', data });
         return data;
     },
 
-    async acceptRequestQuote(quoteId) {
-        if (!this.supabase) throw new Error("Supabase non disponible.");
-        const { data, error } = await this.supabase.rpc('accept_request_quote', {
-            p_quote_id: quoteId
+    async reviseSentQuote(quoteId, description, validUntil, milestonesJson, expectedVersion) {
+        if (!this.supabase) throw new Error('Supabase non disponible.');
+        const { data, error } = await this.supabase.rpc('revise_sent_quote', {
+            p_quote_id: quoteId,
+            p_description: description || null,
+            p_valid_until: validUntil || null,
+            p_milestones_json: milestonesJson || [],
+            p_expected_version: expectedVersion
         });
         if (error) throw error;
+        emitLyannClientEvent('lyann:deal-mutated', { rpc: 'reviseSentQuote', data });
+        return data;
+    },
+
+    async acceptRequestQuote(quoteId, expectedVersion) {
+        if (!this.supabase) throw new Error("Supabase non disponible.");
+        const planner = window.LYANN_QUOTE_REVISION;
+        const plan = planner && typeof planner.planQuoteAcceptance === 'function'
+            ? planner.planQuoteAcceptance(expectedVersion)
+            : { ok: Number.isInteger(Number(expectedVersion)) && Number(expectedVersion) >= 1, version: Number(expectedVersion), message: 'Rechargez le devis avant de l’accepter.' };
+        if (!plan.ok) throw new Error(plan.message || 'Rechargez le devis avant de l’accepter.');
+        const version = plan.version;
+        let { data, error } = await this.supabase.rpc('accept_request_quote', {
+            p_quote_id: quoteId,
+            p_expected_version: version
+        });
+        if (error && planner && typeof planner.acceptSignatureFallback === 'function') {
+            const next = planner.acceptSignatureFallback(error, version);
+            if (next.message) throw new Error(next.message);
+        }
+        if (error) throw error;
+        emitLyannClientEvent('lyann:deal-mutated', { rpc: 'acceptRequestQuote', data });
         return data;
     },
 
@@ -1504,6 +1828,7 @@ const LYANN_API_CLIENT = {
             p_quote_id: quoteId
         });
         if (error) throw error;
+        emitLyannClientEvent('lyann:deal-mutated', { rpc: 'rejectRequestQuote', data });
         return data;
     },
 
@@ -1696,7 +2021,9 @@ const LYANN_API_CLIENT = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    // E5: safe client retry key (Lyann-test / code paths). Server also uses pi_milestone_<id>.
+                    'Idempotency-Key': 'create-milestone-intent:' + String(milestoneId)
                 },
                 body: JSON.stringify({ milestone_id: milestoneId })
             });
@@ -1758,6 +2085,7 @@ const LYANN_API_CLIENT = {
             if (!res.ok) {
                 return { error: { message: data.error || "Erreur lors de la déclaration de réalisation." } };
             }
+            emitLyannClientEvent('lyann:deal-mutated', { rpc: 'submitMilestoneCompletion', milestoneId });
             return { data };
         } catch (err) {
             return { error: { message: err.message || "Erreur de connexion serveur." } };
@@ -1777,17 +2105,38 @@ const LYANN_API_CLIENT = {
         return data[0];
     },
 
+    async getAcceptedInvitationForRequest(requestId, userA, userB) {
+        if (!this.supabase || !isUUID(requestId) || !isUUID(userA) || !isUUID(userB)) return null;
+        const { data, error } = await this.supabase
+            .from('request_invitations')
+            .select('id, request_id, status, requester_id, recipient_id')
+            .eq('request_id', requestId)
+            .eq('status', 'ACCEPTED')
+            .eq('recipient_id', userA)
+            .eq('requester_id', userB);
+        if (error || !Array.isArray(data)) return null;
+        if (data.length !== 1) return { ambiguous: data.length > 1 };
+        return data[0];
+    },
+
     async getActiveInvitationBetween(user1, user2) {
         if (!this.supabase || !isUUID(user1) || !isUUID(user2)) return null;
+        const rows = await this.listAcceptedInvitationsBetween(user1, user2, { limit: 1 });
+        return rows[0] || null;
+    },
+
+    async listAcceptedInvitationsBetween(user1, user2, options = {}) {
+        if (!this.supabase || !isUUID(user1) || !isUUID(user2)) return [];
+        const limit = Math.min(Math.max(Number(options.limit) || 20, 1), 50);
         const { data, error } = await this.supabase
             .from('request_invitations')
             .select('*')
             .or(`and(requester_id.eq.${user1},recipient_id.eq.${user2}),and(requester_id.eq.${user2},recipient_id.eq.${user1})`)
             .eq('status', 'ACCEPTED')
             .order('created_at', { ascending: false })
-            .limit(1);
-        if (error || !data || data.length === 0) return null;
-        return data[0];
+            .limit(limit);
+        if (error || !Array.isArray(data)) return [];
+        return data;
     },
 
     /** @deprecated Legacy mission writers are disabled: missions only change through server RPCs. */
@@ -1984,7 +2333,7 @@ const LYANN_API_CLIENT = {
             const membersList = (typeof window.isExplicitDemoMode === 'function' && window.isExplicitDemoMode()) ? (window.LYANN_MEMBERS || []) : [];
             return window.LyannMatchingEngine.dispatchTargetedNeedNotifications(needData, membersList, batchSize);
         }
-        return { dispatched_count: 0, fallback_message: "Votre besoin est bien publié dans Explorer → Annonces." };
+        return { dispatched_count: 0, fallback_message: "Votre besoin est bien publié dans les Annonces." };
     },
 
     // --- REAL HELP REQUESTS API (requests table) ---
@@ -2085,9 +2434,15 @@ const LYANN_API_CLIENT = {
     async suggestRequestTitles(description) {
         const text = String(description || '').trim();
         if (text.length < 10) return { error: 'INVALID' };
-        if (!this.supabase) return { error: 'AUTH' };
+        let supabase = null;
         try {
-            const { data: { session } } = await this.supabase.auth.getSession();
+            supabase = this.supabase;
+        } catch (_) {
+            return { error: 'AUTH' };
+        }
+        if (!supabase) return { error: 'AUTH' };
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) return { error: 'AUTH' };
             const fetcher = typeof window.lyannBackendFetch === 'function' ? window.lyannBackendFetch : fetch;
             const response = await fetcher('/v1/requests/summary', {
@@ -2396,9 +2751,10 @@ const LYANN_API_CLIENT = {
         });
 
         const resData = await response.json();
-        if (!response.ok) {
-            throw new Error(resData.error || "Erreur lors de la libération du paiement");
+        if (!response.ok || !resData || resData.success === false || resData.status !== 'RELEASED') {
+            throw new Error((resData && (resData.error || resData.message)) || "Le versement n’a pas abouti. Les fonds restent en sécurité.");
         }
+        emitLyannClientEvent('lyann:deal-mutated', { rpc: 'releaseMilestonePayment', milestoneId });
         return resData;
     },
 

@@ -1,0 +1,61 @@
+# Secrets and local env (never publish)
+.env
+.env.*
+!.env.example
+
+# Vercel / tooling metadata
+.vercel
+.mcp.json
+.cursor
+.claude
+.agents
+.github
+
+# Node install needs package.json / lockfile in the build context.
+# Root-only tooling patterns (leading /) so api/server.js stays deployable.
+node_modules
+/capacitor.config.json
+/playwright.config.js
+/build_mobile.js
+/watch.js
+/server.js
+# shared-html-build.js MUST remain available for scripts/build-web.js on Vercel
+
+# Dev / test / audit surfaces
+tests
+test-results
+playwright-report
+scratch
+artifacts
+coverage
+*.test.js
+test_*.js
+
+# Keep scripts/build-web.js + shared-html-build for Vercel buildCommand;
+# block isolated QA / harness entrypoints only.
+scripts/ios-isolated-ab-harness.js
+scripts/run-ios-isolated-ab.js
+scripts/isolated-jalon-journey.js
+scripts/bootstrap-isolated-qa.js
+scripts/prepare-isolated-qa.js
+scripts/capture-pre-migration-definitions.sql
+scripts/diagnose-51-52-readonly.sql
+scripts/seed-maison-profiles.js
+
+# SQL migrations and diagnostics (apply via Supabase, never as static assets)
+*.sql
+
+# Mobile build artifacts and native projects
+www
+ios
+android
+dist
+
+# Backups and dumps
+*.dump
+*.backup
+db-backups/
+
+# Agent / local docs (README stays publishable if present)
+CLAUDE.md
+AGENTS.md

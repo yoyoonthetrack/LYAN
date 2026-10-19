@@ -136,13 +136,42 @@ async function expectStack(page, names) {
   await expect.poll(() => page.evaluate(() => window.LYANN_SURFACES.list().map((entry) => entry.name))).toEqual(names);
 }
 
+async function expectAccountPageLocked(page) {
+  await expect.poll(() => page.evaluate(() => ({
+    accountOpen: window.LYANN_SURFACES.isOpen('account') === true,
+    surfaceOpen: document.body.classList.contains('lyann-surface-open'),
+    scrollLocked: document.body.classList.contains('lyann-scroll-lock')
+      && document.documentElement.classList.contains('lyann-scroll-lock'),
+    position: document.body.style.position
+  }))).toEqual({
+    accountOpen: true,
+    surfaceOpen: true,
+    scrollLocked: true,
+    position: 'fixed'
+  });
+  await page.evaluate(() => window.scrollTo(0, 900));
+  await expect.poll(() => page.evaluate(() => window.scrollY || document.documentElement.scrollTop || 0)).toBe(0);
+}
+
+async function expectAccountPageUnlocked(page) {
+  await expect.poll(() => page.evaluate(() => ({
+    scrollLocked: document.body.classList.contains('lyann-scroll-lock')
+      || document.documentElement.classList.contains('lyann-scroll-lock'),
+    position: document.body.style.position,
+    overflowHidden: document.body.style.overflow === 'hidden'
+  }))).toEqual({
+    scrollLocked: false,
+    position: '',
+    overflowHidden: false
+  });
+}
+
 async function openMissionFromConversation(page) {
   await page.evaluate((requestId) => {
     const btn = document.getElementById('chatViewMissionBtn');
     btn.dataset.requestId = requestId;
-    btn.style.display = 'block';
+    btn.click();
   }, REQUEST_ID);
-  await page.locator('#chatViewMissionBtn').click();
   await expect(page.locator('#lyannDetailModal')).toBeVisible();
   await expect(page.locator('#closeLyannDetailFooterBtn')).toBeVisible();
   await expectStack(page, ['messaging', 'lyann-detail']);
@@ -287,7 +316,7 @@ test.describe('Lyann detail and account close through LYANN_SURFACES', () => {
 
     await expect(page.locator('#userAccountModal')).toBeVisible();
     await expectStack(page, ['account']);
-    await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+    await expectAccountPageLocked(page);
 
     await page.locator('.account-main-close-btn').click();
 
@@ -296,7 +325,7 @@ test.describe('Lyann detail and account close through LYANN_SURFACES', () => {
     expect(afterClose.accountVisible).toBe(false);
     expect(afterClose.accountOpen).toBe(false);
     expect(afterClose.surfaceOpen).toBe(false);
-    expect(afterClose.overflow).not.toBe('hidden');
+    await expectAccountPageUnlocked(page);
     expect(afterClose.midHitsAccount).toBe(false);
 
     await page.evaluate(() => {
@@ -345,7 +374,7 @@ test.describe('Lyann detail and account close through LYANN_SURFACES', () => {
       });
       await expect(page.locator('#userAccountModal')).toBeVisible();
       await expectStack(page, ['account']);
-      await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+      await expectAccountPageLocked(page);
 
       await path.close();
 
@@ -353,7 +382,8 @@ test.describe('Lyann detail and account close through LYANN_SURFACES', () => {
       const afterClose = await overlayState(page);
       expect(afterClose.accountOpen, `${path.name} left account on the stack`).toBe(false);
       expect(afterClose.accountVisible, `${path.name} left account visible`).toBe(false);
-      expect(afterClose.overflow, `${path.name} left body overflow locked`).not.toBe('hidden');
+      expect(afterClose.surfaceOpen, `${path.name} left a surface open`).toBe(false);
+      await expectAccountPageUnlocked(page);
     }
 
     expect(jsErrors).toEqual([]);

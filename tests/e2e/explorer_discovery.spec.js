@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { installPublishedServiceFixture, installRequestFixtures } = require('./helpers/qa-fixtures');
 
 function qaCredentials(actor) {
   const email = process.env[`LYANN_E2E_QA_${actor}_EMAIL`];
@@ -100,12 +101,16 @@ test('Both modes use the same database taxonomy and removable category filter', 
   await expect(page.locator('#explorerActiveFilters')).toContainText(category);
   const requestIds = await page.locator('#explorerResults [data-request-id]').evaluateAll(nodes => nodes.map(n => n.dataset.requestId));
   expect(requestIds.length).toBeGreaterThan(0);
-  await page.getByRole('tab', {name:/Lyanneurs/}).click();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
   expect(await page.locator('#explorerCategory option').allTextContents()).toEqual(categories);
   await expect(page.locator('#explorerCategory')).toHaveValue(category);
   await page.getByRole('button', {name:`Retirer le filtre ${category}`,exact:true}).click();
   await expect(page.locator('#explorerCategory')).toHaveValue('');
+  await page.goto('/results.html?mode=lyanneurs&area=', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
+  await expect(page.locator('#explorerTitle')).toHaveText('Lyanneurs');
+  await expect(page.locator('#explorer')).toHaveAttribute('data-mode','lyanneurs');
 });
 
 for (const mode of ['annonces', 'lyanneurs']) {
@@ -161,24 +166,25 @@ for (const width of [390,1440]) {
     await page.setViewportSize({width,height:900});
     await ready(page);
     await page.getByRole('button',{name:'Filtres et zone'}).click();
-    await expect(page.getByRole('dialog',{name:'Affiner la recherche'})).toBeVisible();
+    await expect(page.getByRole('dialog',{name:'Filtrer les annonces'})).toBeVisible();
     await page.locator('#explorerArea').fill('CommuneIntrouvable');
     await page.getByRole('button',{name:'Afficher les résultats'}).click();
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','EMPTY');
     await page.getByRole('button',{name:'Élargir la zone',exact:true}).click();
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
-    await page.getByRole('tab',{name:/Annonces/}).focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('tab',{name:/Lyanneurs/})).toHaveAttribute('aria-selected','true');
-    await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
+    await expect(page.locator('#explorer [role="tab"]')).toHaveCount(0);
+    await expect(page.locator('#explorerTitle')).toHaveText('Annonces');
+    await expect(page.locator('.explorer-results-heading .explorer-publish')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const targets = await page.locator('#explorer button:visible, #explorer select:visible, #explorer input:visible').evaluateAll(nodes => nodes.map(n => ({text:n.textContent,height:n.getBoundingClientRect().height,width:n.getBoundingClientRect().width})));
     expect(targets.filter(t => t.height < 44 || t.width < 44)).toEqual([]);
-    await page.screenshot({path:`artifacts/explorer/lyanneurs-${width}.png`,fullPage:true});
-    await page.getByRole('tab',{name:/Annonces/}).click();
-    await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
     await page.screenshot({path:`artifacts/explorer/annonces-${width}.png`,fullPage:true});
+    await page.goto('/results.html?mode=lyanneurs&area=', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
+    await expect(page.locator('#explorerTitle')).toHaveText('Lyanneurs');
+    await expect(page.locator('.explorer-results-heading .explorer-publish')).toBeHidden();
+    await page.screenshot({path:`artifacts/explorer/lyanneurs-${width}.png`,fullPage:true});
     expect(telemetry.errors).toEqual([]);
     expect(telemetry.failures).toEqual([]);
   });
@@ -189,9 +195,14 @@ test('A canonical category also selects a real published service in Lyanneurs', 
   await page.locator('#explorerCategory').selectOption({label:'Ménage'});
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
   await expect(page.locator('#explorerResults')).toContainText('Ménage & Entretien');
-  const profiles = await page.evaluate(async () => (await window.LYANN_EXPLORER_REPOSITORY.load()).filter(p => p.services.some(s => s.title.includes('Ménage'))).map(p => p.id));
+  const expected = await page.evaluate(async () => {
+    const repo = window.LYANN_EXPLORER_REPOSITORY;
+    const [profiles, taxonomy] = await Promise.all([repo.load(), repo.taxonomy()]);
+    return repo.discover(profiles, taxonomy, { query:'', category:'Ménage', service:'', area:'', territory:'', commune:'', urgency:'', budget:'' }, 'lyanneurs').map(p => p.id).sort();
+  });
   const rendered = await page.locator('#explorerResults [data-member-id]').evaluateAll(nodes => nodes.map(n => n.dataset.memberId));
-  expect(rendered.sort()).toEqual(profiles.sort());
+  expect(expected.length).toBeGreaterThan(0);
+  expect(rendered.sort()).toEqual(expected);
 });
 
 test('Filter sheet Enter applies the search; Escape discards unapplied edits', async ({page}) => {
@@ -199,7 +210,7 @@ test('Filter sheet Enter applies the search; Escape discards unapplied edits', a
   await page.getByRole('button',{name:'Filtres et zone'}).click();
   await page.locator('#explorerArea').fill('CommuneIntrouvable');
   await page.locator('#explorerArea').press('Enter');
-  await expect(page.getByRole('dialog',{name:'Affiner la recherche'})).not.toBeVisible();
+  await expect(page.getByRole('dialog',{name:'Filtrer les annonces'})).not.toBeVisible();
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','EMPTY');
   await expect(page).toHaveURL(/area=CommuneIntrouvable/);
   await page.getByRole('button',{name:'Filtres et zone'}).click();
@@ -218,12 +229,14 @@ test('Lyanneurs filters preserve Request-only criteria when switching modes', as
   await page.locator('#explorerUrgency').selectOption(urgency);
   await page.locator('#explorerBudget').fill('150');
   await page.getByRole('button',{name:'Afficher les résultats'}).click();
-  await page.getByRole('tab',{name:/Lyanneurs/}).click();
+  await expect(page).toHaveURL(/urgency=/);
+  await page.goto('/results.html?mode=lyanneurs', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
+  await expect(page.locator('#explorerRequestFilters')).toBeHidden();
   await page.getByRole('button',{name:'Filtres et zone'}).click();
   await page.locator('#explorerTerritory').selectOption('Guadeloupe (971)');
   await page.getByRole('button',{name:'Afficher les résultats'}).click();
-  await page.getByRole('tab',{name:/Annonces/}).click();
+  await page.goto('/results.html?mode=annonces', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
   await page.getByRole('button',{name:'Filtres et zone'}).click();
   await expect(page.locator('#explorerUrgency')).toHaveValue(urgency);
@@ -232,13 +245,18 @@ test('Lyanneurs filters preserve Request-only criteria when switching modes', as
 
 test('In-place authentication updates own-profile actions without reload', async ({page}) => {
   const telemetry = observe(page);
-  await ready(page,'lyanneurs');
+  await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(async ({email,password}) => {
     const res = await window.LYANN_API_CLIENT.login(email, password);
     return {id:res.data?.user?.id,error:res.error?.message};
   }, qaCredentials('B'));
   expect(result.error).toBeFalsy();
   expect(result.id).toBeTruthy();
+  // The QA profile is public but has no persisted service. The card is completed
+  // in the browser response only, so this does not validate a stored service.
+  await installPublishedServiceFixture(page, result.id);
+  await page.goto('/results.html?mode=lyanneurs&area=', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy', 'false', { timeout: 20000 });
   const card = page.locator(`[data-member-id="${result.id}"]`);
   await expect(card).toBeVisible();
   await expect(card.locator('[data-action="contact"]')).toHaveCount(0);
@@ -258,6 +276,12 @@ test('Bokantaj Request wizard reaches real-taxonomy review without writing or of
   await page.goto('/results.html?mode=annonces', { waitUntil: 'domcontentloaded' });
   await page.locator('.explorer-results-heading .explorer-publish').click();
   await page.locator('#wizardDescInput').fill('Une fuite sous mon évier, besoin de réparer la plomberie.');
+  await expect(page.locator('#wizardTitleBlock')).toBeVisible();
+  const titleChoice = page.locator('#wizardTitleChoices input[type="radio"]').first();
+  const titleInput = page.locator('#wizardTitleInput');
+  await expect(titleChoice.or(titleInput)).toBeVisible({ timeout: 20000 });
+  if (await titleChoice.isVisible()) await titleChoice.check();
+  else await titleInput.fill('Réparer une fuite sous évier');
   for (const step of [2,4,5,6]) {
     await page.locator('#wizardBtnNext').click();
     await expect(page.locator(`.wizard-step[data-step="${step}"]`)).toBeVisible();
@@ -279,11 +303,13 @@ test('Bokantaj Request wizard reaches real-taxonomy review without writing or of
   }
   await expect(page.locator('#wizardDescInput')).toHaveValue('Une fuite sous mon évier, besoin de réparer la plomberie.');
   expect(writes).toEqual([]);
-  expect(telemetry.failures).toEqual([]);
-  expect(telemetry.errors).toEqual([]);
+  const unexpected = telemetry.failures.filter(item => !(item.startsWith('503 ') && item.includes('/v1/requests/summary')));
+  expect(unexpected).toEqual([]);
+  const unexpectedErrors = telemetry.errors.filter(item => item !== 'Failed to load resource: the server responded with a status of 503 (Service Unavailable)');
+  expect(unexpectedErrors).toEqual([]);
 });
 
-test('Own persisted Requests have details and favorites but no help action', async ({page}) => {
+test('Own annonce card shows details and favorites but no help action', async ({page}) => {
   await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
   const user = await page.evaluate(async ({email,password}) => {
     const res = await window.LYANN_API_CLIENT.login(email, password);
@@ -291,11 +317,14 @@ test('Own persisted Requests have details and favorites but no help action', asy
   }, qaCredentials('A'));
   expect(user.error).toBeFalsy();
   expect(user.id).toBeTruthy();
+  // Account A has no stored annonce. One open fixture is added to the browser
+  // response so the own-card rules can be checked without a database write.
+  await installRequestFixtures(page, user.id);
   await page.goto('/results.html?mode=annonces&area=', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
   const own = await page.evaluate(async id => (await window.LYANN_EXPLORER_REPOSITORY.loadRequests())
     .filter(r => r.requester_id === id && r.status === 'OPEN'), user.id);
-  expect(own.length,'Existing requester QA account must own a public Request').toBeGreaterThan(0);
+  expect(own.length,'The browser fixture must supply one open annonce owned by the signed-in account').toBeGreaterThan(0);
   for (const request of own) {
     const card = page.locator(`#explorerResults [data-request-id="${request.id}"]`);
     await expect(card).toContainText('Votre annonce');

@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["WLV4WC47U2.app.lyann.mobile"],
+        "components": [
+          { "/": "/auth/callback", "comment": "Retour OAuth Staging" },
+          { "/": "/auth/callback.html" },
+          { "/": "/confirm-signup", "comment": "Confirmation email" },
+          { "/": "/confirm-signup.html" },
+          { "/": "/feed.html", "?": { "action": "finances" }, "comment": "Retour Stripe Connect" },
+          { "/": "/", "?": { "action": "finances" } }
+        ]
+      }
+    ]
+  }
+}

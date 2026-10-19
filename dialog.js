@@ -31,10 +31,13 @@ function ensureDialogMarkup() {
     }
 }
 
-const LYANN_TECHNICAL_ERROR = /(violates|constraint|duplicate key|null value|syntax error|relation "|column "|function [a-z_]+\(|PGRST|JWT|jwt|permission denied|row-level security|TypeError|ReferenceError|undefined|NetworkError|Failed to fetch|Load failed|fetch failed|ECONN|status code|Internal Server Error|StripeError|sk_live|sk_test|Unexpected token|is not a function|Cannot read prop)/;
+const LYANN_TECHNICAL_ERROR = /(violates|constraint|duplicate key|null value|syntax error|relation "|column "|function [a-z_]+\(|PGRST|JWT|jwt|permission denied|row-level security|TypeError|ReferenceError|undefined|NetworkError|Failed to fetch|Load failed|fetch failed|ECONN|status code|Internal Server Error|StripeError|sk_live|sk_test|Unexpected token|is not a function|Cannot read prop|n['’]est plus ouvert aux propositions|statut actuel:)/;
 
 window.lyannSanitizeUserMessage = function(message) {
     const text = String(message == null ? '' : message);
+    if (/n['’]est plus ouvert aux propositions|statut actuel:\s*[A-Z_]+/i.test(text)) {
+        return 'Cette demande n’accepte plus de nouvelles propositions pour le moment.';
+    }
     if (!LYANN_TECHNICAL_ERROR.test(text)) return text;
     const network = /(NetworkError|Failed to fetch|Load failed|fetch failed|ECONN)/.test(text);
     const generic = network
@@ -52,6 +55,7 @@ const LYANN_TOAST_COLORS = { success: '#7FC79A', warning: '#F2C14E', error: '#F2
 
 window.lyannToast = function(message, type = 'info') {
     if (!message || !document.body) return;
+    if (/devis actif\s*\(SENT|existe déjà pour cette invitation/i.test(String(message))) return;
     const kind = LYANN_TOAST_ICONS[type] ? type : 'info';
     let container = document.getElementById('lyanToastContainer');
     if (!container) {
@@ -156,11 +160,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-window.lyannAlert = function(message, type = 'info') {
+window.lyannAlert = function(message, type = 'info', title) {
     return new Promise((resolve) => {
         showDialog({
             type: type,
-            title: getTitleForType(type),
+            title: title || getTitleForType(type),
             message: message,
             showInput: false,
             buttons: [
@@ -174,11 +178,11 @@ window.alert = function(message) {
     window.lyannAlert(String(message == null ? '' : message));
 };
 
-window.lyannConfirm = function(message, type = 'warning') {
+window.lyannConfirm = function(message, type = 'warning', title) {
     return new Promise((resolve) => {
         showDialog({
             type: type,
-            title: getTitleForType(type),
+            title: title || getTitleForType(type),
             message: message,
             showInput: false,
             buttons: [

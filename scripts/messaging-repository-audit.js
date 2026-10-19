@@ -18,7 +18,7 @@ const checks = [
   ['chat loader no longer queries participants directly', !getBlock.includes("from('conversation_participants')")],
   ['chat loader no longer queries messages directly', !getBlock.includes("from('messages')")],
   ['successful send invalidates conversation lookup and message cache', chat.includes('invalidateConversation(userId, contactId, sharedConvId)')],
-  ['send keeps the outgoing bubble instead of reloading the thread', chat.includes("status.dataset.optimisticStatus = 'sent'")]
+  ['send keeps the outgoing bubble instead of reloading the thread', chat.includes("setOptimisticState(node, 'sent')") && chat.includes('status.dataset.optimisticStatus = state')]
 ];
 
 let failed = false;

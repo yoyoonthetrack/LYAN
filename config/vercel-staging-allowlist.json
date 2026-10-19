@@ -1,0 +1,10 @@
+{
+  "expectedOrgIds": ["team_Q2iI3QsUHFqSNkD3pjjg5d58"],
+  "productionProjectIds": ["prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM"],
+  "productionProjectNames": ["lyan", "lyan-app", "lyann", "lyann-app"],
+  "productionDomains": ["lyann.app", "www.lyann.app", "admin.lyann.app"],
+  "stagingProjectIds": ["prj_FHIKUKYa8IwpiitigUma4gTtTF6q"],
+  "stagingProjectNames": ["lyann-staging-preview"],
+  "productionSupabaseRef": "gzispjfoywklpqatjyop",
+  "stagingSupabaseRef": "tdktfbtqceldlaeqjtow"
+}
