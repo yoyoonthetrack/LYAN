@@ -2751,8 +2751,8 @@ const LYANN_API_CLIENT = {
         });
 
         const resData = await response.json();
-        if (!response.ok) {
-            throw new Error(resData.error || "Erreur lors de la libération du paiement");
+        if (!response.ok || !resData || resData.success === false || resData.status !== 'RELEASED') {
+            throw new Error((resData && (resData.error || resData.message)) || "Le versement n’a pas abouti. Les fonds restent en sécurité.");
         }
         emitLyannClientEvent('lyann:deal-mutated', { rpc: 'releaseMilestonePayment', milestoneId });
         return resData;

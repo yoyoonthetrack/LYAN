@@ -5000,8 +5000,13 @@ app.post('/v1/milestones/release-payment', async (req, res) => {
             }
         }
 
-        // 7. Execute Transfer Release via common helper
+        // 7. Execute Transfer Release via common helper.
+        // A failed transfer must not look like a successful release to the chat.
         const result = await retryMilestoneTransfer(milestone_id);
+        if (result && result.success === false) {
+            const http = result.code === 'CONCURRENCY_LOCK_FAILED' ? 409 : 400;
+            return res.status(http).json(result);
+        }
         return res.json(result);
 
     } catch (e) {

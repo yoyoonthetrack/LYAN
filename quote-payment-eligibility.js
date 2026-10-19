@@ -129,7 +129,10 @@
         return type === 'quote_declined'
             || type === 'quote_created'
             || type === 'quote_updated'
-            || type === 'quote_accepted';
+            || type === 'quote_accepted'
+            || type === 'payment_secured'
+            || type === 'milestone_completed'
+            || type === 'funds_released';
     }
 
     function quoteDeclineCopy(quote, userId) {
@@ -158,8 +161,8 @@
         if (!quote || quote.status === 'REJECTED') return 'closed';
         if (quote.status === 'SENT') return 'devis';
         const status = milestone && milestone.status;
-        if (status === 'RELEASED' || status === 'VALIDATED') return 'done';
-        if (status === 'COMPLETED') return 'validation';
+        if (status === 'RELEASED') return 'done';
+        if (status === 'VALIDATED' || status === 'COMPLETED') return 'validation';
         if (status === 'FUNDED' || status === 'IN_PROGRESS') return 'prestation';
         return 'paiement';
     }
@@ -310,11 +313,19 @@
                         ? 'Le paiement est sécurisé par LYANN. Réalisez la prestation puis déclarez-la terminée.'
                         : 'Paiement sécurisé. L’argent est mis en sécurité par LYANN et n’est pas encore versé au Lyanneur. La mission peut commencer. Quand elle sera terminée, vous la validerez dans ce même chat pour libérer les fonds.';
                 } else if (phase === 'validation') {
-                    status = 'Prestation à valider';
-                    actorToAct = 'requester';
-                    context = role === 'requester'
-                        ? 'Le Lyanneur a déclaré la prestation terminée. Vérifiez le travail avant de confirmer.'
-                        : 'En attente de la validation du demandeur.';
+                    const transferPending = milestones.some((milestone) => milestone && milestone.status === 'VALIDATED')
+                        && !milestones.some((milestone) => milestone && milestone.status === 'COMPLETED');
+                    if (transferPending) {
+                        status = 'Versement en cours';
+                        actorToAct = null;
+                        context = 'La validation est enregistrée. Les fonds restent en sécurité tant que le versement n’est pas confirmé.';
+                    } else {
+                        status = 'Prestation à valider';
+                        actorToAct = 'requester';
+                        context = role === 'requester'
+                            ? 'Le Lyanneur a déclaré la prestation terminée. Vérifiez le travail avant de confirmer.'
+                            : 'En attente de la validation du demandeur.';
+                    }
                 } else if (phase === 'closed') {
                     status = 'Prestation clôturée';
                     actorToAct = null;
@@ -332,7 +343,7 @@
                         if (step === 'prestation' && role === 'provider') {
                             actions.push({ id: 'done', label: 'Déclarer la prestation terminée', milestoneId: milestone.id });
                         }
-                        if (step === 'validation' && role === 'requester') {
+                        if (step === 'validation' && role === 'requester' && milestone.status === 'COMPLETED') {
                             actions.push({ id: 'release', label: 'Valider et libérer le paiement', milestoneId: milestone.id, confirm: true });
                         }
                     });
