@@ -2803,7 +2803,7 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                     if (contact && contact.id) {
                         const bravo = 'Bravo pour ce beau Lyannage ! Vous êtes de vrais Lyanneurs.\n\nNotez-vous l’un l’autre, ici dans le chat. Vous pouvez noter ' + otherName + ' dès maintenant.';
                         const thread = document.getElementById('chatMessagesContainer');
-                        const already = thread && thread.textContent && thread.textContent.indexOf('Bravo pour ce beau Lyannage !') !== -1;
+                        const already = lyannBravoSeen.size > 0 || (thread && thread.querySelector('[data-lyann-moment="bravo"]'));
                         if (!already) {
                             await addMessageToContact(contact.id, {
                                 type: 'text',
@@ -4115,12 +4115,18 @@ function applyLiveQuotesToDossiers(quotes) {
     }
 }
 
+let lyannBravoRevealQueued = false;
 function syncLiveDealActions(quotes) {
     applyLiveQuotesToDossiers(quotes);
     if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.syncOpenDossier === 'function') {
         window.LYANN_MISSION_SURFACES.syncOpenDossier(quotes);
     }
     paintPendingActionBanner();
+    const thread = document.getElementById('chatMessagesContainer');
+    if (!lyannBravoRevealQueued && dealFundsReleased() && lyannBravoSeen.size && thread && !thread.querySelector('[data-lyann-moment="bravo"]')) {
+        lyannBravoRevealQueued = true;
+        Promise.resolve(catchUpOpenThread('visible')).finally(() => { lyannBravoRevealQueued = false; });
+    }
 }
 window.paintPendingActionBanner = paintPendingActionBanner;
 window.syncLiveDealActions = syncLiveDealActions;
@@ -5826,7 +5832,55 @@ function chatToast(message) {
     else if (window.lyannAlert) window.lyannAlert(message);
 }
 
+const lyannBravoSeen = new Set();
+
+function lyannMomentKind(text) {
+    const value = String(text || '');
+    if (value.indexOf('Bravo pour ce beau Lyannage !') !== -1) return 'bravo';
+    if (value.indexOf('Le paiement est sécurisé. La mission peut commencer.') !== -1) return 'paid';
+    return '';
+}
+
+function dealFundsReleased() {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    const quotes = [];
+    (contact && contact.dossiers || []).forEach((dossier) => {
+        (dossier && dossier.quotes || []).forEach((quote) => quotes.push(quote));
+    });
+    return quotes.some((quote) => (quote && quote.milestones || []).some((milestone) => {
+        const status = String(milestone && milestone.status || '').toUpperCase();
+        return status === 'RELEASED' || status === 'VALIDATED';
+    }));
+}
+
+function createLyannMomentCard(kind, msg, timeStr) {
+    const card = document.createElement('article');
+    card.className = 'lyann-moment-card';
+    card.dataset.lyannMoment = kind;
+    if (msg && msg.id) card.dataset.messageId = String(msg.id);
+    if (msg && msg.createdAt) card.dataset.createdAt = String(msg.createdAt);
+    const kicker = document.createElement('div');
+    kicker.className = 'lyann-moment-kicker';
+    kicker.textContent = 'LYANN';
+    const body = document.createElement('p');
+    body.className = 'lyann-moment-text';
+    body.textContent = (msg && msg.text) || '';
+    const time = document.createElement('time');
+    time.className = 'lyann-moment-time';
+    time.textContent = timeStr || '';
+    card.append(kicker, body, time);
+    return card;
+}
+
 function createThreadBubble(msg, hints) {
+    const momentKind = lyannMomentKind(msg && msg.text);
+    if (momentKind) {
+        if (msg && msg.id && momentKind === 'bravo') lyannBravoSeen.add(String(msg.id));
+        if (momentKind === 'bravo' && !dealFundsReleased()) return null;
+        let timeStr = hints && hints.timeStr;
+        if (timeStr == null) timeStr = typeof msg.timestamp === 'number' ? chatTimeLabel(msg.timestamp) : (typeof msg.timestamp === 'string' ? msg.timestamp : '');
+        return createLyannMomentCard(momentKind, msg, timeStr);
+    }
     const isMe = hints && Object.prototype.hasOwnProperty.call(hints, 'isMe') ? hints.isMe : (msg.sender === 'me' || msg.sender === getMyId());
     const msgId = (hints && hints.msgId) || msg.id || '';
     let timeStr = hints && hints.timeStr;
@@ -6878,10 +6932,16 @@ const handleChatHeaderClicks = async (e) => {
         hideChatHeaderDropdown();
 
         if (dropViewProfile) {
-            if (currentChatContact && typeof window.openQuickProfileModal === 'function') {
-                window.openQuickProfileModal(currentChatContact.id || currentChatContact.name);
+            const contact = currentChatContact;
+            const profileId = contact && contact.id;
+            if (profileId && typeof isUUID === 'function' && isUUID(profileId) && typeof window.openPublicMemberProfile === 'function') {
+                Promise.resolve(window.openPublicMemberProfile(profileId, 'chat')).catch(() => {
+                    if (typeof window.openQuickProfileModal === 'function') window.openQuickProfileModal(contact);
+                });
+            } else if (contact && typeof window.openQuickProfileModal === 'function') {
+                window.openQuickProfileModal(contact);
             } else if (window.lyannAlert) {
-                window.lyannAlert(`Profil de ${currentChatContact ? currentChatContact.name : 'ce membre'}`);
+                window.lyannAlert(`Profil de ${contact ? contact.name : 'ce membre'}`);
             }
         } else if (dropShareProfile) {
             if (e && e.type === 'touchstart') return;

@@ -7737,15 +7737,29 @@ input:checked + .slider:before {
     justify-content: center;
 }
 .chat-inline-review {
-    align-self: stretch;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin: 8px 0 4px;
-    padding: 12px;
-    border: 1px solid #E4DDD2;
-    border-radius: 16px;
+    margin: 0;
+    padding: 10px 12px 8px;
+    border: 0;
+    border-top: 1px solid #E4DDD2;
     background: #fffdf8;
+    z-index: 31;
+}
+.chat-inline-review-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+.chat-inline-review-row .btn {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0 14px;
+}
+#chatModal .chat-input-area.chat-composer-yield {
+    display: none !important;
 }
 .chat-inline-review-title {
     margin: 0;
@@ -7771,10 +7785,14 @@ input:checked + .slider:before {
     color: #2D6A4F;
 }
 .chat-inline-review-comment {
-    width: 100%;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
     box-sizing: border-box;
-    min-height: 64px;
-    resize: vertical;
+    min-height: 44px;
+    max-height: 96px;
+    resize: none;
+    font-size: 16px;
 }
 .chat-todo-summary::-webkit-details-marker {
     display: none;
@@ -8778,6 +8796,40 @@ input:checked + .slider:before {
 .quick-profile-body {
     padding: 24px;
     background: #FFFFFF;
+}
+
+.lyann-moment-card {
+    width: min(100%, 420px);
+    margin: 10px auto;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: #F4F7F2;
+    border: 1px solid #D5E3D6;
+    color: #1E2822;
+    box-sizing: border-box;
+}
+
+.lyann-moment-kicker {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #3D6B4F;
+    margin-bottom: 4px;
+}
+
+.lyann-moment-text {
+    margin: 0;
+    white-space: pre-wrap;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.lyann-moment-time {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: #6B7C70;
+    text-align: right;
 }
 
 .quick-skills-list {
@@ -11857,6 +11909,15 @@ body.is-native-app .navbar.scrolled,
 
 #quickProfileModal.modal-overlay.active {
     display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#quickProfileModal .modal-card.modal-card-quick-profile {
+    height: auto !important;
+    width: min(440px, calc(100% - 24px));
+    margin-top: auto !important;
+    margin-bottom: auto !important;
 }
 
 .modal-card-quick-profile {
@@ -11948,6 +12009,13 @@ body.is-native-app .navbar.scrolled,
     font-weight: 600;
     color: var(--text);
     line-height: 1.35;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+#wizardDescInput,
+#wizardTitleInput {
+    font-size: 16px;
 }
 .wizard-title-status {
     font-size: 0.85rem;

@@ -4151,7 +4151,12 @@ safeDomReady(() => {
         });
     }
 
-    window.openQuickProfileModal = async function(memberId) {
+    window.openQuickProfileModal = async function(memberIdOrContact) {
+        const hinted = memberIdOrContact && typeof memberIdOrContact === 'object' ? memberIdOrContact : null;
+        const memberId = hinted ? (hinted.id || hinted.user_id || hinted.userId || '') : memberIdOrContact;
+        const knownName = (hinted && hinted.name)
+            || (typeof currentChatContact !== 'undefined' && currentChatContact && String(currentChatContact.id || '') === String(memberId || '') ? currentChatContact.name : '')
+            || '';
         let member = null;
 
         // Fetch from Supabase API if UUID
@@ -4168,14 +4173,16 @@ safeDomReady(() => {
         if (!member) {
             member = {
                 id: memberId,
-                name: "Membre LYANN",
-                role: "Membre Communauté",
-                city: "Guadeloupe",
-                bio: "Membre engagé de la communauté LYANN.",
-                badge: "",
+                name: knownName || 'Membre LYANN',
+                avatar_url: hinted && (hinted.avatar_url || hinted.avatar || hinted.avatarUrl) || '',
+                city: (hinted && (hinted.city || hinted.location)) || '',
+                bio: '',
+                badge: '',
                 rating: null,
                 skills: []
             };
+        } else if (knownName && !member.first_name && !member.name && !member.full_name) {
+            member.name = knownName;
         }
 
         currentQuickMember = member;
@@ -4204,7 +4211,12 @@ safeDomReady(() => {
         }
         
         const bioText = member.bio || member.about || member.description || '';
-        if (quickProfileBio) quickProfileBio.textContent = bioText;
+        if (quickProfileBio) {
+            quickProfileBio.textContent = bioText;
+            quickProfileBio.style.display = bioText ? '' : 'none';
+        }
+        if (quickProfileBadge) quickProfileBadge.style.display = badgeText ? '' : 'none';
+        if (quickProfileRole) quickProfileRole.style.display = roleText ? '' : 'none';
 
         if (quickProfileSkills) {
             if (skillsList.length > 0) {
@@ -8577,6 +8589,8 @@ safeDomReady(() => {
         const target = modalRequestHelp.querySelector(`.wizard-step[data-step="${step}"]`);
         if(target) {
             target.style.display = 'block';
+            const scroller = modalRequestHelp.querySelector('.modal-body');
+            if (scroller) scroller.scrollTop = 0;
             const heading = target.querySelector('h4');
             if (heading) heading.textContent = heading.textContent.replace(/^\d+\./, `${publishedRequestSteps.indexOf(step) + 1}.`);
             // slight delay for animation
@@ -8773,9 +8787,9 @@ safeDomReady(() => {
         });
     }
 
-    // --- STEP 1 SHORT TITLE ENGINE ---
-    // The AI proposes three titles from the written need. The author picks one,
-    // then may rewrite it. The client never invents substitute titles.
+    // --- TITLE ENGINE ---
+    // Step 1 is only the description, so the keyboard never covers the titles.
+    // On the next page the AI proposes three titles from the finished need.
     const TITLE_MAX = window.LYANN_REQUEST_TITLE_MAX || 60;
     const titleBlock = document.getElementById('wizardTitleBlock');
     const titleInput = document.getElementById('wizardTitleInput');
@@ -8788,9 +8802,20 @@ safeDomReady(() => {
     let titleTouched = false;
     let titlePicked = false;
     let titleSuggestedFor = '';
-    let titleTimer = null;
     let titleRequestSeq = 0;
-    const TITLE_STOP = new Set(['bonjour','hello','salut','svp','stp','besoin','aide','quelqu','quelquun','maison','faites','faire','voudrais','pourrais','merci']);
+
+    function placeWizardTitleOnNextStep() {
+        const step2 = document.querySelector('#modal-request-help .wizard-step[data-step="2"]');
+        if (!titleBlock || !step2) return;
+        const heading = step2.querySelector('h4');
+        if (titleBlock.parentElement !== step2) {
+            if (heading) step2.insertBefore(titleBlock, heading);
+            else step2.prepend(titleBlock);
+        }
+        const helper = titleBlock.querySelector('p:not(#wizardTitleHeading)');
+        if (helper) helper.textContent = 'Trois titres proposés d’après votre besoin. Vous pouvez en corriger un. 60 caractères maximum.';
+    }
+    placeWizardTitleOnNextStep();
 
     function titleFromNeed(text, max) {
         const limit = max || TITLE_MAX;
@@ -8809,22 +8834,35 @@ safeDomReady(() => {
         return (out.charAt(0).toUpperCase() + out.slice(1)).slice(0, limit);
     }
 
-    function localTitleChoices(description) {
-        const primary = titleFromNeed(description);
-        const tokens = String(description || '')
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-z0-9'\s]/g, ' ')
-            .split(/\s+/)
-            .filter((w) => w.length >= 4 && !TITLE_STOP.has(w));
-        const compact = titleFromNeed(tokens.slice(0, 6).join(' '));
-        const out = [];
-        [primary, compact].forEach((item) => {
-            if (item && item.length >= 3 && !out.includes(item)) out.push(item);
-        });
-        return out;
+    function stripNeedLead(text) {
+        let raw = String(text || '').replace(/\s+/g, ' ').trim();
+        raw = raw.replace(/^(bonjour|salut|hello|coucou)[,!.\s]+/i, '');
+        raw = raw.replace(/^(?:j['’]ai besoin d['’]|il me faudrait|je cherche|je voudrais|je souhaite|je veux)\s+/i, '');
+        raw = raw.replace(/^(?:besoin de)\s+/i, '');
+        raw = raw.replace(/^(?:quelqu['’]un|une personne|un artisan|un professionnel)\s+pour\s+/i, '');
+        return raw.trim();
     }
+
+    function objectFromNeed(text) {
+        return String(text || '')
+            .replace(/^(réparer|reparer|dépanner|depanner|installer|nettoyer|changer|remplacer|garder|tondre|peindre|coudre|retoucher)\s+/i, '')
+            .replace(/^(?:ma|mon|mes|sa|son|ses|une|un|le|la|les|l['’])\s+/i, '')
+            .trim();
+    }
+
+    function threeTitlesFromNeed(description) {
+        const sentence = titleFromNeed(description);
+        const coreSource = stripNeedLead(description);
+        const core = titleFromNeed(coreSource);
+        const object = titleFromNeed(objectFromNeed(coreSource));
+        const out = [];
+        [core, sentence, object].forEach((item) => {
+            const value = titleFromNeed(item);
+            if (value && value.length >= 3 && !out.some((title) => title.toLowerCase() === value.toLowerCase())) out.push(value);
+        });
+        return out.slice(0, 3);
+    }
+    window.threeTitlesFromNeed = threeTitlesFromNeed;
 
     function applyWizardTitle(text, { picked = true } = {}) {
         if (!titleInput || !text) return;
@@ -8892,6 +8930,10 @@ safeDomReady(() => {
         const description = descriptionInput.value.trim();
         if (description.length < 8) return;
         if (!force && ((titlePicked || titleTouched) || description === titleSuggestedFor)) return;
+        if (force && description === titleSuggestedFor && (titlePicked || titleTouched) && titleInput.value.trim().length >= 3) {
+            if (titleBlock) titleBlock.hidden = false;
+            return;
+        }
         titleSuggestedFor = description;
         if (titleBlock) titleBlock.hidden = false;
         const seq = ++titleRequestSeq;
@@ -8907,18 +8949,20 @@ safeDomReady(() => {
         if (!force && (titlePicked || titleTouched)) return;
 
         if (result?.titles?.length === 3) {
-            setWizardTitleStatus('Choisissez le titre qui convient le mieux, ou gardez le vôtre.');
+            setWizardTitleStatus('Choisissez le titre qui convient le mieux, ou corrigez-le.');
             renderWizardTitleChoices(result.titles);
-            if (!titleInput.value.trim()) applyWizardTitle(result.titles[0]);
+            if (!titleTouched) applyWizardTitle(result.titles[0]);
             if (titleSuggestBtn) titleSuggestBtn.hidden = false;
             return;
         }
-        const local = localTitleChoices(description);
+        const local = threeTitlesFromNeed(description);
         if (local.length) {
-            renderWizardTitleChoices(local.length > 1 ? local : []);
-            if (!titleTouched || titleInput.value.trim().length < 3) applyWizardTitle(local[0]);
+            renderWizardTitleChoices(local);
+            if (!titleTouched) applyWizardTitle(local[0]);
             if (titleSuggestBtn) titleSuggestBtn.hidden = false;
-            setWizardTitleStatus('Titre repris de votre texte. Vous pouvez le corriger.');
+            setWizardTitleStatus(result?.error === 'RATE'
+                ? 'Trop de propositions demandées. Voici trois titres lus dans votre besoin.'
+                : 'Choisissez le titre qui convient le mieux, ou corrigez-le.');
             return;
         }
         renderWizardTitleChoices([]);
@@ -8929,15 +8973,16 @@ safeDomReady(() => {
             setWizardTitleStatus('Trop de propositions demandées. Votre texte sert de titre, vous pouvez le raccourcir.');
             return;
         }
-        setWizardTitleStatus('Titre repris de votre texte. Vous pouvez le corriger.');
+        setWizardTitleStatus('Choisissez le titre qui convient le mieux, ou corrigez-le.');
     }
     window.suggestWizardTitle = suggestWizardTitle;
 
     if (descriptionInput) {
         descriptionInput.addEventListener('input', () => {
-            if (titleBlock && descriptionInput.value.trim().length >= 8) titleBlock.hidden = false;
-            clearTimeout(titleTimer);
-            titleTimer = setTimeout(() => suggestWizardTitle(), 900);
+            if (descriptionInput.value.trim() !== titleSuggestedFor) {
+                titlePicked = false;
+                titleTouched = false;
+            }
         });
     }
     titleInput?.addEventListener('input', () => {
@@ -9089,17 +9134,11 @@ safeDomReady(() => {
                 console.log('[REAL NEXT] stored description =', desc);
                 console.log('[REAL NEXT] LyanAI =', !!window.LyanAI);
 
-                if (!desc) {
-                    alert("Veuillez décrire votre besoin.");
+                if (desc.length < 10) {
+                    alert("Décrivez votre besoin en quelques mots.");
                     return;
                 }
-                const chosenTitle = typeof ensureWizardTitleFromNeed === 'function'
-                    ? ensureWizardTitleFromNeed()
-                    : (document.getElementById('wizardTitleInput')?.value || '').trim();
-                if (chosenTitle.length < 3) {
-                    alert('Ajoutez encore quelques mots pour décrire votre besoin.');
-                    return;
-                }
+                if (document.activeElement && typeof document.activeElement.blur === 'function') document.activeElement.blur();
                 
                 // Show loader
                 const originalText = btnNext.innerHTML;
@@ -9111,7 +9150,10 @@ safeDomReady(() => {
                     console.log('[REAL CLASSIFY COUNT]', window.__REAL_CLASSIFY_COUNT);
                     console.log('[REAL CLASSIFY INPUT]', desc);
 
-                    const result = await window.LyanAI.classifyNeed(desc);
+                    const [, result] = await Promise.all([
+                        typeof suggestWizardTitle === 'function' ? suggestWizardTitle({ force: true }) : Promise.resolve(),
+                        window.LyanAI.classifyNeed(desc)
+                    ]);
                     console.log('[REAL CLASSIFY OUTPUT]', result);
 
                     if (result.needs_clarification && desc.length < 5) {
@@ -9154,7 +9196,8 @@ safeDomReady(() => {
                             banner.style.background = "rgba(74, 124, 89, 0.08)";
                             banner.style.borderColor = "rgba(74, 124, 89, 0.3)";
                             banner.style.color = "#1F3827";
-                            banner.innerHTML = `<i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.25rem; flex-shrink: 0; margin-top: 2px;"></i> <div style="flex: 1; min-width: 0; white-space: normal; word-break: break-word; overflow-wrap: anywhere;"><b>Nous avons compris :</b> ${window.escapeSearchHtml(result.title)}</div>`;
+                            const understood = [result.category, result.subcategory].filter(Boolean).join(' · ');
+                            banner.innerHTML = `<i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.25rem; flex-shrink: 0; margin-top: 2px;"></i> <div style="flex: 1; min-width: 0; white-space: normal; word-break: break-word; overflow-wrap: anywhere;"><b>Nous avons compris :</b> ${window.escapeSearchHtml(understood || result.title)}</div>`;
                         } else {
                             banner.style.background = "#FFF9EC";
                             banner.style.borderColor = "rgba(229, 179, 69, 0.4)";
@@ -9192,6 +9235,14 @@ safeDomReady(() => {
                     }
                 }
             } else if (currentStep < totalSteps) {
+                if (currentStep === 2) {
+                    const title = (document.getElementById('wizardTitleInput')?.value || '').trim();
+                    if (title.length < 3) {
+                        alert('Choisissez un titre, ou écrivez-en un.');
+                        return;
+                    }
+                }
+                if (document.activeElement && typeof document.activeElement.blur === 'function') document.activeElement.blur();
                 goToStep(publishedRequestSteps[publishedRequestSteps.indexOf(currentStep) + 1]);
             }
         });
@@ -9251,7 +9302,7 @@ safeDomReady(() => {
 
             const title = (document.getElementById('wizardTitleInput')?.value || '').trim().slice(0, TITLE_MAX);
             if (title.length < 3) {
-                refuse("Donnez un titre court à votre annonce (3 à 60 caractères).", 1);
+                refuse("Donnez un titre court à votre annonce (3 à 60 caractères).", 2);
                 return;
             }
 

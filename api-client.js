@@ -1144,16 +1144,24 @@ const LYANN_API_CLIENT = {
 
     async getUserProfile(userId) {
         if (!this.supabase || !userId || !isUUID(userId)) return null;
-        try {
-            const { data } = await this.supabase
-                .from('profiles')
-                .select('id, first_name, last_name, avatar_url, city, territory')
-                .eq('id', userId)
-                .maybeSingle();
-            return data;
-        } catch (e) {
-            return null;
+        const columns = [
+            'id, first_name, last_name, avatar_url, bio, city, territory, is_pro',
+            'id, first_name, last_name, avatar_url, city, territory'
+        ];
+        for (const select of columns) {
+            try {
+                const { data, error } = await this.supabase
+                    .from('profiles')
+                    .select(select)
+                    .eq('id', userId)
+                    .maybeSingle();
+                if (!error && data) return data;
+                if (error && !/column|schema cache/i.test(error.message || '')) return null;
+            } catch (e) {
+                return null;
+            }
         }
+        return null;
     },
 
     async getUserConversations(myUserId) {
