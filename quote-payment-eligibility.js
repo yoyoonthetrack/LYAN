@@ -126,7 +126,10 @@
     }
 
     function isVisibleDealNotice(type) {
-        return type === 'quote_declined';
+        return type === 'quote_declined'
+            || type === 'quote_created'
+            || type === 'quote_updated'
+            || type === 'quote_accepted';
     }
 
     function quoteDeclineCopy(quote, userId) {

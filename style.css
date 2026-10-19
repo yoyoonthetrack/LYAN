@@ -11981,10 +11981,63 @@ body.is-native-app .navbar.scrolled,
     display: none !important;
 }
 
+#wizardTitleBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 28px;
+}
+#wizardTitleBlock[hidden] {
+    display: none !important;
+}
+#wizardTitleBlock > p {
+    margin: 0;
+}
+#wizardTitleEdit {
+    margin-top: 0 !important;
+}
+#wizardTitleSuggest {
+    margin-top: 0 !important;
+    align-self: flex-start;
+}
+#modal-request-help .wizard-step[data-step="2"] > h4 {
+    margin-top: 12px;
+}
+#modal-request-help .modal-footer {
+    gap: 16px;
+}
+#modal-request-help .modal-footer .btn {
+    min-height: 44px;
+    padding-left: 18px;
+    padding-right: 18px;
+}
+.chat-inline-review-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.chat-inline-review-head .chat-inline-review-title {
+    margin: 0;
+}
+.chat-inline-review-close {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #3D4A40;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
 .wizard-title-choices {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    margin: 0;
 }
 .wizard-title-choice {
     display: flex;

@@ -1876,6 +1876,8 @@ window.handleAcceptQuote = async function(quoteId, sourceQuote) {
                     contact.activeDossier.quotes.forEach(mark);
                 }
                 applyQuoteStatusToDom(quoteId, 'ACCEPTED');
+                const acceptedAmount = known && known.total_amount != null ? known.total_amount : (sourceQuote && sourceQuote.total_amount);
+                await traceQuoteInThread('accepted', acceptedAmount);
                 if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.syncOpenDossier === 'function') {
                     window.LYANN_MISSION_SURFACES.syncOpenDossier();
                 }
@@ -2297,6 +2299,7 @@ async function createProductionQuoteForContact(contactId, description, amount, m
     }];
     const created = await window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, description, null, milestonePayload);
     invalidateActiveQuoteContext();
+    await traceQuoteInThread('sent', parsedAmount);
     return created;
 }
 
@@ -2414,6 +2417,42 @@ function isPersistedUuid(id) {
 
 function milestoneStatusCode(milestone) {
     return String(milestone && milestone.status || '').toUpperCase();
+}
+
+function pendingMilestoneFromContact() {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    const found = [];
+    const visit = (quote) => {
+        if (!quote || String(quote.status || '').toUpperCase() !== 'ACCEPTED') return;
+        (quote.milestones || []).forEach((milestone) => {
+            if (milestone && isPersistedUuid(milestone.id) && milestoneStatusCode(milestone) === 'PENDING') found.push(milestone.id);
+        });
+    };
+    (contact && contact.dossiers || []).forEach((dossier) => (dossier && dossier.quotes || []).forEach(visit));
+    if (contact && contact.activeDossier) (contact.activeDossier.quotes || []).forEach(visit);
+    timelineQuotes.forEach((quote) => visit(quote));
+    return found[0] || null;
+}
+
+function quoteTraceText(kind, amount) {
+    const value = Number(amount);
+    const money = Number.isFinite(value) && value > 0
+        ? ' · ' + value.toLocaleString('fr-FR') + ' €'
+        : '';
+    if (kind === 'accepted') return 'Devis accepté' + money + '.';
+    if (kind === 'updated') return 'Devis modifié' + money + '.';
+    return 'Devis envoyé' + money + '.';
+}
+
+async function traceQuoteInThread(kind, amount) {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    const myId = typeof getMyId === 'function' ? getMyId() : null;
+    if (!contact || !contact.id || !myId) return;
+    const text = quoteTraceText(kind, amount);
+    const box = document.getElementById('chatMessagesContainer');
+    const marker = kind === 'accepted' ? 'quote_accepted' : (kind === 'updated' ? 'quote_updated' : 'quote_created');
+    if (box && (box.querySelector('[data-message-type="' + marker + '"]') || box.textContent.indexOf(text) !== -1)) return;
+    await addMessageToContact(contact.id, { type: 'text', sender: myId, text: text });
 }
 
 function milestoneFromOpenDossiers(preferredId, statuses) {
@@ -2647,17 +2686,17 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
     }
 
     else if (actionId === 'PAY_MISSION') {
-        const payingQuote = quoteForPayAction(extraData);
-        const payEntity = (extraData && extraData.milestoneId) || (mission && mission.id) || 'pay';
+        const hintedMilestoneId = (extraData && extraData.milestoneId) || (mission && mission.milestoneId) || null;
+        const payingQuote = quoteForPayAction({
+            milestoneId: hintedMilestoneId,
+            id: (extraData && extraData.id) || (mission && mission.id) || null
+        });
+        const payEntity = hintedMilestoneId || (mission && mission.id) || 'pay';
         if (dealMutationGuard && dealMutationGuard.isBusy('pay', payEntity)) return;
         if (payingQuote && payoutBlocksPayment(payingQuote)) {
             const prompt = payoutPromptForQuote(payingQuote);
             chatToast(prompt && prompt.title ? prompt.title : 'Le compte de versement n’est pas encore prêt.');
             return;
-        }
-        const payableMilestoneId = extraData && extraData.milestoneId;
-        if (!isMissionUuid(payableMilestoneId) && !(mission && isMissionUuid(mission.id))) {
-            return refuseUnlinkedMission('Paiement');
         }
         try {
             await runDealMutation('pay', payEntity, {
@@ -2679,11 +2718,10 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                     if (!chatCheckoutOverlay) {
                         throw new Error('Paiement indisponible : le portail de paiement n’est pas disponible sur cet écran.');
                     }
-                    const milestoneId = await resolveChatMilestoneId(
-                        extraData.milestoneId || (mission && mission.milestoneId),
-                        ['PENDING'],
-                        milestoneScope
-                    );
+                    let milestoneId = await resolveChatMilestoneId(hintedMilestoneId, ['PENDING'], milestoneScope);
+                    if (!milestoneId && isPersistedUuid(hintedMilestoneId)) milestoneId = hintedMilestoneId;
+                    if (!milestoneId) milestoneId = pendingMilestoneFromContact();
+                    if (!milestoneId) throw new Error('Le paiement n’est pas encore prêt. Rouvrez la conversation, puis réessayez.');
                     if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
                         const stale = new Error('__deal_mutation_stale__');
                         stale.dealMutationStale = true;
@@ -3646,6 +3684,15 @@ function peerReviewKey(contactId, missionId) {
     return String(contactId || '') + ':' + String(missionId || '');
 }
 
+function reviewDismissKey(contactId, missionId) {
+    const me = typeof getMyId === 'function' ? getMyId() : '';
+    return 'lyann.reviewDismiss.' + String(me || '') + '.' + peerReviewKey(contactId, missionId);
+}
+
+function reviewWasDismissed(contactId, missionId) {
+    try { return localStorage.getItem(reviewDismissKey(contactId, missionId)) === '1'; } catch (_) { return false; }
+}
+
 function currentReviewMissionId() {
     const contact = currentChatContact;
     const id = (contact && contact.threadMission && contact.threadMission.id) || (contact && contact.missionId) || null;
@@ -3690,9 +3737,10 @@ function paintInlineReview() {
     const support = contact && typeof isLyannSupportContact === 'function' && isLyannSupportContact(contact.id);
     const missionId = currentReviewMissionId();
     const already = contact && peerReviewsSent.has(peerReviewKey(contact.id, missionId));
+    const dismissed = contact && reviewWasDismissed(contact.id, missionId);
     const userId = typeof getMyId === 'function' ? getMyId() : null;
     const stillBusy = pendingDossierActions(contact, userId).length > 0;
-    const offer = !!(contact && !support && !already && !stillBusy && (window.__lyannReviewNow || threadHasSettledLyannage()));
+    const offer = !!(contact && !support && !already && !dismissed && !stillBusy && (window.__lyannReviewNow || threadHasSettledLyannage()));
     const existing = document.getElementById('chatInlineReview');
     if (!offer) {
         if (existing) {
@@ -3710,9 +3758,24 @@ function paintInlineReview() {
     card.id = 'chatInlineReview';
     card.className = 'chat-inline-review';
     card.dataset.contactId = String(contact.id);
+    const head = document.createElement('div');
+    head.className = 'chat-inline-review-head';
     const title = document.createElement('p');
     title.className = 'chat-inline-review-title';
     title.textContent = 'Noter ' + (contact.name || 'cette personne');
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'chat-inline-review-close';
+    close.setAttribute('aria-label', 'Fermer la notation');
+    close.textContent = '×';
+    close.addEventListener('click', () => {
+        const key = reviewDismissKey(contact.id, missionId);
+        try { localStorage.setItem(key, '1'); } catch (_) {}
+        window.__lyannReviewNow = false;
+        holdReviewKeyboard(card, false);
+        card.remove();
+    });
+    head.append(title, close);
     const stars = document.createElement('div');
     stars.className = 'chat-inline-review-stars';
     stars.setAttribute('role', 'radiogroup');
@@ -3753,7 +3816,7 @@ function paintInlineReview() {
     send.className = 'btn btn-primary';
     send.textContent = 'Publier';
     row.append(field, send);
-    card.append(title, stars, row);
+    card.append(head, stars, row);
     field.addEventListener('focus', () => holdReviewKeyboard(card, true));
     field.addEventListener('blur', () => {
         setTimeout(() => {
@@ -5036,6 +5099,17 @@ function attachGuidedEventBody(wrapper, type, quote) {
 
 function renderTimelineCard(msg) {
     const type = msg.messageType || msg.type;
+    if (type === 'quote_created' || type === 'quote_updated' || type === 'quote_accepted') {
+        const box = document.getElementById('chatMessagesContainer');
+        const moment = type === 'quote_accepted' ? 'quote-accepted' : 'quote-sent';
+        const quote = timelineQuotes.get(String(msg.entityId || ''));
+        const line = quoteTraceText(type === 'quote_accepted' ? 'accepted' : (type === 'quote_updated' ? 'updated' : 'sent'), quote && quote.total_amount);
+        if (box && line && box.textContent.indexOf(line) !== -1) return null;
+        const timeStr = typeof msg.timestamp === 'number' ? chatTimeLabel(msg.timestamp) : '';
+        const card = createLyannMomentCard(moment, { id: msg.id, createdAt: msg.createdAt, text: line }, timeStr);
+        card.dataset.messageType = type;
+        return card;
+    }
     const wrapper = document.createElement('div');
     wrapper.className = 'chat-timeline-card';
     if (msg.id) wrapper.dataset.messageId = String(msg.id);
@@ -5838,6 +5912,8 @@ function lyannMomentKind(text) {
     const value = String(text || '');
     if (value.indexOf('Bravo pour ce beau Lyannage !') !== -1) return 'bravo';
     if (value.indexOf('Le paiement est sécurisé. La mission peut commencer.') !== -1) return 'paid';
+    if (value.indexOf('Devis envoyé') === 0 || value.indexOf('Devis modifié') === 0) return 'quote-sent';
+    if (value.indexOf('Devis accepté') === 0) return 'quote-accepted';
     return '';
 }
 
@@ -5877,6 +5953,9 @@ function createThreadBubble(msg, hints) {
     if (momentKind) {
         if (msg && msg.id && momentKind === 'bravo') lyannBravoSeen.add(String(msg.id));
         if (momentKind === 'bravo' && !dealFundsReleased()) return null;
+        const box = document.getElementById('chatMessagesContainer');
+        if (momentKind === 'quote-sent' && box && box.querySelector('[data-message-type="quote_created"], [data-message-type="quote_updated"]')) return null;
+        if (momentKind === 'quote-accepted' && box && box.querySelector('[data-message-type="quote_accepted"]')) return null;
         let timeStr = hints && hints.timeStr;
         if (timeStr == null) timeStr = typeof msg.timestamp === 'number' ? chatTimeLabel(msg.timestamp) : (typeof msg.timestamp === 'string' ? msg.timestamp : '');
         return createLyannMomentCard(momentKind, msg, timeStr);

@@ -144,14 +144,15 @@ test('closed deals are not painted as deal-recap cards stuck at the bottom', () 
 
 test('deal steps collapse into one recap instead of a stack of cards', () => {
     const hidden = hiddenTimelineTypes([], [quote()]);
-    assert.equal(hidden.has('quote_accepted'), true);
+    assert.equal(hidden.has('quote_accepted'), false);
     assert.equal(hidden.has('payment_requested'), true);
     assert.equal(hidden.has('payment_secured'), true);
     assert.equal(hidden.has('milestone_completed'), true);
-    assert.equal(hiddenTimelineTypes([], [quote({ status: 'SENT' })]).has('quote_created'), true);
+    assert.equal(hiddenTimelineTypes([], [quote({ status: 'SENT' })]).has('quote_created'), false);
     assert.equal(hiddenTimelineTypes([], [quote({ status: 'REJECTED' })]).has('quote_declined'), false);
     assert.equal(isVisibleDealNotice('quote_declined'), true);
-    assert.equal(isVisibleDealNotice('quote_created'), false);
+    assert.equal(isVisibleDealNotice('quote_created'), true);
+    assert.equal(isVisibleDealNotice('quote_accepted'), true);
     assert.equal(hiddenTimelineTypes([], []).has('quote_created'), false);
     const declined = quoteDeclineCopy({ total_amount: 120, provider_id: 'prov-1' }, 'prov-1');
     assert.equal(declined.headline, 'Le devis de 120 € a été refusé.');
