@@ -72,4 +72,26 @@ test('the APNs authorization is a three part token and is cached', () => {
     assert.equal(first.split('.').length, 3);
     assert.equal(second, first);
     assert.equal(first.includes('BEGIN'), false);
+    const signature = Buffer.from(first.split('.')[2], 'base64url');
+    const s = BigInt('0x' + signature.subarray(32).toString('hex'));
+    const halfN = BigInt('0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551') >> 1n;
+    assert.equal(signature.length, 64);
+    assert.equal(s <= halfN, true);
+});
+
+test('the APNs cache drops when the team or the private key changes', () => {
+    const firstKey = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).privateKey.export({ type: 'pkcs8', format: 'pem' });
+    const secondKey = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).privateKey.export({ type: 'pkcs8', format: 'pem' });
+    resetApnsJwtCache();
+    const original = apnsAuthorization({
+        privateKey: firstKey, keyId: 'KEYID12345', teamId: 'TEAMID1234', bundleId: 'app.lyann.mobile'
+    }, 2000);
+    const otherTeam = apnsAuthorization({
+        privateKey: firstKey, keyId: 'KEYID12345', teamId: 'TEAMID9999', bundleId: 'app.lyann.mobile'
+    }, 2001);
+    const otherKey = apnsAuthorization({
+        privateKey: secondKey, keyId: 'KEYID12345', teamId: 'TEAMID9999', bundleId: 'app.lyann.mobile'
+    }, 2002);
+    assert.notEqual(otherTeam, original);
+    assert.notEqual(otherKey, otherTeam);
 });

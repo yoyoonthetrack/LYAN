@@ -30,16 +30,16 @@
             };
         }
         if (pay.client_validated_at) {
-            return { code: 'VALIDATED', title: 'Validation client enregistrée', autoRefund: false, path: 'HOLD', funds: 'conservés (séquestre)' };
+            return { code: 'VALIDATED', title: 'Validation client enregistrée', autoRefund: false, path: 'HOLD', funds: 'conservés par Stripe' };
         }
         if (ms.status === 'COMPLETED') {
-            return { code: 'WORK_DONE', title: 'Prestation déclarée terminée', autoRefund: false, path: 'NEEDS_ADMIN', funds: 'conservés (séquestre)' };
+            return { code: 'WORK_DONE', title: 'Prestation déclarée terminée', autoRefund: false, path: 'NEEDS_ADMIN', funds: 'conservés par Stripe' };
         }
         if (ms.status === 'IN_PROGRESS') {
-            return { code: 'WORK_STARTED', title: 'Prestation commencée', autoRefund: false, path: 'NEEDS_PROVIDER_OR_ADMIN', funds: 'conservés (séquestre)' };
+            return { code: 'WORK_STARTED', title: 'Prestation commencée', autoRefund: false, path: 'NEEDS_PROVIDER_OR_ADMIN', funds: 'conservés par Stripe' };
         }
         if (missionStatus === 'CANCELLED' || missionStatus === 'CANCELED') {
-            return { code: 'MISSION_CANCELLED', title: 'Mission annulée', autoRefund: false, path: 'NEEDS_ADMIN', funds: 'conservés (séquestre)' };
+            return { code: 'MISSION_CANCELLED', title: 'Mission annulée', autoRefund: false, path: 'NEEDS_ADMIN', funds: 'conservés par Stripe' };
         }
         if (pay.payment_status === 'SUCCEEDED' && (ms.status === 'FUNDED' || ms.status === 'PENDING')) {
             return {
@@ -47,12 +47,12 @@
                 title: 'Fonds reçus, prestation non commencée',
                 autoRefund: true,
                 path: 'AUTO_ELIGIBLE',
-                funds: 'reçus (séquestre Stripe)',
+                funds: 'reçus par Stripe',
                 note: 'FUNDED est un état technique. Un remboursement automatique n’est possible que si les conditions d’annulation sont remplies. L’exécution Stripe reste désactivée dans cet aperçu.'
             };
         }
         if (pay.payment_status === 'SUCCEEDED') {
-            return { code: 'FUNDED_HOLD', title: 'Fonds reçus', autoRefund: false, path: 'HOLD', funds: 'reçus (séquestre Stripe)' };
+            return { code: 'FUNDED_HOLD', title: 'Fonds reçus', autoRefund: false, path: 'HOLD', funds: 'reçus par Stripe' };
         }
         return { code: 'OTHER', title: 'État à instruire', autoRefund: false, path: 'NEEDS_ADMIN', funds: 'en attente' };
     }
@@ -78,9 +78,9 @@
         const map = {
             FUNDED_NOT_STARTED: 'Fonds reçus',
             FUNDED_HOLD: 'Fonds reçus',
-            WORK_STARTED: 'Fonds en attente (séquestre)',
-            WORK_DONE: 'Fonds en attente (séquestre)',
-            VALIDATED: 'Fonds en attente (séquestre)',
+            WORK_STARTED: 'Fonds en attente du transfert',
+            WORK_DONE: 'Fonds en attente du transfert',
+            VALIDATED: 'Fonds en attente du transfert',
             POST_TRANSFER: 'Transfer Stripe créé — versement bancaire non confirmé',
             REFUNDED: 'Remboursement confirmé',
             DISPUTED: 'Litige ouvert — fonds bloqués',

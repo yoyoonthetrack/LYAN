@@ -26,8 +26,8 @@
             const url = new URL(String(href || ''));
             if (url.protocol === 'capacitor:' || url.protocol === 'ionic:') {
                 return {
-                    blocked: true,
-                    reason: 'NATIVE_RETURN_UNAVAILABLE'
+                    return_url: 'https://lyann.app/?action=finances&connect=return',
+                    refresh_url: 'https://lyann.app/?action=finances&connect=refresh'
                 };
             }
             if (url.hostname === '127.0.0.1' && String(url.port || '') === '8098') {

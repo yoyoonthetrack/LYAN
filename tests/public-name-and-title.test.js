@@ -30,16 +30,23 @@ test('public names are Prénom + initiale, first letter upper', () => {
     assert.match(explorer, /formatPublicName/);
 });
 
-test('wizard keeps a truncated title from the written need', () => {
+test('wizard proposes three whole titles from the finished need', () => {
     assert.match(script, /function titleFromNeed/);
-    assert.match(script, /function ensureWizardTitleFromNeed/);
-    assert.match(script, /Titre repris de votre texte/);
-    assert.doesNotMatch(script, /Choisissez un des trois titres, puis corrigez-le si besoin/);
-    const fn = sliceBetween(script, 'function titleFromNeed(text, max) {', 'function localTitleChoices');
-    const titleFromNeed = new Function(`const TITLE_MAX = 60;\n${fn}\nreturn titleFromNeed;`)();
-    assert.equal(titleFromNeed('fuite jardin maison'), 'Fuite jardin maison');
-    const out = titleFromNeed("Bonjour, j'ai une fuite sous mon évier de cuisine, il me faudrait quelqu'un pour réparer ça ce week-end avec beaucoup de détails inutiles.");
+    assert.match(script, /function threeTitlesFromNeed/);
+    assert.match(script, /placeWizardTitleOnNextStep/);
+    assert.doesNotMatch(script, /Titre repris de votre texte/);
+    const fn = sliceBetween(script, 'function titleFromNeed(text, max) {', 'window.threeTitlesFromNeed');
+    const api = new Function(`const TITLE_MAX = 60;\n${fn}\nreturn { titleFromNeed, threeTitlesFromNeed };`)();
+    assert.equal(api.titleFromNeed('fuite jardin maison'), 'Fuite jardin maison');
+    const out = api.titleFromNeed("Bonjour, j'ai une fuite sous mon évier de cuisine, il me faudrait quelqu'un pour réparer ça ce week-end avec beaucoup de détails inutiles.");
     assert.match(out, /fuite/i);
     assert.doesNotMatch(out, /^bonjour/i);
     assert.ok(out.length <= 60);
+    const titles = api.threeTitlesFromNeed("Besoin de quelqu'un pour réparer ma machine à laver.");
+    assert.equal(titles.length, 3);
+    assert.equal(titles[0], 'Réparer ma machine à laver');
+    for (const title of titles) {
+        assert.ok(title.length >= 3 && title.length <= 60);
+        assert.doesNotMatch(title, /quelq$/i);
+    }
 });

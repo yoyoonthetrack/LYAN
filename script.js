@@ -106,25 +106,25 @@ window.formatMemberSinceFr = formatMemberSinceFr;
 
 // === CAPACITOR MOBILE DETECTOR & DYNAMIC BRIDGE INJECTION ===
 (function() {
-    const isCapacitorOrigin = window.location.origin.includes('capacitor://') || 
-                              window.location.origin.includes('http://localhost') || 
+    const isCapacitorOrigin = window.location.origin.includes('capacitor://') ||
+                              window.location.origin.includes('http://localhost') ||
                               window.location.href.startsWith('file://');
-    if (isCapacitorOrigin && !window.Capacitor) {
-        const script = document.createElement('script');
-        script.src = 'capacitor.js';
-        script.onload = () => {
-            console.log("⚡ Capacitor Native Bridge Loaded Dynamically!");
-            if (typeof initializeNativeFeatures === 'function') {
-                initializeNativeFeatures();
-            }
-            if (typeof injectMobileInterface === 'function') {
-                injectMobileInterface();
-            }
-            if (typeof window.ensureDeterministicAppHeader === 'function') {
-                window.ensureDeterministicAppHeader();
-            }
-        };
+    function bootNativeShell() {
+        if (window.__lyannNativeBooted) return;
+        window.__lyannNativeBooted = true;
+        if (typeof initializeNativeFeatures === 'function') initializeNativeFeatures();
+        if (typeof injectMobileInterface === 'function') injectMobileInterface();
+        if (typeof window.ensureDeterministicAppHeader === 'function') window.ensureDeterministicAppHeader();
     }
+    if (!isCapacitorOrigin) return;
+    if (window.Capacitor) {
+        bootNativeShell();
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = 'capacitor.js';
+    script.onload = bootNativeShell;
+    document.head.appendChild(script);
 })();
 
 let lyannActiveOverlayCount = 0;
@@ -7286,6 +7286,9 @@ safeDomReady(() => {
                 if (session && session.user) {
                     window.CURRENT_USER_ID = session.user.id;
                     await updateHeaderAuthState();
+                    if (window.LYANN_PUSH && typeof window.LYANN_PUSH.sync === 'function') {
+                        window.LYANN_PUSH.sync();
+                    }
                 } else {
                     await updateHeaderAuthState();
                 }

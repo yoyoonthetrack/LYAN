@@ -2,10 +2,26 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 const {
     inspectStripeEnv,
+    liveActivationDecision,
+    connectAccountSavePlan,
+    buildAccountUpdateLinkParams,
+    payoutDecisionFromEvent,
+    applyPaymentRequiresAction,
+    classifyWebhookPayload,
+    thinMoneyEvent,
+    enrichVerifiedThinEvent,
+    constructStripeWebhookEvent,
+    LIVE_WEBHOOK_PLAN,
+    newPaymentIntakeDecision,
+    liveTransferDecision,
+    liveRefundDecision,
+    transferModeMatches,
     connectStatus,
     connectPayoutReady,
+    connectAccountIdForMode,
     shouldCreateConnectAccount,
     buildConnectAccountParams,
     buildAccountLinkParams,
@@ -137,6 +153,224 @@ test('missing and invalid keys are distinct from test', () => {
     assert.equal(inspectStripeEnv({ STRIPE_SECRET_KEY: 'sk_unknown' }).mode, 'invalid');
 });
 
+test('live stays blocked until both keys, the webhook secret and the flag agree', () => {
+    const liveEnv = {
+        STRIPE_SECRET_KEY: 'sk_live_unit',
+        STRIPE_PUBLISHABLE_KEY: 'pk_live_unit',
+        STRIPE_WEBHOOK_SECRET: 'whsec_unit',
+        STRIPE_LIVE_ENABLED: 'true'
+    };
+    assert.equal(inspectStripeEnv(liveEnv).mode, 'live');
+    assert.equal(inspectStripeEnv(liveEnv).liveBlocked, false);
+    assert.equal(inspectStripeEnv({ ...liveEnv, STRIPE_WEBHOOK_SECRET: '' }).mode, 'invalid');
+    assert.equal(inspectStripeEnv({ ...liveEnv, STRIPE_SECRET_KEY: 'sk_test_unit' }).liveBlocked, true);
+    assert.equal(inspectStripeEnv({ ...TEST_ENV, STRIPE_LIVE_ENABLED: 'true' }).mode, 'invalid');
+    const ready = liveActivationDecision(liveEnv, { connectTableReady: true, webhookLivemode: true });
+    assert.equal(ready.ok, true);
+    const held = liveActivationDecision(liveEnv, { connectTableReady: false, webhookLivemode: false });
+    assert.equal(held.ok, false);
+    assert.equal(held.blockers.includes('CONNECT_MODE_TABLE_MISSING'), true);
+    assert.equal(held.blockers.includes('WEBHOOK_NOT_LIVE'), true);
+});
+
+test('a missing Connect mode table never writes a live id into the legacy column', () => {
+    const missing = connectAccountSavePlan('live', false);
+    assert.equal(missing.ok, false);
+    assert.equal(missing.writeLegacy, false);
+    assert.equal(missing.writeMapping, false);
+    const live = connectAccountSavePlan('live', true);
+    assert.equal(live.writeLegacy, false);
+    assert.equal(live.writeMapping, true);
+    const testMode = connectAccountSavePlan('test', true);
+    assert.equal(testMode.writeLegacy, true);
+    assert.equal(testMode.legacyOnlyIfNull, true);
+});
+
+test('a live process ignores the CLI webhook secret and a thin payout can be completed from Stripe', async () => {
+    const secrets = webhookSigningSecrets({
+        STRIPE_SECRET_KEY: 'sk_live_unit',
+        STRIPE_LIVE_ENABLED: 'true',
+        STRIPE_WEBHOOK_SECRET: 'whsec_snapshot',
+        STRIPE_EVENT_DESTINATION_SECRET: 'whsec_thin',
+        STRIPE_CLI_WEBHOOK_SECRET: 'whsec_cli'
+    });
+    assert.deepEqual(secrets, ['whsec_snapshot', 'whsec_thin']);
+    const testSecrets = webhookSigningSecrets({
+        STRIPE_SECRET_KEY: 'sk_test_unit',
+        STRIPE_WEBHOOK_SECRET: 'whsec_snapshot',
+        STRIPE_CLI_WEBHOOK_SECRET: 'whsec_cli'
+    });
+    assert.deepEqual(testSecrets, ['whsec_snapshot', 'whsec_cli']);
+    const enriched = await enrichVerifiedThinEvent({
+        fetchRelatedObject: async () => ({ id: 'po_live', object: 'payout', amount: 970, currency: 'eur', failure_code: 'account_closed', status: 'failed' })
+    }, { thin: true, type: 'v1.payout.failed', livemode: true, data: { object: { id: 'po_live' } } });
+    assert.equal(enriched.data.object.failure_code, 'account_closed');
+    assert.equal(enriched.data.object.amount, 970);
+    const money = await enrichVerifiedThinEvent({
+        fetchRelatedObject: async () => { throw new Error('must not fetch'); }
+    }, { thin: true, type: 'v1.payment_intent.succeeded', data: { object: { id: 'pi_1' } } });
+    assert.equal(money.data.object.id, 'pi_1');
+});
+
+test('live transfers and refunds stay closed until each flag is open', () => {
+    const live = { STRIPE_SECRET_KEY: 'sk_live_unit', STRIPE_LIVE_ENABLED: 'true', STRIPE_PAYMENTS_INTAKE: 'closed' };
+    for (const value of [undefined, '', 'closed', 'true', 'false']) {
+        const env = { ...live, STRIPE_LIVE_TRANSFERS: value, STRIPE_LIVE_REFUNDS: value };
+        assert.equal(liveTransferDecision(env).code, 'LIVE_TRANSFERS_CLOSED');
+        assert.equal(liveTransferDecision(env).createTransfer, false);
+        assert.equal(liveRefundDecision(env, true).code, 'LIVE_REFUNDS_CLOSED');
+        assert.equal(liveRefundDecision(env, true).createRefund, false);
+    }
+    assert.equal(liveTransferDecision({ STRIPE_SECRET_KEY: 'sk_test_unit' }).code, 'TEST_TRANSFERS_UNCHANGED');
+    assert.equal(liveRefundDecision({ STRIPE_SECRET_KEY: 'sk_live_unit' }, false).code, 'STRIPE_MODE_MISMATCH');
+    assert.equal(liveRefundDecision({ STRIPE_SECRET_KEY: 'sk_live_unit', STRIPE_LIVE_REFUNDS: 'open' }, true).code, 'LIVE_REFUNDS_OPEN');
+    assert.equal(liveTransferDecision({ ...live, STRIPE_LIVE_TRANSFERS: 'open' }).code, 'LIVE_TRANSFERS_OPEN');
+    assert.equal(transferModeMatches(false, 'live').code, 'STRIPE_MODE_MISMATCH');
+    const intake = newPaymentIntakeDecision(live);
+    assert.equal(intake.open, false);
+    assert.equal(intake.webhooksOpen, true);
+    const liveBase = { STRIPE_SECRET_KEY: 'sk_live_unit', STRIPE_LIVE_ENABLED: 'true' };
+    for (const value of [undefined, '', 'true', 'false', 'yes']) {
+        const decision = newPaymentIntakeDecision({ ...liveBase, STRIPE_PAYMENTS_INTAKE: value });
+        assert.equal(decision.open, false);
+        assert.equal(decision.webhooksOpen, true);
+        assert.equal(decision.code, 'PAYMENTS_INTAKE_CLOSED');
+    }
+    assert.equal(newPaymentIntakeDecision({ ...liveBase, STRIPE_PAYMENTS_INTAKE: 'open' }).open, true);
+    assert.equal(newPaymentIntakeDecision({ STRIPE_SECRET_KEY: 'sk_test_unit', STRIPE_PAYMENTS_INTAKE: 'maybe' }).open, false);
+    const server = fs.readFileSync('api/server.js', 'utf8');
+    const release = server.slice(server.indexOf("app.post('/v1/milestones/release-payment'"), server.indexOf("app.post('/v1/milestones/claim-transfer'"));
+    assert.ok(release.indexOf('liveTransferDecision') < release.indexOf('client_validated_at: nowIso'));
+    const claim = server.slice(server.indexOf("app.post('/v1/milestones/claim-transfer'"), server.indexOf("app.post('/v1/milestones/raise-dispute'"));
+    assert.ok(claim.indexOf('liveTransferDecision') < claim.indexOf('retryMilestoneTransfer'));
+    const helper = server.slice(server.indexOf('async function retryMilestoneTransfer'), server.indexOf("app.post('/v1/milestones/release-payment'"));
+    assert.ok(helper.indexOf('liveTransferDecision') < helper.indexOf('transfers.create'));
+    assert.equal(helper.includes('account.updated'), false);
+    const webhook = server.slice(server.indexOf("app.post(['/v1/payments/webhook'"));
+    assert.equal(webhook.includes('newPaymentIntakeDecision'), false);
+    assert.equal(webhook.includes('transfers.create'), false);
+    assert.equal(webhook.includes('refunds.create'), false);
+    const refundRoute = server.slice(server.indexOf("app.post('/v1/payments/refund-untransferred'"), server.indexOf("app.post(['/v1/payments/webhook'"));
+    assert.ok(refundRoute.indexOf('liveRefundDecision') < refundRoute.indexOf('refunds.create'));
+});
+
+test('thin events stay separate from snapshot money events and intake can close', () => {
+    assert.equal(classifyWebhookPayload('{"object":"v2.core.event","type":"v2.core.account.updated"}').kind, 'thin');
+    assert.equal(classifyWebhookPayload('{"object":"event","type":"payment_intent.succeeded"}').kind, 'snapshot');
+    assert.equal(thinMoneyEvent({ thin: true, type: 'v1.payment_intent.succeeded' }), true);
+    assert.equal(thinMoneyEvent({ thin: true, type: 'v2.core.account.updated' }), false);
+    assert.equal(thinMoneyEvent({ type: 'payment_intent.succeeded' }), false);
+    assert.equal(newPaymentIntakeDecision({}).open, true);
+    assert.equal(newPaymentIntakeDecision({ STRIPE_PAYMENTS_INTAKE: 'closed' }).code, 'PAYMENTS_INTAKE_CLOSED');
+    assert.equal(transferModeMatches(false, 'live').code, 'STRIPE_MODE_MISMATCH');
+    assert.equal(transferModeMatches(true, 'live').ok, true);
+    assert.equal(transferModeMatches(null, 'live').code, 'PAYMENT_MODE_UNKNOWN');
+});
+
+test('3DS, payout failure and an account update never move milestone money', () => {
+    const created = { payment_status: 'CREATED', transfer_status: 'PENDING_VALIDATION', stripe_transfer_id: null };
+    const action = applyPaymentRequiresAction(created);
+    assert.equal(action.payment_status, 'REQUIRES_ACTION');
+    assert.equal(action.createTransfer, false);
+    const succeeded = applyPaymentRequiresAction({ ...created, payment_status: 'SUCCEEDED', stripe_transfer_id: 'tr_keep' });
+    assert.equal(succeeded.apply, false);
+    assert.equal(succeeded.preserve, true);
+    const failed = payoutDecisionFromEvent({
+        type: 'v1.payout.failed',
+        livemode: true,
+        account: 'acct_live_provider',
+        data: { object: { id: 'po_failed', amount: 970, currency: 'eur', failure_code: 'account_closed' } }
+    });
+    assert.equal(failed.code, 'BANK_PAYOUT_FAILED');
+    assert.equal(failed.mutatePayment, false);
+    assert.equal(failed.mutateTransfer, false);
+    assert.equal(failed.record.status, 'failed');
+    const replay = payoutDecisionFromEvent({
+        type: 'payout.paid',
+        livemode: false,
+        account: 'acct_test_provider',
+        data: { object: { id: 'po_paid', amount: 970, currency: 'eur' } }
+    });
+    assert.equal(replay.mutateTransfer, false);
+    const update = buildAccountUpdateLinkParams('acct_live_provider', 'https://lyann.app/retour', 'https://lyann.app/refresh');
+    assert.equal(update.use_case.type, 'account_update');
+    assert.equal(JSON.stringify(update).includes('account_onboarding'), false);
+});
+
+test('snapshot and thin events verify with separate secrets and Stripe event names exist', async () => {
+    const Stripe = require('stripe');
+    const stripe = new Stripe('sk_test_unit');
+    const snapshotSecret = `whsec_${Buffer.from('snapshot-secret').toString('base64')}`;
+    const thinSecret = `whsec_${Buffer.from('thin-secret').toString('base64')}`;
+    const cliSecret = `whsec_${Buffer.from('cli-secret').toString('base64')}`;
+    const env = {
+        STRIPE_SECRET_KEY: 'sk_test_unit',
+        STRIPE_WEBHOOK_SECRET: snapshotSecret,
+        STRIPE_EVENT_DESTINATION_SECRET: thinSecret,
+        STRIPE_CLI_WEBHOOK_SECRET: cliSecret
+    };
+    const snapshotPayload = JSON.stringify({
+        id: 'evt_snapshot',
+        object: 'event',
+        type: 'payment_intent.succeeded',
+        livemode: false,
+        data: { object: { id: 'pi_test', amount: 1149, object: 'payment_intent' } }
+    });
+    const thinPayload = JSON.stringify({
+        id: 'evt_thin',
+        object: 'v2.core.event',
+        type: 'v1.payout.failed',
+        livemode: false,
+        context: 'acct_test_provider',
+        related_object: { id: 'po_test', type: 'payout', url: '/v1/payouts/po_test' }
+    });
+    const snapshotHeader = stripe.webhooks.generateTestHeaderString({ payload: snapshotPayload, secret: snapshotSecret });
+    const thinHeader = stripe.webhooks.generateTestHeaderString({ payload: thinPayload, secret: thinSecret });
+    const snapshot = constructStripeWebhookEvent(stripe, snapshotPayload, snapshotHeader, env);
+    assert.equal(snapshot.ok, true);
+    assert.equal(snapshot.thin, false);
+    assert.equal(snapshot.event.type, 'payment_intent.succeeded');
+    const thin = constructStripeWebhookEvent(stripe, thinPayload, thinHeader, env);
+    assert.equal(thin.ok, true);
+    assert.equal(thin.thin, true);
+    assert.equal(thin.event.account, 'acct_test_provider');
+    const enriched = await enrichVerifiedThinEvent({
+        fetchRelatedObject: async () => ({ id: 'po_test', object: 'payout', amount: 970, currency: 'eur', failure_code: 'account_closed', status: 'failed' })
+    }, thin.event);
+    assert.equal(enriched.data.object.failure_code, 'account_closed');
+    assert.equal(enriched.data.object.amount, 970);
+    const wrong = constructStripeWebhookEvent(stripe, thinPayload, snapshotHeader, env);
+    assert.equal(wrong.ok, false);
+    assert.equal(wrong.code, 'STRIPE_SIGNATURE_INVALID');
+    const classic = fs.readFileSync('node_modules/stripe/esm/resources/WebhookEndpoints.d.ts', 'utf8');
+    const known = fs.readFileSync('node_modules/stripe/esm/StripeEventNotificationHandler.js', 'utf8');
+    for (const name of LIVE_WEBHOOK_PLAN.platformEvents) {
+        assert.equal(classic.includes(`'${name}'`), true, name);
+    }
+    for (const name of ['account.updated', 'payout.paid', 'payout.failed']) {
+        assert.equal(classic.includes(`'${name}'`), true, name);
+    }
+    for (const name of [
+        'v2.core.account.updated',
+        'v2.core.account[configuration.recipient].updated',
+        'v2.core.account[configuration.recipient].capability_status_updated',
+        'v2.core.account[requirements].updated',
+        'v1.payout.paid',
+        'v1.payout.failed'
+    ]) {
+        assert.equal(known.includes(`'${name}'`), true, name);
+        assert.equal(classic.includes(`'${name}'`), false, name);
+    }
+    const server = fs.readFileSync('api/server.js', 'utf8');
+    const legacy = server.slice(server.indexOf("app.post('/v1/payments/create-intent'"));
+    const legacyHead = legacy.slice(0, legacy.indexOf('paymentIntents.create'));
+    assert.match(legacyHead, /newPaymentIntakeDecision/);
+    assert.match(legacyHead, /LEGACY_ENDPOINT_DISABLED/);
+    const canonical = server.slice(server.indexOf("app.post('/v1/payments/create-milestone-intent'"));
+    const canonicalHead = canonical.slice(0, canonical.indexOf('paymentIntents.create'));
+    assert.match(canonicalHead, /newPaymentIntakeDecision/);
+});
+
 test('webhook signature helper rejects a bad signature and accepts a known one', () => {
     const Stripe = require('stripe');
     const stripe = new Stripe('sk_test_unit');
@@ -205,6 +439,24 @@ test('no account, incomplete onboarding, pending, past due and active transfers'
 test('a profile that already has a Connect account is not created again', () => {
     assert.equal(shouldCreateConnectAccount({ stripe_account_id: null }), true);
     assert.equal(shouldCreateConnectAccount({ stripe_account_id: 'acct_test' }), false);
+});
+
+test('a test Connect id is never reused as a live account', () => {
+    const historical = { stripe_account_id: 'acct_test_historical' };
+    assert.equal(connectAccountIdForMode(historical, 'test'), 'acct_test_historical');
+    assert.equal(connectAccountIdForMode(historical, 'live'), null);
+    assert.equal(shouldCreateConnectAccount(historical, 'live'), true);
+    assert.equal(shouldCreateConnectAccount(historical, 'test'), false);
+    const split = {
+        stripe_account_id: 'acct_test_historical',
+        connect_accounts: [
+            { stripe_mode: 'test', stripe_account_id: 'acct_test_historical' },
+            { stripe_mode: 'live', stripe_account_id: 'acct_live_ready' }
+        ]
+    };
+    assert.equal(connectAccountIdForMode(split, 'live'), 'acct_live_ready');
+    assert.equal(connectAccountIdForMode(split, 'test'), 'acct_test_historical');
+    assert.equal(shouldCreateConnectAccount({ stripe_account_mode: 'live', stripe_account_id: 'acct_live_only' }, 'test'), true);
 });
 
 test('Accounts v2 creation and onboarding link keep the LYANN return urls', () => {

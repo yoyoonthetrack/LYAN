@@ -37,7 +37,7 @@
             requester: { id: 'demo-A', name: 'Client QA' },
             provider: { id: 'demo-B', name: 'Lyanneur QA' },
             events: [
-                { at: 'Paiement reçu', detail: '4349 cents conservés (séquestre).' },
+                { at: 'Paiement reçu', detail: '4349 cents conservés par Stripe.' },
                 { at: 'Jalon ' + milestoneStatus, detail: 'État technique, pas un droit contractuel automatique.' }
             ],
             cancellation: { requested: id === 'work_started', accepted: false },

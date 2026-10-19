@@ -276,13 +276,16 @@ test('Bokantaj Request wizard reaches real-taxonomy review without writing or of
   await page.goto('/results.html?mode=annonces', { waitUntil: 'domcontentloaded' });
   await page.locator('.explorer-results-heading .explorer-publish').click();
   await page.locator('#wizardDescInput').fill('Une fuite sous mon évier, besoin de réparer la plomberie.');
+  await expect(page.locator('#wizardTitleBlock')).toBeHidden();
+  await page.locator('#wizardBtnNext').click();
+  await expect(page.locator('.wizard-step[data-step="2"]')).toBeVisible();
   await expect(page.locator('#wizardTitleBlock')).toBeVisible();
   const titleChoice = page.locator('#wizardTitleChoices input[type="radio"]').first();
   const titleInput = page.locator('#wizardTitleInput');
   await expect(titleChoice.or(titleInput)).toBeVisible({ timeout: 20000 });
   if (await titleChoice.isVisible()) await titleChoice.check();
   else await titleInput.fill('Réparer une fuite sous évier');
-  for (const step of [2,4,5,6]) {
+  for (const step of [4,5,6]) {
     await page.locator('#wizardBtnNext').click();
     await expect(page.locator(`.wizard-step[data-step="${step}"]`)).toBeVisible();
   }

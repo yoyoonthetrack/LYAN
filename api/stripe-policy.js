@@ -14,16 +14,20 @@ function inspectStripeEnv(env = process.env) {
     const liveEnabled = env.STRIPE_LIVE_ENABLED === 'true';
     const secretKind = keyKind(env.STRIPE_SECRET_KEY, 'sk_test_', 'sk_live_');
     const publishableKind = keyKind(env.STRIPE_PUBLISHABLE_KEY, 'pk_test_', 'pk_live_');
+    const webhookPresent = Boolean(env && env.STRIPE_WEBHOOK_SECRET);
     const livePresent = secretKind === 'live' || publishableKind === 'live';
-    const liveBlocked = livePresent && !liveEnabled;
+    const livePair = secretKind === 'live' && publishableKind === 'live';
     const mismatched = secretKind !== 'missing' && publishableKind !== 'missing'
         && secretKind !== 'invalid' && publishableKind !== 'invalid'
         && secretKind !== publishableKind;
+    const liveIncomplete = liveEnabled && !livePair;
+    const liveWithoutWebhook = livePair && liveEnabled && !webhookPresent;
+    const liveBlocked = (livePresent && !liveEnabled) || liveIncomplete || liveWithoutWebhook;
     const invalid = secretKind === 'invalid' || publishableKind === 'invalid' || mismatched || liveBlocked;
 
     let mode = 'missing';
     if (invalid) mode = 'invalid';
-    else if (secretKind === 'live' || publishableKind === 'live') mode = 'live';
+    else if (livePair && liveEnabled) mode = 'live';
     else if (secretKind === 'test' || publishableKind === 'test') mode = 'test';
 
     return {
@@ -32,8 +36,56 @@ function inspectStripeEnv(env = process.env) {
         liveBlocked,
         secretKind,
         publishableKind,
-        allowsSecretUse: secretKind === 'test' || (secretKind === 'live' && liveEnabled),
-        allowsPublishableUse: publishableKind === 'test' || (publishableKind === 'live' && liveEnabled)
+        webhookPresent,
+        allowsSecretUse: !liveBlocked && (secretKind === 'test' || (secretKind === 'live' && liveEnabled && webhookPresent)),
+        allowsPublishableUse: !liveBlocked && (publishableKind === 'test' || (publishableKind === 'live' && liveEnabled && webhookPresent))
+    };
+}
+
+const LIVE_WEBHOOK_PLAN = Object.freeze({
+    endpoint: 'https://lyann.app/v1/payments/webhook',
+    platformEvents: Object.freeze([
+        'payment_intent.succeeded',
+        'payment_intent.payment_failed',
+        'payment_intent.processing',
+        'payment_intent.requires_action',
+        'charge.refunded',
+        'charge.dispute.created',
+        'charge.dispute.updated',
+        'charge.dispute.closed',
+        'transfer.reversed'
+    ]),
+    connectedAccountEvents: Object.freeze([
+        'account.updated',
+        'v2.core.account.updated',
+        'v2.core.account[configuration.recipient].updated',
+        'v2.core.account[configuration.recipient].capability_status_updated',
+        'v2.core.account[requirements].updated',
+        'payout.paid',
+        'payout.failed',
+        'v1.payout.paid',
+        'v1.payout.failed'
+    ]),
+    separateEndpointRequired: false,
+    separateSigningSecretForThinEvents: true,
+    snapshotPayloadRequiredForMoney: true,
+    connectListenerRequired: true
+});
+
+function liveActivationDecision(env = process.env, options = {}) {
+    const inspected = inspectStripeEnv(env);
+    const blockers = [];
+    if (inspected.secretKind !== 'live') blockers.push('SECRET_NOT_LIVE');
+    if (inspected.publishableKind !== 'live') blockers.push('PUBLISHABLE_NOT_LIVE');
+    if (inspected.secretKind !== inspected.publishableKind) blockers.push('KEY_MODE_MISMATCH');
+    if (!inspected.webhookPresent) blockers.push('WEBHOOK_SECRET_MISSING');
+    if (env.STRIPE_LIVE_ENABLED !== 'true') blockers.push('LIVE_FLAG_OFF');
+    if (options.connectTableReady !== true) blockers.push('CONNECT_MODE_TABLE_MISSING');
+    if (options.webhookLivemode !== true) blockers.push('WEBHOOK_NOT_LIVE');
+    return {
+        ok: blockers.length === 0 && inspected.mode === 'live',
+        blockers,
+        mode: inspected.mode
     };
 }
 
@@ -69,8 +121,34 @@ function connectPayoutReady(account) {
     return { ok: true, code: 'READY', status };
 }
 
-function shouldCreateConnectAccount(profile) {
+function connectAccountIdForMode(profile, mode) {
+    if (mode !== 'test' && mode !== 'live') return null;
+    const rows = Array.isArray(profile && profile.connect_accounts) ? profile.connect_accounts : [];
+    const match = rows.find((row) => row && row.stripe_mode === mode && row.stripe_account_id);
+    if (match) return String(match.stripe_account_id);
+    if (mode === 'test' && profile && profile.stripe_account_id && profile.stripe_account_mode !== 'live') {
+        return String(profile.stripe_account_id);
+    }
+    if (mode === 'live' && profile && profile.stripe_account_mode === 'live' && profile.stripe_account_id) {
+        return String(profile.stripe_account_id);
+    }
+    return null;
+}
+
+function shouldCreateConnectAccount(profile, mode) {
+    if (mode === 'test' || mode === 'live') return !connectAccountIdForMode(profile, mode);
     return !profile || !profile.stripe_account_id;
+}
+
+function connectAccountSavePlan(mode, tableReady) {
+    if (mode === 'live' && tableReady !== true) {
+        return { ok: false, writeLegacy: false, writeMapping: false, code: 'CONNECT_MODE_TABLE_REQUIRED' };
+    }
+    if (mode === 'live') return { ok: true, writeLegacy: false, writeMapping: true, code: 'LIVE_MAPPING' };
+    if (mode === 'test') {
+        return { ok: true, writeLegacy: true, writeMapping: tableReady === true, legacyOnlyIfNull: true, code: 'TEST_MAPPING' };
+    }
+    return { ok: false, writeLegacy: false, writeMapping: false, code: 'MODE_INVALID' };
 }
 
 function buildConnectAccountParams(email) {
@@ -107,6 +185,60 @@ function buildAccountLinkParams(accountId, returnUrl, refreshUrl) {
                 return_url: returnUrl,
                 refresh_url: refreshUrl
             }
+        }
+    };
+}
+
+function buildAccountUpdateLinkParams(accountId, returnUrl, refreshUrl) {
+    return {
+        account: accountId,
+        use_case: {
+            type: 'account_update',
+            account_update: {
+                return_url: returnUrl,
+                refresh_url: refreshUrl
+            }
+        }
+    };
+}
+
+const CONNECT_ACCOUNT_EVENT_TYPES = new Set([
+    'account.updated',
+    'v2.core.account.updated',
+    'v2.core.account[configuration.recipient].updated',
+    'v2.core.account[configuration.recipient].capability_status_updated',
+    'v2.core.account[requirements].updated'
+]);
+
+function connectAccountIdFromEvent(event) {
+    const objectId = event && event.data && event.data.object && event.data.object.id;
+    const relatedId = event && event.related_object && event.related_object.id;
+    return objectId || relatedId || null;
+}
+
+function payoutDecisionFromEvent(event) {
+    const type = event && event.type;
+    const paid = type === 'payout.paid' || type === 'v1.payout.paid';
+    const failed = type === 'payout.failed' || type === 'v1.payout.failed';
+    if (!paid && !failed) return { ok: false, mutatePayment: false, mutateTransfer: false, code: 'NOT_A_PAYOUT' };
+    const object = event && event.data && event.data.object;
+    const related = event && event.related_object;
+    const payoutId = (object && object.id) || (related && related.id) || null;
+    if (!payoutId) return { ok: false, mutatePayment: false, mutateTransfer: false, code: 'PAYOUT_ID_MISSING' };
+    const accountId = (event && event.account) || (object && object.account) || (event && event.context) || null;
+    return {
+        ok: true,
+        mutatePayment: false,
+        mutateTransfer: false,
+        code: paid ? 'BANK_PAYOUT_PAID' : 'BANK_PAYOUT_FAILED',
+        record: {
+            stripe_payout_id: String(payoutId),
+            stripe_mode: event.livemode ? 'live' : 'test',
+            stripe_account_id: accountId ? String(accountId) : 'unscoped',
+            status: paid ? 'paid' : 'failed',
+            failure_code: object && object.failure_code ? String(object.failure_code).slice(0, 80) : null,
+            amount_cents: object && Number.isFinite(Number(object.amount)) ? Number(object.amount) : null,
+            currency: object && object.currency ? String(object.currency).slice(0, 8) : null
         }
     };
 }
@@ -435,6 +567,7 @@ function preparePreTransferRefund({
     headers,
     query,
     livemode,
+    env = process.env,
     listedRefunds,
     grantActive,
     grantEvaluation
@@ -443,8 +576,9 @@ function preparePreTransferRefund({
     if (!override.ok) {
         return { http: 400, execute: false, createRefund: false, persist: false, code: override.code };
     }
-    if (livemode === true) {
-        return { http: 409, execute: false, createRefund: false, persist: false, code: 'LIVE_REFUND_BLOCKED' };
+    const refundGate = liveRefundDecision(env, livemode);
+    if (!refundGate.ok) {
+        return { http: 409, execute: false, createRefund: false, persist: false, code: refundGate.code };
     }
     if (!authUid) {
         return { http: 401, execute: false, createRefund: false, persist: false, code: 'AUTH_REQUIRED' };
@@ -1768,6 +1902,21 @@ function canWebhookFundMilestone(status) {
     return status == null || status === 'PENDING' || status === 'IN_PROGRESS' || status === 'FUNDED';
 }
 
+function applyPaymentRequiresAction(payment) {
+    const status = payment && payment.payment_status;
+    const transfer = payment && payment.transfer_status;
+    const terminal = status === 'SUCCEEDED' || status === 'REFUNDED' || status === 'PARTIALLY_REFUNDED'
+        || status === 'FAILED' || status === 'DISPUTED';
+    const transferred = transfer === 'TRANSFERRED' || Boolean(payment && payment.stripe_transfer_id);
+    if (!payment || terminal || transferred) {
+        return { apply: false, preserve: true, payment_status: status || null, createTransfer: false };
+    }
+    if (status === 'REQUIRES_ACTION') {
+        return { apply: false, preserve: true, payment_status: 'REQUIRES_ACTION', createTransfer: false };
+    }
+    return { apply: true, preserve: false, payment_status: 'REQUIRES_ACTION', createTransfer: false };
+}
+
 function applyPaymentProcessing(payment) {
     const status = payment && payment.payment_status;
     const transfer = payment && payment.transfer_status;
@@ -1818,12 +1967,108 @@ function applyChargeRefunded(payment, charge) {
 }
 
 function webhookSigningSecrets(env = process.env) {
+    const liveProcess = keyKind(env && env.STRIPE_SECRET_KEY, 'sk_test_', 'sk_live_') === 'live'
+        && env.STRIPE_LIVE_ENABLED === 'true';
+    const names = liveProcess
+        ? ['STRIPE_WEBHOOK_SECRET', 'STRIPE_EVENT_DESTINATION_SECRET']
+        : ['STRIPE_WEBHOOK_SECRET', 'STRIPE_EVENT_DESTINATION_SECRET', 'STRIPE_CLI_WEBHOOK_SECRET'];
     const secrets = [];
-    for (const name of ['STRIPE_WEBHOOK_SECRET', 'STRIPE_CLI_WEBHOOK_SECRET']) {
+    for (const name of names) {
         const value = env && env[name];
         if (value && !secrets.includes(value)) secrets.push(value);
     }
     return secrets;
+}
+
+async function enrichVerifiedThinEvent(notification, event) {
+    if (!event || event.thin !== true || thinMoneyEvent(event)) return event;
+    if (!notification || typeof notification.fetchRelatedObject !== 'function') return event;
+    try {
+        const related = await notification.fetchRelatedObject();
+        if (!related || !related.id) return event;
+        const object = { id: related.id };
+        if (related.amount != null) object.amount = related.amount;
+        if (related.currency) object.currency = related.currency;
+        if (related.failure_code) object.failure_code = related.failure_code;
+        if (related.status) object.status = related.status;
+        return {
+            ...event,
+            related_object: { id: related.id, type: related.object || null },
+            data: { object }
+        };
+    } catch (_) {
+        return event;
+    }
+}
+
+function classifyWebhookPayload(rawBody) {
+    const payload = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody || '');
+    let json = null;
+    try { json = JSON.parse(payload); } catch (_) { json = null; }
+    if (json && json.object === 'v2.core.event') return { kind: 'thin', type: json.type || null };
+    if (json && json.object === 'event') return { kind: 'snapshot', type: json.type || null };
+    return { kind: 'unknown', type: null };
+}
+
+function thinMoneyEvent(event) {
+    if (!event || event.thin !== true) return false;
+    const type = String(event.type || '');
+    return type.startsWith('payment_intent.')
+        || type.startsWith('charge.')
+        || type.startsWith('transfer.')
+        || type.startsWith('v1.payment_intent')
+        || type.startsWith('v1.charge.')
+        || type.startsWith('v1.transfer');
+}
+
+function newPaymentIntakeDecision(env = process.env) {
+    const value = env && typeof env.STRIPE_PAYMENTS_INTAKE === 'string' ? env.STRIPE_PAYMENTS_INTAKE.trim() : '';
+    if (value === 'open') return { open: true, webhooksOpen: true, code: 'OPEN' };
+    if (value === 'closed') return { open: false, webhooksOpen: true, code: 'PAYMENTS_INTAKE_CLOSED' };
+    const secretKind = keyKind(env && env.STRIPE_SECRET_KEY, 'sk_test_', 'sk_live_');
+    const liveProcess = secretKind === 'live' || (env && env.STRIPE_LIVE_ENABLED === 'true');
+    if (liveProcess || value !== '') {
+        return { open: false, webhooksOpen: true, code: 'PAYMENTS_INTAKE_CLOSED' };
+    }
+    return { open: true, webhooksOpen: true, code: 'OPEN' };
+}
+
+function liveTransferDecision(env = process.env) {
+    const secretKind = keyKind(env && env.STRIPE_SECRET_KEY, 'sk_test_', 'sk_live_');
+    if (secretKind !== 'live') {
+        return { ok: true, createTransfer: true, code: 'TEST_TRANSFERS_UNCHANGED' };
+    }
+    if (env && env.STRIPE_LIVE_TRANSFERS === 'open') {
+        return { ok: true, createTransfer: true, code: 'LIVE_TRANSFERS_OPEN' };
+    }
+    return { ok: false, createTransfer: false, code: 'LIVE_TRANSFERS_CLOSED' };
+}
+
+function liveRefundDecision(env = process.env, livemode) {
+    const secretKind = keyKind(env && env.STRIPE_SECRET_KEY, 'sk_test_', 'sk_live_');
+    if (secretKind === 'live') {
+        if (livemode === false) {
+            return { ok: false, createRefund: false, persist: false, code: 'STRIPE_MODE_MISMATCH' };
+        }
+        if (!env || env.STRIPE_LIVE_REFUNDS !== 'open') {
+            return { ok: false, createRefund: false, persist: false, code: 'LIVE_REFUNDS_CLOSED' };
+        }
+        if (livemode !== true) {
+            return { ok: false, createRefund: false, persist: false, code: 'PAYMENT_MODE_UNKNOWN' };
+        }
+        return { ok: true, createRefund: true, persist: false, code: 'LIVE_REFUNDS_OPEN' };
+    }
+    if (livemode === true) {
+        return { ok: false, createRefund: false, persist: false, code: 'LIVE_REFUND_BLOCKED' };
+    }
+    return { ok: true, createRefund: false, persist: false, code: 'TEST_REFUNDS_UNCHANGED' };
+}
+
+function transferModeMatches(intentLivemode, secretKind) {
+    if (secretKind !== 'test' && secretKind !== 'live') return { ok: false, code: 'STRIPE_MODE_UNKNOWN' };
+    if (intentLivemode !== true && intentLivemode !== false) return { ok: false, code: 'PAYMENT_MODE_UNKNOWN' };
+    if ((secretKind === 'live') !== (intentLivemode === true)) return { ok: false, code: 'STRIPE_MODE_MISMATCH' };
+    return { ok: true, code: 'MATCH' };
 }
 
 function constructStripeWebhookEvent(stripe, rawBody, signature, env = process.env) {
@@ -1831,10 +2076,36 @@ function constructStripeWebhookEvent(stripe, rawBody, signature, env = process.e
     if (!stripe || !secrets.length) {
         return { ok: false, code: 'STRIPE_WEBHOOK_CONFIG_MISSING' };
     }
+    const payload = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody || '');
+    const classified = classifyWebhookPayload(payload);
     let lastError = null;
     for (const secret of secrets) {
         try {
-            return { ok: true, event: stripe.webhooks.constructEvent(rawBody, signature, secret) };
+            if (classified.kind === 'thin') {
+                if (typeof stripe.parseEventNotification !== 'function') {
+                    return { ok: false, code: 'THIN_EVENT_UNSUPPORTED' };
+                }
+                const notification = stripe.parseEventNotification(payload, signature, secret);
+                const related = notification && notification.related_object;
+                const context = notification && notification.context ? String(notification.context) : null;
+                return {
+                    ok: true,
+                    thin: true,
+                    notification,
+                    event: {
+                        id: notification.id,
+                        object: 'event',
+                        type: notification.type,
+                        livemode: Boolean(notification.livemode),
+                        account: context,
+                        context,
+                        related_object: related || null,
+                        thin: true,
+                        data: { object: { id: related && related.id ? related.id : null } }
+                    }
+                };
+            }
+            return { ok: true, thin: false, event: stripe.webhooks.constructEvent(rawBody, signature, secret) };
         } catch (error) {
             lastError = error;
         }
@@ -2197,11 +2468,19 @@ function safeStripeReturnUrl(value, env) {
 
 module.exports = {
     inspectStripeEnv,
+    LIVE_WEBHOOK_PLAN,
+    liveActivationDecision,
     connectStatus,
     connectPayoutReady,
+    connectAccountIdForMode,
     shouldCreateConnectAccount,
+    connectAccountSavePlan,
     buildConnectAccountParams,
     buildAccountLinkParams,
+    buildAccountUpdateLinkParams,
+    CONNECT_ACCOUNT_EVENT_TYPES,
+    connectAccountIdFromEvent,
+    payoutDecisionFromEvent,
     calculateMilestonePricing,
     paymentAmountSnapshot,
     resumePaymentDecision,
@@ -2293,10 +2572,18 @@ module.exports = {
     stripeChargeId,
     persistableStripeChargeId,
     canWebhookFundMilestone,
+    applyPaymentRequiresAction,
     applyPaymentProcessing,
     applyPaymentFailed,
     applyChargeRefunded,
     webhookSigningSecrets,
+    classifyWebhookPayload,
+    thinMoneyEvent,
+    enrichVerifiedThinEvent,
+    newPaymentIntakeDecision,
+    liveTransferDecision,
+    liveRefundDecision,
+    transferModeMatches,
     constructStripeWebhookEvent,
     paymentWritePaths,
     alreadyTransferredPayment,

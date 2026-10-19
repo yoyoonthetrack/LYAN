@@ -264,7 +264,7 @@
                     '📄 Nouveau devis de prestation reçu sur LYANN',
                     `
                     <p>Le prestataire <strong>${tx.providerName}</strong> a envoyé une proposition de devis de <strong>${tx.amount} €</strong> pour la prestation <strong>"${tx.title}"</strong>.</p>
-                    <p>Rendez-vous sur LYANN DOM pour accepter la proposition et bloquer les fonds en séquestre Stripe Connect.</p>
+                    <p>Rendez-vous sur LYANN pour accepter la proposition et sécuriser le paiement auprès de Stripe.</p>
                     `
                 );
             }
@@ -373,7 +373,7 @@
                     `
                     <p>Le prestataire <strong>${tx.providerName}</strong> a complété la Partie <strong>"${milestone.title}"</strong> (${milestone.amount} €) pour votre projet <strong>"${tx.title}"</strong>.</p>
                     <p><strong>Livrables déclarés :</strong> "${milestone.deliverables || 'Non spécifiés'}"</p>
-                    <p>Veuillez inspecter le travail et valider la Partie pour libérer les fonds du séquestre.</p>
+                    <p>Veuillez inspecter le travail et valider la partie pour autoriser le transfert au prestataire.</p>
                     `
                 );
             }
@@ -518,7 +518,7 @@
             const wallets = this.getWallets();
             const providerWallet = wallets[tx.providerId];
 
-            // Récupérer le montant restant en séquestre pour cette transaction
+            // Récupérer le montant restant conservé par Stripe pour cette transaction
             const totalRemainingEscrow = tx.milestones.reduce((acc, m) => {
                 return acc + (m.status !== "approved" ? m.amount : 0);
             }, tx.requiresMilestones ? 0 : tx.amount);

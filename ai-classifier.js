@@ -72,9 +72,16 @@ class LyanAIClassifier {
     async fetchTaxonomyFromDB({ strict = false } = {}) {
         if (this.cachedTaxonomy && (!strict || this.cachedTaxonomy.every(t => t.id))) return this.cachedTaxonomy;
 
-        if (typeof window !== 'undefined' && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+        let taxonomyClient = null;
+        try {
+            taxonomyClient = (typeof window !== 'undefined' && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) || null;
+        } catch (err) {
+            if (strict) throw err;
+            taxonomyClient = null;
+        }
+        if (taxonomyClient) {
             try {
-                const { data, error } = await window.LYANN_API_CLIENT.supabase
+                const { data, error } = await taxonomyClient
                     .from('lyann_taxonomy')
                     .select('*')
                     .eq('active', true);
@@ -92,6 +99,22 @@ class LyanAIClassifier {
         if (strict) throw new Error("Taxonomie indisponible");
         this.cachedTaxonomy = this.baselineTaxonomy;
         return this.cachedTaxonomy;
+    }
+
+    withNeedPhrases(list) {
+        const extras = {
+            electromenager: ['machine à laver', 'machine a laver', 'lave-linge', 'lave linge', 'lave-vaisselle', 'lave vaisselle', 'sèche-linge', 'seche linge']
+        };
+        const items = (list || []).map(item => {
+            const extra = extras[this.normalizeText(item.category)];
+            if (!extra) return item;
+            return { ...item, synonyms: Array.from(new Set([...(item.synonyms || []), ...extra])) };
+        });
+        if (!items.some(item => this.normalizeText(item.category) === 'electromenager')) {
+            const baseline = this.baselineTaxonomy.find(item => this.normalizeText(item.category) === 'electromenager');
+            if (baseline) items.push({ ...baseline, synonyms: Array.from(new Set([...(baseline.synonyms || []), ...extras.electromenager])) });
+        }
+        return items;
     }
 
     async classifyNeed(description) {
@@ -127,34 +150,32 @@ class LyanAIClassifier {
         // 2. Fetch taxonomy dataset
         const taxonomyList = await this.fetchTaxonomyFromDB();
 
-        // 3. Multi-signal matching (Strict exact phrase & exact token equality)
+        // 3. Multi-signal matching. A phrase synonym counts only when the whole
+        // phrase is in the need: "machine" must not turn "machine à laver" into couture.
         let bestMatch = null;
         let bestScore = 0;
 
         const words = normText.split(/\s+/).filter(w => w.length >= 3 && !STOPWORDS_SET.has(w));
+        const taxonomy = this.withNeedPhrases(taxonomyList);
 
-        for (const item of taxonomyList) {
+        for (const item of taxonomy) {
             let score = 0;
             const normCategory = this.normalizeText(item.category);
             const normSubcategory = this.normalizeText(item.subcategory);
             const normUniverse = this.normalizeText(item.universe);
             const normSynonyms = (item.synonyms || []).map(s => this.normalizeText(s));
 
-            // Check multi-word phrase inclusion in synonyms
             for (const syn of normSynonyms) {
-                if (syn && syn.includes(' ') && normText.includes(syn)) {
-                    score += 50;
+                if (!syn) continue;
+                if (syn.includes(' ')) {
+                    if (normText.includes(syn)) score += 50;
+                    continue;
                 }
+                if (words.includes(syn)) score += 40;
             }
 
-            // Strict exact word token equality check (NO substring matching on partial words like "mon" -> "montage" or "car" -> "carrelage")
             for (const w of words) {
                 let wordScore = 0;
-                for (const syn of normSynonyms) {
-                    const synWords = syn.split(/\s+/);
-                    if (syn === w) wordScore = Math.max(wordScore, 40);
-                    else if (synWords.includes(w)) wordScore = Math.max(wordScore, 30);
-                }
                 if (normSubcategory.split(/\s+/).includes(w)) wordScore = Math.max(wordScore, 22);
                 if (normCategory.split(/\s+/).includes(w)) wordScore = Math.max(wordScore, 18);
                 if (normUniverse.split(/\s+/).includes(w)) wordScore = Math.max(wordScore, 8);
@@ -246,4 +267,7 @@ class LyanAIClassifier {
 // Global instance initialization
 if (typeof window !== 'undefined') {
     window.LyanAI = new LyanAIClassifier();
+}
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { LyanAIClassifier };
 }

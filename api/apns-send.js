@@ -17,14 +17,37 @@ function apnsConfig(env = process.env) {
     };
 }
 
-let cachedJwt = { value: '', at: 0, keyId: '' };
+const P256_N = BigInt('0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551');
+
+let cachedJwt = { value: '', at: 0, identity: '' };
 
 function resetApnsJwtCache() {
-    cachedJwt = { value: '', at: 0, keyId: '' };
+    cachedJwt = { value: '', at: 0, identity: '' };
+}
+
+function apnsConfigIdentity(config) {
+    return crypto.createHash('sha256').update([
+        config.keyId,
+        config.teamId,
+        config.bundleId,
+        config.privateKey
+    ].join('\n')).digest('hex');
+}
+
+function canonicalP1363(signature) {
+    const raw = Buffer.from(signature);
+    if (raw.length !== 64) return raw;
+    const s = BigInt('0x' + raw.subarray(32).toString('hex'));
+    if (s <= (P256_N >> 1n)) return raw;
+    return Buffer.concat([
+        raw.subarray(0, 32),
+        Buffer.from((P256_N - s).toString(16).padStart(64, '0'), 'hex')
+    ]);
 }
 
 function apnsAuthorization(config, nowSeconds = Math.floor(Date.now() / 1000)) {
-    if (cachedJwt.value && cachedJwt.keyId === config.keyId && nowSeconds - cachedJwt.at < 2400) {
+    const identity = apnsConfigIdentity(config);
+    if (cachedJwt.value && cachedJwt.identity === identity && nowSeconds - cachedJwt.at < 2400) {
         return cachedJwt.value;
     }
     const header = Buffer.from(JSON.stringify({ alg: 'ES256', kid: config.keyId })).toString('base64url');
@@ -32,11 +55,11 @@ function apnsAuthorization(config, nowSeconds = Math.floor(Date.now() / 1000)) {
     const unsigned = header + '.' + claims;
     const signer = crypto.createSign('SHA256');
     signer.update(unsigned);
-    const signature = signer.sign({ key: config.privateKey, dsaEncoding: 'ieee-p1363' });
+    const signature = canonicalP1363(signer.sign({ key: config.privateKey, dsaEncoding: 'ieee-p1363' }));
     cachedJwt = {
-        value: unsigned + '.' + Buffer.from(signature).toString('base64url'),
+        value: unsigned + '.' + signature.toString('base64url'),
         at: nowSeconds,
-        keyId: config.keyId
+        identity
     };
     return cachedJwt.value;
 }
@@ -70,14 +93,28 @@ function sendApns({ config, deviceToken, environment, payload, apnsId }) {
             'apns-id': apnsId || crypto.randomUUID()
         });
         let status = 0;
+        let responseBody = '';
         request.setEncoding('utf8');
         request.on('response', (headers) => {
             status = Number(headers[':status'] || 0);
         });
-        request.on('data', () => {});
+        request.on('data', (chunk) => {
+            if (responseBody.length < 300) responseBody += chunk;
+        });
         request.on('end', () => {
+            let reason = '';
+            try {
+                const parsed = JSON.parse(responseBody);
+                if (parsed && /^[A-Za-z0-9_]+$/.test(parsed.reason || '')) reason = parsed.reason;
+            } catch (_) {}
             const decision = interpretApnsStatus(status);
-            finish({ ...decision, status, token: maskToken(deviceToken) });
+            finish({
+                ...decision,
+                status,
+                reason,
+                code: reason || decision.code,
+                token: maskToken(deviceToken)
+            });
         });
         request.on('error', () => finish({
             ok: false,

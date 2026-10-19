@@ -896,7 +896,7 @@
                 pre_start: "Remboursement 100% au demandeur, 0 commission retenue, 0 paiement Lyanneur.",
                 post_start_approved: "Jalons validés conservés et versés au Lyanneur.",
                 post_start_unstarted: "Jalons non commencés remboursés au demandeur.",
-                submitted_contested: "Pas de virement automatique, transfert vers procédure de dispute & séquestre gelé.",
+                submitted_contested: "Pas de virement automatique. Le paiement reste conservé par Stripe le temps de la dispute.",
                 penalties: "Aucune pénalité 24h, aucun frais d'annulation, aucun forfait."
             },
             auto_validation_policy: {

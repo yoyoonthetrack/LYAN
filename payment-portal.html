@@ -862,7 +862,7 @@
                         // Event binding for payment button
                         card.querySelector(`#btnPayNow-${tx.id}`).addEventListener('click', () => {
                             window.LYANN_PAYMENTS.approveQuotationAndPay(tx.id, chk.checked, {
-                                method: "Stripe Checkout (Visa ending in 4242)"
+                                method: "Stripe"
                             });
                             showToast(`Fonds sécurisés avec succès pour la prestation ${tx.id} !`);
                             currentTab = 'tracking';

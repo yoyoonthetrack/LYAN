@@ -262,14 +262,14 @@ async function setupNativePushNotifications() {
         if (perm.receive === 'denied') return;
         if (perm.receive !== 'granted') perm = await push.requestPermissions();
         if (perm.receive !== 'granted') return;
-        await push.register();
-        push.addListener('registration', (event) => {
+        await push.addListener('registration', (event) => {
             latestPushToken = (event && event.value) || '';
             registerPushDevice(latestPushToken).catch(() => {});
         });
-        push.addListener('registrationError', () => {
+        await push.addListener('registrationError', () => {
             console.warn('Push registration failed');
         });
+        await push.register();
         push.addListener('pushNotificationReceived', (event) => {
             const data = event && (event.data || (event.notification && event.notification.data));
             if (shouldSkipForegroundPushToast(data)) return;
@@ -315,22 +315,35 @@ async function pushAuthHeader() {
     return { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
 }
 
-async function registerPushDevice(deviceToken) {
+async function registerPushDevice(deviceToken, attempt) {
     const installationId = pushInstallationId();
     if (!installationId || !deviceToken) return;
     const headers = await pushAuthHeader();
-    if (!headers) return;
+    if (!headers) {
+        if ((attempt || 0) < 8) {
+            setTimeout(() => { registerPushDevice(deviceToken, (attempt || 0) + 1).catch(() => {}); }, 1500);
+        }
+        return;
+    }
     const fetcher = window.lyannBackendFetch || window.fetch.bind(window);
-    await fetcher('/v1/notifications/devices', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-            installation_id: installationId,
-            token: deviceToken,
-            apns_environment: pushEnvironment(),
-            platform: 'ios'
-        })
-    });
+    let response = null;
+    try {
+        response = await fetcher('/v1/notifications/devices', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                installation_id: installationId,
+                token: deviceToken,
+                apns_environment: pushEnvironment(),
+                platform: 'ios'
+            })
+        });
+    } catch (_) {
+        response = null;
+    }
+    if ((!response || !response.ok) && (attempt || 0) < 8) {
+        setTimeout(() => { registerPushDevice(deviceToken, (attempt || 0) + 1).catch(() => {}); }, 1500);
+    }
 }
 
 function pushThreadAlreadyOpen(data) {

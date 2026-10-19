@@ -157,6 +157,9 @@ test('The publishing wizard asks for a 60-character title, a date mode and a pri
   await expect(modal).toBeVisible();
 
   await page.locator('#wizardDescInput').fill("Bonjour, j'ai une fuite sous mon évier de cuisine, il me faudrait quelqu'un pour réparer ça ce week-end.");
+  await expect(page.locator('#wizardTitleBlock')).toBeHidden();
+  await page.locator('#wizardBtnNext').click();
+  await expect(page.locator('.wizard-step[data-step="2"]')).toBeVisible();
   await expect(page.locator('#wizardTitleBlock')).toBeVisible();
   await expect(page.locator('#wizardTitleChoices label')).toHaveCount(3);
   await page.locator('#wizardTitleChoices label').first().click();
@@ -167,8 +170,6 @@ test('The publishing wizard asks for a 60-character title, a date mode and a pri
   await page.locator('#wizardTitleInput').fill('Fuite évier cuisine');
   await expect(page.locator('#wizardTitleInput')).toHaveValue('Fuite évier cuisine');
 
-  await page.locator('#wizardBtnNext').click();
-  await expect(page.locator('.wizard-step[data-step="2"]')).toBeVisible();
   await page.locator('#wizardBtnNext').click();
   await expect(page.locator('.wizard-step[data-step="4"]')).toBeVisible();
   await expect(page.locator('#wizardDateType option[value="EXACT"]')).toHaveCount(1);

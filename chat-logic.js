@@ -5722,7 +5722,7 @@ async function renderMessages(passedMessages = null, options = {}) {
                 div.innerHTML = `
                     <div class="chat-card-header"><i class="ph-fill ph-lock-key" style="color:#E63B2E"></i> Paiement sécurisé</div>
                     <div class="chat-card-body">
-                        <div>Les fonds (${msg.amount}€) sont mis sous séquestre. La mission peut commencer !</div>
+                        <div>Le paiement de ${msg.amount} € est sécurisé par Stripe. La mission peut commencer.</div>
                     </div>
                 `;
             }

@@ -15,9 +15,15 @@ const {
     inspectStripeEnv,
     connectStatus,
     connectPayoutReady,
+    connectAccountIdForMode,
     shouldCreateConnectAccount,
+    connectAccountSavePlan,
     buildConnectAccountParams,
     buildAccountLinkParams,
+    buildAccountUpdateLinkParams,
+    connectAccountIdFromEvent,
+    payoutDecisionFromEvent,
+    CONNECT_ACCOUNT_EVENT_TYPES,
     calculateMilestonePricing,
     paymentAmountSnapshot,
     resumePaymentDecision,
@@ -41,12 +47,19 @@ const {
     isRefundReservation,
     raiseDisputeDecision,
     stripeChargeId,
+    applyPaymentRequiresAction,
     applyPaymentProcessing,
     applyPaymentFailed,
     applyChargeRefunded,
     routePostTransferWebhook,
     postTransferWebhookPersistDecision,
     constructStripeWebhookEvent,
+    thinMoneyEvent,
+    enrichVerifiedThinEvent,
+    newPaymentIntakeDecision,
+    liveTransferDecision,
+    liveRefundDecision,
+    transferModeMatches,
     paymentWritePaths,
     applyPaymentSucceeded,
     applyChargeDisputeCreated,
@@ -593,6 +606,49 @@ async function loadOwnConnectAccount(userId) {
     return { profile };
 }
 
+async function loadConnectProfile(userId, mode) {
+    const loaded = await loadOwnConnectAccount(userId);
+    if (loaded.error) return loaded;
+    const mapped = await supabaseAdmin
+        .from('lyann_connect_accounts')
+        .select('stripe_mode, stripe_account_id')
+        .eq('user_id', userId);
+    const tableReady = !mapped.error;
+    const profile = {
+        ...loaded.profile,
+        connect_accounts: tableReady ? (mapped.data || []) : []
+    };
+    const accountId = (mode === 'test' || mode === 'live')
+        ? connectAccountIdForMode(profile, mode)
+        : (loaded.profile.stripe_account_id || null);
+    return {
+        profile: { ...profile, stripe_account_id: accountId || null },
+        raw: profile,
+        tableReady,
+        mode
+    };
+}
+
+async function saveConnectAccount(userId, mode, accountId, tableReady) {
+    const plan = connectAccountSavePlan(mode, tableReady);
+    if (!plan.ok || plan.writeLegacy !== true && plan.writeMapping !== true) {
+        return { ok: false, code: plan.code || 'CONNECT_MODE_TABLE_REQUIRED' };
+    }
+    if (plan.writeMapping) {
+        const { error } = await supabaseAdmin.from('lyann_connect_accounts').upsert({
+            user_id: userId,
+            stripe_mode: mode,
+            stripe_account_id: accountId,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id,stripe_mode' });
+        if (error) return { ok: false, code: 'CONNECT_SAVE_FAILED' };
+    }
+    if (plan.writeLegacy === true && plan.legacyOnlyIfNull === true) {
+        await supabaseAdmin.from('profiles').update({ stripe_account_id: accountId }).eq('id', userId).is('stripe_account_id', null);
+    }
+    return { ok: true };
+}
+
 app.post('/v1/payments/connect/account', async (req, res) => {
     try {
         const user = await requireBearerUser(req);
@@ -601,23 +657,26 @@ app.post('/v1/payments/connect/account', async (req, res) => {
         if (!runtime.stripe) {
             return res.status(503).json({ code: runtime.inspected.liveBlocked ? 'STRIPE_LIVE_DISABLED' : 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
         }
-        const loaded = await loadOwnConnectAccount(user.id);
+        const mode = runtime.inspected.mode;
+        const loaded = await loadConnectProfile(user.id, mode);
         if (loaded.error) return res.status(404).json({ error: loaded.error });
-        if (!shouldCreateConnectAccount(loaded.profile)) {
+        if (!shouldCreateConnectAccount(loaded.raw, mode)) {
             const account = await runtime.stripe.v2.core.accounts.retrieve(loaded.profile.stripe_account_id, {
                 include: ['configuration.recipient']
             });
             return res.json({ success: true, created: false, ...connectStatus(account) });
         }
+        if (mode === 'live' && !loaded.tableReady) {
+            return res.status(503).json({
+                code: 'CONNECT_MODE_TABLE_REQUIRED',
+                error: 'Le compte de versement Live n’est pas encore séparable du compte de test.'
+            });
+        }
         const account = await runtime.stripe.v2.core.accounts.create(
-            buildConnectAccountParams(loaded.profile.email || user.email || undefined)
+            buildConnectAccountParams(loaded.raw.email || user.email || undefined)
         );
-        const { error: saveErr } = await supabaseAdmin
-            .from('profiles')
-            .update({ stripe_account_id: account.id })
-            .eq('id', user.id)
-            .is('stripe_account_id', null);
-        if (saveErr) return res.status(500).json({ error: 'Compte Connect non enregistré.' });
+        const saved = await saveConnectAccount(user.id, mode, account.id, loaded.tableReady);
+        if (!saved.ok) return res.status(500).json({ code: saved.code, error: 'Compte Connect non enregistré.' });
         return res.json({ success: true, created: true, ...connectStatus(account) });
     } catch (e) {
         const message = String(e && e.message || '').replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
@@ -641,7 +700,7 @@ app.post('/v1/payments/connect/onboarding-link', async (req, res) => {
         if (!runtime.stripe) {
             return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
         }
-        const loaded = await loadOwnConnectAccount(user.id);
+        const loaded = await loadConnectProfile(user.id, runtime.inspected.mode);
         if (loaded.error || !loaded.profile.stripe_account_id) {
             return res.status(409).json({ code: 'CONNECT_REQUIRED', error: 'Créez d’abord le compte Connect.' });
         }
@@ -675,11 +734,15 @@ app.post('/v1/payments/connect/express-dashboard-link', async (req, res) => {
         if (!runtime.stripe) {
             return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
         }
-        const loaded = await loadOwnConnectAccount(user.id);
+        const loaded = await loadConnectProfile(user.id, runtime.inspected.mode);
         if (loaded.error || !loaded.profile.stripe_account_id) {
             return res.status(409).json({ code: 'CONNECT_REQUIRED', error: 'Créez d’abord le compte Connect.' });
         }
-        const link = await runtime.stripe.accounts.createLoginLink(loaded.profile.stripe_account_id);
+        const link = await runtime.stripe.v2.core.accountLinks.create(buildAccountUpdateLinkParams(
+            loaded.profile.stripe_account_id,
+            safeStripeReturnUrl(req.body?.return_url, process.env),
+            safeStripeReturnUrl(req.body?.refresh_url, process.env)
+        ));
         return res.json({ success: true, url: link.url });
     } catch (e) {
         const message = String(e && e.message || '').replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
@@ -826,12 +889,12 @@ app.get('/v1/payments/connect/status', async (req, res) => {
     try {
         const user = await requireBearerUser(req);
         if (!user) return res.status(401).json({ error: 'Authentification requise.' });
-        const loaded = await loadOwnConnectAccount(user.id);
+        const runtime = stripeRuntime();
+        const loaded = await loadConnectProfile(user.id, runtime.inspected && runtime.inspected.mode);
         if (loaded.error) return res.status(404).json({ error: loaded.error });
         if (!loaded.profile.stripe_account_id) {
             return res.json({ success: true, ...connectStatus(null) });
         }
-        const runtime = stripeRuntime();
         if (!runtime.stripe) {
             return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
         }
@@ -857,12 +920,12 @@ app.get('/v1/payments/connect/peer-status', async (req, res) => {
         }
         const allowed = await sharesConversation(user.id, otherId);
         if (!allowed) return res.status(404).json({ error: 'Introuvable.' });
-        const loaded = await loadOwnConnectAccount(otherId);
+        const runtime = stripeRuntime();
+        const loaded = await loadConnectProfile(otherId, runtime.inspected && runtime.inspected.mode);
         if (loaded.error) return res.status(404).json({ error: 'Introuvable.' });
         if (!loaded.profile.stripe_account_id) {
             return res.json({ success: true, ready: false, ...connectStatus(null) });
         }
-        const runtime = stripeRuntime();
         if (!runtime.stripe) {
             return res.status(503).json({ code: 'STRIPE_CONFIG_MISSING', error: 'Stripe test indisponible.' });
         }
@@ -3785,6 +3848,18 @@ app.get('/v1/admin/system/settings', async (req, res) => {
 
 // 6. LEGACY PAYMENTS ENDPOINT (@deprecated)
 app.post('/v1/payments/create-intent', async (req, res) => {
+    const intake = newPaymentIntakeDecision(process.env);
+    if (!intake.open) {
+        return res.status(503).json({
+            code: intake.code,
+            error: 'Les nouveaux paiements sont fermés. Aucun paiement n’a été créé.'
+        });
+    }
+    return res.status(410).json({
+        success: false,
+        code: 'LEGACY_ENDPOINT_DISABLED',
+        error: 'Cette route historique est désactivée.'
+    });
     console.warn("⚠️ [DEPRECATED] /v1/payments/create-intent is deprecated. Use /v1/payments/create-milestone-intent instead.");
     try {
         const { missionId, quoteId, amount, currency = 'eur', idempotencyKey } = req.body;
@@ -4060,14 +4135,18 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
         if (mission.requester_id !== authUid) {
             return res.status(403).json({ error: "Seul le demandeur de la prestation peut effectuer ce paiement." });
         }
+        const intake = newPaymentIntakeDecision(process.env);
+        if (!intake.open) {
+            return res.status(503).json({
+                code: intake.code,
+                error: 'Les nouveaux paiements sont fermés. Aucun paiement n’a été créé.'
+            });
+        }
 
         const providerIdForPay = quote.provider_id;
-        const { data: payableProfile } = await supabaseAdmin
-            .from('profiles')
-            .select('id, stripe_account_id, account_type')
-            .eq('id', providerIdForPay)
-            .maybeSingle();
         const payRuntime = stripeRuntime();
+        const payableLoaded = await loadConnectProfile(providerIdForPay, payRuntime.inspected && payRuntime.inspected.mode);
+        const payableProfile = payableLoaded && payableLoaded.profile ? payableLoaded.profile : null;
         if (!payRuntime.stripe) {
             return res.status(503).json({
                 code: payRuntime.inspected.liveBlocked ? 'STRIPE_LIVE_DISABLED' : 'STRIPE_CONFIG_MISSING',
@@ -4651,6 +4730,37 @@ async function retryMilestoneTransfer(milestoneId) {
         };
     }
 
+    const transferGate = liveTransferDecision(process.env);
+    if (!transferGate.ok) {
+        return {
+            success: false,
+            code: transferGate.code,
+            mutated: false,
+            error: 'Les transferts Live sont fermés. Aucun transfert n’a été créé.'
+        };
+    }
+    if (String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_')) {
+        let intentLivemode = null;
+        try {
+            const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+            const intent = payment.stripe_payment_intent_id
+                ? await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id)
+                : null;
+            intentLivemode = intent ? intent.livemode : null;
+        } catch (_) {
+            intentLivemode = null;
+        }
+        const historicalMode = transferModeMatches(intentLivemode, 'live');
+        if (!historicalMode.ok) {
+            return {
+                success: false,
+                code: historicalMode.code,
+                mutated: false,
+                error: 'Ce paiement n’appartient pas au mode Stripe actif. Aucun transfert n’a été créé.'
+            };
+        }
+    }
+
     const lockPlan = planTransferLock(payment.transfer_status);
     if (payment.stripe_refund_id || payment.payment_status === 'REFUNDED') {
         return { success: false, error: "Remboursement en cours ou déjà effectué.", code: "REFUND_BLOCKS_TRANSFER" };
@@ -4662,13 +4772,11 @@ async function retryMilestoneTransfer(milestoneId) {
 
     // 3. Fetch Provider Profile for Stripe Account ID
     const providerId = payment.provider_id || quote.provider_id;
-    const { data: providerProfile, error: profErr } = await supabaseAdmin
-        .from('profiles')
-        .select('id, stripe_account_id')
-        .eq('id', providerId)
-        .single();
+    const transferRuntime = stripeRuntime();
+    const loadedProvider = await loadConnectProfile(providerId, transferRuntime.inspected && transferRuntime.inspected.mode);
+    const providerProfile = loadedProvider && loadedProvider.profile;
 
-    if (profErr || !providerProfile || !providerProfile.stripe_account_id) {
+    if (loadedProvider.error || !providerProfile || !providerProfile.stripe_account_id) {
         // Mark as TRANSFER_FAILED, keep client_validated_at set
         await supabaseAdmin
             .from('payments')
@@ -4766,6 +4874,36 @@ async function retryMilestoneTransfer(milestoneId) {
             };
             const sourceChargeId = stripeChargeId(payment.stripe_charge_id);
             if (sourceChargeId) transferParams.source_transaction = sourceChargeId;
+            let intentLivemode = null;
+            try {
+                const intent = payment.stripe_payment_intent_id
+                    ? await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id)
+                    : null;
+                intentLivemode = intent ? intent.livemode : null;
+            } catch (_) {
+                intentLivemode = null;
+            }
+            const modeCheck = transferModeMatches(
+                intentLivemode,
+                String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_') ? 'live' : 'test'
+            );
+            const createGate = liveTransferDecision(process.env);
+            if (!createGate.ok || !modeCheck.ok) {
+                if (lockedPayment.transfer_status === 'TRANSFER_PROCESSING') {
+                    await supabaseAdmin
+                        .from('payments')
+                        .update({ transfer_status: lockPlan.revertTo })
+                        .eq('id', payment.id)
+                        .eq('transfer_status', 'TRANSFER_PROCESSING')
+                        .is('stripe_transfer_id', null);
+                }
+                return {
+                    success: false,
+                    code: !createGate.ok ? createGate.code : modeCheck.code,
+                    mutated: false,
+                    error: 'Aucun transfert n’a été créé.'
+                };
+            }
             const transferDecision = evaluateTransfer({
                 payment,
                 milestone,
@@ -4977,6 +5115,15 @@ app.post('/v1/milestones/release-payment', async (req, res) => {
             });
         }
 
+        const releaseGate = liveTransferDecision(process.env);
+        if (!releaseGate.ok) {
+            return res.status(409).json({
+                code: releaseGate.code,
+                mutated: false,
+                error: 'Les transferts Live sont fermés. Aucun paiement historique n’a été modifié.'
+            });
+        }
+
         // 6. RECORD CLIENT VALIDATION AT (Definitive Business Event)
         let nowIso = new Date().toISOString();
         if (!payment.client_validated_at) {
@@ -5058,6 +5205,15 @@ app.post('/v1/milestones/claim-transfer', async (req, res) => {
         const providerId = quote.provider_id;
         if (!canClaimTransfer(authUid, providerId)) {
             return res.status(403).json({ error: "Seul le Lyanneur prestataire peut réclamer ce versement." });
+        }
+
+        const claimGate = liveTransferDecision(process.env);
+        if (!claimGate.ok) {
+            return res.status(409).json({
+                code: claimGate.code,
+                mutated: false,
+                error: 'Les transferts Live sont fermés. Aucun transfert n’a été créé.'
+            });
         }
 
         const result = await retryMilestoneTransfer(milestone_id);
@@ -5360,6 +5516,19 @@ app.post('/v1/admin/post-transfer-refund-requests/:id/execute', async (req, res)
                 createRefund: false
             });
         }
+        const postTransferGate = liveRefundDecision(
+            process.env,
+            String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_') ? true : false
+        );
+        if (!postTransferGate.ok) {
+            return res.status(409).json({
+                code: postTransferGate.code,
+                execute: false,
+                createReversal: false,
+                createRefund: false,
+                error: 'Les remboursements Live sont fermés. Aucun remboursement n’a été créé.'
+            });
+        }
         const result = await executeAdminPostTransfer(postTransferRefundStore(), {
             admin,
             requestId: req.params.id,
@@ -5517,6 +5686,18 @@ app.post('/v1/payments/refund-untransferred', async (req, res) => {
             });
         }
 
+        const refundCreateGate = liveRefundDecision(
+            process.env,
+            String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_') ? true : false
+        );
+        if (!refundCreateGate.ok) {
+            return res.status(409).json({
+                code: refundCreateGate.code,
+                create: false,
+                error: 'Les remboursements Live sont fermés. Aucun remboursement n’a été créé.'
+            });
+        }
+
         try {
             const refund = await runtime.stripe.refunds.create({
                 payment_intent: payment.stripe_payment_intent_id,
@@ -5570,7 +5751,10 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
             error: constructed.code === 'STRIPE_SIGNATURE_INVALID' ? 'Signature Stripe invalide.' : 'Configuration webhook Stripe incomplète.'
         });
     }
-    const event = constructed.event;
+    let event = constructed.event;
+    if (constructed.thin && constructed.notification) {
+        event = await enrichVerifiedThinEvent(constructed.notification, event);
+    }
 
     const admission = admitStripeWebhookEvent(event, process.env);
     if (!admission.ok) {
@@ -5612,6 +5796,12 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
     }
 
     try {
+        if (thinMoneyEvent(event)) {
+            if (event && event.id) {
+                await supabaseAdmin.from('stripe_webhook_events').update({ status: 'processed' }).eq('stripe_event_id', event.id);
+            }
+            return res.json({ received: true, applied: false, code: 'THIN_MONEY_EVENT_IGNORED' });
+        }
         switch (event.type) {
             case 'payment_intent.succeeded': {
                 const paymentIntent = event.data.object;
@@ -5707,6 +5897,24 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                     }
 
                     console.log(`🔒 [PAYMENT CORE] Milestone ${payment.milestone_id} est à présent FUNDED. Transfer status: PENDING_VALIDATION.`);
+                }
+                break;
+            }
+
+            case 'payment_intent.requires_action': {
+                const paymentIntent = event.data.object;
+                const { data: existingAction } = await supabaseAdmin
+                    .from('payments')
+                    .select('*')
+                    .eq('stripe_payment_intent_id', paymentIntent.id)
+                    .maybeSingle();
+                const action = applyPaymentRequiresAction(existingAction);
+                if (action.apply && existingAction) {
+                    await supabaseAdmin
+                        .from('payments')
+                        .update({ payment_status: 'REQUIRES_ACTION' })
+                        .eq('id', existingAction.id)
+                        .in('payment_status', ['CREATED', 'PROCESSING']);
                 }
                 break;
             }
@@ -5838,9 +6046,13 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                 break;
             }
 
-            case 'account.updated': {
-                const accountId = event.data && event.data.object && event.data.object.id;
-                if (!accountId) break;
+            case 'account.updated':
+            case 'v2.core.account.updated':
+            case 'v2.core.account[configuration.recipient].updated':
+            case 'v2.core.account[configuration.recipient].capability_status_updated':
+            case 'v2.core.account[requirements].updated': {
+                const accountId = connectAccountIdFromEvent(event);
+                if (!accountId || !CONNECT_ACCOUNT_EVENT_TYPES.has(event.type)) break;
                 let account = event.data.object;
                 try {
                     account = await runtime.stripe.v2.core.accounts.retrieve(accountId, {
@@ -5849,11 +6061,20 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                 } catch (_) {
                     account = event.data.object;
                 }
-                const { data: providerProfile } = await supabaseAdmin
+                const { data: legacyProfile } = await supabaseAdmin
                     .from('profiles')
                     .select('id')
                     .eq('stripe_account_id', accountId)
                     .maybeSingle();
+                let providerProfile = legacyProfile || null;
+                if (!providerProfile) {
+                    const mapped = await supabaseAdmin
+                        .from('lyann_connect_accounts')
+                        .select('user_id')
+                        .eq('stripe_account_id', accountId)
+                        .maybeSingle();
+                    if (mapped.data && mapped.data.user_id) providerProfile = { id: mapped.data.user_id };
+                }
                 let pendingPayments = [];
                 if (providerProfile) {
                     const listed = await supabaseAdmin
@@ -5868,6 +6089,20 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                 if (decided.announcePayoutReady && providerProfile) {
                     await announcePayoutReady(providerProfile.id);
                 }
+                break;
+            }
+
+            case 'payout.paid':
+            case 'payout.failed':
+            case 'v1.payout.paid':
+            case 'v1.payout.failed': {
+                const payout = payoutDecisionFromEvent(event);
+                if (!payout.ok || payout.mutatePayment !== false || payout.mutateTransfer !== false) break;
+                const saved = await supabaseAdmin.from('lyann_connect_payouts').upsert({
+                    ...payout.record,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'stripe_payout_id' });
+                if (saved.error) throw saved.error;
                 break;
             }
 
@@ -5893,6 +6128,24 @@ if (require.main === module) {
     const bind = process.env.LYANN_API_BIND || undefined;
     const onListen = () => {
         console.log(`🚀 LYANN DOM API Engine en écoute sur http://${bind || 'localhost'}:${PORT}/v1`);
+        if (process.env.PUSH_AUTOMATIC_ENABLED === 'true' && process.env.PUSH_CRON_SECRET && !process.env.VERCEL) {
+            const http = require('http');
+            const secret = process.env.PUSH_CRON_SECRET;
+            const tick = () => {
+                const req = http.request({
+                    hostname: '127.0.0.1',
+                    port: PORT,
+                    path: '/v1/notifications/push-drain',
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + secret, 'Content-Length': 0 }
+                }, (response) => { response.resume(); });
+                req.on('error', () => {});
+                req.end();
+            };
+            setInterval(tick, 8000);
+            setTimeout(tick, 1500);
+            console.log('Push actif : file APNs vidée toutes les 8 s, sonnerie lyann-notif.caf');
+        }
     };
     if (bind) app.listen(PORT, bind, onListen);
     else app.listen(PORT, onListen);

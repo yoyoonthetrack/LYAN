@@ -136,7 +136,7 @@ window.addEventListener('lyann_chat_action_taken', (e) => {
                 window.addMessageToContact(contactId, {
                     type: 'text',
                     sender: contactId,
-                    text: `C'est parfait pour moi ! J'accepte votre proposition de ${mission.agreed_price}€. Vous pouvez maintenant procéder au paiement sécurisé (séquestre) pour démarrer l'intervention.`,
+                    text: `C'est parfait pour moi ! J'accepte votre proposition de ${mission.agreed_price}€. Vous pouvez maintenant procéder au paiement sécurisé par Stripe pour démarrer l'intervention.`,
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 });
                 window.addMessageToContact(contactId, {
