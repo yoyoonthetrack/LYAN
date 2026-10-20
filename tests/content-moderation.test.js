@@ -36,6 +36,22 @@ test('clear text is published and a high-confidence category is refused', () => 
     assert.equal(refused.reason, 'sexual/minors');
 });
 
+test('a sexual image under the text threshold stays unpublished', () => {
+    const held = moderation.decideModeration({
+        flagged: false,
+        categories: { sexual: false },
+        category_scores: { sexual: 0.285, violence: 0.08 }
+    }, { hasImage: true });
+    assert.equal(held.decision, 'pending');
+    assert.equal(held.reason, 'sexual');
+    const textOnly = moderation.decideModeration({
+        flagged: false,
+        categories: { sexual: false },
+        category_scores: { sexual: 0.285 }
+    });
+    assert.equal(textOnly.decision, 'approved');
+});
+
 test('an intermediate or flagged score waits, and a failed response never publishes', () => {
     const review = moderation.decideModeration({
         flagged: true,
@@ -137,6 +153,7 @@ test('migration grandfathers current rows, ignores client status, and leaves rep
     assert.doesNotMatch(rollback, /FOR SELECT USING \(true\)/);
     assert.doesNotMatch(rollback, /DROP COLUMN IF EXISTS public_moderation_status/);
     assert.doesNotMatch(rollback, /UPDATE storage\.buckets/);
+    assert.doesNotMatch(rollback, /DROP TRIGGER IF EXISTS trg_refuse_new_public_media/);
     assert.match(cutover, /Bascule des médias non autorisée/);
     const executableCutover = cutover.split('-- The transaction is aborted')[0];
     assert.doesNotMatch(executableCutover, /UPDATE storage\.buckets/);
@@ -165,6 +182,7 @@ test('build 9 can show a refusal sentence and still has no pending-state label',
     assert.match(routeSource, /\/v1\/internal\/moderation\/run/);
     const vercel = fs.readFileSync(path.join(root, 'vercel.json'), 'utf8');
     assert.match(vercel, /\/v1\/internal\/moderation\/run/);
+    assert.match(vercel, /"maxDuration": 60/);
     assert.doesNotMatch(vercel, /OPENAI_API_KEY|MODERATION_WORKER_SECRET/);
     assert.equal(pattern.test('Erreur lors de la publication : ' + refusal), false);
 });
@@ -215,6 +233,18 @@ test('obviously dangerous text is not published', { skip: !liveKey }, async () =
         const decision = await moderation.classifyContent({ text, apiKey: liveKey, fetchImpl: global.fetch });
         assert.notEqual(decision.decision, 'approved', text);
     }
+});
+
+test('a nude image under the flag threshold is not published', { skip: !liveKey || !fs.existsSync('/tmp/lyann-moderation-painting.jpg') }, async () => {
+    const jpeg = fs.readFileSync('/tmp/lyann-moderation-painting.jpg');
+    const decision = await moderation.classifyContent({
+        media: [{ bucket: 'bokantaj-media', path: 'user/tableau.jpg' }],
+        apiKey: liveKey,
+        fetchImpl: global.fetch,
+        downloadMedia: async () => ['data:image/jpeg;base64,' + jpeg.toString('base64')]
+    });
+    assert.notEqual(decision.decision, 'approved');
+    assert.equal(decision.reason, 'sexual');
 });
 
 test('a harmless image is accepted by the moderation endpoint', { skip: !liveKey }, async () => {

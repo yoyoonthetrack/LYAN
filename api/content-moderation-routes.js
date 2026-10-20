@@ -101,7 +101,8 @@ function registerContentModerationRoutes(app, deps) {
             const outcomes = await runModerationOnce({
                 supabaseAdmin,
                 apiKey: process.env.OPENAI_API_KEY || '',
-                fetchImpl: global.fetch
+                fetchImpl: global.fetch,
+                limit: 4
             });
             const counts = {};
             for (const item of outcomes) counts[item.result || 'unknown'] = (counts[item.result || 'unknown'] || 0) + 1;

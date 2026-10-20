@@ -39,6 +39,14 @@ const REJECT_SCORE = Object.freeze({
     harassment: 0.92
 });
 const REVIEW_SCORE = 0.45;
+// A public image on a 13+ service is not published on a moderate sexual or
+// graphic score. The model can leave that score under its own flag and under
+// the text review line. A person still has to accept it.
+const IMAGE_HOLD_SCORE = Object.freeze({
+    sexual: 0.2,
+    'sexual/minors': 0.05,
+    'violence/graphic': 0.2
+});
 
 const PLACEHOLDER_PENDING = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
 <rect width="1200" height="900" fill="#F4F0E8"/>
@@ -51,10 +59,16 @@ const PLACEHOLDER_REJECTED = `<svg xmlns="http://www.w3.org/2000/svg" width="120
 <text x="600" y="450" text-anchor="middle" font-family="Georgia, serif" font-size="42" fill="#1E2822">Cette photo n'a pas été publiée</text>
 </svg>`;
 
-function decideModeration(result) {
+function reviewFloor(name, hasImage) {
+    if (hasImage && IMAGE_HOLD_SCORE[name] != null) return IMAGE_HOLD_SCORE[name];
+    return REVIEW_SCORE;
+}
+
+function decideModeration(result, options) {
     if (!result || typeof result !== 'object' || !result.category_scores) {
         return { decision: 'pending', reason: 'unavailable' };
     }
+    const hasImage = Boolean(options && options.hasImage);
     const scores = result.category_scores;
     const categories = result.categories || {};
     let reviewName = null;
@@ -66,13 +80,14 @@ function decideModeration(result) {
         if (rejectAt != null && score >= rejectAt) {
             return { decision: 'rejected', reason: name, score };
         }
-        const interesting = categories[name] === true || score >= REVIEW_SCORE;
+        const floor = reviewFloor(name, hasImage);
+        const interesting = categories[name] === true || score >= floor;
         if (interesting && score >= reviewScore) {
             reviewScore = score;
             reviewName = name;
         }
     }
-    if (result.flagged === true || reviewScore >= REVIEW_SCORE) {
+    if (result.flagged === true || (reviewName && reviewScore >= reviewFloor(reviewName, hasImage))) {
         return { decision: 'pending', reason: reviewName || 'flagged', score: reviewScore };
     }
     return { decision: 'approved', reason: 'clear' };
@@ -209,25 +224,37 @@ async function classifyContent({ text, media, apiKey, fetchImpl, downloadMedia }
     }
     if (containsVideo(files)) return { decision: 'pending', reason: 'video_unreviewed' };
 
-    const input = [];
-    if (trimmed) input.push({ type: 'text', text: trimmed.slice(0, 8000) });
+    let images = [];
     if (files.length && typeof downloadMedia === 'function') {
-        let images;
         try {
             images = await downloadMedia(files);
         } catch (err) {
             return { decision: 'pending', reason: 'media_unreadable' };
         }
-        if (!Array.isArray(images) || images.length !== files.length) {
+        if (!Array.isArray(images) || images.length !== files.length || images.some((image) => !image)) {
             return { decision: 'pending', reason: 'media_unreadable' };
         }
-        images.forEach((image) => {
-            if (image) input.push({ type: 'image_url', image_url: { url: image } });
-        });
-        if (images.some((image) => !image)) return { decision: 'pending', reason: 'media_unreadable' };
+    } else if (files.length) {
+        return { decision: 'pending', reason: 'media_unreadable' };
     }
-    if (input.length === 0) return { decision: 'pending', reason: 'unavailable' };
 
+    const textDecision = trimmed
+        ? await moderateInput(fetchImpl, apiKey, [{ type: 'text', text: trimmed.slice(0, 8000) }], false)
+        : { decision: 'approved', reason: 'clear' };
+    if (!textDecision) return { decision: 'pending', reason: 'unavailable' };
+    if (textDecision.decision === 'rejected') return combineDecisions(textDecision, files);
+    if (images.length === 0) return combineDecisions(textDecision, files);
+
+    const imageDecision = await moderateInput(fetchImpl, apiKey, images.map((image) => ({
+        type: 'image_url',
+        image_url: { url: image }
+    })), true);
+    if (!imageDecision) return { decision: 'pending', reason: 'unavailable' };
+    if (imageDecision.decision !== 'approved') return combineDecisions(imageDecision, files);
+    return combineDecisions(textDecision, files);
+}
+
+async function moderateInput(fetchImpl, apiKey, input, hasImage) {
     let response;
     try {
         response = await fetchImpl('https://api.openai.com/v1/moderations', {
@@ -239,17 +266,17 @@ async function classifyContent({ text, media, apiKey, fetchImpl, downloadMedia }
             body: JSON.stringify({ model: MODEL, input })
         });
     } catch (err) {
-        return { decision: 'pending', reason: 'unavailable' };
+        return null;
     }
-    if (!response || !response.ok) return { decision: 'pending', reason: 'unavailable' };
+    if (!response || !response.ok) return null;
     let body;
     try {
         body = await response.json();
     } catch (err) {
-        return { decision: 'pending', reason: 'unavailable' };
+        return null;
     }
     const result = body && Array.isArray(body.results) ? body.results[0] : null;
-    return combineDecisions(decideModeration(result), files);
+    return decideModeration(result, { hasImage });
 }
 
 module.exports = {

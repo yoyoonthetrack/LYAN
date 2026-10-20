@@ -8,6 +8,9 @@
   "functions": {
     "api/render.js": {
       "includeFiles": "*.html"
+    },
+    "api/index.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
