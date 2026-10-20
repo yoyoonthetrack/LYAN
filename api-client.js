@@ -215,6 +215,12 @@ function pageHttpOrigin() {
     }
 }
 
+function holdMediaUrl(bucket, objectPath) {
+    const origin = (typeof getLyannBackendOrigin === 'function' && getLyannBackendOrigin()) || 'https://lyann.app';
+    const encoded = String(objectPath || '').split('/').filter(Boolean).map(encodeURIComponent).join('/');
+    return `${String(origin).replace(/\/$/, '')}/v1/media/${bucket}/${encoded}`;
+}
+
 function getLyannBackendOrigin() {
     const binding = resolveLyannClientBinding();
     if (!binding.ok) {
@@ -724,20 +730,23 @@ const LYANN_API_CLIENT = {
         const fileExt = file.name ? file.name.split('.').pop() : 'png';
         const filePath = `${userId}/avatar_${Date.now()}.${fileExt}`;
 
-        const { data: uploadData, error: uploadError } = await this.supabase.storage
-            .from('avatars')
+        const { error: uploadError } = await this.supabase.storage
+            .from('avatars-hold')
             .upload(filePath, file, { upsert: true });
 
         if (uploadError) return { error: uploadError };
 
-        const { data: urlData } = this.supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-
-        const publicUrl = urlData.publicUrl;
-
-        await this.updateProfile(userId, { avatar_url: publicUrl });
-        return { data: { avatar_url: publicUrl } };
+        const submittedUrl = holdMediaUrl('avatars-hold', filePath);
+        const updated = await this.updateProfile(userId, { avatar_url: submittedUrl });
+        if (updated.error) return { error: updated.error };
+        return {
+            data: {
+                avatar_url: updated.data && updated.data.avatar_url,
+                avatar_pending: updated.data && updated.data.avatar_pending,
+                avatar_moderation_status: updated.data && updated.data.avatar_moderation_status,
+                submitted_avatar_url: submittedUrl
+            }
+        };
     },
 
     async deleteAvatar(userId) {
@@ -910,17 +919,13 @@ const LYANN_API_CLIENT = {
         const fileExt = file.name ? file.name.split('.').pop() : 'png';
         const filePath = `${userId}/portfolio_${Date.now()}.${fileExt}`;
 
-        const { data: uploadData, error: uploadError } = await this.supabase.storage
-            .from('portfolio_images')
+        const { error: uploadError } = await this.supabase.storage
+            .from('portfolio-images-hold')
             .upload(filePath, file, { upsert: true });
 
         if (uploadError) return { error: uploadError };
 
-        const { data: urlData } = this.supabase.storage
-            .from('portfolio_images')
-            .getPublicUrl(filePath);
-
-        return { data: { image_url: urlData.publicUrl } };
+        return { data: { image_url: holdMediaUrl('portfolio-images-hold', filePath) } };
     },
 
     async updatePortfolioItem(itemId, itemData) {
@@ -1450,6 +1455,7 @@ const LYANN_API_CLIENT = {
                     editorial: /Compte éditorial LYANN/i.test(authorProf?.bio || ''),
                     images: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
                     videos: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
+                    moderation_status: p.public_moderation_status || null,
                     likes: (postLikesCountMap[p.id] !== undefined) ? postLikesCountMap[p.id] : (p.likes_count || 0),
                     user_has_liked: userLikedPostsSet.has(p.id),
                     comments_count: postCommentsCountMap[p.id] || p.replies_count || 0,
@@ -1489,9 +1495,9 @@ const LYANN_API_CLIENT = {
             throw new Error('La vidéo doit durer 60 secondes au plus.');
         }
         const path = `${user.id}/${crypto.randomUUID()}.${allowed[mime]}`;
-        const { error } = await this.supabase.storage.from('bokantaj-media').upload(path, file, { contentType: mime });
+        const { error } = await this.supabase.storage.from('bokantaj-media-hold').upload(path, file, { contentType: mime });
         if (error) throw new Error('La vidéo n’a pas pu être envoyée. Réessayez avant de publier.');
-        return this.supabase.storage.from('bokantaj-media').getPublicUrl(path).data.publicUrl;
+        return holdMediaUrl('bokantaj-media-hold', path);
     },
 
     async uploadPostPhoto(file) {
@@ -1503,9 +1509,9 @@ const LYANN_API_CLIENT = {
         }
         const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type];
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await this.supabase.storage.from('bokantaj-media').upload(path, file);
+        const { error } = await this.supabase.storage.from('bokantaj-media-hold').upload(path, file);
         if (error) throw new Error('La photo n’a pas pu être envoyée. Réessayez avant de publier.');
-        return this.supabase.storage.from('bokantaj-media').getPublicUrl(path).data.publicUrl;
+        return holdMediaUrl('bokantaj-media-hold', path);
     },
 
     async createPost(payload) {
@@ -2561,18 +2567,17 @@ const LYANN_API_CLIENT = {
         const fileExt = file.name ? file.name.split('.').pop() : 'png';
         const filePath = `${session.user.id}/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
 
-        let bucket = 'request-photos';
-        const { data, error } = await this.supabase.storage
+        const bucket = 'request-photos-hold';
+        const { error } = await this.supabase.storage
             .from(bucket)
             .upload(filePath, file, { upsert: true });
 
         if (error) {
-            console.warn("Storage upload warning (bucket request-photos):", error);
+            console.warn("Storage upload warning (bucket request-photos-hold):", error);
             return null;
         }
 
-        const { data: publicUrlData } = this.supabase.storage.from(bucket).getPublicUrl(filePath);
-        return publicUrlData ? publicUrlData.publicUrl : null;
+        return holdMediaUrl(bucket, filePath);
     },
 
     // --- REQUEST INVITATIONS API (request_invitations) ---

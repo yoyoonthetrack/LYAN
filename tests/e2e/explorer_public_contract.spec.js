@@ -54,7 +54,8 @@ test('Public HTTP contract is an exact recursive allowlist, never raw rows or pr
 test('Private, targeted, closed, unsafe and review-pending Requests are excluded defensively', async ({request}) => {
   const excluded = [{visibility:'PRIVATE'}, {target_user_id:'recipient'}, {status:'ASSIGNED'}, {status:'CANCELLED'},
     {status:'COMPLETED'}, ...['CAUTION','PRO_REQUIRED','RESTRICTED','PROHIBITED','SAFETY_REVIEW_REQUIRED',null].map(safety_status => ({safety_status})),
-    {classification_status:'NEEDS_REVIEW'}, {classification_status:null}];
+    {classification_status:'NEEDS_REVIEW'}, {classification_status:null},
+    {public_moderation_status:'pending'}, {public_moderation_status:'rejected'}];
   const result = await isolated(request, {rows:[publicRow, ...excluded.map((changes,i) => ({...publicRow,id:`excluded-${i}`,...changes}))]});
   expect(result.body.requests.map(r => r.id)).toEqual(['test-public']);
 });

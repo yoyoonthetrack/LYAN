@@ -909,10 +909,14 @@
                 }
 
                 // Show mandatory success toast
+                const profilePending = dbData && (dbData.bio_moderation_status === 'pending' || dbData.avatar_moderation_status === 'pending');
+                const profileMessage = dbData && dbData.avatar_moderation_status === 'pending'
+                    ? 'Votre photo est en cours de vérification.'
+                    : (profilePending ? 'Votre publication est en cours de vérification.' : 'Profil mis à jour');
                 if (window.NotificationService) {
-                    window.NotificationService.showToast('success', 'Profil mis à jour');
+                    window.NotificationService.showToast('success', profileMessage);
                 } else if (window.lyannAlert) {
-                    window.lyannAlert('Profil mis à jour');
+                    window.lyannAlert(profileMessage);
                 }
 
                 // Re-fetch profile from Supabase to verify DB state & update all UI components

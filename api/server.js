@@ -1284,11 +1284,13 @@ function maisonMediaFile(payload, kind) {
     return { buffer, mime, ext: allowed[mime] };
 }
 
-async function maisonStoreMedia(profileId, file) {
-    const path = `${profileId}/${require('crypto').randomUUID()}.${file.ext}`;
-    const { error } = await supabaseAdmin.storage.from('bokantaj-media').upload(path, file.buffer, { contentType: file.mime, upsert: false });
+async function maisonStoreMedia(profileId, file, origin) {
+    const bucket = 'bokantaj-media-hold';
+    const objectPath = `${profileId}/${require('crypto').randomUUID()}.${file.ext}`;
+    const { error } = await supabaseAdmin.storage.from(bucket).upload(objectPath, file.buffer, { contentType: file.mime, upsert: false });
     if (error) throw new Error('Le fichier n’a pas pu être enregistré.');
-    return supabaseAdmin.storage.from('bokantaj-media').getPublicUrl(path).data.publicUrl;
+    const base = String(origin || 'https://lyann.app').replace(/\/$/, '');
+    return `${base}/v1/media/${bucket}/${objectPath.split('/').map(encodeURIComponent).join('/')}`;
 }
 
 app.patch('/v1/admin/maison/profiles/:id', async (req, res) => {
@@ -1381,8 +1383,9 @@ app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
         if (video?.error) return res.status(400).json({ success: false, error: video.error });
         if (!content && !photo && !video) return res.status(400).json({ success: false, error: 'Écris un Lyann ou ajoute une photo ou une vidéo.' });
         const mediaUrls = [];
-        if (photo) mediaUrls.push(await maisonStoreMedia(profile.id, photo));
-        if (video) mediaUrls.push(await maisonStoreMedia(profile.id, video));
+        const origin = `${req.protocol}://${req.get('host')}`;
+        if (photo) mediaUrls.push(await maisonStoreMedia(profile.id, photo, origin));
+        if (video) mediaUrls.push(await maisonStoreMedia(profile.id, video, origin));
         const { data, error } = await supabaseAdmin.from('bokantaj_posts').insert({
             author_id: profile.id,
             type: req.body?.type || 'info',
@@ -6123,6 +6126,13 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
     }
 });
 
+const { registerContentModerationRoutes } = require('./content-moderation-routes');
+registerContentModerationRoutes(app, {
+    supabaseAdmin,
+    verifyAdminPermission,
+    recordMaisonAudit
+});
+
 // Start Server
 if (require.main === module) {
     const bind = process.env.LYANN_API_BIND || undefined;
@@ -6145,6 +6155,24 @@ if (require.main === module) {
             setInterval(tick, 8000);
             setTimeout(tick, 1500);
             console.log('Push actif : file APNs vidée toutes les 8 s, sonnerie lyann-notif.caf');
+        }
+        if (process.env.OPENAI_API_KEY && process.env.MODERATION_WORKER_SECRET && !process.env.VERCEL) {
+            const http = require('http');
+            const secret = process.env.MODERATION_WORKER_SECRET;
+            const moderate = () => {
+                const req = http.request({
+                    hostname: '127.0.0.1',
+                    port: PORT,
+                    path: '/v1/internal/moderation/run',
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + secret, 'Content-Length': 0 }
+                }, (response) => { response.resume(); });
+                req.on('error', () => {});
+                req.end();
+            };
+            setInterval(moderate, 30000);
+            setTimeout(moderate, 2000);
+            console.log('Modération active : file traitée toutes les 30 s');
         }
     };
     if (bind) app.listen(PORT, bind, onListen);

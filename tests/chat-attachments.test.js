@@ -71,7 +71,7 @@ test('bokantaj keeps photos and adds an inline video player', () => {
     assert.match(feed, /uploadPostVideo/);
     assert.match(feed, /class="bokantaj-video" controls playsinline preload="metadata"/);
     assert.doesNotMatch(feed, /<video class="bokantaj-video"[^>]*autoplay/);
-    assert.match(api, /from\('bokantaj-media'\)/);
+    assert.match(api, /from\('bokantaj-media-hold'\)/);
 });
 
 test('the prepared storage change keeps chat files private', () => {

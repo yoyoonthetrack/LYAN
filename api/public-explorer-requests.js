@@ -11,6 +11,7 @@ const SELECT_V2 = `${SELECT},date_mode,scheduled_at,price_mode,budget_max`;
 const PROFILE_SELECT = 'id,first_name,last_name,avatar_url';
 const PROFILE_SELECT_V2 = `${PROFILE_SELECT},is_verified,is_pro_verified,average_rating,reviews_count`;
 function eligible(row) {
+    if (row.public_moderation_status != null && row.public_moderation_status !== 'approved') return false;
     return row.visibility === 'PUBLIC' && row.status === 'OPEN' && row.safety_status === 'SAFE'
         && row.target_user_id === null && ['CLASSIFIED', 'UNCLASSIFIED'].includes(row.classification_status);
 }
@@ -54,14 +55,26 @@ function createPublicRequestsHandler(db, configured = true) {
         }
         if (!configured) return res.status(503).json({ error: 'Recherche temporairement indisponible.' });
         try {
-            const readRequests = select => db.from('requests').select(select)
-                .eq('visibility', 'PUBLIC').eq('status', 'OPEN').eq('safety_status', 'SAFE')
-                .is('target_user_id', null).in('classification_status', ['CLASSIFIED', 'UNCLASSIFIED'])
-                .order('created_at', { ascending: false }).order('id').range(offset, offset + PAGE_SIZE);
-            let { data, error } = await readRequests(requestSelect);
+            const readRequests = (select, moderated) => {
+                let query = db.from('requests').select(select)
+                    .eq('visibility', 'PUBLIC').eq('status', 'OPEN').eq('safety_status', 'SAFE')
+                    .is('target_user_id', null).in('classification_status', ['CLASSIFIED', 'UNCLASSIFIED']);
+                if (moderated) query = query.eq('public_moderation_status', 'approved');
+                return query.order('created_at', { ascending: false }).order('id').range(offset, offset + PAGE_SIZE);
+            };
+            let moderated = true;
+            let { data, error } = await readRequests(requestSelect, moderated);
+            if (error && /public_moderation_status/i.test(error.message || '')) {
+                moderated = false;
+                ({ data, error } = await readRequests(requestSelect, moderated));
+            }
             if (error && requestSelect !== SELECT) {
                 requestSelect = SELECT;
-                ({ data, error } = await readRequests(requestSelect));
+                ({ data, error } = await readRequests(requestSelect, moderated));
+                if (error && /public_moderation_status/i.test(error.message || '')) {
+                    moderated = false;
+                    ({ data, error } = await readRequests(requestSelect, moderated));
+                }
             }
             if (error || !Array.isArray(data)) throw new Error('request_read_failed');
             const rows = data.slice(0, PAGE_SIZE).filter(eligible);

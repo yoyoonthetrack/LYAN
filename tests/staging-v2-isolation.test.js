@@ -203,8 +203,9 @@ test('guard source and verify script remain fail-closed', () => {
 test('runtime storage bucket names match the Staging V2 SQL', () => {
   const client = fs.readFileSync(path.join(root, 'api-client.js'), 'utf8');
   const sql = fs.readFileSync(path.join(root, '65_bokantaj_media_and_request_photos.sql'), 'utf8');
-  assert.match(client, /from\('bokantaj-media'\)/);
-  assert.match(client, /bucket = 'request-photos'/);
+  assert.match(client, /from\('bokantaj-media-hold'\)/);
+  assert.match(client, /request-photos-hold/);
+  assert.doesNotMatch(client, /from\('bokantaj-media'\)/);
   assert.match(sql, /'bokantaj-media'/);
   assert.match(sql, /'request-photos'/);
   assert.match(sql, /TO authenticated/);

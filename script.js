@@ -2756,6 +2756,64 @@ safeDomReady(() => {
         });
     }
 
+    function lyannPublicationNotice(input) {
+        const status = input && input.status;
+        const hasImage = Boolean(input && input.hasImage);
+        const hasVideo = Boolean(input && input.hasVideo);
+        if (status === 'rejected') return { tone: 'warning', message: 'Ce contenu ne peut pas être publié.' };
+        if (status === 'pending') {
+            if (hasImage && !hasVideo) return { tone: 'success', message: 'Votre photo est en cours de vérification.' };
+            return { tone: 'success', message: 'Votre publication est en cours de vérification.' };
+        }
+        if (status === 'approved' && input.edited) {
+            return { tone: 'success', message: 'Votre modification est en cours de vérification. La version déjà publiée reste visible.' };
+        }
+        if (status === 'approved') return { tone: 'success', message: 'Votre publication est maintenant visible.' };
+        return null;
+    }
+    window.lyannPublicationNotice = lyannPublicationNotice;
+
+    function showPublicationNotice(input, fallback) {
+        const notice = lyannPublicationNotice(input);
+        const message = notice ? notice.message : fallback;
+        const tone = notice ? notice.tone : 'success';
+        if (message && window.NotificationService) window.NotificationService.showToast(tone, message);
+    }
+
+    function rememberPendingPublication(id, status) {
+        if (!id || status !== 'pending' || !window.sessionStorage) return;
+        try {
+            const current = JSON.parse(sessionStorage.getItem('lyann_pending_posts') || '[]');
+            const next = Array.isArray(current) ? current.filter((item) => item !== id) : [];
+            next.push(id);
+            sessionStorage.setItem('lyann_pending_posts', JSON.stringify(next.slice(-20)));
+        } catch (err) {}
+    }
+
+    async function hydrateHoldMedia(root) {
+        if (!root || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) return;
+        let token = '';
+        try {
+            const session = await window.LYANN_API_CLIENT.supabase.auth.getSession();
+            token = session && session.data && session.data.session && session.data.session.access_token;
+        } catch (err) {
+            return;
+        }
+        if (!token) return;
+        const nodes = root.querySelectorAll('img[src*="/v1/media/bokantaj-media-hold/"], img[src*="/v1/media/avatars-hold/"], video[src*="/v1/media/bokantaj-media-hold/"]');
+        for (const node of nodes) {
+            try {
+                const response = await fetch(node.getAttribute('src'), {
+                    headers: { Authorization: 'Bearer ' + token },
+                    cache: 'no-store'
+                });
+                if (!response.ok) continue;
+                const blob = await response.blob();
+                node.src = URL.createObjectURL(blob);
+            } catch (err) {}
+        }
+    }
+
     function bokantajPhotoGrid(images) {
         const urls = (Array.isArray(images) ? images : []).filter(Boolean).slice(0, 4);
         if (!urls.length) return '';
@@ -2887,8 +2945,13 @@ safeDomReady(() => {
             : window.prompt('Texte de la publication', current?.content || '');
         if (content == null) return;
         try {
-            await client.updatePost(postId, { content: String(content).trim() });
-            if (window.NotificationService) window.NotificationService.showToast('success', 'Publication mise à jour.');
+            const updated = await client.updatePost(postId, { content: String(content).trim() });
+            const submitted = String(content).trim();
+            const edited = !updated || updated.content !== submitted || updated.public_moderation_status === 'approved';
+            showPublicationNotice({
+                status: updated && updated.public_moderation_status,
+                edited: edited && updated && updated.public_moderation_status === 'approved'
+            }, 'Publication mise à jour.');
             if (typeof window.loadBokantajFeedFromSupabase === 'function') window.loadBokantajFeedFromSupabase({ force: true });
         } catch (err) {
             if (window.lyannAlert) window.lyannAlert(err.message || 'La modification n’a pas abouti.');
@@ -3391,6 +3454,15 @@ safeDomReady(() => {
                 feedContainer.insertAdjacentHTML('beforeend', '<div class="bokantaj-load-more"><button type="button" class="btn btn-outline" id="bokantajLoadMore">Voir plus de publications</button></div>');
             }
 
+            try {
+                const pendingIds = JSON.parse(sessionStorage.getItem('lyann_pending_posts') || '[]');
+                if (Array.isArray(pendingIds) && pendingIds.length) {
+                    const nowVisible = pendingIds.filter((id) => filtered.some((post) => post.id === id && post.moderation_status === 'approved'));
+                    if (nowVisible.length) showPublicationNotice({ status: 'approved' });
+                    sessionStorage.setItem('lyann_pending_posts', JSON.stringify(pendingIds.filter((id) => !nowVisible.includes(id))));
+                }
+            } catch (pendingErr) {}
+            hydrateHoldMedia(feedContainer);
             attachFlashFeedListeners();
             if (typeof window.syncFavoriteButtonStates === 'function') {
                 window.syncFavoriteButtonStates();
@@ -3557,7 +3629,8 @@ safeDomReady(() => {
 
                 btn.disabled = true;
                 try {
-                    await window.LYANN_API_CLIENT.addComment({ targetId, targetType, content, parentCommentId });
+                    const createdComment = await window.LYANN_API_CLIENT.addComment({ targetId, targetType, content, parentCommentId });
+                    showPublicationNotice({ status: createdComment && createdComment.public_moderation_status });
                     input.value = '';
                     if (input.dataset.parentCommentId) delete input.dataset.parentCommentId;
 
@@ -3752,14 +3825,17 @@ safeDomReady(() => {
 
             try {
                 if (!window.LYANN_API_CLIENT?.createPost) throw new Error('Publication indisponible');
+                const publishedWithImage = attachedPhotoFiles.length > 0;
+                const publishedWithVideo = Boolean(attachedVideoFile);
                 const mediaUrls = [];
                 for (const file of attachedPhotoFiles) mediaUrls.push(await window.LYANN_API_CLIENT.uploadPostPhoto(file));
                 if (submitBtn && attachedVideoFile) submitBtn.textContent = 'Envoi de la vidéo…';
                 if (attachedVideoFile && window.LYANN_API_CLIENT.uploadPostVideo) {
                     mediaUrls.push(await window.LYANN_API_CLIENT.uploadPostVideo(attachedVideoFile));
                 }
+                let createdPost = null;
                 if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.createPost === 'function') {
-                    await window.LYANN_API_CLIENT.createPost({
+                    createdPost = await window.LYANN_API_CLIENT.createPost({
                         content: text,
                         type: type,
                         territory: territoryKey,
@@ -3767,6 +3843,7 @@ safeDomReady(() => {
                         media_urls: mediaUrls
                     });
                 }
+                rememberPendingPublication(createdPost && createdPost.id, createdPost && createdPost.public_moderation_status);
 
                 attachedPhotos.forEach(url => URL.revokeObjectURL(url));
                 attachedPhotos = [];
@@ -3783,9 +3860,11 @@ safeDomReady(() => {
 
                 createFlashForm.reset();
                 if (flashCharCount) flashCharCount.textContent = '0';
-                if (window.NotificationService) {
-                    window.NotificationService.showToast('success', "✨ Votre publication a été enregistrée dans Bokantaj !");
-                }
+                showPublicationNotice({
+                    status: createdPost && createdPost.public_moderation_status,
+                    hasImage: publishedWithImage,
+                    hasVideo: publishedWithVideo
+                }, '✨ Votre publication a été enregistrée dans Bokantaj !');
                 if (typeof window.closeBokantajComposer === 'function') {
                     window.closeBokantajComposer();
                 }
@@ -9407,7 +9486,10 @@ safeDomReady(() => {
                     document.body.style.overflow = '';
                     btnSubmit.disabled = false;
                     btnSubmit.innerHTML = 'PUBLIER';
-                    if (window.NotificationService) window.NotificationService.showToast('success', 'Annonce mise à jour.');
+                    showPublicationNotice({
+                        status: updated && updated.public_moderation_status,
+                        edited: true
+                    }, 'Annonce mise à jour.');
                     if (typeof window.loadBokantajFeedFromSupabase === 'function') window.loadBokantajFeedFromSupabase({ force: true });
                     if (typeof window.loadExplorerResults === 'function') window.loadExplorerResults();
                     if (updated && typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal(editingId, updated);
@@ -9493,10 +9575,10 @@ safeDomReady(() => {
 
                 // Show success toast
                 if (window.NotificationService) {
-                    const successText = privateOnly
+                    const legacyText = privateOnly
                         ? 'Demande envoyée uniquement à cette personne.'
                         : (directId ? 'Demande envoyée à cette personne et publiée dans les Annonces.' : 'Votre besoin a été publié.');
-                    window.NotificationService.showToast('success', successText);
+                    showPublicationNotice({ status: createdRequest && createdRequest.public_moderation_status }, legacyText);
                 }
                 window._lyannDirectAskContactId = null;
                 window._lyannDirectAskContactName = '';
@@ -10430,7 +10512,10 @@ window.lyannHandleAvatarFileSelected = async function(event) {
         if (res.error) {
             if (window.showLyanToast) window.showLyanToast(res.error.message || "Erreur d'upload", "❌");
         } else {
-            if (window.showLyanToast) window.showLyanToast("Photo de profil mise à jour ✨", "📸");
+            const avatarPending = res.data && res.data.avatar_moderation_status === 'pending';
+            if (window.showLyanToast) {
+                window.showLyanToast(avatarPending ? 'Votre photo est en cours de vérification.' : 'Photo de profil mise à jour ✨', avatarPending ? '⏳' : '📸');
+            }
             if (typeof window.openPublicMemberProfile === 'function') {
                 window.openPublicMemberProfile(userId);
             }
@@ -10527,7 +10612,7 @@ window.lyannHandleAddPortfolioSubmit = async function(event) {
             is_public: isPublic
         });
 
-        if (window.showLyanToast) window.showLyanToast("Réalisation ajoutée ✨", "🖼️");
+        if (window.showLyanToast) window.showLyanToast('Votre photo est en cours de vérification.', '⏳');
         if (typeof window.openPublicMemberProfile === 'function') {
             window.openPublicMemberProfile(userId);
         }

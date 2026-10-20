@@ -55,6 +55,8 @@ function applyStaging() {
     'LYANN_E2E_QA_B_PASSWORD',
     'LYANN_E2E_QA_C_EMAIL',
     'LYANN_E2E_QA_C_PASSWORD',
+    'OPENAI_API_KEY',
+    'MODERATION_WORKER_SECRET',
   ];
   for (const k of keys) {
     if (cfg[k] != null && cfg[k] !== '') process.env[k] = cfg[k];
@@ -63,6 +65,24 @@ function applyStaging() {
   process.env.LYANN_E2E_WRITE_PROJECT_REF = STAGING_REF;
   if (!process.env.LYANN_API_BIND) process.env.LYANN_API_BIND = '0.0.0.0';
   delete process.env.VERCEL_ENV;
+  const pushFile = path.join(__dirname, '..', '.env.push.local');
+  if (fs.existsSync(pushFile)) {
+    const push = parseEnvFile(pushFile);
+    const pushKeys = [
+      'PUSH_AUTOMATIC_ENABLED',
+      'PUSH_CUSTOM_SOUND',
+      'PUSH_QA_ONLY',
+      'PUSH_QA_USER_IDS',
+      'PUSH_CRON_SECRET',
+      'APNS_KEY_ID',
+      'APNS_TEAM_ID',
+      'APNS_BUNDLE_ID',
+      'APNS_PRIVATE_KEY'
+    ];
+    for (const key of pushKeys) {
+      if (push[key]) process.env[key] = push[key];
+    }
+  }
   assertStagingIsolation(process.env);
 }
 
