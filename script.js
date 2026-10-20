@@ -813,6 +813,20 @@ safeDomReady(() => {
             document.documentElement.style.setProperty('--lyann-vv-offset', window.visualViewport.offsetTop + 'px');
         };
 
+        function keepBokantajPublishVisible() {
+            const form = document.getElementById('createFlashForm');
+            const button = form && form.querySelector('.btn-publish-flash');
+            if (!form || form.hidden || !button) return;
+            const viewportGap = window.visualViewport
+                ? Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop)
+                : 0;
+            const reserve = Math.max(viewportGap, document.body.classList.contains('keyboard-open') ? 360 : 88);
+            const limit = window.innerHeight - reserve - 12;
+            const rect = button.getBoundingClientRect();
+            if (rect.bottom > limit) window.scrollBy(0, rect.bottom - limit);
+        }
+        window.keepBokantajPublishVisible = keepBokantajPublishVisible;
+
         document.addEventListener('focusin', (e) => {
             const tag = e.target.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
@@ -845,12 +859,20 @@ safeDomReady(() => {
                     return;
                 }
 
-                // Smooth scroll active field to center of viewport with 16px breathing room
+                // Keep the Bokantaj publish button above the keyboard. Centering the
+                // textarea pushes that button under the keyboard on iPhone.
                 setTimeout(() => {
+                    if (e.target && e.target.closest && e.target.closest('#createFlashForm')) {
+                        keepBokantajPublishVisible();
+                        return;
+                    }
                     if (e.target && typeof e.target.scrollIntoView === 'function') {
                         e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 }, 150);
+                setTimeout(() => {
+                    if (e.target && e.target.closest && e.target.closest('#createFlashForm')) keepBokantajPublishVisible();
+                }, 450);
             }
         }, true);
 
@@ -879,6 +901,7 @@ safeDomReady(() => {
                 document.documentElement.style.setProperty('--lyann-vv-offset', viewport.offsetTop + 'px');
                 if (keyboard) {
                     document.body.classList.add('keyboard-open');
+                    keepBokantajPublishVisible();
                     const thread = document.getElementById('chatMessagesContainer');
                     if (thread && document.body.classList.contains('chat-conversation-open')) {
                         const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 180;

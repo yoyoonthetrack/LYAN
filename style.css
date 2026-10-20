@@ -141,6 +141,7 @@ body.is-native-app .lyann-page-container {
    KEYBOARD AVOIDANCE & VIEWPORT HELPERS
    ========================================================================== */
 body.keyboard-open .mobile-bottom-nav,
+body.keyboard-open.is-native-app.has-member-nav .mobile-bottom-nav,
 body.keyboard-open .speed-dial-wrapper,
 body.keyboard-open #backToTopBtn {
     display: none !important;

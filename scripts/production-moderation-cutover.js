@@ -39,10 +39,22 @@ async function management(token, query) {
     if (!response.ok) refuse('SQL HTTP ' + response.status + ' ' + text.replace(/[A-Za-z0-9_\-]{24,}/g, '[redacted]').slice(0, 240));
 }
 
+function pgRestoreBin() {
+    if (process.env.LYANN_PG_RESTORE && fs.existsSync(process.env.LYANN_PG_RESTORE)) return process.env.LYANN_PG_RESTORE;
+    const home = process.env.HOME || '';
+    const guesses = [
+        path.join(home, 'hb/Cellar/postgresql@17/17.11_1/bin/pg_restore'),
+        '/opt/homebrew/opt/postgresql@17/bin/pg_restore',
+        '/usr/local/opt/postgresql@17/bin/pg_restore'
+    ];
+    for (const guess of guesses) if (fs.existsSync(guess)) return guess;
+    return 'pg_restore';
+}
+
 function verifyBackup(file) {
     if (!file || !fs.existsSync(file)) return 'fichier absent';
     const stat = fs.statSync(file);
-    if (stat.size < 1024 * 1024) return 'fichier trop petit pour une base';
+    if (stat.size < 64 * 1024) return 'fichier vide';
     const fd = fs.openSync(file, 'r');
     const head = Buffer.alloc(4096);
     fs.readSync(fd, head, 0, head.length, 0);
@@ -50,12 +62,16 @@ function verifyBackup(file) {
     if (head.slice(0, 5).toString() !== 'PGDMP') {
         return 'format custom PostgreSQL requis, un fichier texte ne prouve pas une restauration';
     }
+    let list = '';
     try {
-        execFileSync('pg_restore', ['--list', file], { stdio: 'pipe' });
-        return null;
+        list = execFileSync(pgRestoreBin(), ['--list', file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (err) {
         return 'pg_restore ne peut pas lire cette sauvegarde';
     }
+    const required = ['TABLE DATA public bokantaj_posts', 'TABLE DATA public profiles', 'TABLE DATA public payments', 'TABLE DATA public requests'];
+    const missing = required.filter((entry) => !list.includes(entry));
+    if (missing.length) return 'tables LYANN absentes de la sauvegarde';
+    return null;
 }
 
 async function main() {
@@ -67,7 +83,7 @@ async function main() {
             dryRun: true,
             productionWrites: false,
             backup: backupError || 'lisible',
-            order: ['backup', 'secrets', 'migrations-70-73', 'gateway-worker', 'web', 'historical-media', 'publish-tests', 'admin-queue', 'stability']
+            order: ['backup-restored', 'secrets', 'migrations-70-73', 'lock-public-uploads', 'media-gateway', 'worker-cron', 'web', 'historical-media', 'publish-tests', 'watch-and-rollback']
         }));
         return;
     }
