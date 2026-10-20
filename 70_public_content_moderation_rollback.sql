@@ -14,40 +14,59 @@ UPDATE public.moderation_control
 DROP POLICY IF EXISTS "Posts are viewable by everyone" ON public.bokantaj_posts;
 CREATE POLICY "Posts are viewable by everyone"
 ON public.bokantaj_posts FOR SELECT
-USING (
-    CASE
-        WHEN public_moderation_status = 'approved' THEN true
-        WHEN auth.uid() IS NOT NULL AND auth.uid() = author_id AND public_moderation_status IS DISTINCT FROM 'rejected' THEN true
-        WHEN coalesce(auth.role(), '') IS DISTINCT FROM 'authenticated' THEN false
-        ELSE public.is_current_user_admin()
-    END
-);
+TO anon, authenticated
+USING (public_moderation_status = 'approved');
+
+DROP POLICY IF EXISTS "Authors can view their pending posts" ON public.bokantaj_posts;
+CREATE POLICY "Authors can view their pending posts"
+ON public.bokantaj_posts FOR SELECT
+TO authenticated
+USING (auth.uid() = author_id AND public_moderation_status IS DISTINCT FROM 'rejected');
+
+DROP POLICY IF EXISTS "Admins can view posts under review" ON public.bokantaj_posts;
+CREATE POLICY "Admins can view posts under review"
+ON public.bokantaj_posts FOR SELECT
+TO authenticated
+USING (public.is_current_user_admin());
 
 DROP POLICY IF EXISTS "Comments are viewable by everyone" ON public.bokantaj_comments;
 CREATE POLICY "Comments are viewable by everyone"
 ON public.bokantaj_comments FOR SELECT
-USING (
-    CASE
-        WHEN public_moderation_status = 'approved' THEN true
-        WHEN auth.uid() IS NOT NULL AND auth.uid() = author_id AND public_moderation_status IS DISTINCT FROM 'rejected' THEN true
-        WHEN coalesce(auth.role(), '') IS DISTINCT FROM 'authenticated' THEN false
-        ELSE public.is_current_user_admin()
-    END
-);
+TO anon, authenticated
+USING (public_moderation_status = 'approved');
+
+DROP POLICY IF EXISTS "Authors can view their pending comments" ON public.bokantaj_comments;
+CREATE POLICY "Authors can view their pending comments"
+ON public.bokantaj_comments FOR SELECT
+TO authenticated
+USING (auth.uid() = author_id AND public_moderation_status IS DISTINCT FROM 'rejected');
+
+DROP POLICY IF EXISTS "Admins can view comments under review" ON public.bokantaj_comments;
+CREATE POLICY "Admins can view comments under review"
+ON public.bokantaj_comments FOR SELECT
+TO authenticated
+USING (public.is_current_user_admin());
 
 DROP POLICY IF EXISTS "Requests are viewable by everyone" ON public.requests;
+DROP POLICY IF EXISTS "Requests visibility policy" ON public.requests;
 CREATE POLICY "Requests are viewable by everyone"
 ON public.requests FOR SELECT
+TO anon, authenticated
 USING (
-    CASE
-        WHEN auth.uid() IS NOT NULL AND auth.uid() = requester_id AND public_moderation_status IS DISTINCT FROM 'rejected' THEN true
-        WHEN public_moderation_status IS DISTINCT FROM 'approved' THEN
-            CASE
-                WHEN coalesce(auth.role(), '') IS DISTINCT FROM 'authenticated' THEN false
-                ELSE public.is_current_user_admin()
-            END
-        ELSE true
-    END
+    public_moderation_status = 'approved'
+    AND (visibility = 'PUBLIC' OR requester_id = auth.uid() OR target_user_id = auth.uid())
 );
+
+DROP POLICY IF EXISTS "Authors can view their pending requests" ON public.requests;
+CREATE POLICY "Authors can view their pending requests"
+ON public.requests FOR SELECT
+TO authenticated
+USING (auth.uid() = requester_id AND public_moderation_status IS DISTINCT FROM 'rejected');
+
+DROP POLICY IF EXISTS "Admins can view requests under review" ON public.requests;
+CREATE POLICY "Admins can view requests under review"
+ON public.requests FOR SELECT
+TO authenticated
+USING (public.is_current_user_admin());
 
 COMMIT;

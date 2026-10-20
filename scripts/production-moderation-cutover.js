@@ -17,6 +17,28 @@ const FORWARD = [
     '73_moderation_role_permission.sql'
 ];
 
+// Independent of migrations 70 and 71. Applied first so a failed later
+// step cannot accept a new public-bucket upload.
+const UPLOAD_LOCK = `
+CREATE OR REPLACE FUNCTION public.lyann_refuse_new_public_media()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.bucket_id IN ('bokantaj-media', 'avatars', 'portfolio_images', 'request-photos', 'profile-images') THEN
+        RAISE EXCEPTION 'Les nouveaux fichiers passent par un espace privé avant validation.'
+            USING ERRCODE = '42501';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_refuse_new_public_media ON storage.objects;
+CREATE TRIGGER trg_refuse_new_public_media
+    BEFORE INSERT ON storage.objects
+    FOR EACH ROW EXECUTE FUNCTION public.lyann_refuse_new_public_media();
+`;
+
 function refuse(message) {
     console.error('REFUS : ' + message);
     process.exit(1);
@@ -26,7 +48,15 @@ function sqlText(name) {
     let sql = fs.readFileSync(path.join(ROOT, name), 'utf8').replace(/\r\n/g, '\n');
     const fence = sql.indexOf('\n```');
     if (fence !== -1) sql = sql.slice(0, fence);
-    return sql.trim();
+    sql = sql.trim();
+    if (name === '70_public_content_moderation.sql') {
+        if (!/COMMIT;\s*$/.test(sql)) refuse('migration 70 sans transaction finale');
+        sql = sql.replace(
+            /COMMIT;\s*$/,
+            "UPDATE public.moderation_control SET intake_open = false WHERE singleton = 1;\nCOMMIT;"
+        );
+    }
+    return sql;
 }
 
 async function management(token, query) {
@@ -76,14 +106,35 @@ function verifyBackup(file) {
 
 async function main() {
     if (process.env.LYANN_CUTOVER_DRY_RUN === '1') {
-        for (const name of FORWARD) sqlText(name);
-        sqlText('70_public_content_moderation_rollback.sql');
+        if (!UPLOAD_LOCK.includes('42501') || UPLOAD_LOCK.includes('70b_media_private_cutover')) refuse('verrou d’upload incomplet');
+        for (const name of FORWARD) {
+            const sql = sqlText(name);
+            if (name === '70_public_content_moderation.sql' && !sql.includes('intake_open = false')) {
+                refuse('la migration 70 rouvrirait les publications');
+            }
+        }
+        const rollback = sqlText('70_public_content_moderation_rollback.sql');
+        if (!rollback.includes('intake_open = false') || rollback.includes('USING (true)')) {
+            refuse('le retour arrière rendrait visibles les contenus non approuvés');
+        }
         const backupError = process.env.LYANN_PRODUCTION_BACKUP ? verifyBackup(process.env.LYANN_PRODUCTION_BACKUP) : 'aucune sauvegarde fournie';
         console.log(JSON.stringify({
             dryRun: true,
             productionWrites: false,
+            intakeStaysClosed: true,
             backup: backupError || 'lisible',
-            order: ['backup-restored', 'secrets', 'migrations-70-73', 'lock-public-uploads', 'media-gateway', 'worker-cron', 'web', 'historical-media', 'publish-tests', 'watch-and-rollback']
+            order: [
+                'backup-verified',
+                'lock-public-uploads',
+                'migrations-70-73-intake-closed',
+                'install-three-secrets',
+                'media-gateway',
+                'worker-cron',
+                'compatible-web',
+                'historical-media',
+                'authorized-moderation-test',
+                'watch-and-rollback'
+            ]
         }));
         return;
     }
@@ -103,8 +154,9 @@ async function main() {
     for (const name of ['OPENAI_API_KEY', 'MODERATION_WORKER_SECRET', 'CRON_SECRET']) {
         if (!process.env[name]) refuse(name + ' absent. Le placer seulement sur le serveur.');
     }
+    await management(access, UPLOAD_LOCK);
     for (const name of FORWARD) await management(access, sqlText(name));
-    console.log('Migrations appliquées sur Production. Déployer ensuite la passerelle et le worker, puis le site, avant le build 10.');
+    console.log('Verrou et migrations appliqués. Les publications restent fermées. Installer les trois secrets, déployer la passerelle, le worker et le cron, puis prouver le worker avant toute réouverture.');
 }
 
 main().catch((error) => refuse(String(error && error.message || error).slice(0, 240)));
