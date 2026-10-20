@@ -2,7 +2,7 @@
 # One controlled Production cutover. Refuses without both gates.
 # Does not change Stripe and does not upload the iOS build.
 #
-# Forward, after a verified backup file of at least 1 MB:
+# Forward, after a custom-format backup that pg_restore --list can read:
 #   LYANN_AUTHORIZE_PRODUCTION_DEPLOY=1 \
 #   LYANN_PRODUCTION_CONFIRM=lyann-production-moderation \
 #   LYANN_PRODUCTION_BACKUP=/path/backup.sql \

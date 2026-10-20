@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const PRODUCTION_REF = 'gzispjfoywklpqatjyop';
 const ROOT = path.join(__dirname, '..');
@@ -38,14 +39,44 @@ async function management(token, query) {
     if (!response.ok) refuse('SQL HTTP ' + response.status + ' ' + text.replace(/[A-Za-z0-9_\-]{24,}/g, '[redacted]').slice(0, 240));
 }
 
+function verifyBackup(file) {
+    if (!file || !fs.existsSync(file)) return 'fichier absent';
+    const stat = fs.statSync(file);
+    if (stat.size < 1024 * 1024) return 'fichier trop petit pour une base';
+    const fd = fs.openSync(file, 'r');
+    const head = Buffer.alloc(4096);
+    fs.readSync(fd, head, 0, head.length, 0);
+    fs.closeSync(fd);
+    if (head.slice(0, 5).toString() !== 'PGDMP') {
+        return 'format custom PostgreSQL requis, un fichier texte ne prouve pas une restauration';
+    }
+    try {
+        execFileSync('pg_restore', ['--list', file], { stdio: 'pipe' });
+        return null;
+    } catch (err) {
+        return 'pg_restore ne peut pas lire cette sauvegarde';
+    }
+}
+
 async function main() {
+    if (process.env.LYANN_CUTOVER_DRY_RUN === '1') {
+        for (const name of FORWARD) sqlText(name);
+        sqlText('70_public_content_moderation_rollback.sql');
+        const backupError = process.env.LYANN_PRODUCTION_BACKUP ? verifyBackup(process.env.LYANN_PRODUCTION_BACKUP) : 'aucune sauvegarde fournie';
+        console.log(JSON.stringify({
+            dryRun: true,
+            productionWrites: false,
+            backup: backupError || 'lisible',
+            order: ['backup', 'secrets', 'migrations-70-73', 'gateway-worker', 'web', 'historical-media', 'publish-tests', 'admin-queue', 'stability']
+        }));
+        return;
+    }
     if (process.env.LYANN_AUTHORIZE_PRODUCTION_DEPLOY !== '1' || process.env.LYANN_PRODUCTION_CONFIRM !== 'lyann-production-moderation') {
         refuse('déploiement Production non autorisé. Rien n’a été modifié.');
     }
     const backup = process.env.LYANN_PRODUCTION_BACKUP || '';
-    if (!backup || !fs.existsSync(backup) || fs.statSync(backup).size < 1024 * 1024) {
-        refuse('sauvegarde vérifiée absente. Indiquer LYANN_PRODUCTION_BACKUP vers un fichier d’au moins 1 Mo.');
-    }
+    const backupError = verifyBackup(backup);
+    if (backupError) refuse('sauvegarde non restaurable. ' + backupError);
     const access = process.env.SUPABASE_ACCESS_TOKEN || '';
     if (!access) refuse('SUPABASE_ACCESS_TOKEN absent.');
     if (process.env.LYANN_PRODUCTION_ROLLBACK === '1') {
