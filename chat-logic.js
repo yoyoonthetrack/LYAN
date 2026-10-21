@@ -6401,6 +6401,16 @@ async function fileFromNativeMedia(item, kind) {
     return new File([blob], 'photo.' + ext, { type: mime });
 }
 
+async function photosAlreadyGranted(camera) {
+    if (!camera || typeof camera.checkPermissions !== 'function') return false;
+    try {
+        const current = await camera.checkPermissions();
+        return Boolean(current && current.photos === 'granted');
+    } catch (_) {
+        return false;
+    }
+}
+
 async function pickChatVideo() {
     const camera = typeof window.isNativePlatform === 'function'
         && window.isNativePlatform()
@@ -6410,7 +6420,10 @@ async function pickChatVideo() {
         return;
     }
     try {
-        if (typeof camera.requestPermissions === 'function') {
+        // Android 13+ photo picker does not need a storage prompt. Requesting it
+        // while CAMERA is declared never returns, so the gallery never opens.
+        const granted = await photosAlreadyGranted(camera);
+        if (!granted && typeof camera.requestPermissions === 'function') {
             await camera.requestPermissions({ permissions: ['photos'] });
         }
         const picked = await camera.chooseFromGallery({

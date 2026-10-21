@@ -77,7 +77,10 @@ function applyStaging() {
       'APNS_KEY_ID',
       'APNS_TEAM_ID',
       'APNS_BUNDLE_ID',
-      'APNS_PRIVATE_KEY'
+      'APNS_PRIVATE_KEY',
+      'FCM_PROJECT_ID',
+      'FCM_CLIENT_EMAIL',
+      'FCM_PRIVATE_KEY'
     ];
     for (const key of pushKeys) {
       if (push[key]) process.env[key] = push[key];

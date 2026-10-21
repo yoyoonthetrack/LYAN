@@ -49,6 +49,15 @@ test('stored chat paths use a random name and the real kind', () => {
     assert.equal(helpers.safeAttachmentExt('html', 'document'), 'pdf');
 });
 
+test('an already granted photo permission does not block the gallery', () => {
+    const helper = chat.slice(chat.indexOf('async function photosAlreadyGranted'), chat.indexOf('async function pickChatVideo'));
+    const fn = chat.slice(chat.indexOf('async function pickChatVideo'), chat.indexOf('function renderAttachPreview'));
+    assert.match(helper, /photos === 'granted'/);
+    const skipAt = fn.indexOf('photosAlreadyGranted');
+    const requestAt = fn.indexOf('requestPermissions');
+    assert.ok(skipAt > 0 && requestAt > skipAt);
+});
+
 test('the plus button opens a sheet above the conversation and stages a preview', () => {
     assert.match(chat, /window\.openChatAttachSheet/);
     assert.match(chat, /stageChatAttachment/);

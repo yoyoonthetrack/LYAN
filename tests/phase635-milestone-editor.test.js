@@ -94,6 +94,73 @@ test('6.35 indivisible cents stay exact on validation after remainder', () => {
     assert.equal(sum, 10000);
 });
 
+test('6.35 invalid totals, zero jalons and broken sums stop before a server call', () => {
+    const named = editor.createState({
+        defaults: [
+            { title: 'A', percent: 50, amount: 20 },
+            { title: 'B', percent: 50, amount: 20 }
+        ]
+    });
+    editor.applyTotal(named, 40);
+    assert.equal(editor.validate(named, 0).ok, false);
+    assert.match(editor.validate(named, 0).message, /montant total/);
+    assert.equal(editor.validate(named, -5).ok, false);
+    named.rows[1].title = '';
+    assert.match(editor.validate(named, 40).message, /nom/);
+    named.rows[1].title = 'B';
+    named.rows[1].amountCents = 0;
+    assert.match(editor.validate(named, 40).message, /montant supérieur à 0/);
+    named.rows[1].amountCents = 1000;
+    const mismatch = editor.validate(named, 40);
+    assert.equal(mismatch.ok, false);
+    assert.match(mismatch.message, /doit égaler le total/);
+    assert.equal(editor.parseDecimal('abc').ok, false);
+    assert.equal(editor.parseDecimal('-2').value, -2);
+    const negative = editor.createState({ defaults: [{ title: 'A', percent: -10, amount: -1 }] });
+    assert.match(editor.validate(negative, 10).message, /négatifs|montant supérieur à 0/);
+});
+
+test('6.35 rounding keeps the cent remainder explicit', () => {
+    const state = editor.createState({
+        defaults: [
+            { title: 'A', percent: 33.33, amount: 0 },
+            { title: 'B', percent: 33.33, amount: 0 },
+            { title: 'C', percent: 33.34, amount: 0 }
+        ]
+    });
+    editor.applyTotal(state, 10);
+    const before = editor.summary(state, 10);
+    assert.equal(before.balanced, false);
+    editor.assignRemainder(state, state.rows[2].id, 10);
+    const checked = editor.validate(state, 10);
+    assert.equal(checked.ok, true);
+    const cents = checked.milestones.reduce((sum, row) => sum + editor.roundCents(row.amount), 0);
+    assert.equal(cents, 1000);
+});
+
+test('6.35 a quote revision refuses a zero amount and a missing server confirmation', () => {
+    const revision = require('../quote-revision.js');
+    const zero = revision.validateMilestones([{ title: 'Jalon', amount: 0 }]);
+    assert.equal(zero.ok, false);
+    assert.equal(zero.code, 'amount');
+    const negative = revision.validateMilestones([{ title: 'Jalon', amount: -1 }]);
+    assert.equal(negative.ok, false);
+    const chat = fs.readFileSync(path.join(__dirname, '..', 'chat-logic.js'), 'utf8');
+    const creator = chat.slice(chat.indexOf('async function createProductionQuoteForContact'), chat.indexOf('function invalidateActiveQuoteContext'));
+    const closeAt = chat.indexOf('closeAllOverlays();', chat.indexOf('SUBMIT MILESTONE DEVIS'));
+    const guardAt = chat.indexOf('created.success !== true', chat.indexOf('SUBMIT MILESTONE DEVIS') === -1 ? 0 : chat.indexOf('async function createProductionQuoteForContact'));
+    assert.ok(guardAt > 0 && guardAt < closeAt);
+    assert.match(creator, /Le devis n’a pas été enregistré/);
+    assert.doesNotMatch(creator, /closeAllOverlays/);
+    function confirmed(created) {
+        return Boolean(created && created.success === true && created.quote_id);
+    }
+    assert.equal(confirmed(null), false);
+    assert.equal(confirmed({ success: false, quote_id: 'x' }), false);
+    assert.equal(confirmed({ success: true }), false);
+    assert.equal(confirmed({ success: true, quote_id: 'x' }), true);
+});
+
 test('6.35 a named jalon at zero euros is refused before any server call', () => {
     const state = editor.createState({
         defaults: [

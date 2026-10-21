@@ -298,7 +298,8 @@ async function setupNativePushNotifications() {
     const nativePlatform = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform();
     // Capacitor's Android plugin calls FirebaseMessaging.getInstance() on register().
     // Without google-services.json that throws on the plugin thread and kills the process.
-    if (nativePlatform === 'android' && window.LYANN_ANDROID_FCM !== true) {
+    const stagingAndroid = String(window.LYANN_SUPABASE_LOCK || '') === 'tdktfbtqceldlaeqjtow';
+    if (nativePlatform === 'android' && window.LYANN_ANDROID_FCM !== true && !stagingAndroid) {
         window.LYANN_ANDROID_PUSH_DEFERRED = true;
         return;
     }
@@ -385,7 +386,7 @@ async function registerPushDevice(deviceToken, attempt) {
                 installation_id: installationId,
                 token: deviceToken,
                 apns_environment: pushEnvironment(),
-                platform: 'ios'
+                platform: (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform()) === 'android' ? 'android' : 'ios'
             })
         });
     } catch (_) {
