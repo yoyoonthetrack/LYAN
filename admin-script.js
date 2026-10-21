@@ -10,10 +10,7 @@ window.adminDataLoaded = false;
 window.fetchWithAdminAuth = async function(url, options = {}) {
     const headers = Object.assign({}, options.headers || {});
     let token = '';
-    const e2eToken = window.__LYANN_ADMIN_E2E__ && window.__LYANN_ADMIN_E2E__.admin && window.currentAdminUser && window.currentAdminUser.token;
-    if (e2eToken) {
-        token = window.currentAdminUser.token;
-    } else if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getSession === 'function') {
+    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getSession === 'function') {
         const { data: sData } = await window.LYANN_API_CLIENT.getSession();
         token = sData?.session?.access_token || '';
     }
@@ -287,26 +284,6 @@ window.runAdminAuthCheck = async function(reason = 'BOOT') {
                 if (retryContainer) retryContainer.style.display = 'none';
             }
         }
-    }
-
-    if (window.__LYANN_ADMIN_E2E__) {
-        const e2e = window.__LYANN_ADMIN_E2E__;
-        if (e2e.forbidden) {
-            setViewState('FORBIDDEN', e2e.forbiddenMessage || "🚫 Accès refusé : Ce compte n'est pas autorisé à accéder au Back-Office LYANN.");
-            authCheckInProgress = false;
-            return;
-        }
-        window.currentAdminUser = e2e.admin || {
-            userId: 'e2e-admin',
-            username: 'yoann@lyann.app',
-            role: 'OWNER',
-            isOwner: true,
-            token: 'e2e-admin-token'
-        };
-        updateAdminHeaderProfile(window.currentAdminUser);
-        setViewState('AUTHORIZED');
-        authCheckInProgress = false;
-        return;
     }
 
     try {
@@ -1125,8 +1102,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        if (!taxonomyData.length && window.LyanAI && window.LyanAI.baselineTaxonomy) {
-            taxonomyData = window.LyanAI.baselineTaxonomy;
+        if (!taxonomyData.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="admin-empty-cell">Taxonomie introuvable en base. Rien n’est inventé ici.</td></tr>';
+            return;
         }
 
         if (tbody && taxonomyData.length > 0) {
@@ -2106,10 +2084,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const data = await res.json();
                         globalKillSwitchActive = data.suspended;
                     } else {
-                        globalKillSwitchActive = nextState;
+                        alert('Interrupteur d’urgence non modifié. L’état réel des agents n’a pas changé.');
+                        return;
                     }
                 } catch(e) {
-                    globalKillSwitchActive = nextState;
+                    alert('Interrupteur d’urgence non modifié. L’état réel des agents n’a pas changé.');
+                    return;
                 }
 
                 if (globalKillSwitchActive) {
@@ -2164,12 +2144,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     })
                 });
                 if (res.ok) {
-                    alert(`🤖 Agent LYANN "${name}" déployé avec succès !`);
+                    const body = await res.json().catch(() => ({}));
+                    alert(body.message || `Agent « ${name} » enregistré.`);
                 } else {
-                    alert(`🤖 Agent LYANN "${name}" configuré avec succès.`);
+                    const body = await res.json().catch(() => ({}));
+                    alert(body.error || 'Création d’agent refusée ou indisponible.');
+                    return;
                 }
             } catch (e) {
-                alert(`🤖 Agent LYANN "${name}" configuré avec succès.`);
+                alert(e.message || 'Création d’agent impossible.');
+                return;
             }
 
             if (createAgentModal) createAgentModal.classList.remove('active');

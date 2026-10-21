@@ -42,25 +42,16 @@ async function showAdminShell(page) {
       token: 'e2e-admin-token',
       permissions: ['*']
     };
+    if (window.LYANN_API_CLIENT) {
+      window.LYANN_API_CLIENT.getSession = async () => ({
+        data: { session: { access_token: 'e2e-admin-token', user: { email: 'yoann@lyann.app' } } },
+        error: null
+      });
+    }
   });
 }
 
 async function installAdminMocks(page, overrides = {}) {
-  await page.addInitScript((opts) => {
-    window.__LYANN_ADMIN_E2E__ = opts.forbidden
-      ? { forbidden: true }
-      : {
-          admin: {
-            userId: 'e2e-admin',
-            username: 'yoann@lyann.app',
-            role: 'OWNER',
-            isOwner: true,
-            token: 'e2e-admin-token',
-            permissions: ['*']
-          }
-        };
-  }, { forbidden: Boolean(overrides.noPermission) });
-
   await page.route('**/v1/admin/**', async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -175,13 +166,16 @@ test.describe('LYANN back-office', () => {
   test('utilisateur sans permission : accès refusé', async ({ page }) => {
     await installAdminMocks(page, { noPermission: true });
     await page.goto('/admin.html');
-    await page.evaluate(() => {
-      const loading = document.getElementById('adminAuthLoadingView');
-      if (loading) loading.remove();
-      const login = document.getElementById('adminLoginView');
-      if (login) login.style.display = 'flex';
+    await page.waitForFunction(() => typeof window.runAdminAuthCheck === 'function' && window.LYANN_API_CLIENT);
+    await page.evaluate(async () => {
+      window.LYANN_API_CLIENT.getSession = async () => ({
+        data: { session: { access_token: 'e2e-admin-token', user: { email: 'blocked@lyann.app' } } },
+        error: null
+      });
+      window.LYANN_API_CLIENT.signOut = async () => {};
+      await window.runAdminAuthCheck('TEST_FORBIDDEN');
     });
-    await expect(page.locator('#adminLoginView')).toBeVisible();
+    await expect(page.locator('#loginAlertMessage')).toContainText(/refusé|Accès|Erreur/i);
   });
 
   test('session expirée sur une action éditoriale', async ({ page }) => {
