@@ -87,7 +87,7 @@ test.describe('Account honesty and previously dead actions', () => {
     expect(jsErrors).toEqual([]);
   });
 
-  test('Gérer mon annonce opens account activity instead of a missing profile modal', async ({ page }) => {
+  test('Modifier on my announcement opens the real editor instead of a missing profile modal', async ({ page }) => {
     const jsErrors = [];
     page.on('pageerror', (err) => jsErrors.push(err.message));
     await page.goto('/feed.html');
@@ -95,6 +95,23 @@ test.describe('Account honesty and previously dead actions', () => {
     await installAuthHarness(page);
 
     await page.evaluate(async ({ requestId, userId }) => {
+      window.__lyannEditCalls = [];
+      const originalWizard = window.openLyannWizard;
+      window.openLyannWizard = function (...args) {
+        window.__lyannEditCalls.push(args[0] || {});
+        return typeof originalWizard === 'function' ? originalWizard.apply(this, args) : true;
+      };
+      if (window.LYANN_API_CLIENT) {
+        window.LYANN_API_CLIENT.getRequest = async (id) => ({
+          id,
+          title: 'Mon Lyann de test',
+          description: 'Tondre la pelouse',
+          date_mode: 'FLEXIBLE',
+          price_mode: 'QUOTE',
+          location: 'Pointe-à-Pitre',
+          requester_id: userId
+        });
+      }
       await window.openLyannDetailModal(requestId, {
         id: requestId,
         title: 'Mon Lyann de test',
@@ -107,15 +124,14 @@ test.describe('Account honesty and previously dead actions', () => {
       });
     }, { requestId: REQUEST_ID, userId: USER_ID });
 
-    await expect(page.locator('#btnManageMyLyann')).toBeVisible();
-    await expect(page.locator('#btnManageMyLyann')).toContainText('Gérer mon annonce');
+    await expect(page.locator('#btnEditMyLyann')).toBeVisible();
+    await expect(page.locator('#btnEditMyLyann')).toContainText('Modifier');
     await expect(page.locator('#btnDeleteMyAnnouncement')).toBeVisible();
-    await page.locator('#btnManageMyLyann').click();
+    await expect(page.locator('#btnManageMyLyann')).toHaveCount(0);
+    await page.locator('#btnEditMyLyann').click();
 
     await expect.poll(() => page.evaluate(() => window.LYANN_SURFACES.isOpen('lyann-detail'))).toBe(false);
-    await expect.poll(() => page.evaluate(() => window.LYANN_SURFACES.isOpen('account'))).toBe(true);
-    await expect(page.locator('#userAccountModal')).toBeVisible();
-    await expect(page.locator('#userAccountModal')).toContainText('Mon activité');
+    await expect.poll(() => page.evaluate(() => (window.__lyannEditCalls || []).some((arg) => arg && arg.editingRequestId === '11111111-1111-4111-a111-111111111111'))).toBe(true);
     expect(jsErrors).toEqual([]);
   });
 
