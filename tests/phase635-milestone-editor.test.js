@@ -94,9 +94,23 @@ test('6.35 indivisible cents stay exact on validation after remainder', () => {
     assert.equal(sum, 10000);
 });
 
+test('6.35 a named jalon at zero euros is refused before any server call', () => {
+    const state = editor.createState({
+        defaults: [
+            { title: 'A', percent: 100, amount: 40 },
+            { title: 'B', percent: 0, amount: 0 }
+        ]
+    });
+    editor.applyTotal(state, 40);
+    const checked = editor.validate(state, 40);
+    assert.equal(checked.ok, false);
+    assert.match(checked.message, /montant supérieur à 0/);
+});
+
 test('6.35 source no longer rebalances sibling jalons on input', () => {
     const chat = fs.readFileSync(path.join(__dirname, '..', 'chat-logic.js'), 'utf8');
     assert.match(chat, /LYANN_MILESTONE_EDITOR/);
+    assert.match(chat, /created\.success !== true \|\| !created\.quote_id/);
     assert.doesNotMatch(chat, /function rebalanceMilestones/);
     assert.match(chat, /Affecter le reste à ce jalon/);
 });

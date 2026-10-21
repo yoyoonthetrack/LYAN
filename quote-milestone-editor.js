@@ -166,6 +166,9 @@
             if (row.amountCents < 0 || row.percent < 0) {
                 return { ok: false, message: 'Les montants et pourcentages ne peuvent pas être négatifs.' };
             }
+            if (!(row.amountCents > 0)) {
+                return { ok: false, message: 'Chaque jalon doit avoir un montant supérieur à 0 €.' };
+            }
         }
         const allocated = state.rows.reduce((sum, row) => sum + row.amountCents, 0);
         if (allocated !== totalCents) {

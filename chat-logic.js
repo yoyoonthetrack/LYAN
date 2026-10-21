@@ -2311,6 +2311,9 @@ async function createProductionQuoteForContact(contactId, description, amount, m
         percentage: 100
     }];
     const created = await window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, description, null, milestonePayload);
+    if (!created || created.success !== true || !created.quote_id) {
+        throw new Error('Le devis n’a pas été enregistré. Aucune confirmation du serveur.');
+    }
     invalidateActiveQuoteContext();
     await traceQuoteInThread('sent', parsedAmount);
     return created;
