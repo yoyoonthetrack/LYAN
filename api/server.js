@@ -108,7 +108,6 @@ const {
     validDeviceRegistration
 } = require('./apns');
 const { apnsConfig, sendApns } = require('./apns-send');
-const { fcmConfig, sendFcm } = require('./fcm');
 const { automaticPushEnabled, cronAuthorized, drainQueue, pushAudience } = require('./push-queue');
 const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-build');
 if (process.env.LYANN_DOTENV_PATH) {
@@ -516,7 +515,7 @@ async function handlePushDrain(req, res) {
             },
             tokensForUser: async (userId) => {
                 const { data, error } = await supabaseAdmin.from('device_push_tokens')
-                    .select('id, token, apns_environment, platform')
+                    .select('id, token, apns_environment')
                     .eq('user_id', userId)
                     .eq('active', true)
                     .limit(5);
@@ -524,20 +523,10 @@ async function handlePushDrain(req, res) {
                 return (data || []).map((device) => ({
                     id: device.id,
                     token: device.token,
-                    environment: device.apns_environment,
-                    platform: device.platform || 'ios'
+                    environment: device.apns_environment
                 }));
             },
-            send: async ({ deviceToken, environment, platform, payload }) => {
-                if (platform === 'android') {
-                    try {
-                        const fcm = fcmConfig(process.env);
-                        if (!fcm) return { ok: false, deactivate: false, code: 'FCM_NOT_CONFIGURED', status: 0 };
-                        return await sendFcm({ config: fcm, deviceToken, payload, fetchImpl: fetch });
-                    } catch (_) {
-                        return { ok: false, deactivate: false, code: 'FCM_UNAVAILABLE', status: 0 };
-                    }
-                }
+            send: async ({ deviceToken, environment, payload }) => {
                 const result = await sendApns({ config, deviceToken, environment, payload });
                 if (result && result.status === 400) result.deactivate = true;
                 return result;
@@ -579,8 +568,10 @@ app.post('/v1/notifications/push-test', async (req, res) => {
         callerId: user.id
     });
     if (!allowed.ok) return res.status(403).json({ code: allowed.code, error: 'Notification de test désactivée.' });
+    const config = apnsConfig(process.env);
+    if (!config) return res.status(503).json({ code: 'APNS_NOT_CONFIGURED', error: 'APNs n’est pas configuré.' });
     const installationId = String(req.body && req.body.installation_id || '');
-    let query = supabaseAdmin.from('device_push_tokens').select('id, token, apns_environment, installation_id, platform').eq('user_id', user.id).eq('active', true);
+    let query = supabaseAdmin.from('device_push_tokens').select('id, token, apns_environment, installation_id').eq('user_id', user.id).eq('active', true);
     if (installationId) query = query.eq('installation_id', installationId);
     const { data: devices, error } = await query.limit(1);
     if (error) return res.status(500).json({ error: 'Appareil illisible.' });
@@ -590,27 +581,13 @@ app.post('/v1/notifications/push-test', async (req, res) => {
     if (Date.now() - (recentPushTests.get(cooldownKey) || 0) < 60000) {
         return res.status(429).json({ code: 'PUSH_TEST_COOLDOWN', error: 'Un essai vient déjà d’être envoyé.' });
     }
-    const androidDevice = (device.platform || 'ios') === 'android';
-    const deliveryConfig = androidDevice ? fcmConfig(process.env) : apnsConfig(process.env);
-    if (!deliveryConfig) {
-        const code = androidDevice ? 'FCM_NOT_CONFIGURED' : 'APNS_NOT_CONFIGURED';
-        const error = androidDevice ? 'FCM n’est pas configuré.' : 'APNs n’est pas configuré.';
-        return res.status(503).json({ code, error });
-    }
     recentPushTests.set(cooldownKey, Date.now());
-    const result = androidDevice
-        ? await sendFcm({
-            config: deliveryConfig,
-            deviceToken: device.token,
-            payload: buildTestPayload(),
-            fetchImpl: fetch
-        })
-        : await sendApns({
-            config: deliveryConfig,
-            deviceToken: device.token,
-            environment: device.apns_environment,
-            payload: buildTestPayload()
-        });
+    const result = await sendApns({
+        config,
+        deviceToken: device.token,
+        environment: device.apns_environment,
+        payload: buildTestPayload()
+    });
     if (result.deactivate) {
         await supabaseAdmin.from('device_push_tokens').update({ active: false, updated_at: new Date().toISOString() }).eq('id', device.id);
     }

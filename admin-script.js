@@ -10,7 +10,10 @@ window.adminDataLoaded = false;
 window.fetchWithAdminAuth = async function(url, options = {}) {
     const headers = Object.assign({}, options.headers || {});
     let token = '';
-    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getSession === 'function') {
+    const e2eToken = window.__LYANN_ADMIN_E2E__ && window.__LYANN_ADMIN_E2E__.admin && window.currentAdminUser && window.currentAdminUser.token;
+    if (e2eToken) {
+        token = window.currentAdminUser.token;
+    } else if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getSession === 'function') {
         const { data: sData } = await window.LYANN_API_CLIENT.getSession();
         token = sData?.session?.access_token || '';
     }
@@ -22,6 +25,113 @@ window.fetchWithAdminAuth = async function(url, options = {}) {
         if (window.currentAdminUser) window.currentAdminUser.token = token;
     }
     return fetch(url, { ...options, headers });
+};
+
+document.addEventListener('click', (event) => {
+    if (event.target && event.target.closest && event.target.closest('#btnRunModerationOnce')) {
+        window.fetchWithAdminAuth('/v1/admin/ops/moderation/run-once', { method: 'POST' }).catch(() => {});
+    }
+    const collectBtn = event.target && event.target.closest && event.target.closest('#editorialCollectBtn');
+    if (!collectBtn || collectBtn.disabled) return;
+    if (typeof window.runEditorialCollect === 'function') {
+        window.runEditorialCollect().catch((err) => {
+            const notice = document.getElementById('editorialNotice');
+            if (notice) notice.textContent = err.message || 'Erreur serveur.';
+        });
+    }
+});
+
+window.runEditorialCollect = async function() {
+    const button = document.getElementById('editorialCollectBtn');
+    const notice = document.getElementById('editorialNotice');
+    if (button) button.disabled = true;
+    try {
+        const res = await window.fetchWithAdminAuth('/v1/admin/editorial/collect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
+        });
+        const report = await res.json().catch(() => ({}));
+        if (!res.ok || report.success === false) {
+            const code = report && report.code;
+            const message = (res.status === 401 || code === 'ADMIN_TOKEN_INVALID' || code === 'ADMIN_AUTH_REQUIRED')
+                ? 'Session expirée.'
+                : (report.error || 'Erreur serveur.');
+            if (notice) notice.textContent = message;
+            throw new Error(message);
+        }
+        const created = (report.created || []).length;
+        if (notice) {
+            notice.textContent = created
+                ? `${created} proposition(s) générée(s).`
+                : (report.error || 'Aucun contenu fiable disponible pour cette passe.');
+        }
+        if (typeof window.openEditorialDesk === 'function') {
+            await window.openEditorialDesk();
+        } else {
+            const hist = document.getElementById('editorialHistory');
+            const botsRes = await window.fetchWithAdminAuth('/v1/admin/editorial/bots');
+            const bots = await botsRes.json().catch(() => ({}));
+            if (hist && bots.history) {
+                hist.innerHTML = '<p>Historique des collectes</p>' + (bots.history || []).map((row) =>
+                    `<p>${row.event_type || ''} — ${row.description || ''}</p>`
+                ).join('');
+            }
+        }
+        return report;
+    } finally {
+        if (button) button.disabled = false;
+    }
+};
+
+window.hydrateAdminSection = async function(sectionId) {
+    const putRows = (tbodyId, html) => {
+        const tbody = document.getElementById(tbodyId);
+        if (tbody) tbody.innerHTML = html;
+    };
+    if (sectionId === 'sec-maison') {
+        const res = await window.fetchWithAdminAuth('/v1/admin/maison/profiles');
+        const data = await res.json().catch(() => ({}));
+        const list = document.getElementById('maisonRosterList');
+        if (list) {
+            list.innerHTML = (data.profiles || []).map((p) =>
+                `<button type="button" class="maison-profile-btn" data-maison-id="${p.id}"><strong>${p.first_name || ''} ${p.last_name || ''}</strong></button>`
+            ).join('');
+        }
+        return data;
+    }
+    if (sectionId === 'sec-users') {
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops?resource=users');
+        const data = await res.json().catch(() => ({}));
+        putRows('usersAdminTableBody', (data.rows || []).map((row) => `<tr><td>${row.first_name || ''} ${row.last_name || ''}</td><td>${row.email || ''}</td></tr>`).join(''));
+        return data;
+    }
+    if (sectionId === 'sec-feature-flags') {
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops?resource=feature-flags');
+        const data = await res.json().catch(() => ({}));
+        putRows('featureFlagsTableBody', (data.rows || []).map((row) => `<tr><td>${row.key || row.name || ''}</td></tr>`).join(''));
+        return data;
+    }
+    if (sectionId === 'sec-content') {
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops/moderation');
+        const data = await res.json().catch(() => ({}));
+        putRows('adminModerationQueueBody', (data.posts || []).map((row) => `<tr><td>${row.excerpt || row.id}</td></tr>`).join(''));
+        return data;
+    }
+    return null;
+};
+
+window.adminSaveSystemSetting = async function(key, value) {
+    const res = await window.fetchWithAdminAuth('/v1/admin/system/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Paramètre non enregistré.');
+    }
+    return data;
 };
 
 function updateAdminHeaderProfile(profile) {
@@ -206,7 +316,20 @@ window.runAdminAuthCheck = async function(reason = 'BOOT') {
             return;
         }
 
-        const { data: sData, error: sErr } = await window.LYANN_API_CLIENT.getSession();
+        let sData = null;
+        let sErr = null;
+        try {
+            const sessionResult = await Promise.race([
+                window.LYANN_API_CLIENT.getSession(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('auth-timeout')), 8000))
+            ]);
+            sData = sessionResult.data;
+            sErr = sessionResult.error;
+        } catch (waitErr) {
+            console.warn("[AUTH ENGINE] Session timeout or failure:", waitErr);
+            setViewState('ERROR', 'La vérification de session a pris trop de temps. Réessayez.');
+            return;
+        }
 
         if (sErr) {
             console.warn("[AUTH ENGINE] Erreur getSession:", sErr);
@@ -413,14 +536,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.checkAdminPermission = function(permissionCode) {
         if (!window.currentAdminUser) return false;
-        if (window.currentAdminUser.isOwner || window.currentAdminUser.permissions.includes('*')) {
+        const permissions = window.currentAdminUser.permissions || [];
+        if (window.currentAdminUser.isOwner || permissions.includes('*')) {
             return true;
         }
-        return window.currentAdminUser.permissions.includes(permissionCode);
+        return permissions.includes(permissionCode);
+    };
+
+    window.adminSaveSystemSetting = async function(key, value) {
+        const res = await window.fetchWithAdminAuth('/v1/admin/system/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [key]: value })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Paramètre non enregistré.');
+        }
+        return data;
     };
 
     // Run initial auth check
     window.runAdminAuthCheck('DOMContentLoaded');
+
+    try {
 
     function recordAdminAuditLog(action, moduleName, resourceType, resourceId, accessReason = null, oldVals = null, newVals = null) {
         const username = window.currentAdminUser?.username || 'Administrateur';
@@ -1374,7 +1513,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderAdminTransactions() {
         const body = document.getElementById('adminTransactionsTableBody');
-        if (!body) return;
+        if (!body || !window.LYANN_PAYMENTS || typeof window.LYANN_PAYMENTS.getTransactions !== 'function') return;
         
         const txs = window.LYANN_PAYMENTS.getTransactions();
         body.innerHTML = '';
@@ -1413,7 +1552,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderAdminWallets() {
         const body = document.getElementById('adminWalletsTableBody');
-        if (!body) return;
+        if (!body || !window.LYANN_PAYMENTS || typeof window.LYANN_PAYMENTS.getWallets !== 'function') return;
         
         const wallets = window.LYANN_PAYMENTS.getWallets();
         const members = {
@@ -1469,7 +1608,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function checkActiveDisputes() {
         const card = document.getElementById('adminDisputeArbitrationCard');
-        if (!card) return;
+        if (!card || !window.LYANN_PAYMENTS || typeof window.LYANN_PAYMENTS.getTransactions !== 'function') return;
 
         const txs = window.LYANN_PAYMENTS.getTransactions();
         const disputeTx = txs.find(t => t.status === 'litige' && t.dispute && t.dispute.status === 'open');
@@ -1555,10 +1694,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Enregistrement des configurations
     const configForm = document.getElementById('adminFinancesConfigForm');
     if (configForm) {
-        const rates = window.LYANN_PAYMENTS.getConfig();
-        document.getElementById('configCommissionRate').value = rates.commissionRate;
-        document.getElementById('configProtectionFee').value = rates.protectionFee;
-
+        if (window.LYANN_PAYMENTS && typeof window.LYANN_PAYMENTS.getConfig === 'function') {
+            const rates = window.LYANN_PAYMENTS.getConfig();
+            const commissionInput = document.getElementById('configCommissionRate');
+            const protectionInput = document.getElementById('configProtectionFee');
+            if (commissionInput) commissionInput.value = rates.commissionRate;
+            if (protectionInput) protectionInput.value = rates.protectionFee;
+        }
         configForm.addEventListener('submit', (e) => {
             e.preventDefault();
             alert('Les commissions et verrous financiers ne peuvent pas être modifiés depuis le back-office.');
@@ -3255,20 +3397,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             botsEl.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;
         }
     }
-    document.getElementById('editorialCollectBtn')?.addEventListener('click', async () => {
-        const button = document.getElementById('editorialCollectBtn');
-        if (button) button.disabled = true;
-        try {
-            const report = await maisonJson('/v1/admin/editorial/collect', { method: 'POST', body: '{}' });
+    document.getElementById('editorialCollectBtn')?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        window.runEditorialCollect().catch((err) => {
             const notice = document.getElementById('editorialNotice');
-            const created = (report.created || []).length;
-            if (notice) notice.textContent = created ? `${created} proposition(s) générée(s).` : (report.error || 'Aucun contenu fiable disponible pour cette passe.');
-            await loadEditorialDesk();
-        } catch (err) {
-            alert(err.message);
-        } finally {
-            if (button) button.disabled = false;
-        }
+            if (notice) notice.textContent = err.message || 'Erreur serveur.';
+        });
     });
     document.getElementById('editorialAgentFilter')?.addEventListener('change', () => loadEditorialDesk());
     document.getElementById('editorialStatusFilter')?.addEventListener('change', () => loadEditorialDesk());
@@ -3917,5 +4051,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.loadMikaControlRoom();
 
     console.log('Back-office LYANN initialisé.');
+    } catch (bootErr) {
+        console.error('[ADMIN BOOT]', bootErr);
+        window.__ADMIN_BOOT_ERROR = String(bootErr && bootErr.message || bootErr);
+    }
 });
 
