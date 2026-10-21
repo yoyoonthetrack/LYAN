@@ -7,67 +7,75 @@ const EDITORIAL_BOTS = [
         slug: 'lyann-actu',
         name: 'LYANN Actu',
         specialty: 'Actualités locales',
-        territories: ['guadeloupe', 'martinique'],
+        territories: ['guadeloupe', 'martinique', 'guyane', 'reunion'],
         maxPerDay: 3,
         healthReview: false,
-        bio: 'Compte éditorial automatisé de LYANN. Il reprend des faits publiés par la presse locale et les sites officiels de Guadeloupe et de Martinique, avec la source.',
+        bio: 'Compte éditorial automatisé de LYANN. Il reprend des faits publiés par la presse locale et les sites officiels de Guadeloupe, Martinique, Guyane et La Réunion, avec la source.',
         sources: [
             { name: 'RCI Guadeloupe', url: 'https://rci.fm/guadeloupe/fb/articles_rss_gp', kind: 'rss', territory: 'guadeloupe' },
             { name: 'RCI Martinique', url: 'https://rci.fm/martinique/fb/articles_rss_mq', kind: 'rss', territory: 'martinique' },
-            { name: 'Guadeloupe La 1ère', url: 'https://www.franceinfo.fr/guadeloupe.rss', kind: 'rss', territory: 'guadeloupe', note: 'Le flux répond, mais il ne contient aucun article.' },
-            { name: 'France-Antilles Guadeloupe', url: 'https://www.guadeloupe.franceantilles.fr/', kind: 'manual', territory: 'guadeloupe', note: 'Page publique sans flux d’articles exploitable.' }
+            { name: 'Collectivité Territoriale de Guyane', url: 'https://www.ctguyane.fr/feed/', kind: 'rss', territory: 'guyane' },
+            { name: 'Free Dom La Réunion', url: 'https://freedom.fr/feed/', kind: 'rss', territory: 'reunion' }
         ]
     },
     {
         slug: 'lyann-rimed',
         name: 'LYANN Rimèd',
         specialty: 'Plantes et savoirs locaux',
-        territories: ['guadeloupe', 'martinique'],
+        territories: ['guadeloupe', 'martinique', 'guyane', 'reunion'],
         maxPerDay: 3,
         healthReview: true,
         bio: 'Compte éditorial automatisé de LYANN. Il présente des plantes et des usages documentés par des sources botaniques. Toute indication de santé reste en attente d’une validation humaine.',
         sources: [
             { name: 'Les Jardins de Nini', url: 'https://lesjardinsdenini.com/feed/', kind: 'rss', territory: 'guadeloupe' },
-            { name: 'TRAMIL', url: 'https://www.tramil.net/fr', kind: 'manual', territory: 'caraibe', note: 'Le site public ne publie pas de flux d’articles.' }
+            { name: 'Parc National de la Guadeloupe', url: 'https://www.guadeloupe-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'guadeloupe' },
+            { name: 'Parc National de La Réunion', url: 'https://www.reunion-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'reunion' },
+            { name: 'TRAMIL', url: 'https://www.tramil.net/fr', kind: 'manual', territory: 'caraibe', note: 'Référentiel ethnopharmacologique caribéen (veille documentaire).' }
         ]
     },
     {
         slug: 'lyann-jardinaj',
         name: 'LYANN Jardinaj',
         specialty: 'Jardin et agriculture tropicale',
-        territories: ['guadeloupe', 'martinique'],
+        territories: ['guadeloupe', 'martinique', 'guyane', 'reunion'],
         maxPerDay: 3,
         healthReview: false,
-        bio: 'Compte éditorial automatisé de LYANN. Il relaie des conseils de jardin et d’agriculture adaptés au climat tropical, à partir de sources agricoles publiques.',
+        bio: 'Compte éditorial automatisé de LYANN. Il relaie des conseils de jardin, de biodiversité et d’agriculture adaptés au climat tropical, à partir de sources publiques.',
         sources: [
-            { name: 'CIRAD', url: 'https://www.cirad.fr/rss/actualites', kind: 'manual', territory: 'caraibe', note: 'Le flux existe, mais les articles du jour ne portent pas sur la culture aux Antilles.' },
-            { name: 'Les Jardins de Nini', url: 'https://lesjardinsdenini.com/feed/', kind: 'manual', territory: 'guadeloupe', note: 'Les articles récents portent sur la santé, pas sur la culture.' },
-            { name: 'INRAE', url: 'https://www.inrae.fr/actualites', kind: 'manual', territory: 'caraibe', note: 'Pas de flux RSS trouvé.' }
+            { name: 'Parc National de La Réunion', url: 'https://www.reunion-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'reunion' },
+            { name: 'Parc Amazonien de Guyane', url: 'https://www.parc-amazonien-guyane.fr/fr/rss.xml', kind: 'rss', territory: 'guyane' },
+            { name: 'Les Jardins de Nini', url: 'https://lesjardinsdenini.com/feed/', kind: 'rss', territory: 'guadeloupe' },
+            { name: 'CIRAD', url: 'https://www.cirad.fr/rss/actualites', kind: 'manual', territory: 'caraibe', note: 'Veille agronomique tropicale.' }
         ]
     },
     {
         slug: 'lyann-trafik',
         name: 'LYANN Trafik',
-        specialty: 'Circulation',
-        territories: ['guadeloupe'],
+        specialty: 'Circulation et vigilance pratique',
+        territories: ['guadeloupe', 'martinique', 'guyane', 'reunion'],
         maxPerDay: 3,
         healthReview: false,
-        bio: 'Compte éditorial automatisé de LYANN. Il reprend les communiqués de circulation publiés par les autorités routières de Guadeloupe.',
+        bio: 'Compte éditorial automatisé de LYANN. Il reprend les communiqués de circulation, météo, eau et vigilance publiés par les autorités et médias locaux des outre-mer.',
         sources: [
-            { name: 'Routes de Guadeloupe', url: 'https://www.routesdeguadeloupe.fr/feed/', kind: 'rss', territory: 'guadeloupe', maxAgeHours: 48 }
+            { name: 'Routes de Guadeloupe', url: 'https://www.routesdeguadeloupe.fr/feed/', kind: 'rss', territory: 'guadeloupe', maxAgeHours: 240 },
+            { name: 'RCI Guadeloupe', url: 'https://rci.fm/guadeloupe/fb/articles_rss_gp', kind: 'rss', territory: 'guadeloupe', requireTerms: ['route', 'circulation', 'trafic', 'travaux', 'fermeture', 'déviation', 'rn', 'rd', 'accident', 'vigilance', 'météo', 'eau', 'coupure', 'transport', 'pont'] },
+            { name: 'RCI Martinique', url: 'https://rci.fm/martinique/fb/articles_rss_mq', kind: 'rss', territory: 'martinique', requireTerms: ['route', 'circulation', 'trafic', 'travaux', 'fermeture', 'déviation', 'rn', 'rd', 'accident', 'vigilance', 'météo', 'eau', 'coupure', 'transport', 'pont'] },
+            { name: 'Free Dom La Réunion', url: 'https://freedom.fr/feed/', kind: 'rss', territory: 'reunion', requireTerms: ['route', 'circulation', 'trafic', 'travaux', 'fermeture', 'déviation', 'rn', 'rd', 'accident', 'vigilance', 'météo', 'eau', 'coupure', 'transport', 'littoral'] }
         ]
     },
     {
         slug: 'lyann-kilti',
         name: 'LYANN Kilti',
-        specialty: 'Agenda culturel',
-        territories: ['guadeloupe', 'martinique'],
+        specialty: 'Agenda culturel et patrimoine',
+        territories: ['guadeloupe', 'martinique', 'guyane', 'reunion'],
         maxPerDay: 3,
         healthReview: false,
-        bio: 'Compte éditorial automatisé de LYANN. Il signale des événements annoncés par les agendas culturels, les communes et les organisateurs.',
+        bio: 'Compte éditorial automatisé de LYANN. Il signale des événements, initiatives patrimoniales et rendez-vous annoncés par les institutions et acteurs culturels des outre-mer.',
         sources: [
-            { name: 'Les îles de Guadeloupe', url: 'https://www.lesilesdeguadeloupe.com/agenda/', kind: 'jsonld', territory: 'guadeloupe' },
-            { name: 'Guadeloupe La 1ère — culture', url: 'https://www.franceinfo.fr/guadeloupe/culture.rss', kind: 'manual', territory: 'guadeloupe', note: 'Le flux culture ne contient aucun article.' }
+            { name: 'L’Artchipel Scène Nationale Guadeloupe', url: 'https://www.lartchipel.com/feed/', kind: 'rss', territory: 'guadeloupe' },
+            { name: 'Collectivité Territoriale de Martinique', url: 'https://www.collectivitedemartinique.mq/feed/', kind: 'rss', territory: 'martinique' },
+            { name: 'Collectivité Territoriale de Guyane', url: 'https://www.ctguyane.fr/feed/', kind: 'rss', territory: 'guyane' },
+            { name: 'Parc National de La Réunion', url: 'https://www.reunion-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'reunion' }
         ]
     }
 ];
@@ -80,11 +88,14 @@ function stripTags(value) {
     return String(value || '')
         .replace(/<!\[CDATA\[|\]\]>/g, '')
         .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
+        .replace(/&#39;|&apos;/g, "'")
+        .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
         .replace(/\s+/g, ' ')
         .trim();
 }
@@ -96,10 +107,13 @@ function parseRssItems(xml) {
             const match = chunk.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i'));
             return match ? stripTags(match[1]) : '';
         };
+        const desc = pick('description');
+        const encoded = pick('content:encoded');
+        const summary = desc.length >= 80 || !encoded ? desc : [desc, encoded].filter(Boolean).join(' ');
         return {
             title: pick('title'),
             url: pick('link'),
-            summary: pick('description'),
+            summary,
             publishedAt: pick('pubDate')
         };
     }).filter((item) => item.title && item.url);
