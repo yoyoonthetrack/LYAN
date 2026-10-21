@@ -158,10 +158,69 @@ function registerContentModerationRoutes(app, deps) {
         if (error) return res.status(500).json({ success: false, error: 'Mise à jour impossible.' });
         if (!data) return res.status(404).json({ success: false, error: 'Contenu introuvable.' });
         await syncMediaDecision(supabaseAdmin, table, req.params.id, decision);
+        try {
+            await supabaseAdmin
+                .from('moderation_jobs')
+                .update({
+                    status: 'done',
+                    reason_code: decision === 'approved' ? 'admin_approved' : 'admin_rejected',
+                    finished_at: new Date().toISOString()
+                })
+                .eq('subject_type', subject)
+                .eq('subject_id', req.params.id);
+        } catch (_) {}
         if (typeof recordMaisonAudit === 'function') {
             await recordMaisonAudit(authResult.userId, 'CONTENT_MODERATION', req.params.id, { subject, decision });
         }
-        return res.json({ success: true, id: data.id, decision });
+        return res.json({
+            success: true,
+            id: data.id,
+            decision,
+            visible: decision === 'approved',
+            lifecycle_status: decision === 'approved' ? 'PUBLISHED_VISIBLE' : 'REJECTED',
+            lifecycle_label: decision === 'approved' ? 'Publié et visible' : 'Refusé'
+        });
+    });
+
+    app.post('/v1/admin/ops/moderation/run-once', async (req, res) => {
+        const authResult = await verifyAdminPermission(req, 'moderation.manage');
+        if (!authResult.authorized) {
+            return res.status(authResult.status).json({ success: false, error: authResult.error });
+        }
+        try {
+            const [pendingPosts, pendingRequests, pendingComments, pendingProfiles] = await Promise.all([
+                supabaseAdmin.from('bokantaj_posts').select('id').eq('public_moderation_status', 'pending').limit(30),
+                supabaseAdmin.from('requests').select('id').eq('public_moderation_status', 'pending').limit(30),
+                supabaseAdmin.from('bokantaj_comments').select('id').eq('public_moderation_status', 'pending').limit(30),
+                supabaseAdmin.from('profiles').select('id').or('bio_moderation_status.eq.pending,avatar_moderation_status.eq.pending').limit(30)
+            ]);
+            for (const row of (pendingPosts.data || [])) {
+                await supabaseAdmin.rpc('lyann_enqueue_moderation_job', { p_type: 'post', p_id: row.id });
+            }
+            for (const row of (pendingRequests.data || [])) {
+                await supabaseAdmin.rpc('lyann_enqueue_moderation_job', { p_type: 'request', p_id: row.id });
+            }
+            for (const row of (pendingComments.data || [])) {
+                await supabaseAdmin.rpc('lyann_enqueue_moderation_job', { p_type: 'comment', p_id: row.id });
+            }
+            for (const row of (pendingProfiles.data || [])) {
+                await supabaseAdmin.rpc('lyann_enqueue_moderation_job', { p_type: 'profile', p_id: row.id });
+            }
+            const outcomes = await runModerationOnce({
+                supabaseAdmin,
+                apiKey: process.env.OPENAI_API_KEY || process.env.LYANN_AI_API_KEY || '',
+                fetchImpl: global.fetch,
+                limit: 12
+            });
+            const counts = {};
+            for (const item of outcomes) counts[item.result || 'unknown'] = (counts[item.result || 'unknown'] || 0) + 1;
+            if (typeof recordMaisonAudit === 'function') {
+                await recordMaisonAudit(authResult.userId, 'MODERATION_WORKER_RUN', 'queue', { processed: outcomes.length, counts });
+            }
+            return res.json({ success: true, processed: outcomes.length, counts, outcomes });
+        } catch (err) {
+            return res.status(503).json({ success: false, processed: 0, error: 'Exécution de la passe de modération indisponible.' });
+        }
     });
 
     app.get('/v1/admin/ops/moderation', async (req, res) => {
@@ -170,25 +229,65 @@ function registerContentModerationRoutes(app, deps) {
             return res.status(authResult.status).json({ success: false, error: authResult.error });
         }
         const excerpt = (value) => String(value || '').slice(0, 160);
-        const [posts, comments, requests, profiles] = await Promise.all([
-            supabaseAdmin.from('bokantaj_posts').select('id, content, content_pending, media_urls, public_moderation_status, created_at').or('public_moderation_status.eq.pending,content_pending.not.is.null').limit(50),
-            supabaseAdmin.from('bokantaj_comments').select('id, content, content_pending, public_moderation_status, created_at').or('public_moderation_status.eq.pending,content_pending.not.is.null').limit(50),
-            supabaseAdmin.from('requests').select('id, title, description, title_pending, description_pending, public_moderation_status, created_at').or('public_moderation_status.eq.pending,title_pending.not.is.null,description_pending.not.is.null').limit(50),
-            supabaseAdmin.from('profiles').select('id, bio_pending, avatar_pending, bio_moderation_status, avatar_moderation_status').or('bio_moderation_status.eq.pending,avatar_moderation_status.eq.pending').limit(50)
+        const [posts, comments, requests, profiles, jobs] = await Promise.all([
+            supabaseAdmin.from('bokantaj_posts').select('id, author_id, type, city, territory, content, content_pending, media_urls, public_moderation_status, created_at').or('public_moderation_status.eq.pending,content_pending.not.is.null').order('created_at', { ascending: false }).limit(50),
+            supabaseAdmin.from('bokantaj_comments').select('id, author_id, post_id, content, content_pending, public_moderation_status, created_at').or('public_moderation_status.eq.pending,content_pending.not.is.null').order('created_at', { ascending: false }).limit(50),
+            supabaseAdmin.from('requests').select('id, requester_id, location, category, title, description, title_pending, description_pending, public_moderation_status, created_at').or('public_moderation_status.eq.pending,title_pending.not.is.null,description_pending.not.is.null').order('created_at', { ascending: false }).limit(50),
+            supabaseAdmin.from('profiles').select('id, first_name, last_name, city, territory, bio_pending, avatar_pending, bio_moderation_status, avatar_moderation_status').or('bio_moderation_status.eq.pending,avatar_moderation_status.eq.pending').limit(50),
+            supabaseAdmin.from('moderation_jobs').select('subject_type, subject_id, status, reason_code, attempts, updated_at').in('status', ['queued', 'running', 'retry', 'held']).limit(200)
         ]);
         const failed = [posts, comments, requests, profiles].find((result) => result.error);
         if (failed) return res.status(503).json({ success: false, error: 'File de vérification indisponible.' });
+        const jobMap = {};
+        (jobs.data || []).forEach((j) => { jobMap[`${j.subject_type}:${j.subject_id}`] = j; });
         return res.json({
             success: true,
             posts: (posts.data || []).map((row) => ({
                 id: row.id,
+                author_id: row.author_id || null,
+                type: row.type || 'info',
+                city: row.city || null,
+                territory: row.territory || null,
+                created_at: row.created_at || null,
                 status: row.public_moderation_status,
+                job_status: jobMap[`post:${row.id}`]?.status || 'unqueued',
+                reason_code: jobMap[`post:${row.id}`]?.reason_code || null,
                 excerpt: excerpt(row.content_pending || row.content),
                 video: (row.media_urls || []).some((url) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(String(url)))
             })),
-            comments: (comments.data || []).map((row) => ({ id: row.id, status: row.public_moderation_status, excerpt: excerpt(row.content_pending || row.content) })),
-            requests: (requests.data || []).map((row) => ({ id: row.id, status: row.public_moderation_status, excerpt: excerpt(row.description_pending || row.description) })),
-            profiles: (profiles.data || []).map((row) => ({ id: row.id, bio_status: row.bio_moderation_status, avatar_status: row.avatar_moderation_status, excerpt: excerpt(row.bio_pending) }))
+            comments: (comments.data || []).map((row) => ({
+                id: row.id,
+                author_id: row.author_id || null,
+                post_id: row.post_id || null,
+                created_at: row.created_at || null,
+                status: row.public_moderation_status,
+                job_status: jobMap[`comment:${row.id}`]?.status || 'unqueued',
+                reason_code: jobMap[`comment:${row.id}`]?.reason_code || null,
+                excerpt: excerpt(row.content_pending || row.content)
+            })),
+            requests: (requests.data || []).map((row) => ({
+                id: row.id,
+                requester_id: row.requester_id || null,
+                title: row.title_pending || row.title || null,
+                location: row.location || null,
+                category: row.category || null,
+                created_at: row.created_at || null,
+                status: row.public_moderation_status,
+                job_status: jobMap[`request:${row.id}`]?.status || 'unqueued',
+                reason_code: jobMap[`request:${row.id}`]?.reason_code || null,
+                excerpt: excerpt(row.description_pending || row.description)
+            })),
+            profiles: (profiles.data || []).map((row) => ({
+                id: row.id,
+                name: `${row.first_name || ''} ${row.last_name || ''}`.trim() || null,
+                city: row.city || null,
+                territory: row.territory || null,
+                bio_status: row.bio_moderation_status,
+                avatar_status: row.avatar_moderation_status,
+                job_status: jobMap[`profile:${row.id}`]?.status || 'unqueued',
+                reason_code: jobMap[`profile:${row.id}`]?.reason_code || null,
+                excerpt: excerpt(row.bio_pending)
+            }))
         });
     });
 }

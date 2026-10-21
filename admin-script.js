@@ -179,6 +179,26 @@ window.runAdminAuthCheck = async function(reason = 'BOOT') {
         }
     }
 
+    if (window.__LYANN_ADMIN_E2E__) {
+        const e2e = window.__LYANN_ADMIN_E2E__;
+        if (e2e.forbidden) {
+            setViewState('FORBIDDEN', e2e.forbiddenMessage || "🚫 Accès refusé : Ce compte n'est pas autorisé à accéder au Back-Office LYANN.");
+            authCheckInProgress = false;
+            return;
+        }
+        window.currentAdminUser = e2e.admin || {
+            userId: 'e2e-admin',
+            username: 'yoann@lyann.app',
+            role: 'OWNER',
+            isOwner: true,
+            token: 'e2e-admin-token'
+        };
+        updateAdminHeaderProfile(window.currentAdminUser);
+        setViewState('AUTHORIZED');
+        authCheckInProgress = false;
+        return;
+    }
+
     try {
         if (!window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) {
             console.warn("[AUTH ENGINE] Supabase client non pret.");
@@ -400,7 +420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // Run initial auth check
-    await window.runAdminAuthCheck('DOMContentLoaded');
+    window.runAdminAuthCheck('DOMContentLoaded');
 
     function recordAdminAuditLog(action, moduleName, resourceType, resourceId, accessReason = null, oldVals = null, newVals = null) {
         const username = window.currentAdminUser?.username || 'Administrateur';
@@ -600,13 +620,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-approve-kyc').forEach(btn => {
         btn.addEventListener('click', () => {
             const userName = btn.getAttribute('data-user-name') || 'Lyanneur';
+            const userId = btn.getAttribute('data-user-id');
+            if (!userId) {
+                alert('Ouvre la fiche membre depuis la liste Utilisateurs pour valider le KYC.');
+                return;
+            }
             if (confirm(`Approuver le dossier d'identité KYC et attribuer le badge VÉRIFIÉ à ${userName} ?`)) {
-                alert(`✅ Dossier KYC approuvé ! ${userName} est désormais prestataire vérifié avec badge vert.`);
-                const statusBadge = btn.closest('tr')?.querySelector('.status-badge');
-                if (statusBadge) {
-                    statusBadge.className = 'status-badge verified';
-                    statusBadge.textContent = 'VÉRFIÉ ✔';
-                }
+                window.adminApproveKyc(userId);
             }
         });
     });
@@ -615,13 +635,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-suspend-user').forEach(btn => {
         btn.addEventListener('click', () => {
             const userName = btn.getAttribute('data-user-name') || 'l\'utilisateur';
+            const userId = btn.getAttribute('data-user-id');
+            if (!userId) {
+                alert('Ouvre la fiche membre depuis la liste Utilisateurs pour modifier le statut.');
+                return;
+            }
             if (confirm(`⚠️ Suspendre le compte de ${userName} pour manquement aux règles communautaires ?`)) {
-                alert(`🚫 Compte de ${userName} suspendu avec succès.`);
-                const statusBadge = btn.closest('tr')?.querySelector('.status-badge');
-                if (statusBadge) {
-                    statusBadge.className = 'status-badge suspended';
-                    statusBadge.textContent = 'SUSPENDU';
-                }
+                window.adminUpdateUserStatus(userId, { is_verified: false });
             }
         });
     });
@@ -660,7 +680,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Toggle Flags
     document.querySelectorAll('.btn-toggle-flag').forEach(btn => {
         btn.addEventListener('click', () => {
-            alert('Ces interrupteurs ne sont pas encore reliés à system_settings. Aucun changement n’a été appliqué.');
+            window.loadAdminSection('sec-feature-flags');
         });
     });
 
@@ -688,12 +708,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.addEventListener('click', () => {
             const amount = btn.getAttribute('data-amount') || '450 €';
             const provider = btn.getAttribute('data-provider') || 'Prestataire LYANN';
-            if (confirm(`Déclencher le virement SEPA/Stripe Connect de ${amount} vers ${provider} ?`)) {
-                alert(`💸 Virement de ${amount} initié avec succès vers ${provider}.`);
-                btn.textContent = 'Virement Effectué ✅';
-                btn.disabled = true;
-                btn.style.opacity = '0.6';
-            }
+            alert('Action financière interdite depuis ce bouton. Les versements restent sous les verrous Stripe existants.');
         });
     });
 
@@ -701,7 +716,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-resolve-ticket').forEach(btn => {
         btn.addEventListener('click', () => {
             const ticketId = btn.getAttribute('data-ticket-id') || 'T-1082';
-            alert(`🎉 Ticket ${ticketId} marqué comme résolu ! Notification envoyée au membre.`);
+            alert('Aucun ticket Helpdesk n’est branché. Traite les signalements dans Modération ou Aide LYANN.');
             const row = btn.closest('tr');
             if (row) {
                 const statusBadge = row.querySelector('.status-badge');
@@ -717,13 +732,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-approve-ai').forEach(btn => {
         btn.addEventListener('click', () => {
             const postId = btn.getAttribute('data-post-id');
-            if (confirm('Approuver cette publication IA et la diffuser immédiatement sur Bokantaj public ?')) {
-                if (window.LYANN_AI_ECOSYSTEM) {
-                    window.LYANN_AI_ECOSYSTEM.approvePendingPost(postId);
-                }
-                const row = document.getElementById(`ai-row-${postId.replace('pending-', '')}`);
-                if (row) row.remove();
-                alert('✅ Publication IA approuvée et diffusée sur Bokantaj !');
+            if (confirm('Approuver cette proposition éditoriale ? Elle passera ensuite par la modération Bokantaj.')) {
+                window.LYANN_AI_ECOSYSTEM.approvePendingPost(postId)
+                    .then((body) => alert(body.message || 'Proposition traitée.'))
+                    .catch((err) => alert(err.message));
             }
         });
     });
@@ -731,13 +743,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-reject-ai').forEach(btn => {
         btn.addEventListener('click', () => {
             const postId = btn.getAttribute('data-post-id');
-            if (confirm('Rejeter et supprimer cette proposition de contenu IA ?')) {
-                if (window.LYANN_AI_ECOSYSTEM) {
-                    window.LYANN_AI_ECOSYSTEM.rejectPendingPost(postId);
-                }
-                const row = document.getElementById(`ai-row-${postId.replace('pending-', '')}`);
-                if (row) row.remove();
-                alert('🚫 Proposition IA rejetée.');
+            if (confirm('Refuser cette proposition éditoriale ?')) {
+                window.LYANN_AI_ECOSYSTEM.rejectPendingPost(postId)
+                    .then((body) => alert(body.message || 'Proposition refusée.'))
+                    .catch((err) => alert(err.message));
             }
         });
     });
@@ -747,16 +756,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.addEventListener('click', () => {
             const agentId = btn.getAttribute('data-agent-id');
             if (window.LYANN_AI_ECOSYSTEM) {
-                const newStatus = window.LYANN_AI_ECOSYSTEM.toggleAgentStatus(agentId);
-                if (newStatus === 'PAUSED') {
-                    btn.textContent = 'Reprendre ▶️';
-                    btn.classList.replace('admin-btn-secondary', 'admin-btn-primary');
-                    alert(`⏸️ Agent IA mis en pause avec succès.`);
-                } else {
-                    btn.textContent = 'Mettre en Pause ⏸️';
-                    btn.classList.replace('admin-btn-primary', 'admin-btn-secondary');
-                    alert(`▶️ Agent IA réactivé.`);
-                }
+                window.LYANN_AI_ECOSYSTEM.toggleAgentStatus(agentId)
+                    .then((newStatus) => {
+                        btn.textContent = newStatus === 'SUSPENDED' || newStatus === 'PAUSED' ? 'Reprendre' : 'Mettre en pause';
+                    })
+                    .catch((err) => alert(err.message));
             }
         });
     });
@@ -764,12 +768,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-refund-booking').forEach(btn => {
         btn.addEventListener('click', () => {
             const resId = btn.getAttribute('data-res-id') || '8820';
-            if (confirm(`Arbitrer le litige #RES-${resId} et procéder au remboursement intégral du client ?`)) {
-                alert(`💳 Remboursement de 120.00 € effectué avec succès via Stripe.`);
-                btn.textContent = 'Remboursé ✅';
-                btn.disabled = true;
-                btn.style.opacity = '0.6';
-            }
+            alert('Remboursement interdit depuis ce bouton. Les trois verrous financiers restent inchangés.');
         });
     });
 
@@ -777,10 +776,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-delete-content').forEach(btn => {
         btn.addEventListener('click', () => {
             const modId = btn.getAttribute('data-mod-id');
-            if (confirm('Supprimer définitivement ce contenu inapproprié et notifier l\'auteur ?')) {
-                const row = document.getElementById(`mod-row-${modId}`);
-                if (row) row.remove();
-                alert('🗑️ Contenu supprimé du réseau LYANN.');
+            if (!modId) {
+                alert('Utilise la file de modération réelle ci-dessous.');
+                return;
+            }
+            if (confirm('Supprimer cette publication Bokantaj (Staging uniquement) ?')) {
+                window.adminDeleteBokantaj(modId);
             }
         });
     });
@@ -807,9 +808,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Feature Flags Toggles
     document.querySelectorAll('.feature-flag-input').forEach(input => {
         input.addEventListener('change', () => {
-            const featureName = input.getAttribute('data-feature');
-            const state = input.checked ? 'ACTIVÉE' : 'DÉSACTIVÉE';
-            alert(`⚙️ Fonctionnalité [${featureName}] désormais ${state} en direct sur la plateforme.`);
+            const flagId = input.getAttribute('data-flag-id');
+            if (!flagId) {
+                input.checked = !input.checked;
+                alert('Ce flag n’est pas relié à la table feature_flags.');
+                return;
+            }
+            window.adminToggleFeatureFlag(flagId, input.checked);
         });
     });
 
@@ -817,15 +822,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const maintenanceToggle = document.getElementById('globalMaintenanceToggle');
     if (maintenanceToggle) {
         maintenanceToggle.addEventListener('change', () => {
-            if (maintenanceToggle.checked) {
-                if (confirm('🚨 ATTENTION : Activer le Mode Maintenance global ? Le site public affichera la page de maintenance.')) {
-                    alert('🚨 Mode Maintenance ACTIVÉ sur l\'ensemble des territoires DOM.');
-                } else {
-                    maintenanceToggle.checked = false;
-                }
-            } else {
-                alert('🟢 Mode Maintenance DÉSACTIVÉ. La plateforme publique est de nouveau accessible.');
-            }
+            window.adminSaveSystemSetting('maintenance_mode', { enabled: maintenanceToggle.checked })
+                .catch((err) => {
+                    alert(err.message);
+                    maintenanceToggle.checked = !maintenanceToggle.checked;
+                });
         });
     }
 
@@ -1222,8 +1223,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    function updateAnalyticsDashboard(periodKey) {
-        const data = PERIOD_DATASETS[periodKey] || PERIOD_DATASETS['30d'];
+    async function updateAnalyticsDashboard(periodKey, territory) {
+        const fallback = PERIOD_DATASETS[periodKey] || PERIOD_DATASETS['30d'];
+        let live = null;
+        try {
+            const mapped = periodKey === 'today' ? '7d' : (periodKey === 'this_month' || periodKey === 'quarter' ? '90d' : (periodKey === 'year2026' ? '12m' : periodKey));
+            const terr = territory || document.getElementById('analyticsTerritorySelect')?.value || '';
+            const res = await window.fetchWithAdminAuth(`/v1/admin/kpis?period=${encodeURIComponent(mapped)}&territory=${encodeURIComponent(terr === 'all' ? '' : terr)}`);
+            const body = await res.json().catch(() => ({}));
+            if (res.ok && body.success) live = body;
+        } catch (e) {}
+        const money = (n) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+        const data = live ? {
+            ...fallback,
+            gmv: money(live.gmvMonth),
+            comm: money(live.mrrCommissions),
+            users: String(live.activeMembers || 0),
+            deals: String(live.activeMissions || 0),
+            disputes: String(live.openDisputes || 0),
+            kyc: live.activeMembers ? `${Math.round(((live.kycVerified || 0) / live.activeMembers) * 1000) / 10}%` : fallback.kyc,
+            subtitle: `Données réelles ${live.period || periodKey} · territoire ${live.territory || 'tous'}`,
+            gmvTrend: 'base réelle',
+            commTrend: 'base réelle',
+            usersTrend: `${live.realMembers || 0} comptes réels`,
+            dealsTrend: `${live.openRequests || 0} demandes ouvertes`
+        } : fallback;
 
         const elMap = {
             'kpiGmvVal': data.gmv, 'kpiGmvTrend': data.gmvTrend,
@@ -1314,7 +1338,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         applyCustomDateBtn.addEventListener('click', () => {
             const start = document.getElementById('startDateInput')?.value || '2026-07-01';
             const end = document.getElementById('endDateInput')?.value || '2026-08-04';
-            alert(`📅 Filtre analytique appliqué pour la période personnalisée du ${start} au ${end}.`);
             updateAnalyticsDashboard('30d');
         });
     }
@@ -1322,15 +1345,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const analyticsTerritorySelect = document.getElementById('analyticsTerritorySelect');
     if (analyticsTerritorySelect) {
         analyticsTerritorySelect.addEventListener('change', (e) => {
-            const territory = e.target.options[e.target.selectedIndex].text;
-            alert(`🔍 Filtre BI appliqué : Affichage des métriques pour ${territory}`);
+            const activePill = document.querySelector('.period-pill.active');
+            updateAnalyticsDashboard(activePill ? activePill.getAttribute('data-period') : '30d', e.target.value);
         });
     }
 
     const exportBiReportBtn = document.getElementById('exportBiReportBtn');
     if (exportBiReportBtn) {
         exportBiReportBtn.addEventListener('click', () => {
-            alert('📊 Export BI initié ! Le rapport détaillé (Finances, Prestations, Rétention & Matrice Territoriale DOM) a été généré au format CSV/PDF.');
+            window.exportAdminReportCSV('payments');
         });
     }
 
@@ -1341,7 +1364,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const key = activePill ? activePill.getAttribute('data-period') : '30d';
             updateAnalyticsDashboard(key);
             refreshDashboardData();
-            alert('🔄 Données analytiques et métriques BI synchronisées en temps réel.');
         });
     }
 
@@ -1539,36 +1561,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         configForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const r = parseFloat(document.getElementById('configCommissionRate').value);
-            const p = parseFloat(document.getElementById('configProtectionFee').value);
-            window.LYANN_PAYMENTS.saveConfig({ commissionRate: r, protectionFee: p });
-            alert(`🟢 Configuration financière enregistrée ! Taux commission : ${r}%, Protection : ${p}€.`);
-            updateAdminFinancesSummary();
+            alert('Les commissions et verrous financiers ne peuvent pas être modifiés depuis le back-office.');
         });
     }
 
     // Arbitration Actions
     document.getElementById('btnArbitrateRefundClient')?.addEventListener('click', () => {
         if (activeArbitrationTxId && confirm("Marquer la médiation comme terminée et procéder au remboursement du client ?")) {
-            window.LYANN_PAYMENTS.resolveDispute(activeArbitrationTxId, 'resolved_client');
-            alert("Remboursement client initié.");
-            refreshDashboardData();
+            alert('Arbitrage financier interdit depuis cet écran. Les verrous Stripe restent actifs.');
         }
     });
 
     document.getElementById('btnArbitratePayProvider')?.addEventListener('click', () => {
         if (activeArbitrationTxId && confirm("Valider les travaux et libérer les fonds restants au prestataire ?")) {
-            window.LYANN_PAYMENTS.resolveDispute(activeArbitrationTxId, 'resolved_provider');
-            alert("Paiement libéré vers le portefeuille.");
-            refreshDashboardData();
+            alert('Libération de fonds interdite depuis cet écran.');
         }
     });
 
     document.getElementById('btnArbitrateSplit50')?.addEventListener('click', () => {
         if (activeArbitrationTxId && confirm("Fermer le litige avec une répartition amiable de 50/50 ?")) {
-            window.LYANN_PAYMENTS.resolveDispute(activeArbitrationTxId, 'resolved_split');
-            alert("Arbitrage 50/50 enregistré.");
-            refreshDashboardData();
+            alert('Arbitrage 50/50 interdit depuis cet écran.');
         }
     });
 
@@ -2722,8 +2734,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert('Aucun PDF généré : pas de facture en base pour le moment.');
     };
 
-    window.openInviteTeamMemberModal = function() {
-        alert('L’invitation d’un collaborateur n’est pas encore branchée. Ajoute le compte dans admin_members côté Supabase.');
+    window.openInviteTeamMemberModal = async function() {
+        const userId = prompt('UUID du compte déjà existant à ajouter dans admin_members :');
+        if (!userId) return;
+        const role = prompt('Rôle (SUPPORT, MODERATION, ADMIN, FINANCE) :', 'SUPPORT') || 'SUPPORT';
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops/team', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId.trim(), role_code: role })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Collaborateur non ajouté.');
+            return;
+        }
+        window.loadAdminSection('sec-team');
+    };
+
+    window.adminUpdateTeam = async function(memberId, status) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/team/${memberId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Équipe non mise à jour.');
+            return;
+        }
+        window.loadAdminSection('sec-team');
     };
 
     // Auto-load Mika Control Room when nav section clicked or init
@@ -2818,6 +2857,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <select id="maisonTerritory" class="admin-input">
                             <option value="guadeloupe"${profile.territory === 'guadeloupe' ? ' selected' : ''}>Guadeloupe</option>
                             <option value="martinique"${profile.territory === 'martinique' ? ' selected' : ''}>Martinique</option>
+                            <option value="guyane"${profile.territory === 'guyane' ? ' selected' : ''}>Guyane</option>
+                            <option value="reunion"${profile.territory === 'reunion' ? ' selected' : ''}>La Réunion</option>
                         </select>
                     </div>
                     <input id="maisonSkill" class="admin-input" value="${maisonEsc(profile.professional_status || '')}" placeholder="Métier" style="margin-top:8px; width:100%;">
@@ -2826,14 +2867,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </form>
                 <div>
                     <h3 style="margin:0 0 8px; font-size:1rem;">Publier dans Bokantaj au nom de ${maisonEsc(maisonName(profile))}</h3>
+                    <p class="maison-muted" id="maisonPublishNotice">Un enregistrement n’est pas une publication visible tant que la modération n’a pas approuvé.</p>
                     <textarea id="maisonBokantajInput" class="admin-input" rows="3" placeholder="Écrire un Lyann…" style="width:100%;"></textarea>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">
+                        <select id="maisonPostType" class="admin-input">
+                            <option value="info">Info</option>
+                            <option value="dispo">Dispo</option>
+                            <option value="besoin">Besoin</option>
+                        </select>
+                        <input id="maisonPostCity" class="admin-input" value="${maisonEsc(profile.city || '')}" placeholder="Commune">
+                        <select id="maisonPostTerritory" class="admin-input">
+                            <option value="guadeloupe"${profile.territory === 'guadeloupe' ? ' selected' : ''}>Guadeloupe</option>
+                            <option value="martinique"${profile.territory === 'martinique' ? ' selected' : ''}>Martinique</option>
+                            <option value="guyane"${profile.territory === 'guyane' ? ' selected' : ''}>Guyane</option>
+                            <option value="reunion"${profile.territory === 'reunion' ? ' selected' : ''}>La Réunion</option>
+                        </select>
+                    </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
                         <label class="admin-btn admin-btn-secondary">Photo<input id="maisonPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
                         <label class="admin-btn admin-btn-secondary">Vidéo<input id="maisonVideoInput" type="file" accept="video/mp4,video/quicktime,video/webm" hidden></label>
                         <span class="maison-muted" id="maisonMediaLabel">Aucune photo ni vidéo</span>
                     </div>
-                    <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn" style="margin-top:10px;"><i class="ph-bold ph-paper-plane-tilt"></i> Publier le Lyann</button>
-                    ${posts.length ? `<p class="maison-muted" style="margin-top:10px;">Derniers posts : ${posts.map((p) => maisonEsc((p.content || '').slice(0, 42))).join(' · ')}</p>` : ''}
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+                        <button type="button" class="admin-btn admin-btn-secondary" id="maisonDraftBtn">Enregistrer le brouillon</button>
+                        <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn"><i class="ph-bold ph-paper-plane-tilt"></i> Soumettre à la modération</button>
+                    </div>
+                    ${posts.length ? `<div style="margin-top:12px;">${posts.map((p) => `<div class="admin-card" style="padding:10px;margin-bottom:8px;"><strong>${maisonEsc(p.lifecycle_label || p.moderation_status || 'Statut inconnu')}</strong><p style="margin:6px 0 0;">${maisonEsc((p.content || '').slice(0, 160))}</p>${p.moderation_reason ? `<p class="maison-muted">${maisonEsc(p.moderation_reason)}</p>` : ''}</div>`).join('')}</div>` : ''}
                 </div>
                 <form id="maisonRequestForm" class="admin-card" style="padding:12px;">
                     <h3 style="margin:0 0 8px; font-size:1rem;">Publier une annonce</h3>
@@ -2936,23 +2995,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert(err.message);
             }
         });
-        document.getElementById('maisonPublishBtn')?.addEventListener('click', async () => {
+        const publishMaison = async (draft) => {
             const input = document.getElementById('maisonBokantajInput');
-            const button = document.getElementById('maisonPublishBtn');
+            const button = document.getElementById(draft ? 'maisonDraftBtn' : 'maisonPublishBtn');
+            const notice = document.getElementById('maisonPublishNotice');
             try {
                 if (button) button.disabled = true;
                 const photo = photoInput?.files?.[0] ? await readDataUrl(photoInput.files[0]) : '';
                 const video = videoInput?.files?.[0] ? await readDataUrl(videoInput.files[0]) : '';
-                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
+                const body = await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
                     method: 'POST',
-                    body: JSON.stringify({ content: input?.value || '', city: profile.city, territory: profile.territory, photo, video })
+                    body: JSON.stringify({
+                        content: input?.value || '',
+                        type: document.getElementById('maisonPostType')?.value || 'info',
+                        city: document.getElementById('maisonPostCity')?.value || profile.city,
+                        territory: document.getElementById('maisonPostTerritory')?.value || profile.territory,
+                        photo,
+                        video,
+                        draft
+                    })
                 });
+                if (notice) notice.textContent = body.message || body.lifecycle_label || 'Enregistré.';
+                if (draft) {
+                    if (button) button.disabled = false;
+                    return;
+                }
                 await window.openMaisonDesk(profile.id);
             } catch (err) {
                 if (button) button.disabled = false;
                 alert(err.message);
             }
-        });
+        };
+        document.getElementById('maisonDraftBtn')?.addEventListener('click', () => publishMaison(true));
+        document.getElementById('maisonPublishBtn')?.addEventListener('click', () => publishMaison(false));
         desk.querySelectorAll('.maison-reply-btn').forEach((btn) => {
             btn.addEventListener('click', async () => {
                 const card = btn.closest('[data-maison-conv]');
@@ -3031,6 +3106,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             const bots = await maisonJson('/v1/admin/editorial/bots');
             const proposals = await maisonJson('/v1/admin/editorial/proposals');
             const rows = proposals.proposals || [];
+            const agentFilter = document.getElementById('editorialAgentFilter');
+            if (agentFilter && agentFilter.options.length <= 1) {
+                (bots.bots || []).forEach((bot) => {
+                    const opt = document.createElement('option');
+                    opt.value = bot.agent_name;
+                    opt.textContent = bot.agent_name;
+                    agentFilter.appendChild(opt);
+                });
+            }
+            const envEl = document.getElementById('editorialEnv');
+            if (envEl) {
+                const allowed = bots.collectionAllowed;
+                envEl.innerHTML = `<strong>${maisonEsc(bots.environment || 'staging')}</strong> · Collecte ${allowed ? 'autorisée' : 'bloquée (Production)'} · IA ${bots.aiProvider?.configured ? maisonEsc(bots.aiProvider.model || bots.aiProvider.mode) : 'non configurée'}${bots.aiProvider?.error ? ' · ' + maisonEsc(bots.aiProvider.error) : ''} · Planning ${bots.schedule?.enabled === false ? 'inactif' : (bots.schedule?.passes || []).join(' · ')}`;
+            }
+            const histEl = document.getElementById('editorialHistory');
+            if (histEl) {
+                const history = bots.history || [];
+                histEl.innerHTML = '<h3 style="margin:0 0 10px;">Historique des collectes</h3>' + (history.length
+                    ? history.map((h) => `<p class="maison-muted" style="margin:0 0 6px;">${maisonEsc(h.created_at || '')} · ${maisonEsc(h.agent_name || '')} · ${maisonEsc(h.event_type || '')} · ${maisonEsc(h.description || '')}</p>`).join('')
+                    : '<p class="maison-muted">Aucun passage enregistré.</p>');
+            }
             const nothing = (item) => item.metadata && item.metadata.outcome === 'nothing_to_propose';
             const collectionError = (item) => item.status === 'FAILED' || (item.metadata && item.metadata.outcome === 'collection_error');
             const pending = rows.filter((item) => item.approval_status === 'PENDING' && item.status !== 'CANCELLED' && !nothing(item) && !collectionError(item));
@@ -3073,10 +3169,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const hasOlder = siblings.some((other) => other.id !== item.id && new Date(other.created_at) < new Date(item.created_at));
                 return hasOlder ? 'Nouvelle proposition' : 'Proposition actuelle';
             };
-            const visible = pending.concat(approved, rejected);
+            const selectedAgent = document.getElementById('editorialAgentFilter')?.value || 'all';
+            const selectedStatus = document.getElementById('editorialStatusFilter')?.value || 'all';
+            let visible = pending.concat(approved, rejected);
+            if (selectedAgent !== 'all') visible = visible.filter((item) => item.agent_name === selectedAgent);
+            if (selectedStatus === 'PENDING') visible = pending.filter((item) => selectedAgent === 'all' || item.agent_name === selectedAgent);
+            if (selectedStatus === 'APPROVED') visible = approved.filter((item) => selectedAgent === 'all' || item.agent_name === selectedAgent);
+            if (selectedStatus === 'REJECTED') visible = rejected.filter((item) => selectedAgent === 'all' || item.agent_name === selectedAgent);
             const statusLabel = (item) => {
                 if (item.approval_status === 'PENDING' && item.status !== 'CANCELLED') return 'En attente — ignorée, elle reste ici';
-                if (item.approval_status === 'APPROVED') return 'Validée et publiée';
+                if (item.approval_status === 'APPROVED') {
+                    if (item.post_visible) return 'Validée — Publié et visible';
+                    if (item.post_moderation_status === 'rejected') return 'Validée — Refusée par la modération Bokantaj';
+                    return 'Validée — En attente de modération';
+                }
                 return 'Refusée — conservée';
             };
             listEl.innerHTML = `<h3 style="margin:0 0 12px;">Toutes les propositions</h3>` + (errors.length ? `<p class="maison-muted">Collecte sans texte : ${errors.map((item) => `${maisonEsc(item.agent_name || '')}`).join(' · ')}. Rien n’est inventé.</p>` : '') + (visible.map((item) => {
@@ -3092,8 +3198,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${(item.controls && !item.controls.ok && (item.controls.reasons || []).some((reason) => /affirmation thérapeutique/.test(reason))) ? '<p class="editorial-warning">Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifie le texte avant validation.</p>' : ''}
                     <textarea class="admin-input editorial-text" rows="5" style="width:100%;"${pendingItem ? '' : ' readonly'}>${maisonEsc(item.instruction || '')}</textarea>
                     <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-                        ${pendingItem ? '<button type="button" class="admin-btn admin-btn-secondary editorial-save">Modifier</button><button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider et publier</button>' : ''}
-                        <button type="button" class="admin-btn admin-btn-danger editorial-delete">Supprimer</button>
+                        ${pendingItem ? '<button type="button" class="admin-btn admin-btn-secondary editorial-save">Modifier</button><button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider et publier</button><button type="button" class="admin-btn admin-btn-danger editorial-reject">Refuser</button>' : ''}
+                        <button type="button" class="admin-btn admin-btn-secondary editorial-delete">Supprimer</button>
                     </div>
                 </article>`;
             }).join('') || '<p class="maison-muted">Aucune proposition pour le moment. Le prochain passage en prépare s’il y a une source réelle.</p>');
@@ -3142,6 +3248,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         body: JSON.stringify({ content: text() })
                     });
                 }));
+                card.querySelector('.editorial-reject')?.addEventListener('click', run(card.querySelector('.editorial-reject'), 'Refus…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason: 'Refus administrateur' }) }).then((body) => ({ message: body.message || 'Proposition refusée.' }))));
                 card.querySelector('.editorial-delete')?.addEventListener('click', run(card.querySelector('.editorial-delete'), 'Suppression…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/delete`, { method: 'POST', body: '{}' }).then((body) => ({ message: body.message || 'Proposition supprimée.' }))));
             });
         } catch (err) {
@@ -3152,7 +3259,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const button = document.getElementById('editorialCollectBtn');
         if (button) button.disabled = true;
         try {
-            await maisonJson('/v1/admin/editorial/collect', { method: 'POST', body: '{}' });
+            const report = await maisonJson('/v1/admin/editorial/collect', { method: 'POST', body: '{}' });
+            const notice = document.getElementById('editorialNotice');
+            const created = (report.created || []).length;
+            if (notice) notice.textContent = created ? `${created} proposition(s) générée(s).` : (report.error || 'Aucun contenu fiable disponible pour cette passe.');
             await loadEditorialDesk();
         } catch (err) {
             alert(err.message);
@@ -3160,6 +3270,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (button) button.disabled = false;
         }
     });
+    document.getElementById('editorialAgentFilter')?.addEventListener('change', () => loadEditorialDesk());
+    document.getElementById('editorialStatusFilter')?.addEventListener('change', () => loadEditorialDesk());
     window.openEditorialDesk = loadEditorialDesk;
     document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.addEventListener('click', () => {
         loadEditorialDesk();
@@ -3230,10 +3342,89 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${row.kyc_verified ? adminBadge('VÉRIFIÉ') : adminBadge('KYC À FAIRE')}</td>
                 <td>${row.is_pro ? 'Lyanneur' : 'Membre'}</td>
                 <td>${adminEscape(row.professional_status || 'Libre')}</td>
-                <td>${row.kyc_verified ? '' : `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminApproveKyc('${row.id}')">Valider KYC</button>`}</td>
+                <td>
+                    ${row.kyc_verified ? '' : `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminApproveKyc('${row.id}')">Valider KYC</button>`}
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.openAdminUserDetail('${row.id}')">Fiche</button>
+                </td>
             </tr>`;
         }).join('');
     }
+
+    window.adminUpdateUserStatus = async function(userId, patch) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/users/${userId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch || {})
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Statut non mis à jour.');
+            return;
+        }
+        window.loadAdminSection('sec-users');
+    };
+
+    window.adminToggleFeatureFlag = async function(flagId, enabled) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/feature-flags/${flagId}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Feature flag non modifié.');
+            return;
+        }
+        window.loadAdminSection('sec-feature-flags');
+    };
+
+    window.adminSaveSystemSetting = async function(key, value) {
+        const res = await window.fetchWithAdminAuth('/v1/admin/system/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [key]: value })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Paramètre non enregistré.');
+        }
+        return data;
+    };
+
+    window.adminDeleteBokantaj = async function(postId) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/bokantaj/${postId}/delete`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Suppression impossible.');
+            return;
+        }
+        window.loadAdminSection('sec-content');
+        window.loadAdminSection('sec-bokantaj');
+    };
+
+    window.adminDecideModeration = async function(subject, id, decision) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/moderation/${subject}/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ decision })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Décision de modération impossible.');
+            return;
+        }
+        window.loadAdminSection('sec-content');
+    };
+
+    window.adminRunModerationOnce = async function() {
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops/moderation/run-once', { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Passe de modération impossible.');
+            return;
+        }
+        window.loadAdminSection('sec-content');
+    };
 
     window.adminApproveKyc = async function(userId) {
         if (!confirm('Valider le KYC de ce membre ?')) return;
@@ -3527,7 +3718,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td>${adminEscape((row.content || '').slice(0, 120))}</td>
                     <td>${adminDate(row.created_at)}</td>
                     <td>${adminBadge(row.account_type === 'seed' ? 'MAISON' : row.type || 'LYANN')}</td>
-                    <td>${adminBadge(row.type || 'info')}</td>
+                    <td>${adminBadge(row.lifecycle_label || row.moderation_status || row.type || 'info')}</td>
                 </tr>`).join('') : adminEmpty(7, 'Aucun Lyann publié.');
             },
             'sec-content': async () => {
@@ -3558,10 +3749,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
                         <td>${adminEscape(row.author_name)}</td>
                         <td>${adminEscape((row.content || '').slice(0, 140))}</td>
-                        <td>—</td>
-                        <td>${adminDate(row.created_at)}</td>
+                        <td>${adminBadge(row.lifecycle_label || row.moderation_status)}</td>
+                        <td>${row.visible ? '—' : `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminDecideModeration('post','${row.id}','approve')">Approuver et rendre visible</button>`}</td>
                     </tr>`).join('') : adminEmpty(5, 'Aucune publication à modérer.');
                 }
+                const queueBody = document.getElementById('adminModerationQueueBody');
+                if (queueBody) {
+                    const queueRes = await window.fetchWithAdminAuth('/v1/admin/ops/moderation');
+                    const queue = await queueRes.json().catch(() => ({}));
+                    const items = [
+                        ...(queue.posts || []).map((row) => ({ ...row, subject_type: 'post', content: row.excerpt })),
+                        ...(queue.requests || []).map((row) => ({ ...row, subject_type: 'request', content: row.excerpt })),
+                        ...(queue.comments || []).map((row) => ({ ...row, subject_type: 'comment', content: row.excerpt })),
+                        ...(queue.profiles || []).map((row) => ({ ...row, subject_type: 'profile', content: row.excerpt, author_name: row.name }))
+                    ];
+                    queueBody.innerHTML = items.length ? items.map((item) => `<tr>
+                        <td>${adminEscape(item.subject_type || 'post')}</td>
+                        <td>${adminEscape(item.author_name || item.author_id || item.requester_id || '—')}</td>
+                        <td>${adminEscape((item.content || item.title || '').slice(0, 120))}</td>
+                        <td>${adminBadge(item.lifecycle_label || item.public_moderation_status || item.status)}</td>
+                        <td>
+                            <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminDecideModeration('${item.subject_type || 'post'}','${item.id}','approve')">Approuver et rendre visible</button>
+                            <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminDecideModeration('${item.subject_type || 'post'}','${item.id}','reject')">Refuser</button>
+                        </td>
+                    </tr>`).join('') : adminEmpty(5, 'File de modération vide.');
+                }
+            },
+            'sec-feature-flags': async () => {
+                const data = await fetchAdminOps('feature-flags');
+                const tbody = document.getElementById('featureFlagsTableBody');
+                const rows = data.rows || [];
+                if (tbody) {
+                    tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                        <td><strong>${adminEscape(row.name || row.key)}</strong></td>
+                        <td style="font-family:var(--admin-font-mono);">${adminEscape(row.key)}</td>
+                        <td>${adminEscape(row.target_audience || '—')}</td>
+                        <td>${adminBadge(row.enabled ? 'ACTIVÉ' : 'DÉSACTIVÉ')}</td>
+                        <td><button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminToggleFeatureFlag('${row.id}', ${row.enabled ? 'false' : 'true'})">${row.enabled ? 'Désactiver' : 'Activer'}</button></td>
+                    </tr>`).join('') : adminEmpty(5, 'Aucun feature flag en base.');
+                }
+            },
+            'sec-taxonomy': async () => {
+                if (typeof loadAdminTaxonomyManagement === 'function') loadAdminTaxonomyManagement();
             },
             'sec-chat': async () => {
                 const data = await fetchAdminOps('conversations');
@@ -3584,7 +3813,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td style="font-family:var(--admin-font-mono);">${adminEscape(row.email || row.user_id)}</td>
                     <td>${adminBadge(row.role || row.role_name)}</td>
                     <td>${adminBadge(row.status)}</td>
-                </tr>`).join('') : adminEmpty(4, 'Aucun membre admin_members.');
+                    <td>${row.status === 'ACTIVE'
+                        ? `<button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminUpdateTeam('${row.id}','SUSPENDED')">Suspendre</button>`
+                        : `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminUpdateTeam('${row.id}','ACTIVE')">Réactiver</button>`}</td>
+                </tr>`).join('') : adminEmpty(5, 'Aucun membre admin_members.');
             },
             'sec-health': async () => {
                 const data = await fetchAdminOps('health');
@@ -3624,6 +3856,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             ? rows.filter((row) => `${row.first_name || ''} ${row.last_name || ''} ${row.email || ''} ${row.city || ''}`.toLowerCase().includes(query))
             : rows;
         renderAdminUsers(filtered, 'usersAdminTableBody', 'users');
+    });
+    window.openAdminUserDetail = function(userId) {
+        const rows = window.__adminUsersCache || [];
+        const user = rows.find((row) => row.id === userId);
+        if (!user) return;
+        const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'Membre';
+        const nameEl = document.getElementById('adminDetailUserName');
+        const emailEl = document.getElementById('adminDetailUserEmail');
+        const phoneEl = document.getElementById('adminDetailUserPhone');
+        if (nameEl) nameEl.textContent = name;
+        if (emailEl) emailEl.textContent = user.email || '—';
+        if (phoneEl) phoneEl.textContent = user.city || '—';
+        document.querySelectorAll('#sec-user-detail .btn-approve-kyc').forEach((btn) => btn.setAttribute('data-user-id', user.id));
+        document.querySelectorAll('#sec-user-detail .btn-suspend-user').forEach((btn) => btn.setAttribute('data-user-id', user.id));
+        document.querySelector('.admin-nav-item[data-section="sec-user-detail"]')?.click();
+        const detail = document.getElementById('sec-user-detail');
+        if (detail && !document.querySelector('.admin-nav-item[data-section="sec-user-detail"]')) {
+            document.querySelectorAll('.admin-section').forEach((sec) => sec.classList.remove('active'));
+            detail.classList.add('active');
+        }
+    };
+    document.getElementById('userStatusFilter')?.addEventListener('change', () => {
+        const status = document.getElementById('userStatusFilter')?.value || 'all';
+        const rows = window.__adminUsersCache || [];
+        const filtered = status === 'all' ? rows : rows.filter((row) => {
+            if (status === 'verified') return row.kyc_verified || row.is_verified;
+            if (status === 'pending') return !row.kyc_verified;
+            if (status === 'suspended') return row.is_verified === false;
+            if (status === 'pro') return row.is_pro;
+            if (status === 'seed') return row.account_type === 'seed';
+            return true;
+        });
+        renderAdminUsers(filtered, 'usersAdminTableBody', 'users');
+    });
+    document.getElementById('btnRunModerationOnce')?.addEventListener('click', () => window.adminRunModerationOnce());
+    document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
+        btn.addEventListener('click', () => alert('Offrir un abonnement Pro n’est pas une opération financière activée ici.'));
     });
     document.getElementById('userTerritoryFilter')?.addEventListener('change', () => {
         const territory = document.getElementById('userTerritoryFilter')?.value || 'all';

@@ -11,13 +11,16 @@ const {
     isFresh,
     matchesTerms,
     acceptRewrittenText,
+    essentialFacts,
     reviewEditorialText,
     assertHumanApproval,
     editorialPassSlot,
     guadeloupeDayStart
 } = require('./editorial-engine');
+const { runModerationOnce } = require('./moderation-worker');
 const STAGING_PROJECT_ID = 'prj_FHIKUKYa8IwpiitigUma4gTtTF6q';
 const PRODUCTION_PROJECT_ID = 'prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM';
+const PRODUCTION_SUPABASE_REF = 'gzispjfoywklpqatjyop';
 
 function oidcClaims(token) {
     try {
@@ -32,11 +35,16 @@ function oidcClaims(token) {
     }
 }
 
-function providerConfig(env) {
-    if (env.LYANN_AI_API_KEY) {
+function providerConfig(env = process.env) {
+    const isProdSupabase = String(env.SUPABASE_URL || '').includes(PRODUCTION_SUPABASE_REF);
+    if (isProdSupabase) {
+        return { error: 'production-supabase-refused' };
+    }
+    const directKey = env.LYANN_AI_API_KEY || env.OPENAI_API_KEY || '';
+    if (directKey) {
         return {
             mode: 'api-key',
-            apiKey: env.LYANN_AI_API_KEY,
+            apiKey: directKey,
             baseUrl: (env.LYANN_AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, ''),
             model: env.LYANN_AI_MODEL || 'gpt-4o-mini'
         };
@@ -59,7 +67,8 @@ function providerConfig(env) {
 async function fetchText(url) {
     const response = await fetch(url, {
         headers: { 'user-agent': 'LYANN-Editorial/1.0 (+https://staging.lyann.app)' },
-        redirect: 'follow'
+        redirect: 'follow',
+        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
     });
     if (!response.ok) throw new Error(`Source indisponible (${response.status})`);
     return response.text();
@@ -69,6 +78,7 @@ async function completeOnce(config, messages, fetchImpl) {
     const response = await fetchImpl(`${config.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
+        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(20000) : undefined,
         body: JSON.stringify({
             model: config.model,
             temperature: 0.2,
@@ -82,26 +92,39 @@ async function completeOnce(config, messages, fetchImpl) {
 
 async function rewriteDraft(draft, fetchImpl) {
     const config = providerConfig(process.env);
-    if (!config || config.error) return { ok: false, reason: config && config.error || 'clé IA absente' };
+    if (!config || config.error) return { ok: false, reason: config && config.error || 'clé IA absente', fatal: true };
+    if (String(draft.facts || '').trim().length < 40) {
+        return { ok: false, reason: 'faits insuffisants' };
+    }
     const extracted = await completeOnce(config, [
         { role: 'system', content: 'Extrais uniquement les faits vérifiables. Réponds en JSON: {"faits":["qui","quoi","où","quand","chiffres","décision","réserves"]}. N’invente rien.' },
         { role: 'user', content: draft.facts }
     ], fetchImpl);
-    if (!extracted.ok) return extracted;
+    if (!extracted.ok) return { ...extracted, fatal: /401|403|429/.test(String(extracted.reason || '')) };
     const factList = extracted.payload?.choices?.[0]?.message?.content || '';
     if (!/"faits"\s*:/.test(factList)) return { ok: false, reason: 'extraction refusée' };
+    const requiredTokens = essentialFacts(draft.facts);
+    const systemLines = [
+        'Tu rédiges un court texte original en français courant, entre 55 et 95 mots (au moins 4 phrases complètes).',
+        'Conserve chaque chiffre, date, lieu, acteur et décision présents dans les faits. Ne les remplace pas par une formule vague.',
+        'Tu n’inventes aucun fait. Pas d’emoji, pas de créole forcé, pas de question, pas de conclusion artificielle.',
+        'N’utilise jamais les expressions "il est important de noter", "en conclusion" ou "n’hésitez pas".',
+        'Tu n’écris pas le nom du média ni d’URL. Tu gardes l’attribution si le fait est une décision, une déclaration ou une accusation.'
+    ];
+    if (draft.healthReview) {
+        systemLines.push(
+            'Le sujet concerne le patrimoine végétal ou botanique : présente uniquement la plante, son contexte botanique ou culturel et les précautions documentées.',
+            'INTERDICTION STRICTE d’utiliser les mots ou racines : soulage, soulager, guérit, guérir, efficace, bénéfique, bénéfiques, apaise, apaiser, soigne, soigner, dosage, préparation.'
+        );
+    }
+    const userPrompt = [
+        `Faits extraits:\n${factList}`,
+        `Faits source:\n${draft.facts}`,
+        requiredTokens.length ? `Chiffres et dates obligatoires à inclure textuellement : ${requiredTokens.join(', ')}` : ''
+    ].filter(Boolean).join('\n\n');
     const written = await completeOnce(config, [
-        {
-            role: 'system',
-            content: [
-                'Tu rédiges un court texte original en français courant, entre 50 et 100 mots.',
-                'Conserve chaque chiffre, date, lieu, acteur et décision présents dans les faits. Ne les remplace pas par une formule vague.',
-                'Tu n’inventes aucun fait. Pas d’emoji, pas de créole forcé, pas de question, pas de conclusion artificielle.',
-                'Tu n’écris pas le nom du média. Tu gardes l’attribution si le fait est une décision, une déclaration ou une accusation.',
-                'Si le sujet touche la santé, parle d’usage traditionnel, pas d’efficacité établie. Aucun dosage ni promesse.'
-            ].join(' ')
-        },
-        { role: 'user', content: `Faits extraits:\n${factList}\n\nFaits source:\n${draft.facts}` }
+        { role: 'system', content: systemLines.join(' ') },
+        { role: 'user', content: userPrompt }
     ], fetchImpl);
     if (!written.ok) return written;
     const payload = written.payload;
@@ -115,7 +138,7 @@ async function rewriteDraft(draft, fetchImpl) {
         text,
         model: config.model,
         promptTokens: usage.prompt_tokens || 0,
-        completionTokens: usage.completion_tokens || 0
+        completionTokens: usage.completionTokens || usage.completion_tokens || 0
     };
 }
 
@@ -144,11 +167,17 @@ async function itemsFromSource(source, fetchText) {
 }
 
 async function existingSourceUrls(supabase, agentId) {
-    const { data, error } = await supabase
+    let query = supabase
         .from('lyann_agent_tasks')
         .select('metadata, status')
-        .eq('agent_id', agentId)
-        .limit(200);
+        .order('created_at', { ascending: false })
+        .limit(300);
+    if (agentId && !Array.isArray(agentId)) {
+        query = query.eq('agent_id', agentId);
+    } else if (Array.isArray(agentId) && agentId.length) {
+        query = query.in('agent_id', agentId);
+    }
+    const { data, error } = await query;
     if (error) throw error;
     return new Set((data || [])
         .filter((row) => row.status !== 'CANCELLED')
@@ -196,10 +225,12 @@ async function collectEditorial(supabase, options = {}) {
     const diagnoses = [];
     const slot = options.scheduled ? editorialPassSlot(options.now) : null;
     const dayStart = guadeloupeDayStart(options.now);
+    const runAt = new Date().toISOString();
     for (const bot of EDITORIAL_BOTS) {
+        if (options.onlySlug && options.onlySlug !== bot.slug) continue;
         const agent = (agents || []).find((row) => row.agent_name === bot.name);
         if (!agent) {
-            skipped.push({ bot: bot.name, reason: 'absent' });
+            skipped.push({ bot: bot.name, slug: bot.slug, reason: 'absent' });
             continue;
         }
         const { count: todayCount } = await supabase
@@ -209,7 +240,8 @@ async function collectEditorial(supabase, options = {}) {
             .gte('created_at', dayStart)
             .eq('status', 'WAITING_APPROVAL');
         if (!canCollect({ status: agent.status, maxPerDay: bot.maxPerDay }, todayCount || 0)) {
-            skipped.push({ bot: bot.name, reason: agent.status === 'ACTIVE' ? 'plafond du jour' : agent.status });
+            const reason = agent.status === 'ACTIVE' ? 'plafond du jour' : agent.status;
+            skipped.push({ bot: bot.name, slug: bot.slug, reason });
             continue;
         }
         if (slot) {
@@ -220,40 +252,46 @@ async function collectEditorial(supabase, options = {}) {
                 .filter('metadata->>pass_slot', 'eq', slot)
                 .limit(1);
             if (sameSlot && sameSlot.length) {
-                skipped.push({ bot: bot.name, reason: 'passage déjà traité', slot });
+                skipped.push({ bot: bot.name, slug: bot.slug, reason: 'passage déjà traité', slot });
                 continue;
             }
         }
-        const seen = await existingSourceUrls(supabase, agent.id);
-        const sources = (bot.sources || []).filter((item) => !options.onlySlug || options.onlySlug === bot.slug);
+        const allAgentIds = (agents || []).map((row) => row.id);
+        const seen = await existingSourceUrls(supabase, allAgentIds);
+        const sources = bot.sources || [];
         let drafted = false;
+        let lastRewriteFailure = '';
         for (const source of sources) {
             const found = await itemsFromSource(source, fetchText);
-            diagnoses.push({ bot: bot.name, source: source.name, status: found.status, url: source.url });
+            diagnoses.push({ bot: bot.name, slug: bot.slug, source: source.name, status: found.status, url: source.url, count: (found.items || []).length });
             if (found.status === 'veille manuelle' || !found.items.length) continue;
-            for (const item of found.items.slice(0, 3)) {
+            for (const item of found.items.slice(0, 5)) {
                 let article = item;
                 if (source.kind === 'jsonld') {
                     try {
                         article = parseEventJsonLd(await fetchText(item.url)) || item;
                     } catch (error) {
-                        diagnoses.push({ bot: bot.name, source: source.name, status: 'inaccessible', url: item.url, detail: error.message });
+                        diagnoses.push({ bot: bot.name, slug: bot.slug, source: source.name, status: 'inaccessible', url: item.url, detail: error.message });
                         continue;
                     }
                     if (!article.summary || !article.publishedAt) continue;
                 }
                 if (!article.url || seen.has(article.url)) {
-                    if (article.url && seen.has(article.url)) skipped.push({ bot: bot.name, reason: 'doublon', url: article.url });
+                    if (article.url && seen.has(article.url)) skipped.push({ bot: bot.name, slug: bot.slug, reason: 'doublon', url: article.url });
                     continue;
                 }
                 const draft = draftFromSource({ ...article, sourceName: source.name, territory: source.territory }, bot);
                 if (!draft) continue;
                 const rewritten = await rewriteDraft(draft, options.fetchImpl || fetch);
                 if (!rewritten.ok) {
-                    skipped.push({ bot: bot.name, reason: rewritten.reason, url: draft.sourceUrl });
-                    if (slot) await recordEditorialNote(supabase, agent, slot, 'collection_error', rewritten.reason);
-                    drafted = true;
-                    break;
+                    lastRewriteFailure = rewritten.reason || 'réécriture refusée';
+                    skipped.push({ bot: bot.name, slug: bot.slug, reason: lastRewriteFailure, url: draft.sourceUrl });
+                    if (rewritten.fatal) {
+                        if (slot) await recordEditorialNote(supabase, agent, slot, 'collection_error', lastRewriteFailure);
+                        drafted = true;
+                        break;
+                    }
+                    continue;
                 }
                 const { data, error: insertError } = await supabase.from('lyann_agent_tasks').insert({
                     agent_id: agent.id,
@@ -269,7 +307,7 @@ async function collectEditorial(supabase, options = {}) {
                         source_name: draft.sourceName,
                         source_url: draft.sourceUrl,
                         original_published_at: draft.originalPublishedAt,
-                        collected_at: new Date().toISOString(),
+                        collected_at: runAt,
                         territory: draft.territory,
                         subject: draft.subject,
                         facts: draft.facts,
@@ -285,26 +323,64 @@ async function collectEditorial(supabase, options = {}) {
                 }).select('id').single();
                 if (insertError) throw insertError;
                 seen.add(article.url);
-                created.push({ bot: bot.name, id: data.id, url: draft.sourceUrl, validation: draft.validationStatus });
+                created.push({
+                    bot: bot.name,
+                    slug: bot.slug,
+                    id: data.id,
+                    title: draft.subject.slice(0, 180),
+                    source: draft.sourceName,
+                    territory: draft.territory,
+                    url: draft.sourceUrl,
+                    validation: draft.validationStatus
+                });
+                await supabase.from('lyann_agents').update({ last_activity_at: runAt, updated_at: runAt }).eq('id', agent.id);
+                await supabase.from('lyann_agent_activity').insert({
+                    agent_id: agent.id,
+                    event_type: 'EDITORIAL_COLLECTED',
+                    description: `Proposition générée depuis ${draft.sourceName} : ${draft.subject.slice(0, 90)}`,
+                    metadata: { task_id: data.id, source_name: draft.sourceName, source_url: draft.sourceUrl, territory: draft.territory }
+                });
                 drafted = true;
                 break;
             }
             if (drafted) break;
         }
-        if (!drafted && !skipped.some((row) => row.bot === bot.name)) {
+        if (!drafted && !skipped.some((row) => row.bot === bot.name && row.reason !== 'doublon')) {
             const technical = diagnoses.filter((row) => row.bot === bot.name && ['inaccessible', 'flux invalide'].includes(row.status));
-            if (slot && technical.length) {
+            const allDuplicates = skipped.some((row) => row.bot === bot.name && row.reason === 'doublon');
+            const fallbackReason = allDuplicates ? 'aucun nouvel article (déjà collecté)' : (lastRewriteFailure || 'aucune source exploitable');
+            if (slot && technical.length && !allDuplicates) {
                 await recordEditorialNote(supabase, agent, slot, 'collection_error', technical.map((row) => `${row.source}: ${row.status}`).join(' ; '));
-                skipped.push({ bot: bot.name, reason: 'erreur de collecte' });
+                skipped.push({ bot: bot.name, slug: bot.slug, reason: 'erreur de collecte' });
             } else if (slot) {
                 await recordEditorialNote(supabase, agent, slot, 'nothing_to_propose', 'Rien à proposer');
-                skipped.push({ bot: bot.name, reason: 'Rien à proposer' });
-            } else {
-                skipped.push({ bot: bot.name, reason: 'aucune source exploitable' });
+                skipped.push({ bot: bot.name, slug: bot.slug, reason: 'Rien à proposer' });
+            } else if (!allDuplicates) {
+                skipped.push({ bot: bot.name, slug: bot.slug, reason: fallbackReason });
             }
+            await supabase.from('lyann_agent_activity').insert({
+                agent_id: agent.id,
+                event_type: 'EDITORIAL_PASS_EMPTY',
+                description: `Collecte sans nouvelle proposition (${fallbackReason})`,
+                metadata: { reason: fallbackReason, slot }
+            });
         }
     }
-    return { created, skipped, diagnoses, slot, scheduled: Boolean(options.scheduled) };
+    return { created, skipped, diagnoses, slot, scheduled: Boolean(options.scheduled), collectedAt: runAt };
+}
+
+async function moderateEditorialPost(supabase, postId) {
+    try {
+        await supabase.rpc('lyann_enqueue_moderation_job', { p_type: 'post', p_id: postId });
+    } catch (_) {}
+    try {
+        await runModerationOnce({
+            supabaseAdmin: supabase,
+            apiKey: process.env.OPENAI_API_KEY || process.env.LYANN_AI_API_KEY || '',
+            fetchImpl: global.fetch,
+            limit: 6
+        });
+    } catch (_) {}
 }
 
 async function publishEditorialTask(supabase, task, editorText, approver) {
@@ -312,7 +388,10 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
     if (!approval.ok) throw new Error(approval.reason);
     const metadata = task.metadata || {};
     if (!metadata.editorial) throw new Error('Cette tâche n’est pas une proposition éditoriale.');
-    if (metadata.published_post_id) return metadata.published_post_id;
+    if (metadata.published_post_id) {
+        await moderateEditorialPost(supabase, metadata.published_post_id);
+        return metadata.published_post_id;
+    }
     if (metadata.validation_status === 'HUMAN_REQUIRED' && !editorText) {
         // Human approval is the validation. The editor must send the text explicitly.
     }
@@ -329,6 +408,7 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
         .limit(1);
     if (already && already[0]) {
         const now = new Date().toISOString();
+        await moderateEditorialPost(supabase, already[0].id);
         await supabase.from('lyann_agent_tasks').update({
             status: 'COMPLETED',
             approval_status: 'APPROVED',
@@ -345,6 +425,13 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
         }).eq('id', task.id);
         return already[0].id;
     }
+    const defaultCityByTerritory = {
+        guadeloupe: 'Pointe-à-Pitre',
+        martinique: 'Fort-de-France',
+        guyane: 'Cayenne',
+        reunion: 'Saint-Denis'
+    };
+    const territory = metadata.territory || 'guadeloupe';
     const { data: post, error } = await supabase.from('bokantaj_posts').insert({
         author_id: agent.linked_profile_id,
         type: 'info',
@@ -353,11 +440,12 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
         source_name: metadata.source_name || null,
         source_url: metadata.source_url || null,
         source_published_at: metadata.original_published_at || null,
-        city: null,
-        territory: metadata.territory || null,
+        city: metadata.city || defaultCityByTerritory[territory] || null,
+        territory,
         media_urls: []
     }).select('id').single();
     if (error) throw error;
+    await moderateEditorialPost(supabase, post.id);
     const now = new Date().toISOString();
     const revisions = Array.isArray(metadata.revisions) ? metadata.revisions.slice() : [];
     if (body !== String(task.instruction || '').trim()) {
@@ -379,6 +467,12 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
             approved_by_email: approver.email || null
         })
     }).eq('id', task.id);
+    await supabase.from('lyann_agent_activity').insert({
+        agent_id: task.agent_id,
+        event_type: 'EDITORIAL_PUBLISHED',
+        description: `Proposition validée et publiée sur Bokantaj (${metadata.subject || task.title || post.id})`,
+        metadata: { task_id: task.id, post_id: post.id, approved_by: approver.userId }
+    });
     return post.id;
 }
 
