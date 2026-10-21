@@ -208,16 +208,17 @@ runOnDomReady(() => {
                 if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                     try {
                         const isNative = (typeof window.isNativePlatform === 'function' && window.isNativePlatform()) || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-                        if (provider === 'apple' && isNative) {
+                        const nativePlatform = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform();
+                        if (provider === 'apple' && isNative && nativePlatform !== 'android') {
                             await startNativeAppleSignIn();
                             return;
                         }
                         const redirectUrl = provider === 'apple'
-                            ? appleWebCallbackUrl()
+                            ? (isNative && nativePlatform === 'android' ? CANONICAL_NATIVE_CALLBACK : appleWebCallbackUrl())
                             : (isNative ? CANONICAL_NATIVE_CALLBACK : window.location.origin + '/');
                         const options = {
                             redirectTo: redirectUrl,
-                            skipBrowserRedirect: provider === 'apple' ? false : isNative
+                            skipBrowserRedirect: isNative
                         };
                         if (provider === 'google') options.queryParams = { prompt: 'select_account' };
                         const { data, error } = await window.LYANN_API_CLIENT.supabase.auth.signInWithOAuth({
@@ -251,6 +252,11 @@ runOnDomReady(() => {
                 if (data && data.url && window.LYANN_PAYOUT_ACCOUNT && typeof window.LYANN_PAYOUT_ACCOUNT.handleExternalReturn === 'function') {
                     const returned = await window.LYANN_PAYOUT_ACCOUNT.handleExternalReturn(data.url);
                     if (returned && (returned.ok || returned.code === 'PRODUCTION_URL_IGNORED')) return;
+                }
+                const nativePlatform = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform();
+                if (nativePlatform === 'android' && data && data.url && /^https:\/\/(www\.)?lyann\.app\//i.test(data.url) && !data.url.includes('google-auth')) {
+                    window.location.assign(data.url);
+                    return;
                 }
                 if (data && data.url && (data.url.includes('google-auth') || data.url.includes('confirm-signup') || data.url.startsWith('app.lyann.dom'))) {
                     try {

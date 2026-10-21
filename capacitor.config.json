@@ -6,6 +6,9 @@
   "ios": {
     "backgroundColor": "#FAF7F2"
   },
+  "android": {
+    "backgroundColor": "#FDFCF9"
+  },
   "server": {
     "allowNavigation": [
       "*.stripe.com",
@@ -19,6 +22,9 @@
     },
     "PushNotifications": {
       "presentationOptions": ["banner", "list", "badge", "sound"]
+    },
+    "Keyboard": {
+      "resizeOnFullScreen": true
     }
   }
 }

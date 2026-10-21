@@ -106,12 +106,16 @@ fs.writeFileSync(path.join(sharedDist, 'lyann-native-build.json'), JSON.stringif
 console.log('LYANN native build stamp', stamp.id, stamp.at, 'backend=' + (stamp.backend || '(empty)'));
 
 // Capacitor consumes the exact shared artifact. No iOS/Android-specific HTML or JS mutation is allowed here.
-if (fs.existsSync(path.dirname(iosPublic))) {
+const mobileTarget = String(process.env.LYANN_MOBILE_TARGET || 'all').toLowerCase();
+const copyIos = mobileTarget === 'all' || mobileTarget === 'ios';
+const copyAndroid = mobileTarget === 'all' || mobileTarget === 'android';
+
+if (copyIos && fs.existsSync(path.dirname(iosPublic))) {
   copyDirectoryExact(sharedDist, iosPublic);
   assertExactArtifact(sharedDist, iosPublic, 'iOS');
 }
 
-if (fs.existsSync(path.dirname(androidPublic))) {
+if (copyAndroid && fs.existsSync(path.dirname(androidPublic))) {
   copyDirectoryExact(sharedDist, androidPublic);
   assertExactArtifact(sharedDist, androidPublic, 'Android');
 }

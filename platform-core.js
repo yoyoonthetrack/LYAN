@@ -218,10 +218,35 @@ function initializeNativeFeatures() {
         statusBar.setBackgroundColor({ color: '#4A7C59' }).catch(() => {});
     }
 
+    const nativePlatform = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform();
+    if (nativePlatform === 'android') {
+        document.documentElement.classList.add('lyann-android');
+        window.addEventListener('offline', () => {
+            if (typeof window.showLyanToast === 'function') {
+                window.showLyanToast('Connexion interrompue. LYANN reprendra dès le retour du réseau.', '📡');
+            }
+        });
+        window.addEventListener('online', () => {
+            if (typeof window.showLyanToast === 'function') window.showLyanToast('Connexion rétablie.', '📡');
+        });
+    }
+
     // Android Back Button listener
     const appPlugin = getNativePlugin('App');
     if (appPlugin) {
         appPlugin.addListener('backButton', (data) => {
+            if (nativePlatform === 'android') {
+                const openDialog = document.querySelector('dialog[open]');
+                if (openDialog) {
+                    openDialog.close();
+                    return;
+                }
+                if (document.body.classList.contains('keyboard-open')) {
+                    const active = document.activeElement;
+                    if (active && typeof active.blur === 'function') active.blur();
+                    return;
+                }
+            }
             const activeModal = document.querySelector('.modal-overlay.active');
             if (activeModal) {
                 if (activeModal.id === 'chatModal' && document.body.classList.contains('chat-conversation-open') && typeof window.backToChatContacts === 'function') {
@@ -233,6 +258,8 @@ function initializeNativeFeatures() {
                     activeModal.style.display = 'none';
                     document.body.style.overflow = '';
                 }
+            } else if (data && data.canGoBack) {
+                window.history.back();
             } else {
                 appPlugin.exitApp();
             }

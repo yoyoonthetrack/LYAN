@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+def lyannKeystorePropertiesFile = new File(System.getProperty('user.home'), 'Library/Application Support/LYANN/android-release/keystore.properties')
+def lyannKeystoreProperties = new Properties()
+if (lyannKeystorePropertiesFile.exists()) {
+    lyannKeystorePropertiesFile.withInputStream { lyannKeystoreProperties.load(it) }
+}
+
 android {
     namespace = "app.lyann.mobile"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,7 +13,7 @@ android {
         applicationId "app.lyann.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 11
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,9 +22,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (lyannKeystorePropertiesFile.exists()) {
+                storeFile file(lyannKeystoreProperties['storeFile'])
+                storePassword lyannKeystoreProperties['storePassword']
+                keyAlias lyannKeystoreProperties['keyAlias']
+                keyPassword lyannKeystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
+            if (lyannKeystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

@@ -57,10 +57,10 @@
     /* ==========================================================================
        LYANN CENTRALIZED LAYOUT & SAFE AREA TOKENS
        ========================================================================== */
-    --lyann-safe-top: env(safe-area-inset-top, 0px);
-    --lyann-safe-bottom: env(safe-area-inset-bottom, 0px);
-    --lyann-safe-left: env(safe-area-inset-left, 0px);
-    --lyann-safe-right: env(safe-area-inset-right, 0px);
+    --lyann-safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+    --lyann-safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+    --lyann-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+    --lyann-safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
 
     --lyann-chat-header-offset: 48px;
     --lyann-header-height: 64px;
@@ -516,7 +516,7 @@ h1, h2, h3, h4 {
     left: 0;
     width: 100%;
     z-index: 1000;
-    min-height: calc(64px + env(safe-area-inset-top, 0px));
+    min-height: calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
     padding-top: max(10px, env(safe-area-inset-top, 10px));
     padding-bottom: 10px;
     background: transparent !important;
@@ -8013,7 +8013,7 @@ input:checked + .slider:before {
 .chat-input-area {
     flex: 0 0 auto;
     padding: 12px 16px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(12px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     border-top: 1px solid var(--border);
     background: #FFFFFF;
     position: relative;
@@ -8352,7 +8352,7 @@ input:checked + .slider:before {
 /* COMPOSER / INPUT AREA */
 .chat-input-area {
     padding: 10px 14px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(10px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     border-top: 1px solid var(--border);
     background: #FFFFFF;
     position: sticky;
@@ -8409,7 +8409,7 @@ input:checked + .slider:before {
     width: 100%;
     background: #FFFFFF;
     border-radius: 24px 24px 0 0;
-    padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 20px calc(24px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     box-shadow: 0 -10px 30px rgba(0,0,0,0.2);
     animation: slideUpSheet 0.25s cubic-bezier(0.25, 1, 0.5, 1);
 }
@@ -8497,7 +8497,7 @@ input:checked + .slider:before {
 }
 .chat-photo-viewer-close {
     position: absolute;
-    top: calc(16px + env(safe-area-inset-top, 0px));
+    top: calc(16px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
     right: 16px;
     background: rgba(255,255,255,0.2);
     color: #FFFFFF;
@@ -9065,9 +9065,9 @@ body.user-is-logged-in #mobileHamburgerDrawer .drawer-footer.logged-in-only {
 .modal-card-user-account,
 .modal-card-public-profile,
 .modal-card-quick-profile {
-    margin-top: calc(12px + env(safe-area-inset-top, 0px)) !important;
-    margin-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
-    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+    margin-top: calc(12px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) !important;
+    margin-bottom: calc(12px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
+    max-height: calc(100dvh - 24px - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
     height: 100% !important;
 }
 
@@ -10828,7 +10828,7 @@ button.speed-dial-item,
 }
 .chat-wait-pill {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 64px);
+    top: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 64px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000000;
@@ -10949,11 +10949,11 @@ body.lyann-messaging-open::after {
 
 /* Safe Area support pour Notch, barre de navigation, status bar sur iOS & Android */
 body.is-native-app {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 body.is-native-app .navbar {
-    top: calc(16px + env(safe-area-inset-top, 0px)) !important;
+    top: calc(16px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) !important;
 }
 
 body.is-native-app .reveal {
@@ -10966,29 +10966,29 @@ body.is-native-app .results-hero-section,
 body.is-native-app .pricing-hero-section,
 body.is-native-app .about-hero,
 body.is-native-app .legal-hero {
-    padding-top: calc(140px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: calc(140px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) !important;
 }
 
 body.is-native-app .feed-hero-section {
-    padding-top: calc(70px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: calc(70px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) !important;
 }
 
 body.is-native-app .speed-dial-wrapper {
-    bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(80px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
 }
 
 body.is-native-app #backToTopBtn {
-    bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(80px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
 }
 
 /* Rallongement du footer pour les écrans avec boutons d'accueil virtuels (Safe Area Bottom) */
 body.is-native-app .footer {
-    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(40px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
 }
 
 /* Modales d'action du chat mobile s'adaptent à la safe-area */
 body.is-native-app #chatModal .modal-card {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 /* ==========================================================================
@@ -11008,7 +11008,7 @@ body.is-native-app #chatModal .modal-card {
     justify-content: space-around;
     align-items: center;
     height: 64px;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
     z-index: 999;
     box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
 }
@@ -11018,12 +11018,12 @@ body.is-native-app.has-member-nav .mobile-bottom-nav {
 }
 
 body.is-native-app:not(.has-member-nav) {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 body.is-native-app {
     /* Laisser de l'espace pour le menu d'onglets du bas */
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(64px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
 }
 
 .nav-tab {
@@ -11126,7 +11126,7 @@ html.lyann-boot-splash-skip .lyann-boot-splash {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 40px 24px calc(40px + env(safe-area-inset-bottom, 0px));
+    padding: 40px 24px calc(40px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     text-align: center;
     box-sizing: border-box;
 }
@@ -11180,7 +11180,7 @@ html.lyann-boot-splash-skip .lyann-boot-splash {
     transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     padding: 24px;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(24px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     box-sizing: border-box;
 }
 
@@ -11267,7 +11267,7 @@ html.lyann-boot-splash-skip .lyann-boot-splash {
 
 /* 4. Tableau de Bord Mobile (#mobileDashboard) */
 #mobileDashboard {
-    padding: calc(110px + env(safe-area-inset-top, 0px)) 16px 20px 16px;
+    padding: calc(110px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 16px 20px 16px;
     background: var(--gradient-hero);
     border-bottom-left-radius: var(--radius-xl);
     border-bottom-right-radius: var(--radius-xl);
@@ -11535,8 +11535,8 @@ body.hide-bottom-nav {
     display: none;
     justify-content: space-between;
     align-items: stretch;
-    height: calc(var(--m-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: calc(var(--m-bottom-nav-height) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
     padding-left: 0;
     padding-right: 0;
     z-index: 9999;
@@ -11550,7 +11550,7 @@ body.hide-bottom-nav {
         display: flex !important;
     }
     body:not(.hide-bottom-nav) {
-        padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+        padding-bottom: calc(76px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
     }
 }
 
@@ -11560,11 +11560,11 @@ body.is-native-app.has-member-nav .mobile-bottom-nav {
 
 body.is-native-app.has-member-nav {
     /* 20px clears the bar shadow so a scrolled action sits fully above it. */
-    padding-bottom: calc(var(--m-bottom-nav-height) + 20px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--m-bottom-nav-height) + 20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
 }
 
 html:has(body.is-native-app.has-member-nav) {
-    scroll-padding-bottom: calc(var(--m-bottom-nav-height) + 20px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(var(--m-bottom-nav-height) + 20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
 }
 
 .nav-tab {
@@ -11657,8 +11657,8 @@ html:has(body.is-native-app.has-member-nav) {
 
 /* Bokantaj Native Header */
 .bokantaj-native-header {
-    height: calc(var(--m-header-height) + env(safe-area-inset-top, 0px));
-    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(var(--m-header-height) + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+    padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
     background: #FFFFFF;
     border-bottom: 1px solid rgba(0,0,0,0.05);
     display: flex;
@@ -11816,7 +11816,7 @@ body.is-native-app .navbar,
     border-bottom: 1px solid transparent !important;
     transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
     z-index: 1000 !important;
-    padding-top: max(16px, calc(16px + env(safe-area-inset-top, 0px))) !important;
+    padding-top: max(16px, calc(16px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))) !important;
     padding-bottom: 12px !important;
 }
 
@@ -12468,8 +12468,8 @@ body.is-native-app .navbar.scrolled,
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
     border-left: 1px solid rgba(229, 179, 69, 0.25);
 }
 
@@ -12479,7 +12479,7 @@ body.is-native-app .navbar.scrolled,
 
 /* En-tête profil du drawer — Chaleureux & Doux (Charte LYANN) */
 .drawer-profile-header {
-    padding: calc(18px + env(safe-area-inset-top, 0px)) 20px 20px 20px;
+    padding: calc(18px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 20px 20px 20px;
     background: linear-gradient(135deg, #F4F8F5 0%, #E6F0E9 100%);
     border-bottom: 1.5px solid rgba(74, 124, 89, 0.2);
     border-radius: 0 0 18px 18px;
@@ -12687,7 +12687,7 @@ body.is-native-app .navbar.scrolled,
 
 /* Pied de page du menu drawer */
 .drawer-footer {
-    padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
+    padding: 14px 16px calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) 16px;
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     background: #FAFAFA;
 }
@@ -14823,14 +14823,14 @@ textarea:focus,
 /* 1. Fix Explorer Hero Spacing on Native & Mobile */
 @media (max-width: 768px) {
     body.is-native-app .hero {
-        padding-top: calc(88px + env(safe-area-inset-top, 0px)) !important;
+        padding-top: calc(88px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) !important;
         padding-bottom: 24px !important;
         margin-bottom: 0 !important;
     }
 
     body.is-native-app .results-hero-section,
     .results-page .results-hero-section {
-        padding-top: calc(72px + env(safe-area-inset-top, 0px)) !important;
+        padding-top: calc(72px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) !important;
         padding-bottom: 16px !important;
         margin-bottom: 0 !important;
     }
@@ -15088,11 +15088,11 @@ html, body {
     }
 
     .hamburger-drawer-card {
-        top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+        top: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 12px) !important;
         right: 12px !important;
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+        bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 12px) !important;
         left: auto !important;
-        height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px) !important;
+        height: calc(100dvh - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) - 24px) !important;
         width: 88vw !important;
         max-width: 360px !important;
         border-radius: 28px !important;
@@ -15285,7 +15285,7 @@ html, body {
     max-width: 540px !important;
     background: #FDFCF9 !important;
     border-radius: 24px 24px 0 0 !important;
-    padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)) 20px !important;
+    padding: 20px 20px calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) 20px !important;
     box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2) !important;
     max-height: 85vh !important;
     display: flex !important;
@@ -15400,7 +15400,7 @@ html, body {
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
     z-index: 999999 !important;
-    padding: calc(env(safe-area-inset-top, 0px) + 14px) 14px calc(env(safe-area-inset-bottom, 0px) + 14px) 14px !important;
+    padding: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 14px) 14px calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 14px) 14px !important;
     box-sizing: border-box !important;
     display: none;
     align-items: center !important;
@@ -16419,7 +16419,7 @@ body.is-native-app .navbar .nav-auth-btn {
         height: 56px !important;
         min-height: 56px !important;
         padding: 0 12px !important;
-        padding-top: env(safe-area-inset-top, 0px) !important;
+        padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) !important;
         background: #FFFFFF !important;
         border-bottom: 1px solid #EAE6DF !important;
         position: sticky !important;
@@ -17727,7 +17727,7 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
   }
 
   body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay {
-    bottom: calc(var(--m-bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(var(--m-bottom-nav-height, 72px) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
     height: auto !important;
   }
 
@@ -17771,7 +17771,7 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
     top: 0 !important;
     right: 0 !important;
     left: 0 !important;
-    bottom: calc(var(--m-bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(var(--m-bottom-nav-height, 72px) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
     height: auto !important;
     max-height: none !important;
   }
@@ -17797,7 +17797,7 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
 
   body.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay,
   body.is-native-app.lyann-messaging-open.chat-list-open:not(.chat-conversation-open) #chatModal.modal-overlay {
-    top: var(--lyann-inbox-nav-offset, calc(76px + env(safe-area-inset-top, 0px))) !important;
+    top: var(--lyann-inbox-nav-offset, calc(76px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))) !important;
     background: #F1F8F3 !important;
     background-color: #F1F8F3 !important;
   }
@@ -17834,7 +17834,7 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
     z-index: 40 !important;
     flex: 0 0 auto !important;
     min-height: 44px !important;
-    padding-top: calc(4px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: calc(4px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) !important;
     padding-bottom: 4px !important;
     background: #FFFFFF !important;
     background-color: #FFFFFF !important;
@@ -17849,7 +17849,7 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
     display: none;
   }
   body.lyann-messaging-open #chatModal {
-    --lyann-chat-header-offset: calc(44px + env(safe-area-inset-top, 0px));
+    --lyann-chat-header-offset: calc(44px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   }
   body.lyann-messaging-open #chatTrackingOverlay > div:first-child {
     padding: 8px 12px !important;
@@ -17870,7 +17870,7 @@ body.lyann-messaging-transition #chatModal { visibility: hidden !important; poin
      underlying page behind the messaging route. */
   body.is-native-app.lyann-messaging-open #chatModal .chat-input-area,
   body.is-native-app.lyann-messaging-open #chatModal #chatReplyBar {
-    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: max(12px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
   }
 
   #chatModal .chat-modal-layout:not(.mobile-conversation-active) .chat-contacts-sidebar { display: flex !important; width: 100% !important; }
@@ -18267,7 +18267,7 @@ body.is-native-app .hamburger-drawer-card {
     border-radius: 0 !important;
     border: 0 !important;
     box-shadow: none !important;
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
 }
 
 .testimonials-section {
@@ -18343,7 +18343,7 @@ html.is-native-shell body:not(.user-is-logged-in) #nativeGuestHome:not([hidden])
     z-index: 30;
     left: 0;
     right: 0;
-    top: calc(76px + env(safe-area-inset-top, 0px));
+    top: calc(76px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
     bottom: 0;
     flex-direction: column;
     background: transparent;
@@ -18728,7 +18728,7 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     padding: 6px 16px 4px;
 }
 .native-guest-dots.is-last {
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(8px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
 }
 .native-guest-dot {
     width: 9px;
@@ -19141,7 +19141,7 @@ html.is-native-shell body:not(.user-is-logged-in) .navbar.scrolled {
     flex: none;
     display: flex;
     gap: 10px;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 16px calc(12px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     background: transparent;
     border-top: 0;
 }
@@ -19458,7 +19458,7 @@ body:not(.user-is-logged-out) .feed-guest-cta { display: none; }
     font-family: 'Outfit', sans-serif;
     border-radius: 24px 24px 0 0;
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
-    padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    padding: 8px 16px calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     box-sizing: border-box;
 }
 .lyann-notif-handle {
@@ -19799,7 +19799,7 @@ body.lyann-messaging-open #chatModal .chat-sidebar-header.lyann-inbox-header {
     height: auto !important;
     min-height: 0 !important;
     gap: 0 !important;
-    padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 6px !important;
+    padding: calc(14px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 20px 6px !important;
     background: #F1F8F3 !important;
     background-color: #F1F8F3 !important;
     border-bottom: 0 !important;
@@ -20040,7 +20040,7 @@ body.keyboard-open.is-native-app.lyann-messaging-open.chat-list-open:not(.chat-c
 #chatModal .lyann-inbox-filter-empty { text-align: center; color: #5d6f64; padding: 28px 12px; }
 @media (max-width: 900px) {
     body.chat-list-open:not(.keyboard-open) #chatModal.modal-overlay.active {
-        bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+        bottom: calc(72px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
         height: auto;
     }
     body.chat-list-open .mobile-bottom-nav { z-index: 6500; }
@@ -20099,7 +20099,7 @@ body.keyboard-open.is-native-app.lyann-messaging-open.chat-list-open:not(.chat-c
     align-items: center;
     overflow-x: hidden;
     overflow-y: auto;
-    padding: 20px 16px max(20px, env(safe-area-inset-bottom, 0px));
+    padding: 20px 16px max(20px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     box-sizing: border-box;
     -webkit-overflow-scrolling: touch;
 }
@@ -20158,7 +20158,7 @@ body.keyboard-open #chatModal #chatMilestoneDevisForm.chat-overlay-pane {
     flex-direction: column;
     background: #fff;
     border-radius: 24px 24px 0 0;
-    padding: 12px 16px max(16px, env(safe-area-inset-bottom, 0px));
+    padding: 12px 16px max(16px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     box-sizing: border-box;
 }
 .lyann-commune-head {
@@ -20859,7 +20859,7 @@ html body.keyboard-open.chat-conversation-open #chatModal.modal-overlay.active {
     font-weight: 700;
 }
 #milestoneDevisForm {
-    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    padding-bottom: max(16px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     max-height: min(78vh, 640px);
 }
 @media (max-width: 390px) {
@@ -21135,7 +21135,7 @@ body.is-native-app .navbar.native-page-header,
 body.is-native-app .navbar.native-page-header.scrolled {
     top: 0 !important;
     min-height: 0 !important;
-    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) !important;
     padding-bottom: 8px !important;
     background: #FDFCF9 !important;
     backdrop-filter: none !important;

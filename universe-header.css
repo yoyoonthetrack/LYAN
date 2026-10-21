@@ -158,11 +158,11 @@
 }
 
 .feed-hero-section.lyann-universe-header {
-    padding: calc(70px + env(safe-area-inset-top, 0px)) 0 4px;
+    padding: calc(70px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 0 4px;
 }
 .explorer-page.lyann-universe,
 body.is-native-app .explorer-page.lyann-universe {
-    padding-top: calc(70px + env(safe-area-inset-top, 0px));
+    padding-top: calc(70px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
 }
 .feed-main-section.section { padding-top: 2px; }
 .bokantaj-top-filter-row { margin-top: 8px !important; }
@@ -478,7 +478,7 @@ body.feed-page .bokantaj-location-actions {
     gap: 8px;
     position: sticky;
     bottom: 0;
-    padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 0 calc(12px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     background: #fffdf8;
 }
 #bokantajFilterSheetModal .bokantaj-filter-footer .btn {

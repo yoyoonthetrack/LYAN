@@ -106,9 +106,13 @@ window.formatMemberSinceFr = formatMemberSinceFr;
 
 // === CAPACITOR MOBILE DETECTOR & DYNAMIC BRIDGE INJECTION ===
 (function() {
-    const isCapacitorOrigin = window.location.origin.includes('capacitor://') ||
-                              window.location.origin.includes('http://localhost') ||
-                              window.location.href.startsWith('file://');
+    const origin = window.location.origin || '';
+    const androidLocalhost = window.location.hostname === 'localhost'
+        && window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'android';
+    const isCapacitorOrigin = origin.includes('capacitor://') ||
+                              origin.includes('http://localhost') ||
+                              window.location.href.startsWith('file://') ||
+                              androidLocalhost;
     function bootNativeShell() {
         if (window.__lyannNativeBooted) return;
         window.__lyannNativeBooted = true;
