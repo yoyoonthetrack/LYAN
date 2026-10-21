@@ -61,8 +61,14 @@ if (script.includes('let availableBal = \'0,00 €\'')) {
 if (script.includes("openHelpRequestModal==='function'")) {
   fail('activity publish CTA must use the canonical publish route, not a missing openHelpRequestModal');
 }
-if (!/btnManageMyLyann[\s\S]{0,400}openAccountModalSubView\('activity'\)/.test(script)) {
-  fail('Gérer mon annonce must open real account activity');
+if (!/btnEditMyLyann[\s\S]{0,250}openAnnouncementEditor/.test(script)) {
+  fail('own Lyann Modifier must open the real announcement editor');
+}
+if (!/openAnnouncementEditor[\s\S]{0,900}openLyannWizard\(\{ editingRequestId/.test(script)) {
+  fail('announcement editor must reopen the publish wizard on the existing request');
+}
+if (/btnManageMyLyann/.test(script) && !/btnManageMyLyann[\s\S]{0,400}openAccountModalSubView\('activity'\)/.test(script)) {
+  fail('legacy Gérer mon annonce must open real account activity');
 }
 if (!script.includes('deleteMyAnnouncement')) {
   fail('activity must expose deleteMyAnnouncement for own requests');

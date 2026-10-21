@@ -6,6 +6,13 @@ let authCheckInProgress = false;
 window.AUTH_STATE = "LOADING";
 window.currentAdminUser = null;
 window.adminDataLoaded = false;
+let editorialCollectInFlight = false;
+
+window.adminEscape = function(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[char]));
+};
 
 window.fetchWithAdminAuth = async function(url, options = {}) {
     const headers = Object.assign({}, options.headers || {});
@@ -24,12 +31,128 @@ window.fetchWithAdminAuth = async function(url, options = {}) {
     return fetch(url, { ...options, headers });
 };
 
+document.addEventListener('click', (event) => {
+    if (event.target && event.target.closest && event.target.closest('#btnRunModerationOnce')) {
+        window.fetchWithAdminAuth('/v1/admin/ops/moderation/run-once', { method: 'POST' }).catch(() => {});
+    }
+    const collectBtn = event.target && event.target.closest && event.target.closest('#editorialCollectBtn');
+    if (!collectBtn || collectBtn.disabled || collectBtn.dataset.collectLock === '1') return;
+    collectBtn.dataset.collectLock = '1';
+    collectBtn.disabled = true;
+    if (typeof window.runEditorialCollect === 'function') {
+        window.runEditorialCollect().catch((err) => {
+            const notice = document.getElementById('editorialNotice');
+            if (notice) notice.textContent = err.message || 'Erreur serveur.';
+        });
+    }
+});
+
+window.runEditorialCollect = async function() {
+    const button = document.getElementById('editorialCollectBtn');
+    const notice = document.getElementById('editorialNotice');
+    if (editorialCollectInFlight) return { success: true, skipped: 'in-flight', created: [] };
+    editorialCollectInFlight = true;
+    if (button) button.disabled = true;
+    try {
+        const res = await window.fetchWithAdminAuth('/v1/admin/editorial/collect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
+        });
+        const report = await res.json().catch(() => ({}));
+        if (!res.ok || report.success === false) {
+            const code = report && report.code;
+            const message = (res.status === 401 || code === 'ADMIN_TOKEN_INVALID' || code === 'ADMIN_AUTH_REQUIRED')
+                ? 'Session expirée.'
+                : (report.error || 'Erreur serveur.');
+            if (notice) notice.textContent = message;
+            throw new Error(message);
+        }
+        const created = (report.created || []).length;
+        if (notice) {
+            notice.textContent = created
+                ? `${created} proposition(s) générée(s).`
+                : (report.error || 'Aucun contenu fiable disponible pour cette passe.');
+        }
+        if (typeof window.openEditorialDesk === 'function') {
+            await window.openEditorialDesk();
+        } else {
+            const hist = document.getElementById('editorialHistory');
+            const botsRes = await window.fetchWithAdminAuth('/v1/admin/editorial/bots');
+            const bots = await botsRes.json().catch(() => ({}));
+            if (hist && bots.history) {
+                hist.innerHTML = '<p>Historique des collectes</p>' + (bots.history || []).map((row) =>
+                    `<p>${window.adminEscape(row.event_type || '')} — ${window.adminEscape(row.description || '')}</p>`
+                ).join('');
+            }
+        }
+        return report;
+    } finally {
+        editorialCollectInFlight = false;
+        if (button) {
+            button.disabled = false;
+            delete button.dataset.collectLock;
+        }
+    }
+};
+
+window.hydrateAdminSection = async function(sectionId) {
+    const esc = window.adminEscape;
+    const putRows = (tbodyId, html) => {
+        const tbody = document.getElementById(tbodyId);
+        if (tbody) tbody.innerHTML = html;
+    };
+    if (sectionId === 'sec-maison') {
+        const res = await window.fetchWithAdminAuth('/v1/admin/maison/profiles');
+        const data = await res.json().catch(() => ({}));
+        const list = document.getElementById('maisonRosterList');
+        if (list) {
+            list.innerHTML = (data.profiles || []).map((p) =>
+                `<button type="button" class="maison-profile-btn" data-maison-id="${esc(p.id)}"><strong>${esc(p.first_name || '')} ${esc(p.last_name || '')}</strong></button>`
+            ).join('');
+        }
+        return data;
+    }
+    if (sectionId === 'sec-users') {
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops?resource=users');
+        const data = await res.json().catch(() => ({}));
+        putRows('usersAdminTableBody', (data.rows || []).map((row) => `<tr><td>${esc(row.first_name || '')} ${esc(row.last_name || '')}</td><td>${esc(row.email || '')}</td></tr>`).join(''));
+        return data;
+    }
+    if (sectionId === 'sec-feature-flags') {
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops?resource=feature-flags');
+        const data = await res.json().catch(() => ({}));
+        putRows('featureFlagsTableBody', (data.rows || []).map((row) => `<tr><td>${esc(row.key || row.name || '')}</td></tr>`).join(''));
+        return data;
+    }
+    if (sectionId === 'sec-content') {
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops/moderation');
+        const data = await res.json().catch(() => ({}));
+        putRows('adminModerationQueueBody', (data.posts || []).map((row) => `<tr><td>${esc(row.excerpt || row.id)}</td></tr>`).join(''));
+        return data;
+    }
+    return null;
+};
+
+window.adminSaveSystemSetting = async function(key, value) {
+    const res = await window.fetchWithAdminAuth('/v1/admin/system/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Paramètre non enregistré.');
+    }
+    return data;
+};
+
 function updateAdminHeaderProfile(profile) {
     if (!profile) profile = { username: 'Administrateur', role: 'ADMIN', isOwner: true };
     const headerUserEl = document.getElementById('adminHeaderUsernameText');
     if (headerUserEl) {
         const crownIcon = profile.isOwner ? ' <i class="ph-fill ph-crown" style="color: #E5B345;"></i>' : '';
-        headerUserEl.innerHTML = (profile.username || 'Administrateur') + crownIcon;
+        headerUserEl.innerHTML = window.adminEscape(profile.username || 'Administrateur') + crownIcon;
     }
 
     const headerRoleEl = document.getElementById('adminHeaderUserRole');
@@ -186,7 +309,20 @@ window.runAdminAuthCheck = async function(reason = 'BOOT') {
             return;
         }
 
-        const { data: sData, error: sErr } = await window.LYANN_API_CLIENT.getSession();
+        let sData = null;
+        let sErr = null;
+        try {
+            const sessionResult = await Promise.race([
+                window.LYANN_API_CLIENT.getSession(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('auth-timeout')), 8000))
+            ]);
+            sData = sessionResult.data;
+            sErr = sessionResult.error;
+        } catch (waitErr) {
+            console.warn("[AUTH ENGINE] Session timeout or failure:", waitErr);
+            setViewState('ERROR', 'La vérification de session a pris trop de temps. Réessayez.');
+            return;
+        }
 
         if (sErr) {
             console.warn("[AUTH ENGINE] Erreur getSession:", sErr);
@@ -393,14 +529,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.checkAdminPermission = function(permissionCode) {
         if (!window.currentAdminUser) return false;
-        if (window.currentAdminUser.isOwner || window.currentAdminUser.permissions.includes('*')) {
+        const permissions = window.currentAdminUser.permissions || [];
+        if (window.currentAdminUser.isOwner || permissions.includes('*')) {
             return true;
         }
-        return window.currentAdminUser.permissions.includes(permissionCode);
+        return permissions.includes(permissionCode);
+    };
+
+    window.adminSaveSystemSetting = async function(key, value) {
+        const res = await window.fetchWithAdminAuth('/v1/admin/system/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [key]: value })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Paramètre non enregistré.');
+        }
+        return data;
     };
 
     // Run initial auth check
-    await window.runAdminAuthCheck('DOMContentLoaded');
+    window.runAdminAuthCheck('DOMContentLoaded');
+
+    try {
 
     function recordAdminAuditLog(action, moduleName, resourceType, resourceId, accessReason = null, oldVals = null, newVals = null) {
         const username = window.currentAdminUser?.username || 'Administrateur';
@@ -424,12 +576,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tr = document.createElement('tr');
             const nowStr = new Date().toLocaleString('fr-FR');
             tr.innerHTML = `
-                <td style="font-family: var(--admin-font-mono);">${nowStr}</td>
-                <td><strong style="color: var(--admin-brand-yellow);">${username} (${role})</strong></td>
-                <td><span class="status-badge verified">${action}</span></td>
-                <td>${moduleName}</td>
-                <td>${resourceType} (${resourceId || 'N/A'})</td>
-                <td>${accessReason || 'Action administrative validée'}</td>
+                <td style="font-family: var(--admin-font-mono);">${window.adminEscape(nowStr)}</td>
+                <td><strong style="color: var(--admin-brand-yellow);">${window.adminEscape(username)} (${window.adminEscape(role)})</strong></td>
+                <td><span class="status-badge verified">${window.adminEscape(action)}</span></td>
+                <td>${window.adminEscape(moduleName)}</td>
+                <td>${window.adminEscape(resourceType)} (${window.adminEscape(resourceId || 'N/A')})</td>
+                <td>${window.adminEscape(accessReason || 'Action administrative validée')}</td>
             `;
             auditTableBody.insertBefore(tr, auditTableBody.firstChild);
         }
@@ -492,9 +644,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const matchingNavs = Array.from(document.querySelectorAll('.admin-nav-item')).filter(nav => nav.textContent.toLowerCase().includes(query));
             resultsBox.innerHTML = matchingNavs.map(nav => {
-                const secId = nav.getAttribute('data-section');
-                return `<div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'${secId}\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-arrow-right"></i> ${nav.textContent.trim()}</div>`;
-            }).join('') || `<div style="padding: 12px; font-size: 0.85rem; color: var(--admin-text-muted);">Aucun résultat trouvé pour "${query}"</div>`;
+                const secId = window.adminEscape(nav.getAttribute('data-section') || '');
+                return `<div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'${secId}\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-arrow-right"></i> ${window.adminEscape(nav.textContent.trim())}</div>`;
+            }).join('') || `<div style="padding: 12px; font-size: 0.85rem; color: var(--admin-text-muted);">Aucun résultat trouvé pour "${window.adminEscape(query)}"</div>`;
         });
     }
 
@@ -600,13 +752,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-approve-kyc').forEach(btn => {
         btn.addEventListener('click', () => {
             const userName = btn.getAttribute('data-user-name') || 'Lyanneur';
+            const userId = btn.getAttribute('data-user-id');
+            if (!userId) {
+                alert('Ouvre la fiche membre depuis la liste Utilisateurs pour valider le KYC.');
+                return;
+            }
             if (confirm(`Approuver le dossier d'identité KYC et attribuer le badge VÉRIFIÉ à ${userName} ?`)) {
-                alert(`✅ Dossier KYC approuvé ! ${userName} est désormais prestataire vérifié avec badge vert.`);
-                const statusBadge = btn.closest('tr')?.querySelector('.status-badge');
-                if (statusBadge) {
-                    statusBadge.className = 'status-badge verified';
-                    statusBadge.textContent = 'VÉRFIÉ ✔';
-                }
+                window.adminApproveKyc(userId);
             }
         });
     });
@@ -615,13 +767,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-suspend-user').forEach(btn => {
         btn.addEventListener('click', () => {
             const userName = btn.getAttribute('data-user-name') || 'l\'utilisateur';
+            const userId = btn.getAttribute('data-user-id');
+            if (!userId) {
+                alert('Ouvre la fiche membre depuis la liste Utilisateurs pour modifier le statut.');
+                return;
+            }
             if (confirm(`⚠️ Suspendre le compte de ${userName} pour manquement aux règles communautaires ?`)) {
-                alert(`🚫 Compte de ${userName} suspendu avec succès.`);
-                const statusBadge = btn.closest('tr')?.querySelector('.status-badge');
-                if (statusBadge) {
-                    statusBadge.className = 'status-badge suspended';
-                    statusBadge.textContent = 'SUSPENDU';
-                }
+                window.adminUpdateUserStatus(userId, { is_verified: false });
             }
         });
     });
@@ -660,7 +812,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Toggle Flags
     document.querySelectorAll('.btn-toggle-flag').forEach(btn => {
         btn.addEventListener('click', () => {
-            alert('Ces interrupteurs ne sont pas encore reliés à system_settings. Aucun changement n’a été appliqué.');
+            window.loadAdminSection('sec-feature-flags');
         });
     });
 
@@ -688,12 +840,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.addEventListener('click', () => {
             const amount = btn.getAttribute('data-amount') || '450 €';
             const provider = btn.getAttribute('data-provider') || 'Prestataire LYANN';
-            if (confirm(`Déclencher le virement SEPA/Stripe Connect de ${amount} vers ${provider} ?`)) {
-                alert(`💸 Virement de ${amount} initié avec succès vers ${provider}.`);
-                btn.textContent = 'Virement Effectué ✅';
-                btn.disabled = true;
-                btn.style.opacity = '0.6';
-            }
+            alert('Action financière interdite depuis ce bouton. Les versements restent sous les verrous Stripe existants.');
         });
     });
 
@@ -701,7 +848,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-resolve-ticket').forEach(btn => {
         btn.addEventListener('click', () => {
             const ticketId = btn.getAttribute('data-ticket-id') || 'T-1082';
-            alert(`🎉 Ticket ${ticketId} marqué comme résolu ! Notification envoyée au membre.`);
+            alert('Aucun ticket Helpdesk n’est branché. Traite les signalements dans Modération ou Aide LYANN.');
             const row = btn.closest('tr');
             if (row) {
                 const statusBadge = row.querySelector('.status-badge');
@@ -717,13 +864,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-approve-ai').forEach(btn => {
         btn.addEventListener('click', () => {
             const postId = btn.getAttribute('data-post-id');
-            if (confirm('Approuver cette publication IA et la diffuser immédiatement sur Bokantaj public ?')) {
-                if (window.LYANN_AI_ECOSYSTEM) {
-                    window.LYANN_AI_ECOSYSTEM.approvePendingPost(postId);
-                }
-                const row = document.getElementById(`ai-row-${postId.replace('pending-', '')}`);
-                if (row) row.remove();
-                alert('✅ Publication IA approuvée et diffusée sur Bokantaj !');
+            if (confirm('Approuver cette proposition éditoriale ? Elle passera ensuite par la modération Bokantaj.')) {
+                window.LYANN_AI_ECOSYSTEM.approvePendingPost(postId)
+                    .then((body) => alert(body.message || 'Proposition traitée.'))
+                    .catch((err) => alert(err.message));
             }
         });
     });
@@ -731,13 +875,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-reject-ai').forEach(btn => {
         btn.addEventListener('click', () => {
             const postId = btn.getAttribute('data-post-id');
-            if (confirm('Rejeter et supprimer cette proposition de contenu IA ?')) {
-                if (window.LYANN_AI_ECOSYSTEM) {
-                    window.LYANN_AI_ECOSYSTEM.rejectPendingPost(postId);
-                }
-                const row = document.getElementById(`ai-row-${postId.replace('pending-', '')}`);
-                if (row) row.remove();
-                alert('🚫 Proposition IA rejetée.');
+            if (confirm('Refuser cette proposition éditoriale ?')) {
+                window.LYANN_AI_ECOSYSTEM.rejectPendingPost(postId)
+                    .then((body) => alert(body.message || 'Proposition refusée.'))
+                    .catch((err) => alert(err.message));
             }
         });
     });
@@ -747,16 +888,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.addEventListener('click', () => {
             const agentId = btn.getAttribute('data-agent-id');
             if (window.LYANN_AI_ECOSYSTEM) {
-                const newStatus = window.LYANN_AI_ECOSYSTEM.toggleAgentStatus(agentId);
-                if (newStatus === 'PAUSED') {
-                    btn.textContent = 'Reprendre ▶️';
-                    btn.classList.replace('admin-btn-secondary', 'admin-btn-primary');
-                    alert(`⏸️ Agent IA mis en pause avec succès.`);
-                } else {
-                    btn.textContent = 'Mettre en Pause ⏸️';
-                    btn.classList.replace('admin-btn-primary', 'admin-btn-secondary');
-                    alert(`▶️ Agent IA réactivé.`);
-                }
+                window.LYANN_AI_ECOSYSTEM.toggleAgentStatus(agentId)
+                    .then((newStatus) => {
+                        btn.textContent = newStatus === 'SUSPENDED' || newStatus === 'PAUSED' ? 'Reprendre' : 'Mettre en pause';
+                    })
+                    .catch((err) => alert(err.message));
             }
         });
     });
@@ -764,12 +900,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-refund-booking').forEach(btn => {
         btn.addEventListener('click', () => {
             const resId = btn.getAttribute('data-res-id') || '8820';
-            if (confirm(`Arbitrer le litige #RES-${resId} et procéder au remboursement intégral du client ?`)) {
-                alert(`💳 Remboursement de 120.00 € effectué avec succès via Stripe.`);
-                btn.textContent = 'Remboursé ✅';
-                btn.disabled = true;
-                btn.style.opacity = '0.6';
-            }
+            alert('Remboursement interdit depuis ce bouton. Les trois verrous financiers restent inchangés.');
         });
     });
 
@@ -777,10 +908,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-delete-content').forEach(btn => {
         btn.addEventListener('click', () => {
             const modId = btn.getAttribute('data-mod-id');
-            if (confirm('Supprimer définitivement ce contenu inapproprié et notifier l\'auteur ?')) {
-                const row = document.getElementById(`mod-row-${modId}`);
-                if (row) row.remove();
-                alert('🗑️ Contenu supprimé du réseau LYANN.');
+            if (!modId) {
+                alert('Utilise la file de modération réelle ci-dessous.');
+                return;
+            }
+            if (confirm('Supprimer cette publication Bokantaj (Staging uniquement) ?')) {
+                window.adminDeleteBokantaj(modId);
             }
         });
     });
@@ -807,9 +940,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Feature Flags Toggles
     document.querySelectorAll('.feature-flag-input').forEach(input => {
         input.addEventListener('change', () => {
-            const featureName = input.getAttribute('data-feature');
-            const state = input.checked ? 'ACTIVÉE' : 'DÉSACTIVÉE';
-            alert(`⚙️ Fonctionnalité [${featureName}] désormais ${state} en direct sur la plateforme.`);
+            const flagId = input.getAttribute('data-flag-id');
+            if (!flagId) {
+                input.checked = !input.checked;
+                alert('Ce flag n’est pas relié à la table feature_flags.');
+                return;
+            }
+            window.adminToggleFeatureFlag(flagId, input.checked);
         });
     });
 
@@ -817,15 +954,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const maintenanceToggle = document.getElementById('globalMaintenanceToggle');
     if (maintenanceToggle) {
         maintenanceToggle.addEventListener('change', () => {
-            if (maintenanceToggle.checked) {
-                if (confirm('🚨 ATTENTION : Activer le Mode Maintenance global ? Le site public affichera la page de maintenance.')) {
-                    alert('🚨 Mode Maintenance ACTIVÉ sur l\'ensemble des territoires DOM.');
-                } else {
-                    maintenanceToggle.checked = false;
-                }
-            } else {
-                alert('🟢 Mode Maintenance DÉSACTIVÉ. La plateforme publique est de nouveau accessible.');
-            }
+            window.adminSaveSystemSetting('maintenance_mode', { enabled: maintenanceToggle.checked })
+                .catch((err) => {
+                    alert(err.message);
+                    maintenanceToggle.checked = !maintenanceToggle.checked;
+                });
         });
     }
 
@@ -985,22 +1118,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        if (!taxonomyData.length && window.LyanAI && window.LyanAI.baselineTaxonomy) {
-            taxonomyData = window.LyanAI.baselineTaxonomy;
+        if (!taxonomyData.length) {
+            try {
+                const taxRes = await window.fetchWithAdminAuth('/v1/admin/taxonomy');
+                const taxBody = await taxRes.json().catch(() => ({}));
+                if (taxRes.ok && (taxBody.rows || taxBody.taxonomy || []).length) {
+                    taxonomyData = taxBody.rows || taxBody.taxonomy || [];
+                }
+            } catch (_) {}
+        }
+
+        if (!taxonomyData.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="admin-empty-cell">Taxonomie introuvable en base. Rien n’est inventé ici.</td></tr>';
+            return;
         }
 
         if (tbody && taxonomyData.length > 0) {
             tbody.innerHTML = taxonomyData.map(item => `
                 <tr>
-                    <td><code>${item.universe}</code></td>
-                    <td><strong>${item.category}</strong></td>
-                    <td>${item.subcategory || '-'}</td>
-                    <td><small style="color: #64748B;">${(item.synonyms || []).slice(0, 5).join(', ')}${(item.synonyms || []).length > 5 ? '...' : ''}</small></td>
-                    <td>${(item.tags || []).map(t => `<code style="font-size:0.75rem; background:#E2E8F0; padding:2px 4px; border-radius:4px;">${t}</code>`).join(' ')}</td>
-                    <td><span class="status-badge ${item.safety_level === 'PROHIBITED' ? 'danger' : (item.safety_level === 'PRO_REQUIRED' ? 'warning' : 'active')}">${item.safety_level || 'NORMAL'}</span></td>
+                    <td><code>${window.adminEscape(item.universe)}</code></td>
+                    <td><strong>${window.adminEscape(item.category)}</strong></td>
+                    <td>${window.adminEscape(item.subcategory || '-')}</td>
+                    <td><small style="color: #64748B;">${window.adminEscape((item.synonyms || []).slice(0, 5).join(', '))}${(item.synonyms || []).length > 5 ? '...' : ''}</small></td>
+                    <td>${(item.tags || []).map(t => `<code style="font-size:0.75rem; background:#E2E8F0; padding:2px 4px; border-radius:4px;">${window.adminEscape(t)}</code>`).join(' ')}</td>
+                    <td><span class="status-badge ${item.safety_level === 'PROHIBITED' ? 'danger' : (item.safety_level === 'PRO_REQUIRED' ? 'warning' : 'active')}">${window.adminEscape(item.safety_level || 'NORMAL')}</span></td>
                     <td><span class="status-badge ${item.active !== false ? 'verified' : 'inactive'}">${item.active !== false ? 'ACTIF' : 'INACTIF'}</span></td>
                     <td>
-                        <button class="admin-btn admin-btn-secondary btnToggleTaxonomyActive" data-id="${item.id || ''}" style="padding: 2px 8px; font-size: 0.75rem;">
+                        <button class="admin-btn admin-btn-secondary btnToggleTaxonomyActive" data-id="${window.adminEscape(item.id || '')}" style="padding: 2px 8px; font-size: 0.75rem;">
                             ${item.active !== false ? 'Désactiver' : 'Activer'}
                         </button>
                     </td>
@@ -1019,13 +1163,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!unclassErr && unclassifiedReqs && unclassifiedReqs.length > 0) {
                     discoveryTbody.innerHTML = unclassifiedReqs.map(req => `
                         <tr>
-                            <td>${new Date(req.created_at).toLocaleDateString('fr-FR')}</td>
-                            <td><strong>${req.description || req.title}</strong></td>
-                            <td>${req.location || req.city || 'Guadeloupe'}</td>
+                            <td>${window.adminEscape(new Date(req.created_at).toLocaleDateString('fr-FR'))}</td>
+                            <td><strong>${window.adminEscape(req.description || req.title)}</strong></td>
+                            <td>${window.adminEscape(req.location || req.city || 'Guadeloupe')}</td>
                             <td><span class="status-badge warning">${((req.classification_confidence || 0.3) * 100).toFixed(0)}%</span></td>
-                            <td><span class="status-badge warning">${req.classification_status}</span></td>
+                            <td><span class="status-badge warning">${window.adminEscape(req.classification_status)}</span></td>
                             <td>
-                                <button class="admin-btn admin-btn-primary btnClassifyRequestModal" data-id="${req.id}" data-desc="${(req.description || req.title).replace(/"/g, '&quot;')}" style="padding: 2px 8px; font-size: 0.75rem;">
+                                <button class="admin-btn admin-btn-primary btnClassifyRequestModal" data-id="${window.adminEscape(req.id)}" data-desc="${window.adminEscape(req.description || req.title)}" style="padding: 2px 8px; font-size: 0.75rem;">
                                     <i class="ph ph-check"></i> Classer
                                 </button>
                             </td>
@@ -1222,8 +1366,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    function updateAnalyticsDashboard(periodKey) {
-        const data = PERIOD_DATASETS[periodKey] || PERIOD_DATASETS['30d'];
+    async function updateAnalyticsDashboard(periodKey, territory) {
+        const fallback = PERIOD_DATASETS[periodKey] || PERIOD_DATASETS['30d'];
+        let live = null;
+        try {
+            const mapped = periodKey === 'today' ? '7d' : (periodKey === 'this_month' || periodKey === 'quarter' ? '90d' : (periodKey === 'year2026' ? '12m' : periodKey));
+            const terr = territory || document.getElementById('analyticsTerritorySelect')?.value || '';
+            const res = await window.fetchWithAdminAuth(`/v1/admin/kpis?period=${encodeURIComponent(mapped)}&territory=${encodeURIComponent(terr === 'all' ? '' : terr)}`);
+            const body = await res.json().catch(() => ({}));
+            if (res.ok && body.success) live = body;
+        } catch (e) {}
+        const money = (n) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+        const data = live ? {
+            ...fallback,
+            gmv: money(live.gmvMonth),
+            comm: money(live.mrrCommissions),
+            users: String(live.activeMembers || 0),
+            deals: String(live.activeMissions || 0),
+            disputes: String(live.openDisputes || 0),
+            kyc: live.activeMembers ? `${Math.round(((live.kycVerified || 0) / live.activeMembers) * 1000) / 10}%` : fallback.kyc,
+            subtitle: `Données réelles ${live.period || periodKey} · territoire ${live.territory || 'tous'}`,
+            gmvTrend: 'base réelle',
+            commTrend: 'base réelle',
+            usersTrend: `${live.realMembers || 0} comptes réels`,
+            dealsTrend: `${live.openRequests || 0} demandes ouvertes`
+        } : fallback;
 
         const elMap = {
             'kpiGmvVal': data.gmv, 'kpiGmvTrend': data.gmvTrend,
@@ -1314,7 +1481,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         applyCustomDateBtn.addEventListener('click', () => {
             const start = document.getElementById('startDateInput')?.value || '2026-07-01';
             const end = document.getElementById('endDateInput')?.value || '2026-08-04';
-            alert(`📅 Filtre analytique appliqué pour la période personnalisée du ${start} au ${end}.`);
             updateAnalyticsDashboard('30d');
         });
     }
@@ -1322,15 +1488,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const analyticsTerritorySelect = document.getElementById('analyticsTerritorySelect');
     if (analyticsTerritorySelect) {
         analyticsTerritorySelect.addEventListener('change', (e) => {
-            const territory = e.target.options[e.target.selectedIndex].text;
-            alert(`🔍 Filtre BI appliqué : Affichage des métriques pour ${territory}`);
+            const activePill = document.querySelector('.period-pill.active');
+            updateAnalyticsDashboard(activePill ? activePill.getAttribute('data-period') : '30d', e.target.value);
         });
     }
 
     const exportBiReportBtn = document.getElementById('exportBiReportBtn');
     if (exportBiReportBtn) {
         exportBiReportBtn.addEventListener('click', () => {
-            alert('📊 Export BI initié ! Le rapport détaillé (Finances, Prestations, Rétention & Matrice Territoriale DOM) a été généré au format CSV/PDF.');
+            window.exportAdminReportCSV('payments');
         });
     }
 
@@ -1341,7 +1507,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const key = activePill ? activePill.getAttribute('data-period') : '30d';
             updateAnalyticsDashboard(key);
             refreshDashboardData();
-            alert('🔄 Données analytiques et métriques BI synchronisées en temps réel.');
         });
     }
 
@@ -1352,7 +1517,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderAdminTransactions() {
         const body = document.getElementById('adminTransactionsTableBody');
-        if (!body) return;
+        if (!body || !window.LYANN_PAYMENTS || typeof window.LYANN_PAYMENTS.getTransactions !== 'function') return;
         
         const txs = window.LYANN_PAYMENTS.getTransactions();
         body.innerHTML = '';
@@ -1391,7 +1556,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderAdminWallets() {
         const body = document.getElementById('adminWalletsTableBody');
-        if (!body) return;
+        if (!body || !window.LYANN_PAYMENTS || typeof window.LYANN_PAYMENTS.getWallets !== 'function') return;
         
         const wallets = window.LYANN_PAYMENTS.getWallets();
         const members = {
@@ -1447,7 +1612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function checkActiveDisputes() {
         const card = document.getElementById('adminDisputeArbitrationCard');
-        if (!card) return;
+        if (!card || !window.LYANN_PAYMENTS || typeof window.LYANN_PAYMENTS.getTransactions !== 'function') return;
 
         const txs = window.LYANN_PAYMENTS.getTransactions();
         const disputeTx = txs.find(t => t.status === 'litige' && t.dispute && t.dispute.status === 'open');
@@ -1533,42 +1698,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Enregistrement des configurations
     const configForm = document.getElementById('adminFinancesConfigForm');
     if (configForm) {
-        const rates = window.LYANN_PAYMENTS.getConfig();
-        document.getElementById('configCommissionRate').value = rates.commissionRate;
-        document.getElementById('configProtectionFee').value = rates.protectionFee;
-
+        if (window.LYANN_PAYMENTS && typeof window.LYANN_PAYMENTS.getConfig === 'function') {
+            const rates = window.LYANN_PAYMENTS.getConfig();
+            const commissionInput = document.getElementById('configCommissionRate');
+            const protectionInput = document.getElementById('configProtectionFee');
+            if (commissionInput) commissionInput.value = rates.commissionRate;
+            if (protectionInput) protectionInput.value = rates.protectionFee;
+        }
         configForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const r = parseFloat(document.getElementById('configCommissionRate').value);
-            const p = parseFloat(document.getElementById('configProtectionFee').value);
-            window.LYANN_PAYMENTS.saveConfig({ commissionRate: r, protectionFee: p });
-            alert(`🟢 Configuration financière enregistrée ! Taux commission : ${r}%, Protection : ${p}€.`);
-            updateAdminFinancesSummary();
+            alert('Les commissions et verrous financiers ne peuvent pas être modifiés depuis le back-office.');
         });
     }
 
     // Arbitration Actions
     document.getElementById('btnArbitrateRefundClient')?.addEventListener('click', () => {
         if (activeArbitrationTxId && confirm("Marquer la médiation comme terminée et procéder au remboursement du client ?")) {
-            window.LYANN_PAYMENTS.resolveDispute(activeArbitrationTxId, 'resolved_client');
-            alert("Remboursement client initié.");
-            refreshDashboardData();
+            alert('Arbitrage financier interdit depuis cet écran. Les verrous Stripe restent actifs.');
         }
     });
 
     document.getElementById('btnArbitratePayProvider')?.addEventListener('click', () => {
         if (activeArbitrationTxId && confirm("Valider les travaux et libérer les fonds restants au prestataire ?")) {
-            window.LYANN_PAYMENTS.resolveDispute(activeArbitrationTxId, 'resolved_provider');
-            alert("Paiement libéré vers le portefeuille.");
-            refreshDashboardData();
+            alert('Libération de fonds interdite depuis cet écran.');
         }
     });
 
     document.getElementById('btnArbitrateSplit50')?.addEventListener('click', () => {
         if (activeArbitrationTxId && confirm("Fermer le litige avec une répartition amiable de 50/50 ?")) {
-            window.LYANN_PAYMENTS.resolveDispute(activeArbitrationTxId, 'resolved_split');
-            alert("Arbitrage 50/50 enregistré.");
-            refreshDashboardData();
+            alert('Arbitrage 50/50 interdit depuis cet écran.');
         }
     });
 
@@ -1818,24 +1976,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             const autonomyLabels = ['L0 — Observation', 'L1 — Assisté', 'L2 — Autonome Limité', 'L3 — Autonome'];
             const autonomyText = autonomyLabels[agent.autonomy_level || 0] || 'L0';
             const statusClass = agent.status === 'ACTIF' ? 'active' : (agent.status === 'PAUSE' || agent.status === 'SUSPENDU' ? 'suspended' : 'pending');
-            const tagsHtml = (agent.specialities || []).map(t => `<span class="status-badge" style="background: rgba(123, 197, 227, 0.15); color: var(--admin-brand-sky); border: 1px solid rgba(123, 197, 227, 0.3); font-size: 0.7rem;">${t}</span>`).join(' ');
+            const tagsHtml = (agent.specialities || []).map(t => `<span class="status-badge" style="background: rgba(123, 197, 227, 0.15); color: var(--admin-brand-sky); border: 1px solid rgba(123, 197, 227, 0.3); font-size: 0.7rem;">${window.adminEscape(t)}</span>`).join(' ');
 
             return `
-                <div class="admin-card" style="border-top: 3px solid var(--admin-brand-yellow); cursor: pointer;" onclick="window.openAgentDetailDrawer('${agent.id}')">
+                <div class="admin-card" style="border-top: 3px solid var(--admin-brand-yellow); cursor: pointer;" onclick="window.openAgentDetailDrawer('${window.adminEscape(agent.id)}')">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <img src="${agent.avatar || 'avatar-female-pink.png'}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--admin-brand-yellow);">
+                            <img src="${window.adminEscape(agent.avatar || 'avatar-female-pink.png')}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--admin-brand-yellow);">
                             <div>
-                                <h3 style="font-size: 0.95rem; color: var(--admin-text-main); font-weight: 800;">${agent.agent_name}</h3>
-                                <div style="font-size: 0.72rem; color: var(--admin-brand-sky); font-family: var(--admin-font-mono);">${agent.zones ? (Array.isArray(agent.zones) ? agent.zones.join(', ') : agent.zones) : 'DOM'}</div>
+                                <h3 style="font-size: 0.95rem; color: var(--admin-text-main); font-weight: 800;">${window.adminEscape(agent.agent_name)}</h3>
+                                <div style="font-size: 0.72rem; color: var(--admin-brand-sky); font-family: var(--admin-font-mono);">${window.adminEscape(agent.zones ? (Array.isArray(agent.zones) ? agent.zones.join(', ') : agent.zones) : 'DOM')}</div>
                             </div>
                         </div>
-                        <span class="status-badge ${statusClass}">${agent.status}</span>
+                        <span class="status-badge ${statusClass}">${window.adminEscape(agent.status)}</span>
                     </div>
 
                     <div style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 10px;">
-                        <div>Autonomie : <strong style="color: var(--admin-brand-yellow);">${autonomyText}</strong></div>
-                        <div>Mission : ${agent.current_mission || 'Animation réseau'}</div>
+                        <div>Autonomie : <strong style="color: var(--admin-brand-yellow);">${window.adminEscape(autonomyText)}</strong></div>
+                        <div>Mission : ${window.adminEscape(agent.current_mission || 'Animation réseau')}</div>
                     </div>
 
                     <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px;">
@@ -1843,7 +2001,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--admin-border); padding-top: 8px; font-size: 0.75rem; color: var(--admin-text-muted);">
-                        <span>Dernière activité : ${agent.last_activity_at || 'Récemment'}</span>
+                        <span>Dernière activité : ${window.adminEscape(agent.last_activity_at || 'Récemment')}</span>
                         <span style="color: var(--admin-brand-yellow); font-weight: 700;">Gérer &rarr;</span>
                     </div>
                 </div>
@@ -1864,18 +2022,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const statusClass = task.status === 'COMPLETED' ? 'verified' : (task.status === 'WAITING_APPROVAL' ? 'pending' : 'active');
             return `
                 <tr>
-                    <td style="font-family: var(--admin-font-mono); font-size: 0.8rem; color: var(--admin-brand-yellow);">${task.id || '#TSK-101'}</td>
-                    <td><strong>${task.agent_name || 'Agent LYANN'}</strong></td>
-                    <td style="max-width: 250px;">${task.instruction || task.title}</td>
-                    <td><span class="status-badge" style="background: rgba(255,255,255,0.1); color: #FFF;">${task.task_type || 'BOKANTAJ_POST'}</span></td>
-                    <td><span class="status-badge active">L${task.autonomy_level || 1}</span></td>
-                    <td><span class="status-badge ${statusClass}">${task.status}</span></td>
-                    <td style="font-size: 0.8rem;">${new Date(task.scheduled_at || Date.now()).toLocaleString('fr-FR')}</td>
+                    <td style="font-family: var(--admin-font-mono); font-size: 0.8rem; color: var(--admin-brand-yellow);">${window.adminEscape(task.id || '#TSK-101')}</td>
+                    <td><strong>${window.adminEscape(task.agent_name || 'Agent LYANN')}</strong></td>
+                    <td style="max-width: 250px;">${window.adminEscape(task.instruction || task.title)}</td>
+                    <td><span class="status-badge" style="background: rgba(255,255,255,0.1); color: #FFF;">${window.adminEscape(task.task_type || 'BOKANTAJ_POST')}</span></td>
+                    <td><span class="status-badge active">L${window.adminEscape(task.autonomy_level || 1)}</span></td>
+                    <td><span class="status-badge ${statusClass}">${window.adminEscape(task.status)}</span></td>
+                    <td style="font-size: 0.8rem;">${window.adminEscape(new Date(task.scheduled_at || Date.now()).toLocaleString('fr-FR'))}</td>
                     <td>
                         ${task.requires_approval && task.status === 'WAITING_APPROVAL' ?
-                            `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${task.id}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver</button>
-                             <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${task.id}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>`
-                            : `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Tâche exécutée/en cours')"><i class="ph-bold ph-eye"></i> Détails</button>`
+                            `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver</button>
+                             <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>`
+                            : `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Fonction indisponible')"><i class="ph-bold ph-eye"></i> Détails</button>`
                         }
                     </td>
                 </tr>
@@ -1901,14 +2059,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.innerHTML = pendingTasks.map(task => `
             <div style="background: var(--admin-bg); border: 1px solid var(--admin-border); padding: 14px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <div style="font-size: 0.78rem; color: var(--admin-brand-yellow); font-family: var(--admin-font-mono);">Action préparée par ${task.agent_name || 'Agent LYANN'}</div>
-                    <strong style="font-size: 0.95rem; color: var(--admin-text-main);">${task.title || task.instruction}</strong>
-                    <div style="font-size: 0.82rem; color: var(--admin-text-muted); margin-top: 4px;">Périmètre : ${task.metadata?.territory || 'Guadeloupe'}</div>
+                    <div style="font-size: 0.78rem; color: var(--admin-brand-yellow); font-family: var(--admin-font-mono);">Action préparée par ${window.adminEscape(task.agent_name || 'Agent LYANN')}</div>
+                    <strong style="font-size: 0.95rem; color: var(--admin-text-main);">${window.adminEscape(task.title || task.instruction)}</strong>
+                    <div style="font-size: 0.82rem; color: var(--admin-text-muted); margin-top: 4px;">Périmètre : ${window.adminEscape(task.metadata?.territory || 'Guadeloupe')}</div>
                 </div>
                 <div style="display: flex; gap: 8px;">
-                    <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${task.id}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver & Publier</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Modification directe active')"><i class="ph-bold ph-pencil"></i> Modifier</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${task.id}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver & Publier</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Fonction indisponible')"><i class="ph-bold ph-pencil"></i> Modifier</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
                 </div>
             </div>
         `).join('');
@@ -1922,12 +2080,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         tbody.innerHTML = logs.map(log => `
             <tr>
-                <td style="font-family: var(--admin-font-mono); font-size: 0.8rem;">${new Date(log.created_at || Date.now()).toLocaleString('fr-FR')}</td>
-                <td><strong style="color: var(--admin-brand-yellow);">${log.actor_type}: ${log.actor_id}</strong></td>
-                <td><span class="status-badge verified">${log.action}</span></td>
-                <td>${log.target_type || 'Système'}</td>
-                <td>${log.target_id || 'N/A'}</td>
-                <td>${log.reason || 'Operation administrative enregistree'}</td>
+                <td style="font-family: var(--admin-font-mono); font-size: 0.8rem;">${window.adminEscape(new Date(log.created_at || Date.now()).toLocaleString('fr-FR'))}</td>
+                <td><strong style="color: var(--admin-brand-yellow);">${window.adminEscape(log.actor_type)}: ${window.adminEscape(log.actor_id)}</strong></td>
+                <td><span class="status-badge verified">${window.adminEscape(log.action)}</span></td>
+                <td>${window.adminEscape(log.target_type || 'Système')}</td>
+                <td>${window.adminEscape(log.target_id || 'N/A')}</td>
+                <td>${window.adminEscape(log.reason || 'Operation administrative enregistree')}</td>
             </tr>
         `).join('');
     }
@@ -1952,10 +2110,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const data = await res.json();
                         globalKillSwitchActive = data.suspended;
                     } else {
-                        globalKillSwitchActive = nextState;
+                        alert('Interrupteur d’urgence non modifié. L’état réel des agents n’a pas changé.');
+                        return;
                     }
                 } catch(e) {
-                    globalKillSwitchActive = nextState;
+                    alert('Interrupteur d’urgence non modifié. L’état réel des agents n’a pas changé.');
+                    return;
                 }
 
                 if (globalKillSwitchActive) {
@@ -2010,12 +2170,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     })
                 });
                 if (res.ok) {
-                    alert(`🤖 Agent LYANN "${name}" déployé avec succès !`);
+                    const body = await res.json().catch(() => ({}));
+                    alert(body.message || `Agent « ${name} » enregistré.`);
                 } else {
-                    alert(`🤖 Agent LYANN "${name}" configuré avec succès.`);
+                    const body = await res.json().catch(() => ({}));
+                    alert(body.error || 'Création d’agent refusée ou indisponible.');
+                    return;
                 }
             } catch (e) {
-                alert(`🤖 Agent LYANN "${name}" configuré avec succès.`);
+                alert(e.message || 'Création d’agent impossible.');
+                return;
             }
 
             if (createAgentModal) createAgentModal.classList.remove('active');
@@ -2492,32 +2656,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             const payloadContent = t.payload ? (t.payload.content || t.payload.draft_reply || t.payload.summary || JSON.stringify(t.payload)) : t.description;
             const statusBadge = t.status === 'WAITING_APPROVAL' 
                 ? '<span class="admin-badge warning" style="background: rgba(229,179,69,0.2); color: #E5B345; border: 1px solid #E5B345;">EN ATTENTE DE VALIDATION</span>'
-                : `<span class="admin-badge success">${t.status}</span>`;
+                : `<span class="admin-badge success">${window.adminEscape(t.status)}</span>`;
 
             return `
                 <div class="mika-task-item" style="background: rgba(18, 30, 24, 0.6); border: 1px solid rgba(74, 124, 89, 0.3); border-radius: 10px; padding: 16px; margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px;">
                         <div>
-                            <span style="font-weight: 700; color: #FFFFFF; font-size: 0.95rem;">${t.title || 'Tâche Mika'}</span>
-                            <span style="margin-left: 8px; font-size: 0.75rem; color: #4A7C59; font-weight: 600;">[${t.task_type || 'TASK'}]</span>
+                            <span style="font-weight: 700; color: #FFFFFF; font-size: 0.95rem;">${window.adminEscape(t.title || 'Tâche Mika')}</span>
+                            <span style="margin-left: 8px; font-size: 0.75rem; color: #4A7C59; font-weight: 600;">[${window.adminEscape(t.task_type || 'TASK')}]</span>
                         </div>
                         ${statusBadge}
                     </div>
                     <div style="background: rgba(0,0,0,0.3); border-left: 3px solid #E5B345; padding: 10px 12px; font-size: 0.85rem; color: #E0E7E1; margin-bottom: 12px; white-space: pre-wrap;">
-                        ${payloadContent}
+                        ${window.adminEscape(payloadContent)}
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                         <!-- Feedback buttons -->
                         <div style="display: flex; gap: 6px; align-items: center;">
                             <span style="font-size: 0.75rem; color: var(--admin-text-muted); margin-right: 4px;">Avis Owner :</span>
-                            <button class="chip-btn" onclick="sendMikaFeedback('${t.id}', 'GOOD')" style="background: rgba(46,204,113,0.15); border-color: #2ECC71; color: #2ECC71;">👍 BON</button>
-                            <button class="chip-btn" onclick="sendMikaFeedback('${t.id}', 'CORRECT')" style="background: rgba(241,196,15,0.15); border-color: #F1C40F; color: #F1C40F;">✏️ À CORRIGER</button>
-                            <button class="chip-btn" onclick="sendMikaFeedback('${t.id}', 'BAD')" style="background: rgba(231,76,60,0.15); border-color: #E74C3C; color: #E74C3C;">👎 MAUVAIS</button>
+                            <button class="chip-btn" onclick="sendMikaFeedback('${window.adminEscape(t.id)}', 'GOOD')" style="background: rgba(46,204,113,0.15); border-color: #2ECC71; color: #2ECC71;">👍 BON</button>
+                            <button class="chip-btn" onclick="sendMikaFeedback('${window.adminEscape(t.id)}', 'CORRECT')" style="background: rgba(241,196,15,0.15); border-color: #F1C40F; color: #F1C40F;">✏️ À CORRIGER</button>
+                            <button class="chip-btn" onclick="sendMikaFeedback('${window.adminEscape(t.id)}', 'BAD')" style="background: rgba(231,76,60,0.15); border-color: #E74C3C; color: #E74C3C;">👎 MAUVAIS</button>
                         </div>
                         <!-- Approve actions -->
                         <div style="display: flex; gap: 8px;">
-                            <button class="admin-btn success" style="padding: 4px 12px; font-size: 0.8rem;" onclick="approveAgentTask('${t.id}', 'APPROVED')"><i class="ph-bold ph-check"></i> Valider</button>
-                            <button class="admin-btn danger" style="padding: 4px 12px; font-size: 0.8rem;" onclick="approveAgentTask('${t.id}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
+                            <button class="admin-btn success" style="padding: 4px 12px; font-size: 0.8rem;" onclick="approveAgentTask('${window.adminEscape(t.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Valider</button>
+                            <button class="admin-btn danger" style="padding: 4px 12px; font-size: 0.8rem;" onclick="approveAgentTask('${window.adminEscape(t.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
                         </div>
                     </div>
                 </div>
@@ -2535,7 +2699,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Append user bubble
         const userBubble = document.createElement('div');
         userBubble.style.cssText = 'align-self: flex-end; max-width: 85%; background: rgba(229, 179, 69, 0.2); border: 1px solid rgba(229, 179, 69, 0.4); border-radius: 12px 12px 2px 12px; padding: 12px; font-size: 0.9rem; color: #FFFFFF;';
-        userBubble.innerHTML = `👑 <strong>Owner :</strong> ${msg}`;
+        userBubble.innerHTML = `👑 <strong>Owner :</strong> ${window.adminEscape(msg)}`;
         messagesBox.appendChild(userBubble);
         input.value = '';
         messagesBox.scrollTop = messagesBox.scrollHeight;
@@ -2554,9 +2718,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.escalated) {
                 mikaBubble.style.borderColor = '#E74C3C';
                 mikaBubble.style.background = 'rgba(231, 76, 60, 0.15)';
-                mikaBubble.innerHTML = `⚠️ <strong>Mika (Alerte Sécurité) :</strong> ${data.reply}`;
+                mikaBubble.innerHTML = `⚠️ <strong>Mika (Alerte Sécurité) :</strong> ${window.adminEscape(data.reply)}`;
             } else {
-                mikaBubble.innerHTML = `💬 <strong>Mika :</strong> ${data.reply}`;
+                mikaBubble.innerHTML = `💬 <strong>Mika :</strong> ${window.adminEscape(data.reply)}`;
             }
             messagesBox.appendChild(mikaBubble);
             messagesBox.scrollTop = messagesBox.scrollHeight;
@@ -2612,10 +2776,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.confirmCommandExecution = function() {
-        alert("✅ Commande confirmée et envoyée au Task Engine de Mika pour exécution !");
-        document.getElementById('commandInterpretationResult').style.display = 'none';
-        document.getElementById('commandCenterInput').value = '';
-        window.loadMikaControlRoom();
+        alert('Fonction indisponible');
     };
 
     window.cancelCommandExecution = function() {
@@ -2635,10 +2796,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (res.ok) {
                 alert(`👍 Feedback [${type}] enregistré dans la mémoire de Mika !`);
             } else {
-                alert(`👍 Feedback [${type}] pris en compte.`);
+                const body = await res.json().catch(() => ({}));
+                alert(body.error || 'Fonction indisponible');
             }
         } catch (e) {
-            alert(`👍 Feedback [${type}] pris en compte.`);
+            alert('Fonction indisponible');
         }
     };
 
@@ -2648,29 +2810,47 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (res.ok) {
                 alert("🚀 5 tâches TEST créées dans l'Approval Center de Mika !");
                 window.loadMikaControlRoom();
+            } else {
+                const body = await res.json().catch(() => ({}));
+                alert(body.error || 'Fonction indisponible');
             }
         } catch (e) {
-            console.error("Erreur création tâches test Mika:", e);
+            alert('Fonction indisponible');
         }
     };
 
-    window.toggleMikaSuspension = function() {
-        const btn = document.getElementById('btnMikaSuspend');
+    window.toggleMikaSuspension = async function() {
         const badge = document.getElementById('mikaHeaderStatusBadge');
-        if (badge.textContent === 'ACTIF') {
-            badge.textContent = 'SUSPENDU';
-            badge.style.background = 'rgba(231,76,60,0.2)';
-            badge.style.color = '#E74C3C';
-            badge.style.borderColor = '#E74C3C';
-            btn.innerHTML = '<i class="ph-bold ph-play-circle"></i> RÉACTIVER';
-            alert("🛑 Mika a été temporairement suspendu.");
-        } else {
-            badge.textContent = 'ACTIF';
-            badge.style.background = 'rgba(46,204,113,0.2)';
-            badge.style.color = '#2ECC71';
-            badge.style.borderColor = '#2ECC71';
-            btn.innerHTML = '<i class="ph-bold ph-pause-circle"></i> SUSPENDRE';
-            alert("▶️ Mika est à nouveau actif.");
+        const btn = document.getElementById('btnMikaSuspend');
+        const currentlyActive = !badge || badge.textContent === 'ACTIF';
+        try {
+            const list = await window.fetchWithAdminAuth('/v1/admin/agents/mika');
+            const payload = await list.json().catch(() => ({}));
+            const agentId = payload.agent?.id || payload.id;
+            if (!list.ok || !agentId) {
+                alert(payload.error || 'Fonction indisponible');
+                return;
+            }
+            const path = currentlyActive ? `/v1/admin/agents/${agentId}/suspend` : `/v1/admin/agents/${agentId}/resume`;
+            const res = await window.fetchWithAdminAuth(path, { method: 'POST' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                alert(data.error || 'Fonction indisponible');
+                return;
+            }
+            if (badge) {
+                badge.textContent = currentlyActive ? 'SUSPENDU' : 'ACTIF';
+                badge.style.background = currentlyActive ? 'rgba(231,76,60,0.2)' : 'rgba(46,204,113,0.2)';
+                badge.style.color = currentlyActive ? '#E74C3C' : '#2ECC71';
+                badge.style.borderColor = currentlyActive ? '#E74C3C' : '#2ECC71';
+            }
+            if (btn) {
+                btn.innerHTML = currentlyActive
+                    ? '<i class="ph-bold ph-play-circle"></i> RÉACTIVER'
+                    : '<i class="ph-bold ph-pause-circle"></i> SUSPENDRE';
+            }
+        } catch (_) {
+            alert('Fonction indisponible');
         }
     };
 
@@ -2683,9 +2863,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.mikaTakeover = function() {
-        if (typeof window.showToast === 'function') {
-            window.showToast("🖐️ Prise de main manuelle initiée sur Mika.", "warning");
-        }
+        alert('Fonction indisponible');
     };
 
     window.openAgentStudioModal = function(agentId = 'mika-001') {
@@ -2722,8 +2900,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert('Aucun PDF généré : pas de facture en base pour le moment.');
     };
 
-    window.openInviteTeamMemberModal = function() {
-        alert('L’invitation d’un collaborateur n’est pas encore branchée. Ajoute le compte dans admin_members côté Supabase.');
+    window.openInviteTeamMemberModal = async function() {
+        const userId = prompt('UUID du compte déjà existant à ajouter dans admin_members :');
+        if (!userId) return;
+        const role = prompt('Rôle (SUPPORT, MODERATION, ADMIN, FINANCE) :', 'SUPPORT') || 'SUPPORT';
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops/team', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId.trim(), role_code: role })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Collaborateur non ajouté.');
+            return;
+        }
+        window.loadAdminSection('sec-team');
+    };
+
+    window.adminUpdateTeam = async function(memberId, status) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/team/${memberId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Équipe non mise à jour.');
+            return;
+        }
+        window.loadAdminSection('sec-team');
     };
 
     // Auto-load Mika Control Room when nav section clicked or init
@@ -2818,6 +3023,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <select id="maisonTerritory" class="admin-input">
                             <option value="guadeloupe"${profile.territory === 'guadeloupe' ? ' selected' : ''}>Guadeloupe</option>
                             <option value="martinique"${profile.territory === 'martinique' ? ' selected' : ''}>Martinique</option>
+                            <option value="guyane"${profile.territory === 'guyane' ? ' selected' : ''}>Guyane</option>
+                            <option value="reunion"${profile.territory === 'reunion' ? ' selected' : ''}>La Réunion</option>
                         </select>
                     </div>
                     <input id="maisonSkill" class="admin-input" value="${maisonEsc(profile.professional_status || '')}" placeholder="Métier" style="margin-top:8px; width:100%;">
@@ -2826,14 +3033,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </form>
                 <div>
                     <h3 style="margin:0 0 8px; font-size:1rem;">Publier dans Bokantaj au nom de ${maisonEsc(maisonName(profile))}</h3>
+                    <p class="maison-muted" id="maisonPublishNotice">Un enregistrement n’est pas une publication visible tant que la modération n’a pas approuvé.</p>
                     <textarea id="maisonBokantajInput" class="admin-input" rows="3" placeholder="Écrire un Lyann…" style="width:100%;"></textarea>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">
+                        <select id="maisonPostType" class="admin-input">
+                            <option value="info">Info</option>
+                            <option value="dispo">Dispo</option>
+                            <option value="besoin">Besoin</option>
+                        </select>
+                        <input id="maisonPostCity" class="admin-input" value="${maisonEsc(profile.city || '')}" placeholder="Commune">
+                        <select id="maisonPostTerritory" class="admin-input">
+                            <option value="guadeloupe"${profile.territory === 'guadeloupe' ? ' selected' : ''}>Guadeloupe</option>
+                            <option value="martinique"${profile.territory === 'martinique' ? ' selected' : ''}>Martinique</option>
+                            <option value="guyane"${profile.territory === 'guyane' ? ' selected' : ''}>Guyane</option>
+                            <option value="reunion"${profile.territory === 'reunion' ? ' selected' : ''}>La Réunion</option>
+                        </select>
+                    </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
                         <label class="admin-btn admin-btn-secondary">Photo<input id="maisonPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
                         <label class="admin-btn admin-btn-secondary">Vidéo<input id="maisonVideoInput" type="file" accept="video/mp4,video/quicktime,video/webm" hidden></label>
                         <span class="maison-muted" id="maisonMediaLabel">Aucune photo ni vidéo</span>
                     </div>
-                    <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn" style="margin-top:10px;"><i class="ph-bold ph-paper-plane-tilt"></i> Publier le Lyann</button>
-                    ${posts.length ? `<p class="maison-muted" style="margin-top:10px;">Derniers posts : ${posts.map((p) => maisonEsc((p.content || '').slice(0, 42))).join(' · ')}</p>` : ''}
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+                        <button type="button" class="admin-btn admin-btn-secondary" id="maisonDraftBtn">Enregistrer le brouillon</button>
+                        <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn"><i class="ph-bold ph-paper-plane-tilt"></i> Soumettre à la modération</button>
+                    </div>
+                    ${posts.length ? `<div style="margin-top:12px;">${posts.map((p) => `<div class="admin-card" style="padding:10px;margin-bottom:8px;"><strong>${maisonEsc(p.lifecycle_label || p.moderation_status || 'Statut inconnu')}</strong><p style="margin:6px 0 0;">${maisonEsc((p.content || '').slice(0, 160))}</p>${p.moderation_reason ? `<p class="maison-muted">${maisonEsc(p.moderation_reason)}</p>` : ''}</div>`).join('')}</div>` : ''}
                 </div>
                 <form id="maisonRequestForm" class="admin-card" style="padding:12px;">
                     <h3 style="margin:0 0 8px; font-size:1rem;">Publier une annonce</h3>
@@ -2936,23 +3161,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert(err.message);
             }
         });
-        document.getElementById('maisonPublishBtn')?.addEventListener('click', async () => {
+        const publishMaison = async (draft) => {
             const input = document.getElementById('maisonBokantajInput');
-            const button = document.getElementById('maisonPublishBtn');
+            const button = document.getElementById(draft ? 'maisonDraftBtn' : 'maisonPublishBtn');
+            const notice = document.getElementById('maisonPublishNotice');
             try {
                 if (button) button.disabled = true;
                 const photo = photoInput?.files?.[0] ? await readDataUrl(photoInput.files[0]) : '';
                 const video = videoInput?.files?.[0] ? await readDataUrl(videoInput.files[0]) : '';
-                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
+                const body = await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
                     method: 'POST',
-                    body: JSON.stringify({ content: input?.value || '', city: profile.city, territory: profile.territory, photo, video })
+                    body: JSON.stringify({
+                        content: input?.value || '',
+                        type: document.getElementById('maisonPostType')?.value || 'info',
+                        city: document.getElementById('maisonPostCity')?.value || profile.city,
+                        territory: document.getElementById('maisonPostTerritory')?.value || profile.territory,
+                        photo,
+                        video,
+                        draft
+                    })
                 });
+                if (notice) notice.textContent = body.message || body.lifecycle_label || 'Enregistré.';
+                if (draft) {
+                    if (button) button.disabled = false;
+                    return;
+                }
                 await window.openMaisonDesk(profile.id);
             } catch (err) {
                 if (button) button.disabled = false;
                 alert(err.message);
             }
-        });
+        };
+        document.getElementById('maisonDraftBtn')?.addEventListener('click', () => publishMaison(true));
+        document.getElementById('maisonPublishBtn')?.addEventListener('click', () => publishMaison(false));
         desk.querySelectorAll('.maison-reply-btn').forEach((btn) => {
             btn.addEventListener('click', async () => {
                 const card = btn.closest('[data-maison-conv]');
@@ -3031,6 +3272,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             const bots = await maisonJson('/v1/admin/editorial/bots');
             const proposals = await maisonJson('/v1/admin/editorial/proposals');
             const rows = proposals.proposals || [];
+            const agentFilter = document.getElementById('editorialAgentFilter');
+            if (agentFilter && agentFilter.options.length <= 1) {
+                (bots.bots || []).forEach((bot) => {
+                    const opt = document.createElement('option');
+                    opt.value = bot.agent_name;
+                    opt.textContent = bot.agent_name;
+                    agentFilter.appendChild(opt);
+                });
+            }
+            const envEl = document.getElementById('editorialEnv');
+            if (envEl) {
+                const allowed = bots.collectionAllowed;
+                envEl.innerHTML = `<strong>${maisonEsc(bots.environment || 'staging')}</strong> · Collecte ${allowed ? 'autorisée' : 'bloquée (Production)'} · IA ${bots.aiProvider?.configured ? maisonEsc(bots.aiProvider.model || bots.aiProvider.mode) : 'non configurée'}${bots.aiProvider?.error ? ' · ' + maisonEsc(bots.aiProvider.error) : ''} · Planning ${bots.schedule?.enabled === false ? 'inactif' : (bots.schedule?.passes || []).join(' · ')}`;
+            }
+            const histEl = document.getElementById('editorialHistory');
+            if (histEl) {
+                const history = bots.history || [];
+                histEl.innerHTML = '<h3 style="margin:0 0 10px;">Historique des collectes</h3>' + (history.length
+                    ? history.map((h) => `<p class="maison-muted" style="margin:0 0 6px;">${maisonEsc(h.created_at || '')} · ${maisonEsc(h.agent_name || '')} · ${maisonEsc(h.event_type || '')} · ${maisonEsc(h.description || '')}</p>`).join('')
+                    : '<p class="maison-muted">Aucun passage enregistré.</p>');
+            }
             const nothing = (item) => item.metadata && item.metadata.outcome === 'nothing_to_propose';
             const collectionError = (item) => item.status === 'FAILED' || (item.metadata && item.metadata.outcome === 'collection_error');
             const pending = rows.filter((item) => item.approval_status === 'PENDING' && item.status !== 'CANCELLED' && !nothing(item) && !collectionError(item));
@@ -3073,10 +3335,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const hasOlder = siblings.some((other) => other.id !== item.id && new Date(other.created_at) < new Date(item.created_at));
                 return hasOlder ? 'Nouvelle proposition' : 'Proposition actuelle';
             };
-            const visible = pending.concat(approved, rejected);
+            const selectedAgent = document.getElementById('editorialAgentFilter')?.value || 'all';
+            const selectedStatus = document.getElementById('editorialStatusFilter')?.value || 'all';
+            let visible = pending.concat(approved, rejected);
+            if (selectedAgent !== 'all') visible = visible.filter((item) => item.agent_name === selectedAgent);
+            if (selectedStatus === 'PENDING') visible = pending.filter((item) => selectedAgent === 'all' || item.agent_name === selectedAgent);
+            if (selectedStatus === 'APPROVED') visible = approved.filter((item) => selectedAgent === 'all' || item.agent_name === selectedAgent);
+            if (selectedStatus === 'REJECTED') visible = rejected.filter((item) => selectedAgent === 'all' || item.agent_name === selectedAgent);
             const statusLabel = (item) => {
                 if (item.approval_status === 'PENDING' && item.status !== 'CANCELLED') return 'En attente — ignorée, elle reste ici';
-                if (item.approval_status === 'APPROVED') return 'Validée et publiée';
+                if (item.approval_status === 'APPROVED') {
+                    if (item.post_visible) return 'Validée — Publié et visible';
+                    if (item.post_moderation_status === 'rejected') return 'Validée — Refusée par la modération Bokantaj';
+                    return 'Validée — En attente de modération';
+                }
                 return 'Refusée — conservée';
             };
             listEl.innerHTML = `<h3 style="margin:0 0 12px;">Toutes les propositions</h3>` + (errors.length ? `<p class="maison-muted">Collecte sans texte : ${errors.map((item) => `${maisonEsc(item.agent_name || '')}`).join(' · ')}. Rien n’est inventé.</p>` : '') + (visible.map((item) => {
@@ -3092,8 +3364,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${(item.controls && !item.controls.ok && (item.controls.reasons || []).some((reason) => /affirmation thérapeutique/.test(reason))) ? '<p class="editorial-warning">Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifie le texte avant validation.</p>' : ''}
                     <textarea class="admin-input editorial-text" rows="5" style="width:100%;"${pendingItem ? '' : ' readonly'}>${maisonEsc(item.instruction || '')}</textarea>
                     <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-                        ${pendingItem ? '<button type="button" class="admin-btn admin-btn-secondary editorial-save">Modifier</button><button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider et publier</button>' : ''}
-                        <button type="button" class="admin-btn admin-btn-danger editorial-delete">Supprimer</button>
+                        ${pendingItem ? '<button type="button" class="admin-btn admin-btn-secondary editorial-save">Modifier</button><button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider et publier</button><button type="button" class="admin-btn admin-btn-danger editorial-reject">Refuser</button>' : ''}
+                        <button type="button" class="admin-btn admin-btn-secondary editorial-delete">Supprimer</button>
                     </div>
                 </article>`;
             }).join('') || '<p class="maison-muted">Aucune proposition pour le moment. Le prochain passage en prépare s’il y a une source réelle.</p>');
@@ -3142,24 +3414,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         body: JSON.stringify({ content: text() })
                     });
                 }));
+                card.querySelector('.editorial-reject')?.addEventListener('click', run(card.querySelector('.editorial-reject'), 'Refus…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason: 'Refus administrateur' }) }).then((body) => ({ message: body.message || 'Proposition refusée.' }))));
                 card.querySelector('.editorial-delete')?.addEventListener('click', run(card.querySelector('.editorial-delete'), 'Suppression…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/delete`, { method: 'POST', body: '{}' }).then((body) => ({ message: body.message || 'Proposition supprimée.' }))));
             });
         } catch (err) {
             botsEl.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;
         }
     }
-    document.getElementById('editorialCollectBtn')?.addEventListener('click', async () => {
-        const button = document.getElementById('editorialCollectBtn');
-        if (button) button.disabled = true;
-        try {
-            await maisonJson('/v1/admin/editorial/collect', { method: 'POST', body: '{}' });
-            await loadEditorialDesk();
-        } catch (err) {
-            alert(err.message);
-        } finally {
-            if (button) button.disabled = false;
-        }
-    });
+    document.getElementById('editorialAgentFilter')?.addEventListener('change', () => loadEditorialDesk());
+    document.getElementById('editorialStatusFilter')?.addEventListener('change', () => loadEditorialDesk());
     window.openEditorialDesk = loadEditorialDesk;
     document.querySelector('.admin-nav-item[data-section="sec-editorial"]')?.addEventListener('click', () => {
         loadEditorialDesk();
@@ -3171,9 +3434,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.loadAdminRealData = loadAdminRealData;
 
     function adminEscape(value) {
-        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[char]));
+        return window.adminEscape(value);
     }
     function adminMoney(value) {
         return Number(value || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
@@ -3230,10 +3491,89 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${row.kyc_verified ? adminBadge('VÉRIFIÉ') : adminBadge('KYC À FAIRE')}</td>
                 <td>${row.is_pro ? 'Lyanneur' : 'Membre'}</td>
                 <td>${adminEscape(row.professional_status || 'Libre')}</td>
-                <td>${row.kyc_verified ? '' : `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminApproveKyc('${row.id}')">Valider KYC</button>`}</td>
+                <td>
+                    ${row.kyc_verified ? '' : `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminApproveKyc('${row.id}')">Valider KYC</button>`}
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.openAdminUserDetail('${row.id}')">Fiche</button>
+                </td>
             </tr>`;
         }).join('');
     }
+
+    window.adminUpdateUserStatus = async function(userId, patch) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/users/${userId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch || {})
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Statut non mis à jour.');
+            return;
+        }
+        window.loadAdminSection('sec-users');
+    };
+
+    window.adminToggleFeatureFlag = async function(flagId, enabled) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/feature-flags/${flagId}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Feature flag non modifié.');
+            return;
+        }
+        window.loadAdminSection('sec-feature-flags');
+    };
+
+    window.adminSaveSystemSetting = async function(key, value) {
+        const res = await window.fetchWithAdminAuth('/v1/admin/system/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [key]: value })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Paramètre non enregistré.');
+        }
+        return data;
+    };
+
+    window.adminDeleteBokantaj = async function(postId) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/bokantaj/${postId}/delete`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Suppression impossible.');
+            return;
+        }
+        window.loadAdminSection('sec-content');
+        window.loadAdminSection('sec-bokantaj');
+    };
+
+    window.adminDecideModeration = async function(subject, id, decision) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/moderation/${subject}/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ decision })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Décision de modération impossible.');
+            return;
+        }
+        window.loadAdminSection('sec-content');
+    };
+
+    window.adminRunModerationOnce = async function() {
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops/moderation/run-once', { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            alert(data.error || 'Passe de modération impossible.');
+            return;
+        }
+        window.loadAdminSection('sec-content');
+    };
 
     window.adminApproveKyc = async function(userId) {
         if (!confirm('Valider le KYC de ce membre ?')) return;
@@ -3527,7 +3867,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td>${adminEscape((row.content || '').slice(0, 120))}</td>
                     <td>${adminDate(row.created_at)}</td>
                     <td>${adminBadge(row.account_type === 'seed' ? 'MAISON' : row.type || 'LYANN')}</td>
-                    <td>${adminBadge(row.type || 'info')}</td>
+                    <td>${adminBadge(row.lifecycle_label || row.moderation_status || row.type || 'info')}</td>
                 </tr>`).join('') : adminEmpty(7, 'Aucun Lyann publié.');
             },
             'sec-content': async () => {
@@ -3558,10 +3898,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
                         <td>${adminEscape(row.author_name)}</td>
                         <td>${adminEscape((row.content || '').slice(0, 140))}</td>
-                        <td>—</td>
-                        <td>${adminDate(row.created_at)}</td>
+                        <td>${adminBadge(row.lifecycle_label || row.moderation_status)}</td>
+                        <td>${row.visible ? '—' : `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminDecideModeration('post','${row.id}','approve')">Approuver et rendre visible</button>`}</td>
                     </tr>`).join('') : adminEmpty(5, 'Aucune publication à modérer.');
                 }
+                const queueBody = document.getElementById('adminModerationQueueBody');
+                if (queueBody) {
+                    const queueRes = await window.fetchWithAdminAuth('/v1/admin/ops/moderation');
+                    const queue = await queueRes.json().catch(() => ({}));
+                    const items = [
+                        ...(queue.posts || []).map((row) => ({ ...row, subject_type: 'post', content: row.excerpt })),
+                        ...(queue.requests || []).map((row) => ({ ...row, subject_type: 'request', content: row.excerpt })),
+                        ...(queue.comments || []).map((row) => ({ ...row, subject_type: 'comment', content: row.excerpt })),
+                        ...(queue.profiles || []).map((row) => ({ ...row, subject_type: 'profile', content: row.excerpt, author_name: row.name }))
+                    ];
+                    queueBody.innerHTML = items.length ? items.map((item) => `<tr>
+                        <td>${adminEscape(item.subject_type || 'post')}</td>
+                        <td>${adminEscape(item.author_name || item.author_id || item.requester_id || '—')}</td>
+                        <td>${adminEscape((item.content || item.title || '').slice(0, 120))}</td>
+                        <td>${adminBadge(item.lifecycle_label || item.public_moderation_status || item.status)}</td>
+                        <td>
+                            <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminDecideModeration('${item.subject_type || 'post'}','${item.id}','approve')">Approuver et rendre visible</button>
+                            <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminDecideModeration('${item.subject_type || 'post'}','${item.id}','reject')">Refuser</button>
+                        </td>
+                    </tr>`).join('') : adminEmpty(5, 'File de modération vide.');
+                }
+            },
+            'sec-feature-flags': async () => {
+                const data = await fetchAdminOps('feature-flags');
+                const tbody = document.getElementById('featureFlagsTableBody');
+                const rows = data.rows || [];
+                if (tbody) {
+                    tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                        <td><strong>${adminEscape(row.name || row.key)}</strong></td>
+                        <td style="font-family:var(--admin-font-mono);">${adminEscape(row.key)}</td>
+                        <td>${adminEscape(row.target_audience || '—')}</td>
+                        <td>${adminBadge(row.enabled ? 'ACTIVÉ' : 'DÉSACTIVÉ')}</td>
+                        <td><button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminToggleFeatureFlag('${row.id}', ${row.enabled ? 'false' : 'true'})">${row.enabled ? 'Désactiver' : 'Activer'}</button></td>
+                    </tr>`).join('') : adminEmpty(5, 'Aucun feature flag en base.');
+                }
+            },
+            'sec-taxonomy': async () => {
+                if (typeof loadAdminTaxonomyManagement === 'function') loadAdminTaxonomyManagement();
             },
             'sec-chat': async () => {
                 const data = await fetchAdminOps('conversations');
@@ -3584,7 +3962,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td style="font-family:var(--admin-font-mono);">${adminEscape(row.email || row.user_id)}</td>
                     <td>${adminBadge(row.role || row.role_name)}</td>
                     <td>${adminBadge(row.status)}</td>
-                </tr>`).join('') : adminEmpty(4, 'Aucun membre admin_members.');
+                    <td>${row.status === 'ACTIVE'
+                        ? `<button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminUpdateTeam('${row.id}','SUSPENDED')">Suspendre</button>`
+                        : `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminUpdateTeam('${row.id}','ACTIVE')">Réactiver</button>`}</td>
+                </tr>`).join('') : adminEmpty(5, 'Aucun membre admin_members.');
             },
             'sec-health': async () => {
                 const data = await fetchAdminOps('health');
@@ -3625,6 +4006,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             : rows;
         renderAdminUsers(filtered, 'usersAdminTableBody', 'users');
     });
+    window.openAdminUserDetail = function(userId) {
+        const rows = window.__adminUsersCache || [];
+        const user = rows.find((row) => row.id === userId);
+        if (!user) return;
+        const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'Membre';
+        const nameEl = document.getElementById('adminDetailUserName');
+        const emailEl = document.getElementById('adminDetailUserEmail');
+        const phoneEl = document.getElementById('adminDetailUserPhone');
+        if (nameEl) nameEl.textContent = name;
+        if (emailEl) emailEl.textContent = user.email || '—';
+        if (phoneEl) phoneEl.textContent = user.city || '—';
+        document.querySelectorAll('#sec-user-detail .btn-approve-kyc').forEach((btn) => btn.setAttribute('data-user-id', user.id));
+        document.querySelectorAll('#sec-user-detail .btn-suspend-user').forEach((btn) => btn.setAttribute('data-user-id', user.id));
+        document.querySelector('.admin-nav-item[data-section="sec-user-detail"]')?.click();
+        const detail = document.getElementById('sec-user-detail');
+        if (detail && !document.querySelector('.admin-nav-item[data-section="sec-user-detail"]')) {
+            document.querySelectorAll('.admin-section').forEach((sec) => sec.classList.remove('active'));
+            detail.classList.add('active');
+        }
+    };
+    document.getElementById('userStatusFilter')?.addEventListener('change', () => {
+        const status = document.getElementById('userStatusFilter')?.value || 'all';
+        const rows = window.__adminUsersCache || [];
+        const filtered = status === 'all' ? rows : rows.filter((row) => {
+            if (status === 'verified') return row.kyc_verified || row.is_verified;
+            if (status === 'pending') return !row.kyc_verified;
+            if (status === 'suspended') return row.is_verified === false;
+            if (status === 'pro') return row.is_pro;
+            if (status === 'seed') return row.account_type === 'seed';
+            return true;
+        });
+        renderAdminUsers(filtered, 'usersAdminTableBody', 'users');
+    });
+    document.getElementById('btnRunModerationOnce')?.addEventListener('click', () => window.adminRunModerationOnce());
+    document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
+        btn.addEventListener('click', () => alert('Offrir un abonnement Pro n’est pas une opération financière activée ici.'));
+    });
     document.getElementById('userTerritoryFilter')?.addEventListener('change', () => {
         const territory = document.getElementById('userTerritoryFilter')?.value || 'all';
         const rows = window.__adminUsersCache || [];
@@ -3648,5 +4066,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.loadMikaControlRoom();
 
     console.log('Back-office LYANN initialisé.');
+    } catch (bootErr) {
+        console.error('[ADMIN BOOT]', bootErr);
+        window.__ADMIN_BOOT_ERROR = String(bootErr && bootErr.message || bootErr);
+    }
 });
 
