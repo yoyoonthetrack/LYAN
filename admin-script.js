@@ -6,6 +6,13 @@ let authCheckInProgress = false;
 window.AUTH_STATE = "LOADING";
 window.currentAdminUser = null;
 window.adminDataLoaded = false;
+let editorialCollectInFlight = false;
+
+window.adminEscape = function(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[char]));
+};
 
 window.fetchWithAdminAuth = async function(url, options = {}) {
     const headers = Object.assign({}, options.headers || {});
@@ -29,7 +36,9 @@ document.addEventListener('click', (event) => {
         window.fetchWithAdminAuth('/v1/admin/ops/moderation/run-once', { method: 'POST' }).catch(() => {});
     }
     const collectBtn = event.target && event.target.closest && event.target.closest('#editorialCollectBtn');
-    if (!collectBtn || collectBtn.disabled) return;
+    if (!collectBtn || collectBtn.disabled || collectBtn.dataset.collectLock === '1') return;
+    collectBtn.dataset.collectLock = '1';
+    collectBtn.disabled = true;
     if (typeof window.runEditorialCollect === 'function') {
         window.runEditorialCollect().catch((err) => {
             const notice = document.getElementById('editorialNotice');
@@ -41,6 +50,8 @@ document.addEventListener('click', (event) => {
 window.runEditorialCollect = async function() {
     const button = document.getElementById('editorialCollectBtn');
     const notice = document.getElementById('editorialNotice');
+    if (editorialCollectInFlight) return { success: true, skipped: 'in-flight', created: [] };
+    editorialCollectInFlight = true;
     if (button) button.disabled = true;
     try {
         const res = await window.fetchWithAdminAuth('/v1/admin/editorial/collect', {
@@ -71,17 +82,22 @@ window.runEditorialCollect = async function() {
             const bots = await botsRes.json().catch(() => ({}));
             if (hist && bots.history) {
                 hist.innerHTML = '<p>Historique des collectes</p>' + (bots.history || []).map((row) =>
-                    `<p>${row.event_type || ''} — ${row.description || ''}</p>`
+                    `<p>${window.adminEscape(row.event_type || '')} — ${window.adminEscape(row.description || '')}</p>`
                 ).join('');
             }
         }
         return report;
     } finally {
-        if (button) button.disabled = false;
+        editorialCollectInFlight = false;
+        if (button) {
+            button.disabled = false;
+            delete button.dataset.collectLock;
+        }
     }
 };
 
 window.hydrateAdminSection = async function(sectionId) {
+    const esc = window.adminEscape;
     const putRows = (tbodyId, html) => {
         const tbody = document.getElementById(tbodyId);
         if (tbody) tbody.innerHTML = html;
@@ -92,7 +108,7 @@ window.hydrateAdminSection = async function(sectionId) {
         const list = document.getElementById('maisonRosterList');
         if (list) {
             list.innerHTML = (data.profiles || []).map((p) =>
-                `<button type="button" class="maison-profile-btn" data-maison-id="${p.id}"><strong>${p.first_name || ''} ${p.last_name || ''}</strong></button>`
+                `<button type="button" class="maison-profile-btn" data-maison-id="${esc(p.id)}"><strong>${esc(p.first_name || '')} ${esc(p.last_name || '')}</strong></button>`
             ).join('');
         }
         return data;
@@ -100,19 +116,19 @@ window.hydrateAdminSection = async function(sectionId) {
     if (sectionId === 'sec-users') {
         const res = await window.fetchWithAdminAuth('/v1/admin/ops?resource=users');
         const data = await res.json().catch(() => ({}));
-        putRows('usersAdminTableBody', (data.rows || []).map((row) => `<tr><td>${row.first_name || ''} ${row.last_name || ''}</td><td>${row.email || ''}</td></tr>`).join(''));
+        putRows('usersAdminTableBody', (data.rows || []).map((row) => `<tr><td>${esc(row.first_name || '')} ${esc(row.last_name || '')}</td><td>${esc(row.email || '')}</td></tr>`).join(''));
         return data;
     }
     if (sectionId === 'sec-feature-flags') {
         const res = await window.fetchWithAdminAuth('/v1/admin/ops?resource=feature-flags');
         const data = await res.json().catch(() => ({}));
-        putRows('featureFlagsTableBody', (data.rows || []).map((row) => `<tr><td>${row.key || row.name || ''}</td></tr>`).join(''));
+        putRows('featureFlagsTableBody', (data.rows || []).map((row) => `<tr><td>${esc(row.key || row.name || '')}</td></tr>`).join(''));
         return data;
     }
     if (sectionId === 'sec-content') {
         const res = await window.fetchWithAdminAuth('/v1/admin/ops/moderation');
         const data = await res.json().catch(() => ({}));
-        putRows('adminModerationQueueBody', (data.posts || []).map((row) => `<tr><td>${row.excerpt || row.id}</td></tr>`).join(''));
+        putRows('adminModerationQueueBody', (data.posts || []).map((row) => `<tr><td>${esc(row.excerpt || row.id)}</td></tr>`).join(''));
         return data;
     }
     return null;
@@ -136,7 +152,7 @@ function updateAdminHeaderProfile(profile) {
     const headerUserEl = document.getElementById('adminHeaderUsernameText');
     if (headerUserEl) {
         const crownIcon = profile.isOwner ? ' <i class="ph-fill ph-crown" style="color: #E5B345;"></i>' : '';
-        headerUserEl.innerHTML = (profile.username || 'Administrateur') + crownIcon;
+        headerUserEl.innerHTML = window.adminEscape(profile.username || 'Administrateur') + crownIcon;
     }
 
     const headerRoleEl = document.getElementById('adminHeaderUserRole');
@@ -560,12 +576,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tr = document.createElement('tr');
             const nowStr = new Date().toLocaleString('fr-FR');
             tr.innerHTML = `
-                <td style="font-family: var(--admin-font-mono);">${nowStr}</td>
-                <td><strong style="color: var(--admin-brand-yellow);">${username} (${role})</strong></td>
-                <td><span class="status-badge verified">${action}</span></td>
-                <td>${moduleName}</td>
-                <td>${resourceType} (${resourceId || 'N/A'})</td>
-                <td>${accessReason || 'Action administrative validée'}</td>
+                <td style="font-family: var(--admin-font-mono);">${window.adminEscape(nowStr)}</td>
+                <td><strong style="color: var(--admin-brand-yellow);">${window.adminEscape(username)} (${window.adminEscape(role)})</strong></td>
+                <td><span class="status-badge verified">${window.adminEscape(action)}</span></td>
+                <td>${window.adminEscape(moduleName)}</td>
+                <td>${window.adminEscape(resourceType)} (${window.adminEscape(resourceId || 'N/A')})</td>
+                <td>${window.adminEscape(accessReason || 'Action administrative validée')}</td>
             `;
             auditTableBody.insertBefore(tr, auditTableBody.firstChild);
         }
@@ -628,9 +644,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const matchingNavs = Array.from(document.querySelectorAll('.admin-nav-item')).filter(nav => nav.textContent.toLowerCase().includes(query));
             resultsBox.innerHTML = matchingNavs.map(nav => {
-                const secId = nav.getAttribute('data-section');
-                return `<div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'${secId}\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-arrow-right"></i> ${nav.textContent.trim()}</div>`;
-            }).join('') || `<div style="padding: 12px; font-size: 0.85rem; color: var(--admin-text-muted);">Aucun résultat trouvé pour "${query}"</div>`;
+                const secId = window.adminEscape(nav.getAttribute('data-section') || '');
+                return `<div class="command-palette-item" onclick="document.querySelector('.admin-nav-item[data-section=\\'${secId}\\']').click(); document.getElementById('adminCommandPaletteModal').classList.remove('active');"><i class="ph-bold ph-arrow-right"></i> ${window.adminEscape(nav.textContent.trim())}</div>`;
+            }).join('') || `<div style="padding: 12px; font-size: 0.85rem; color: var(--admin-text-muted);">Aucun résultat trouvé pour "${window.adminEscape(query)}"</div>`;
         });
     }
 
@@ -1120,15 +1136,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (tbody && taxonomyData.length > 0) {
             tbody.innerHTML = taxonomyData.map(item => `
                 <tr>
-                    <td><code>${item.universe}</code></td>
-                    <td><strong>${item.category}</strong></td>
-                    <td>${item.subcategory || '-'}</td>
-                    <td><small style="color: #64748B;">${(item.synonyms || []).slice(0, 5).join(', ')}${(item.synonyms || []).length > 5 ? '...' : ''}</small></td>
-                    <td>${(item.tags || []).map(t => `<code style="font-size:0.75rem; background:#E2E8F0; padding:2px 4px; border-radius:4px;">${t}</code>`).join(' ')}</td>
-                    <td><span class="status-badge ${item.safety_level === 'PROHIBITED' ? 'danger' : (item.safety_level === 'PRO_REQUIRED' ? 'warning' : 'active')}">${item.safety_level || 'NORMAL'}</span></td>
+                    <td><code>${window.adminEscape(item.universe)}</code></td>
+                    <td><strong>${window.adminEscape(item.category)}</strong></td>
+                    <td>${window.adminEscape(item.subcategory || '-')}</td>
+                    <td><small style="color: #64748B;">${window.adminEscape((item.synonyms || []).slice(0, 5).join(', '))}${(item.synonyms || []).length > 5 ? '...' : ''}</small></td>
+                    <td>${(item.tags || []).map(t => `<code style="font-size:0.75rem; background:#E2E8F0; padding:2px 4px; border-radius:4px;">${window.adminEscape(t)}</code>`).join(' ')}</td>
+                    <td><span class="status-badge ${item.safety_level === 'PROHIBITED' ? 'danger' : (item.safety_level === 'PRO_REQUIRED' ? 'warning' : 'active')}">${window.adminEscape(item.safety_level || 'NORMAL')}</span></td>
                     <td><span class="status-badge ${item.active !== false ? 'verified' : 'inactive'}">${item.active !== false ? 'ACTIF' : 'INACTIF'}</span></td>
                     <td>
-                        <button class="admin-btn admin-btn-secondary btnToggleTaxonomyActive" data-id="${item.id || ''}" style="padding: 2px 8px; font-size: 0.75rem;">
+                        <button class="admin-btn admin-btn-secondary btnToggleTaxonomyActive" data-id="${window.adminEscape(item.id || '')}" style="padding: 2px 8px; font-size: 0.75rem;">
                             ${item.active !== false ? 'Désactiver' : 'Activer'}
                         </button>
                     </td>
@@ -1147,13 +1163,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!unclassErr && unclassifiedReqs && unclassifiedReqs.length > 0) {
                     discoveryTbody.innerHTML = unclassifiedReqs.map(req => `
                         <tr>
-                            <td>${new Date(req.created_at).toLocaleDateString('fr-FR')}</td>
-                            <td><strong>${req.description || req.title}</strong></td>
-                            <td>${req.location || req.city || 'Guadeloupe'}</td>
+                            <td>${window.adminEscape(new Date(req.created_at).toLocaleDateString('fr-FR'))}</td>
+                            <td><strong>${window.adminEscape(req.description || req.title)}</strong></td>
+                            <td>${window.adminEscape(req.location || req.city || 'Guadeloupe')}</td>
                             <td><span class="status-badge warning">${((req.classification_confidence || 0.3) * 100).toFixed(0)}%</span></td>
-                            <td><span class="status-badge warning">${req.classification_status}</span></td>
+                            <td><span class="status-badge warning">${window.adminEscape(req.classification_status)}</span></td>
                             <td>
-                                <button class="admin-btn admin-btn-primary btnClassifyRequestModal" data-id="${req.id}" data-desc="${(req.description || req.title).replace(/"/g, '&quot;')}" style="padding: 2px 8px; font-size: 0.75rem;">
+                                <button class="admin-btn admin-btn-primary btnClassifyRequestModal" data-id="${window.adminEscape(req.id)}" data-desc="${window.adminEscape(req.description || req.title)}" style="padding: 2px 8px; font-size: 0.75rem;">
                                     <i class="ph ph-check"></i> Classer
                                 </button>
                             </td>
@@ -1960,24 +1976,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             const autonomyLabels = ['L0 — Observation', 'L1 — Assisté', 'L2 — Autonome Limité', 'L3 — Autonome'];
             const autonomyText = autonomyLabels[agent.autonomy_level || 0] || 'L0';
             const statusClass = agent.status === 'ACTIF' ? 'active' : (agent.status === 'PAUSE' || agent.status === 'SUSPENDU' ? 'suspended' : 'pending');
-            const tagsHtml = (agent.specialities || []).map(t => `<span class="status-badge" style="background: rgba(123, 197, 227, 0.15); color: var(--admin-brand-sky); border: 1px solid rgba(123, 197, 227, 0.3); font-size: 0.7rem;">${t}</span>`).join(' ');
+            const tagsHtml = (agent.specialities || []).map(t => `<span class="status-badge" style="background: rgba(123, 197, 227, 0.15); color: var(--admin-brand-sky); border: 1px solid rgba(123, 197, 227, 0.3); font-size: 0.7rem;">${window.adminEscape(t)}</span>`).join(' ');
 
             return `
-                <div class="admin-card" style="border-top: 3px solid var(--admin-brand-yellow); cursor: pointer;" onclick="window.openAgentDetailDrawer('${agent.id}')">
+                <div class="admin-card" style="border-top: 3px solid var(--admin-brand-yellow); cursor: pointer;" onclick="window.openAgentDetailDrawer('${window.adminEscape(agent.id)}')">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <img src="${agent.avatar || 'avatar-female-pink.png'}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--admin-brand-yellow);">
+                            <img src="${window.adminEscape(agent.avatar || 'avatar-female-pink.png')}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--admin-brand-yellow);">
                             <div>
-                                <h3 style="font-size: 0.95rem; color: var(--admin-text-main); font-weight: 800;">${agent.agent_name}</h3>
-                                <div style="font-size: 0.72rem; color: var(--admin-brand-sky); font-family: var(--admin-font-mono);">${agent.zones ? (Array.isArray(agent.zones) ? agent.zones.join(', ') : agent.zones) : 'DOM'}</div>
+                                <h3 style="font-size: 0.95rem; color: var(--admin-text-main); font-weight: 800;">${window.adminEscape(agent.agent_name)}</h3>
+                                <div style="font-size: 0.72rem; color: var(--admin-brand-sky); font-family: var(--admin-font-mono);">${window.adminEscape(agent.zones ? (Array.isArray(agent.zones) ? agent.zones.join(', ') : agent.zones) : 'DOM')}</div>
                             </div>
                         </div>
-                        <span class="status-badge ${statusClass}">${agent.status}</span>
+                        <span class="status-badge ${statusClass}">${window.adminEscape(agent.status)}</span>
                     </div>
 
                     <div style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 10px;">
-                        <div>Autonomie : <strong style="color: var(--admin-brand-yellow);">${autonomyText}</strong></div>
-                        <div>Mission : ${agent.current_mission || 'Animation réseau'}</div>
+                        <div>Autonomie : <strong style="color: var(--admin-brand-yellow);">${window.adminEscape(autonomyText)}</strong></div>
+                        <div>Mission : ${window.adminEscape(agent.current_mission || 'Animation réseau')}</div>
                     </div>
 
                     <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px;">
@@ -1985,7 +2001,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--admin-border); padding-top: 8px; font-size: 0.75rem; color: var(--admin-text-muted);">
-                        <span>Dernière activité : ${agent.last_activity_at || 'Récemment'}</span>
+                        <span>Dernière activité : ${window.adminEscape(agent.last_activity_at || 'Récemment')}</span>
                         <span style="color: var(--admin-brand-yellow); font-weight: 700;">Gérer &rarr;</span>
                     </div>
                 </div>
@@ -2006,18 +2022,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const statusClass = task.status === 'COMPLETED' ? 'verified' : (task.status === 'WAITING_APPROVAL' ? 'pending' : 'active');
             return `
                 <tr>
-                    <td style="font-family: var(--admin-font-mono); font-size: 0.8rem; color: var(--admin-brand-yellow);">${task.id || '#TSK-101'}</td>
-                    <td><strong>${task.agent_name || 'Agent LYANN'}</strong></td>
-                    <td style="max-width: 250px;">${task.instruction || task.title}</td>
-                    <td><span class="status-badge" style="background: rgba(255,255,255,0.1); color: #FFF;">${task.task_type || 'BOKANTAJ_POST'}</span></td>
-                    <td><span class="status-badge active">L${task.autonomy_level || 1}</span></td>
-                    <td><span class="status-badge ${statusClass}">${task.status}</span></td>
-                    <td style="font-size: 0.8rem;">${new Date(task.scheduled_at || Date.now()).toLocaleString('fr-FR')}</td>
+                    <td style="font-family: var(--admin-font-mono); font-size: 0.8rem; color: var(--admin-brand-yellow);">${window.adminEscape(task.id || '#TSK-101')}</td>
+                    <td><strong>${window.adminEscape(task.agent_name || 'Agent LYANN')}</strong></td>
+                    <td style="max-width: 250px;">${window.adminEscape(task.instruction || task.title)}</td>
+                    <td><span class="status-badge" style="background: rgba(255,255,255,0.1); color: #FFF;">${window.adminEscape(task.task_type || 'BOKANTAJ_POST')}</span></td>
+                    <td><span class="status-badge active">L${window.adminEscape(task.autonomy_level || 1)}</span></td>
+                    <td><span class="status-badge ${statusClass}">${window.adminEscape(task.status)}</span></td>
+                    <td style="font-size: 0.8rem;">${window.adminEscape(new Date(task.scheduled_at || Date.now()).toLocaleString('fr-FR'))}</td>
                     <td>
                         ${task.requires_approval && task.status === 'WAITING_APPROVAL' ?
-                            `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${task.id}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver</button>
-                             <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${task.id}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>`
-                            : `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Tâche exécutée/en cours')"><i class="ph-bold ph-eye"></i> Détails</button>`
+                            `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver</button>
+                             <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>`
+                            : `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Fonction indisponible')"><i class="ph-bold ph-eye"></i> Détails</button>`
                         }
                     </td>
                 </tr>
@@ -2043,14 +2059,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.innerHTML = pendingTasks.map(task => `
             <div style="background: var(--admin-bg); border: 1px solid var(--admin-border); padding: 14px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <div style="font-size: 0.78rem; color: var(--admin-brand-yellow); font-family: var(--admin-font-mono);">Action préparée par ${task.agent_name || 'Agent LYANN'}</div>
-                    <strong style="font-size: 0.95rem; color: var(--admin-text-main);">${task.title || task.instruction}</strong>
-                    <div style="font-size: 0.82rem; color: var(--admin-text-muted); margin-top: 4px;">Périmètre : ${task.metadata?.territory || 'Guadeloupe'}</div>
+                    <div style="font-size: 0.78rem; color: var(--admin-brand-yellow); font-family: var(--admin-font-mono);">Action préparée par ${window.adminEscape(task.agent_name || 'Agent LYANN')}</div>
+                    <strong style="font-size: 0.95rem; color: var(--admin-text-main);">${window.adminEscape(task.title || task.instruction)}</strong>
+                    <div style="font-size: 0.82rem; color: var(--admin-text-muted); margin-top: 4px;">Périmètre : ${window.adminEscape(task.metadata?.territory || 'Guadeloupe')}</div>
                 </div>
                 <div style="display: flex; gap: 8px;">
-                    <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${task.id}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver & Publier</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Modification directe active')"><i class="ph-bold ph-pencil"></i> Modifier</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${task.id}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver & Publier</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Fonction indisponible')"><i class="ph-bold ph-pencil"></i> Modifier</button>
+                    <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
                 </div>
             </div>
         `).join('');
@@ -2064,12 +2080,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         tbody.innerHTML = logs.map(log => `
             <tr>
-                <td style="font-family: var(--admin-font-mono); font-size: 0.8rem;">${new Date(log.created_at || Date.now()).toLocaleString('fr-FR')}</td>
-                <td><strong style="color: var(--admin-brand-yellow);">${log.actor_type}: ${log.actor_id}</strong></td>
-                <td><span class="status-badge verified">${log.action}</span></td>
-                <td>${log.target_type || 'Système'}</td>
-                <td>${log.target_id || 'N/A'}</td>
-                <td>${log.reason || 'Operation administrative enregistree'}</td>
+                <td style="font-family: var(--admin-font-mono); font-size: 0.8rem;">${window.adminEscape(new Date(log.created_at || Date.now()).toLocaleString('fr-FR'))}</td>
+                <td><strong style="color: var(--admin-brand-yellow);">${window.adminEscape(log.actor_type)}: ${window.adminEscape(log.actor_id)}</strong></td>
+                <td><span class="status-badge verified">${window.adminEscape(log.action)}</span></td>
+                <td>${window.adminEscape(log.target_type || 'Système')}</td>
+                <td>${window.adminEscape(log.target_id || 'N/A')}</td>
+                <td>${window.adminEscape(log.reason || 'Operation administrative enregistree')}</td>
             </tr>
         `).join('');
     }
@@ -2640,32 +2656,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             const payloadContent = t.payload ? (t.payload.content || t.payload.draft_reply || t.payload.summary || JSON.stringify(t.payload)) : t.description;
             const statusBadge = t.status === 'WAITING_APPROVAL' 
                 ? '<span class="admin-badge warning" style="background: rgba(229,179,69,0.2); color: #E5B345; border: 1px solid #E5B345;">EN ATTENTE DE VALIDATION</span>'
-                : `<span class="admin-badge success">${t.status}</span>`;
+                : `<span class="admin-badge success">${window.adminEscape(t.status)}</span>`;
 
             return `
                 <div class="mika-task-item" style="background: rgba(18, 30, 24, 0.6); border: 1px solid rgba(74, 124, 89, 0.3); border-radius: 10px; padding: 16px; margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px;">
                         <div>
-                            <span style="font-weight: 700; color: #FFFFFF; font-size: 0.95rem;">${t.title || 'Tâche Mika'}</span>
-                            <span style="margin-left: 8px; font-size: 0.75rem; color: #4A7C59; font-weight: 600;">[${t.task_type || 'TASK'}]</span>
+                            <span style="font-weight: 700; color: #FFFFFF; font-size: 0.95rem;">${window.adminEscape(t.title || 'Tâche Mika')}</span>
+                            <span style="margin-left: 8px; font-size: 0.75rem; color: #4A7C59; font-weight: 600;">[${window.adminEscape(t.task_type || 'TASK')}]</span>
                         </div>
                         ${statusBadge}
                     </div>
                     <div style="background: rgba(0,0,0,0.3); border-left: 3px solid #E5B345; padding: 10px 12px; font-size: 0.85rem; color: #E0E7E1; margin-bottom: 12px; white-space: pre-wrap;">
-                        ${payloadContent}
+                        ${window.adminEscape(payloadContent)}
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                         <!-- Feedback buttons -->
                         <div style="display: flex; gap: 6px; align-items: center;">
                             <span style="font-size: 0.75rem; color: var(--admin-text-muted); margin-right: 4px;">Avis Owner :</span>
-                            <button class="chip-btn" onclick="sendMikaFeedback('${t.id}', 'GOOD')" style="background: rgba(46,204,113,0.15); border-color: #2ECC71; color: #2ECC71;">👍 BON</button>
-                            <button class="chip-btn" onclick="sendMikaFeedback('${t.id}', 'CORRECT')" style="background: rgba(241,196,15,0.15); border-color: #F1C40F; color: #F1C40F;">✏️ À CORRIGER</button>
-                            <button class="chip-btn" onclick="sendMikaFeedback('${t.id}', 'BAD')" style="background: rgba(231,76,60,0.15); border-color: #E74C3C; color: #E74C3C;">👎 MAUVAIS</button>
+                            <button class="chip-btn" onclick="sendMikaFeedback('${window.adminEscape(t.id)}', 'GOOD')" style="background: rgba(46,204,113,0.15); border-color: #2ECC71; color: #2ECC71;">👍 BON</button>
+                            <button class="chip-btn" onclick="sendMikaFeedback('${window.adminEscape(t.id)}', 'CORRECT')" style="background: rgba(241,196,15,0.15); border-color: #F1C40F; color: #F1C40F;">✏️ À CORRIGER</button>
+                            <button class="chip-btn" onclick="sendMikaFeedback('${window.adminEscape(t.id)}', 'BAD')" style="background: rgba(231,76,60,0.15); border-color: #E74C3C; color: #E74C3C;">👎 MAUVAIS</button>
                         </div>
                         <!-- Approve actions -->
                         <div style="display: flex; gap: 8px;">
-                            <button class="admin-btn success" style="padding: 4px 12px; font-size: 0.8rem;" onclick="approveAgentTask('${t.id}', 'APPROVED')"><i class="ph-bold ph-check"></i> Valider</button>
-                            <button class="admin-btn danger" style="padding: 4px 12px; font-size: 0.8rem;" onclick="approveAgentTask('${t.id}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
+                            <button class="admin-btn success" style="padding: 4px 12px; font-size: 0.8rem;" onclick="approveAgentTask('${window.adminEscape(t.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Valider</button>
+                            <button class="admin-btn danger" style="padding: 4px 12px; font-size: 0.8rem;" onclick="approveAgentTask('${window.adminEscape(t.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
                         </div>
                     </div>
                 </div>
@@ -2683,7 +2699,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Append user bubble
         const userBubble = document.createElement('div');
         userBubble.style.cssText = 'align-self: flex-end; max-width: 85%; background: rgba(229, 179, 69, 0.2); border: 1px solid rgba(229, 179, 69, 0.4); border-radius: 12px 12px 2px 12px; padding: 12px; font-size: 0.9rem; color: #FFFFFF;';
-        userBubble.innerHTML = `👑 <strong>Owner :</strong> ${msg}`;
+        userBubble.innerHTML = `👑 <strong>Owner :</strong> ${window.adminEscape(msg)}`;
         messagesBox.appendChild(userBubble);
         input.value = '';
         messagesBox.scrollTop = messagesBox.scrollHeight;
@@ -2702,9 +2718,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.escalated) {
                 mikaBubble.style.borderColor = '#E74C3C';
                 mikaBubble.style.background = 'rgba(231, 76, 60, 0.15)';
-                mikaBubble.innerHTML = `⚠️ <strong>Mika (Alerte Sécurité) :</strong> ${data.reply}`;
+                mikaBubble.innerHTML = `⚠️ <strong>Mika (Alerte Sécurité) :</strong> ${window.adminEscape(data.reply)}`;
             } else {
-                mikaBubble.innerHTML = `💬 <strong>Mika :</strong> ${data.reply}`;
+                mikaBubble.innerHTML = `💬 <strong>Mika :</strong> ${window.adminEscape(data.reply)}`;
             }
             messagesBox.appendChild(mikaBubble);
             messagesBox.scrollTop = messagesBox.scrollHeight;
@@ -3405,13 +3421,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             botsEl.innerHTML = `<p class="maison-muted">${maisonEsc(err.message)}</p>`;
         }
     }
-    document.getElementById('editorialCollectBtn')?.addEventListener('click', (event) => {
-        event.stopPropagation();
-        window.runEditorialCollect().catch((err) => {
-            const notice = document.getElementById('editorialNotice');
-            if (notice) notice.textContent = err.message || 'Erreur serveur.';
-        });
-    });
     document.getElementById('editorialAgentFilter')?.addEventListener('change', () => loadEditorialDesk());
     document.getElementById('editorialStatusFilter')?.addEventListener('change', () => loadEditorialDesk());
     window.openEditorialDesk = loadEditorialDesk;
@@ -3425,9 +3434,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.loadAdminRealData = loadAdminRealData;
 
     function adminEscape(value) {
-        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[char]));
+        return window.adminEscape(value);
     }
     function adminMoney(value) {
         return Number(value || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
