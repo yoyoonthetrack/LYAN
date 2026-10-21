@@ -295,6 +295,13 @@ function initializeNativeFeatures() {
 async function setupNativePushNotifications() {
     const push = getNativePlugin('PushNotifications');
     if (!push) return;
+    const nativePlatform = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform();
+    // Capacitor's Android plugin calls FirebaseMessaging.getInstance() on register().
+    // Without google-services.json that throws on the plugin thread and kills the process.
+    if (nativePlatform === 'android' && window.LYANN_ANDROID_FCM !== true) {
+        window.LYANN_ANDROID_PUSH_DEFERRED = true;
+        return;
+    }
     window.LYANN_PUSH = {
         deactivate: deactivatePushDevice,
         sync: function () { return registerPushDevice(latestPushToken); },
