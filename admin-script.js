@@ -1103,6 +1103,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (!taxonomyData.length) {
+            try {
+                const taxRes = await window.fetchWithAdminAuth('/v1/admin/taxonomy');
+                const taxBody = await taxRes.json().catch(() => ({}));
+                if (taxRes.ok && (taxBody.rows || taxBody.taxonomy || []).length) {
+                    taxonomyData = taxBody.rows || taxBody.taxonomy || [];
+                }
+            } catch (_) {}
+        }
+
+        if (!taxonomyData.length) {
             tbody.innerHTML = '<tr><td colspan="6" class="admin-empty-cell">Taxonomie introuvable en base. Rien n’est inventé ici.</td></tr>';
             return;
         }
@@ -2750,10 +2760,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.confirmCommandExecution = function() {
-        alert("✅ Commande confirmée et envoyée au Task Engine de Mika pour exécution !");
-        document.getElementById('commandInterpretationResult').style.display = 'none';
-        document.getElementById('commandCenterInput').value = '';
-        window.loadMikaControlRoom();
+        alert('Fonction indisponible');
     };
 
     window.cancelCommandExecution = function() {
@@ -2773,10 +2780,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (res.ok) {
                 alert(`👍 Feedback [${type}] enregistré dans la mémoire de Mika !`);
             } else {
-                alert(`👍 Feedback [${type}] pris en compte.`);
+                const body = await res.json().catch(() => ({}));
+                alert(body.error || 'Fonction indisponible');
             }
         } catch (e) {
-            alert(`👍 Feedback [${type}] pris en compte.`);
+            alert('Fonction indisponible');
         }
     };
 
@@ -2786,29 +2794,47 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (res.ok) {
                 alert("🚀 5 tâches TEST créées dans l'Approval Center de Mika !");
                 window.loadMikaControlRoom();
+            } else {
+                const body = await res.json().catch(() => ({}));
+                alert(body.error || 'Fonction indisponible');
             }
         } catch (e) {
-            console.error("Erreur création tâches test Mika:", e);
+            alert('Fonction indisponible');
         }
     };
 
-    window.toggleMikaSuspension = function() {
-        const btn = document.getElementById('btnMikaSuspend');
+    window.toggleMikaSuspension = async function() {
         const badge = document.getElementById('mikaHeaderStatusBadge');
-        if (badge.textContent === 'ACTIF') {
-            badge.textContent = 'SUSPENDU';
-            badge.style.background = 'rgba(231,76,60,0.2)';
-            badge.style.color = '#E74C3C';
-            badge.style.borderColor = '#E74C3C';
-            btn.innerHTML = '<i class="ph-bold ph-play-circle"></i> RÉACTIVER';
-            alert("🛑 Mika a été temporairement suspendu.");
-        } else {
-            badge.textContent = 'ACTIF';
-            badge.style.background = 'rgba(46,204,113,0.2)';
-            badge.style.color = '#2ECC71';
-            badge.style.borderColor = '#2ECC71';
-            btn.innerHTML = '<i class="ph-bold ph-pause-circle"></i> SUSPENDRE';
-            alert("▶️ Mika est à nouveau actif.");
+        const btn = document.getElementById('btnMikaSuspend');
+        const currentlyActive = !badge || badge.textContent === 'ACTIF';
+        try {
+            const list = await window.fetchWithAdminAuth('/v1/admin/agents/mika');
+            const payload = await list.json().catch(() => ({}));
+            const agentId = payload.agent?.id || payload.id;
+            if (!list.ok || !agentId) {
+                alert(payload.error || 'Fonction indisponible');
+                return;
+            }
+            const path = currentlyActive ? `/v1/admin/agents/${agentId}/suspend` : `/v1/admin/agents/${agentId}/resume`;
+            const res = await window.fetchWithAdminAuth(path, { method: 'POST' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                alert(data.error || 'Fonction indisponible');
+                return;
+            }
+            if (badge) {
+                badge.textContent = currentlyActive ? 'SUSPENDU' : 'ACTIF';
+                badge.style.background = currentlyActive ? 'rgba(231,76,60,0.2)' : 'rgba(46,204,113,0.2)';
+                badge.style.color = currentlyActive ? '#E74C3C' : '#2ECC71';
+                badge.style.borderColor = currentlyActive ? '#E74C3C' : '#2ECC71';
+            }
+            if (btn) {
+                btn.innerHTML = currentlyActive
+                    ? '<i class="ph-bold ph-play-circle"></i> RÉACTIVER'
+                    : '<i class="ph-bold ph-pause-circle"></i> SUSPENDRE';
+            }
+        } catch (_) {
+            alert('Fonction indisponible');
         }
     };
 
@@ -2821,9 +2847,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.mikaTakeover = function() {
-        if (typeof window.showToast === 'function') {
-            window.showToast("🖐️ Prise de main manuelle initiée sur Mika.", "warning");
-        }
+        alert('Fonction indisponible');
     };
 
     window.openAgentStudioModal = function(agentId = 'mika-001') {

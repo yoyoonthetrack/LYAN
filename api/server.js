@@ -1182,6 +1182,79 @@ async function recordMaisonAudit(adminUserId, action, targetId, details) {
     }
 }
 
+
+const { runModerationOnce } = require('./moderation-worker');
+
+function financialSettingBlocked(key, value) {
+    const blob = `${key} ${typeof value === 'string' ? value : JSON.stringify(value || {})}`;
+    return /commission|stripe|payout|escrow|financial_lock|platform_fee|fee_rate|protection_montant|verrou.?financier/i.test(blob);
+}
+
+async function moderateMaisonSubject(subjectType, subjectId) {
+    try {
+        await supabaseAdmin.rpc('lyann_enqueue_moderation_job', { p_type: subjectType, p_id: subjectId });
+    } catch (_) {}
+    try {
+        await runModerationOnce({
+            supabaseAdmin,
+            apiKey: process.env.OPENAI_API_KEY || process.env.LYANN_AI_API_KEY || '',
+            fetchImpl: global.fetch,
+            limit: 6
+        });
+    } catch (_) {}
+    const tableMap = {
+        post: 'bokantaj_posts',
+        request: 'requests',
+        profile: 'profiles'
+    };
+    const table = tableMap[subjectType];
+    const [{ data: row }, { data: job }] = await Promise.all([
+        table ? supabaseAdmin.from(table).select('*').eq('id', subjectId).maybeSingle() : Promise.resolve({ data: null }),
+        supabaseAdmin.from('moderation_jobs').select('status, reason_code, attempts, updated_at').eq('subject_type', subjectType).eq('subject_id', subjectId).maybeSingle()
+    ]);
+    const modStatus = subjectType === 'profile'
+        ? (row?.bio_moderation_status || 'pending')
+        : (row?.public_moderation_status || 'pending');
+    const visible = modStatus === 'approved';
+    const lifecycleStatus = modStatus === 'approved'
+        ? 'PUBLISHED_VISIBLE'
+        : (modStatus === 'rejected' ? 'REJECTED' : 'PENDING_MODERATION');
+    const lifecycleLabel = modStatus === 'approved'
+        ? 'Publié et visible'
+        : (modStatus === 'rejected' ? 'Refusé' : 'En attente de modération');
+    return {
+        row,
+        job,
+        moderation_status: modStatus,
+        visible,
+        lifecycle_status: lifecycleStatus,
+        lifecycle_label: lifecycleLabel,
+        moderation_reason: job?.reason_code || null
+    };
+}
+
+function decorateModerationItem(row, job, isProfile = false) {
+    const modStatus = isProfile
+        ? (row?.bio_moderation_status || 'approved')
+        : (row?.public_moderation_status || 'approved');
+    const visible = modStatus === 'approved';
+    const lifecycleStatus = modStatus === 'approved'
+        ? 'PUBLISHED_VISIBLE'
+        : (modStatus === 'rejected' ? 'REJECTED' : 'PENDING_MODERATION');
+    const lifecycleLabel = modStatus === 'approved'
+        ? 'Publié et visible'
+        : (modStatus === 'rejected' ? 'Refusé' : 'En attente de modération');
+    return {
+        ...row,
+        moderation_status: modStatus,
+        visible,
+        lifecycle_status: lifecycleStatus,
+        lifecycle_label: lifecycleLabel,
+        moderation_job_status: job?.status || null,
+        moderation_reason: job?.reason_code || null
+    };
+}
+
 app.get('/v1/admin/maison/profiles', async (req, res) => {
     const authResult = await requireMaisonOperator(req);
     if (!authResult.authorized) {
@@ -1211,12 +1284,48 @@ app.get('/v1/admin/maison/profiles/:id/desk', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
         }
         const userId = profile.id;
-        const [{ data: posts }, { data: parts }, { data: quotes }, { data: missions }] = await Promise.all([
-            supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, created_at').eq('author_id', userId).order('created_at', { ascending: false }).limit(12),
+        let [{ data: posts }, { data: requests }, { data: parts }, { data: quotes }, { data: missions }] = await Promise.all([
+            supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, territory, media_urls, public_moderation_status, created_at').eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
+            supabaseAdmin.from('requests').select('id, title, description, category, location, status, public_moderation_status, created_at').eq('requester_id', userId).order('created_at', { ascending: false }).limit(20),
             supabaseAdmin.from('conversation_participants').select('conversation_id').eq('user_id', userId),
             supabaseAdmin.from('quotes').select('id, status, total_amount, requester_id, provider_id, request_id, request_invitation_id, valid_until, created_at').or(`requester_id.eq.${userId},provider_id.eq.${userId}`).eq('status', 'SENT').order('created_at', { ascending: false }).limit(20),
             supabaseAdmin.from('missions').select('id, title, status, total_amount, requester_id, helper_id, created_at').or(`requester_id.eq.${userId},helper_id.eq.${userId}`).order('created_at', { ascending: false }).limit(20)
         ]);
+        const subjectIds = [
+            ...(posts || []).map((p) => p.id),
+            ...(requests || []).map((r) => r.id)
+        ].filter(Boolean);
+        let { data: jobs } = subjectIds.length
+            ? await supabaseAdmin.from('moderation_jobs').select('subject_type, subject_id, status, reason_code, attempts, updated_at').in('subject_id', subjectIds)
+            : { data: [] };
+        const jobMap = {};
+        (jobs || []).forEach((j) => { jobMap[`${j.subject_type}:${j.subject_id}`] = j; });
+        const orphanPosts = (posts || []).filter((p) => p.public_moderation_status === 'pending' && !jobMap[`post:${p.id}`]);
+        const orphanReqs = (requests || []).filter((r) => r.public_moderation_status === 'pending' && !jobMap[`request:${r.id}`]);
+        if (orphanPosts.length || orphanReqs.length) {
+            for (const p of orphanPosts) {
+                try { await supabaseAdmin.rpc('lyann_enqueue_moderation_job', { p_type: 'post', p_id: p.id }); } catch (_) {}
+            }
+            for (const r of orphanReqs) {
+                try { await supabaseAdmin.rpc('lyann_enqueue_moderation_job', { p_type: 'request', p_id: r.id }); } catch (_) {}
+            }
+            try {
+                await runModerationOnce({
+                    supabaseAdmin,
+                    apiKey: process.env.OPENAI_API_KEY || process.env.LYANN_AI_API_KEY || '',
+                    fetchImpl: global.fetch,
+                    limit: 8
+                });
+            } catch (_) {}
+            const [refreshedPosts, refreshedReqs, refreshedJobs] = await Promise.all([
+                supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, territory, media_urls, public_moderation_status, created_at').eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
+                supabaseAdmin.from('requests').select('id, title, description, category, location, status, public_moderation_status, created_at').eq('requester_id', userId).order('created_at', { ascending: false }).limit(20),
+                subjectIds.length ? supabaseAdmin.from('moderation_jobs').select('subject_type, subject_id, status, reason_code, attempts, updated_at').in('subject_id', subjectIds) : Promise.resolve({ data: [] })
+            ]);
+            posts = refreshedPosts.data || posts;
+            requests = refreshedReqs.data || requests;
+            (refreshedJobs.data || []).forEach((j) => { jobMap[`${j.subject_type}:${j.subject_id}`] = j; });
+        }
         const conversationIds = [...new Set((parts || []).map((row) => row.conversation_id).filter(Boolean))];
         let conversations = [];
         if (conversationIds.length) {
@@ -1254,7 +1363,8 @@ app.get('/v1/admin/maison/profiles/:id/desk', async (req, res) => {
         return res.json({
             success: true,
             profile,
-            posts: posts || [],
+            posts: (posts || []).map((p) => decorateModerationItem(p, jobMap[`post:${p.id}`])),
+            requests: (requests || []).map((r) => decorateModerationItem(r, jobMap[`request:${r.id}`])),
             conversations,
             quotes: quotes || [],
             missions: missions || []
@@ -1321,8 +1431,16 @@ app.patch('/v1/admin/maison/profiles/:id', async (req, res) => {
             updated_at: new Date().toISOString()
         }).eq('id', profile.id).eq('account_type', 'seed');
         if (error) throw error;
-        await recordMaisonAudit(authResult.userId, 'MAISON_UPDATE_PROFILE', profile.id, { city, territory });
-        return res.json({ success: true });
+        let moderation = null;
+        if (bio && bio !== (profile.bio || '')) {
+            moderation = await moderateMaisonSubject('profile', profile.id);
+        }
+        await recordMaisonAudit(authResult.userId, 'MAISON_UPDATE_PROFILE', profile.id, { city, territory, moderation_status: moderation?.moderation_status || 'approved' });
+        return res.json({
+            success: true,
+            moderation_status: moderation?.moderation_status || 'approved',
+            lifecycle_label: moderation?.lifecycle_label || 'Approuvé'
+        });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Modification impossible.' });
     }
@@ -1361,8 +1479,26 @@ app.post('/v1/admin/maison/profiles/:id/requests', async (req, res) => {
             inserted = await supabaseAdmin.from('requests').insert(row).select('id').single();
         }
         if (inserted.error) throw inserted.error;
-        await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_REQUEST', profile.id, { request_id: inserted.data.id });
-        return res.json({ success: true, request_id: inserted.data.id });
+        const mod = await moderateMaisonSubject('request', inserted.data.id);
+        await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_REQUEST', profile.id, {
+            request_id: inserted.data.id,
+            moderation_status: mod.moderation_status,
+            visible: mod.visible
+        });
+        return res.json({
+            success: true,
+            request_id: inserted.data.id,
+            moderation_status: mod.moderation_status,
+            visible: mod.visible,
+            lifecycle_status: mod.lifecycle_status,
+            lifecycle_label: mod.lifecycle_label,
+            moderation_reason: mod.moderation_reason,
+            message: mod.visible
+                ? 'Annonce approuvée par la modération et visible publiquement.'
+                : (mod.moderation_status === 'rejected'
+                    ? `Annonce refusée par la modération (${mod.moderation_reason || 'contenu non conforme'}). Corrigez le texte avant de réessayer.`
+                    : `Annonce enregistrée — En attente de modération (${mod.moderation_reason || 'vérification requise'}).`)
+        });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Annonce impossible.' });
     }
@@ -1382,21 +1518,58 @@ app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
         if (photo?.error) return res.status(400).json({ success: false, error: photo.error });
         if (video?.error) return res.status(400).json({ success: false, error: video.error });
         if (!content && !photo && !video) return res.status(400).json({ success: false, error: 'Écris un Lyann ou ajoute une photo ou une vidéo.' });
+        if (req.body?.draft === true) {
+            return res.json({
+                success: true,
+                draft: true,
+                visible: false,
+                moderation_status: 'draft',
+                lifecycle_status: 'draft',
+                lifecycle_label: 'Brouillon',
+                message: 'Brouillon conservé localement. Rien n’a été envoyé à Bokantaj ni à la modération.'
+            });
+        }
         const mediaUrls = [];
         const origin = `${req.protocol}://${req.get('host')}`;
         if (photo) mediaUrls.push(await maisonStoreMedia(profile.id, photo, origin));
         if (video) mediaUrls.push(await maisonStoreMedia(profile.id, video, origin));
+        const allowedTypes = ['info', 'dispo', 'besoin'];
+        const postType = allowedTypes.includes(String(req.body?.type || '').toLowerCase())
+            ? String(req.body.type).toLowerCase()
+            : 'info';
+        const territory = String(req.body?.territory || profile.territory || 'guadeloupe').trim().toLowerCase();
+        const city = String(req.body?.city || profile.city || '').trim() || null;
         const { data, error } = await supabaseAdmin.from('bokantaj_posts').insert({
             author_id: profile.id,
-            type: req.body?.type || 'info',
+            type: postType,
             content: content || 'Lyann',
-            city: req.body?.city || profile.city || null,
-            territory: req.body?.territory || profile.territory || null,
+            city,
+            territory,
             media_urls: mediaUrls
         }).select('id').single();
         if (error) throw error;
-        await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_BOKANTAJ', profile.id, { post_id: data.id });
-        return res.json({ success: true, post_id: data.id });
+        const mod = await moderateMaisonSubject('post', data.id);
+        await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_BOKANTAJ', profile.id, {
+            post_id: data.id,
+            moderation_status: mod.moderation_status,
+            visible: mod.visible,
+            reason: mod.moderation_reason
+        });
+        return res.json({
+            success: true,
+            post_id: data.id,
+            moderation_status: mod.moderation_status,
+            visible: mod.visible,
+            lifecycle_status: mod.lifecycle_status,
+            lifecycle_label: mod.lifecycle_label,
+            moderation_reason: mod.moderation_reason,
+            post: mod.row ? decorateModerationItem(mod.row, mod.job) : null,
+            message: mod.visible
+                ? 'Publication approuvée par la modération et visible dans Bokantaj.'
+                : (mod.moderation_status === 'rejected'
+                    ? `Publication refusée par la modération (${mod.moderation_reason || 'contenu non conforme'}). Vous pouvez la corriger et réessayer.`
+                    : `Publication enregistrée — En attente de modération (${mod.moderation_reason || 'contrôle requis'}). Elle apparaîtra dans Bokantaj dès son approbation.`)
+        });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Publication impossible.' });
     }
@@ -1504,7 +1677,7 @@ async function actOnMaisonQuote(req, res, action) {
     }
 }
 
-const { collectEditorial, publishEditorialTask } = require('./editorial-run');
+const { collectEditorial, publishEditorialTask, providerConfig } = require('./editorial-run');
 const { EDITORIAL_BOTS, EDITORIAL_BADGE, reviewEditorialText } = require('./editorial-engine');
 
 function editorialAuthorized(req) {
@@ -1542,7 +1715,15 @@ app.post('/v1/admin/editorial/collect', async (req, res) => {
         return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
     }
     try {
-        return res.json({ success: true, ...(await collectEditorial(supabaseAdmin)) });
+        const cfg = providerConfig();
+        if (cfg.error) {
+            return res.status(409).json({
+                success: false,
+                error: 'Collecte éditoriale indisponible : configuration IA manquante ou refusée.',
+                provider: cfg.error
+            });
+        }
+        return res.json({ success: true, provider: cfg.mode, ...(await collectEditorial(supabaseAdmin)) });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Collecte impossible.' });
     }
@@ -2251,6 +2432,163 @@ app.post('/v1/admin/ops/users/:id/kyc', async (req, res) => {
     }
 });
 
+
+app.post('/v1/admin/ops/users/:id/status', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'users.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const patch = { updated_at: new Date().toISOString() };
+        if (typeof req.body?.is_verified === 'boolean') patch.is_verified = req.body.is_verified;
+        if (typeof req.body?.kyc_verified === 'boolean') patch.kyc_verified = req.body.kyc_verified;
+        if (typeof req.body?.is_pro === 'boolean') patch.is_pro = req.body.is_pro;
+        if (typeof req.body?.professional_status === 'string') patch.professional_status = req.body.professional_status.trim() || null;
+        const { data, error } = await supabaseAdmin
+            .from('profiles')
+            .update(patch)
+            .eq('id', req.params.id)
+            .select('id, first_name, last_name, is_verified, kyc_verified, is_pro, professional_status')
+            .maybeSingle();
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        if (!data) return res.status(404).json({ success: false, error: 'Profil introuvable.' });
+        await recordMaisonAudit(authResult.userId, 'USER_STATUS_UPDATED', req.params.id, patch);
+        return res.json({ success: true, row: data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de modifier ce profil.' });
+    }
+});
+
+app.post('/v1/admin/ops/bokantaj/:id/delete', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'moderation.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+        return res.status(403).json({ success: false, error: 'Suppression directe interdite sur Production sans autorisation.' });
+    }
+    try {
+        const { data: existing } = await supabaseAdmin.from('bokantaj_posts').select('id, author_id, content').eq('id', req.params.id).maybeSingle();
+        if (!existing) return res.status(404).json({ success: false, error: 'Publication introuvable.' });
+        const { error } = await supabaseAdmin.from('bokantaj_posts').delete().eq('id', req.params.id);
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        await recordMaisonAudit(authResult.userId, 'BOKANTAJ_POST_DELETED', req.params.id, { author_id: existing.author_id });
+        return res.json({ success: true, id: req.params.id });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de supprimer la publication.' });
+    }
+});
+
+app.get('/v1/admin/taxonomy', async (req, res) => {
+    const authResult = await verifyAdminPermission(req);
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('lyann_taxonomy')
+            .select('id, universe, category, subcategory, synonyms, tags, safety_level, active, created_at, updated_at')
+            .order('universe', { ascending: true })
+            .order('category', { ascending: true });
+        if (error) return res.status(503).json({ success: false, error: error.message });
+        return res.json({ success: true, rows: data || [], taxonomy: data || [] });
+    } catch (e) {
+        return res.status(503).json({ success: false, error: e.message || 'Taxonomie indisponible.' });
+    }
+});
+
+app.post('/v1/admin/taxonomy', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'moderation.manage');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    const universe = String(req.body?.universe || '').trim();
+    const category = String(req.body?.category || '').trim();
+    const subcategory = String(req.body?.subcategory || '').trim();
+    const safetyLevel = ['AUTORISE', 'SURVEILLE', 'INTERDIT'].includes(String(req.body?.safety_level || '').toUpperCase())
+        ? String(req.body.safety_level).toUpperCase()
+        : 'AUTORISE';
+    if (!universe || !category || !subcategory) {
+        return res.status(400).json({ success: false, error: 'Univers, catégorie et sous-catégorie sont obligatoires.' });
+    }
+    const parseArr = (v) => Array.isArray(v)
+        ? v.map((s) => String(s).trim()).filter(Boolean)
+        : String(v || '').split(',').map((s) => s.trim()).filter(Boolean);
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('lyann_taxonomy')
+            .insert({
+                universe,
+                category,
+                subcategory,
+                synonyms: parseArr(req.body?.synonyms),
+                tags: parseArr(req.body?.tags),
+                safety_level: safetyLevel,
+                active: req.body?.active !== false
+            })
+            .select()
+            .single();
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        await recordMaisonAudit(authResult.userId, 'TAXONOMY_CREATED', data.id, { universe, category, subcategory, safety_level: safetyLevel });
+        return res.json({ success: true, row: data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de créer cette entrée de taxonomie.' });
+    }
+});
+
+app.patch('/v1/admin/taxonomy/:id', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'moderation.manage');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    try {
+        const patch = { updated_at: new Date().toISOString() };
+        if (typeof req.body?.active === 'boolean') patch.active = req.body.active;
+        if (req.body?.universe) patch.universe = String(req.body.universe).trim();
+        if (req.body?.category) patch.category = String(req.body.category).trim();
+        if (req.body?.subcategory) patch.subcategory = String(req.body.subcategory).trim();
+        if (req.body?.safety_level && ['AUTORISE', 'SURVEILLE', 'INTERDIT'].includes(String(req.body.safety_level).toUpperCase())) {
+            patch.safety_level = String(req.body.safety_level).toUpperCase();
+        }
+        if (req.body?.synonyms !== undefined) {
+            patch.synonyms = Array.isArray(req.body.synonyms)
+                ? req.body.synonyms.map((s) => String(s).trim()).filter(Boolean)
+                : String(req.body.synonyms || '').split(',').map((s) => s.trim()).filter(Boolean);
+        }
+        if (req.body?.tags !== undefined) {
+            patch.tags = Array.isArray(req.body.tags)
+                ? req.body.tags.map((s) => String(s).trim()).filter(Boolean)
+                : String(req.body.tags || '').split(',').map((s) => s.trim()).filter(Boolean);
+        }
+        const { data, error } = await supabaseAdmin
+            .from('lyann_taxonomy')
+            .update(patch)
+            .eq('id', req.params.id)
+            .select()
+            .maybeSingle();
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        if (!data) return res.status(404).json({ success: false, error: 'Entrée de taxonomie introuvable.' });
+        await recordMaisonAudit(authResult.userId, 'TAXONOMY_UPDATED', req.params.id, patch);
+        return res.json({ success: true, row: data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de modifier la taxonomie.' });
+    }
+});
+
+app.post('/v1/admin/ops/feature-flags/:id/toggle', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'settings.manage');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    try {
+        const enabled = Boolean(req.body?.enabled);
+        const { data, error } = await supabaseAdmin
+            .from('feature_flags')
+            .update({ enabled, updated_by: authResult.userId, updated_at: new Date().toISOString() })
+            .eq('id', req.params.id)
+            .select()
+            .maybeSingle();
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        if (!data) return res.status(404).json({ success: false, error: 'Feature flag introuvable.' });
+        await recordMaisonAudit(authResult.userId, 'FEATURE_FLAG_TOGGLED', req.params.id, { key: data.key, enabled });
+        return res.json({ success: true, row: data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de modifier ce feature flag.' });
+    }
+});
+
 app.post('/v1/admin/ops/reports/:id', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'moderation.manage');
     if (!authResult.authorized) {
@@ -2582,6 +2920,10 @@ app.get('/v1/admin/agents', async (req, res) => {
 
 // 5.4 CREATE AGENT LYANN (POST /v1/admin/agents - Strict DB Persistence)
 app.post('/v1/admin/agents', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error || 'Fonction indisponible' });
+    }
     try {
         const { agent_name, linked_profile_id, personality, tone = 'chaleureux', languages = ['fr', 'cr'], zones = ['guadeloupe'], skills = ['jardinage'], autonomy_level = 1, system_instructions } = req.body;
 
@@ -2622,18 +2964,13 @@ app.post('/v1/admin/agents', async (req, res) => {
             .select()
             .single();
 
-        const crypto = require('crypto');
-        const agentObj = newAgent || {
-            id: crypto.randomUUID(),
-            agent_name,
-            linked_profile_id: targetProfileId,
-            autonomy_level: Number(autonomy_level),
-            status: 'ACTIVE'
-        };
-
+        if (error || !newAgent) {
+            return res.status(500).json({ success: false, error: error?.message || 'Création d’agent impossible.' });
+        }
+        await recordMaisonAudit(authResult.userId, 'AGENT_CREATED', newAgent.id, { agent_name });
         return res.json({
             success: true,
-            agent: agentObj
+            agent: newAgent
         });
     } catch (e) {
         return res.status(500).json({ error: "Erreur serveur lors de la création d'agent." });
@@ -3179,6 +3516,10 @@ app.post('/v1/admin/conversations/takeover/release', async (req, res) => {
 
 // 6.7 INSTANT AGENT SUSPENSION & RESUME (POST /v1/admin/agents/:id/suspend & resume)
 app.post('/v1/admin/agents/:id/suspend', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error || 'Fonction indisponible' });
+    }
     try {
         const { id } = req.params;
         const client = getSupabaseClient(req);
@@ -3191,6 +3532,10 @@ app.post('/v1/admin/agents/:id/suspend', async (req, res) => {
 });
 
 app.post('/v1/admin/agents/:id/resume', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error || 'Fonction indisponible' });
+    }
     try {
         const { id } = req.params;
         const client = getSupabaseClient(req);
@@ -3329,6 +3674,10 @@ let MIKA_IN_MEMORY_MEMORIES = [];
 
 // 7.1 MIKA CONTROL ROOM DATA (GET /v1/admin/agents/mika)
 app.get('/v1/admin/agents/mika', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error || 'Fonction indisponible' });
+    }
     try {
         const client = getSupabaseClient(req);
         
@@ -3415,6 +3764,10 @@ app.get('/v1/admin/agents/mika', async (req, res) => {
 
 // 7.2 SEED MIKA TEST TASKS (POST /v1/admin/agents/mika/init-test-tasks)
 app.post('/v1/admin/agents/mika/init-test-tasks', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error || 'Fonction indisponible' });
+    }
     try {
         const client = getSupabaseClient(req);
         
@@ -3542,6 +3895,10 @@ app.post('/v1/admin/agents/mika/init-test-tasks', async (req, res) => {
 
 // 7.3 PARLER À MIKA - PRIVATE OWNER CHAT (POST /v1/admin/agents/mika/chat)
 app.post('/v1/admin/agents/mika/chat', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error || 'Fonction indisponible' });
+    }
     try {
         const client = getSupabaseClient(req);
         const { message, conversation_history } = req.body;
@@ -3646,6 +4003,10 @@ app.post('/v1/admin/agents/mika/chat', async (req, res) => {
 
 // 7.4 COMMAND CENTER NLP PARSER (POST /v1/admin/agents/mika/command)
 app.post('/v1/admin/agents/mika/command', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error || 'Fonction indisponible' });
+    }
     try {
         const { command } = req.body;
         const cmdUpper = (command || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
@@ -3723,6 +4084,10 @@ app.post('/v1/admin/agents/mika/command', async (req, res) => {
 
 // 7.5 OWNER FEEDBACK MEMORY (POST /v1/admin/agents/mika/feedback)
 app.post('/v1/admin/agents/mika/feedback', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error || 'Fonction indisponible' });
+    }
     try {
         const client = getSupabaseClient(req);
         const { task_id, feedback_type, note } = req.body;
@@ -3769,6 +4134,10 @@ app.post('/v1/admin/agents/mika/feedback', async (req, res) => {
 
 // 7.6 ESCALATION ENGINE EVALUATOR (POST /v1/admin/agents/mika/escalate)
 app.post('/v1/admin/agents/mika/escalate', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'agents.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error || 'Fonction indisponible' });
+    }
     try {
         const client = getSupabaseClient(req);
         const { text, conversation_id, context } = req.body;
@@ -3829,23 +4198,62 @@ app.post('/v1/admin/agents/mika/escalate', async (req, res) => {
 
 
 app.get('/v1/admin/system/settings', async (req, res) => {
+    const authResult = await verifyAdminPermission(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
     try {
-        const client = getSupabaseClient(req);
-        const { data: settings } = await client.from('system_settings').select('*');
+        const { data: settings } = await supabaseAdmin.from('system_settings').select('*');
         const settingsMap = {};
         if (Array.isArray(settings)) {
             settings.forEach(s => settingsMap[s.key] = s.value);
         }
+        const kill = settingsMap.agents_global_kill_switch || {};
         res.json({
             success: true,
             settings: {
-                global_agents_suspended: settingsMap.global_agents_suspended === 'true',
-                kill_switch: settingsMap.global_agents_suspended === 'true' ? 'TRIGGERED' : 'OPERATIONAL',
+                global_agents_suspended: Boolean(kill.suspended || settingsMap.global_agents_suspended === true || settingsMap.global_agents_suspended === 'true'),
+                kill_switch: kill.suspended ? 'TRIGGERED' : 'OPERATIONAL',
                 ...settingsMap
             }
         });
     } catch (e) {
-        res.json({ success: true, settings: { global_agents_suspended: false, kill_switch: 'OPERATIONAL' } });
+        res.status(503).json({ success: false, error: 'Paramètres système indisponibles.' });
+    }
+});
+
+app.post('/v1/admin/system/settings', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'settings.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const incoming = req.body?.settings && typeof req.body.settings === 'object' ? req.body.settings : req.body;
+        const entries = Object.entries(incoming || {}).filter(([key]) => !['settings'].includes(key));
+        if (!entries.length) return res.status(400).json({ success: false, error: 'Aucun paramètre à enregistrer.' });
+        for (const [key, value] of entries) {
+            if (financialSettingBlocked(key, value)) {
+                return res.status(403).json({
+                    success: false,
+                    code: 'FINANCIAL_LOCK_PROTECTED',
+                    error: 'Modification des commissions Stripe, des verrous financiers ou des transactions interdite.'
+                });
+            }
+        }
+        const now = new Date().toISOString();
+        for (const [key, value] of entries) {
+            const { error } = await supabaseAdmin.from('system_settings').upsert({
+                key,
+                value,
+                updated_by: authResult.userId,
+                updated_at: now
+            });
+            if (error) return res.status(500).json({ success: false, error: error.message });
+        }
+        await recordMaisonAudit(authResult.userId, 'SYSTEM_SETTINGS_UPDATED', null, { keys: entries.map(([k]) => k) });
+        return res.json({ success: true, saved: entries.map(([k]) => k) });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible d’enregistrer les paramètres.' });
     }
 });
 
