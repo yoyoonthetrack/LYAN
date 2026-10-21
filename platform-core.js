@@ -221,6 +221,40 @@ function initializeNativeFeatures() {
     const nativePlatform = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform();
     if (nativePlatform === 'android') {
         document.documentElement.classList.add('lyann-android');
+        window.lyannHandleAndroidBack = function () {
+            const openDialog = document.querySelector('dialog[open]');
+            if (openDialog) {
+                openDialog.close();
+                return true;
+            }
+            if (document.body.classList.contains('keyboard-open')) {
+                const active = document.activeElement;
+                if (active && typeof active.blur === 'function') active.blur();
+                return true;
+            }
+            const activeModal = document.querySelector('.modal-overlay.active');
+            if (activeModal) {
+                if (activeModal.id === 'chatModal' && document.body.classList.contains('chat-conversation-open') && typeof window.backToChatContacts === 'function') {
+                    window.backToChatContacts();
+                } else if (activeModal.id === 'chatModal' && typeof window.closeLyannChatModal === 'function') {
+                    window.closeLyannChatModal();
+                } else {
+                    activeModal.classList.remove('active');
+                    activeModal.style.display = 'none';
+                    document.body.style.overflow = '';
+                }
+                return true;
+            }
+            if (window.history.length > 1 && !window.__lyannBackStuck) {
+                const before = window.location.href;
+                window.history.back();
+                window.setTimeout(() => {
+                    window.__lyannBackStuck = window.location.href === before;
+                }, 220);
+                return true;
+            }
+            return false;
+        };
         window.addEventListener('offline', () => {
             if (typeof window.showLyanToast === 'function') {
                 window.showLyanToast('Connexion interrompue. LYANN reprendra dès le retour du réseau.', '📡');
@@ -235,31 +269,13 @@ function initializeNativeFeatures() {
     const appPlugin = getNativePlugin('App');
     if (appPlugin) {
         appPlugin.addListener('backButton', (data) => {
-            if (nativePlatform === 'android') {
-                const openDialog = document.querySelector('dialog[open]');
-                if (openDialog) {
-                    openDialog.close();
-                    return;
-                }
-                if (document.body.classList.contains('keyboard-open')) {
-                    const active = document.activeElement;
-                    if (active && typeof active.blur === 'function') active.blur();
-                    return;
-                }
-            }
-            const activeModal = document.querySelector('.modal-overlay.active');
-            if (activeModal) {
-                if (activeModal.id === 'chatModal' && document.body.classList.contains('chat-conversation-open') && typeof window.backToChatContacts === 'function') {
-                    window.backToChatContacts();
-                } else if (activeModal.id === 'chatModal' && typeof window.closeLyannChatModal === 'function') {
-                    window.closeLyannChatModal();
-                } else {
-                    activeModal.classList.remove('active');
-                    activeModal.style.display = 'none';
-                    document.body.style.overflow = '';
-                }
-            } else if (data && data.canGoBack) {
+            if (typeof window.lyannHandleAndroidBack === 'function' && window.lyannHandleAndroidBack()) return;
+            if (data && data.canGoBack) {
+                const before = window.location.href;
                 window.history.back();
+                window.setTimeout(() => {
+                    if (window.location.href === before) appPlugin.exitApp();
+                }, 280);
             } else {
                 appPlugin.exitApp();
             }
