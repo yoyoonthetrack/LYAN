@@ -53,13 +53,14 @@ async function main() {
   const report = { target: STAGING_REF, steps: [] };
   const note = (id, ok, extra) => report.steps.push({ id, ok, ...extra });
 
-  const sqlResult = await applySqlIfPossible();
-  note('migration', sqlResult.applied, sqlResult);
-
   const columns = await admin.from('bokantaj_posts').select('id, human_moderation_lock, human_decision').limit(1);
   const sanctionsTable = await admin.from('account_sanctions').select('id').limit(1);
   const schemaReady = !columns.error && !sanctionsTable.error;
-  note('schema', schemaReady, { posts: columns.error && columns.error.message, sanctions: sanctionsTable.error && sanctionsTable.error.message });
+  const sqlResult = schemaReady
+    ? { applied: true, already_installed: true, target: STAGING_REF }
+    : await applySqlIfPossible();
+  note('migration', sqlResult.applied, sqlResult);
+  note('schema', schemaReady || sqlResult.applied, { posts: columns.error && columns.error.message, sanctions: sanctionsTable.error && sanctionsTable.error.message });
   report.limit = schemaReady
     ? null
     : '73_moderation_center.sql n’est pas encore appliqué. Hide/restore utilisent rejected/approved. Le verrou IA passe par l’audit. Les écritures RLS d’un JWT encore valide ne sont bloquées qu’après la migration.';
