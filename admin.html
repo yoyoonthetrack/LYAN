@@ -1007,70 +1007,132 @@
                 <div class="admin-page-header">
                     <div>
                         <h1 class="admin-page-title">Modération</h1>
-                        <p class="admin-page-sub">Signalements, file préventive et respect de la charte de sérénité LYANN.</p>
+                        <p class="admin-page-sub">Contrôle des publications, commentaires, comptes et signalements. Une décision humaine de retrait reste prioritaire sur l’IA.</p>
                     </div>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="btnRunModerationOnce">Lancer une passe IA</button>
                 </div>
 
-                <div class="admin-card" style="margin-bottom: 24px;">
-                    <h3 style="margin-bottom: 16px; font-weight: 800; color: var(--admin-text); display: flex; align-items: center; gap: 8px;">
-                        <i class="ph-bold ph-shield-warning" style="color: #EF4444;"></i> Signalements Transmis par les Membres (<span id="adminReportsCount">0</span>)
-                    </h3>
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Ref #</th>
-                                <th>Émetteur</th>
-                                <th>Membre Signalé</th>
-                                <th>Motif</th>
-                                <th>Précisions & Détails</th>
-                                <th>Date & Heure</th>
-                                <th>Statut</th>
-                                <th>Actions Modérateur</th>
-                            </tr>
-                        </thead>
-                        <tbody id="adminReportsTableBody">
-                            <!-- Dynamiquement alimenté par admin-script.js -->
-                        </tbody>
-                    </table>
+                <div class="mod-engine-bar" id="modEngineBar">État du moteur : chargement…</div>
+                <p class="mod-notice" id="modNotice" hidden></p>
+
+                <div class="mod-tabs" role="tablist">
+                    <button type="button" class="mod-tab is-active" data-mod-tab="queue">À vérifier</button>
+                    <button type="button" class="mod-tab" data-mod-tab="posts">Publications Bokantaj</button>
+                    <button type="button" class="mod-tab" data-mod-tab="comments">Commentaires</button>
+                    <button type="button" class="mod-tab" data-mod-tab="users">Utilisateurs</button>
+                    <button type="button" class="mod-tab" data-mod-tab="reports">Signalements</button>
                 </div>
 
-                <div class="admin-card" style="margin-bottom: 24px;">
-                    <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
-                        <h3 style="margin:0; font-weight: 800; color: var(--admin-text);">File de modération préventive</h3>
-                        <button type="button" class="admin-btn admin-btn-secondary" id="btnRunModerationOnce">Lancer une passe de modération</button>
+                <div class="mod-filters">
+                    <input type="search" id="modSearch" class="admin-input" placeholder="Rechercher un contenu, un auteur…">
+                    <select id="modStatus" class="admin-select">
+                        <option value="all">Tous les statuts</option>
+                        <option value="pending">À vérifier</option>
+                        <option value="approved">Approuvés</option>
+                        <option value="rejected">Refusés</option>
+                        <option value="hidden">Masqués</option>
+                        <option value="suspended">Suspendus</option>
+                        <option value="banned">Bannis</option>
+                        <option value="OPEN">Nouveaux signalements</option>
+                    </select>
+                    <select id="modTerritory" class="admin-select">
+                        <option value="all">Tous les territoires</option>
+                        <option value="guadeloupe">Guadeloupe</option>
+                        <option value="martinique">Martinique</option>
+                        <option value="guyane">Guyane</option>
+                        <option value="reunion">La Réunion</option>
+                    </select>
+                    <input type="date" id="modSince" class="admin-input" aria-label="Depuis">
+                </div>
+
+                <div class="mod-layout">
+                    <div class="admin-card mod-list-card">
+                        <div class="mod-pane is-active" data-mod-pane="queue">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sujet</th>
+                                        <th>Auteur</th>
+                                        <th>Extrait</th>
+                                        <th>Statut</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminModerationQueueBody">
+                                    <tr><td colspan="5" class="admin-empty-cell">Chargement de la file…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mod-pane" data-mod-pane="posts">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Publication</th>
+                                        <th>Auteur</th>
+                                        <th>Aperçu</th>
+                                        <th>Statut</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contentBokantajTableBody">
+                                    <tr><td colspan="5" class="admin-empty-cell">Chargement du fil…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mod-pane" data-mod-pane="comments">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Commentaire</th>
+                                        <th>Auteur</th>
+                                        <th>Publication</th>
+                                        <th>Statut</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modCommentsBody">
+                                    <tr><td colspan="5" class="admin-empty-cell">Chargement des commentaires…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mod-pane" data-mod-pane="users">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Membre</th>
+                                        <th>Territoire</th>
+                                        <th>Restriction</th>
+                                        <th>Historique</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modUsersBody">
+                                    <tr><td colspan="5" class="admin-empty-cell">Chargement des comptes…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mod-pane" data-mod-pane="reports">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ref</th>
+                                        <th>Émetteur</th>
+                                        <th>Cible</th>
+                                        <th>Motif</th>
+                                        <th>Statut</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminReportsTableBody">
+                                    <tr><td colspan="6" class="admin-empty-cell">Chargement des signalements…</td></tr>
+                                </tbody>
+                            </table>
+                            <p class="mod-meta">Signalements visibles : <span id="adminReportsCount">0</span></p>
+                        </div>
                     </div>
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Sujet</th>
-                                <th>Auteur</th>
-                                <th>Extrait</th>
-                                <th>Statut</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="adminModerationQueueBody">
-                            <tr><td colspan="5" class="admin-empty-cell">Chargement de la file…</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="admin-card">
-                    <h3 style="margin-bottom: 16px; font-weight: 800; color: var(--admin-text);">Modération du Fil Bokantaj</h3>
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Post #</th>
-                                <th>Auteur</th>
-                                <th>Contenu Publication</th>
-                                <th>Signalements</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="contentBokantajTableBody">
-                            <tr><td colspan="5" class="admin-empty-cell">Chargement du fil…</td></tr>
-                        </tbody>
-                    </table>
+                    <aside class="admin-card mod-detail" id="modDetail">
+                        <p class="mod-detail-empty">Sélectionnez un élément pour voir le contenu, l’historique et décider ici.</p>
+                    </aside>
                 </div>
             </section>
 

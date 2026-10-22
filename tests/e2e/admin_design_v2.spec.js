@@ -154,8 +154,16 @@ async function installVisualMocks(page) {
     if (pathName === '/v1/admin/ops') {
       return json(route, { success: true, rows: [{ id: 'u1', first_name: 'Alex', last_name: 'Test', email: 'alex@lyann.app', territory: 'guadeloupe', kyc_verified: false }] });
     }
-    if (pathName === '/v1/admin/ops/moderation') {
-      return json(route, { success: true, posts: [{ id: 'p1', excerpt: 'À vérifier', status: 'pending' }], comments: [], requests: [], profiles: [] });
+    if (pathName === '/v1/admin/ops/moderation' || pathName === '/v1/admin/moderation-center') {
+      return json(route, {
+        success: true,
+        posts: [{ id: 'p1', excerpt: 'À vérifier', status: 'pending' }],
+        comments: [],
+        requests: [],
+        profiles: [],
+        rows: [{ id: 'p1', subject: 'post', excerpt: 'À vérifier', status_label: 'À vérifier', public_moderation_status: 'pending' }],
+        extra: []
+      });
     }
     return json(route, { success: true, data_available: true, agents: [], tasks: [], logs: [], suspended: false, rows: [] });
   });

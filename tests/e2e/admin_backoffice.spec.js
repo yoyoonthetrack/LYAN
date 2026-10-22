@@ -178,11 +178,21 @@ async function installAdminMocks(page, overrides = {}) {
       if (resource === 'team') return json(route, { success: true, rows: [{ id: 'tm1', name: 'Yoann', email: 'yoann@lyann.app', role: 'OWNER', status: 'ACTIVE' }] });
       return json(route, { success: true, rows: [] });
     }
-    if (path === '/v1/admin/ops/moderation') {
-      return json(route, { success: true, posts: [{ id: 'p1', excerpt: 'À vérifier', status: 'pending', author_id: 'seed-1' }], comments: [], requests: [], profiles: [] });
+    if (path === '/v1/admin/ops/moderation' || path === '/v1/admin/moderation-center') {
+      return json(route, {
+        success: true,
+        posts: [{ id: 'p1', excerpt: 'À vérifier', status: 'pending', author_id: 'seed-1' }],
+        comments: [],
+        requests: [],
+        profiles: [],
+        rows: [{ id: 'p1', subject: 'post', excerpt: 'À vérifier', status_label: 'À vérifier', public_moderation_status: 'pending' }],
+        extra: []
+      });
     }
     if (path.endsWith('/moderation/run-once')) return json(route, { success: true });
-    if (path.includes('/moderation/post/')) return json(route, { success: true, visible: true, lifecycle_label: 'Publié et visible' });
+    if (path.includes('/moderation/post/') || path.includes('/moderation-center/content/')) {
+      return json(route, { success: true, visible: true, lifecycle_label: 'Publié et visible' });
+    }
     if (path === '/v1/admin/system/settings' && method === 'POST') {
       return json(route, { success: true, saved: ['maintenance_mode'] });
     }
@@ -287,6 +297,7 @@ test.describe('LYANN back-office', () => {
       if (typeof window.loadAdminSection === 'function') await window.loadAdminSection('sec-content');
       else if (typeof window.hydrateAdminSection === 'function') await window.hydrateAdminSection('sec-content');
     });
+    await expect(page.locator('.mod-tab')).toHaveCount(5);
     await expect(page.locator('#adminModerationQueueBody')).toContainText('À vérifier');
     await page.locator('#btnRunModerationOnce').click({ force: true });
 

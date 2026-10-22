@@ -1934,6 +1934,8 @@ app.get('/v1/admin/me', async (req, res) => {
 
 const { registerAdminControlCenter } = require('./admin-control-center');
 registerAdminControlCenter(app, { supabaseAdmin, verifyAdminPermission });
+const { registerAdminModerationCenter } = require('./admin-moderation-center');
+registerAdminModerationCenter(app, { supabaseAdmin, verifyAdminPermission, recordAudit: recordMaisonAudit });
 
 function adminProfileName(profile) {
     if (!profile) return 'Membre';
@@ -2353,8 +2355,13 @@ app.post('/v1/admin/ops/users/:id/status', async (req, res) => {
         return res.status(authResult.status).json({ success: false, error: authResult.error });
     }
     try {
+        if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'is_verified')) {
+            return res.status(400).json({
+                success: false,
+                error: 'is_verified n’est pas une suspension. Utilisez /v1/admin/moderation-center/users/:id/sanction.'
+            });
+        }
         const patch = { updated_at: new Date().toISOString() };
-        if (typeof req.body?.is_verified === 'boolean') patch.is_verified = req.body.is_verified;
         if (typeof req.body?.kyc_verified === 'boolean') patch.kyc_verified = req.body.kyc_verified;
         if (typeof req.body?.is_pro === 'boolean') patch.is_pro = req.body.is_pro;
         if (typeof req.body?.professional_status === 'string') patch.professional_status = req.body.professional_status.trim() || null;

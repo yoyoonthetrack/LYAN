@@ -131,6 +131,25 @@ async function applyDecision(supabaseAdmin, job, loaded, decision) {
         return 'rejected';
     }
     if (outcome === 'approved') {
+        const locked = loaded.row && loaded.row.human_moderation_lock;
+        let auditLock = locked;
+        if (!auditLock) {
+            const audits = await supabaseAdmin
+                .from('admin_audit_events')
+                .select('after_state, created_at')
+                .eq('target_id', job.subject_id)
+                .eq('action', 'CONTENT_MODERATION')
+                .order('created_at', { ascending: false })
+                .limit(1);
+            const last = audits.data && audits.data[0] && audits.data[0].after_state;
+            auditLock = !!(last && last.human_moderation_lock && last.human_decision && last.human_decision !== 'restore' && last.human_decision !== 'approve');
+        }
+        if (auditLock) {
+            await finishJob(supabaseAdmin, job, 'done', 'human_lock');
+            return 'human_lock';
+        }
+    }
+    if (outcome === 'approved') {
         await markReleases(supabaseAdmin, files, 'approved');
         if (loaded.pendingEdit) {
             const payload = loaded.pendingEdit.payload || {};
@@ -194,6 +213,11 @@ async function runModerationOnce({ supabaseAdmin, apiKey, fetchImpl, downloadMed
         if (!loaded) {
             await finishJob(supabaseAdmin, job, 'done', 'missing');
             outcomes.push({ id: job.id, result: 'missing' });
+            continue;
+        }
+        if (loaded.row.human_moderation_lock) {
+            await finishJob(supabaseAdmin, job, 'done', 'human_lock');
+            outcomes.push({ id: job.id, result: 'human_lock' });
             continue;
         }
         const liveStatus = loaded.row.public_moderation_status || loaded.row.bio_moderation_status;

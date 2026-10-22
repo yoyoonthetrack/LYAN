@@ -126,6 +126,9 @@ window.hydrateAdminSection = async function(sectionId) {
         return data;
     }
     if (sectionId === 'sec-content') {
+        if (typeof window.loadAdminModerationCenter === 'function') {
+            return window.loadAdminModerationCenter();
+        }
         const res = await window.fetchWithAdminAuth('/v1/admin/ops/moderation');
         const data = await res.json().catch(() => ({}));
         putRows('adminModerationQueueBody', (data.posts || []).map((row) => `<tr><td>${esc(row.excerpt || row.id)}</td></tr>`).join(''));
@@ -883,9 +886,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert('Ouvre la fiche membre depuis la liste Utilisateurs pour modifier le statut.');
                 return;
             }
-            if (confirm(`⚠️ Suspendre le compte de ${userName} pour manquement aux règles communautaires ?`)) {
-                window.adminUpdateUserStatus(userId, { is_verified: false });
+            if (typeof window.openModerationUser === 'function') {
+                window.openModerationUser(userId, userName);
+                return;
             }
+            alert('Ouvre l’onglet Modération → Utilisateurs pour une vraie suspension. is_verified n’est plus utilisé.');
         });
     });
 
@@ -3845,17 +3850,251 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.adminDecideModeration = async function(subject, id, decision) {
-        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/moderation/${subject}/${id}`, {
+        const mapped = decision === 'approve' ? 'approved' : (decision === 'reject' ? 'rejected' : decision);
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/content/${subject}/${id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ decision })
+            body: JSON.stringify({ decision: mapped })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) {
-            alert(data.error || 'Décision de modération impossible.');
+            window.showModNotice(data.error || 'Décision de modération impossible.', true);
+            return false;
+        }
+        window.showModNotice(data.visible ? 'Contenu visible après confirmation serveur.' : 'Contenu retiré des flux publics.', false);
+        await window.loadAdminModerationCenter();
+        if (id) window.openModerationDetail(subject, id);
+        return true;
+    };
+
+    window.__modTab = window.__modTab || 'queue';
+
+    window.showModNotice = function(message, isError) {
+        const el = document.getElementById('modNotice');
+        if (!el) {
+            if (isError) alert(message);
             return;
         }
-        window.loadAdminSection('sec-content');
+        el.hidden = !message;
+        el.textContent = message || '';
+        el.classList.toggle('is-error', !!isError);
+        el.classList.toggle('is-ok', !isError && !!message);
+    };
+
+    window.switchModTab = function(tab) {
+        window.__modTab = tab;
+        document.querySelectorAll('.mod-tab').forEach((btn) => btn.classList.toggle('is-active', btn.getAttribute('data-mod-tab') === tab));
+        document.querySelectorAll('.mod-pane').forEach((pane) => pane.classList.toggle('is-active', pane.getAttribute('data-mod-pane') === tab));
+        window.loadAdminModerationCenter();
+    };
+
+    window.modQuery = function() {
+        const params = new URLSearchParams();
+        params.set('tab', window.__modTab || 'queue');
+        const q = document.getElementById('modSearch')?.value || '';
+        const status = document.getElementById('modStatus')?.value || 'all';
+        const territory = document.getElementById('modTerritory')?.value || 'all';
+        const since = document.getElementById('modSince')?.value || '';
+        if (q) params.set('q', q);
+        if (status && status !== 'all') params.set('status', status);
+        if (territory && territory !== 'all') params.set('territory', territory);
+        if (since) params.set('since', new Date(since).toISOString());
+        return params.toString();
+    };
+
+    window.renderModEngine = function(engine) {
+        const bar = document.getElementById('modEngineBar');
+        if (!bar) return;
+        if (!engine || engine.available === false) {
+            bar.textContent = 'Moteur IA : état indisponible. En cas de panne, le contenu reste en attente.';
+            return;
+        }
+        const delay = engine.median_delay_ms != null ? `${Math.round(engine.median_delay_ms / 1000)} s mesurées` : 'délai non mesuré';
+        bar.textContent = `Moteur IA — analysés ${engine.counts?.analyzed || 0} · auto-approuvés ${engine.counts?.approved || 0} · refusés ${engine.counts?.rejected || 0} · file ${engine.counts?.pending || 0} · bloqués ${engine.counts?.held || 0} · erreurs ${engine.counts?.errors || 0} · ${delay}. ${engine.promise || ''}`;
+    };
+
+    window.modRowActions = function(row) {
+        const subject = row.subject || row.subject_type || 'post';
+        const buttons = [];
+        if (row.status_key === 'pending' || row.public_moderation_status === 'pending') {
+            buttons.push(`<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminDecideModeration('${subject}','${row.id}','approved')">Approuver</button>`);
+            buttons.push(`<button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminDecideModeration('${subject}','${row.id}','rejected')">Refuser</button>`);
+        }
+        if (row.visible || row.status_key === 'approved') {
+            buttons.push(`<button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminDecideModeration('${subject}','${row.id}','hide')">Masquer</button>`);
+        }
+        if (row.status_key === 'hidden' || row.human_decision === 'hide') {
+            buttons.push(`<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminDecideModeration('${subject}','${row.id}','restore')">Restaurer</button>`);
+        }
+        buttons.push(`<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.openModerationDetail('${subject}','${row.id}')">Détail</button>`);
+        return buttons.join(' ');
+    };
+
+    window.openModerationDetail = async function(subject, id) {
+        const panel = document.getElementById('modDetail');
+        if (!panel) return;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/${subject}/${id}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            window.showModNotice(data.error || 'Détail indisponible.', true);
+            return;
+        }
+        const row = data.row;
+        const media = (row.media_urls || []).map((url) => `<a href="${adminEscape(url)}" target="_blank" rel="noopener">Média</a>`).join(' · ') || 'Aucun média';
+        const history = (row.history || []).map((item) => `${adminEscape(item.status)} · ${adminEscape(item.reason_code || '')}`).join('<br>') || 'Aucun job IA.';
+        const audit = (row.audit || []).map((item) => `${adminDate(item.created_at)} · ${adminEscape(item.action)} · ${adminEscape(item.reason || '')}`).join('<br>') || 'Aucun historique admin.';
+        const reports = (row.reports || []).map((item) => `${adminEscape(item.status)} · ${adminEscape(item.reason || '')}`).join('<br>') || 'Aucun signalement lié.';
+        panel.innerHTML = `
+            <h3>${adminEscape(row.status_label || row.public_moderation_status)}</h3>
+            <p class="mod-meta">${adminEscape(row.author_name || row.author_id || '—')} · ${adminDate(row.created_at)} · ${adminEscape(row.territory || '')}</p>
+            <div class="mod-full">${adminEscape(row.content || row.excerpt || '')}</div>
+            <p class="mod-meta">${media}</p>
+            ${row.subject === 'post' ? `<p><a class="admin-btn admin-btn-sm admin-btn-secondary" href="/#bokantaj" target="_blank" rel="noopener">Ouvrir sur Bokantaj</a></p>` : ''}
+            <h4>Signalements</h4><div class="mod-history">${reports}</div>
+            <h4>Historique</h4><div class="mod-history">${history}<br>${audit}</div>
+            <div class="mod-actions">${window.modRowActions(row)}</div>`;
+    };
+
+    window.openModerationUser = function(userId, userName) {
+        document.querySelector('.admin-nav-item[data-section="sec-content"]')?.click();
+        window.switchModTab('users');
+        const panel = document.getElementById('modDetail');
+        if (!panel) return;
+        panel.innerHTML = `
+            <h3>${adminEscape(userName || 'Compte')}</h3>
+            <p class="mod-meta">Avertir, suspendre ou bannir. Motif obligatoire. Stripe n’est pas modifié.</p>
+            <textarea id="modSanctionReason" class="admin-input" rows="3" placeholder="Motif visible dans l’audit"></textarea>
+            <select id="modSanctionDuration" class="admin-select">
+                <option value="24h">24 heures</option>
+                <option value="7d">7 jours</option>
+                <option value="30d">30 jours</option>
+            </select>
+            <div class="mod-actions">
+                <button class="admin-btn admin-btn-secondary" onclick="window.adminSanctionUser('${userId}','warning')">Avertir</button>
+                <button class="admin-btn admin-btn-danger" onclick="window.adminSanctionUser('${userId}','suspend')">Suspendre</button>
+                <button class="admin-btn admin-btn-danger" onclick="window.adminSanctionUser('${userId}','ban')">Bannir</button>
+                <button class="admin-btn admin-btn-secondary" onclick="window.adminSanctionUser('${userId}','lift')">Lever</button>
+            </div>`;
+    };
+
+    window.adminSanctionUser = async function(userId, kind) {
+        const reason = document.getElementById('modSanctionReason')?.value || '';
+        const duration = document.getElementById('modSanctionDuration')?.value || '24h';
+        if (!reason.trim()) {
+            window.showModNotice('Un motif est obligatoire.', true);
+            return;
+        }
+        const label = { warning: 'enregistrer un avertissement', suspend: 'suspendre ce compte', ban: 'bannir durablement ce compte', lift: 'lever la sanction' }[kind];
+        if (!confirm(`Confirmer : ${label} ?`)) return;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/users/${userId}/sanction`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kind, reason, duration })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            window.showModNotice(data.error || 'Sanction non appliquée.', true);
+            return;
+        }
+        window.showModNotice(data.note || 'Mesure enregistrée.', false);
+        await window.loadAdminModerationCenter();
+    };
+
+    window.loadAdminModerationCenter = async function() {
+        const tab = window.__modTab || 'queue';
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center?${window.modQuery()}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            window.showModNotice(data.error || 'Console de modération indisponible.', true);
+            return data;
+        }
+        window.renderModEngine(data.engine);
+        const rows = data.rows || [];
+        if (tab === 'queue') {
+            const items = [...rows, ...(data.extra || [])];
+            const body = document.getElementById('adminModerationQueueBody');
+            if (body) {
+                body.innerHTML = items.length ? items.map((item) => `<tr>
+                    <td>${adminEscape(item.subject || 'post')}</td>
+                    <td>${adminEscape(item.author_name || item.author_id || '—')}</td>
+                    <td>${adminEscape(item.excerpt || '')}</td>
+                    <td>${adminBadge(item.status_label || item.public_moderation_status)}</td>
+                    <td>${window.modRowActions(item)}</td>
+                </tr>`).join('') : adminEmpty(5, 'File de modération vide.');
+            }
+        }
+        if (tab === 'posts' || tab === 'queue') {
+            const body = document.getElementById('contentBokantajTableBody');
+            if (body && tab === 'posts') {
+                body.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape(row.author_name || '—')}</td>
+                    <td>${adminEscape(row.excerpt || '')}</td>
+                    <td>${adminBadge(row.status_label)}</td>
+                    <td>${window.modRowActions({ ...row, subject: 'post' })}</td>
+                </tr>`).join('') : adminEmpty(5, 'Aucune publication.');
+            }
+        }
+        if (tab === 'comments') {
+            const body = document.getElementById('modCommentsBody');
+            if (body) {
+                body.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td>${adminEscape(row.excerpt || '')}</td>
+                    <td>${adminEscape(row.author_name || '—')}</td>
+                    <td>${adminEscape(row.post_id || '—')}</td>
+                    <td>${adminBadge(row.status_label)}</td>
+                    <td>${window.modRowActions({ ...row, subject: 'comment' })}</td>
+                </tr>`).join('') : adminEmpty(5, 'Aucun commentaire.');
+            }
+        }
+        if (tab === 'users') {
+            const body = document.getElementById('modUsersBody');
+            if (body) {
+                body.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td>${adminEscape(row.name)}</td>
+                    <td>${adminEscape(row.territory || row.city || '—')}</td>
+                    <td>${adminBadge(row.restriction?.status || row.restriction_status || 'none')}</td>
+                    <td>${adminEscape(String((row.sanctions || []).length))}</td>
+                    <td><button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.openModerationUser('${row.id}','${adminEscape(row.name)}')">Mesures</button></td>
+                </tr>`).join('') : adminEmpty(5, 'Aucun compte.');
+            }
+        }
+        if (tab === 'reports') {
+            const body = document.getElementById('adminReportsTableBody');
+            const count = document.getElementById('adminReportsCount');
+            if (count) count.textContent = String(rows.length);
+            if (body) {
+                body.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape(row.reporter_name || '—')}</td>
+                    <td>${adminEscape(row.target_name || row.target_type || '—')}</td>
+                    <td>${adminEscape(row.reason || '—')}</td>
+                    <td>${adminBadge(row.status_label || row.status)}</td>
+                    <td>
+                        ${row.target_type && row.target_id && row.target_type !== 'user' ? `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.openModerationDetail('${row.target_type}','${row.target_id}')">Ouvrir</button>` : ''}
+                        ${row.status === 'OPEN' || row.status === 'PENDING' ? `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminUpdateModReport('${row.id}','${row.source}','${row.source === 'bokantaj' ? 'IN_REVIEW' : 'IN_REVIEW'}')">Examiner</button>` : ''}
+                        <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminUpdateModReport('${row.id}','${row.source}','RESOLVED')">Résoudre</button>
+                        <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminUpdateModReport('${row.id}','${row.source}','DISMISSED')">Classer</button>
+                    </td>
+                </tr>`).join('') : adminEmpty(6, 'Aucun signalement.');
+            }
+        }
+        return data;
+    };
+
+    window.adminUpdateModReport = async function(reportId, source, status) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/reports/${reportId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source, status })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            window.showModNotice(data.error || 'Signalement non mis à jour.', true);
+            return;
+        }
+        window.showModNotice(`Signalement : ${data.status_label || status}.`, false);
+        await window.loadAdminModerationCenter();
     };
 
     window.adminRunModerationOnce = async function() {
@@ -4164,6 +4403,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </tr>`).join('') : adminEmpty(7, 'Aucun Lyann publié.');
             },
             'sec-content': async () => {
+                if (typeof window.loadAdminModerationCenter === 'function') {
+                    await window.loadAdminModerationCenter();
+                    return;
+                }
                 const data = await fetchAdminOps('reports');
                 const tbody = document.getElementById('adminReportsTableBody');
                 const rows = data.rows || [];
@@ -4333,6 +4576,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderAdminUsers(filtered, 'usersAdminTableBody', 'users');
     });
     document.getElementById('btnRunModerationOnce')?.addEventListener('click', () => window.adminRunModerationOnce());
+    document.querySelectorAll('.mod-tab').forEach((btn) => {
+        btn.addEventListener('click', () => window.switchModTab(btn.getAttribute('data-mod-tab')));
+    });
+    ['modSearch', 'modStatus', 'modTerritory', 'modSince'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('change', () => window.loadAdminModerationCenter());
+    });
+    document.getElementById('modSearch')?.addEventListener('input', () => {
+        clearTimeout(window.__modSearchTimer);
+        window.__modSearchTimer = setTimeout(() => window.loadAdminModerationCenter(), 250);
+    });
     document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
         btn.addEventListener('click', () => alert('Offrir un abonnement Pro n’est pas une opération financière activée ici.'));
     });
