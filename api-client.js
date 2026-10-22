@@ -1379,6 +1379,8 @@ const LYANN_API_CLIENT = {
             let postsQuery = this.supabase
                 .from('bokantaj_posts')
                 .select('*')
+                // Public Bokantaj must never expose hidden/pending posts, including to admin sessions.
+                .eq('public_moderation_status', 'approved')
                 .order('created_at', { ascending: false })
                 .limit(LYANN_FEED_PAGE_SIZE);
             if (pageOptions.before) postsQuery = postsQuery.lt('created_at', pageOptions.before);
@@ -1426,7 +1428,7 @@ const LYANN_API_CLIENT = {
                 const [likesRes, commentsRes, sessionUser] = postIds.length
                     ? await Promise.all([
                         this.supabase.from('bokantaj_likes').select('post_id, request_id, user_id').in('post_id', postIds),
-                        this.supabase.from('bokantaj_comments').select('post_id, request_id').in('post_id', postIds),
+                        this.supabase.from('bokantaj_comments').select('post_id, request_id').in('post_id', postIds).eq('public_moderation_status', 'approved'),
                         this.getCurrentUser()
                     ])
                     : [{ data: [] }, { data: [] }, null];
@@ -1659,6 +1661,8 @@ const LYANN_API_CLIENT = {
             const { data, error } = await this.supabase
                 .from('bokantaj_comments')
                 .select('*, profiles:author_id(first_name, last_name, avatar_url, city)')
+                // Admin privileges should not reveal moderated comments inside ordinary threads.
+                .eq('public_moderation_status', 'approved')
                 .eq(matchCol, targetId)
                 .order('created_at', { ascending: true });
 
@@ -3042,6 +3046,7 @@ window.LyannFavoritesService = {
                     const { data: post } = await supabaseClient
                         .from('bokantaj_posts')
                         .select('id, headline, content, category, media_urls, created_at, author_id, profiles:author_id(first_name, last_name, avatar_url)')
+                        .eq('public_moderation_status', 'approved')
                         .eq('id', fav.entity_id)
                         .maybeSingle();
 
