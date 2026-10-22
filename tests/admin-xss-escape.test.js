@@ -23,3 +23,11 @@ test('adminEscape encodes stored HTML in hydrateAdminSection payloads', () => {
     assert.equal(html.includes('<img'), false);
     assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
 });
+
+test('helpdesk and task panels escape operator-facing fields', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'admin-script.js'), 'utf8');
+    assert.match(source, /adminEscape\(ticket\.subject\)/);
+    assert.match(source, /adminEscape\(msg\.body\)/);
+    assert.match(source, /adminEscape\(task\.instruction/);
+    assert.doesNotMatch(source, /innerHTML = `\$\{ticket\.subject\}`/);
+});
