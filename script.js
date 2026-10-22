@@ -2719,7 +2719,19 @@ safeDomReady(() => {
                 window.LYANN_API_CLIENT.getComments(targetId, 'POST').then((rows) => {
                     const list = document.getElementById(`comments-list-${targetId}`);
                     if (!list || !Array.isArray(rows)) return;
-                    const approved = rows.filter((row) => !row.public_moderation_status || row.public_moderation_status === 'approved');
+                    // A comment hidden while the drawer is open must disappear from the visible DOM,
+                    // not merely from its counter. Only repaint if the visible set changed.
+                    const approved = rows.filter((row) => row.public_moderation_status === 'approved');
+                    const visibleIds = [...list.querySelectorAll('.comment-item-row[data-comment-id]')]
+                        .map((node) => node.dataset.commentId);
+                    const approvedIds = approved.map((row) => String(row.id));
+                    const changed = visibleIds.length !== approvedIds.length
+                        || approvedIds.some((id, index) => id !== visibleIds[index]);
+                    if (changed && typeof window.renderBokantajCommentRow === 'function') {
+                        list.innerHTML = approved.length
+                            ? approved.map((row) => window.renderBokantajCommentRow(row, targetId)).join('')
+                            : '<div class="bokantaj-comments-empty">Aucun commentaire pour le moment.</div>';
+                    }
                     const label = document.querySelector(`.btn-comments-toggle[data-target-id="${targetId}"] .comments-count-label`);
                     if (label) label.textContent = approved.length ? `Commenter (${approved.length})` : 'Commenter';
                 }).catch(() => {});
@@ -2922,7 +2934,7 @@ safeDomReady(() => {
                 <button type="button" class="btn-delete-own-comment" data-comment-id="${comment.id}" data-target-id="${targetId}">Supprimer</button>
             </span>` : '';
         return `
-            <div class="comment-item-row" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
+            <div class="comment-item-row" data-comment-id="${comment.id}" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
                 <img src="${avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" alt="">
                 <div style="flex: 1;">
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
