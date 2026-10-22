@@ -47,3 +47,44 @@
 }
 
 .bokantaj-post-map-link{border:0;background:#edf5e9;color:#2c6241;border-radius:99px;min-height:34px;padding:6px 12px;margin-top:8px;text-align:left;cursor:pointer;font:650 .82rem 'Outfit',sans-serif;max-width:100%}
+
+/* LYANN cartography: real vector streets, warm tactile overlays. */
+.bokantaj-map-section{border-color:#e5e0d4;border-radius:24px;background:#fffdf8;box-shadow:0 8px 26px #5b654c0b}
+.bokantaj-map-topbar{padding:16px 16px 10px;color:#3e5145}
+.bokantaj-map-topbar select{min-height:44px;background:#fffdf8;border-color:#dddccf}
+.bokantaj-map-chips{gap:8px;padding:0 14px 10px;scroll-padding:14px}
+.bokantaj-map-chips button{min-height:44px;padding:9px 14px;background:#f4f3e9;border-color:#e5e2d3;color:#4f5b4b}
+.bokantaj-map-chips button.is-active{background:#e9c879;border-color:#dab45d;color:#493a22;box-shadow:0 2px 5px #90712b18}
+.bokantaj-map-gesture{margin:0;padding:0 16px 12px;font-size:.78rem;color:#687161}
+.bokantaj-map-canvas,.bokantaj-picker-map{background:#f0ede5;isolation:isolate}
+.bokantaj-map-canvas{height:min(62dvh,620px);min-height:380px}
+.bokantaj-map-pin{background:transparent;border:0;border-radius:0;box-shadow:none;display:block;filter:drop-shadow(0 3px 3px #594b3433)}
+.bokantaj-pin-face{position:absolute;inset:0 0 6px;display:grid;place-items:center;border:3px solid #fffdf7;border-radius:50% 50% 50% 8px;transform:rotate(-45deg);background:var(--pin-color,#f3bd97);color:#584332;box-sizing:border-box}
+.bokantaj-pin-face svg{width:24px;height:24px;transform:rotate(45deg)}
+.bokantaj-map-pin.category-trafic{--pin-color:#f2c87c}
+.bokantaj-map-pin.category-bon_plan{--pin-color:#eadb91}
+.bokantaj-map-pin.category-restaurant{--pin-color:#efb3a0}
+.bokantaj-map-pin.category-avis{--pin-color:#e4c7dc}
+.bokantaj-map-pin.category-info{--pin-color:#b9d9d7}
+.bokantaj-map-pin.category-evenement{--pin-color:#cbdba6}
+.bokantaj-map-pin.category-alerte{--pin-color:#f0ac8d}
+.bokantaj-map-pin.is-cluster{background:transparent;color:#51412c;font-weight:850;font-size:17px}
+.bokantaj-map-pin.is-cluster .bokantaj-pin-face{transform:none;border-radius:50%;background:#f1d996;box-shadow:0 0 0 5px #fff8e68c;inset:2px 2px 6px}
+.bokantaj-map-pin:focus-visible .bokantaj-pin-face{outline:3px solid #3c705e;outline-offset:3px}
+.bokantaj-map-section button:focus-visible,.bokantaj-place-picker button:focus-visible{outline:3px solid #397260;outline-offset:2px}
+.bokantaj-map-canvas .leaflet-control-zoom,.bokantaj-picker-map .leaflet-control-zoom{border:1px solid #ddd7c9;border-radius:15px;overflow:hidden;box-shadow:0 3px 12px #5b51351c}
+.bokantaj-map-canvas .leaflet-control-zoom a,.bokantaj-picker-map .leaflet-control-zoom a{width:44px;height:44px;line-height:44px;background:#fffdf7;color:#4e604c}
+.bokantaj-map-canvas .leaflet-control-attribution,.bokantaj-picker-map .leaflet-control-attribution{background:#fffdf2ed;color:#506050;font-size:10px;padding:3px 6px;max-width:100%;box-sizing:border-box}
+.bokantaj-map-canvas .leaflet-control-attribution a,.bokantaj-picker-map .leaflet-control-attribution a{color:#365e62}
+.bokantaj-map-detail{background:#fff9ed;border-top:1px solid #e8dbc1;padding:18px;border-radius:0 0 23px 23px}
+.bokantaj-map-eyebrow{font-size:.87rem;color:#6a5940;line-height:1.6}
+.bokantaj-map-body{font-size:1rem;color:#3c493d}
+.bokantaj-map-detail-actions button{min-height:44px;background:#eadfbf;color:#584b32}
+.bokantaj-popup .leaflet-popup-content-wrapper,.bokantaj-popup .leaflet-popup-tip{background:#fffaf0;color:#58452f;box-shadow:0 4px 16px #69543526}
+.bokantaj-popup .leaflet-popup-content{font:500 .9rem/1.5 'Outfit',sans-serif;margin:12px 16px}
+.bokantaj-cluster-list{max-height:190px;overflow:auto;display:grid;gap:6px}
+.bokantaj-cluster-list button{min-height:44px;text-align:left;background:#f6ebd7;border:0;border-radius:10px;padding:10px;color:#4a4939}
+.bokantaj-basemap-notice{position:absolute;z-index:450;left:12px;right:68px;top:12px;padding:10px 12px;border-radius:12px;background:#fffaf1f5;color:#655336;box-shadow:0 2px 10px #594b3420;font:500 .85rem/1.4 'Outfit',sans-serif}
+.bokantaj-basemap-notice[hidden]{display:none}
+.bokantaj-basemap-notice button{min-height:44px;background:#eddaab;border:0;border-radius:8px;padding:8px 12px;color:#4c422f;font-weight:700}
+@media(max-width:600px){.bokantaj-map-canvas{height:57dvh;min-height:360px}.bokantaj-map-topbar{padding:12px 12px 8px}.bokantaj-map-gesture{font-size:.75rem}.bokantaj-map-chips button{padding:8px 12px}.bokantaj-map-detail{padding-bottom:max(16px,env(safe-area-inset-bottom))}}

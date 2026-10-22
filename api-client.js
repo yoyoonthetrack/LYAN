@@ -1526,7 +1526,7 @@ const LYANN_API_CLIENT = {
         }
         const { data, error } = await this.supabase
             .from('bokantaj_posts')
-            .select('id, type, content, city, territory, media_urls, created_at, place_lat, place_lng, place_label')
+            .select('id, type, content, city, territory, media_urls, created_at, place_lat, place_lng, place_label, public_moderation_status')
             .eq('public_moderation_status', 'approved')
             .not('place_lat', 'is', null)
             .not('place_lng', 'is', null)

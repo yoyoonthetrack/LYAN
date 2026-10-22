@@ -36,6 +36,7 @@
     let refreshTimer;
     let renderedPosts = [];
     let requestedFocusId = null;
+    let detailPostId = null;
 
     function validPoint(value) {
         return !!value && Number.isFinite(value.lat) && Number.isFinite(value.lng)
@@ -78,15 +79,74 @@
         })[c]);
     }
 
+    // A public, licensed vector service; no requests to OSM's community raster servers.
+    // Override only with an operator-controlled HTTPS style URL (never a secret token).
     function setupLeafletMap(element, center, options = {}) {
         if (!window.L || !element) throw new Error('Carte indisponible sur cet appareil.');
-        const instance = window.L.map(element, { zoomControl: true, scrollWheelZoom: false, ...options })
-            .setView([center[0], center[1]], center[2]);
-        window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            minZoom: 3, maxZoom: 18,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
-        }).addTo(instance);
+        const instance = window.L.map(element, {
+            zoomControl: false, scrollWheelZoom: false, minZoom: 3, maxZoom: 18,
+            touchZoom: true, bounceAtZoomLimits: false, worldCopyJump: true, ...options
+        }).setView([center[0], center[1]], center[2]);
+        window.L.control.zoom({ position: 'topright', zoomInTitle: 'Zoomer', zoomOutTitle: 'Dézoomer' }).addTo(instance);
+        instance.attributionControl.setPrefix(false);
+        instance.attributionControl.addAttribution('<a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a>');
+        const notice = document.createElement('div');
+        notice.className = 'bokantaj-basemap-notice';
+        notice.setAttribute('role', 'status');
+        notice.textContent = 'La carte arrive…';
+        element.append(notice);
+        let layer;
+        let timer;
+        function loadBasemap() {
+            clearTimeout(timer);
+            notice.hidden = false;
+            notice.replaceChildren(document.createTextNode('La carte arrive…'));
+            element.dataset.basemap = 'loading';
+            if (layer) { instance.removeLayer(layer); layer = null; }
+            const fail = () => {
+                clearTimeout(timer);
+                element.dataset.basemap = 'error';
+                notice.hidden = false;
+                notice.replaceChildren(document.createTextNode('Fond de carte indisponible. '));
+                const retry = document.createElement('button');
+                retry.type = 'button'; retry.textContent = 'Réessayer';
+                retry.addEventListener('click', loadBasemap);
+                notice.append(retry);
+            };
+            try {
+                const configured = window.LYANN_MAP_STYLE_URL;
+                const style = typeof configured === 'string' && /^https:\/\//.test(configured)
+                    ? configured : new URL('assets/maps/lyann-liberty.json', document.baseURI).href;
+                layer = window.L.maplibreGL({ style, interactive: false, attributionControl: false }).addTo(instance);
+                const gl = layer.getMaplibreMap();
+                timer = setTimeout(fail, 15000);
+                gl.on('error', fail);
+                gl.on('idle', () => {
+                    if (!gl.isStyleLoaded() || !gl.areTilesLoaded()) return;
+                    clearTimeout(timer); notice.hidden = true;
+                    element.dataset.basemap = 'ready';
+                });
+            } catch (_) { fail(); }
+        }
+        window.L.DomEvent.disableClickPropagation(notice);
+        window.L.DomEvent.disableScrollPropagation(notice);
+        loadBasemap();
+        instance.on('unload', () => clearTimeout(timer));
         return instance;
+    }
+
+    const GLYPHS = Object.freeze({
+        info: '<path d="M5 4h14v12H9l-4 4V4Z"/><path d="M9 8h6M9 12h4"/>',
+        trafic: '<path d="m5 10 2-5h10l2 5v8h-3v-3H8v3H5v-8Zm0 0h14"/><path d="M8 12h1m6 0h1"/>',
+        bon_plan: '<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z"/>',
+        restaurant: '<path d="M5 3v6c0 3 6 3 6 0V3M8 3v18M19 21V3c-5 3-5 10 0 10"/>',
+        avis: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2-5.5-2.9-5.5 2.9 1-6.2L3 9.6l6.2-.9L12 3Z"/>',
+        evenement: '<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16m-12 5h3"/>',
+        alerte: '<path d="M12 3 2 21h20L12 3Zm0 6v5m0 3v1"/>',
+        astuce: '<path d="M8 16c0-3-3-3-3-7a7 7 0 0 1 14 0c0 4-3 4-3 7H8Zm0 3h8m-6 3h4"/>'
+    });
+    function glyph(type) {
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (GLYPHS[type] || GLYPHS.info) + '</svg>';
     }
 
     function updatePlaceButton() {
@@ -164,7 +224,7 @@
 
     function filteredPosts(posts) {
         return (Array.isArray(posts) ? posts : [])
-            .filter(publiclyVisible)
+            .filter((post) => publiclyVisible(post))
             .filter((post) => activeType === 'all' || post.type === activeType)
             .slice(0, MAX_MARKERS);
     }
@@ -177,6 +237,7 @@
     function showDetail(post) {
         const panel = $('bokantajMapDetail');
         if (!panel || !post) return;
+        detailPostId = String(post.id);
         panel.replaceChildren();
         const category = CATEGORY[post.type] || CATEGORY.info;
         const eyebrow = document.createElement('div');
@@ -209,6 +270,7 @@
     function paintMarkers(posts) {
         if (!map || !markerLayer) return;
         markerLayer.clearLayers();
+        if (!posts.some((p) => String(p.id) === detailPostId)) $('bokantajMapDetail').hidden = true;
         const pixelGroups = new Map();
         const zoom = map.getZoom();
         posts.forEach((post) => {
@@ -224,16 +286,34 @@
             const crowded = group.length > 1;
             const category = CATEGORY[first.type] || CATEGORY.info;
             const icon = window.L.divIcon({
-                className: 'bokantaj-map-pin' + (crowded ? ' is-cluster' : ''),
-                html: '<span aria-hidden="true">' + (crowded ? String(group.length) : category.icon) + '</span>',
-                iconSize: [44, 44], iconAnchor: [22, 22]
+                className: 'bokantaj-map-pin' + (crowded ? ' is-cluster' : ' category-' + (CATEGORY[first.type] ? first.type : 'info')),
+                html: '<span class="bokantaj-pin-face" aria-hidden="true">' + (crowded ? String(group.length) : glyph(first.type)) + '</span>',
+                iconSize: [46, 52], iconAnchor: [23, 50], popupAnchor: [0, -46]
             });
-            const marker = window.L.marker([centerLat, centerLng], { icon });
+            const marker = window.L.marker([centerLat, centerLng], { icon,
+                title: crowded ? group.length + ' partages : zoomer ou choisir' : category.label + ' · ' + first.place_label,
+                alt: crowded ? group.length + ' partages' : category.label + ' · ' + first.place_label, keyboard: true
+            });
             marker.addTo(markerLayer);
             marker.on('click', () => {
                 if (crowded) {
-                    map.setView([centerLat, centerLng], Math.min(18, map.getZoom() + 2));
-                } else showDetail(first);
+                    if (map.getZoom() < 18) map.setView([centerLat, centerLng], Math.min(18, map.getZoom() + 2));
+                    else {
+                        const list = document.createElement('div');
+                        list.className = 'bokantaj-cluster-list';
+                        group.forEach((post) => {
+                            const button = document.createElement('button');
+                            button.type = 'button';
+                            button.textContent = (CATEGORY[post.type] || CATEGORY.info).label + ' · ' + post.place_label + ' — ' + String(post.content || '').slice(0, 70);
+                            button.addEventListener('click', () => { map.closePopup(); showDetail(post); });
+                            list.append(button);
+                        });
+                        marker.bindPopup(list, { maxWidth: 280, className: 'bokantaj-popup' }).openPopup();
+                    }
+                } else {
+                    marker.bindPopup('<strong>' + escapeText(category.label) + '</strong><br>' + escapeText(first.place_label), { className: 'bokantaj-popup', closeButton: false }).openPopup();
+                    showDetail(first);
+                }
             });
         }
     }
@@ -278,6 +358,8 @@
             }
         } catch (error) {
             if (gen === fetchGeneration) {
+                markerLayer.clearLayers();
+                $('bokantajMapDetail').hidden = true;
                 status.textContent = 'Impossible de charger cette zone. Déplacez la carte pour réessayer.';
             }
         }
@@ -313,7 +395,7 @@
     function showPost(postId, post) {
         requestedFocusId = String(postId);
         switchView('map');
-        if (post && publishedPoint(post)) map?.setView([post.place_lat, post.place_lng], 15);
+        if (post && validPoint({ lat: Number(post.place_lat), lng: Number(post.place_lng) })) map?.setView([post.place_lat, post.place_lng], 15);
         // Refresh queries visible pins and opens the selected post.
         scheduleRefresh();
     }
@@ -335,6 +417,7 @@
             activeType = btn.dataset.mapType;
             $('bokantajMapFilters').querySelectorAll('button').forEach((item) => {
                 item.classList.toggle('is-active', item === btn);
+                item.setAttribute('aria-pressed', String(item === btn));
             });
             paintMarkers(filteredPosts(renderedPosts));
             scheduleRefresh();

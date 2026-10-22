@@ -17,6 +17,16 @@ function ensureLeafletAssets() {
     ]) {
         fs.copyFileSync(path.join(source, from), path.join(dest, to));
     }
+    const vectorDest = path.join(ROOT, 'vendor', 'maplibre');
+    fs.mkdirSync(vectorDest, { recursive: true });
+    for (const [pkgName, version, files] of [
+        ['maplibre-gl', '5.6.1', [['dist/maplibre-gl.js', 'maplibre-gl.js'], ['dist/maplibre-gl.css', 'maplibre-gl.css'], ['LICENSE.txt', 'LICENSE-maplibre.txt']]],
+        ['@maplibre/maplibre-gl-leaflet', '0.1.4', [['leaflet-maplibre-gl.js', 'leaflet-maplibre-gl.js'], ['LICENSE', 'LICENSE-adapter']]]
+    ]) {
+        const pkgRoot = path.join(ROOT, 'node_modules', pkgName);
+        if (JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'))).version !== version) throw new Error(pkgName + ' must be pinned to ' + version);
+        for (const [from, to] of files) fs.copyFileSync(path.join(pkgRoot, from), path.join(vectorDest, to));
+    }
     return dest;
 }
 module.exports = ensureLeafletAssets;

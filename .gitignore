@@ -32,3 +32,7 @@ test_load.js
 scratch/
 .vercel
 .env*
+
+# Map runtime assets copied from pinned npm packages by both builds
+vendor/leaflet/
+vendor/maplibre/

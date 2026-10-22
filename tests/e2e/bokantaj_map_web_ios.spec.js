@@ -82,3 +82,61 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
     await expect.poll(async () => page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace())).toBeNull();
   });
 }
+
+// Exercise the actual query contract: visibility must survive the API response.
+test('map API requests moderation status and recent traffic expires correctly', async ({ page }) => {
+  await page.route('**/*', r => ['localhost', '127.0.0.1'].includes(new URL(r.request().url()).hostname) ? r.continue() : r.abort());
+  await page.goto('/feed.html?demo=true');
+  const result = await page.evaluate(async () => {
+    let selection = '';
+    const filters = [];
+    const query = {
+      select(s) { selection = s; return this; },
+      eq(...args) { filters.push(args); return this; },
+      not() { return this; }, gte() { return this; }, lte() { return this; }, order() { return this; },
+      limit() { return Promise.resolve({ data: [], error: null }); }
+    };
+    const original = window.LYANN_API_CLIENT.supabase;
+    window.LYANN_API_CLIENT.supabase = { from: () => query };
+    await window.LYANN_API_CLIENT.getMappedBokantajPosts({ south: 16, north: 17, west: -62, east: -61 });
+    window.LYANN_API_CLIENT.supabase = original;
+    const post = { type: 'trafic', place_lat: 16.25, place_lng: -61.55, place_label: 'Jarry', public_moderation_status: 'approved' };
+    return { selection, filters,
+      recent: window.LYANN_BOKANTAJ_MAP.publiclyVisible({ ...post, created_at: new Date().toISOString() }),
+      expired: window.LYANN_BOKANTAJ_MAP.publiclyVisible({ ...post, created_at: new Date(Date.now() - 25 * 3600000).toISOString() }) };
+  });
+  expect(result.selection.split(', ')).toContain('public_moderation_status');
+  expect(result.filters).toContainEqual(['public_moderation_status', 'approved']);
+  expect(result.recent).toBe(true);
+  expect(result.expired).toBe(false);
+});
+
+for (const mobile of [false, true]) {
+  test('real vector streets and accessible pins ' + (mobile ? 'touch mobile' : 'desktop'), async ({ browser }) => {
+    const context = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1260, height: 900 }, isMobile: mobile, hasTouch: mobile });
+    const page = await context.newPage();
+    await page.route('**/*', r => {
+      const host = new URL(r.request().url()).hostname;
+      return ['localhost', '127.0.0.1', 'tiles.openfreemap.org'].includes(host) ? r.continue() : r.abort();
+    });
+    await page.goto('/feed.html?demo=true');
+    await page.evaluate(() => {
+      window.LYANN_API_CLIENT.getMappedBokantajPosts = async () => ({ data: [
+        { id: 'real-map-test', type: 'restaurant', content: 'Publication de test, carte réelle.', place_lat: 16.242, place_lng: -61.534, place_label: 'Pointe-à-Pitre', public_moderation_status: 'approved', created_at: new Date().toISOString(), media_urls: [] }
+      ] });
+      window.LYANN_BOKANTAJ_MAP.showPost('real-map-test', { place_lat: 16.242, place_lng: -61.534 });
+    });
+    await expect(page.locator('#bokantajMapCanvas')).toHaveAttribute('data-basemap', 'ready', { timeout: 25000 });
+    await expect(page.locator('#bokantajMapCanvas canvas')).toBeVisible();
+    await expect(page.getByRole('link', { name: '© OpenStreetMap', exact: true })).toBeVisible();
+    const marker = page.locator('#bokantajMapCanvas .bokantaj-map-pin');
+    await expect(marker).toHaveAttribute('title', 'Resto · Pointe-à-Pitre');
+    await marker.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#bokantajMapDetail')).toContainText('Publication de test');
+    await page.locator('#bokantajMapSection').screenshot({ path: 'test-results/bokantaj-map-real-' + (mobile ? 'mobile' : 'desktop') + '.png' });
+    await page.getByRole('button', { name: 'Zoomer', exact: true }).click();
+    await expect(page.locator('#bokantajMapCanvas')).toHaveAttribute('data-basemap', 'ready');
+    await context.close();
+  });
+}
