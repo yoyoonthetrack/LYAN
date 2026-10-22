@@ -3861,9 +3861,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.showModNotice(data.error || 'Décision de modération impossible.', true);
             return false;
         }
-        window.showModNotice(data.visible ? 'Contenu visible après confirmation serveur.' : 'Contenu retiré des flux publics.', false);
+        const label = data.row && data.row.status_label;
+        window.showModNotice(
+            data.visible
+                ? 'Contenu visible après confirmation serveur.'
+                : (label ? `${label}. Contenu retiré des flux publics.` : 'Contenu retiré des flux publics.'),
+            false
+        );
         await window.loadAdminModerationCenter();
-        if (id) window.openModerationDetail(subject, id);
+        if (id) await window.openModerationDetail(subject, id);
         return true;
     };
 
@@ -3902,10 +3908,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         return params.toString();
     };
 
-    window.renderModEngine = function(engine) {
+        window.renderModEngine = function(engine) {
         const bar = document.getElementById('modEngineBar');
         if (!bar) return;
-        if (!engine || engine.available === false) {
+        if (!engine) return;
+        if (engine.available === false) {
             bar.textContent = 'Moteur IA : état indisponible. En cas de panne, le contenu reste en attente.';
             return;
         }
@@ -3996,7 +4003,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.showModNotice(data.error || 'Sanction non appliquée.', true);
             return;
         }
-        window.showModNotice(data.note || 'Mesure enregistrée.', false);
+        const status = data.restriction && data.restriction.status;
+        window.showModNotice(
+            status && status !== 'none'
+                ? `Compte ${status}. ${data.note || ''}`
+                : (data.note || 'Mesure enregistrée.'),
+            false
+        );
         await window.loadAdminModerationCenter();
     };
 
@@ -4006,6 +4019,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) {
             window.showModNotice(data.error || 'Console de modération indisponible.', true);
+            const failedBody = tab === 'users'
+                ? document.getElementById('modUsersBody')
+                : (tab === 'comments' ? document.getElementById('modCommentsBody') : null);
+            if (failedBody) failedBody.innerHTML = adminEmpty(5, data.error || 'Chargement impossible.');
             return data;
         }
         window.renderModEngine(data.engine);

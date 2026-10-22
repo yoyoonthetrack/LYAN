@@ -29,9 +29,9 @@ function normalizeDecision(raw) {
 function displayStatus(row) {
     const status = row && row.public_moderation_status;
     const decision = row && row.human_decision;
+    if (decision === 'hide') return { key: 'hidden', label: 'Masqué', visible: false };
     if (status === 'approved') return { key: 'approved', label: 'Approuvé', visible: true };
     if (status === 'pending') return { key: 'pending', label: 'À vérifier', visible: false };
-    if (status === 'rejected' && decision === 'hide') return { key: 'hidden', label: 'Masqué', visible: false };
     if (status === 'rejected') return { key: 'rejected', label: 'Refusé', visible: false };
     return { key: status || 'unknown', label: status || 'Inconnu', visible: false };
 }
@@ -390,8 +390,8 @@ function createModerationCenter(deps) {
     async function snapshotEngine() {
         const jobs = await supabaseAdmin
             .from('moderation_jobs')
-            .select('id, status, reason_code, created_at, finished_at, claimed_at')
-            .order('created_at', { ascending: false })
+            .select('id, status, reason_code, finished_at')
+            .order('id', { ascending: false })
             .limit(200);
         if (jobs.error) {
             return { available: false, error: 'État du moteur indisponible.' };
@@ -475,6 +475,7 @@ function createModerationCenter(deps) {
                     return res.json({
                         success: true,
                         tab,
+                        engine: await snapshotEngine(),
                         rows: rows.map((row) => ({
                             ...row,
                             name: profileName(row),
@@ -523,7 +524,7 @@ function createModerationCenter(deps) {
                             target_id: row.post_id || row.comment_id || row.request_id
                         }))
                     ].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
-                    return res.json({ success: true, tab, rows: mapped });
+                    return res.json({ success: true, tab, engine: await snapshotEngine(), rows: mapped });
                 }
 
                 const table = tab === 'comments' ? 'bokantaj_comments' : 'bokantaj_posts';
@@ -568,7 +569,7 @@ function createModerationCenter(deps) {
                     return item;
                 };
 
-                const engine = tab === 'queue' ? await snapshotEngine() : null;
+                const engine = await snapshotEngine();
                 return res.json({
                     success: true,
                     tab,

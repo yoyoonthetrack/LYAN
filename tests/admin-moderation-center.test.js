@@ -136,6 +136,16 @@ test('hiding a visible post locks it and an IA approve cannot win', async () => 
     assert.equal(store.bokantaj_posts[0].public_moderation_status, 'rejected');
 });
 
+test('a human hide stays labelled hidden even if status is still approved', () => {
+    const shown = displayStatus({
+        public_moderation_status: 'approved',
+        human_decision: 'hide',
+        human_moderation_lock: true
+    });
+    assert.equal(shown.key, 'hidden');
+    assert.equal(shown.visible, false);
+});
+
 test('a hide that stays approved is a failure, not a fake success', async () => {
     const store = {
         bokantaj_posts: [{
