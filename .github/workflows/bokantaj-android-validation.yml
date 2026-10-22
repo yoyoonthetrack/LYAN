@@ -37,11 +37,10 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Locate runner Android SDK
-        run: |
-          test -d "$ANDROID_HOME"
-          command -v sdkmanager
-          sdkmanager --version
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       - name: Install JavaScript dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
