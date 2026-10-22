@@ -628,11 +628,23 @@ function registerMemberHelpdesk(app, { supabaseAdmin, requireBearerUser }) {
     async function authorizeMember(req) {
         const user = await requireBearerUser(req);
         if (!user) return { authorized: false, status: 401, error: 'Authentification requise.' };
-        const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('id, restriction_status')
-            .eq('id', user.id)
-            .maybeSingle();
+        let profileResult;
+        try {
+            profileResult = await supabaseAdmin
+                .from('profiles')
+                .select('id, restriction_status')
+                .eq('id', user.id)
+                .maybeSingle();
+        } catch (_) {
+            return { authorized: false, status: 503, error: 'Vérification du compte indisponible.' };
+        }
+        if (profileResult.error) {
+            return { authorized: false, status: 503, error: 'Vérification du compte indisponible.' };
+        }
+        const profile = profileResult.data;
+        if (!profile || profile.id !== user.id) {
+            return { authorized: false, status: 403, error: 'Profil utilisateur introuvable.' };
+        }
         if (isRestrictedMember(profile)) {
             return { authorized: false, status: 403, error: 'Ce compte ne peut plus écrire à l’assistance.' };
         }
