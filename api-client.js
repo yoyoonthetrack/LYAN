@@ -1063,10 +1063,12 @@ const LYANN_API_CLIENT = {
             .eq('user_id', user.id);
     },
 
-    async markAllNotificationsRead() {
+    async markAllNotificationsRead(expectedUserId = null) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const user = await this.getCurrentUser();
-        if (!user?.id) return { error: { message: 'Non authentifié.' } };
+        if (!user?.id || (expectedUserId && user.id !== expectedUserId)) {
+            return { error: { message: 'Session utilisateur modifiée ou expirée.' } };
+        }
         return await this.supabase
             .from('notifications')
             .update({ read: true })
