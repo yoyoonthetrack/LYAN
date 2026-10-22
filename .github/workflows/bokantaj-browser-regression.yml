@@ -40,7 +40,10 @@ jobs:
       - name: Install test dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Stage pinned local map assets\n        run: node scripts/ensure-leaflet-assets.js\n\n      - name: Install Chromium and system dependencies
+      - name: Stage pinned local map assets
+        run: node scripts/ensure-leaflet-assets.js
+
+      - name: Install Chromium and system dependencies
         run: npx playwright install --with-deps chromium
 
       - name: Serve isolated web app
