@@ -205,13 +205,7 @@ function createModerationCenter(deps) {
         }
         let updated = await supabaseAdmin.from(table).update(patch).eq('id', id).select('*').maybeSingle();
         if (updated.error && /human_moderation_lock|human_decision|previous_public_status/i.test(updated.error.message || '')) {
-            updated = await supabaseAdmin.from(table).update({
-                public_moderation_status: patch.public_moderation_status
-            }).eq('id', id).select('*').maybeSingle();
-            if (updated.data) {
-                updated.data.human_moderation_lock = patch.human_moderation_lock;
-                updated.data.human_decision = patch.human_decision;
-            }
+            return { ok: false, status: 503, error: 'Migration de modération absente : impossible de garantir le verrou humain.' };
         }
         if (updated.error) return { ok: false, status: 500, error: 'Décision non enregistrée.' };
         if (!updated.data) return { ok: false, status: 404, error: 'Contenu introuvable.' };
@@ -328,7 +322,7 @@ function createModerationCenter(deps) {
         };
         let updated = await supabaseAdmin.from('profiles').update(patch).eq('id', userId).select('id, restriction_status, restricted_until').maybeSingle();
         if (updated.error && /restriction_status|restricted_until|restriction_reason/i.test(updated.error.message || '')) {
-            updated = { data: { id: userId, restriction_status: nextStatus, restricted_until: nextUntil }, error: null };
+            return { ok: false, status: 503, error: 'Migration de sanctions absente : suspension non appliquée en base.' };
         }
         if (updated.error || !updated.data) {
             return { ok: false, status: 500, error: 'Sanction non enregistrée sur le profil.' };
