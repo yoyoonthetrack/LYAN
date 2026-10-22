@@ -3045,7 +3045,7 @@ window.LyannFavoritesService = {
                 } else if (fav.entity_type === 'BOKANTAJ_POST') {
                     const { data: post } = await supabaseClient
                         .from('bokantaj_posts')
-                        .select('id, headline, content, category, media_urls, created_at, author_id, profiles:author_id(first_name, last_name, avatar_url)')
+                        .select('id, headline, content, media_urls, created_at, author_id, profiles:author_id(first_name, last_name, avatar_url)')
                         .eq('public_moderation_status', 'approved')
                         .eq('id', fav.entity_id)
                         .maybeSingle();
@@ -3063,7 +3063,7 @@ window.LyannFavoritesService = {
                             authorName: authorName,
                             dateStr: dateStr,
                             mediaUrl: mediaUrl,
-                            subtitle: `Par ${authorName}${dateStr ? ' • ' + dateStr : ''} • ${post.category || 'Bokantaj'}`,
+                            subtitle: `Par ${authorName}${dateStr ? ' • ' + dateStr : ''} • Bokantaj`,
                             avatar: post.profiles?.avatar_url ? (window.getLyannAvatarUrl ? window.getLyannAvatarUrl(post.profiles.avatar_url) : post.profiles.avatar_url) : null,
                             created_at: fav.created_at,
                             raw: post
