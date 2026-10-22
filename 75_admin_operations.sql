@@ -108,8 +108,8 @@ EXCEPTION WHEN undefined_table THEN
     NULL;
 END $$;
 
-INSERT INTO public.admin_permissions (code, name, description)
-SELECT 'support.manage', 'Support', 'Traiter les tickets d’assistance'
+INSERT INTO public.admin_permissions (code, module, name, description)
+SELECT 'support.manage', 'Support', 'Support', 'Traiter les tickets d’assistance'
 WHERE NOT EXISTS (SELECT 1 FROM public.admin_permissions WHERE code = 'support.manage');
 
 INSERT INTO public.admin_role_permissions (role_id, permission_id)
