@@ -3,6 +3,9 @@
 
 BEGIN;
 
+DROP TRIGGER IF EXISTS trg_guard_mod_fields_profiles ON public.profiles;
+DROP TRIGGER IF EXISTS trg_guard_mod_fields_posts ON public.bokantaj_posts;
+DROP TRIGGER IF EXISTS trg_guard_mod_fields_comments ON public.bokantaj_comments;
 DROP TRIGGER IF EXISTS trg_preserve_human_lock_posts ON public.bokantaj_posts;
 DROP TRIGGER IF EXISTS trg_preserve_human_lock_comments ON public.bokantaj_comments;
 DROP TRIGGER IF EXISTS trg_block_restricted_posts ON public.bokantaj_posts;
@@ -20,6 +23,7 @@ DROP TRIGGER IF EXISTS trg_block_restricted_user_reports ON public.user_reports;
 DROP TRIGGER IF EXISTS trg_block_restricted_bok_reports ON public.bokantaj_reports;
 DROP TRIGGER IF EXISTS trg_block_restricted_storage ON storage.objects;
 
+DROP FUNCTION IF EXISTS public.lyann_guard_sensitive_moderation_fields();
 DROP FUNCTION IF EXISTS public.lyann_block_restricted_writes();
 DROP FUNCTION IF EXISTS public.lyann_preserve_human_moderation_lock();
 DROP FUNCTION IF EXISTS public.lyann_account_is_restricted(uuid);
