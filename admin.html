@@ -1336,6 +1336,10 @@
                                 <!-- Populated dynamically -->
                             </tbody>
                         </table>
+                        <aside class="admin-card mod-detail" id="agentTaskPanel" hidden>
+                            <p class="maison-muted" id="agentTaskPanelEmpty">Ouvrez une tâche pour voir le détail.</p>
+                            <div id="agentTaskPanelBody" hidden></div>
+                        </aside>
                     </div>
 
                     <!-- Approval Center Container -->
@@ -1793,31 +1797,81 @@
             </section>
 
             <!-- ==========================================================================
-                 PÔLE 22 : SUPPORT CLIENT SLA
+                 PÔLE 22 : SUPPORT CLIENT
                  ========================================================================== -->
             <section id="sec-support" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">Helpdesk Support & SLA</h1>
-                        <p class="admin-page-sub">Traitement des tickets d'assistance avec garantie de réponse sous 15 min.</p>
+                        <h1 class="admin-page-title">Helpdesk</h1>
+                        <p class="admin-page-sub">Tickets d’assistance réellement enregistrés. Le temps de traitement est mesuré, sans promesse de délai.</p>
                     </div>
+                    <button type="button" class="admin-btn admin-btn-primary" id="helpdeskCreateBtn" data-admin-wired="1">Nouveau ticket</button>
                 </div>
-                <div class="admin-card">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Ticket ID</th>
-                                <th>Utilisateur</th>
-                                <th>Sujet & Priorité</th>
-                                <th>Attribué à</th>
-                                <th>Statut</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="supportAdminTableBody">
-                            <tr><td colspan="6" class="admin-empty-cell">Aucun ticket support. Les signalements membres se traitent dans Modération.</td></tr>
-                        </tbody>
-                    </table>
+                <p class="mod-notice" id="helpdeskNotice" hidden></p>
+                <form id="helpdeskCreateForm" class="admin-card" hidden>
+                    <h3>Nouveau ticket administratif</h3>
+                    <label>Sujet<input class="admin-input" id="helpdeskCreateSubject" required minlength="3" maxlength="160"></label>
+                    <label>UUID membre (optionnel)<input class="admin-input" id="helpdeskCreateMember" placeholder="uuid"></label>
+                    <label>Priorité
+                        <select class="admin-select" id="helpdeskCreatePriority">
+                            <option value="low">Basse</option>
+                            <option value="medium" selected>Moyenne</option>
+                            <option value="high">Haute</option>
+                            <option value="critical">Critique</option>
+                        </select>
+                    </label>
+                    <label>Premier message<textarea class="admin-input" id="helpdeskCreateBody" rows="4" placeholder="Contexte visible dans l’historique"></textarea></label>
+                    <div class="mod-actions">
+                        <button type="submit" class="admin-btn admin-btn-primary" id="helpdeskCreateSubmit" data-admin-wired="1">Enregistrer</button>
+                        <button type="button" class="admin-btn admin-btn-secondary" id="helpdeskCreateCancel" data-admin-wired="1">Annuler</button>
+                    </div>
+                </form>
+                <div class="mod-filters">
+                    <input type="search" id="helpdeskSearch" class="admin-input" placeholder="Référence, sujet ou UUID membre">
+                    <select id="helpdeskStatus" class="admin-select">
+                        <option value="all">Tous les statuts</option>
+                        <option value="open">Ouvert</option>
+                        <option value="in_progress">En cours</option>
+                        <option value="waiting">En attente</option>
+                        <option value="resolved">Résolu</option>
+                        <option value="closed">Fermé</option>
+                    </select>
+                    <select id="helpdeskPriority" class="admin-select">
+                        <option value="all">Toutes priorités</option>
+                        <option value="low">Basse</option>
+                        <option value="medium">Moyenne</option>
+                        <option value="high">Haute</option>
+                        <option value="critical">Critique</option>
+                    </select>
+                    <select id="helpdeskSince" class="admin-select">
+                        <option value="all">Toute période</option>
+                        <option value="24h">24 heures</option>
+                        <option value="7d">7 jours</option>
+                        <option value="30d">30 jours</option>
+                    </select>
+                </div>
+                <div class="mod-layout">
+                    <div class="admin-card mod-list-card">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Réf.</th>
+                                    <th>Sujet</th>
+                                    <th>Membre</th>
+                                    <th>Priorité</th>
+                                    <th>Statut</th>
+                                    <th>Âge</th>
+                                </tr>
+                            </thead>
+                            <tbody id="helpdeskTableBody">
+                                <tr><td colspan="6" class="admin-empty-cell">Aucun ticket pour le moment.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <aside class="admin-card mod-detail" id="helpdeskDetail">
+                        <p class="maison-muted" id="helpdeskDetailEmpty">Sélectionnez un ticket ou créez-en un.</p>
+                        <div id="helpdeskDetailBody" hidden></div>
+                    </aside>
                 </div>
             </section>
 

@@ -87,8 +87,10 @@ window.fetchWithAdminAuth = async function(url, options = {}) {
     const headers = Object.assign({}, options.headers || {});
     let token = '';
     if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getSession === 'function') {
-        const { data: sData } = await window.LYANN_API_CLIENT.getSession();
-        token = sData?.session?.access_token || '';
+        try {
+            const { data: sData } = await window.LYANN_API_CLIENT.getSession();
+            token = sData?.session?.access_token || '';
+        } catch (_) {}
     }
     if (!token && window.currentAdminUser && window.currentAdminUser.token) {
         token = window.currentAdminUser.token;
@@ -566,6 +568,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Attach onAuthStateChange listener ONCE
+    try {
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         window.LYANN_API_CLIENT.supabase.auth.onAuthStateChange(async (event, session) => {
             console.log(`[AUTH ENGINE] Event onAuthStateChange: ${event}`);
@@ -597,6 +600,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.runAdminAuthCheck('SIGNED_IN_EVENT');
             }
         });
+    }
+    } catch (clientErr) {
+        console.warn('[ADMIN BOOT] Client auth indisponible.', clientErr);
     }
 
     window.checkAdminPermission = function(permissionCode) {
@@ -2258,7 +2264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 14px; max-width: 500px; margin-left: auto; margin-right: auto;">
                     La table des Agents LYANN est en cours d'initialisation en base de données Production (Migration 12 requise sur Supabase).
                 </p>
-                <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.loadAdminRealData()"><i class="ph-bold ph-arrows-clockwise"></i> Réessayer la connexion DB</button>
+                <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-admin-wired="1" onclick="window.loadAdminRealData()"><i class="ph-bold ph-arrows-clockwise"></i> Réessayer la connexion DB</button>
             </div>
         `;
     }
@@ -2333,7 +2339,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${task.requires_approval && task.status === 'WAITING_APPROVAL' ?
                             `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver</button>
                              <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>`
-                            : `<button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" disabled data-unavailable="Ouvre la fiche agent depuis la liste pour voir le détail." title="Ouvre la fiche agent depuis la liste pour voir le détail."><i class="ph-bold ph-eye"></i> Détails</button>`
+                            : `<button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-admin-wired="1" onclick="window.openAgentTaskPanel('${window.adminEscape(task.id)}')"><i class="ph-bold ph-eye"></i> Détails</button>
+                             <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-admin-wired="1" onclick="window.openAgentTaskPanel('${window.adminEscape(task.id)}', true)"><i class="ph-bold ph-pencil"></i> Modifier</button>`
                         }
                     </td>
                 </tr>
@@ -2365,7 +2372,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver & Publier</button>
-                    <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" disabled data-unavailable="La modification d’une tâche se fait dans Agent Studio, onglet Task Commander." title="La modification d’une tâche se fait dans Agent Studio, onglet Task Commander."><i class="ph-bold ph-pencil"></i> Modifier</button>
+                    <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-admin-wired="1" onclick="window.openAgentTaskPanel('${window.adminEscape(task.id)}', true)"><i class="ph-bold ph-pencil"></i> Modifier</button>
                     <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
                 </div>
             </div>
@@ -2892,6 +2899,98 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (typeof loadAdminRealData === 'function') loadAdminRealData();
         if (typeof window.openEditorialDesk === 'function') window.openEditorialDesk();
+    };
+
+    function formatDuration(ms) {
+        if (ms == null) return '—';
+        const hours = Math.floor(Number(ms) / 3600000);
+        const minutes = Math.floor((Number(ms) % 3600000) / 60000);
+        if (hours > 48) return `${Math.floor(hours / 24)} j`;
+        if (hours > 0) return `${hours} h ${minutes} min`;
+        return `${minutes} min`;
+    }
+
+    window.openAgentTaskPanel = async function(taskId, edit) {
+        const panel = document.getElementById('agentTaskPanel');
+        const empty = document.getElementById('agentTaskPanelEmpty');
+        const body = document.getElementById('agentTaskPanelBody');
+        if (panel) panel.hidden = false;
+        if (empty) empty.hidden = true;
+        if (body) {
+            body.hidden = false;
+            body.textContent = 'Chargement…';
+        }
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/tasks/${taskId}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            if (body) body.textContent = data.error || 'Tâche indisponible.';
+            return;
+        }
+        const task = data.task || {};
+        const runs = data.runs || [];
+        const history = data.history || [];
+        if (body) {
+            body.innerHTML = `
+                <p class="maison-muted">Agent ${adminEscape(task.agent_id || '—')} · ${adminEscape(task.status || '')}</p>
+                <label>Titre<input class="admin-input" id="agentTaskTitle" value="${adminEscape(task.title || '')}"></label>
+                <label>Instructions<textarea class="admin-input" id="agentTaskInstruction" rows="5">${adminEscape(task.instruction || '')}</textarea></label>
+                <p>Dernière erreur : ${adminEscape(task.error || 'aucune')}</p>
+                <div class="mod-actions">
+                    <button type="button" class="admin-btn admin-btn-primary" id="agentTaskSaveBtn">Enregistrer</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="agentTaskSuspendBtn">${task.status === 'SUSPENDED' ? 'Réactiver' : 'Suspendre'}</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="agentTaskRetryBtn">Relancer</button>
+                    <button type="button" class="admin-btn admin-btn-danger" id="agentTaskArchiveBtn">Archiver</button>
+                </div>
+                <h4>Exécutions</h4>
+                <ul>${runs.length ? runs.map((run) => `<li>${adminEscape(run.status)} · ${adminEscape(run.error || '')}</li>`).join('') : '<li>Aucune exécution enregistrée.</li>'}</ul>
+                <h4>Historique</h4>
+                <ul>${history.length ? history.map((row) => `<li>${adminEscape(row.action)} · ${adminDate(row.created_at)}</li>`).join('') : '<li>Aucun changement administrateur.</li>'}</ul>
+            `;
+            document.getElementById('agentTaskSaveBtn')?.addEventListener('click', () => window.saveAgentTask(taskId));
+            document.getElementById('agentTaskSuspendBtn')?.addEventListener('click', () => window.toggleAgentTask(taskId, task.status === 'SUSPENDED' ? 'resume' : 'suspend'));
+            document.getElementById('agentTaskRetryBtn')?.addEventListener('click', () => window.retryAgentTask(taskId));
+            document.getElementById('agentTaskArchiveBtn')?.addEventListener('click', () => window.archiveAgentTask(taskId));
+            if (edit) document.getElementById('agentTaskInstruction')?.focus();
+        }
+    };
+
+    window.saveAgentTask = async function(taskId) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/tasks/${taskId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: document.getElementById('agentTaskTitle')?.value,
+                instruction: document.getElementById('agentTaskInstruction')?.value
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        window.adminShowOutcome(data.success ? 'Tâche enregistrée.' : (data.error || 'Tâche non enregistrée.'), !data.success);
+        if (data.success) window.openAgentTaskPanel(taskId);
+    };
+
+    window.toggleAgentTask = async function(taskId, action) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/tasks/${taskId}/${action}`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        window.adminShowOutcome(data.success ? 'Statut de la tâche mis à jour.' : (data.error || 'Statut non modifié.'), !data.success);
+        if (data.success) window.openAgentTaskPanel(taskId);
+        if (typeof loadAdminRealData === 'function') loadAdminRealData();
+    };
+
+    window.retryAgentTask = async function(taskId) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/tasks/${taskId}/retry`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        window.adminShowOutcome(data.success
+            ? (data.executed ? 'Tâche exécutée.' : 'Relance enregistrée. Le worker n’a pas encore terminé.')
+            : (data.error || 'Relance impossible.'), !data.success);
+        if (data.success) window.openAgentTaskPanel(taskId);
+    };
+
+    window.archiveAgentTask = async function(taskId) {
+        if (!confirm('Archiver cette tâche ? Elle ne pourra plus s’exécuter.')) return;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/tasks/${taskId}/archive`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        window.adminShowOutcome(data.success ? 'Tâche archivée.' : (data.error || 'Archive impossible.'), !data.success);
+        if (typeof loadAdminRealData === 'function') loadAdminRealData();
     };
 
     // Tab Task Engine vs Approval Center toggle inside sec-agents
@@ -4452,6 +4551,191 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 8000);
     }
 
+    function helpdeskNotice(message, isError) {
+        const el = document.getElementById('helpdeskNotice');
+        if (!el) {
+            window.adminShowOutcome(message, isError);
+            return;
+        }
+        el.hidden = !message;
+        el.textContent = message || '';
+        el.classList.toggle('is-error', !!isError);
+    }
+
+    function helpdeskSinceIso(value) {
+        const now = Date.now();
+        if (value === '24h') return new Date(now - 86400000).toISOString();
+        if (value === '7d') return new Date(now - 7 * 86400000).toISOString();
+        if (value === '30d') return new Date(now - 30 * 86400000).toISOString();
+        return '';
+    }
+
+    window.loadAdminHelpdesk = async function() {
+        const tbody = document.getElementById('helpdeskTableBody');
+        if (!tbody) return;
+        const params = new URLSearchParams();
+        const q = document.getElementById('helpdeskSearch')?.value || '';
+        const status = document.getElementById('helpdeskStatus')?.value || 'all';
+        const priority = document.getElementById('helpdeskPriority')?.value || 'all';
+        const since = helpdeskSinceIso(document.getElementById('helpdeskSince')?.value);
+        if (q) params.set('q', q);
+        if (status !== 'all') params.set('status', status);
+        if (priority !== 'all') params.set('priority', priority);
+        if (since) params.set('since', since);
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk?${params.toString()}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            tbody.innerHTML = adminEmpty(6, data.error || 'Helpdesk indisponible.');
+            return;
+        }
+        const rows = data.tickets || [];
+        tbody.innerHTML = rows.length ? rows.map((row) => `<tr data-ticket-id="${adminEscape(row.id)}">
+            <td>${adminEscape(row.reference)}</td>
+            <td>${adminEscape(row.subject)}</td>
+            <td>${adminEscape((row.member_id || '—').toString().slice(0, 8))}</td>
+            <td>${adminEscape(row.priority)}</td>
+            <td>${adminBadge(row.status)}</td>
+            <td>${adminEscape(formatDuration(row.age_ms))}</td>
+        </tr>`).join('') : adminEmpty(6, 'Aucun ticket pour ces filtres.');
+        tbody.querySelectorAll('tr[data-ticket-id]').forEach((row) => {
+            row.addEventListener('click', () => window.openHelpdeskTicket(row.getAttribute('data-ticket-id')));
+        });
+    };
+
+    window.openHelpdeskTicket = async function(id) {
+        const empty = document.getElementById('helpdeskDetailEmpty');
+        const body = document.getElementById('helpdeskDetailBody');
+        if (empty) empty.hidden = true;
+        if (body) {
+            body.hidden = false;
+            body.textContent = 'Chargement…';
+        }
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk/${id}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            if (body) body.textContent = data.error || 'Ticket indisponible.';
+            return;
+        }
+        const ticket = data.ticket || {};
+        const messages = data.messages || [];
+        const events = data.events || [];
+        if (body) {
+            body.innerHTML = `
+                <p><strong>${adminEscape(ticket.reference)}</strong> · ${adminEscape(ticket.status)} · priorité ${adminEscape(ticket.priority)}</p>
+                <p>${adminEscape(ticket.subject)}</p>
+                <p class="maison-muted">Âge ${adminEscape(formatDuration(ticket.age_ms))} · 1re réponse ${adminEscape(formatDuration(ticket.first_response_ms))} · résolution ${adminEscape(formatDuration(ticket.resolution_ms))}</p>
+                ${ticket.member_id ? `<button type="button" class="admin-btn admin-btn-secondary" id="helpdeskOpenMember">Fiche membre</button>` : ''}
+                <div id="helpdeskThread">${messages.length ? messages.map((msg) => `<div class="${msg.kind === 'internal' ? 'maison-muted' : ''}"><strong>${adminEscape(msg.kind)}</strong> ${adminEscape(msg.body)}</div>`).join('') : '<p>Aucun message.</p>'}</div>
+                <textarea class="admin-input" id="helpdeskReply" rows="3" placeholder="Réponse visible par le membre"></textarea>
+                <textarea class="admin-input" id="helpdeskNote" rows="2" placeholder="Note interne"></textarea>
+                <div class="mod-actions">
+                    <button type="button" class="admin-btn admin-btn-primary" id="helpdeskReplyBtn">Répondre</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="helpdeskNoteBtn">Note interne</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="helpdeskAssignBtn">M’attribuer</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-helpdesk-status="in_progress">En cours</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-helpdesk-status="waiting">En attente</button>
+                    <button type="button" class="admin-btn admin-btn-primary" data-helpdesk-status="resolved">Résoudre</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-helpdesk-status="closed">Fermer</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-helpdesk-status="open">Rouvrir</button>
+                </div>
+                <h4>Historique</h4>
+                <ul>${events.length ? events.map((ev) => `<li>${adminEscape(ev.action)} · ${adminDate(ev.created_at)}</li>`).join('') : '<li>Aucune action.</li>'}</ul>
+            `;
+            document.getElementById('helpdeskOpenMember')?.addEventListener('click', () => {
+                if (typeof window.openAdminUserDetailModal === 'function') window.openAdminUserDetailModal(ticket.member_id);
+                else document.querySelector('.admin-nav-item[data-section="sec-users"]')?.click();
+            });
+            document.getElementById('helpdeskReplyBtn')?.addEventListener('click', () => window.helpdeskPostMessage(id, 'public'));
+            document.getElementById('helpdeskNoteBtn')?.addEventListener('click', () => window.helpdeskPostMessage(id, 'internal'));
+            document.getElementById('helpdeskAssignBtn')?.addEventListener('click', async () => {
+                const posted = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk/${id}/assign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assigned_to: window.currentAdminUser && window.currentAdminUser.userId })
+                });
+                const payload = await posted.json().catch(() => ({}));
+                helpdeskNotice(payload.success ? 'Ticket attribué.' : (payload.error || 'Attribution impossible.'), !payload.success);
+                if (payload.success) window.openHelpdeskTicket(id);
+            });
+            body.querySelectorAll('[data-helpdesk-status]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const posted = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk/${id}/status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: btn.getAttribute('data-helpdesk-status') })
+                    });
+                    const payload = await posted.json().catch(() => ({}));
+                    helpdeskNotice(payload.success ? 'Statut mis à jour.' : (payload.error || 'Statut non modifié.'), !payload.success);
+                    if (payload.success) {
+                        await window.loadAdminHelpdesk();
+                        window.openHelpdeskTicket(id);
+                    }
+                });
+            });
+        }
+    };
+
+    window.helpdeskPostMessage = async function(id, kind) {
+        const field = document.getElementById(kind === 'internal' ? 'helpdeskNote' : 'helpdeskReply');
+        const body = (field?.value || '').trim();
+        if (!body) {
+            helpdeskNotice(kind === 'internal' ? 'La note interne est vide.' : 'La réponse est vide.', true);
+            return;
+        }
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk/${id}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kind, body })
+        });
+        const data = await res.json().catch(() => ({}));
+        helpdeskNotice(data.success ? (kind === 'internal' ? 'Note enregistrée.' : 'Réponse envoyée.') : (data.error || 'Message non enregistré.'), !data.success);
+        if (data.success) {
+            if (field) field.value = '';
+            window.openHelpdeskTicket(id);
+        }
+    };
+
+    window.createHelpdeskTicket = async function() {
+        const form = document.getElementById('helpdeskCreateForm');
+        if (form) form.hidden = !form.hidden;
+        document.getElementById('helpdeskCreateSubject')?.focus();
+    };
+
+    document.getElementById('helpdeskCreateCancel')?.addEventListener('click', () => {
+        const form = document.getElementById('helpdeskCreateForm');
+        if (form) form.hidden = true;
+    });
+    document.getElementById('helpdeskCreateForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const subject = (document.getElementById('helpdeskCreateSubject')?.value || '').trim();
+        const member = (document.getElementById('helpdeskCreateMember')?.value || '').trim();
+        const body = (document.getElementById('helpdeskCreateBody')?.value || '').trim();
+        const priority = document.getElementById('helpdeskCreatePriority')?.value || 'medium';
+        const submit = document.getElementById('helpdeskCreateSubmit');
+        if (subject.length < 3) {
+            helpdeskNotice('Le sujet doit contenir au moins 3 caractères.', true);
+            return;
+        }
+        if (submit) submit.disabled = true;
+        helpdeskNotice('Enregistrement…', false);
+        const res = await window.fetchWithAdminAuth('/v1/admin/operations/helpdesk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, member_id: member, body, priority })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (submit) submit.disabled = false;
+        helpdeskNotice(data.success ? 'Ticket créé.' : (data.error || 'Création impossible.'), !data.success);
+        if (!data.success || !data.ticket) return;
+        const form = document.getElementById('helpdeskCreateForm');
+        if (form) form.hidden = true;
+        if (document.getElementById('helpdeskCreateSubject')) document.getElementById('helpdeskCreateSubject').value = '';
+        if (document.getElementById('helpdeskCreateMember')) document.getElementById('helpdeskCreateMember').value = '';
+        if (document.getElementById('helpdeskCreateBody')) document.getElementById('helpdeskCreateBody').value = '';
+        await window.loadAdminHelpdesk();
+        window.openHelpdeskTicket(data.ticket.id);
+    });
+
     window.loadAdminSection = async function(sectionId) {
         const loaders = {
             'sec-overview': () => loadAdminRealData(),
@@ -4673,6 +4957,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'sec-taxonomy': async () => {
                 if (typeof loadAdminTaxonomyManagement === 'function') loadAdminTaxonomyManagement();
             },
+            'sec-support': () => window.loadAdminHelpdesk(),
             'sec-chat': async () => {
                 const data = await fetchAdminOps('conversations');
                 const tbody = document.getElementById('conversationsAdminTableBody');
@@ -4770,6 +5055,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             return true;
         });
         renderAdminUsers(filtered, 'usersAdminTableBody', 'users');
+    });
+    document.getElementById('helpdeskCreateBtn')?.addEventListener('click', () => window.createHelpdeskTicket());
+    ['helpdeskSearch', 'helpdeskStatus', 'helpdeskPriority', 'helpdeskSince'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('change', () => window.loadAdminHelpdesk());
+    });
+    document.getElementById('helpdeskSearch')?.addEventListener('input', () => {
+        clearTimeout(window.__helpdeskSearchTimer);
+        window.__helpdeskSearchTimer = setTimeout(() => window.loadAdminHelpdesk(), 250);
     });
     document.getElementById('btnRunModerationOnce')?.addEventListener('click', () => window.adminRunModerationOnce());
     document.querySelectorAll('.mod-tab').forEach((btn) => {

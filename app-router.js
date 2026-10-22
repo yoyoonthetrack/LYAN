@@ -415,7 +415,13 @@
       return false;
     }
     const messaging = window.LYANN_MESSAGING;
-    if (messaging) return messaging.openConversation({ contactId: supportId, name: 'Support LYANN' });
+    if (messaging) {
+      const openedChat = messaging.openConversation({ contactId: supportId, name: 'Support LYANN' });
+      if (window.LYANN_MEMBER_HELPDESK && typeof window.LYANN_MEMBER_HELPDESK.open === 'function') {
+        Promise.resolve(openedChat).finally(() => window.LYANN_MEMBER_HELPDESK.open());
+      }
+      return openedChat;
+    }
     const params = new URLSearchParams({ action: 'messages', contact: supportId, name: 'Support LYANN' });
     return hardNavigate(`feed.html?${params.toString()}`);
   });

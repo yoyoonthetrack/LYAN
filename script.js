@@ -2647,6 +2647,7 @@ safeDomReady(() => {
         const gen = ++bokantajLoadGen;
         bokantajFeedLoading = true;
         const quiet = options.background === true && bokantajFeedState === 'READY' && currentFlashPosts.length > 0;
+        const previousPublicIds = currentFlashPosts.map((post) => post && post.id).filter(Boolean);
         console.log("[BOKANTAJ] init start");
         const isExplicitDemoMode = typeof window !== 'undefined' && (
             window.LYANN_FORCE_DEMO_DATA === true ||
@@ -2688,8 +2689,21 @@ safeDomReady(() => {
             }
         } finally {
             if (gen === bokantajLoadGen) {
-                renderFlashFeed();
-                window.renderTalentsSidebar(isExplicitDemoMode);
+                const nextPublicIds = currentFlashPosts.map((post) => post && post.id).filter(Boolean);
+                const samePublicSet = quiet
+                    && previousPublicIds.length === nextPublicIds.length
+                    && previousPublicIds.every((id, index) => id === nextPublicIds[index]);
+                if (!samePublicSet) {
+                    const openIds = [...document.querySelectorAll('.comments-drawer')]
+                        .filter((drawer) => drawer.style.display && drawer.style.display !== 'none')
+                        .map((drawer) => drawer.id.replace('comments-drawer-', ''));
+                    renderFlashFeed();
+                    openIds.forEach((id) => {
+                        const drawer = document.getElementById(`comments-drawer-${id}`);
+                        if (drawer) drawer.style.display = 'block';
+                    });
+                    window.renderTalentsSidebar(isExplicitDemoMode);
+                }
             }
             bokantajFeedLoading = false;
         }
@@ -2707,6 +2721,42 @@ safeDomReady(() => {
     if (flashFeedContainer && window.LYANN_PULL_TO_REFRESH) {
         window.LYANN_PULL_TO_REFRESH.attach(document, () => window.loadBokantajFeedFromSupabase({ force: true, background: true }));
     }
+
+    function refreshPublicBokantajQuietly() {
+        if (document.hidden) return;
+        if (!document.getElementById('flashFeedContainer')) return;
+        if (typeof window.loadBokantajFeedFromSupabase !== 'function') return;
+        window.loadBokantajFeedFromSupabase({ force: true, background: true });
+        document.querySelectorAll('.comments-drawer[style*="display: block"], .comments-drawer:not([style*="display: none"])').forEach((drawer) => {
+            const targetId = drawer.id && drawer.id.replace('comments-drawer-', '');
+            if (targetId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getComments === 'function') {
+                window.LYANN_API_CLIENT.getComments(targetId, 'POST').then((rows) => {
+                    const list = document.getElementById(`comments-list-${targetId}`);
+                    if (!list || !Array.isArray(rows)) return;
+                    // A comment hidden while the drawer is open must disappear from the visible DOM,
+                    // not merely from its counter. Only repaint if the visible set changed.
+                    const approved = rows.filter((row) => !row.public_moderation_status || row.public_moderation_status === 'approved');
+                    const visibleIds = [...list.querySelectorAll('.comment-item-row[data-comment-id]')]
+                        .map((node) => node.dataset.commentId);
+                    const approvedIds = approved.map((row) => String(row.id));
+                    const changed = visibleIds.length !== approvedIds.length
+                        || approvedIds.some((id, index) => id !== visibleIds[index]);
+                    if (changed && typeof window.renderBokantajCommentRow === 'function') {
+                        list.innerHTML = approved.length
+                            ? approved.map((row) => window.renderBokantajCommentRow(row, targetId)).join('')
+                            : '<div class="bokantaj-comments-empty">Aucun commentaire pour le moment.</div>';
+                    }
+                    const label = document.querySelector(`.btn-comments-toggle[data-target-id="${targetId}"] .comments-count-label`);
+                    if (label) label.textContent = approved.length ? `Commenter (${approved.length})` : 'Commenter';
+                }).catch(() => {});
+            }
+        });
+    }
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') refreshPublicBokantajQuietly();
+    });
+    window.setInterval(refreshPublicBokantajQuietly, 8000);
+    window.refreshPublicBokantajQuietly = refreshPublicBokantajQuietly;
 
     if (flashPhotoInput) {
         flashPhotoInput.addEventListener('change', (e) => {
@@ -2899,7 +2949,7 @@ safeDomReady(() => {
                 <button type="button" class="btn-delete-own-comment" data-comment-id="${comment.id}" data-target-id="${targetId}">Supprimer</button>
             </span>` : '';
         return `
-            <div class="comment-item-row" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
+            <div class="comment-item-row" data-comment-id="${comment.id}" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
                 <img src="${avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" alt="">
                 <div style="flex: 1;">
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
@@ -3108,6 +3158,8 @@ safeDomReady(() => {
         const now = new Date();
         const list = currentFlashPosts.filter((post) => {
             if (!post || !bokantajPassesSafety(post)) return false;
+            const repo = window.LYANN_BOKANTAJ_REPOSITORY;
+            if (repo && typeof repo.isPubliclyVisible === 'function' && !repo.isPubliclyVisible(post)) return false;
             if (query && !query.postMatchesTypes(post, active.types)) return false;
             if (query && !query.postWithinPeriod(post, active.period, now)) return false;
             if (active.zone === 'commune' && active.commune && query && !query.communeMatches(post, active.commune)) return false;
@@ -5885,7 +5937,7 @@ safeDomReady(() => {
                                 <div class="row-icon"><i class="ph ph-headset"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">Support LYANN</strong>
-                                    <span class="row-subtitle">Écrire à l'équipe dans la messagerie</span>
+                                    <span class="row-subtitle">Ouvrir un dossier et suivre les réponses de l’équipe</span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>

@@ -525,10 +525,14 @@
         }
         if (updatedCount > 0) saveAllNotifications(all);
         const client = typeof window !== 'undefined' ? (window.LYANN_API_CLIENT || window.apiClient) : null;
-        if (client?.markAllNotificationsRead) {
-            client.markAllNotificationsRead().catch(() => {});
-        }
-        return { success: true, updated_count: updatedCount };
+        // Paint the unread badge immediately, but expose persistence so the caller
+        // can hydrate only after the server has acknowledged the read operation.
+        // Never swallow a PostgREST { error } response as if it succeeded.
+        const persistence = client?.markAllNotificationsRead
+            ? Promise.resolve().then(() => client.markAllNotificationsRead(userId))
+                .catch((error) => ({ error }))
+            : Promise.resolve({ error: { message: 'Notifications indisponibles.' } });
+        return { success: true, updated_count: updatedCount, persistence };
     }
 
     // 7. CLOSED OPPORTUNITY HANDLING (TEST G)

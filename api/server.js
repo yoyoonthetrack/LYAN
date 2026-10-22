@@ -1956,6 +1956,9 @@ const { registerAdminControlCenter } = require('./admin-control-center');
 registerAdminControlCenter(app, { supabaseAdmin, verifyAdminPermission });
 const { registerAdminModerationCenter } = require('./admin-moderation-center');
 registerAdminModerationCenter(app, { supabaseAdmin, verifyAdminPermission, recordAudit: recordMaisonAudit });
+const { registerAdminOperations, registerMemberHelpdesk } = require('./admin-operations');
+registerAdminOperations(app, { supabaseAdmin, verifyAdminPermission });
+registerMemberHelpdesk(app, { supabaseAdmin, requireBearerUser });
 
 function adminProfileName(profile) {
     if (!profile) return 'Membre';
@@ -3001,6 +3004,9 @@ app.post('/v1/admin/agent-tasks/:id/approve', async (req, res) => {
         const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', id).maybeSingle();
         if (error) throw error;
         if (!task) return res.status(404).json({ success: false, error: 'Tâche introuvable.' });
+        if (task.status === 'ARCHIVED' || task.status === 'SUSPENDED' || task.archived_at) {
+            return res.status(409).json({ success: false, error: 'Une tâche suspendue ou archivée ne peut pas être publiée.' });
+        }
         if (task.metadata && task.metadata.editorial) {
             if (decision === 'APPROVED') {
                 return await publishStoredEditorialProposal(res, task, task.instruction, {

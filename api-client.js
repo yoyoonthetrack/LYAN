@@ -992,6 +992,41 @@ const LYANN_API_CLIENT = {
         return data;
     },
 
+    async memberHelpdeskRequest(path, options = {}) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) return { ok: false, status: 401, json: async () => ({ success: false, error: 'Authentification requise.' }) };
+        return lyannBackendFetch(path, {
+            method: options.method || 'GET',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: options.body ? JSON.stringify(options.body) : undefined
+        });
+    },
+
+    async listMyHelpdeskTickets() {
+        const res = await this.memberHelpdeskRequest('/v1/me/helpdesk');
+        return res.json();
+    },
+
+    async createMyHelpdeskTicket(payload) {
+        const res = await this.memberHelpdeskRequest('/v1/me/helpdesk', { method: 'POST', body: payload });
+        return res.json();
+    },
+
+    async getMyHelpdeskTicket(id) {
+        const res = await this.memberHelpdeskRequest(`/v1/me/helpdesk/${id}`);
+        return res.json();
+    },
+
+    async replyMyHelpdeskTicket(id, body) {
+        const res = await this.memberHelpdeskRequest(`/v1/me/helpdesk/${id}/messages`, { method: 'POST', body: { body } });
+        return res.json();
+    },
+
     async openSupportConversation() {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const supportId = await this.getSupportUserId();
@@ -1028,10 +1063,12 @@ const LYANN_API_CLIENT = {
             .eq('user_id', user.id);
     },
 
-    async markAllNotificationsRead() {
+    async markAllNotificationsRead(expectedUserId = null) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const user = await this.getCurrentUser();
-        if (!user?.id) return { error: { message: 'Non authentifié.' } };
+        if (!user?.id || (expectedUserId && user.id !== expectedUserId)) {
+            return { error: { message: 'Session utilisateur modifiée ou expirée.' } };
+        }
         return await this.supabase
             .from('notifications')
             .update({ read: true })
@@ -1344,6 +1381,8 @@ const LYANN_API_CLIENT = {
             let postsQuery = this.supabase
                 .from('bokantaj_posts')
                 .select('*')
+                // Public Bokantaj must never expose hidden/pending posts, including to admin sessions.
+                .eq('public_moderation_status', 'approved')
                 .order('created_at', { ascending: false })
                 .limit(LYANN_FEED_PAGE_SIZE);
             if (pageOptions.before) postsQuery = postsQuery.lt('created_at', pageOptions.before);
@@ -1391,7 +1430,7 @@ const LYANN_API_CLIENT = {
                 const [likesRes, commentsRes, sessionUser] = postIds.length
                     ? await Promise.all([
                         this.supabase.from('bokantaj_likes').select('post_id, request_id, user_id').in('post_id', postIds),
-                        this.supabase.from('bokantaj_comments').select('post_id, request_id').in('post_id', postIds),
+                        this.supabase.from('bokantaj_comments').select('post_id, request_id').in('post_id', postIds).eq('public_moderation_status', 'approved'),
                         this.getCurrentUser()
                     ])
                     : [{ data: [] }, { data: [] }, null];
@@ -1458,8 +1497,8 @@ const LYANN_API_CLIENT = {
                     moderation_status: p.public_moderation_status || null,
                     likes: (postLikesCountMap[p.id] !== undefined) ? postLikesCountMap[p.id] : (p.likes_count || 0),
                     user_has_liked: userLikedPostsSet.has(p.id),
-                    comments_count: postCommentsCountMap[p.id] || p.replies_count || 0,
-                    repliesCount: postCommentsCountMap[p.id] || p.replies_count || 0
+                    comments_count: (postCommentsCountMap[p.id] !== undefined) ? postCommentsCountMap[p.id] : 0,
+                    repliesCount: (postCommentsCountMap[p.id] !== undefined) ? postCommentsCountMap[p.id] : 0
                 };
             });
 
@@ -1624,6 +1663,8 @@ const LYANN_API_CLIENT = {
             const { data, error } = await this.supabase
                 .from('bokantaj_comments')
                 .select('*, profiles:author_id(first_name, last_name, avatar_url, city)')
+                // Admin privileges should not reveal moderated comments inside ordinary threads.
+                .eq('public_moderation_status', 'approved')
                 .eq(matchCol, targetId)
                 .order('created_at', { ascending: true });
 
@@ -3006,7 +3047,8 @@ window.LyannFavoritesService = {
                 } else if (fav.entity_type === 'BOKANTAJ_POST') {
                     const { data: post } = await supabaseClient
                         .from('bokantaj_posts')
-                        .select('id, headline, content, category, media_urls, created_at, author_id, profiles:author_id(first_name, last_name, avatar_url)')
+                        .select('id, headline, content, media_urls, created_at, author_id, profiles:author_id(first_name, last_name, avatar_url)')
+                        .eq('public_moderation_status', 'approved')
                         .eq('id', fav.entity_id)
                         .maybeSingle();
 
@@ -3023,7 +3065,7 @@ window.LyannFavoritesService = {
                             authorName: authorName,
                             dateStr: dateStr,
                             mediaUrl: mediaUrl,
-                            subtitle: `Par ${authorName}${dateStr ? ' • ' + dateStr : ''} • ${post.category || 'Bokantaj'}`,
+                            subtitle: `Par ${authorName}${dateStr ? ' • ' + dateStr : ''} • Bokantaj`,
                             avatar: post.profiles?.avatar_url ? (window.getLyannAvatarUrl ? window.getLyannAvatarUrl(post.profiles.avatar_url) : post.profiles.avatar_url) : null,
                             created_at: fav.created_at,
                             raw: post

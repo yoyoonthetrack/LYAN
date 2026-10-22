@@ -240,15 +240,37 @@ function openNotificationsModal() {
         else document.querySelector('.open-login-trigger')?.click();
         return;
     }
+    // Opening the bell acknowledges the unread notifications immediately,
+    // without deleting their history. Acknowledgement is persisted for this user.
+    const engine = window.LyannNotificationEngine;
+    const readResult = engine?.markAllAsRead?.(currentUserId);
     renderNotificationsModal();
+    updateHeaderNotificationBadge({ messages: false });
+
     if (window.LYANN_MISSION_REMINDERS?.loadContext) {
         window.LYANN_MISSION_REMINDERS.loadContext(currentUserId).then(() => {
-            if (document.getElementById('notificationsModal')?.classList.contains('active')) renderNotificationsModal();
+            if (lyannNotificationUserId() === currentUserId && document.getElementById('notificationsModal')?.classList.contains('active')) {
+                renderNotificationsModal();
+            }
         }).catch(() => {});
     }
-    if (window.LyannNotificationEngine?.hydrateFromServer) {
-        window.LyannNotificationEngine.hydrateFromServer(currentUserId).then(() => {
-            if (document.getElementById('notificationsModal')?.classList.contains('active')) renderNotificationsModal();
+
+    if (engine?.hydrateFromServer) {
+        // Do not hydrate ahead of the write: an old server snapshot would
+        // otherwise bring the badge back even though the bell was opened.
+        Promise.resolve(readResult?.persistence).then(async (response) => {
+            if (lyannNotificationUserId() !== currentUserId) return;
+            if (response?.error) {
+                console.warn('[notifications] Mark all read failed:', response.error.message || response.error);
+            }
+            await engine.hydrateFromServer(currentUserId);
+            if (lyannNotificationUserId() !== currentUserId) return;
+            if (document.getElementById('notificationsModal')?.classList.contains('active')) {
+                renderNotificationsModal();
+            }
+            updateHeaderNotificationBadge({ messages: false });
+        }).catch((error) => {
+            console.warn('[notifications] Bell read sync failed:', error?.message || error);
         });
     }
 }
