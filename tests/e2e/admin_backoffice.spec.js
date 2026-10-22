@@ -78,8 +78,41 @@ async function installAdminMocks(page, overrides = {}) {
       if (overrides.noPermission) return json(route, { success: false, error: 'Accès refusé.' }, 403);
       return json(route, { success: true, user_id: 'e2e-admin', role: 'OWNER', is_owner: true });
     }
-    if (path === '/v1/admin/kpis') {
-      return json(route, { success: true, gmvMonth: 12, mrrCommissions: 1.2, activeMembers: 8, activeMissions: 2, openDisputes: 0, realMembers: 6, kycVerified: 3, openRequests: 1, period: '30d', territory: 'all' });
+    if (path === '/v1/admin/kpis' || path === '/v1/admin/control-center') {
+      const metrics = {
+        realMembers: { value: 6, available: true },
+        seedMembers: { value: 2, available: true },
+        kycVerified: { value: 3, available: true },
+        newRealMembers: { value: 1, available: true },
+        openRequests: { value: 1, available: true },
+        bokantajApproved: { value: 4, available: true },
+        editorialPending: { value: 2, available: true },
+        openDisputes: { value: 0, available: true },
+        openReports: { value: 1, available: true },
+        conversations: { value: 3, available: true },
+        gmvPeriod: { value: 12, available: true },
+        collectedCommissions: { value: 1.2, available: true }
+      };
+      return json(route, {
+        success: true,
+        data_available: true,
+        generated_at: '2026-10-22T00:00:00Z',
+        period: '30 jours',
+        gmvMonth: 12,
+        mrrCommissions: 1.2,
+        activeMembers: 6,
+        realMembers: 6,
+        kycVerified: 3,
+        openRequests: 1,
+        openDisputes: 0,
+        pendingApprovals: 2,
+        kpis: { metrics, period: '30 jours' },
+        metrics,
+        actions: [{ id: 'editorial-pending', title: 'Propositions éditoriales à valider', count: 2, section: 'sec-editorial', priority: 1 }]
+      });
+    }
+    if (path === '/v1/admin/marketplace-stats') {
+      return json(route, { success: true, generated_at: '2026-10-22T00:00:00Z', metrics: {}, byTerritory: [], missingInstrumentation: [] });
     }
     if (path === '/v1/admin/editorial/bots') {
       return json(route, {

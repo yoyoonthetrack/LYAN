@@ -51,6 +51,17 @@ async function installVisualMocks(page) {
   await page.route('**/v1/admin/**', async (route) => {
     const url = new URL(route.request().url());
     const pathName = url.pathname;
+    if (pathName === '/v1/admin/control-center' || pathName === '/v1/admin/marketplace-stats') {
+      return json(route, {
+        success: true,
+        generated_at: '2026-10-22T00:00:00Z',
+        kpis: { period: '30 jours', metrics: { realMembers: { value: 8, available: true }, editorialPending: { value: 2, available: true }, seedMembers: { value: 3, available: true } } },
+        actions: [{ id: 'editorial-pending', title: 'Propositions éditoriales à valider', count: 2, section: 'sec-editorial', priority: 1 }],
+        metrics: { realMembers: { value: 8, available: true, definition: 'Profils réels' } },
+        byTerritory: [{ territory: 'guadeloupe', requests: 4, open: 1 }],
+        missingInstrumentation: [{ event: 'session_started', why: 'Mesurer l’activité réelle.' }]
+      });
+    }
     if (pathName === '/v1/admin/kpis') {
       return json(route, {
         success: true,
@@ -159,6 +170,8 @@ test.describe('Back-office design v2', () => {
 
     const shots = [
       ['sec-overview', '01-dashboard'],
+      ['sec-action', '01b-action'],
+      ['sec-marketplace', '01c-marketplace'],
       ['sec-editorial', '02-editorial'],
       ['sec-maison', '03-maison'],
       ['sec-content', '04-moderation'],
@@ -181,6 +194,6 @@ test.describe('Back-office design v2', () => {
       await page.screenshot({ path: path.join(SHOT_DIR, `${name}.png`), fullPage: true });
     }
     await page.screenshot({ path: path.join(SHOT_DIR, '00-navigation.png') });
-    await expect(page.locator('.admin-nav-item')).toHaveCount(25);
+    await expect(page.locator('.admin-nav-item')).toHaveCount(33);
   });
 });

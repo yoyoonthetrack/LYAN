@@ -160,108 +160,136 @@
             </div>
         </div>
 
-        <nav class="admin-nav" aria-label="Rubriques du back-office">
-            <details class="admin-nav-group" open>
+        <nav class="admin-nav" aria-label="Rubriques du back-office" data-admin-nav="v3">
+            <details class="admin-nav-group" open data-pole="pilotage">
                 <summary class="admin-nav-section-title">Pilotage</summary>
-                <a href="#" class="admin-nav-item active" data-section="sec-overview">
+                <a href="#" class="admin-nav-item active" data-section="sec-overview" data-pole="pilotage" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-chart-line-up"></i> <span>Vue d'ensemble</span></div>
                 </a>
-                <a href="#comptes-editoriaux" class="admin-nav-item" data-section="sec-editorial">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Comptes éditoriaux</span></div>
-                    <span class="admin-nav-badge" id="sidebarEditorialBadge">—</span>
+                <a href="#" class="admin-nav-item" data-section="sec-action" data-pole="pilotage" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-list-checks"></i> <span>À traiter</span></div>
+                    <span class="admin-nav-badge" id="sidebarActionBadge">—</span>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-marketplace" data-pole="pilotage">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-chart-bar"></i> <span>Analytics marketplace</span></div>
                 </a>
             </details>
 
-            <details class="admin-nav-group" open>
+            <details class="admin-nav-group" data-pole="communaute">
                 <summary class="admin-nav-section-title">Communauté</summary>
-                <a href="#" class="admin-nav-item" data-section="sec-users">
+                <a href="#" class="admin-nav-item" data-section="sec-users" data-pole="communaute" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-users"></i> <span>Utilisateurs</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-maison">
+                <a href="#" class="admin-nav-item" data-section="sec-maison" data-pole="communaute" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-house-line"></i> <span>Profils maison</span></div>
                     <span class="admin-nav-badge warning" id="sidebarMaisonBadge">Relais</span>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-lyanneurs">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-lyanneurs" data-pole="communaute">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-user-check"></i> <span>Lyanneurs</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-agents">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-robot"></i> <span>Agents LYANN</span></div>
-                    <span class="admin-nav-badge success" id="sidebarAgentBadge">—</span>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-mika">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-lightning"></i> <span>Mika</span></div>
-                    <span class="admin-nav-badge">Pilote</span>
                 </a>
             </details>
 
-            <details class="admin-nav-group" open>
-                <summary class="admin-nav-section-title">Activité</summary>
-                <a href="#" class="admin-nav-item" data-section="sec-bokantaj">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-chat-teardrop-text"></i> <span>Bokantaj</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-requests">
+            <details class="admin-nav-group" data-pole="marketplace">
+                <summary class="admin-nav-section-title">Marketplace</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-requests" data-pole="marketplace" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-tray"></i> <span>Demandes</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-services">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-briefcase"></i> <span>Prestations</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-quotes">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-file-text"></i> <span>Devis</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-missions">
+                <a href="#" class="admin-nav-item" data-section="sec-missions" data-pole="marketplace" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-calendar-check"></i> <span>Missions</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-chat">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-services" data-pole="marketplace">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-briefcase"></i> <span>Prestations</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-quotes" data-pole="marketplace">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-file-text"></i> <span>Devis</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-chat" data-pole="marketplace">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-chat-circle-dots"></i> <span>Messagerie</span></div>
                 </a>
             </details>
 
-            <details class="admin-nav-group" open>
-                <summary class="admin-nav-section-title">Finance</summary>
-                <a href="#" class="admin-nav-item" data-section="sec-finances">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-bank"></i> <span>Paiements</span></div>
+            <details class="admin-nav-group" data-pole="bokantaj">
+                <summary class="admin-nav-section-title">Bokantaj & rédaction</summary>
+                <a href="#comptes-editoriaux" class="admin-nav-item" data-section="sec-editorial" data-pole="bokantaj" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Comptes éditoriaux</span></div>
+                    <span class="admin-nav-badge" id="sidebarEditorialBadge">—</span>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-payouts">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>Versements</span></div>
+                <a href="#" class="admin-nav-item" data-section="sec-bokantaj" data-pole="bokantaj" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-chat-teardrop-text"></i> <span>Fil Bokantaj</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-disputes">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-agents" data-pole="bokantaj">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-robot"></i> <span>Agents LYANN</span></div>
+                    <span class="admin-nav-badge success" id="sidebarAgentBadge">—</span>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-mika" data-pole="bokantaj">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-lightning"></i> <span>Mika</span></div>
+                </a>
+            </details>
+
+            <details class="admin-nav-group" data-pole="confiance">
+                <summary class="admin-nav-section-title">Confiance & support</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-content" data-pole="confiance" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-shield-warning"></i> <span>Modération</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-support" data-pole="confiance" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-headset"></i> <span>Support</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-disputes" data-pole="confiance">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-scales"></i> <span>Litiges</span></div>
                     <span class="admin-nav-badge" id="sidebarDisputeBadge">—</span>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-subscriptions">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-sparkle"></i> <span>Abonnements</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-protection">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-shield-check"></i> <span>Assurance</span></div>
-                </a>
-            </details>
-
-            <details class="admin-nav-group" open>
-                <summary class="admin-nav-section-title">Opérations</summary>
-                <a href="#" class="admin-nav-item" data-section="sec-content">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-shield-warning"></i> <span>Modération</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-notifications">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-notifications" data-pole="confiance">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-bell"></i> <span>Notifications</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-support">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-headset"></i> <span>Support</span></div>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-reviews" data-pole="confiance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-star"></i> <span>Avis</span></div>
                 </a>
             </details>
 
-            <details class="admin-nav-group" open>
+            <details class="admin-nav-group" data-pole="business">
+                <summary class="admin-nav-section-title">Business & finances</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-finances" data-pole="business" data-nav-primary="1" data-rbac="finance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-bank"></i> <span>Paiements</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-payouts" data-pole="business" data-rbac="finance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>Versements</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-subscriptions" data-pole="business" data-rbac="finance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-sparkle"></i> <span>Abonnements</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-protection" data-pole="business" data-rbac="finance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-shield-check"></i> <span>Assurance</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-invoices" data-pole="business" data-rbac="finance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-receipt"></i> <span>Facturation</span></div>
+                </a>
+            </details>
+
+            <details class="admin-nav-group" data-pole="admin">
                 <summary class="admin-nav-section-title">Administration</summary>
-                <a href="#" class="admin-nav-item" data-section="sec-team">
+                <a href="#" class="admin-nav-item" data-section="sec-taxonomy" data-pole="admin" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-gear"></i> <span>Configuration</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-team" data-pole="admin">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-users-three"></i> <span>Équipe LYANN</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-rbac">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-rbac" data-pole="admin">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-lock-key"></i> <span>Rôles & permissions</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-audit-logs">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-audit-logs" data-pole="admin">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-scroll"></i> <span>Journaux</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-taxonomy">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-gear"></i> <span>Configuration</span></div>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-feature-flags" data-pole="admin">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-flag"></i> <span>Feature flags</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-territories" data-pole="admin">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-map-trifold"></i> <span>Territoires</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-health" data-pole="admin">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-heartbeat"></i> <span>Santé système</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-user-detail" data-pole="communaute">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-identification-card"></i> <span>Fiche utilisateur</span></div>
                 </a>
             </details>
         </nav>
@@ -350,101 +378,134 @@
             <!-- ==========================================================================
                  PÔLE 1 : TABLEAU DE BORD GLOBAL & ANALYTICS BI
                  ========================================================================== -->
+            <div id="adminContextTabs" class="admin-context-tabs" hidden></div>
+            <div class="admin-insight-filters" id="adminInsightFilters">
+                <label>Période
+                    <select id="adminPeriodFilter" class="admin-select">
+                        <option value="7d">7 jours</option>
+                        <option value="30d" selected>30 jours</option>
+                        <option value="90d">90 jours</option>
+                        <option value="all">Tout l’historique</option>
+                    </select>
+                </label>
+                <label>Territoire
+                    <select id="adminTerritoryFilter" class="admin-select">
+                        <option value="all">Tous</option>
+                        <option value="guadeloupe">Guadeloupe</option>
+                        <option value="martinique">Martinique</option>
+                        <option value="guyane">Guyane</option>
+                        <option value="reunion">La Réunion</option>
+                    </select>
+                </label>
+                <p class="maison-muted" id="adminDataFreshness">Dernière actualisation : —</p>
+            </div>
+
             <section id="sec-overview" class="admin-section active">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">Vue d'ensemble</h1>
-                        <p class="admin-page-sub">Bienvenue <strong id="adminWelcomeUsername">Administrateur</strong>. Chiffres lus en direct depuis Supabase — zéro si rien n'a encore eu lieu.</p>
+                        <h1 class="admin-page-title">Centre de pilotage</h1>
+                        <p class="admin-page-sub">Bienvenue <strong id="adminWelcomeUsername">Administrateur</strong>. Chaque chiffre a une définition. Une valeur indisponible reste vide, jamais zéro de substitution.</p>
                     </div>
                     <div class="admin-page-actions">
-                        <button class="admin-btn admin-btn-primary trigger-goto-aiops"><i class="ph-bold ph-robot"></i> Agents LYANN</button>
+                        <button class="admin-btn admin-btn-primary" id="gotoActionCenterBtn" type="button"><i class="ph-bold ph-list-checks"></i> À traiter</button>
                         <button class="admin-btn admin-btn-secondary" id="exportBiReportBtn"><i class="ph-bold ph-download-simple"></i> Exporter les paiements</button>
                     </div>
                 </div>
 
                 <div class="attention-board">
                     <div class="admin-card needs-action" id="attentionQueue">
-                        <h3>À traiter maintenant</h3>
-                        <div class="attention-item">
-                            <div>
-                                <strong>Propositions éditoriales</strong>
-                                <p class="maison-muted">Validation humaine avant toute publication.</p>
-                            </div>
-                            <strong id="attentionEditorial">—</strong>
-                        </div>
-                        <div class="attention-item">
-                            <div>
-                                <strong>Modération</strong>
-                                <p class="maison-muted">Contenus en attente dans la file préventive.</p>
-                            </div>
-                            <strong id="attentionModeration">—</strong>
-                        </div>
-                        <div class="attention-item">
-                            <div>
-                                <strong>Litiges ouverts</strong>
-                                <p class="maison-muted">Arbitrage et signalements en cours.</p>
-                            </div>
-                            <strong id="attentionDisputes">—</strong>
-                        </div>
+                        <h3>Actions prioritaires</h3>
+                        <div id="pilotageActionList"><p class="maison-muted">Chargement…</p></div>
                     </div>
                     <div class="admin-card">
                         <h3>Activité récente</h3>
-                        <p class="maison-muted" id="attentionRecent">Les compteurs ci-dessous sont lus en direct. Rien n’est inventé.</p>
+                        <p class="maison-muted" id="attentionRecent">Les compteurs ci-dessous sont lus en direct.</p>
+                        <p class="maison-muted" id="kpiActivityMix"></p>
                     </div>
                 </div>
 
-                <!-- KPI Grid -->
                 <div class="admin-grid-4" id="kpiContainer" style="margin-bottom: 24px;">
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-icon blue"><i class="ph-bold ph-users"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Membres réels</div>
+                            <div class="kpi-value" id="kpiTotalUsers">—</div>
+                            <div class="kpi-sub" id="kpiUsersSub">Profils account_type=real — pas une mesure d’activité</div>
+                        </div>
+                    </div>
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-icon green"><i class="ph-bold ph-tray"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Annonces ouvertes</div>
+                            <div class="kpi-value" id="kpiOpenRequests">—</div>
+                            <div class="kpi-sub" id="kpiMissionsSub">Statut OPEN, période et territoire appliqués aux créations</div>
+                        </div>
+                    </div>
                     <div class="admin-card kpi-card">
                         <div class="kpi-icon green"><i class="ph-bold ph-currency-eur"></i></div>
                         <div class="kpi-data">
-                            <div class="kpi-label">Volume encaissé (GMV)</div>
+                            <div class="kpi-label">Volume encaissé (période)</div>
                             <div class="kpi-value" id="kpiGmv">—</div>
-                            <div class="kpi-sub" id="kpiGmvSub">Paiements SUCCEEDED uniquement</div>
+                            <div class="kpi-sub" id="kpiGmvSub">Paiements SUCCEEDED de la période — lecture seule</div>
                         </div>
                     </div>
                     <div class="admin-card kpi-card">
                         <div class="kpi-icon yellow"><i class="ph-bold ph-bank"></i></div>
                         <div class="kpi-data">
-                            <div class="kpi-label">Revenus LYANN</div>
+                            <div class="kpi-label">Commissions collectées</div>
                             <div class="kpi-value" id="kpiRevenue">—</div>
-                            <div class="kpi-sub" id="kpiRevenueSub">Commissions réellement collectées</div>
-                        </div>
-                    </div>
-                    <div class="admin-card kpi-card">
-                        <div class="kpi-icon blue"><i class="ph-bold ph-users"></i></div>
-                        <div class="kpi-data">
-                            <div class="kpi-label">Comptes</div>
-                            <div class="kpi-value" id="kpiTotalUsers">—</div>
-                            <div class="kpi-sub" id="kpiUsersSub">Membres + profils maison</div>
-                        </div>
-                    </div>
-                    <div class="admin-card kpi-card">
-                        <div class="kpi-icon green"><i class="ph-bold ph-check-square-offset"></i></div>
-                        <div class="kpi-data">
-                            <div class="kpi-label">Missions</div>
-                            <div class="kpi-value" id="kpiTotalMissions">—</div>
-                            <div class="kpi-sub" id="kpiMissionsSub">Toutes statuts confondus</div>
+                            <div class="kpi-sub" id="kpiRevenueSub">Pas un MRR — sommes réellement collectées</div>
                         </div>
                     </div>
                 </div>
-
                 <div class="admin-grid-3" style="margin-bottom: 24px;">
                     <div class="admin-card metric-tile">
-                        <h3><i class="ph-bold ph-newspaper"></i> Publications & annonces</h3>
-                        <div class="tile-value" id="kpiActivityMix">—</div>
-                        <p class="maison-muted">Demandes ouvertes, Lyanns et conversations</p>
+                        <h3>Bokantaj approuvé</h3>
+                        <div class="tile-value" id="kpiBokantajApproved">—</div>
+                        <p class="maison-muted">Publications visibles après modération</p>
                     </div>
                     <div class="admin-card metric-tile">
-                        <h3><i class="ph-bold ph-robot"></i> Agents éditoriaux</h3>
+                        <h3>File éditoriale</h3>
                         <div class="tile-value" id="kpiActiveBots">—</div>
-                        <p class="maison-muted">Agents actifs et tâches en attente</p>
+                        <p class="maison-muted" id="attentionEditorial">Propositions PENDING, distinctes des tâches agents</p>
                     </div>
                     <div class="admin-card metric-tile">
-                        <h3><i class="ph-bold ph-scales"></i> Litiges & signalements</h3>
+                        <h3>Confiance</h3>
                         <div class="tile-value" id="kpiOpenDisputes">—</div>
-                        <p class="maison-muted">Litiges ouverts et reports en cours</p>
+                        <p class="maison-muted" id="attentionDisputes">Litiges ouverts · signalements ouverts à part</p>
                     </div>
+                </div>
+                <p class="maison-muted" id="attentionModeration" hidden></p>
+                <div id="kpiTotalMissions" hidden></div>
+            </section>
+
+            <section id="sec-action" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">À traiter</h1>
+                        <p class="admin-page-sub">File priorisée. Une alerte n’apparaît que si le compteur réel est supérieur à zéro.</p>
+                    </div>
+                </div>
+                <div class="admin-card" id="actionCenterCard">
+                    <div id="actionCenterList"><p class="maison-muted">Chargement…</p></div>
+                </div>
+            </section>
+
+            <section id="sec-marketplace" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Analytics marketplace</h1>
+                        <p class="admin-page-sub">Indicateurs calculables aujourd’hui. Les membres « actifs » ne sont pas estimés à partir de l’existence d’un profil.</p>
+                    </div>
+                </div>
+                <div class="admin-grid-4" id="marketplaceKpiGrid"></div>
+                <div class="admin-card" style="margin-top:16px;">
+                    <h3>Par territoire</h3>
+                    <div id="marketplaceTerritoryTable"><p class="maison-muted">Chargement…</p></div>
+                </div>
+                <div class="admin-card" style="margin-top:16px;">
+                    <h3>Données encore absentes</h3>
+                    <ul id="marketplaceMissing" class="maison-muted"></ul>
                 </div>
             </section>
 

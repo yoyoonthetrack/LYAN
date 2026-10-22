@@ -704,30 +704,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const ADMIN_SECTION_META = {
-        'sec-overview': { title: "Vue d'ensemble", crumb: 'Pilotage' },
-        'sec-editorial': { title: 'Comptes éditoriaux', crumb: 'Pilotage' },
+        'sec-overview': { title: 'Centre de pilotage', crumb: 'Pilotage' },
+        'sec-action': { title: 'À traiter', crumb: 'Pilotage' },
+        'sec-marketplace': { title: 'Analytics marketplace', crumb: 'Pilotage' },
+        'sec-editorial': { title: 'Comptes éditoriaux', crumb: 'Bokantaj & rédaction' },
         'sec-users': { title: 'Utilisateurs', crumb: 'Communauté' },
         'sec-maison': { title: 'Profils maison', crumb: 'Communauté' },
         'sec-user-detail': { title: 'Fiche utilisateur', crumb: 'Communauté' },
         'sec-lyanneurs': { title: 'Lyanneurs', crumb: 'Communauté' },
-        'sec-agents': { title: 'Agents LYANN', crumb: 'Communauté' },
-        'sec-mika': { title: 'Mika', crumb: 'Communauté' },
-        'sec-bokantaj': { title: 'Bokantaj', crumb: 'Activité' },
-        'sec-requests': { title: 'Demandes', crumb: 'Activité' },
-        'sec-services': { title: 'Prestations', crumb: 'Activité' },
-        'sec-quotes': { title: 'Devis', crumb: 'Activité' },
-        'sec-missions': { title: 'Missions', crumb: 'Activité' },
-        'sec-chat': { title: 'Messagerie', crumb: 'Activité' },
-        'sec-finances': { title: 'Paiements', crumb: 'Finance' },
-        'sec-invoices': { title: 'Facturation', crumb: 'Finance' },
-        'sec-payouts': { title: 'Versements', crumb: 'Finance' },
-        'sec-disputes': { title: 'Litiges', crumb: 'Finance' },
-        'sec-subscriptions': { title: 'Abonnements', crumb: 'Finance' },
-        'sec-protection': { title: 'Assurance', crumb: 'Finance' },
-        'sec-reviews': { title: 'Avis', crumb: 'Opérations' },
-        'sec-content': { title: 'Modération', crumb: 'Opérations' },
-        'sec-notifications': { title: 'Notifications', crumb: 'Opérations' },
-        'sec-support': { title: 'Support', crumb: 'Opérations' },
+        'sec-agents': { title: 'Agents LYANN', crumb: 'Bokantaj & rédaction' },
+        'sec-mika': { title: 'Mika', crumb: 'Bokantaj & rédaction' },
+        'sec-bokantaj': { title: 'Fil Bokantaj', crumb: 'Bokantaj & rédaction' },
+        'sec-requests': { title: 'Demandes', crumb: 'Marketplace' },
+        'sec-services': { title: 'Prestations', crumb: 'Marketplace' },
+        'sec-quotes': { title: 'Devis', crumb: 'Marketplace' },
+        'sec-missions': { title: 'Missions', crumb: 'Marketplace' },
+        'sec-chat': { title: 'Messagerie', crumb: 'Marketplace' },
+        'sec-finances': { title: 'Paiements', crumb: 'Business & finances' },
+        'sec-invoices': { title: 'Facturation', crumb: 'Business & finances' },
+        'sec-payouts': { title: 'Versements', crumb: 'Business & finances' },
+        'sec-disputes': { title: 'Litiges', crumb: 'Confiance & support' },
+        'sec-subscriptions': { title: 'Abonnements', crumb: 'Business & finances' },
+        'sec-protection': { title: 'Assurance', crumb: 'Business & finances' },
+        'sec-reviews': { title: 'Avis', crumb: 'Confiance & support' },
+        'sec-content': { title: 'Modération', crumb: 'Confiance & support' },
+        'sec-notifications': { title: 'Notifications', crumb: 'Confiance & support' },
+        'sec-support': { title: 'Support', crumb: 'Confiance & support' },
         'sec-team': { title: 'Équipe LYANN', crumb: 'Administration' },
         'sec-rbac': { title: 'Rôles & permissions', crumb: 'Administration' },
         'sec-audit-logs': { title: 'Journaux', crumb: 'Administration' },
@@ -737,14 +739,59 @@ document.addEventListener('DOMContentLoaded', async () => {
         'sec-health': { title: 'Santé système', crumb: 'Administration' }
     };
 
+    function adminCanSeeFinance() {
+        const user = window.currentAdminUser || {};
+        if (user.isOwner || user.role === 'OWNER' || user.role === 'SUPER_ADMIN') return true;
+        const perms = user.permissions || [];
+        return perms.includes('*') || perms.some((p) => String(p).startsWith('finance'));
+    }
+
+    function applyAdminRbacVisibility() {
+        const showFinance = adminCanSeeFinance();
+        document.querySelectorAll('[data-rbac="finance"]').forEach((el) => {
+            el.hidden = !showFinance;
+        });
+    }
+
+    function renderAdminContextTabs(sectionId) {
+        const tabs = document.getElementById('adminContextTabs');
+        const item = document.querySelector(`.admin-nav-item[data-section="${sectionId}"]`);
+        const pole = item?.getAttribute('data-pole');
+        if (!tabs || !pole) {
+            if (tabs) tabs.hidden = true;
+            return;
+        }
+        const siblings = Array.from(document.querySelectorAll(`.admin-nav-item[data-pole="${pole}"]`))
+            .filter((nav) => !nav.hidden);
+        tabs.innerHTML = siblings.map((nav) => {
+            const id = nav.getAttribute('data-section');
+            const label = (nav.querySelector('span')?.textContent || id).trim();
+            return `<button type="button" class="admin-context-tab${id === sectionId ? ' active' : ''}" data-section="${id}">${label}</button>`;
+        }).join('');
+        tabs.hidden = siblings.length < 2;
+        tabs.querySelectorAll('.admin-context-tab').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                document.querySelector(`.admin-nav-item[data-section="${btn.getAttribute('data-section')}"]`)?.click();
+            });
+        });
+    }
+
     function syncAdminChrome(sectionId, item) {
         const meta = ADMIN_SECTION_META[sectionId] || {};
         const title = document.getElementById('adminHeaderTitle');
         const crumb = document.getElementById('adminHeaderCrumb');
         if (title) title.textContent = meta.title || (item?.querySelector('span')?.textContent || '').trim();
         if (crumb) crumb.textContent = meta.crumb || 'Back-office';
+        document.querySelectorAll('details.admin-nav-group').forEach((group) => group.classList.remove('is-current'));
         const group = item?.closest('details.admin-nav-group');
-        if (group) group.open = true;
+        if (group) {
+            group.open = true;
+            group.classList.add('is-current');
+        }
+        renderAdminContextTabs(sectionId);
+        applyAdminRbacVisibility();
+        const filters = document.getElementById('adminInsightFilters');
+        if (filters) filters.hidden = !['sec-overview', 'sec-action', 'sec-marketplace'].includes(sectionId);
     }
 
     navItems.forEach(item => {
@@ -775,6 +822,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 if (targetSectionId === 'sec-editorial' && typeof window.openEditorialDesk === 'function') {
                     window.openEditorialDesk();
+                }
+                if (['sec-overview', 'sec-action', 'sec-marketplace'].includes(targetSectionId) && typeof window.loadAdminControlCenter === 'function') {
+                    window.loadAdminControlCenter();
                 }
                 if (typeof window.loadAdminSection === 'function') {
                     window.loadAdminSection(targetSectionId);
@@ -1864,6 +1914,136 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --------------------------------------------------------------------------
     let globalKillSwitchActive = false;
 
+    function adminMetricText(metric, format) {
+        if (!metric || metric.available === false || metric.value == null) return 'Indisponible';
+        if (format === 'euro') return Number(metric.value).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+        if (format === 'pct') return `${Math.round(Number(metric.value) * 100)} %`;
+        if (format === 'hours') return `${Number(metric.value).toFixed(1)} h`;
+        return String(metric.value);
+    }
+
+    function renderActionRows(items, containerId) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (!items || !items.length) {
+            el.innerHTML = '<p class="maison-muted">Rien à traiter pour le moment.</p>';
+            return;
+        }
+        el.innerHTML = items.map((item) => `
+            <button type="button" class="admin-action-row" data-action-section="${window.adminEscape(item.section)}">
+                <span><strong>${window.adminEscape(item.title)}</strong></span>
+                <span class="status-badge pending">${window.adminEscape(item.count)}</span>
+            </button>
+        `).join('');
+        el.querySelectorAll('[data-action-section]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                document.querySelector(`.admin-nav-item[data-section="${btn.getAttribute('data-action-section')}"]`)?.click();
+            });
+        });
+    }
+
+    window.loadAdminControlCenter = async function loadAdminControlCenter() {
+        const period = document.getElementById('adminPeriodFilter')?.value || '30d';
+        const territory = document.getElementById('adminTerritoryFilter')?.value || 'all';
+        const qs = `period=${encodeURIComponent(period)}&territory=${encodeURIComponent(territory)}`;
+        try {
+            const res = await window.fetchWithAdminAuth(`/v1/admin/control-center?${qs}`);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                renderUnavailableState('kpiContainer');
+                return;
+            }
+            const kpis = data.kpis || {};
+            const metrics = kpis.metrics || {};
+            const set = (id, metric, format) => {
+                const node = document.getElementById(id);
+                if (!node) return;
+                node.textContent = adminMetricText(metric, format);
+                node.classList.toggle('admin-metric-unavailable', !metric || metric.available === false);
+            };
+            set('kpiTotalUsers', metrics.realMembers);
+            set('kpiOpenRequests', metrics.openRequests);
+            set('kpiGmv', metrics.gmvPeriod, 'euro');
+            set('kpiRevenue', metrics.collectedCommissions, 'euro');
+            set('kpiBokantajApproved', metrics.bokantajApproved);
+            set('kpiActiveBots', metrics.editorialPending);
+            set('kpiOpenDisputes', metrics.openDisputes);
+            const usersSub = document.getElementById('kpiUsersSub');
+            if (usersSub) usersSub.textContent = `Maison : ${adminMetricText(metrics.seedMembers)} · KYC : ${adminMetricText(metrics.kycVerified)} · nouveaux : ${adminMetricText(metrics.newRealMembers)}`;
+            const recent = document.getElementById('attentionRecent');
+            if (recent) recent.textContent = `Période ${kpis.period || period}. Membres actifs : non mesurables (pas d’événement de session).`;
+            const mix = document.getElementById('kpiActivityMix');
+            if (mix) mix.textContent = `Annonces ouvertes ${adminMetricText(metrics.openRequests)} · Bokantaj approuvé ${adminMetricText(metrics.bokantajApproved)} · conversations ${adminMetricText(metrics.conversations)}`;
+            const freshness = document.getElementById('adminDataFreshness');
+            if (freshness) freshness.textContent = `Dernière actualisation : ${new Date(data.generated_at || Date.now()).toLocaleString('fr-FR')}`;
+            const actionBadge = document.getElementById('sidebarActionBadge');
+            if (actionBadge) actionBadge.textContent = String((data.actions || []).length);
+            const editorialBadge = document.getElementById('sidebarEditorialBadge');
+            if (editorialBadge && metrics.editorialPending?.available) editorialBadge.textContent = String(metrics.editorialPending.value);
+            const disputeBadge = document.getElementById('sidebarDisputeBadge');
+            if (disputeBadge && metrics.openDisputes?.available) disputeBadge.textContent = String(metrics.openDisputes.value);
+            const maisonBadge = document.getElementById('sidebarMaisonBadge');
+            if (maisonBadge && metrics.seedMembers?.available) maisonBadge.textContent = String(metrics.seedMembers.value);
+            renderActionRows(data.actions || [], 'pilotageActionList');
+            renderActionRows(data.actions || [], 'actionCenterList');
+        } catch (error) {
+            console.warn('control-center', error);
+            renderUnavailableState('kpiContainer');
+        }
+        try {
+            const market = await window.fetchWithAdminAuth(`/v1/admin/marketplace-stats?${qs}`);
+            const body = await market.json().catch(() => ({}));
+            if (!market.ok || !body.success) return;
+            const grid = document.getElementById('marketplaceKpiGrid');
+            if (grid) {
+                const cards = [
+                    ['Membres réels', body.metrics.realMembers],
+                    ['Nouveaux membres', body.metrics.newRealMembers],
+                    ['Profils complétés', body.metrics.completedProfiles],
+                    ['Membres actifs', body.metrics.activeMembers],
+                    ['Annonces (période)', body.metrics.requestsInPeriod],
+                    ['Sans devis 24 h', body.metrics.unanswered24h],
+                    ['Sans devis 48 h', body.metrics.unanswered48h],
+                    ['Délai 1er devis', body.metrics.medianFirstQuoteHours, 'hours'],
+                    ['Devis envoyés', body.metrics.quotesSent],
+                    ['Devis acceptés', body.metrics.quotesAccepted],
+                    ['Missions créées', body.metrics.missionsCreated],
+                    ['Missions terminées', body.metrics.missionsCompleted],
+                    ['Conversion annonce → devis', body.metrics.conversionRequestToQuote, 'pct'],
+                    ['Conversion devis → accepté', body.metrics.conversionQuoteToAccept, 'pct']
+                ];
+                grid.innerHTML = cards.map(([label, metric, format]) => `
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-data">
+                            <div class="kpi-label">${label}</div>
+                            <div class="kpi-value">${adminMetricText(metric, format)}</div>
+                            <div class="kpi-sub">${window.adminEscape((metric && metric.definition) || '')}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            const table = document.getElementById('marketplaceTerritoryTable');
+            if (table) {
+                const rows = body.byTerritory || [];
+                table.innerHTML = rows.length
+                    ? `<table class="admin-table"><thead><tr><th>Territoire</th><th>Annonces</th><th>Ouvertes</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${window.adminEscape(row.territory)}</td><td>${row.requests}</td><td>${row.open}</td></tr>`).join('')}</tbody></table>`
+                    : '<p class="maison-muted">Pas assez de données territorialisées sur cet échantillon.</p>';
+            }
+            const missing = document.getElementById('marketplaceMissing');
+            if (missing) {
+                missing.innerHTML = (body.missingInstrumentation || []).map((row) => `<li><strong>${window.adminEscape(row.event)}</strong> — ${window.adminEscape(row.why)}</li>`).join('');
+            }
+        } catch (_error) {
+            /* marketplace is optional if KPIs already loaded */
+        }
+    };
+
+    document.getElementById('adminPeriodFilter')?.addEventListener('change', () => window.loadAdminControlCenter());
+    document.getElementById('adminTerritoryFilter')?.addEventListener('change', () => window.loadAdminControlCenter());
+    document.getElementById('gotoActionCenterBtn')?.addEventListener('click', () => {
+        document.querySelector('.admin-nav-item[data-section="sec-action"]')?.click();
+    });
+
     async function loadAdminRealData() {
         // 1. Fetch persistent Kill Switch state from DB
         try {
@@ -1888,54 +2068,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn("API /v1/admin/kill-switch/global fetch error:", e);
         }
 
-        // 2. Load KPIs from /v1/admin/kpis
-        try {
-            const res = await window.fetchWithAdminAuth('/v1/admin/kpis');
-            if (res.ok) {
-                const data = await res.json();
-                if (data.success && data.data_available) {
-                    const euro = (n) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
-                    const kpiGmv = document.getElementById('kpiGmv');
-                    if (kpiGmv && data.gmvMonth !== undefined) kpiGmv.textContent = euro(data.gmvMonth);
-                    const kpiRevenue = document.getElementById('kpiRevenue');
-                    if (kpiRevenue && data.mrrCommissions !== undefined) kpiRevenue.textContent = euro(data.mrrCommissions);
-                    const kpiUsers = document.getElementById('kpiTotalUsers');
-                    if (kpiUsers && data.activeMembers !== undefined) kpiUsers.textContent = data.activeMembers;
-                    const kpiMissions = document.getElementById('kpiTotalMissions');
-                    if (kpiMissions && data.activeMissions !== undefined) kpiMissions.textContent = data.activeMissions;
-                    const usersSub = document.getElementById('kpiUsersSub');
-                    if (usersSub) usersSub.textContent = `${data.realMembers || 0} membres • ${data.seedMembers || 0} profils maison • ${data.kycVerified || 0} KYC`;
-                    const missionsSub = document.getElementById('kpiMissionsSub');
-                    if (missionsSub) missionsSub.textContent = `${data.openRequests || 0} demandes ouvertes`;
-                    const activity = document.getElementById('kpiActivityMix');
-                    if (activity) activity.textContent = `${data.openRequests || 0} demandes • ${data.bokantajPosts || 0} Lyanns • ${data.conversations || 0} conv.`;
-                    const bots = document.getElementById('kpiActiveBots');
-                    if (bots) bots.textContent = `${data.activeAgents || 0} actifs • ${data.pendingApprovals || 0} en attente`;
-                    const disputes = document.getElementById('kpiOpenDisputes');
-                    if (disputes) disputes.textContent = `${data.openDisputes || 0} litiges • ${data.openReports || 0} signalements`;
-                    const agentBadge = document.getElementById('sidebarAgentBadge');
-                    if (agentBadge) agentBadge.textContent = String(data.activeAgents || 0);
-                    const disputeBadge = document.getElementById('sidebarDisputeBadge');
-                    if (disputeBadge) disputeBadge.textContent = String(data.openDisputes || 0);
-                    const maisonBadge = document.getElementById('sidebarMaisonBadge');
-                    if (maisonBadge && data.seedMembers !== undefined) maisonBadge.textContent = String(data.seedMembers);
-                    const attentionEditorial = document.getElementById('attentionEditorial');
-                    if (attentionEditorial) attentionEditorial.textContent = String(data.pendingApprovals || 0);
-                    const attentionModeration = document.getElementById('attentionModeration');
-                    if (attentionModeration) attentionModeration.textContent = String(data.openReports || 0);
-                    const attentionDisputes = document.getElementById('attentionDisputes');
-                    if (attentionDisputes) attentionDisputes.textContent = String(data.openDisputes || 0);
-                    const attentionRecent = document.getElementById('attentionRecent');
-                    if (attentionRecent) attentionRecent.textContent = `${data.bokantajPosts || 0} publications Bokantaj · ${data.openRequests || 0} annonces ouvertes · ${data.activeMembers || 0} membres`;
-                } else {
-                    renderUnavailableState('kpiContainer');
-                }
-            } else {
-                renderUnavailableState('kpiContainer');
-            }
-        } catch (e) {
-            console.warn("API /v1/admin/kpis error:", e);
-            renderUnavailableState('kpiContainer');
+        if (typeof window.loadAdminControlCenter === 'function') {
+            await window.loadAdminControlCenter();
         }
 
         // 3. Load Agents from /v1/admin/agents
