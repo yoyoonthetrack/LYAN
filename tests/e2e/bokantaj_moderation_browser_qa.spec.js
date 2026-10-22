@@ -67,5 +67,6 @@ for (const device of [
     await expect(card).toHaveCount(0);
     await page.evaluate(() => { window.__qaFeed.post = true; window.refreshPublicBokantajQuietly(); });
     await expect(card).toHaveCount(1);
+    await page.screenshot({ path: 'test-results/qa-bokantaj-' + device.name + '.png', animations: 'disabled' });
   });
 }
