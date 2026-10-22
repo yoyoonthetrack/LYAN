@@ -63,19 +63,82 @@ function authBanDuration(kind, hours) {
     return null;
 }
 
+const RESTRICTION_LABELS = Object.freeze({
+    none: 'Normal',
+    warned: 'Averti',
+    suspended: 'Suspendu',
+    banned: 'Banni',
+    expired: 'Expiré'
+});
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUserId(value) {
+    return UUID_RE.test(String(value || '').trim());
+}
+
+function restrictionLabel(status) {
+    return RESTRICTION_LABELS[status] || RESTRICTION_LABELS.none;
+}
+
 function restrictionFromSanctions(profile) {
-    if (!profile) return { restricted: false, status: 'none' };
+    if (!profile) return { restricted: false, status: 'none', label: restrictionLabel('none'), until: null, reason: null };
     if (profile.restriction_status === 'banned') {
-        return { restricted: true, status: 'banned', until: null };
+        return {
+            restricted: true,
+            status: 'banned',
+            label: restrictionLabel('banned'),
+            until: null,
+            reason: profile.restriction_reason || null
+        };
     }
     if (profile.restriction_status === 'suspended') {
         const until = profile.restricted_until ? new Date(profile.restricted_until) : null;
         if (!until || until.getTime() > Date.now()) {
-            return { restricted: true, status: 'suspended', until: profile.restricted_until || null };
+            return {
+                restricted: true,
+                status: 'suspended',
+                label: restrictionLabel('suspended'),
+                until: profile.restricted_until || null,
+                reason: profile.restriction_reason || null
+            };
         }
-        return { restricted: false, status: 'expired', until: profile.restricted_until };
+        return {
+            restricted: false,
+            status: 'expired',
+            label: restrictionLabel('expired'),
+            until: profile.restricted_until,
+            reason: profile.restriction_reason || null
+        };
     }
-    return { restricted: false, status: profile.restriction_status || 'none' };
+    const status = profile.restriction_status || 'none';
+    return {
+        restricted: status === 'warned',
+        status,
+        label: restrictionLabel(status),
+        until: profile.restricted_until || null,
+        reason: profile.restriction_reason || null
+    };
+}
+
+function sanitizeSearch(raw) {
+    return String(raw || '').trim().replace(/[%_,.()]/g, ' ').replace(/\s+/g, ' ').slice(0, 80);
+}
+
+function decorateUser(row, sanctions) {
+    const restriction = restrictionFromSanctions(row);
+    return {
+        id: row.id,
+        name: profileName(row),
+        first_name: row.first_name || '',
+        last_name: row.last_name || '',
+        city: row.city || null,
+        territory: row.territory || null,
+        created_at: row.created_at || null,
+        restriction_status: restriction.status,
+        restriction,
+        sanctions: sanctions || []
+    };
 }
 
 function createModerationCenter(deps) {
@@ -268,6 +331,77 @@ function createModerationCenter(deps) {
         };
     }
 
+    async function loadUserRecord(userId) {
+        const profile = await supabaseAdmin
+            .from('profiles')
+            .select('id, first_name, last_name, city, territory, restriction_status, restricted_until, restriction_reason, created_at, account_type')
+            .eq('id', userId)
+            .maybeSingle();
+        if (profile.error || !profile.data) return null;
+        const sanctions = await supabaseAdmin
+            .from('account_sanctions')
+            .select('id, user_id, kind, reason, created_at, ends_at, active, duration_hours')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+        return decorateUser(profile.data, sanctions.data || []);
+    }
+
+    async function listUsers({ q, status, territory, page, pageSize, selectedId }) {
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        let query = supabaseAdmin
+            .from('profiles')
+            .select('id, first_name, last_name, city, territory, restriction_status, restricted_until, restriction_reason, created_at, account_type', { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false })
+            .range(from, to);
+        if (status && status !== 'all') query = query.eq('restriction_status', status);
+        if (territory && territory !== 'all') query = query.eq('territory', territory);
+        const needle = sanitizeSearch(q);
+        if (needle && isUserId(needle)) {
+            query = supabaseAdmin
+                .from('profiles')
+                .select('id, first_name, last_name, city, territory, restriction_status, restricted_until, restriction_reason, created_at, account_type', { count: 'exact' })
+                .eq('id', needle)
+                .order('id', { ascending: true });
+        } else if (needle) {
+            query = query.or(`first_name.ilike.%${needle}%,last_name.ilike.%${needle}%,city.ilike.%${needle}%`);
+        }
+        const result = await query;
+        if (result.error) return { error: result.error };
+        let rows = result.data || [];
+        if (selectedId && isUserId(selectedId) && !rows.some((row) => row.id === selectedId)) {
+            const extra = await supabaseAdmin
+                .from('profiles')
+                .select('id, first_name, last_name, city, territory, restriction_status, restricted_until, restriction_reason, created_at, account_type')
+                .eq('id', selectedId)
+                .maybeSingle();
+            if (extra.data) rows = [extra.data, ...rows];
+        }
+        const ids = rows.map((row) => row.id);
+        const sanctions = ids.length
+            ? await supabaseAdmin
+                .from('account_sanctions')
+                .select('id, user_id, kind, reason, created_at, ends_at, active, duration_hours')
+                .in('user_id', ids)
+                .order('created_at', { ascending: false })
+                .limit(400)
+            : { data: [] };
+        const byUser = {};
+        (sanctions.data || []).forEach((row) => {
+            if (!byUser[row.user_id]) byUser[row.user_id] = [];
+            byUser[row.user_id].push(row);
+        });
+        return {
+            rows: rows.map((row) => decorateUser(row, byUser[row.id] || [])),
+            page,
+            page_size: pageSize,
+            total: typeof result.count === 'number' ? result.count : rows.length,
+            selected_id: selectedId && isUserId(selectedId) ? selectedId : null
+        };
+    }
+
     async function applySanction({ userId, kind, reason, duration, actorId }) {
         if (!reason || !String(reason).trim()) {
             return { ok: false, status: 400, error: 'Un motif est obligatoire.' };
@@ -371,19 +505,40 @@ function createModerationCenter(deps) {
             return { ok: false, status: 500, error: 'Historique de sanction non enregistré.' };
         }
 
-        const after = { restriction_status: updated.data.restriction_status, restricted_until: updated.data.restricted_until };
-        await audit(actorId, 'ACCOUNT_SANCTION', 'user', userId, before, after, reason, authResult.ok ? 'ok' : 'partial');
-
+        const after = {
+            restriction_status: updated.data.restriction_status,
+            restricted_until: updated.data.restricted_until,
+            restriction_reason: kind === 'lift' ? null : String(reason).slice(0, 500)
+        };
+        const authFailed = Boolean(authResult.attempted && authResult.ok === false);
+        await audit(actorId, 'ACCOUNT_SANCTION', 'user', userId, before, after, reason, authFailed ? 'partial' : 'ok');
+        const user = await loadUserRecord(userId);
+        const restriction = user ? user.restriction : restrictionFromSanctions({ ...updated.data, restriction_reason: after.restriction_reason });
+        let note;
+        if (authFailed && kind === 'lift') {
+            note = 'Le profil n’est plus restreint en base, mais Auth n’a pas confirmé le déban. Relancer la levée pour aligner Auth.';
+        } else if (authFailed) {
+            note = `Le compte est ${restriction.label.toLowerCase()} en base, mais Auth n’a pas confirmé. Les écritures restent bloquées. Relancer la mesure.`;
+        } else if (kind === 'lift') {
+            note = 'Sanction levée. Les écritures sont de nouveau autorisées.';
+        } else if (kind === 'warning') {
+            note = 'Avertissement enregistré. Stripe n’est pas modifié.';
+        } else {
+            note = `Compte ${restriction.label.toLowerCase()}. Les écritures publiques sont bloquées. Stripe n’est pas modifié.`;
+            if (restriction.until) note += ` Échéance : ${restriction.until}.`;
+        }
         return {
             ok: true,
-            status: 200,
-            restriction: restrictionFromSanctions(updated.data),
+            complete: !authFailed,
+            partial: authFailed,
+            status: authFailed ? 207 : 200,
+            restriction,
+            user,
             auth: authResult,
             open_missions: (missionsRes.data || []).length,
             stripe_untouched: true,
-            note: kind === 'lift'
-                ? 'Sanction levée. Les écritures sont de nouveau autorisées si Auth a accepté le déban.'
-                : 'Les écritures publiques (posts, commentaires, annonces, messages) sont bloquées côté RLS. Stripe n’est pas modifié.'
+            retry_auth: authFailed,
+            note
         };
     }
 
@@ -448,40 +603,26 @@ function createModerationCenter(deps) {
                     if (!usersAuth.authorized) {
                         return res.status(usersAuth.status).json({ success: false, error: usersAuth.error });
                     }
-                    let query = supabaseAdmin
-                        .from('profiles')
-                        .select('id, first_name, last_name, city, territory, restriction_status, restricted_until, restriction_reason, created_at, account_type')
-                        .order('created_at', { ascending: false })
-                        .limit(80);
-                    if (status !== 'all') query = query.eq('restriction_status', status);
-                    if (territory !== 'all') query = query.eq('territory', territory);
-                    const result = await query;
-                    if (result.error) return res.status(503).json({ success: false, error: 'Liste membres indisponible.' });
-                    let rows = result.data || [];
-                    if (q) {
-                        rows = rows.filter((row) => `${row.first_name || ''} ${row.last_name || ''} ${row.city || ''}`.toLowerCase().includes(q));
-                    }
-                    const sanctions = await supabaseAdmin
-                        .from('account_sanctions')
-                        .select('id, user_id, kind, reason, created_at, ends_at, active')
-                        .in('user_id', rows.map((row) => row.id))
-                        .order('created_at', { ascending: false })
-                        .limit(200);
-                    const byUser = {};
-                    (sanctions.data || []).forEach((row) => {
-                        if (!byUser[row.user_id]) byUser[row.user_id] = [];
-                        byUser[row.user_id].push(row);
+                    const page = Math.max(1, Number(req.query.page) || 1);
+                    const pageSize = Math.min(80, Math.max(10, Number(req.query.page_size) || 40));
+                    const listed = await listUsers({
+                        q,
+                        status,
+                        territory,
+                        page,
+                        pageSize,
+                        selectedId: req.query.selected || req.query.user_id || null
                     });
+                    if (listed.error) return res.status(503).json({ success: false, error: 'Liste membres indisponible.' });
                     return res.json({
                         success: true,
                         tab,
                         engine: await snapshotEngine(),
-                        rows: rows.map((row) => ({
-                            ...row,
-                            name: profileName(row),
-                            restriction: restrictionFromSanctions(row),
-                            sanctions: byUser[row.id] || []
-                        }))
+                        rows: listed.rows,
+                        page: listed.page,
+                        page_size: listed.page_size,
+                        total: listed.total,
+                        selected_id: listed.selected_id
                     });
                 }
 
@@ -582,6 +723,19 @@ function createModerationCenter(deps) {
             }
         });
 
+        app.get('/v1/admin/moderation-center/users/:id', async (req, res) => {
+            const usersAuth = await verifyAdminPermission(req, 'users.manage');
+            if (!usersAuth.authorized) {
+                return res.status(usersAuth.status).json({ success: false, error: usersAuth.error });
+            }
+            if (!isUserId(req.params.id)) {
+                return res.status(400).json({ success: false, error: 'Identifiant utilisateur invalide.' });
+            }
+            const user = await loadUserRecord(req.params.id);
+            if (!user) return res.status(404).json({ success: false, error: 'Compte introuvable.' });
+            return res.json({ success: true, user });
+        });
+
         app.get('/v1/admin/moderation-center/:subject/:id', async (req, res) => {
             const authResult = await verifyAdminPermission(req, 'moderation.manage');
             if (!authResult.authorized) {
@@ -655,12 +809,16 @@ function createModerationCenter(deps) {
                 actorId: authResult.userId
             });
             if (!result.ok) return res.status(result.status).json({ success: false, error: result.error });
-            return res.json({
+            return res.status(result.status).json({
                 success: true,
+                complete: result.complete,
+                partial: result.partial,
                 restriction: result.restriction,
+                user: result.user,
                 auth: result.auth,
                 open_missions: result.open_missions,
                 stripe_untouched: true,
+                retry_auth: result.retry_auth,
                 note: result.note
             });
         });
@@ -745,6 +903,9 @@ module.exports = {
     normalizeDecision,
     displayStatus,
     restrictionFromSanctions,
+    restrictionLabel,
+    isUserId,
+    sanitizeSearch,
     authBanDuration,
     REPORT_LABELS
 };

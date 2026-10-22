@@ -3749,8 +3749,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const label = String(status || '—');
         const key = label.toUpperCase();
         let cls = 'pending';
-        if (['OPEN','ACTIVE','SUCCEEDED','TRANSFERRED','RESOLVED','VERIFIED','ACCEPTED','COMPLETED','SEED','TRUE'].includes(key)) cls = 'verified';
-        if (['CANCELLED','FAILED','DISMISSED','SUSPENDED','DISPUTED'].includes(key) || key.includes('FAIL')) cls = 'suspended';
+        if (['OPEN','ACTIVE','SUCCEEDED','TRANSFERRED','RESOLVED','VERIFIED','ACCEPTED','COMPLETED','SEED','TRUE','NORMAL'].includes(key)) cls = 'verified';
+        if (['WARNED','AVERTI'].includes(key)) cls = 'pending';
+        if (['CANCELLED','FAILED','DISMISSED','SUSPENDED','DISPUTED','SUSPENDU','BANNED','BANNI'].includes(key) || key.includes('FAIL')) cls = 'suspended';
         return `<span class="status-badge ${cls}">${adminEscape(label)}</span>`;
     }
 
@@ -3894,6 +3895,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.loadAdminModerationCenter();
     };
 
+    window.modActivateUsersPane = function() {
+        window.__modTab = 'users';
+        document.querySelectorAll('.mod-tab').forEach((btn) => btn.classList.toggle('is-active', btn.getAttribute('data-mod-tab') === 'users'));
+        document.querySelectorAll('.mod-pane').forEach((pane) => pane.classList.toggle('is-active', pane.getAttribute('data-mod-pane') === 'users'));
+    };
+
     window.modQuery = function() {
         const params = new URLSearchParams();
         params.set('tab', window.__modTab || 'queue');
@@ -3905,6 +3912,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (status && status !== 'all') params.set('status', status);
         if (territory && territory !== 'all') params.set('territory', territory);
         if (since) params.set('since', new Date(since).toISOString());
+        if (window.__modTab === 'users') {
+            params.set('page', String(window.__modPage || 1));
+            params.set('page_size', '40');
+            if (window.__modSelectedUserId) params.set('selected', window.__modSelectedUserId);
+        }
         return params.toString();
     };
 
@@ -3962,29 +3974,67 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="mod-actions">${window.modRowActions(row)}</div>`;
     };
 
-    window.openModerationUser = function(userId, userName) {
-        document.querySelector('.admin-nav-item[data-section="sec-content"]')?.click();
-        window.switchModTab('users');
+    window.modRestrictionBadge = function(restriction) {
+        const label = restriction && restriction.label ? restriction.label : 'Normal';
+        return adminBadge(label);
+    };
+
+    window.renderModerationUserPanel = function(user) {
         const panel = document.getElementById('modDetail');
-        if (!panel) return;
+        if (!panel || !user) return;
+        const restriction = user.restriction || {};
+        const until = restriction.until ? adminDate(restriction.until) : 'Sans échéance';
+        const history = (user.sanctions || []).map((item) => {
+            const end = item.ends_at ? ` · jusqu’au ${adminDate(item.ends_at)}` : '';
+            return `${adminDate(item.created_at)} · ${adminEscape(item.kind)} · ${adminEscape(item.reason || '')}${end}`;
+        }).join('<br>') || 'Aucun historique de sanction.';
+        const savedReason = document.getElementById('modSanctionReason')?.value || '';
+        const savedDuration = document.getElementById('modSanctionDuration')?.value || '24h';
         panel.innerHTML = `
-            <h3>${adminEscape(userName || 'Compte')}</h3>
-            <p class="mod-meta">Avertir, suspendre ou bannir. Motif obligatoire. Stripe n’est pas modifié.</p>
-            <textarea id="modSanctionReason" class="admin-input" rows="3" placeholder="Motif visible dans l’audit"></textarea>
+            <h3 data-user-id="${adminEscape(user.id)}" data-user-status="${adminEscape(restriction.status || 'none')}">${adminEscape(user.name || 'Compte')}</h3>
+            <p class="mod-meta" data-user-id="${adminEscape(user.id)}">${window.modRestrictionBadge(restriction)} · ${adminEscape(user.id)}</p>
+            <p class="mod-meta" id="modUserUntil">${restriction.status === 'suspended' ? `Échéance : ${until}` : (restriction.status === 'banned' ? 'Bannissement durable' : 'Pas de restriction active')}</p>
+            <p class="mod-meta" id="modUserReason">${restriction.reason ? `Motif : ${adminEscape(restriction.reason)}` : 'Aucun motif courant.'}</p>
+            <textarea id="modSanctionReason" class="admin-input" rows="3" placeholder="Motif visible dans l’audit">${adminEscape(savedReason)}</textarea>
             <select id="modSanctionDuration" class="admin-select">
-                <option value="24h">24 heures</option>
-                <option value="7d">7 jours</option>
-                <option value="30d">30 jours</option>
+                <option value="24h"${savedDuration === '24h' ? ' selected' : ''}>24 heures</option>
+                <option value="7d"${savedDuration === '7d' ? ' selected' : ''}>7 jours</option>
+                <option value="30d"${savedDuration === '30d' ? ' selected' : ''}>30 jours</option>
             </select>
             <div class="mod-actions">
-                <button class="admin-btn admin-btn-secondary" onclick="window.adminSanctionUser('${userId}','warning')">Avertir</button>
-                <button class="admin-btn admin-btn-danger" onclick="window.adminSanctionUser('${userId}','suspend')">Suspendre</button>
-                <button class="admin-btn admin-btn-danger" onclick="window.adminSanctionUser('${userId}','ban')">Bannir</button>
-                <button class="admin-btn admin-btn-secondary" onclick="window.adminSanctionUser('${userId}','lift')">Lever</button>
-            </div>`;
+                <button type="button" class="admin-btn admin-btn-secondary" data-user-id="${adminEscape(user.id)}" data-sanction="warning" onclick="window.adminSanctionUser('${user.id}','warning')">Avertir</button>
+                <button type="button" class="admin-btn admin-btn-danger" data-user-id="${adminEscape(user.id)}" data-sanction="suspend" onclick="window.adminSanctionUser('${user.id}','suspend')">Suspendre</button>
+                <button type="button" class="admin-btn admin-btn-danger" data-user-id="${adminEscape(user.id)}" data-sanction="ban" onclick="window.adminSanctionUser('${user.id}','ban')">Bannir</button>
+                <button type="button" class="admin-btn admin-btn-secondary" data-user-id="${adminEscape(user.id)}" data-sanction="lift" onclick="window.adminSanctionUser('${user.id}','lift')">Lever</button>
+            </div>
+            <h4>Historique</h4>
+            <div class="mod-history" id="modUserHistory">${history}</div>`;
+    };
+
+    window.openModerationUser = async function(userId) {
+        if (!userId) return;
+        window.__modSelectedUserId = userId;
+        try { sessionStorage.setItem('lyann-mod-user', userId); } catch (_) {}
+        window.modActivateUsersPane();
+        const panel = document.getElementById('modDetail');
+        if (panel) panel.innerHTML = `<p class="mod-meta" data-user-id="${adminEscape(userId)}">Chargement du compte…</p>`;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/users/${userId}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success || !data.user) {
+            window.showModNotice(data.error || 'Fiche membre indisponible.', true);
+            return;
+        }
+        window.renderModerationUserPanel(data.user);
+        const row = document.querySelector(`#modUsersBody tr[data-user-id="${userId}"]`);
+        if (row) {
+            document.querySelectorAll('#modUsersBody tr').forEach((el) => el.classList.toggle('is-selected', el === row));
+            const badge = row.querySelector('[data-restriction]');
+            if (badge && data.user.restriction) badge.outerHTML = `<span data-restriction="${adminEscape(data.user.restriction.status)}">${window.modRestrictionBadge(data.user.restriction)}</span>`;
+        }
     };
 
     window.adminSanctionUser = async function(userId, kind) {
+        if (window.__modSanctionBusy) return;
         const reason = document.getElementById('modSanctionReason')?.value || '';
         const duration = document.getElementById('modSanctionDuration')?.value || '24h';
         if (!reason.trim()) {
@@ -3993,24 +4043,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const label = { warning: 'enregistrer un avertissement', suspend: 'suspendre ce compte', ban: 'bannir durablement ce compte', lift: 'lever la sanction' }[kind];
         if (!confirm(`Confirmer : ${label} ?`)) return;
-        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/users/${userId}/sanction`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ kind, reason, duration })
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.success) {
-            window.showModNotice(data.error || 'Sanction non appliquée.', true);
-            return;
+        window.__modSanctionBusy = true;
+        document.querySelectorAll('#modDetail [data-sanction]').forEach((btn) => { btn.disabled = true; });
+        try {
+            const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/users/${userId}/sanction`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kind, reason, duration })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                window.showModNotice(data.error || 'Sanction non appliquée.', true);
+                return;
+            }
+            const partial = data.partial || data.complete === false;
+            window.showModNotice(data.note || 'Mesure enregistrée.', partial);
+            if (data.user) window.renderModerationUserPanel(data.user);
+            window.__modSelectedUserId = userId;
+            await window.loadAdminModerationCenter();
+            if (window.__modSelectedUserId === userId) {
+                if (data.user) window.renderModerationUserPanel(data.user);
+                else await window.openModerationUser(userId);
+            }
+        } catch (_) {
+            window.showModNotice('La mesure n’a pas abouti. Réessayez.', true);
+        } finally {
+            window.__modSanctionBusy = false;
+            document.querySelectorAll('#modDetail [data-sanction]').forEach((btn) => { btn.disabled = false; });
         }
-        const status = data.restriction && data.restriction.status;
-        window.showModNotice(
-            status && status !== 'none'
-                ? `Compte ${status}. ${data.note || ''}`
-                : (data.note || 'Mesure enregistrée.'),
-            false
-        );
-        await window.loadAdminModerationCenter();
     };
 
     window.loadAdminModerationCenter = async function() {
@@ -4065,15 +4125,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         if (tab === 'users') {
+            if (!window.__modSelectedUserId) {
+                try { window.__modSelectedUserId = sessionStorage.getItem('lyann-mod-user') || ''; } catch (_) {}
+            }
             const body = document.getElementById('modUsersBody');
             if (body) {
-                body.innerHTML = rows.length ? rows.map((row) => `<tr>
+                body.innerHTML = rows.length ? rows.map((row) => {
+                    const selected = window.__modSelectedUserId === row.id;
+                    const restriction = row.restriction || { status: 'none', label: 'Normal' };
+                    return `<tr data-user-id="${adminEscape(row.id)}" class="${selected ? 'is-selected' : ''}">
                     <td>${adminEscape(row.name)}</td>
                     <td>${adminEscape(row.territory || row.city || '—')}</td>
-                    <td>${adminBadge(row.restriction?.status || row.restriction_status || 'none')}</td>
+                    <td><span data-restriction="${adminEscape(restriction.status)}">${window.modRestrictionBadge(restriction)}</span></td>
                     <td>${adminEscape(String((row.sanctions || []).length))}</td>
-                    <td><button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.openModerationUser('${row.id}','${adminEscape(row.name)}')">Mesures</button></td>
-                </tr>`).join('') : adminEmpty(5, 'Aucun compte.');
+                    <td><button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-user-id="${adminEscape(row.id)}" data-open-user="1" onclick="window.openModerationUser('${row.id}')">Mesures</button></td>
+                </tr>`;
+                }).join('') : adminEmpty(5, 'Aucun compte.');
+            }
+            const pager = document.getElementById('modUsersPager');
+            if (pager) {
+                const page = data.page || 1;
+                const total = data.total || 0;
+                const pageSize = data.page_size || 40;
+                const pages = Math.max(1, Math.ceil(total / pageSize));
+                window.__modPage = page;
+                pager.hidden = false;
+                pager.innerHTML = `<button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="window.modUsersPage(${page - 1})">Précédent</button>
+                    <span class="mod-meta">Page ${page} / ${pages} · ${total} compte${total > 1 ? 's' : ''}</span>
+                    <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" ${page >= pages ? 'disabled' : ''} onclick="window.modUsersPage(${page + 1})">Suivant</button>`;
+            }
+            if (window.__modSelectedUserId) {
+                const selectedRow = rows.find((row) => row.id === window.__modSelectedUserId);
+                if (selectedRow && !document.querySelector('#modDetail [data-sanction]')) {
+                    window.renderModerationUserPanel(selectedRow);
+                } else if (selectedRow) {
+                    const badge = document.querySelector(`#modUsersBody tr[data-user-id="${selectedRow.id}"] [data-restriction]`);
+                    if (badge) badge.outerHTML = `<span data-restriction="${adminEscape(selectedRow.restriction.status)}">${window.modRestrictionBadge(selectedRow.restriction)}</span>`;
+                }
             }
         }
         if (tab === 'reports') {
@@ -4097,6 +4185,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         return data;
+    };
+
+    window.modUsersPage = function(page) {
+        window.__modPage = Math.max(1, Number(page) || 1);
+        window.loadAdminModerationCenter();
     };
 
     window.adminUpdateModReport = async function(reportId, source, status) {
@@ -4597,11 +4690,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.addEventListener('click', () => window.switchModTab(btn.getAttribute('data-mod-tab')));
     });
     ['modSearch', 'modStatus', 'modTerritory', 'modSince'].forEach((id) => {
-        document.getElementById(id)?.addEventListener('change', () => window.loadAdminModerationCenter());
+        document.getElementById(id)?.addEventListener('change', () => {
+            window.__modPage = 1;
+            window.loadAdminModerationCenter();
+        });
     });
     document.getElementById('modSearch')?.addEventListener('input', () => {
         clearTimeout(window.__modSearchTimer);
-        window.__modSearchTimer = setTimeout(() => window.loadAdminModerationCenter(), 250);
+        window.__modSearchTimer = setTimeout(() => {
+            window.__modPage = 1;
+            window.loadAdminModerationCenter();
+        }, 250);
     });
     document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
         btn.addEventListener('click', () => alert('Offrir un abonnement Pro n’est pas une opération financière activée ici.'));

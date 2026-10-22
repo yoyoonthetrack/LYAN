@@ -9,6 +9,8 @@ const {
     normalizeDecision,
     displayStatus,
     restrictionFromSanctions,
+    restrictionLabel,
+    isUserId,
     authBanDuration
 } = require('../api/admin-moderation-center');
 const { applyDecision } = require('../api/moderation-worker');
@@ -34,15 +36,18 @@ function createFakeSupabase(store) {
             _filters: [],
             _payload: null,
             _op: 'select',
-            select() { return query; },
+            select(_cols, opts) { query._count = opts && opts.count; return query; },
             eq(col, val) { query._filters.push({ type: 'eq', col, val }); return query; },
             in(col, val) { query._filters.push({ type: 'in', col, val }); return query; },
             gte(col, val) { query._filters.push({ type: 'gte', col, val }); return query; },
             or() { return query; },
             order() { return query; },
             limit() { return query; },
+            range(from, to) { query._from = from; query._to = to; return query; },
             update(payload) { query._op = 'update'; query._payload = payload; return query; },
             insert(payload) {
+                const rows = Array.isArray(payload) ? payload : [payload];
+                store[table] = (store[table] || []).concat(rows);
                 store.writes.push({ table, op: 'insert', payload });
                 return Promise.resolve({ data: payload, error: null });
             },
@@ -58,7 +63,9 @@ function createFakeSupabase(store) {
                 store.writes.push({ table, op: 'update', payload: query._payload, filters: query._filters });
                 rows.forEach((row) => Object.assign(row, query._payload));
             }
-            return { data: single ? (rows[0] || null) : rows, error: null };
+            const count = rows.length;
+            if (query._from != null) rows = rows.slice(query._from, (query._to || query._from) + 1);
+            return { data: single ? (rows[0] || null) : rows, error: null, count };
         }
         return query;
     }
@@ -68,6 +75,7 @@ function createFakeSupabase(store) {
             admin: {
                 updateUserById(id, patch) {
                     store.authUpdates.push({ id, patch });
+                    if (store.authFail) return Promise.resolve({ data: null, error: { message: 'auth down' } });
                     return Promise.resolve({ data: { id }, error: null });
                 },
                 signOut(id) {
@@ -301,4 +309,63 @@ test('self and admin accounts cannot be sanctioned', async () => {
         actorId: 'other'
     });
     assert.equal(otherAdmin.status, 403);
+});
+
+test('Auth failure after a profile write is a partial result, not a full success', async () => {
+    const store = {
+        profiles: [{ id: 'user-1', first_name: 'QA', last_name: 'One', restriction_status: 'none', restricted_until: null }],
+        admin_members: [],
+        missions: [],
+        account_sanctions: [],
+        admin_audit_events: [],
+        authFail: true
+    };
+    const result = await createModerationCenter({ supabaseAdmin: createFakeSupabase(store) }).applySanction({
+        userId: 'user-1',
+        kind: 'suspend',
+        reason: 'QA partial',
+        duration: '24h',
+        actorId: 'admin-1'
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.complete, false);
+    assert.equal(result.partial, true);
+    assert.equal(result.status, 207);
+    assert.equal(result.retry_auth, true);
+    assert.equal(store.profiles[0].restriction_status, 'suspended');
+    assert.match(result.note, /Auth/);
+    assert.equal(restrictionLabel('suspended'), 'Suspendu');
+    assert.equal(isUserId('2c1e7c3a-6c0a-4f2d-9c1b-0a1b2c3d4e5f'), true);
+});
+
+test('users tab finds a member by exact id beyond the first page', async () => {
+    const target = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const profiles = Array.from({ length: 90 }, (_, i) => ({
+        id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+        first_name: 'Membre',
+        last_name: `N${i}`,
+        restriction_status: 'none',
+        created_at: `2026-01-01T00:00:${String(i % 60).padStart(2, '0')}Z`
+    }));
+    profiles.push({
+        id: target,
+        first_name: 'QA',
+        last_name: 'Hidden',
+        restriction_status: 'none',
+        created_at: '2025-01-01T00:00:00Z'
+    });
+    const app = { routes: {}, get(path, handler) { this.routes[path] = handler; }, post() {} };
+    createModerationCenter({
+        supabaseAdmin: createFakeSupabase({ profiles, account_sanctions: [], moderation_jobs: [] }),
+        verifyAdminPermission: async () => ({ authorized: true, userId: 'admin-1' })
+    }).register(app);
+    const res = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(payload) { this.body = payload; } };
+    await app.routes['/v1/admin/moderation-center']({ query: { tab: 'users', q: target } }, res);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.rows.length, 1);
+    assert.equal(res.body.rows[0].id, target);
+    assert.equal(res.body.rows[0].restriction.label, 'Normal');
+    const detail = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(payload) { this.body = payload; } };
+    await app.routes['/v1/admin/moderation-center/users/:id']({ params: { id: target } }, detail);
+    assert.equal(detail.body.user.id, target);
 });

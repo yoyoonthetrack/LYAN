@@ -942,6 +942,15 @@ body.admin-sidebar-collapsed .admin-nav-item[data-section="sec-mika"] {
     gap: 8px;
     margin-top: 16px;
 }
+.mod-pager {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 4px 4px;
+}
+#modUsersBody tr.is-selected td {
+    background: color-mix(in srgb, var(--ly-forest) 8%, white);
+}
 .mod-actions .admin-btn-danger {
     background: var(--ly-coral);
     border-color: var(--ly-coral);
