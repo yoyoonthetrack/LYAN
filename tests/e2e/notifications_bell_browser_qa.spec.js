@@ -42,7 +42,7 @@ for (const device of [
     });
     const badge = page.locator('.notif-badge-count');
     await expect(badge).toHaveText('99+');
-    await page.evaluate(() => window.openNotificationsModal());
+    await page.locator('#navNotifBtn').click();
     await expect(badge).toBeHidden();
     await expect(page.locator('#notificationsModal')).toHaveClass(/active/);
     await expect(page.locator('#notificationsModal .notif-item-card')).toHaveCount(105);
