@@ -11,12 +11,17 @@
     return Array.isArray(cached) && (Date.now() - cachedAt) < CACHE_TTL_MS;
   }
 
+  function isPubliclyVisible(item) {
+    const status = String((item && (item.moderation_status || item.public_moderation_status)) || '');
+    return status === 'approved';
+  }
+
   function sanitizeFeed(items) {
     if (!Array.isArray(items)) return [];
     return items.filter((item) => {
       if (!item) return false;
       if (item.item_type !== 'POST' || item.request_id) return false;
-      return true;
+      return isPubliclyVisible(item);
     });
   }
 
@@ -61,6 +66,7 @@
     load,
     invalidate,
     sanitizeFeed,
+    isPubliclyVisible,
     hasMore() { return lastHasMore; }
   });
 })();

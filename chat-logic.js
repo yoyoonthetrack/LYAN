@@ -1568,6 +1568,9 @@ window.refreshChatUI = async function () {
         currentChatContact.requestId = null;
         currentChatContact.requestData = null;
         hideChatMissionChrome();
+        if (window.LYANN_MEMBER_HELPDESK) window.LYANN_MEMBER_HELPDESK.syncBar(true);
+    } else if (window.LYANN_MEMBER_HELPDESK) {
+        window.LYANN_MEMBER_HELPDESK.syncBar(false);
     }
 
     const myUserId = getMyId();

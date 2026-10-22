@@ -107,6 +107,23 @@ test('helpdesk desktop: open, reply, resolve', async ({ page }) => {
   await expect(page.locator('#helpdeskNotice')).toContainText(/Réponse|enregistr/);
 });
 
+test('admin helpdesk create uses a form instead of prompt', async ({ page }) => {
+  await mockOperations(page);
+  await page.goto('/admin.html');
+  await showAdminShell(page);
+  await page.waitForFunction(() => typeof window.createHelpdeskTicket === 'function');
+  await page.evaluate(() => {
+    document.querySelectorAll('.admin-section').forEach((sec) => sec.classList.remove('active'));
+    document.getElementById('sec-support')?.classList.add('active');
+  });
+  await page.locator('#helpdeskCreateBtn').click({ force: true });
+  await expect(page.locator('#helpdeskCreateForm')).toBeVisible();
+  await page.locator('#helpdeskCreateSubject').fill('Ticket formulaire QA', { force: true });
+  await page.locator('#helpdeskCreateBody').fill('Créé sans prompt.', { force: true });
+  await page.locator('#helpdeskCreateSubmit').click({ force: true });
+  await expect(page.locator('#helpdeskNotice')).toContainText(/Ticket créé|enregistr/);
+});
+
 test('agent task panel mobile does not claim a worker execution', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockOperations(page);

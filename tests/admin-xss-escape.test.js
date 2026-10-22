@@ -31,3 +31,10 @@ test('helpdesk and task panels escape operator-facing fields', () => {
     assert.match(source, /adminEscape\(task\.instruction/);
     assert.doesNotMatch(source, /innerHTML = `\$\{ticket\.subject\}`/);
 });
+
+test('member helpdesk escapes ticket fields', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'member-helpdesk.js'), 'utf8');
+    assert.match(source, /esc\(row\.subject\)/);
+    assert.match(source, /esc\(msg\.body\)/);
+    assert.doesNotMatch(source, /innerHTML = ticket\.subject/);
+});

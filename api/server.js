@@ -1956,8 +1956,9 @@ const { registerAdminControlCenter } = require('./admin-control-center');
 registerAdminControlCenter(app, { supabaseAdmin, verifyAdminPermission });
 const { registerAdminModerationCenter } = require('./admin-moderation-center');
 registerAdminModerationCenter(app, { supabaseAdmin, verifyAdminPermission, recordAudit: recordMaisonAudit });
-const { registerAdminOperations } = require('./admin-operations');
+const { registerAdminOperations, registerMemberHelpdesk } = require('./admin-operations');
 registerAdminOperations(app, { supabaseAdmin, verifyAdminPermission });
+registerMemberHelpdesk(app, { supabaseAdmin, requireBearerUser });
 
 function adminProfileName(profile) {
     if (!profile) return 'Membre';

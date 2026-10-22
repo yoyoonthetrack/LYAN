@@ -1805,9 +1805,27 @@
                         <h1 class="admin-page-title">Helpdesk</h1>
                         <p class="admin-page-sub">Tickets d’assistance réellement enregistrés. Le temps de traitement est mesuré, sans promesse de délai.</p>
                     </div>
-                    <button type="button" class="admin-btn admin-btn-primary" id="helpdeskCreateBtn">Nouveau ticket</button>
+                    <button type="button" class="admin-btn admin-btn-primary" id="helpdeskCreateBtn" data-admin-wired="1">Nouveau ticket</button>
                 </div>
                 <p class="mod-notice" id="helpdeskNotice" hidden></p>
+                <form id="helpdeskCreateForm" class="admin-card" hidden>
+                    <h3>Nouveau ticket administratif</h3>
+                    <label>Sujet<input class="admin-input" id="helpdeskCreateSubject" required minlength="3" maxlength="160"></label>
+                    <label>UUID membre (optionnel)<input class="admin-input" id="helpdeskCreateMember" placeholder="uuid"></label>
+                    <label>Priorité
+                        <select class="admin-select" id="helpdeskCreatePriority">
+                            <option value="low">Basse</option>
+                            <option value="medium" selected>Moyenne</option>
+                            <option value="high">Haute</option>
+                            <option value="critical">Critique</option>
+                        </select>
+                    </label>
+                    <label>Premier message<textarea class="admin-input" id="helpdeskCreateBody" rows="4" placeholder="Contexte visible dans l’historique"></textarea></label>
+                    <div class="mod-actions">
+                        <button type="submit" class="admin-btn admin-btn-primary" id="helpdeskCreateSubmit" data-admin-wired="1">Enregistrer</button>
+                        <button type="button" class="admin-btn admin-btn-secondary" id="helpdeskCreateCancel" data-admin-wired="1">Annuler</button>
+                    </div>
+                </form>
                 <div class="mod-filters">
                     <input type="search" id="helpdeskSearch" class="admin-input" placeholder="Référence, sujet ou UUID membre">
                     <select id="helpdeskStatus" class="admin-select">

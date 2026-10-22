@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createOperationsEngine, canTransition, taskRunnable, registerAdminOperations } = require('../api/admin-operations');
+const { createOperationsEngine, canTransition, taskRunnable, registerAdminOperations, registerMemberHelpdesk } = require('../api/admin-operations');
 
 function memoryDb() {
     const tickets = new Map();
@@ -17,6 +17,7 @@ function memoryDb() {
             return [...tickets.values()].filter((row) => {
                 if (query.status && query.status !== 'all' && row.status !== query.status) return false;
                 if (query.q && !`${row.subject} ${row.reference} ${row.member_id || ''}`.includes(query.q)) return false;
+                if (query.member_id && row.member_id !== query.member_id) return false;
                 return true;
             });
         },
@@ -164,4 +165,85 @@ test('API returns 503 when helpdesk tables are missing', async () => {
     await app.routes['GET /v1/admin/operations/helpdesk']({ query: {} }, res);
     assert.equal(res.out.status, 503);
     assert.match(res.out.body.error, /migration 75/);
+});
+
+test('member helpdesk hides internals, ignores forged member_id and blocks another member', async () => {
+    const db = memoryDb();
+    const engine = createOperationsEngine({ db, now: () => '2026-10-22T08:00:00.000Z' });
+    const member = 'a3401c97-c68f-4e2f-8b92-b920632b4c50';
+    const other = 'b3401c97-c68f-4e2f-8b92-b920632b4c51';
+    const created = await engine.createMemberTicket(member, {
+        subject: 'Compte',
+        body: 'Mon accès pose problème.',
+        member_id: other,
+        assigned_to: other,
+        priority: 'critical'
+    });
+    assert.equal(created.ok, true);
+    assert.equal(created.ticket.member_id, member);
+    assert.equal(created.ticket.priority, 'medium');
+    await engine.addMessage('admin-1', created.ticket.id, { kind: 'internal', body: 'note secrète' });
+    await engine.addMessage('admin-1', created.ticket.id, { kind: 'public', body: 'Nous regardons cela.' });
+    const mine = await engine.getMemberTicket(member, created.ticket.id);
+    assert.equal(mine.ok, true);
+    assert.equal(mine.messages.some((row) => /secrète/.test(row.body)), false);
+    assert.equal(mine.ticket.assigned_to, undefined);
+    const stranger = await engine.getMemberTicket(other, created.ticket.id);
+    assert.equal(stranger.ok, false);
+    await engine.setStatus('admin-1', created.ticket.id, 'closed');
+    const reply = await engine.addMemberMessage(member, created.ticket.id, { body: 'Encore une question' });
+    assert.equal(reply.ok, false);
+});
+
+test('member API refuses anonymous and other-member access', async () => {
+    const app = captureApp();
+    registerMemberHelpdesk(app, {
+        supabaseAdmin: {
+            from() {
+                return {
+                    select() { return this; },
+                    eq() { return this; },
+                    maybeSingle: async () => ({ data: { id: 'a3401c97-c68f-4e2f-8b92-b920632b4c50', restriction_status: null } })
+                };
+            },
+            rpc: async () => ({ data: null })
+        },
+        requireBearerUser: async () => null
+    });
+    const res = mockRes();
+    await app.routes['GET /v1/me/helpdesk']({}, res);
+    assert.equal(res.out.status, 401);
+});
+
+
+test('member helpdesk fails closed when profile lookup errors, is missing, or is suspended', async () => {
+    const memberId = 'a3401c97-c68f-4e2f-8b92-b920632b4c50';
+    for (const scenario of [
+        { dbResult: { data: null, error: { message: 'database unavailable' } }, status: 503 },
+        { dbResult: { data: null, error: null }, status: 403 },
+        { dbResult: { data: { id: memberId, restriction_status: 'suspended' }, error: null }, status: 403 },
+        { throwError: true, status: 503 }
+    ]) {
+        const app = captureApp();
+        registerMemberHelpdesk(app, {
+            supabaseAdmin: {
+                from() {
+                    return {
+                        select() { return this; },
+                        eq() { return this; },
+                        maybeSingle: async () => {
+                            if (scenario.throwError) throw new Error('supabase unavailable');
+                            return scenario.dbResult;
+                        }
+                    };
+                },
+                rpc: async () => ({ data: null })
+            },
+            requireBearerUser: async () => ({ id: memberId })
+        });
+        const res = mockRes();
+        await app.routes['GET /v1/me/helpdesk']({}, res);
+        assert.equal(res.out.status, scenario.status);
+        assert.equal(res.out.body.success, false);
+    }
 });
