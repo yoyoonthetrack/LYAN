@@ -109,7 +109,7 @@ CREATE OR REPLACE FUNCTION public.lyann_guard_sensitive_moderation_fields()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = public
-AS $
+AS $$
 BEGIN
     IF public.lyann_is_service_role() THEN
         RETURN NEW;
@@ -132,7 +132,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$;
+$$;
 
 DROP TRIGGER IF EXISTS trg_guard_mod_fields_profiles ON public.profiles;
 CREATE TRIGGER trg_guard_mod_fields_profiles
