@@ -127,7 +127,7 @@ function sampleStore() {
             { id: 'post-seed', author_id: 'seed-1', public_moderation_status: 'approved', territory: 'guadeloupe', created_at: hoursAgo(4) },
             { id: 'post-pending', author_id: 'real-1', public_moderation_status: 'pending', territory: 'guadeloupe', created_at: hoursAgo(1) }
         ],
-        lyann_agents: [{ id: 'agent-1', status: 'ACTIVE' }],
+        lyann_agents: [{ id: 'agent-1', status: 'ACTIVE', linked_profile_id: 'agent-profile' }],
         lyann_agent_tasks: [
             { id: 'task-1', approval_status: 'PENDING', status: 'WAITING', agent_name: 'LYANN Actu', created_at: hoursAgo(2) },
             { id: 'task-fail', approval_status: 'REJECTED', status: 'FAILED', agent_name: 'LYANN Actu', created_at: hoursAgo(1) }
@@ -255,6 +255,8 @@ test('organic and maison posts stay separated', async () => {
     const kpis = await center(sampleStore()).computeKpis({ period: '30d' }, { includeFinance: false });
     assert.equal(kpis.metrics.bokantajOrganic.value, 1);
     assert.equal(kpis.metrics.bokantajAdministered.value, 1);
+    assert.equal(kpis.metrics.bokantajEditorial.value, 0);
+    assert.equal(kpis.metrics.bokantajUnknown.value, 0);
     assert.equal(kpis.metrics.seedMembers.value, 1);
     assert.equal(kpis.metrics.editorialAgents.value, 1);
 });
@@ -280,13 +282,15 @@ test('finance figures stay hidden without a finance role and never write', async
     const cc = createControlCenter({
         supabaseAdmin: db,
         verifyAdminPermission: async (_req, perm) => {
-            if (perm === 'finance.refund') return { authorized: false, status: 403, error: 'interdit' };
+            if (perm === 'finance.refund') return { authorized: true, role: 'SUPPORT', status: 200 };
             return { authorized: true, role: 'SUPPORT', status: 200 };
         },
         now: () => NOW,
         cacheTtlMs: 1
     });
-    const kpis = await cc.computeKpis({ period: '30d' }, { includeFinance: false });
+    assert.equal(await cc.canSeeFinance({}, { role: 'SUPPORT' }), false);
+    assert.equal(await cc.canSeeFinance({}, { role: 'OWNER' }), true);
+    const kpis = await cc.computeKpis({ period: '30d' }, { includeFinance: await cc.canSeeFinance({}, { role: 'SUPPORT' }) });
     assert.equal(kpis.metrics.gmvPeriod.available, false);
     const routes = {};
     const app = { get(path, handler) { routes[path] = handler; } };
@@ -358,4 +362,40 @@ test('paginated payments are fully summed instead of truncated to one page', asy
     const kpis = await center(store, { pageSize: 100 }).computeKpis({ period: '7d' }, { includeFinance: true });
     assert.equal(kpis.metrics.gmvPeriod.available, true);
     assert.equal(kpis.metrics.gmvPeriod.value, 250);
+});
+
+test('quote-to-accept cohort includes quotes created now on older requests', async () => {
+    const store = sampleStore();
+    store.quotes.push({
+        id: 'q-on-old-request',
+        request_id: 'req-old',
+        created_at: hoursAgo(6),
+        status: 'ACCEPTED',
+        updated_at: hoursAgo(6)
+    });
+    const kpis = await center(store).computeKpis({ period: '7d' }, { includeFinance: false });
+    assert.equal(kpis.metrics.quotesIssued.value, 4);
+    assert.equal(kpis.metrics.conversionQuoteToAccept.value, Number((2 / 4).toFixed(3)));
+    assert.equal(kpis.metrics.conversionRequestToQuote.value, Number((2 / 3).toFixed(3)));
+});
+
+test('unknown and editorial authors are never counted as organic Bokantaj', async () => {
+    const store = sampleStore();
+    store.profiles.push({ id: 'agent-profile', account_type: 'real', first_name: 'Bot', last_name: 'Actu', city: 'Basse-Terre', territory: 'guadeloupe', created_at: hoursAgo(10) });
+    store.bokantaj_posts.push(
+        { id: 'post-agent', author_id: 'agent-profile', public_moderation_status: 'approved', territory: 'guadeloupe', created_at: hoursAgo(2) },
+        { id: 'post-ghost', author_id: 'missing-user', public_moderation_status: 'approved', territory: 'guadeloupe', created_at: hoursAgo(2) },
+        { id: 'post-null', author_id: null, public_moderation_status: 'approved', territory: 'guadeloupe', created_at: hoursAgo(2) }
+    );
+    const kpis = await center(store).computeKpis({ period: '30d' }, { includeFinance: false });
+    assert.equal(kpis.metrics.bokantajOrganic.value, 1);
+    assert.equal(kpis.metrics.bokantajAdministered.value, 1);
+    assert.equal(kpis.metrics.bokantajEditorial.value, 1);
+    assert.equal(kpis.metrics.bokantajUnknown.value, 2);
+});
+
+test('finance.refund never grants analytic finance read', async () => {
+    const source = require('fs').readFileSync(require('path').join(__dirname, '..', 'api/admin-control-center.js'), 'utf8');
+    assert.equal(source.includes("verifyAdminPermission(req, 'finance.refund')"), false);
+    assert.match(source, /SUPER_ADMIN.*OWNER|OWNER.*SUPER_ADMIN/);
 });

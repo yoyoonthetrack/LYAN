@@ -31,8 +31,10 @@ const DEFINITIONS = {
     missionsCompleted: 'Période. Missions dont completed_at est dans la fenêtre. Pas un proxy sur created_at.',
     medianFirstQuoteHours: 'Cohorte. Médiane des délais (premier devis admissible − création d’annonce) sur les annonces de la période qui ont au moins un devis. Indisponible si le jeu est incomplet.',
     bokantajApproved: 'Instantané. Publications approved, tous auteurs confondus.',
-    bokantajOrganic: 'Instantané. Publications approved dont l’auteur est un profil réel. Jamais additionné aux contenus maison.',
-    bokantajAdministered: 'Instantané. Publications approved dont l’auteur est un profil maison.',
+    bokantajOrganic: 'Instantané. Publications approved dont l’auteur est un profil réel, hors agents. Un auteur inconnu n’est jamais classé organique.',
+    bokantajAdministered: 'Instantané. Publications approved dont l’auteur est un profil maison, hors agents.',
+    bokantajEditorial: 'Instantané. Publications approved dont l’auteur est linked_profile_id d’un agent éditorial.',
+    bokantajUnknown: 'Instantané. Publications approved sans auteur identifiable (ni réel, ni maison, ni agent).',
     bokantajPending: 'Instantané. Publications en attente de modération.',
     editorialPending: 'Instantané. Tâches agents approval_status=PENDING hors CANCELLED.',
     agentTaskApprovals: 'Instantané. Tâches WAITING_APPROVAL, distinctes de la file éditoriale.',
@@ -41,7 +43,7 @@ const DEFINITIONS = {
     gmvPeriod: 'Période. Somme customer_total_cents des paiements SUCCEEDED dans la fenêtre, en euros. Lecture seule. Indisponible si pagination incomplète, filtre territoire, ou droits finance absents.',
     collectedCommissions: 'Période. Somme lyann_revenue_cents des mêmes paiements. Pas un MRR.',
     conversionRequestToQuote: 'Cohorte. Part des annonces créées dans la période qui ont reçu au moins un devis admissible. Plusieurs devis sur une annonce comptent pour une seule conversion.',
-    conversionQuoteToAccept: 'Cohorte. Part des devis créés dans la période (hors DRAFT) aujourd’hui ACCEPTED. Distingue created_at de l’acceptation, qui n’est pas datée.'
+    conversionQuoteToAccept: 'Cohorte. Devis créés dans la période (hors DRAFT), y compris sur des annonces plus anciennes. Un devis = une ligne. Statut actuel ACCEPTED, pas une date d’acceptation.'
 };
 
 function periodBounds(period, nowInput) {
@@ -164,10 +166,9 @@ function createControlCenter({ supabaseAdmin, verifyAdminPermission, now = () =>
         return auth;
     }
 
-    async function canSeeFinance(req, auth) {
-        if (auth && ['SUPER_ADMIN', 'OWNER'].includes(auth.role)) return true;
-        const extra = await verifyAdminPermission(req, 'finance.refund');
-        return !!(extra && extra.authorized);
+    async function canSeeFinance(_req, auth) {
+        // No finance.read permission exists. Do not reuse finance.refund (mutation).
+        return !!(auth && ['SUPER_ADMIN', 'OWNER'].includes(auth.role));
     }
 
     async function computeFunnel({ start, territory }) {
@@ -188,25 +189,22 @@ function createControlCenter({ supabaseAdmin, verifyAdminPermission, now = () =>
         if (!requestFetch.available) return { available: false, error: requestFetch.error, requestCount };
 
         const requestIds = requestFetch.rows.map((row) => row.id);
-        const quotes = [];
+        const quotesOnCohort = [];
         for (const ids of chunk(requestIds, 200)) {
             if (!ids.length) continue;
             const part = await fetchAll(() =>
-                db.from('quotes').select('id, request_id, created_at, status, updated_at').in('request_id', ids).in('status', ISSUED_QUOTE).order('created_at', { ascending: true })
+                db.from('quotes').select('id, request_id, created_at, status').in('request_id', ids).in('status', ISSUED_QUOTE).order('created_at', { ascending: true })
             );
             if (!part.available) return { available: false, error: part.error, requestCount };
-            quotes.push(...part.rows);
+            quotesOnCohort.push(...part.rows);
         }
 
         const firstQuote = new Map();
         const quotedRequests = new Set();
-        const issuedInPeriod = [];
-        quotes.forEach((row) => {
-            if (ADMISSIBLE_QUOTE.includes(row.status)) quotedRequests.add(row.request_id);
-            if (!firstQuote.has(row.request_id) && ADMISSIBLE_QUOTE.includes(row.status)) {
-                firstQuote.set(row.request_id, row.created_at);
-            }
-            if (!start || row.created_at >= start) issuedInPeriod.push(row);
+        quotesOnCohort.forEach((row) => {
+            if (!ADMISSIBLE_QUOTE.includes(row.status)) return;
+            quotedRequests.add(row.request_id);
+            if (!firstQuote.has(row.request_id)) firstQuote.set(row.request_id, row.created_at);
         });
 
         const hours = [];
@@ -217,18 +215,64 @@ function createControlCenter({ supabaseAdmin, verifyAdminPermission, now = () =>
             if (Number.isFinite(delta) && delta >= 0) hours.push(delta);
         });
 
-        const acceptedCohort = issuedInPeriod.filter((row) => row.status === 'ACCEPTED').length;
+        const quoteCohort = await computeQuoteCohort({ start, territory });
         return {
             available: true,
             error: null,
             requestCount,
             requests: requestFetch.rows,
             quotedRequests,
-            issuedInPeriod,
+            issuedInPeriod: quoteCohort.issued || [],
+            quoteCohortAvailable: quoteCohort.available,
+            quoteCohortError: quoteCohort.error,
             conversionRequestToQuote: ratio(quotedRequests.size, requestFetch.rows.length),
-            conversionQuoteToAccept: ratio(acceptedCohort, issuedInPeriod.length),
+            conversionQuoteToAccept: quoteCohort.available
+                ? ratio(quoteCohort.accepted, quoteCohort.issued.length)
+                : { value: null, available: false, error: quoteCohort.error },
             medianFirstQuoteHours: hours.length ? median(hours) : null,
             sampleSize: hours.length
+        };
+    }
+
+    async function computeQuoteCohort({ start, territory }) {
+        const db = supabaseAdmin;
+        const issuedCount = await counted(
+            applyCreatedAt(db.from('quotes').select('*', { count: 'exact', head: true }).in('status', ISSUED_QUOTE), start)
+        );
+        if (!issuedCount.available) return { available: false, error: issuedCount.error, issued: [], accepted: 0 };
+        if (issuedCount.value > hardCap) {
+            return { available: false, error: 'jeu tronqué : trop de devis pour une cohorte fiable', issued: [], accepted: 0 };
+        }
+        const fetched = await fetchAll(() =>
+            applyCreatedAt(db.from('quotes').select('id, request_id, created_at, status').in('status', ISSUED_QUOTE), start)
+                .order('created_at', { ascending: true })
+        );
+        if (!fetched.available) return { available: false, error: fetched.error, issued: [], accepted: 0 };
+
+        const unique = new Map();
+        fetched.rows.forEach((row) => {
+            if (row && row.id && !unique.has(row.id)) unique.set(row.id, row);
+        });
+        let issued = [...unique.values()];
+
+        if (territory && territory !== 'all') {
+            const requestIds = [...new Set(issued.map((row) => row.request_id).filter(Boolean))];
+            const allowed = new Set();
+            for (const ids of chunk(requestIds, 200)) {
+                const part = await fetchAll(() =>
+                    db.from('requests').select('id, territory').in('id', ids).eq('territory', territory)
+                );
+                if (!part.available) return { available: false, error: part.error, issued: [], accepted: 0 };
+                part.rows.forEach((row) => allowed.add(row.id));
+            }
+            issued = issued.filter((row) => allowed.has(row.request_id));
+        }
+
+        return {
+            available: true,
+            error: null,
+            issued,
+            accepted: issued.filter((row) => row.status === 'ACCEPTED').length
         };
     }
 
@@ -305,41 +349,51 @@ function createControlCenter({ supabaseAdmin, verifyAdminPermission, now = () =>
     }
 
     async function computeContentSplit(territory) {
+        const unavailableSplit = (reason, approved) => ({
+            approved,
+            organic: unavailable(reason),
+            administered: unavailable(reason),
+            editorial: unavailable(reason),
+            unknown: unavailable(reason)
+        });
         const approved = await counted(
             applyTerritory(supabaseAdmin.from('bokantaj_posts').select('*', { count: 'exact', head: true }).eq('public_moderation_status', 'approved'), territory)
         );
-        const seedCount = await counted(supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_type', 'seed'));
-        if (!approved.available || !seedCount.available) {
-            return {
-                approved,
-                organic: unavailable('répartition auteur indisponible'),
-                administered: unavailable('répartition auteur indisponible')
-            };
+        if (!approved.available) return unavailableSplit(approved.error, approved);
+        if (approved.value > hardCap) return unavailableSplit('jeu tronqué : trop de publications pour classer les auteurs', approved);
+
+        const [reals, seeds, agents, posts] = await Promise.all([
+            fetchAll(() => supabaseAdmin.from('profiles').select('id, account_type').eq('account_type', 'real')),
+            fetchAll(() => supabaseAdmin.from('profiles').select('id, account_type').eq('account_type', 'seed')),
+            fetchAll(() => supabaseAdmin.from('lyann_agents').select('id, linked_profile_id')),
+            fetchAll(() =>
+                applyTerritory(supabaseAdmin.from('bokantaj_posts').select('id, author_id, source_name').eq('public_moderation_status', 'approved'), territory)
+            )
+        ]);
+        if (!reals.available || !seeds.available || !agents.available || !posts.available) {
+            return unavailableSplit(reals.error || seeds.error || agents.error || posts.error, approved);
         }
-        if (approved.value > hardCap || seedCount.value > hardCap) {
-            return {
-                approved,
-                organic: unavailable('jeu tronqué : trop de publications pour séparer organique et maison'),
-                administered: unavailable('jeu tronqué : trop de publications pour séparer organique et maison')
-            };
-        }
-        const seeds = await fetchAll(() => supabaseAdmin.from('profiles').select('id').eq('account_type', 'seed'));
-        const posts = await fetchAll(() =>
-            applyTerritory(supabaseAdmin.from('bokantaj_posts').select('id, author_id').eq('public_moderation_status', 'approved'), territory)
-        );
-        if (!seeds.available || !posts.available) {
-            return {
-                approved,
-                organic: unavailable(seeds.error || posts.error),
-                administered: unavailable(seeds.error || posts.error)
-            };
-        }
+
+        const realIds = new Set(reals.rows.map((row) => row.id));
         const seedIds = new Set(seeds.rows.map((row) => row.id));
-        const administered = posts.rows.filter((row) => seedIds.has(row.author_id)).length;
+        const agentIds = new Set(agents.rows.map((row) => row.linked_profile_id).filter(Boolean));
+        let organic = 0;
+        let administered = 0;
+        let editorial = 0;
+        let unknown = 0;
+        posts.rows.forEach((row) => {
+            const author = row.author_id;
+            if (author && agentIds.has(author)) editorial += 1;
+            else if (author && seedIds.has(author)) administered += 1;
+            else if (author && realIds.has(author)) organic += 1;
+            else unknown += 1;
+        });
         return {
             approved,
-            organic: { available: true, value: posts.rows.length - administered },
-            administered: { available: true, value: administered }
+            organic: { available: true, value: organic },
+            administered: { available: true, value: administered },
+            editorial: { available: true, value: editorial },
+            unknown: { available: true, value: unknown }
         };
     }
 
@@ -424,9 +478,9 @@ function createControlCenter({ supabaseAdmin, verifyAdminPermission, now = () =>
         ]);
 
         const noMission = await computeNoMission(unanswered.available ? unanswered.openIds : null);
-        const quotesIssued = funnel.available
+        const quotesIssued = funnel.quoteCohortAvailable
             ? { available: true, value: funnel.issuedInPeriod.length }
-            : unavailable(funnel.error || 'entonnoir indisponible');
+            : unavailable(funnel.quoteCohortError || 'cohorte devis indisponible');
 
         const payload = {
             success: true,
@@ -471,6 +525,8 @@ function createControlCenter({ supabaseAdmin, verifyAdminPermission, now = () =>
                 bokantajApproved: metric(content.approved, { kind: 'snapshot', definition: DEFINITIONS.bokantajApproved }),
                 bokantajOrganic: metric(content.organic, { kind: 'snapshot', definition: DEFINITIONS.bokantajOrganic }),
                 bokantajAdministered: metric(content.administered, { kind: 'snapshot', definition: DEFINITIONS.bokantajAdministered }),
+                bokantajEditorial: metric(content.editorial, { kind: 'snapshot', definition: DEFINITIONS.bokantajEditorial }),
+                bokantajUnknown: metric(content.unknown, { kind: 'snapshot', definition: DEFINITIONS.bokantajUnknown }),
                 bokantajPending: metric(bokantajPending, { kind: 'snapshot', definition: DEFINITIONS.bokantajPending }),
                 editorialPending: metric(editorialPending, { kind: 'snapshot', definition: DEFINITIONS.editorialPending }),
                 agentTaskApprovals: metric(agentApprovals, { kind: 'snapshot', definition: DEFINITIONS.agentTaskApprovals }),
@@ -480,9 +536,9 @@ function createControlCenter({ supabaseAdmin, verifyAdminPermission, now = () =>
                 conversionRequestToQuote: funnel.available
                     ? { ...funnel.conversionRequestToQuote, kind: 'cohort', definition: DEFINITIONS.conversionRequestToQuote }
                     : unavailable(funnel.error, { kind: 'cohort', definition: DEFINITIONS.conversionRequestToQuote }),
-                conversionQuoteToAccept: funnel.available
+                conversionQuoteToAccept: funnel.conversionQuoteToAccept && funnel.conversionQuoteToAccept.available !== false
                     ? { ...funnel.conversionQuoteToAccept, kind: 'cohort', definition: DEFINITIONS.conversionQuoteToAccept }
-                    : unavailable(funnel.error, { kind: 'cohort', definition: DEFINITIONS.conversionQuoteToAccept }),
+                    : unavailable((funnel.conversionQuoteToAccept && funnel.conversionQuoteToAccept.error) || funnel.quoteCohortError, { kind: 'cohort', definition: DEFINITIONS.conversionQuoteToAccept }),
                 gmvPeriod: {
                     value: payments.available ? payments.gmv : null,
                     available: payments.available,
@@ -703,7 +759,9 @@ function createControlCenter({ supabaseAdmin, verifyAdminPermission, now = () =>
                         conversionRequestToQuote: m.conversionRequestToQuote,
                         conversionQuoteToAccept: m.conversionQuoteToAccept,
                         bokantajOrganic: m.bokantajOrganic,
-                        bokantajAdministered: m.bokantajAdministered
+                        bokantajAdministered: m.bokantajAdministered,
+                        bokantajEditorial: m.bokantajEditorial,
+                        bokantajUnknown: m.bokantajUnknown
                     },
                     byTerritory: byTerritory.available ? byTerritory.rows : [],
                     byTerritoryAvailable: byTerritory.available,

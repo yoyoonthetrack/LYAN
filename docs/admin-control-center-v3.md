@@ -35,12 +35,13 @@ Style : design V2 conservé. Aucune règle de modération, Stripe, iOS ou Androi
 | Devis émis | Période | Devis créés dans la fenêtre hors `DRAFT`. Un devis ensuite accepté reste émis. |
 | Acceptations datées | Indisponible | Pas de `accepted_at`. |
 | Conversion annonce → devis | Cohorte | Part des annonces **créées dans la période** ayant ≥ 1 devis admissible. Plusieurs devis = une conversion. |
-| Conversion devis → accepté | Cohorte | Part des devis **créés dans la période** (hors DRAFT) aujourd’hui `ACCEPTED`. Ce n’est pas une date d’acceptation. |
+| Conversion devis → accepté | Cohorte | Devis **créés dans la période**, y compris sur des annonces plus anciennes. Statut actuel, pas `accepted_at`. |
 | Missions créées | Période | `created_at` dans la fenêtre. |
 | Missions terminées | Période | `completed_at` dans la fenêtre. Jamais un proxy sur `created_at`. |
 | Délai 1er devis | Cohorte | Médiane sur **toutes** les annonces de la période qui ont un devis. Indisponible si pagination incomplète. |
 | GMV / commissions | Période | Sommes paginées jusqu’à épuisement. Lecture seule. Masquées sans droit finance. Indisponibles si filtre territoire (paiements non territorialisés) ou jeu tronqué. |
-| Bokantaj organique / maison | Instantané | Auteur réel vs auteur seed. Jamais fusionnés en « activité organique ». |
+| Bokantaj organique / maison / agents / inconnu | Instantané | Auteur réel hors agent, seed hors agent, `lyann_agents.linked_profile_id`, sinon inconnu. Un auteur inconnu n’est jamais organique. |
+| Lecture finance | RBAC | OWNER / SUPER_ADMIN seulement. `finance.refund` n’ouvre pas les agrégats. |
 
 Devis admissible : `SENT`, `ACCEPTED`, `REJECTED`, `EXPIRED`.
 

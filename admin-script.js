@@ -1991,7 +1991,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const recent = document.getElementById('attentionRecent');
             if (recent) recent.textContent = `Période ${kpis.period || period} (${kpis.period_kind || ''}). Membres actifs : non mesurables.`;
             const mix = document.getElementById('kpiActivityMix');
-            if (mix) mix.textContent = `Organique ${adminMetricText(metrics.bokantajOrganic)} · maison ${adminMetricText(metrics.bokantajAdministered)} · file éditoriale ${adminMetricText(metrics.editorialPending)}`;
+            if (mix) mix.textContent = `Organique ${adminMetricText(metrics.bokantajOrganic)} · maison ${adminMetricText(metrics.bokantajAdministered)} · agents ${adminMetricText(metrics.bokantajEditorial)} · auteur inconnu ${adminMetricText(metrics.bokantajUnknown)}`;
             const freshness = document.getElementById('adminDataFreshness');
             if (freshness) freshness.textContent = `Dernière actualisation : ${new Date(data.generated_at || Date.now()).toLocaleString('fr-FR')}`;
             const actionBadge = document.getElementById('sidebarActionBadge');
@@ -2040,7 +2040,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ['Conversion annonce → devis', body.metrics.conversionRequestToQuote, 'pct'],
                     ['Conversion devis → accepté', body.metrics.conversionQuoteToAccept, 'pct'],
                     ['Bokantaj organique', body.metrics.bokantajOrganic],
-                    ['Bokantaj maison', body.metrics.bokantajAdministered]
+                    ['Bokantaj maison', body.metrics.bokantajAdministered],
+                    ['Bokantaj agents', body.metrics.bokantajEditorial],
+                    ['Bokantaj auteur inconnu', body.metrics.bokantajUnknown]
                 ];
                 grid.innerHTML = cards.map(([label, metric, format]) => `
                     <div class="admin-card kpi-card">
