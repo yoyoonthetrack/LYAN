@@ -2708,6 +2708,29 @@ safeDomReady(() => {
         window.LYANN_PULL_TO_REFRESH.attach(document, () => window.loadBokantajFeedFromSupabase({ force: true, background: true }));
     }
 
+    function refreshPublicBokantajQuietly() {
+        if (document.hidden) return;
+        if (!document.getElementById('flashFeedContainer')) return;
+        if (typeof window.loadBokantajFeedFromSupabase !== 'function') return;
+        window.loadBokantajFeedFromSupabase({ force: true, background: true });
+        document.querySelectorAll('.comments-drawer[style*="display: block"], .comments-drawer:not([style*="display: none"])').forEach((drawer) => {
+            const targetId = drawer.id && drawer.id.replace('comments-drawer-', '');
+            if (targetId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getComments === 'function') {
+                window.LYANN_API_CLIENT.getComments(targetId, 'POST').then((rows) => {
+                    const list = document.getElementById(`comments-list-${targetId}`);
+                    if (!list || !Array.isArray(rows)) return;
+                    const approved = rows.filter((row) => !row.public_moderation_status || row.public_moderation_status === 'approved');
+                    const label = document.querySelector(`.btn-comments-toggle[data-target-id="${targetId}"] .comments-count-label`);
+                    if (label) label.textContent = approved.length ? `Commenter (${approved.length})` : 'Commenter';
+                }).catch(() => {});
+            }
+        });
+    }
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') refreshPublicBokantajQuietly();
+    });
+    window.setInterval(refreshPublicBokantajQuietly, 8000);
+
     if (flashPhotoInput) {
         flashPhotoInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
@@ -3108,6 +3131,8 @@ safeDomReady(() => {
         const now = new Date();
         const list = currentFlashPosts.filter((post) => {
             if (!post || !bokantajPassesSafety(post)) return false;
+            const repo = window.LYANN_BOKANTAJ_REPOSITORY;
+            if (repo && typeof repo.isPubliclyVisible === 'function' && !repo.isPubliclyVisible(post)) return false;
             if (query && !query.postMatchesTypes(post, active.types)) return false;
             if (query && !query.postWithinPeriod(post, active.period, now)) return false;
             if (active.zone === 'commune' && active.commune && query && !query.communeMatches(post, active.commune)) return false;

@@ -1495,8 +1495,8 @@ const LYANN_API_CLIENT = {
                     moderation_status: p.public_moderation_status || null,
                     likes: (postLikesCountMap[p.id] !== undefined) ? postLikesCountMap[p.id] : (p.likes_count || 0),
                     user_has_liked: userLikedPostsSet.has(p.id),
-                    comments_count: postCommentsCountMap[p.id] || p.replies_count || 0,
-                    repliesCount: postCommentsCountMap[p.id] || p.replies_count || 0
+                    comments_count: (postCommentsCountMap[p.id] !== undefined) ? postCommentsCountMap[p.id] : 0,
+                    repliesCount: (postCommentsCountMap[p.id] !== undefined) ? postCommentsCountMap[p.id] : 0
                 };
             });
 
