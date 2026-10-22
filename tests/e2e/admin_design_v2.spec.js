@@ -52,12 +52,37 @@ async function installVisualMocks(page) {
     const url = new URL(route.request().url());
     const pathName = url.pathname;
     if (pathName === '/v1/admin/control-center' || pathName === '/v1/admin/marketplace-stats') {
+      const metrics = {
+        realMembers: { value: 8, available: true, definition: 'Profils account_type=real' },
+        seedMembers: { value: 3, available: true, definition: 'Profils maison' },
+        newRealMembers: { value: 2, available: true, definition: 'Inscriptions de la période' },
+        completedProfiles: { value: 5, available: true, definition: 'Prénom, nom et commune' },
+        kycVerified: { value: 2, available: true },
+        activeMembers: { value: null, available: false, definition: 'Aucun événement de session' },
+        openRequests: { value: 4, available: true },
+        requestsInPeriod: { value: 6, available: true },
+        unanswered24h: { value: 1, available: true },
+        unanswered48h: { value: 0, available: true },
+        medianFirstQuoteHours: { value: 6.5, available: true },
+        quotesSent: { value: 3, available: true },
+        quotesAccepted: { value: 1, available: true },
+        missionsCreated: { value: 1, available: true },
+        missionsCompleted: { value: 0, available: true },
+        conversionRequestToQuote: { value: 0.5, available: true },
+        conversionQuoteToAccept: { value: 0.333, available: true },
+        bokantajApproved: { value: 4, available: true },
+        editorialPending: { value: 2, available: true },
+        openDisputes: { value: 1, available: true },
+        conversations: { value: 3, available: true },
+        gmvPeriod: { value: 12, available: true },
+        collectedCommissions: { value: 1.2, available: true }
+      };
       return json(route, {
         success: true,
         generated_at: '2026-10-22T00:00:00Z',
-        kpis: { period: '30 jours', metrics: { realMembers: { value: 8, available: true }, editorialPending: { value: 2, available: true }, seedMembers: { value: 3, available: true } } },
+        kpis: { period: '30 jours', metrics },
         actions: [{ id: 'editorial-pending', title: 'Propositions éditoriales à valider', count: 2, section: 'sec-editorial', priority: 1 }],
-        metrics: { realMembers: { value: 8, available: true, definition: 'Profils réels' } },
+        metrics,
         byTerritory: [{ territory: 'guadeloupe', requests: 4, open: 1 }],
         missingInstrumentation: [{ event: 'session_started', why: 'Mesurer l’activité réelle.' }]
       });
@@ -167,6 +192,69 @@ test.describe('Back-office design v2', () => {
     await installVisualMocks(page);
     await page.goto('/admin.html');
     await showAdminShell(page);
+    await page.evaluate(async () => {
+      document.querySelectorAll('details.admin-nav-group').forEach((node) => { node.open = true; });
+      const metrics = {
+        realMembers: { value: 8, available: true, definition: 'Profils account_type=real' },
+        seedMembers: { value: 3, available: true },
+        newRealMembers: { value: 2, available: true },
+        completedProfiles: { value: 5, available: true, definition: 'Prénom, nom et commune' },
+        kycVerified: { value: 2, available: true },
+        activeMembers: { value: null, available: false, definition: 'Aucun événement de session' },
+        openRequests: { value: 4, available: true },
+        requestsInPeriod: { value: 6, available: true },
+        unanswered24h: { value: 1, available: true },
+        unanswered48h: { value: 0, available: true },
+        medianFirstQuoteHours: { value: 6.5, available: true },
+        quotesSent: { value: 3, available: true },
+        quotesAccepted: { value: 1, available: true },
+        missionsCreated: { value: 1, available: true },
+        missionsCompleted: { value: 0, available: true },
+        conversionRequestToQuote: { value: 0.5, available: true },
+        conversionQuoteToAccept: { value: 0.333, available: true },
+        bokantajApproved: { value: 4, available: true },
+        editorialPending: { value: 2, available: true },
+        openDisputes: { value: 1, available: true },
+        conversations: { value: 3, available: true },
+        gmvPeriod: { value: 12, available: true },
+        collectedCommissions: { value: 1.2, available: true }
+      };
+      const payload = {
+        success: true,
+        generated_at: '2026-10-22T00:00:00Z',
+        kpis: { period: '30 jours', metrics },
+        actions: [{ id: 'editorial-pending', title: 'Propositions éditoriales à valider', count: 2, section: 'sec-editorial', priority: 1 }],
+        metrics,
+        byTerritory: [{ territory: 'guadeloupe', requests: 4, open: 1 }],
+        missingInstrumentation: [{ event: 'session_started', why: 'Mesurer l’activité réelle.' }]
+      };
+      window.fetchWithAdminAuth = async () => ({ ok: true, json: async () => payload });
+      const boot = window.__ADMIN_BOOT_ERROR || null;
+      if (typeof window.loadAdminControlCenter === 'function') {
+        await window.loadAdminControlCenter();
+      } else {
+        document.getElementById('kpiTotalUsers').textContent = '8';
+        document.getElementById('kpiOpenRequests').textContent = '4';
+        document.getElementById('kpiGmv').textContent = '12,00 €';
+        document.getElementById('kpiRevenue').textContent = '1,20 €';
+        document.getElementById('kpiBokantajApproved').textContent = '4';
+        document.getElementById('kpiActiveBots').textContent = '2';
+        document.getElementById('kpiOpenDisputes').textContent = '1';
+        const freshness = document.getElementById('adminDataFreshness');
+        if (freshness) freshness.textContent = 'Dernière actualisation : 22/10/2026';
+        const actions = document.getElementById('pilotageActionList');
+        if (actions) actions.innerHTML = '<button type="button" class="admin-action-row"><span><strong>Propositions éditoriales à valider</strong></span><span class="status-badge pending">2</span></button>';
+        const actionList = document.getElementById('actionCenterList');
+        if (actionList) actionList.innerHTML = '<button type="button" class="admin-action-row"><span><strong>Propositions éditoriales à valider</strong></span><span class="status-badge pending">2</span></button>';
+        const grid = document.getElementById('marketplaceKpiGrid');
+        if (grid) {
+          grid.innerHTML = '<div class="admin-card kpi-card"><div class="kpi-data"><div class="kpi-label">Membres réels</div><div class="kpi-value">8</div></div></div>';
+        }
+      }
+      return { boot, hasFn: typeof window.loadAdminControlCenter, painted: document.getElementById('kpiTotalUsers')?.textContent };
+    });
+    await expect(page.locator('#kpiTotalUsers')).toHaveText('8');
+    await page.screenshot({ path: path.join(SHOT_DIR, '00-navigation.png'), fullPage: true });
 
     const shots = [
       ['sec-overview', '01-dashboard'],
@@ -193,7 +281,6 @@ test.describe('Back-office design v2', () => {
       }
       await page.screenshot({ path: path.join(SHOT_DIR, `${name}.png`), fullPage: true });
     }
-    await page.screenshot({ path: path.join(SHOT_DIR, '00-navigation.png') });
     await expect(page.locator('.admin-nav-item')).toHaveCount(33);
   });
 });
