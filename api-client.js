@@ -1478,13 +1478,16 @@ const LYANN_API_CLIENT = {
                     author_name: authorName,
                     author_avatar: avatarUrl,
                     author_city: authorProf?.city || authorProf?.territory || p.territory || 'Guadeloupe',
-                    badge: p.type === 'dispo' ? 'Disponibilité' : (p.type === 'besoin' ? 'Besoin' : 'Info Bokantaj'),
+                    badge: ({ trafic: '🚗 Trafic', bon_plan: '✨ Bon plan', restaurant: '🍴 Resto', avis: '⭐ Avis', evenement: '🎉 Sortie', info: '💬 Info', alerte: '⚠️ Alerte', astuce: '💡 Astuce' })[p.type] || 'Info Bokantaj',
                     badgeIcon: p.type === 'dispo' ? 'ph-lightning' : (p.type === 'besoin' ? 'ph-magnifying-glass' : 'ph-newspaper'),
                     type: p.type,
                     city: p.city || '',
                     territory: p.territory || authorProf?.territory || '',
                     location: p.city || p.territory || authorProf?.city || '',
                     territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
+                    place_lat: p.place_lat,
+                    place_lng: p.place_lng,
+                    place_label: p.place_label || null,
                     created_at: p.created_at,
                     content: p.content,
                     title: p.headline || '',
@@ -1509,6 +1512,29 @@ const LYANN_API_CLIENT = {
             console.error("❌ Error loading unified Bokantaj feed:", err);
             return { data: [], error: err.message || "Erreur serveur" };
         }
+    },
+
+    // Map requests are independent of the paginated feed and always public / approved only.
+    // Bounding-box filtering happens at PostgREST before the server-side cap.
+    async getMappedBokantajPosts(bounds) {
+        if (!this.supabase) return { data: [], error: 'Carte indisponible.' };
+        const { south, north, west, east } = bounds || {};
+        if (![south, north, west, east].every(Number.isFinite)
+            || south < -90 || north > 90 || west < -180 || east > 180
+            || south > north || west > east) {
+            return { data: [], error: 'Zone géographique invalide.' };
+        }
+        const { data, error } = await this.supabase
+            .from('bokantaj_posts')
+            .select('id, type, content, city, territory, media_urls, created_at, place_lat, place_lng, place_label')
+            .eq('public_moderation_status', 'approved')
+            .not('place_lat', 'is', null)
+            .not('place_lng', 'is', null)
+            .gte('place_lat', south).lte('place_lat', north)
+            .gte('place_lng', west).lte('place_lng', east)
+            .order('created_at', { ascending: false })
+            .limit(250);
+        return { data: data || [], error: error ? error.message : null };
     },
 
     // --- BOKANTAJ SOCIAL API METHODS ---
@@ -1566,6 +1592,17 @@ const LYANN_API_CLIENT = {
             territory: payload.territory || null,
             media_urls: payload.media_urls || []
         };
+        if (payload.place) {
+            const { lat, lng, label } = payload.place;
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)
+                || lat < -90 || lat > 90 || lng < -180 || lng > 180
+                || typeof label !== 'string' || label.trim().length < 2 || label.trim().length > 90) {
+                throw new Error('Sélectionnez un repère valide sur la carte.');
+            }
+            postRecord.place_lat = lat;
+            postRecord.place_lng = lng;
+            postRecord.place_label = label.trim();
+        }
 
         const { data, error } = await this.supabase
             .from('bokantaj_posts')

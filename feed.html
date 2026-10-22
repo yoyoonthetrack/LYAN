@@ -18,6 +18,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20261019-trace">
     <link rel="stylesheet" href="universe-header.css?v=20261018sheet2">
+    <link rel="stylesheet" href="bokantaj-map.css?v=20261022map1">
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4">
     
     <!-- Phosphor Icons -->
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
@@ -162,19 +164,33 @@
                         </div>
 
                         <form id="createFlashForm" hidden>
-                            <div class="bokantaj-type-picks" role="radiogroup" aria-label="Type de publication">
-                                <label><input type="radio" name="bokantajPostType" value="info" checked> Infos locales</label>
-                                <label><input type="radio" name="bokantajPostType" value="alerte"> Alertes</label>
-                                <label><input type="radio" name="bokantajPostType" value="bon_plan"> Bons plans</label>
-                                <label><input type="radio" name="bokantajPostType" value="evenement"> Événements</label>
-                                <label><input type="radio" name="bokantajPostType" value="astuce"> Astuces</label>
-                                <label><input type="radio" name="bokantajPostType" value="avis"> Avis</label>
+                            <div class="bokantaj-type-picks" role="radiogroup" aria-label="De quoi parle votre publication ?">
+                                <label><input type="radio" name="bokantajPostType" value="info" checked> 💬 Info</label>
+                                <label><input type="radio" name="bokantajPostType" value="trafic"> 🚗 Trafic</label>
+                                <label><input type="radio" name="bokantajPostType" value="bon_plan"> ✨ Bon plan</label>
+                                <label><input type="radio" name="bokantajPostType" value="restaurant"> 🍴 Resto</label>
+                                <label><input type="radio" name="bokantajPostType" value="avis"> ⭐ Avis</label>
+                                <label><input type="radio" name="bokantajPostType" value="evenement"> 🎉 Sortie</label>
                             </div>
                             <div class="composer-textarea-wrapper">
                                 <textarea id="flashContentInput" placeholder="Écrivez votre Lyann…" maxlength="280"></textarea>
                                 <div class="composer-char-counter"><span id="flashCharCount">0</span>/280</div>
                             </div>
                             <div class="flash-media-preview-container" id="flashMediaPreviewContainer"></div>
+                            <div class="bokantaj-place-composer">
+                                <button type="button" id="bokantajPlaceTrigger" class="bokantaj-place-trigger" aria-expanded="false" aria-controls="bokantajPlacePicker"><i class="ph ph-map-pin" aria-hidden="true"></i> <span id="bokantajPlaceTriggerLabel">Ajouter un lieu (facultatif)</span></button>
+                                <div id="bokantajPlacePicker" class="bokantaj-place-picker" hidden>
+                                    <p class="bokantaj-place-hint">Touchez la carte pour poser votre repère. Ne placez pas votre domicile : ce point sera visible par tous.</p>
+                                    <div id="bokantajPickerMap" class="bokantaj-picker-map" aria-label="Choisir un lieu sur la carte"></div>
+                                    <label for="bokantajPlaceName">Nom du quartier ou du repère</label>
+                                    <input type="text" id="bokantajPlaceName" maxlength="90" placeholder="Ex. Jarry, près du rond-point…" autocomplete="off">
+                                    <p class="bokantaj-place-status" id="bokantajPickerStatus" role="status">Touchez la carte pour choisir un point.</p>
+                                    <div class="bokantaj-place-picker-actions">
+                                        <button type="button" id="bokantajPlaceRemove" class="bokantaj-place-secondary">Sans lieu</button>
+                                        <button type="button" id="bokantajPlaceSave" class="bokantaj-place-primary">Utiliser ce lieu</button>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="composer-actions-bar">
                                 <label class="media-upload-btn" id="btnComposerPhoto" title="Joindre une photo">
                                     <i class="ph ph-image" aria-hidden="true"></i>
@@ -191,6 +207,11 @@
                         </form>
                     </div>
 
+                    <div class="bokantaj-view-tabs" role="tablist" aria-label="Explorer Bokantaj">
+                        <button type="button" id="bokantajViewFeed" role="tab" aria-selected="true" aria-controls="bokantajFeedSection" class="is-selected"><i class="ph ph-list-bullets" aria-hidden="true"></i> Fil</button>
+                        <button type="button" id="bokantajViewMap" role="tab" aria-selected="false" aria-controls="bokantajMapSection"><i class="ph ph-map-trifold" aria-hidden="true"></i> Carte</button>
+                    </div>
+                    <div id="bokantajFeedSection" role="tabpanel" aria-labelledby="bokantajViewFeed">
                     <div class="bokantaj-sort-bar" role="tablist" aria-label="Ordre du Bokantaj">
                         <button type="button" class="bokantaj-sort-tab is-selected" id="bokantajSortRecent" role="tab" aria-selected="true" data-sort="recent">Publications récentes</button>
                         <button type="button" class="bokantaj-sort-tab" id="bokantajSortNearby" role="tab" aria-selected="false" data-sort="nearby">Autour de moi</button>
@@ -206,6 +227,31 @@
                     <div class="flash-feed-list" id="flashFeedContainer">
                         <!-- Injected dynamic cards -->
                     </div>
+                    </div>
+                    <section id="bokantajMapSection" class="bokantaj-map-section" role="tabpanel" aria-labelledby="bokantajViewMap" hidden>
+                        <div class="bokantaj-map-topbar">
+                            <span>📍 Ce qui se passe dans le coin</span>
+                            <select id="bokantajMapTerritory" aria-label="Changer de territoire">
+                                <option value="guadeloupe">Guadeloupe</option>
+                                <option value="martinique">Martinique</option>
+                                <option value="guyane">Guyane</option>
+                                <option value="reunion">La Réunion</option>
+                                <option value="saint-martin">Saint-Martin</option>
+                            </select>
+                        </div>
+                        <div id="bokantajMapFilters" class="bokantaj-map-chips" aria-label="Filtrer la carte">
+                            <button type="button" data-map-type="all" class="is-active">Tout</button>
+                            <button type="button" data-map-type="trafic">🚗 Trafic</button>
+                            <button type="button" data-map-type="bon_plan">✨ Bons plans</button>
+                            <button type="button" data-map-type="restaurant">🍴 Restos</button>
+                            <button type="button" data-map-type="avis">⭐ Avis</button>
+                            <button type="button" data-map-type="info">💬 Infos</button>
+                            <button type="button" data-map-type="evenement">🎉 Sorties</button>
+                        </div>
+                        <div id="bokantajMapCanvas" class="bokantaj-map-canvas" aria-label="Carte des publications géolocalisées"></div>
+                        <p id="bokantajMapStatus" class="bokantaj-map-status" role="status">Zoomez sur un quartier pour explorer les publications.</p>
+                        <article id="bokantajMapDetail" class="bokantaj-map-detail" hidden aria-live="polite"></article>
+                    </section>
 
                 </main>
 
@@ -1776,6 +1822,8 @@
     <script src="app-shell.js?v=20261011c"></script>
     <script src="messaging-ui.js?v=20261015j"></script>
     <script src="script.js?v=20261022-comments"></script>
+    <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
+    <script src="bokantaj-map.js?v=20261022map1"></script>
     <script src="onboarding.js"></script>
     <script src="profile-completion.js"></script>
 

@@ -3381,8 +3381,16 @@ safeDomReady(() => {
                     if (!authorDisplayName || isUUID(authorDisplayName)) authorDisplayName = 'Lyanneur';
                     const authorDisplayNameHtml = window.escapeHtmlAttr(authorDisplayName);
 
-                    const placeLabel = post.author_city || post.location || '';
+                    const placeLabel = post.place_label || post.author_city || post.location || '';
                     const locationText = placeLabel ? window.escapeHtmlAttr(placeLabel) : '';
+                    const mappedPoint = !isLyann && post.place_label && post.place_lat != null && post.place_lng != null
+                        && Number.isFinite(Number(post.place_lat)) && Number.isFinite(Number(post.place_lng));
+                    const mapShortcut = mappedPoint
+                        ? '<button type="button" class="bokantaj-post-map-link" data-bokantaj-map-post="' + window.escapeHtmlAttr(targetId)
+                            + '" data-map-lat="' + Number(post.place_lat) + '" data-map-lng="' + Number(post.place_lng)
+                            + '"><i class="ph ph-map-pin" aria-hidden="true"></i> ' + window.escapeHtmlAttr(post.place_label)
+                            + ' · Voir sur la carte</button>'
+                        : '';
                     const distanceLabel = Number.isFinite(post._distanceKm) && window.LYANN_BOKANTAJ_QUERY
                         ? window.LYANN_BOKANTAJ_QUERY.formatDistanceKm(post._distanceKm, window.LYANN_GEO?.hasPreciseLocation?.())
                         : '';
@@ -3482,6 +3490,7 @@ safeDomReady(() => {
                             <!-- BODY BLOCK: HERO TITLE & CONTENT (CONDITIONNEL, SANS GAP SI VIDE) -->
                             ${bodyBlockHTML}
 
+                            ${mapShortcut}
                             <!-- FOOTER / ACTIONS ROW: SOCIAL ROW (L1) + METIER CTA ROW (L2) -->
                             <div class="flash-card-footer" style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.06); width: 100%; box-sizing: border-box;">
                                 <!-- L1: SOCIAL ROW (DISCRÈTE, LÉGÈRE, SANS BOUTON VOIR) -->
@@ -3915,7 +3924,8 @@ safeDomReady(() => {
                         type: type,
                         territory: territoryKey,
                         city: city,
-                        media_urls: mediaUrls
+                        media_urls: mediaUrls,
+                        place: window.LYANN_BOKANTAJ_MAP?.getComposerPlace?.() || null
                     });
                 }
                 rememberPendingPublication(createdPost && createdPost.id, createdPost && createdPost.public_moderation_status);
@@ -3934,6 +3944,7 @@ safeDomReady(() => {
                 }
 
                 createFlashForm.reset();
+                window.LYANN_BOKANTAJ_MAP?.resetComposerPlace?.();
                 if (flashCharCount) flashCharCount.textContent = '0';
                 showPublicationNotice({
                     status: createdPost && createdPost.public_moderation_status,
@@ -3979,6 +3990,7 @@ safeDomReady(() => {
         if (video) video.value = '';
         const infoType = document.querySelector('input[name="bokantajPostType"][value="info"]');
         if (infoType) infoType.checked = true;
+        window.LYANN_BOKANTAJ_MAP?.resetComposerPlace?.();
         if (form) form.hidden = true;
         if (opener) opener.setAttribute('aria-expanded', 'false');
     };

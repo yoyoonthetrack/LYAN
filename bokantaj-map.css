@@ -1,0 +1,49 @@
+/* Bokantaj Carte: compact pastel UX shared by Web and iOS WKWebView */
+.bokantaj-view-tabs{display:flex;gap:5px;padding:5px;background:#f0f4ed;border:1px solid #dae5da;border-radius:18px;margin:12px 0}
+.bokantaj-view-tabs button{flex:1;min-height:43px;border:0;background:transparent;border-radius:13px;color:#516457;font:700 .96rem 'Outfit',sans-serif;cursor:pointer}
+.bokantaj-view-tabs button i{margin-right:7px}
+.bokantaj-view-tabs button.is-selected{color:#214c32;background:#fff;box-shadow:0 2px 10px rgba(32,63,43,.09)}
+#bokantajFeedSection[hidden],#bokantajMapSection[hidden],#bokantajPlacePicker[hidden],#bokantajMapDetail[hidden]{display:none!important}
+.bokantaj-type-picks{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+.bokantaj-type-picks label{min-height:36px;cursor:pointer;border:1px solid #e2e8df;border-radius:999px;padding:7px 11px;background:#f9faf6;color:#405348;font-size:.86rem;font-weight:650}
+.bokantaj-type-picks label:has(input:checked){background:#dcecdf;border-color:#579164;color:#20472e}
+.bokantaj-type-picks input{accent-color:#4a7c59;margin-right:4px}
+.bokantaj-place-composer{margin:8px 0 13px}
+.bokantaj-place-trigger{border:1px solid #d9e5dc;border-radius:999px;background:#f4f8f1;color:#436350;min-height:40px;padding:8px 13px;cursor:pointer;font:650 .9rem 'Outfit',sans-serif;max-width:100%;text-align:left}
+.bokantaj-place-trigger.has-place{background:#e4efe2;color:#225c38;border-color:#78a885}
+.bokantaj-place-picker{margin-top:9px;padding:12px;border:1px solid #dde8db;border-radius:16px;background:#fcfdf9}
+.bokantaj-place-hint,.bokantaj-place-status{font-size:.82rem;line-height:1.4;color:#52665a;margin:0 0 10px}
+.bokantaj-picker-map{height:230px;border-radius:13px;background:#eaf0e6;overflow:hidden;margin-bottom:10px;z-index:1}
+.bokantaj-place-picker label{display:block;font:650 .84rem 'Outfit',sans-serif;margin:6px 0}
+#bokantajPlaceName{display:block;box-sizing:border-box;width:100%;height:42px;background:#fff;border-radius:11px;border:1px solid #d7ded4;padding:10px;font-size:1rem}
+.bokantaj-place-status{margin:8px 0 2px;min-height:18px}
+.bokantaj-place-picker-actions{display:flex;justify-content:space-between;gap:12px;margin-top:9px}
+.bokantaj-place-secondary,.bokantaj-place-primary{border:0;border-radius:999px;padding:9px 15px;min-height:42px;cursor:pointer;font-weight:700}
+.bokantaj-place-secondary{background:#f0f0e9;color:#435349}
+.bokantaj-place-primary{background:#4a7c59;color:#fff}
+.bokantaj-map-section{border-radius:18px;background:#fff;border:1px solid #e2e9e0;overflow:hidden;margin-bottom:24px}
+.bokantaj-map-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px;font-size:.93rem;font-weight:750;color:#254b32}
+.bokantaj-map-topbar select{min-height:37px;border:1px solid #dbe4d7;border-radius:10px;padding:5px;background:#f7faf4;color:#365740;font-weight:650}
+.bokantaj-map-chips{display:flex;overflow:auto;gap:6px;scrollbar-width:none;padding:0 12px 12px;-webkit-overflow-scrolling:touch}
+.bokantaj-map-chips button{flex:0 0 auto;border:1px solid #dce7dd;background:#f7faf6;color:#345440;padding:8px 10px;min-height:36px;border-radius:99px;font-weight:650;cursor:pointer;font-size:.82rem}
+.bokantaj-map-chips button.is-active{background:#4a7c59;color:#fff;border-color:#4a7c59}
+.bokantaj-map-canvas{height:min(59vh,580px);min-height:330px;background:#e5ece4;z-index:1}
+.bokantaj-map-status{font-size:.82rem;color:#607265;margin:0;padding:12px 15px}
+.bokantaj-map-pin{border-radius:50%;background:#f4ead1;border:3px solid #fff;box-shadow:0 2px 9px #173b2840;display:grid;place-items:center;font-size:22px}
+.bokantaj-map-pin.is-cluster{background:#37684a;color:white;font-size:16px;font-weight:850}
+.bokantaj-map-pin span{line-height:1}
+.bokantaj-map-detail{padding:13px 15px 16px;background:#fffaf2;border-top:1px solid #ecdfd0}
+.bokantaj-map-eyebrow{font-size:.79rem;color:#597260;font-weight:750;margin-bottom:6px}
+.bokantaj-map-body{white-space:pre-line;overflow-wrap:anywhere;font-size:.95rem;line-height:1.48;color:#29372f;margin:8px 0}
+.bokantaj-map-detail img{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:12px;margin:7px 0}
+.bokantaj-map-detail-actions{display:flex;justify-content:flex-end}
+.bokantaj-map-detail-actions button{background:#e5ebe0;border:0;padding:9px 17px;border-radius:99px;color:#345940;cursor:pointer;font-weight:700}
+@media(max-width:600px){
+ .bokantaj-map-topbar{padding:11px 9px;font-size:.83rem}
+ .bokantaj-map-topbar select{max-width:43%;font-size:.81rem}
+ .bokantaj-map-canvas{height:53dvh;min-height:350px}
+ .bokantaj-type-picks label{padding:7px 10px;font-size:.8rem}
+ .bokantaj-picker-map{height:215px}
+}
+
+.bokantaj-post-map-link{border:0;background:#edf5e9;color:#2c6241;border-radius:99px;min-height:34px;padding:6px 12px;margin-top:8px;text-align:left;cursor:pointer;font:650 .82rem 'Outfit',sans-serif;max-width:100%}
