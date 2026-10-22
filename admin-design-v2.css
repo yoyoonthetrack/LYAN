@@ -960,3 +960,21 @@ body.admin-sidebar-collapsed .admin-nav-item[data-section="sec-mika"] {
     .mod-layout,
     .mod-filters { grid-template-columns: 1fr; }
 }
+
+.admin-global-notice {
+    margin: 0;
+    padding: 10px 20px;
+    font-size: 0.88rem;
+    background: #eef6f0;
+    color: var(--ly-forest);
+    border-bottom: 1px solid var(--ly-line);
+}
+.admin-global-notice.is-error {
+    background: #fdecea;
+    color: #8a2b1a;
+}
+button.is-unavailable,
+[role="button"].is-unavailable {
+    opacity: 0.55;
+    cursor: not-allowed;
+}

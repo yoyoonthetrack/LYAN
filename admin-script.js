@@ -14,6 +14,75 @@ window.adminEscape = function(value) {
     }[char]));
 };
 
+window.adminShowOutcome = function(message, isError) {
+    const text = String(message || '').trim();
+    if (!text) return;
+    if (typeof window.showModNotice === 'function' && document.getElementById('modNotice')) {
+        window.showModNotice(text, !!isError);
+    }
+    let bar = document.getElementById('adminGlobalNotice');
+    if (!bar) {
+        bar = document.createElement('p');
+        bar.id = 'adminGlobalNotice';
+        bar.className = 'admin-global-notice';
+        const header = document.querySelector('.admin-header');
+        if (header) header.insertAdjacentElement('afterend', bar);
+        else document.body.prepend(bar);
+    }
+    bar.hidden = false;
+    bar.textContent = text;
+    bar.classList.toggle('is-error', !!isError);
+};
+
+window.adminMarkUnavailable = function(el, reason) {
+    if (!el) return;
+    const why = String(reason || 'Fonction non branchée. Aucun changement n’est effectué.');
+    el.setAttribute('data-unavailable', why);
+    el.setAttribute('title', why);
+    el.setAttribute('aria-disabled', 'true');
+    if ('disabled' in el) el.disabled = true;
+    el.classList.add('is-unavailable');
+    el.removeAttribute('onclick');
+};
+
+window.adminMarkWired = function(el) {
+    if (el) el.setAttribute('data-admin-wired', '1');
+};
+
+window.adminSealDeadControls = function(root) {
+    const scope = root || document;
+    scope.querySelectorAll('button, [role="button"], a.admin-nav-item, .chip-btn, .mod-tab, input[type="submit"], .admin-icon-btn').forEach((el) => {
+        if (el.closest('#adminLoginView, #adminAuthLoadingView')) return;
+        if (el.hasAttribute('data-unavailable')) return;
+        const onclick = el.getAttribute('onclick') || '';
+        if (/alert\s*\(\s*['"`]🎁|Abonnement Pro offert à cet utilisateur avec succès/i.test(onclick)
+            || /alert\s*\(\s*['"`]Fonction indisponible/i.test(onclick)
+            || /alert\s*\(\s*['"`]Signalement classé sans suite/i.test(onclick)) {
+            window.adminMarkUnavailable(el, 'Cette action n’est pas branchée. Aucun changement n’est effectué.');
+            return;
+        }
+        if (el.hasAttribute('data-admin-wired') || el.matches('[data-section], [data-mod-tab], .admin-modal-close, .admin-context-tab')) {
+            window.adminMarkWired(el);
+            return;
+        }
+        if (onclick) {
+            window.adminMarkWired(el);
+            return;
+        }
+        if (el.disabled && (el.title || el.textContent)) {
+            el.setAttribute('data-unavailable', el.title || String(el.textContent || '').trim());
+            return;
+        }
+        if (el.id) {
+            window.adminMarkWired(el);
+            return;
+        }
+        if (!el.disabled && !onclick && !el.matches('[data-section], [data-mod-tab], .admin-modal-close, .admin-context-tab, .command-palette-item')) {
+            window.adminMarkUnavailable(el, 'Contrôle non branché. Aucune action n’est exécutée.');
+        }
+    });
+};
+
 window.fetchWithAdminAuth = async function(url, options = {}) {
     const headers = Object.assign({}, options.headers || {});
     let token = '';
@@ -962,18 +1031,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Résolution de Ticket Support
     document.querySelectorAll('.btn-resolve-ticket').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const ticketId = btn.getAttribute('data-ticket-id') || 'T-1082';
-            alert('Aucun ticket Helpdesk n’est branché. Traite les signalements dans Modération ou Aide LYANN.');
-            const row = btn.closest('tr');
-            if (row) {
-                const statusBadge = row.querySelector('.status-badge');
-                if (statusBadge) {
-                    statusBadge.className = 'status-badge resolved';
-                    statusBadge.textContent = 'RÉSOLU';
-                }
-            }
-        });
+        window.adminMarkUnavailable(btn, 'Aucun ticket Helpdesk n’est branché. Traite les signalements dans Modération.');
     });
 
     // Approbation / Rejet des Publications IA
@@ -1037,20 +1095,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-ignore-mod').forEach(btn => {
         btn.addEventListener('click', () => {
             const modId = btn.getAttribute('data-mod-id');
-            const row = document.getElementById(`mod-row-${modId}`);
-            if (row) row.remove();
-            alert('Signalement classé sans suite.');
+            if (!modId || typeof window.adminUpdateReport !== 'function') {
+                window.adminShowOutcome('Utilise l’onglet Signalements pour classer un dossier réel.', true);
+                return;
+            }
+            window.adminUpdateReport(modId, 'user', 'DISMISSED');
         });
+        window.adminMarkWired(btn);
     });
 
     // Bouton de Pause Générale d'Urgence IA
     const btnPauseAllAI = document.getElementById('btnPauseAllAI');
     if (btnPauseAllAI) {
         btnPauseAllAI.addEventListener('click', () => {
-            if (confirm('🚨 ATTENTION : Mettre en pause TOUS les Agents IA du réseau simultanément ?')) {
-                alert('⏸️ Tout le réseau d\'Agents IA a été mis en pause conservatoire.');
-            }
+            document.getElementById('globalKillSwitchBtn')?.click();
         });
+        window.adminMarkWired(btnPauseAllAI);
     }
 
     // Feature Flags Toggles
@@ -2273,7 +2333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${task.requires_approval && task.status === 'WAITING_APPROVAL' ?
                             `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver</button>
                              <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>`
-                            : `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Fonction indisponible')"><i class="ph-bold ph-eye"></i> Détails</button>`
+                            : `<button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" disabled data-unavailable="Ouvre la fiche agent depuis la liste pour voir le détail." title="Ouvre la fiche agent depuis la liste pour voir le détail."><i class="ph-bold ph-eye"></i> Détails</button>`
                         }
                     </td>
                 </tr>
@@ -2305,7 +2365,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver & Publier</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Fonction indisponible')"><i class="ph-bold ph-pencil"></i> Modifier</button>
+                    <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" disabled data-unavailable="La modification d’une tâche se fait dans Agent Studio, onglet Task Commander." title="La modification d’une tâche se fait dans Agent Studio, onglet Task Commander."><i class="ph-bold ph-pencil"></i> Modifier</button>
                     <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
                 </div>
             </div>
@@ -2470,7 +2530,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Load Studio Profile Data
         try {
-            const res = await fetch(`/v1/admin/agents/${agentId}/studio`);
+            const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/studio`);
             if (res.ok) {
                 const data = await res.json();
                 if (data.success) {
@@ -2580,7 +2640,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadStudioSubsections(agentId) {
         // 1. Performance
         try {
-            const perfRes = await fetch(`/v1/admin/agents/${agentId}/performance`);
+            const perfRes = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/performance`);
             if (perfRes.ok) {
                 const perf = await perfRes.json();
                 if (perf.success && perf.kpis) {
@@ -2594,7 +2654,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 2. Timeline
         try {
-            const timeRes = await fetch(`/v1/admin/agents/${agentId}/timeline`);
+            const timeRes = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/timeline`);
             if (timeRes.ok) {
                 const timeData = await timeRes.json();
                 const timelineContainer = document.getElementById('studioActivityTimeline');
@@ -2611,7 +2671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 3. Schedules
         try {
-            const schedRes = await fetch(`/v1/admin/agents/${agentId}/schedules`);
+            const schedRes = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/schedules`);
             if (schedRes.ok) {
                 const sData = await schedRes.json();
                 const schedBody = document.getElementById('studioSchedulerTableBody');
@@ -2631,7 +2691,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 4. Memory
         try {
-            const memRes = await fetch(`/v1/admin/agents/${agentId}/memory`);
+            const memRes = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/memory`);
             if (memRes.ok) {
                 const mData = await memRes.json();
                 const memList = document.getElementById('studioMemoryList');
@@ -2669,7 +2729,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             languages: document.getElementById('studioLanguages')?.value.split(',').map(s=>s.trim())
         };
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'identity', identity })
@@ -2689,7 +2749,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             permanent_instructions: document.getElementById('studioPermanentInstructions')?.value
         };
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'personality', personality })
@@ -2708,7 +2768,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rawTags = document.getElementById('studioNewTagInput')?.value || '';
         const internal_tags = rawTags.split(',').map(s=>s.trim()).filter(s=>s.length > 0);
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'territory', perimeter, internal_tags })
@@ -2725,7 +2785,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (rad) permissions[k] = rad.value;
         });
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'permissions', permissions })
@@ -2739,7 +2799,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const prompt = document.getElementById('commanderPromptInput')?.value;
         if (!prompt) return alert("Veuillez entrer une instruction pour l'agent.");
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/tasks/commander`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/tasks/commander`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt, mode: 'parse' })
@@ -2763,41 +2823,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!window.currentStudioAgentId) return;
         const prompt = document.getElementById('commanderPromptInput')?.value;
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/tasks/commander`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/tasks/commander`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt, mode: 'create' })
         });
-        if (res.ok) {
-            const data = await res.json();
-            alert(`✅ Tâche ${data.task.id} créée avec statut ${data.task.status}.`);
-            document.getElementById('commanderPreviewBox').style.display = 'none';
-            document.getElementById('commanderPromptInput').value = '';
-            loadAdminRealData();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            window.adminShowOutcome(data.error || 'Tâche non créée.', true);
+            return;
         }
+        window.adminShowOutcome(`Tâche ${data.task && data.task.id ? data.task.id : ''} créée (${data.task && data.task.status ? data.task.status : 'enregistrée'}).`);
+        document.getElementById('commanderPreviewBox').style.display = 'none';
+        if (document.getElementById('commanderPromptInput')) document.getElementById('commanderPromptInput').value = '';
+        loadAdminRealData();
     });
 
     // Takeover Release Button
     document.getElementById('btnReleaseTakeoverConversation')?.addEventListener('click', async () => {
         if (!window.currentStudioAgentId) return;
-        const res = await fetch(`/v1/admin/conversations/takeover/release`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/conversations/takeover/release`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ agent_id: window.currentStudioAgentId })
         });
-        if (res.ok) alert("✅ Main rendue à l'agent avec succès.");
+        if (res.ok) window.adminShowOutcome('Main rendue à l’agent.');
+        else window.adminShowOutcome('Prise de main non levée.', true);
     });
 
     // Suspend/Resume Agent
     document.getElementById('btnPauseIndividualAgent')?.addEventListener('click', async () => {
         if (!window.currentStudioAgentId) return;
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/suspend`, { method: 'POST' });
-        if (res.ok) alert(`✅ Agent ${window.currentStudioAgentId} suspendu.`);
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/suspend`, { method: 'POST' });
+        if (res.ok) window.adminShowOutcome('Agent suspendu.');
+        else window.adminShowOutcome('Agent non suspendu.', true);
     });
 
     window.deleteAgentMemory = async function(agentId, memoryId) {
         if (!confirm("Supprimer cette mémoire opérationnelle ?")) return;
-        const res = await fetch(`/v1/admin/agents/${agentId}/memory?memory_id=${memoryId}`, { method: 'DELETE' });
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/memory?memory_id=${memoryId}`, { method: 'DELETE' });
         if (res.ok) {
             alert("✅ Entrée mémoire supprimée.");
             loadStudioSubsections(agentId);
@@ -2999,7 +3063,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ command: cmd })
             });
             const data = await res.json();
-            if (!data.success) return;
+            if (!res.ok || !data.success) {
+                window.adminShowOutcome(data.error || 'Commande non interprétée.', true);
+                return;
+            }
 
             const interp = data.interpretation || {};
             document.getElementById('cmdInterpAgent').textContent = interp.agent || 'Mika';
@@ -3011,12 +3078,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             document.getElementById('commandInterpretationResult').style.display = 'block';
         } catch (e) {
-            console.error("Erreur parser commande:", e);
+            window.adminShowOutcome('Commande non interprétée.', true);
         }
     };
 
     window.confirmCommandExecution = function() {
-        alert('Fonction indisponible');
+        document.getElementById('commandInterpretationResult').style.display = 'none';
+        document.querySelector('.admin-nav-item[data-section="sec-agents"]')?.click();
+        document.getElementById('btnToggleApprovalCenter')?.click();
+        window.adminShowOutcome('Interprétation ouverte dans le centre de validations. Rien n’est publié automatiquement.');
     };
 
     window.cancelCommandExecution = function() {
@@ -3037,10 +3107,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert(`👍 Feedback [${type}] enregistré dans la mémoire de Mika !`);
             } else {
                 const body = await res.json().catch(() => ({}));
-                alert(body.error || 'Fonction indisponible');
+                window.adminShowOutcome(body.error || 'Feedback non enregistré.', true);
             }
         } catch (e) {
-            alert('Fonction indisponible');
+            window.adminShowOutcome('Feedback non enregistré.', true);
         }
     };
 
@@ -3052,10 +3122,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.loadMikaControlRoom();
             } else {
                 const body = await res.json().catch(() => ({}));
-                alert(body.error || 'Fonction indisponible');
+                window.adminShowOutcome(body.error || 'Tâches test non créées.', true);
             }
         } catch (e) {
-            alert('Fonction indisponible');
+            window.adminShowOutcome('Tâches test non créées.', true);
         }
     };
 
@@ -3068,14 +3138,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const payload = await list.json().catch(() => ({}));
             const agentId = payload.agent?.id || payload.id;
             if (!list.ok || !agentId) {
-                alert(payload.error || 'Fonction indisponible');
+                window.adminShowOutcome(payload.error || 'Suspension Mika impossible.', true);
                 return;
             }
             const path = currentlyActive ? `/v1/admin/agents/${agentId}/suspend` : `/v1/admin/agents/${agentId}/resume`;
             const res = await window.fetchWithAdminAuth(path, { method: 'POST' });
             const data = await res.json().catch(() => ({}));
             if (!res.ok || !data.success) {
-                alert(data.error || 'Fonction indisponible');
+                window.adminShowOutcome(data.error || 'Suspension Mika impossible.', true);
                 return;
             }
             if (badge) {
@@ -3090,7 +3160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : '<i class="ph-bold ph-pause-circle"></i> SUSPENDRE';
             }
         } catch (_) {
-            alert('Fonction indisponible');
+            window.adminShowOutcome('Suspension Mika impossible.', true);
         }
     };
 
@@ -3102,15 +3172,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    window.mikaTakeover = function() {
-        alert('Fonction indisponible');
+    window.mikaTakeover = async function() {
+        await window.openAgentStudioModal();
+        document.getElementById('drawerTabTakeover')?.click();
+        window.adminShowOutcome('Studio agent ouvert sur la prise de main. Choisis une conversation, puis confirme.');
     };
 
-    window.openAgentStudioModal = function(agentId = 'mika-001') {
-        const agentsNav = document.querySelector('.admin-nav-item[data-section="sec-agents"]');
-        if (agentsNav) {
-            agentsNav.click();
+    window.openAgentStudioModal = async function(agentId) {
+        document.querySelector('.admin-nav-item[data-section="sec-agents"]')?.click();
+        let id = agentId && agentId !== 'mika-001' ? agentId : '';
+        if (!id) {
+            try {
+                const res = await window.fetchWithAdminAuth('/v1/admin/agents/mika');
+                const body = await res.json().catch(() => ({}));
+                id = body.agent?.id || body.id || '';
+            } catch (_) {
+                id = '';
+            }
         }
+        if (id && typeof window.openAgentDetailDrawer === 'function') {
+            await window.openAgentDetailDrawer(id);
+            return;
+        }
+        window.adminShowOutcome('Liste des agents ouverte. Sélectionne un agent pour ouvrir le studio.');
     };
 
     window.exportAdminReportCSV = function(type = 'accounting') {
@@ -3892,7 +3976,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.__modTab = tab;
         document.querySelectorAll('.mod-tab').forEach((btn) => btn.classList.toggle('is-active', btn.getAttribute('data-mod-tab') === tab));
         document.querySelectorAll('.mod-pane').forEach((pane) => pane.classList.toggle('is-active', pane.getAttribute('data-mod-pane') === tab));
-        window.loadAdminModerationCenter();
+        Promise.resolve()
+            .then(() => window.loadAdminModerationCenter())
+            .catch((err) => window.showModNotice(err && err.message ? err.message : 'Console de modération indisponible.', true));
     };
 
     window.modActivateUsersPane = function() {
@@ -4703,7 +4789,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 250);
     });
     document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
-        btn.addEventListener('click', () => alert('Offrir un abonnement Pro n’est pas une opération financière activée ici.'));
+        window.adminMarkUnavailable(btn, 'Offrir un abonnement Pro n’est pas une opération financière activée ici.');
+    });
+    document.getElementById('btnAdminQuickNotifications')?.addEventListener('click', () => {
+        document.querySelector('.admin-nav-item[data-section="sec-notifications"]')?.click();
     });
     document.getElementById('userTerritoryFilter')?.addEventListener('change', () => {
         const territory = document.getElementById('userTerritoryFilter')?.value || 'all';
@@ -4727,6 +4816,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     window.loadMikaControlRoom();
 
+    document.querySelectorAll('button[id], .admin-icon-btn[id], .admin-nav-item, .mod-tab, .admin-modal-close, .command-palette-item, [onclick], [data-section], [data-mod-tab]').forEach((el) => {
+        if (!el.hasAttribute('data-unavailable')) window.adminMarkWired(el);
+    });
+    document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
+        window.adminMarkUnavailable(btn, 'Offrir un abonnement Pro n’est pas une opération financière activée ici.');
+    });
+    window.adminSealDeadControls();
     console.log('Back-office LYANN initialisé.');
     } catch (bootErr) {
         console.error('[ADMIN BOOT]', bootErr);
