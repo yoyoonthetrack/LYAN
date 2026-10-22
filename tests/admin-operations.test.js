@@ -221,7 +221,8 @@ test('member helpdesk fails closed when profile lookup errors, is missing, or is
     for (const scenario of [
         { dbResult: { data: null, error: { message: 'database unavailable' } }, status: 503 },
         { dbResult: { data: null, error: null }, status: 403 },
-        { dbResult: { data: { id: memberId, restriction_status: 'suspended' }, error: null }, status: 403 }
+        { dbResult: { data: { id: memberId, restriction_status: 'suspended' }, error: null }, status: 403 },
+        { throwError: true, status: 503 }
     ]) {
         const app = captureApp();
         registerMemberHelpdesk(app, {
@@ -230,7 +231,10 @@ test('member helpdesk fails closed when profile lookup errors, is missing, or is
                     return {
                         select() { return this; },
                         eq() { return this; },
-                        maybeSingle: async () => scenario.dbResult
+                        maybeSingle: async () => {
+                            if (scenario.throwError) throw new Error('supabase unavailable');
+                            return scenario.dbResult;
+                        }
                     };
                 },
                 rpc: async () => ({ data: null })

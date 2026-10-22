@@ -43,6 +43,8 @@ test('member helpdesk desktop create and open ticket', async ({ page }) => {
   await installMemberHelpdeskMock(page);
   await page.evaluate(() => window.LYANN_MEMBER_HELPDESK.open());
   await expect(page.locator('#lyannHelpdeskTitle')).toContainText('On est là');
+  const z = await page.locator('#lyannHelpdeskRoot').evaluate((el) => Number(getComputedStyle(el).zIndex));
+  expect(z).toBeGreaterThan(200000);
   await page.fill('#lyannHelpdeskForm textarea[name="body"]', 'Mon accès pose problème.');
   await page.locator('#lyannHelpdeskSend').click();
   await expect(page.locator('#lyannHelpdeskTitle')).toContainText('Compte');
