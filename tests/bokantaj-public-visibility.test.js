@@ -47,3 +47,14 @@ test('quiet moderation refresh removes hidden comments from an already-open draw
     assert.match(refresh, /list\.innerHTML\s*=\s*approved\.length/);
     assert.match(refresh, /window\.renderBokantajCommentRow\(row, targetId\)/);
 });
+
+test('quiet feed refresh keeps an open comment drawer mounted', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
+    const start = source.indexOf('window.loadBokantajFeedFromSupabase');
+    const end = source.indexOf('// Initial feed trigger', start);
+    const loader = source.slice(start, end);
+    assert.match(loader, /previousPublicIds/);
+    assert.match(loader, /samePublicSet/);
+    assert.match(loader, /if \(!samePublicSet\)/);
+    assert.match(loader, /openIds\.forEach/);
+});

@@ -2647,6 +2647,7 @@ safeDomReady(() => {
         const gen = ++bokantajLoadGen;
         bokantajFeedLoading = true;
         const quiet = options.background === true && bokantajFeedState === 'READY' && currentFlashPosts.length > 0;
+        const previousPublicIds = currentFlashPosts.map((post) => post && post.id).filter(Boolean);
         console.log("[BOKANTAJ] init start");
         const isExplicitDemoMode = typeof window !== 'undefined' && (
             window.LYANN_FORCE_DEMO_DATA === true ||
@@ -2688,8 +2689,21 @@ safeDomReady(() => {
             }
         } finally {
             if (gen === bokantajLoadGen) {
-                renderFlashFeed();
-                window.renderTalentsSidebar(isExplicitDemoMode);
+                const nextPublicIds = currentFlashPosts.map((post) => post && post.id).filter(Boolean);
+                const samePublicSet = quiet
+                    && previousPublicIds.length === nextPublicIds.length
+                    && previousPublicIds.every((id, index) => id === nextPublicIds[index]);
+                if (!samePublicSet) {
+                    const openIds = [...document.querySelectorAll('.comments-drawer')]
+                        .filter((drawer) => drawer.style.display && drawer.style.display !== 'none')
+                        .map((drawer) => drawer.id.replace('comments-drawer-', ''));
+                    renderFlashFeed();
+                    openIds.forEach((id) => {
+                        const drawer = document.getElementById(`comments-drawer-${id}`);
+                        if (drawer) drawer.style.display = 'block';
+                    });
+                    window.renderTalentsSidebar(isExplicitDemoMode);
+                }
             }
             bokantajFeedLoading = false;
         }
@@ -2721,7 +2735,7 @@ safeDomReady(() => {
                     if (!list || !Array.isArray(rows)) return;
                     // A comment hidden while the drawer is open must disappear from the visible DOM,
                     // not merely from its counter. Only repaint if the visible set changed.
-                    const approved = rows.filter((row) => row.public_moderation_status === 'approved');
+                    const approved = rows.filter((row) => !row.public_moderation_status || row.public_moderation_status === 'approved');
                     const visibleIds = [...list.querySelectorAll('.comment-item-row[data-comment-id]')]
                         .map((node) => node.dataset.commentId);
                     const approvedIds = approved.map((row) => String(row.id));
@@ -2742,6 +2756,7 @@ safeDomReady(() => {
         if (document.visibilityState === 'visible') refreshPublicBokantajQuietly();
     });
     window.setInterval(refreshPublicBokantajQuietly, 8000);
+    window.refreshPublicBokantajQuietly = refreshPublicBokantajQuietly;
 
     if (flashPhotoInput) {
         flashPhotoInput.addEventListener('change', (e) => {
