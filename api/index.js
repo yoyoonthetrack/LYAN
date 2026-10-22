@@ -11,8 +11,14 @@
  */
 const { createClient } = require('@supabase/supabase-js');
 const { inspectStripeEnv, stagingBrowserOriginAllowed } = require('./stripe-policy');
-const { assertHostedIsolation, browserOriginAllowed } = require('./runtime-isolation');
-const app = require('./server.js');
+const { assertHostedIsolation, browserOriginAllowed, runtimeIdentity } = require('./runtime-isolation');
+let expressApp = null;
+function getExpressApp() {
+    if (!expressApp) {
+        expressApp = require('./server.js');
+    }
+    return expressApp;
+}
 
 const IS_VERCEL_PRODUCTION = process.env.VERCEL_ENV === 'production';
 const IS_PRODUCTION = IS_VERCEL_PRODUCTION || process.env.NODE_ENV === 'production';
@@ -184,8 +190,27 @@ module.exports = async function lyannApiGateway(req, res) {
 
     // Let legitimate browser preflights reach Express CORS only after the
     // production origin allowlist above has accepted them.
+    if (paths.some((path) => path === '/v1/runtime/identity' || path === '/runtime/identity')) {
+        const identity = runtimeIdentity(process.env);
+        if (identity.production) {
+            return jsonError(res, 503, 'RUNTIME_IDENTITY_PRODUCTION_HIDDEN', 'Identité runtime masquée hors Staging.');
+        }
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        return res.end(JSON.stringify({
+            success: identity.success,
+            vercel_env: identity.vercel_env,
+            kind: identity.kind,
+            supabase_ref: identity.supabase_ref,
+            isolation: identity.isolation,
+            staging: identity.staging,
+            production: false,
+            commit: identity.commit
+        }));
+    }
+
     if (req.method === 'OPTIONS') {
-        return app(req, res);
+        return getExpressApp()(req, res);
     }
 
     const isolation = assertHostedIsolation(process.env);
@@ -263,5 +288,5 @@ module.exports = async function lyannApiGateway(req, res) {
         req.url = original.split('?')[0] + incomingQuery;
     }
 
-    return app(req, res);
+    return getExpressApp()(req, res);
 };

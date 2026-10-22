@@ -24,6 +24,9 @@ jobs:
       - name: Run architecture audit
         run: npm test
 
+      - name: Verify notification bell read lifecycle
+        run: node --test tests/notification-bell-read.test.js
+
       - name: Build shared Web + Capacitor artifact
         run: npm run build:mobile
 

@@ -233,7 +233,7 @@ function requireConfiguredSupabaseUrl() {
     return url;
 }
 
-const { assertHostedIsolation } = require('./runtime-isolation');
+const { assertHostedIsolation, runtimeIdentity } = require('./runtime-isolation');
 const hostedIsolation = assertHostedIsolation(process.env);
 if (!hostedIsolation.ok) {
     console.error('❌ FATAL CONFIGURATION ERROR:', hostedIsolation.code, hostedIsolation.message);
@@ -282,6 +282,26 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 const { createPublicRequestsHandler } = require('./public-explorer-requests');
 app.get('/v1/explorer/requests', createPublicRequestsHandler(supabaseAdmin, Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)));
+app.get('/v1/runtime/identity', (req, res) => {
+    const identity = runtimeIdentity(process.env);
+    if (identity.production) {
+        return res.status(503).json({
+            success: false,
+            code: 'RUNTIME_IDENTITY_PRODUCTION_HIDDEN',
+            message: 'Identité runtime masquée hors Staging.'
+        });
+    }
+    res.json({
+        success: identity.success,
+        vercel_env: identity.vercel_env,
+        kind: identity.kind,
+        supabase_ref: identity.supabase_ref,
+        isolation: identity.isolation,
+        staging: identity.staging,
+        production: false,
+        commit: identity.commit
+    });
+});
 
 function getSupabaseClient(req) {
     const authHeader = req ? (req.headers['authorization'] || req.headers['Authorization']) : null;
@@ -1934,6 +1954,11 @@ app.get('/v1/admin/me', async (req, res) => {
 
 const { registerAdminControlCenter } = require('./admin-control-center');
 registerAdminControlCenter(app, { supabaseAdmin, verifyAdminPermission });
+const { registerAdminModerationCenter } = require('./admin-moderation-center');
+registerAdminModerationCenter(app, { supabaseAdmin, verifyAdminPermission, recordAudit: recordMaisonAudit });
+const { registerAdminOperations, registerMemberHelpdesk } = require('./admin-operations');
+registerAdminOperations(app, { supabaseAdmin, verifyAdminPermission });
+registerMemberHelpdesk(app, { supabaseAdmin, requireBearerUser });
 
 function adminProfileName(profile) {
     if (!profile) return 'Membre';
@@ -2353,8 +2378,13 @@ app.post('/v1/admin/ops/users/:id/status', async (req, res) => {
         return res.status(authResult.status).json({ success: false, error: authResult.error });
     }
     try {
+        if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'is_verified')) {
+            return res.status(400).json({
+                success: false,
+                error: 'is_verified n’est pas une suspension. Utilisez /v1/admin/moderation-center/users/:id/sanction.'
+            });
+        }
         const patch = { updated_at: new Date().toISOString() };
-        if (typeof req.body?.is_verified === 'boolean') patch.is_verified = req.body.is_verified;
         if (typeof req.body?.kyc_verified === 'boolean') patch.kyc_verified = req.body.kyc_verified;
         if (typeof req.body?.is_pro === 'boolean') patch.is_pro = req.body.is_pro;
         if (typeof req.body?.professional_status === 'string') patch.professional_status = req.body.professional_status.trim() || null;
@@ -2974,6 +3004,9 @@ app.post('/v1/admin/agent-tasks/:id/approve', async (req, res) => {
         const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', id).maybeSingle();
         if (error) throw error;
         if (!task) return res.status(404).json({ success: false, error: 'Tâche introuvable.' });
+        if (task.status === 'ARCHIVED' || task.status === 'SUSPENDED' || task.archived_at) {
+            return res.status(409).json({ success: false, error: 'Une tâche suspendue ou archivée ne peut pas être publiée.' });
+        }
         if (task.metadata && task.metadata.editorial) {
             if (decision === 'APPROVED') {
                 return await publishStoredEditorialProposal(res, task, task.instruction, {

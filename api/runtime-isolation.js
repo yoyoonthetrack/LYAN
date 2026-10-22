@@ -72,6 +72,21 @@ function assertHostedIsolation(env) {
     return { ok: true, code: 'PRODUCTION_ISOLATED' };
 }
 
+function runtimeIdentity(env) {
+    const isolation = assertHostedIsolation(env || {});
+    const ref = supabaseRefFromUrl((env && (env.SUPABASE_URL || env.LYANN_SUPABASE_URL)) || '');
+    return {
+        success: isolation.ok,
+        vercel_env: (env && env.VERCEL_ENV) || null,
+        kind: hostedKind(env || {}),
+        supabase_ref: ref || null,
+        isolation: isolation.code,
+        production: ref === PRODUCTION_REF,
+        staging: ref === STAGING_REF,
+        commit: (env && env.VERCEL_GIT_COMMIT_SHA) || null
+    };
+}
+
 function browserOriginAllowed(origin, env) {
     if (!origin) return true;
     const known = new Set([
@@ -93,6 +108,7 @@ module.exports = {
     STAGING_REF,
     hostedKind,
     assertHostedIsolation,
+    runtimeIdentity,
     jwtPayload,
     browserOriginAllowed
 };
