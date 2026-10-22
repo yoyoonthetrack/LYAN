@@ -2264,7 +2264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 14px; max-width: 500px; margin-left: auto; margin-right: auto;">
                     La table des Agents LYANN est en cours d'initialisation en base de données Production (Migration 12 requise sur Supabase).
                 </p>
-                <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.loadAdminRealData()"><i class="ph-bold ph-arrows-clockwise"></i> Réessayer la connexion DB</button>
+                <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-admin-wired="1" onclick="window.loadAdminRealData()"><i class="ph-bold ph-arrows-clockwise"></i> Réessayer la connexion DB</button>
             </div>
         `;
     }
@@ -4678,6 +4678,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.helpdeskPostMessage = async function(id, kind) {
         const field = document.getElementById(kind === 'internal' ? 'helpdeskNote' : 'helpdeskReply');
         const body = (field?.value || '').trim();
+        if (!body) {
+            helpdeskNotice(kind === 'internal' ? 'La note interne est vide.' : 'La réponse est vide.', true);
+            return;
+        }
         const res = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk/${id}/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
