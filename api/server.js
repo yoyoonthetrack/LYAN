@@ -233,7 +233,7 @@ function requireConfiguredSupabaseUrl() {
     return url;
 }
 
-const { assertHostedIsolation } = require('./runtime-isolation');
+const { assertHostedIsolation, runtimeIdentity } = require('./runtime-isolation');
 const hostedIsolation = assertHostedIsolation(process.env);
 if (!hostedIsolation.ok) {
     console.error('❌ FATAL CONFIGURATION ERROR:', hostedIsolation.code, hostedIsolation.message);
@@ -282,6 +282,26 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 const { createPublicRequestsHandler } = require('./public-explorer-requests');
 app.get('/v1/explorer/requests', createPublicRequestsHandler(supabaseAdmin, Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)));
+app.get('/v1/runtime/identity', (req, res) => {
+    const identity = runtimeIdentity(process.env);
+    if (identity.production) {
+        return res.status(503).json({
+            success: false,
+            code: 'RUNTIME_IDENTITY_PRODUCTION_HIDDEN',
+            message: 'Identité runtime masquée hors Staging.'
+        });
+    }
+    res.json({
+        success: identity.success,
+        vercel_env: identity.vercel_env,
+        kind: identity.kind,
+        supabase_ref: identity.supabase_ref,
+        isolation: identity.isolation,
+        staging: identity.staging,
+        production: false,
+        commit: identity.commit
+    });
+});
 
 function getSupabaseClient(req) {
     const authHeader = req ? (req.headers['authorization'] || req.headers['Authorization']) : null;

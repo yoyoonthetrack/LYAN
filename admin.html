@@ -334,17 +334,28 @@
                         var host = String(location.hostname || '');
                         var label = document.getElementById('adminEnvPillLabel');
                         var pill = document.getElementById('adminEnvPill');
-                        var staging = host === 'staging.lyann.app' || host.indexOf('staging') !== -1;
                         if (!label || !pill) return;
-                        if (staging) {
-                            label.textContent = 'Préproduction';
-                            pill.classList.add('is-staging');
-                        } else if (host === 'lyann.app' || host === 'www.lyann.app' || host === 'admin.lyann.app') {
+                        if (host === 'lyann.app' || host === 'www.lyann.app' || host === 'admin.lyann.app') {
                             label.textContent = 'Production';
-                        } else {
-                            label.textContent = 'Préproduction';
-                            pill.classList.add('is-staging');
+                            return;
                         }
+                        label.textContent = 'Préproduction';
+                        pill.classList.add('is-staging');
+                        fetch('/v1/runtime/identity', { credentials: 'same-origin' }).then(function (res) {
+                            return res.json().then(function (body) {
+                                return { ok: res.ok, body: body };
+                            });
+                        }).then(function (result) {
+                            var body = result.body || {};
+                            if (result.ok && body.staging && body.supabase_ref) {
+                                label.textContent = 'Staging · ' + body.supabase_ref;
+                                return;
+                            }
+                            if (body.code === 'RUNTIME_IDENTITY_PRODUCTION_HIDDEN' || body.production) {
+                                label.textContent = 'Isolation refusée';
+                                pill.classList.remove('is-staging');
+                            }
+                        }).catch(function () {});
                     })();
                 </script>
                 <button class="admin-btn admin-btn-danger" id="globalKillSwitchBtn">

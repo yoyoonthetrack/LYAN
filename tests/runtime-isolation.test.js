@@ -1,8 +1,10 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { assertHostedIsolation, browserOriginAllowed } = require('../api/runtime-isolation');
+const { assertHostedIsolation, browserOriginAllowed, runtimeIdentity } = require('../api/runtime-isolation');
 
 function jwt(payload) {
     const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -48,6 +50,29 @@ test('staging refuses production supabase, live stripe, and lyann.app', () => {
     assert.equal(assertHostedIsolation(Object.assign({}, staging, {
         SUPABASE_SERVICE_ROLE_KEY: jwt({ role: 'service_role', ref: 'gzispjfoywklpqatjyop' })
     })).code, 'SERVICE_ROLE_REF_MISMATCH');
+});
+
+test('runtime identity reports the staging ref without secrets', () => {
+    const previewEnv = Object.assign({}, staging, {
+        VERCEL_ENV: 'preview',
+        VERCEL_GIT_COMMIT_SHA: '1e4b351deadbeef'
+    });
+    delete previewEnv.LYANN_RUNTIME;
+    const identity = runtimeIdentity(previewEnv);
+    assert.equal(identity.success, true);
+    assert.equal(identity.vercel_env, 'preview');
+    assert.equal(identity.kind, 'preview');
+    assert.equal(identity.supabase_ref, 'tdktfbtqceldlaeqjtow');
+    assert.equal(identity.staging, true);
+    assert.equal(identity.production, false);
+    assert.equal(identity.isolation, 'STAGING_ISOLATED');
+    assert.equal(identity.commit, '1e4b351deadbeef');
+    assert.equal(JSON.stringify(identity).includes('sk_'), false);
+    assert.equal(JSON.stringify(identity).includes('service_role'), false);
+    const gateway = fs.readFileSync(path.join(__dirname, '../api/index.js'), 'utf8');
+    assert.match(gateway, /path === '\/v1\/runtime\/identity'/);
+    assert.match(gateway, /function getExpressApp/);
+    assert.doesNotMatch(gateway, /^const app = require\('\.\/server\.js'\);/m);
 });
 
 test('production refuses the staging project and a staging public origin', () => {
