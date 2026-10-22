@@ -103,7 +103,9 @@
             notice.replaceChildren(document.createTextNode('La carte arrive…'));
             element.dataset.basemap = 'loading';
             if (layer) { instance.removeLayer(layer); layer = null; }
+            let failed = false;
             const fail = () => {
+                failed = true;
                 clearTimeout(timer);
                 element.dataset.basemap = 'error';
                 notice.hidden = false;
@@ -122,7 +124,7 @@
                 timer = setTimeout(fail, 15000);
                 gl.on('error', fail);
                 gl.on('idle', () => {
-                    if (!gl.isStyleLoaded() || !gl.areTilesLoaded()) return;
+                    if (failed || !gl.isStyleLoaded() || !gl.areTilesLoaded()) return;
                     clearTimeout(timer); notice.hidden = true;
                     element.dataset.basemap = 'ready';
                 });
@@ -251,7 +253,7 @@
         const close = document.createElement('button');
         close.type = 'button';
         close.textContent = 'Fermer';
-        close.addEventListener('click', () => { panel.hidden = true; });
+        close.addEventListener('click', () => { panel.hidden = true; map?.closePopup(); });
         bottom.append(close);
         const image = (post.media_urls || []).find((url) => typeof url === 'string'
             && /^https:\/\//i.test(url) && !/\.(mp4|mov|webm)(?:\?|$)/i.test(url));
@@ -270,7 +272,10 @@
     function paintMarkers(posts) {
         if (!map || !markerLayer) return;
         markerLayer.clearLayers();
-        if (!posts.some((p) => String(p.id) === detailPostId)) $('bokantajMapDetail').hidden = true;
+        if (!posts.some((p) => String(p.id) === detailPostId)) {
+            $('bokantajMapDetail').hidden = true;
+            map.closePopup();
+        }
         const pixelGroups = new Map();
         const zoom = map.getZoom();
         posts.forEach((post) => {
@@ -299,6 +304,8 @@
                 if (crowded) {
                     if (map.getZoom() < 18) map.setView([centerLat, centerLng], Math.min(18, map.getZoom() + 2));
                     else {
+                        detailPostId = String(first.id);
+                        $('bokantajMapDetail').hidden = true;
                         const list = document.createElement('div');
                         list.className = 'bokantaj-cluster-list';
                         group.forEach((post) => {
@@ -308,10 +315,10 @@
                             button.addEventListener('click', () => { map.closePopup(); showDetail(post); });
                             list.append(button);
                         });
-                        marker.bindPopup(list, { maxWidth: 280, className: 'bokantaj-popup' }).openPopup();
+                        window.L.popup({ maxWidth: 280, className: 'bokantaj-popup' }).setLatLng([centerLat, centerLng]).setContent(list).openOn(map);
                     }
                 } else {
-                    marker.bindPopup('<strong>' + escapeText(category.label) + '</strong><br>' + escapeText(first.place_label), { className: 'bokantaj-popup', closeButton: false }).openPopup();
+                    window.L.popup({ className: 'bokantaj-popup', closeButton: false, offset: [0, -46] }).setLatLng([centerLat, centerLng]).setContent('<strong>' + escapeText(category.label) + '</strong><br>' + escapeText(first.place_label)).openOn(map);
                     showDetail(first);
                 }
             });
@@ -359,6 +366,7 @@
         } catch (error) {
             if (gen === fetchGeneration) {
                 markerLayer.clearLayers();
+                map.closePopup();
                 $('bokantajMapDetail').hidden = true;
                 status.textContent = 'Impossible de charger cette zone. Déplacez la carte pour réessayer.';
             }

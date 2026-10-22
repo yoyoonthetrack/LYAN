@@ -10,6 +10,7 @@ on:
       - 'bokantaj-repository.js'
       - 'bokantaj-map.js'
       - 'bokantaj-map.css'
+      - 'assets/maps/**'
       - 'feed.html'
       - '76_bokantaj_map_places.sql'
       - 'tests/e2e/bokantaj_map_web_ios.spec.js'
