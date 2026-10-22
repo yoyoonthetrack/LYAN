@@ -173,6 +173,28 @@ test('a hide that stays approved is a failure, not a fake success', async () => 
     assert.equal(hidden.status, 409);
 });
 
+test('restoring a hidden post republishes it', async () => {
+    const store = {
+        bokantaj_posts: [{
+            id: 'post-1',
+            public_moderation_status: 'rejected',
+            human_moderation_lock: true,
+            human_decision: 'hide',
+            previous_public_status: 'pending',
+            content: 'Lyann'
+        }],
+        moderation_jobs: [],
+        admin_audit_events: []
+    };
+    const center = createModerationCenter({ supabaseAdmin: createFakeSupabase(store) });
+    const restored = await center.applyContentDecision({
+        subject: 'post', id: 'post-1', decision: 'restore', reason: 'QA', actorId: 'admin-1'
+    });
+    assert.equal(restored.ok, true);
+    assert.equal(restored.visible, true);
+    assert.equal(store.bokantaj_posts[0].public_moderation_status, 'approved');
+});
+
 test('failed content action does not mark a report resolved', async () => {
     const store = {
         bokantaj_posts: [],

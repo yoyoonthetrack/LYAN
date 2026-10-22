@@ -196,7 +196,9 @@ function createModerationCenter(deps) {
                 previous_public_status: row.public_moderation_status
             };
         } else if (decision === 'restore') {
-            const next = row.previous_public_status === 'pending' ? 'pending' : 'approved';
+            const next = row.human_decision === 'hide' || row.previous_public_status === 'approved'
+                ? 'approved'
+                : (row.previous_public_status === 'pending' ? 'pending' : 'approved');
             patch = {
                 public_moderation_status: next,
                 human_moderation_lock: false,
