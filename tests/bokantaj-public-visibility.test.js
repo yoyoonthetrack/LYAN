@@ -33,3 +33,17 @@ test('api-client public queries keep the approved-only filter', () => {
     assert.match(source, /from\('bokantaj_comments'\)[\s\S]{0,280}\.eq\('public_moderation_status', 'approved'\)/);
     assert.match(source, /comments_count: \(postCommentsCountMap\[p\.id\] !== undefined\) \? postCommentsCountMap\[p\.id\] : 0/);
 });
+
+
+test('quiet moderation refresh removes hidden comments from an already-open drawer', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
+    assert.match(source, /data-comment-id="\$\{comment\.id\}"/);
+    const start = source.indexOf('function refreshPublicBokantajQuietly()');
+    const end = source.indexOf("document.addEventListener('visibilitychange'", start);
+    assert.ok(start >= 0 && end > start, 'quiet feed refresh must exist');
+    const refresh = source.slice(start, end);
+    assert.match(refresh, /public_moderation_status === 'approved'/);
+    assert.match(refresh, /approvedIds\.some/);
+    assert.match(refresh, /list\.innerHTML\s*=\s*approved\.length/);
+    assert.match(refresh, /window\.renderBokantajCommentRow\(row, targetId\)/);
+});
