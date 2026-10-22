@@ -146,6 +146,60 @@ CREATE TRIGGER trg_block_restricted_messages
     BEFORE INSERT ON public.messages
     FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
 
+DROP TRIGGER IF EXISTS trg_block_restricted_posts_upd ON public.bokantaj_posts;
+CREATE TRIGGER trg_block_restricted_posts_upd
+    BEFORE UPDATE ON public.bokantaj_posts
+    FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
+
+DROP TRIGGER IF EXISTS trg_block_restricted_comments_upd ON public.bokantaj_comments;
+CREATE TRIGGER trg_block_restricted_comments_upd
+    BEFORE UPDATE ON public.bokantaj_comments
+    FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
+
+DROP TRIGGER IF EXISTS trg_block_restricted_requests_upd ON public.requests;
+CREATE TRIGGER trg_block_restricted_requests_upd
+    BEFORE UPDATE ON public.requests
+    FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
+
+DROP TRIGGER IF EXISTS trg_block_restricted_messages_upd ON public.messages;
+CREATE TRIGGER trg_block_restricted_messages_upd
+    BEFORE UPDATE ON public.messages
+    FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
+
+DO $$
+BEGIN
+    IF to_regclass('public.quotes') IS NOT NULL THEN
+        DROP TRIGGER IF EXISTS trg_block_restricted_quotes ON public.quotes;
+        CREATE TRIGGER trg_block_restricted_quotes
+            BEFORE INSERT OR UPDATE ON public.quotes
+            FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
+    END IF;
+    IF to_regclass('public.proposals') IS NOT NULL THEN
+        DROP TRIGGER IF EXISTS trg_block_restricted_proposals ON public.proposals;
+        CREATE TRIGGER trg_block_restricted_proposals
+            BEFORE INSERT OR UPDATE ON public.proposals
+            FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
+    END IF;
+    IF to_regclass('public.bokantaj_likes') IS NOT NULL THEN
+        DROP TRIGGER IF EXISTS trg_block_restricted_likes ON public.bokantaj_likes;
+        CREATE TRIGGER trg_block_restricted_likes
+            BEFORE INSERT ON public.bokantaj_likes
+            FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
+    END IF;
+    IF to_regclass('public.user_reports') IS NOT NULL THEN
+        DROP TRIGGER IF EXISTS trg_block_restricted_user_reports ON public.user_reports;
+        CREATE TRIGGER trg_block_restricted_user_reports
+            BEFORE INSERT ON public.user_reports
+            FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
+    END IF;
+    IF to_regclass('public.bokantaj_reports') IS NOT NULL THEN
+        DROP TRIGGER IF EXISTS trg_block_restricted_bok_reports ON public.bokantaj_reports;
+        CREATE TRIGGER trg_block_restricted_bok_reports
+            BEFORE INSERT ON public.bokantaj_reports
+            FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
+    END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.lyann_preserve_human_moderation_lock()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -276,5 +330,17 @@ DROP TRIGGER IF EXISTS trg_preserve_human_lock_comments ON public.bokantaj_comme
 CREATE TRIGGER trg_preserve_human_lock_comments
     BEFORE UPDATE ON public.bokantaj_comments
     FOR EACH ROW EXECUTE FUNCTION public.lyann_preserve_human_moderation_lock();
+
+DO $$
+BEGIN
+    IF to_regclass('storage.objects') IS NOT NULL THEN
+        DROP TRIGGER IF EXISTS trg_block_restricted_storage ON storage.objects;
+        CREATE TRIGGER trg_block_restricted_storage
+            BEFORE INSERT OR UPDATE ON storage.objects
+            FOR EACH ROW EXECUTE FUNCTION public.lyann_block_restricted_writes();
+    END IF;
+EXCEPTION WHEN insufficient_privilege THEN
+    RAISE NOTICE 'storage trigger skipped';
+END $$;
 
 COMMIT;

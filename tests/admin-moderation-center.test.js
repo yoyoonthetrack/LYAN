@@ -94,6 +94,9 @@ test('SQL keeps human lock above an automatic approve', () => {
     assert.match(sql, /lyann_account_is_restricted/);
     assert.match(sql, /lyann_block_restricted_writes/);
     assert.match(sql, /IF NEW.human_moderation_lock IS TRUE/);
+    assert.match(sql, /trg_block_restricted_quotes/);
+    const rollback = fs.readFileSync(path.join(__dirname, '..', '73_moderation_center_rollback.sql'), 'utf8');
+    assert.match(rollback, /DROP FUNCTION IF EXISTS public.lyann_account_is_restricted/);
     assert.match(sql, /account_sanctions/);
     assert.doesNotMatch(sql, /gzispjfoywklpqatjyop/);
 });

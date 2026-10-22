@@ -35,7 +35,6 @@ function readEnvKey(file, key) {
 async function applySqlIfPossible() {
   const token = process.env.SUPABASE_ACCESS_TOKEN
     || process.env.LYANN_SUPABASE_ACCESS_TOKEN
-    || readEnvKey(path.join(__dirname, '..', '.env.local'), 'SUPABASE_ACCESS_TOKEN')
     || readEnvKey(path.join(__dirname, '..', '.env.staging-v2'), 'SUPABASE_ACCESS_TOKEN');
   if (!token) return { applied: false, reason: 'Pas de jeton Management API. Migration à appliquer manuellement sur Staging.' };
   const sql = fs.readFileSync(path.join(__dirname, '..', '73_moderation_center.sql'), 'utf8');
