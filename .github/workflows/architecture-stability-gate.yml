@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Install pinned dependencies for shared Web/iOS build
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Run architecture audit
         run: npm test
 
