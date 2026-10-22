@@ -15,6 +15,7 @@
     
     <!-- Admin Stylesheet -->
     <link rel="stylesheet" href="admin-style.css">
+    <link rel="stylesheet" href="admin-design-v2.css">
     <link rel="stylesheet" href="finance-desk.css?v=20261015a">
 </head>
 <body class="admin-body">
@@ -159,102 +160,118 @@
             </div>
         </div>
 
-        <nav class="admin-nav">
-            <a href="#" class="admin-nav-item active" data-section="sec-overview">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-chart-line-up"></i> <span>Vue d'ensemble</span></div>
-            </a>
-            <a href="#comptes-editoriaux" class="admin-nav-item" data-section="sec-editorial">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Comptes éditoriaux</span></div>
-                <span class="admin-nav-badge" id="sidebarEditorialBadge">—</span>
-            </a>
+        <nav class="admin-nav" aria-label="Rubriques du back-office">
+            <details class="admin-nav-group" open>
+                <summary class="admin-nav-section-title">Pilotage</summary>
+                <a href="#" class="admin-nav-item active" data-section="sec-overview">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-chart-line-up"></i> <span>Vue d'ensemble</span></div>
+                </a>
+                <a href="#comptes-editoriaux" class="admin-nav-item" data-section="sec-editorial">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Comptes éditoriaux</span></div>
+                    <span class="admin-nav-badge" id="sidebarEditorialBadge">—</span>
+                </a>
+            </details>
 
-            <div class="admin-nav-section-title">COMMUNAUTÉ</div>
-            <a href="#" class="admin-nav-item" data-section="sec-users">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-users"></i> <span>Utilisateurs</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-maison">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-house-line"></i> <span>Profils maison</span></div>
-                <span class="admin-nav-badge" id="sidebarMaisonBadge" style="background: rgba(229,179,69,0.18); color:#E5B345;">Relais</span>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-lyanneurs">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-user-check"></i> <span>Lyanneurs</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-agents" style="background: rgba(74, 124, 89, 0.15); border: 1px solid rgba(74, 124, 89, 0.3);">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-robot" style="color: #E5B345;"></i> <span style="color: #E5B345; font-weight: 800;">Agents LYANN</span></div>
-                <span class="admin-nav-badge success" id="sidebarAgentBadge">—</span>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-mika" style="padding-left: 28px; background: rgba(229, 179, 69, 0.08); border-left: 3px solid #E5B345;">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-lightning" style="color: #E5B345;"></i> <span style="color: #E5B345; font-weight: 700;">Mika Control Room</span></div>
-                <span class="admin-nav-badge success">PILOTE</span>
-            </a>
+            <details class="admin-nav-group" open>
+                <summary class="admin-nav-section-title">Communauté</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-users">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-users"></i> <span>Utilisateurs</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-maison">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-house-line"></i> <span>Profils maison</span></div>
+                    <span class="admin-nav-badge warning" id="sidebarMaisonBadge">Relais</span>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-lyanneurs">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-user-check"></i> <span>Lyanneurs</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-agents">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-robot"></i> <span>Agents LYANN</span></div>
+                    <span class="admin-nav-badge success" id="sidebarAgentBadge">—</span>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-mika">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-lightning"></i> <span>Mika</span></div>
+                    <span class="admin-nav-badge">Pilote</span>
+                </a>
+            </details>
 
-            <div class="admin-nav-section-title">ACTIVITÉ</div>
-            <a href="#" class="admin-nav-item" data-section="sec-bokantaj">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Bokantaj</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-requests">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-tray"></i> <span>Demandes</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-services">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-briefcase"></i> <span>Prestations</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-quotes">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-file-text"></i> <span>Devis</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-missions">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-calendar-check"></i> <span>Missions</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-chat">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-chat-circle-dots"></i> <span>Messagerie</span></div>
-            </a>
+            <details class="admin-nav-group" open>
+                <summary class="admin-nav-section-title">Activité</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-bokantaj">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-chat-teardrop-text"></i> <span>Bokantaj</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-requests">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-tray"></i> <span>Demandes</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-services">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-briefcase"></i> <span>Prestations</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-quotes">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-file-text"></i> <span>Devis</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-missions">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-calendar-check"></i> <span>Missions</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-chat">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-chat-circle-dots"></i> <span>Messagerie</span></div>
+                </a>
+            </details>
 
-            <div class="admin-nav-section-title">FINANCE</div>
-            <a href="#" class="admin-nav-item" data-section="sec-finances">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-bank"></i> <span>Paiements</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-payouts">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>Versements</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-disputes">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-scales"></i> <span>Litiges</span></div>
-                <span class="admin-nav-badge" id="sidebarDisputeBadge">—</span>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-subscriptions">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-sparkle"></i> <span>Abonnements</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-protection">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-shield-check"></i> <span>Assurance</span></div>
-            </a>
+            <details class="admin-nav-group" open>
+                <summary class="admin-nav-section-title">Finance</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-finances">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-bank"></i> <span>Paiements</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-payouts">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>Versements</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-disputes">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-scales"></i> <span>Litiges</span></div>
+                    <span class="admin-nav-badge" id="sidebarDisputeBadge">—</span>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-subscriptions">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-sparkle"></i> <span>Abonnements</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-protection">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-shield-check"></i> <span>Assurance</span></div>
+                </a>
+            </details>
 
-            <div class="admin-nav-section-title">OPÉRATIONS</div>
-            <a href="#" class="admin-nav-item" data-section="sec-content">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-shield-warning"></i> <span>Modération</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-notifications">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-bell"></i> <span>Notifications</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-support">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-headset"></i> <span>Support</span></div>
-            </a>
+            <details class="admin-nav-group" open>
+                <summary class="admin-nav-section-title">Opérations</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-content">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-shield-warning"></i> <span>Modération</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-notifications">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-bell"></i> <span>Notifications</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-support">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-headset"></i> <span>Support</span></div>
+                </a>
+            </details>
 
-            <div class="admin-nav-section-title">ADMINISTRATION</div>
-            <a href="#" class="admin-nav-item" data-section="sec-team">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-users-three"></i> <span>Équipe LYANN</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-rbac">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-lock-key"></i> <span>Rôles & permissions</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-audit-logs">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-scroll"></i> <span>Journaux</span></div>
-            </a>
-            <a href="#" class="admin-nav-item" data-section="sec-taxonomy">
-                <div class="admin-nav-item-left"><i class="ph-bold ph-gear"></i> <span>Configuration</span></div>
-            </a>
+            <details class="admin-nav-group" open>
+                <summary class="admin-nav-section-title">Administration</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-team">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-users-three"></i> <span>Équipe LYANN</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-rbac">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-lock-key"></i> <span>Rôles & permissions</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-audit-logs">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-scroll"></i> <span>Journaux</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-taxonomy">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-gear"></i> <span>Configuration</span></div>
+                </a>
+            </details>
         </nav>
 
         <div class="admin-sidebar-footer">
+            <button type="button" class="admin-btn admin-btn-secondary" id="toggleAdminSidebarBtn" aria-label="Réduire le menu">
+                <i class="ph-bold ph-sidebar-simple"></i> <span>Réduire</span>
+            </button>
             <a href="index.html" class="admin-btn admin-btn-secondary" style="width: 100%; justify-content: center;">
-                <i class="ph-bold ph-arrow-left"></i> Retour au Site Public
+                <i class="ph-bold ph-arrow-left"></i> <span>Retour au site</span>
             </a>
         </div>
     </aside>
@@ -269,11 +286,18 @@
                 <button class="hamburger-menu-btn" id="toggleAdminSidebarMobileBtn" aria-label="Menu Admin" style="display: none; margin-right: 10px;">
                     <i class="ph-bold ph-list"></i>
                 </button>
+                <div class="admin-header-context">
+                    <p class="admin-crumb" id="adminHeaderCrumb">Pilotage</p>
+                    <h2 id="adminHeaderTitle">Vue d'ensemble</h2>
+                </div>
                 <div class="admin-search-bar" id="openCommandPaletteBtn" title="Raccourci ⌘ K">
                     <i class="ph-bold ph-magnifying-glass"></i>
-                    <input type="text" id="globalAdminSearch" placeholder="Rechercher membre, mission, paiement, ticket ou bot... (⌘ K)" readonly>
-                    <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">⌘ K</span>
+                    <input type="text" id="globalAdminSearch" placeholder="Rechercher un membre, une mission, un paiement…" readonly>
+                    <span class="admin-search-shortcut">⌘ K</span>
                 </div>
+            </div>
+
+            <div class="admin-header-right">
                 <div class="admin-env-pill" id="adminEnvPill">
                     <i class="ph-bold ph-circle-wavy-check"></i> <span id="adminEnvPillLabel">Environnement</span>
                 </div>
@@ -285,21 +309,18 @@
                         var staging = host === 'staging.lyann.app' || host.indexOf('staging') !== -1;
                         if (!label || !pill) return;
                         if (staging) {
-                            label.textContent = 'STAGING — Environnement de test';
+                            label.textContent = 'Préproduction';
                             pill.classList.add('is-staging');
                         } else if (host === 'lyann.app' || host === 'www.lyann.app' || host === 'admin.lyann.app') {
-                            label.textContent = 'Production • Tous les Territoires DOM';
+                            label.textContent = 'Production';
                         } else {
-                            label.textContent = 'STAGING — Environnement de test';
+                            label.textContent = 'Préproduction';
                             pill.classList.add('is-staging');
                         }
                     })();
                 </script>
-            </div>
-
-            <div class="admin-header-right">
-                <button class="admin-btn admin-btn-danger" id="globalKillSwitchBtn" style="background: linear-gradient(135deg, #DC2626, #991B1B); color: #FFF; font-weight: 800; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; transition: all 0.2s ease;">
-                    <i class="ph-bold ph-power"></i> ⚡ SUSPENDRE LES AGENTS
+                <button class="admin-btn admin-btn-danger" id="globalKillSwitchBtn">
+                    <i class="ph-bold ph-power"></i> Suspendre les agents
                 </button>
 
                 <div class="admin-icon-btn" id="btnAdminQuickNotifications" title="Alertes Système">
@@ -309,11 +330,11 @@
 
                 <!-- Super Admin Owner Profile Badge & SignOut -->
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="admin-user-profile" id="adminOwnerProfileBadge" style="border: 1px solid rgba(229, 179, 69, 0.4); background: rgba(229, 179, 69, 0.08); padding: 6px 12px; border-radius: 12px;">
-                        <img src="lyann-avatar-placeholder.svg" id="adminHeaderAvatar" alt="Admin Avatar" class="admin-avatar" style="border: 2px solid #E5B345;">
+                    <div class="admin-user-profile" id="adminOwnerProfileBadge">
+                        <img src="lyann-avatar-placeholder.svg" id="adminHeaderAvatar" alt="Admin Avatar" class="admin-avatar">
                         <div class="admin-user-info">
-                            <div class="admin-user-name" id="adminHeaderUsername" style="color: #E5B345; font-weight: 900;"><span id="adminHeaderUsernameText">Connexion...</span></div>
-                            <div class="admin-user-role" id="adminHeaderUserRole" style="color: #5E7266; font-size: 0.72rem;">Compte Administrateur</div>
+                            <div class="admin-user-name" id="adminHeaderUsername"><span id="adminHeaderUsernameText">Connexion…</span></div>
+                            <div class="admin-user-role" id="adminHeaderUserRole">Compte administrateur</div>
                         </div>
                     </div>
                     <button class="admin-btn danger" id="btnAdminLogout" onclick="forceAdminLogout()" title="Se déconnecter de la session actuelle" style="padding: 8px 12px; font-size: 0.8rem;">
@@ -335,9 +356,40 @@
                         <h1 class="admin-page-title">Vue d'ensemble</h1>
                         <p class="admin-page-sub">Bienvenue <strong id="adminWelcomeUsername">Administrateur</strong>. Chiffres lus en direct depuis Supabase — zéro si rien n'a encore eu lieu.</p>
                     </div>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div class="admin-page-actions">
                         <button class="admin-btn admin-btn-primary trigger-goto-aiops"><i class="ph-bold ph-robot"></i> Agents LYANN</button>
                         <button class="admin-btn admin-btn-secondary" id="exportBiReportBtn"><i class="ph-bold ph-download-simple"></i> Exporter les paiements</button>
+                    </div>
+                </div>
+
+                <div class="attention-board">
+                    <div class="admin-card needs-action" id="attentionQueue">
+                        <h3>À traiter maintenant</h3>
+                        <div class="attention-item">
+                            <div>
+                                <strong>Propositions éditoriales</strong>
+                                <p class="maison-muted">Validation humaine avant toute publication.</p>
+                            </div>
+                            <strong id="attentionEditorial">—</strong>
+                        </div>
+                        <div class="attention-item">
+                            <div>
+                                <strong>Modération</strong>
+                                <p class="maison-muted">Contenus en attente dans la file préventive.</p>
+                            </div>
+                            <strong id="attentionModeration">—</strong>
+                        </div>
+                        <div class="attention-item">
+                            <div>
+                                <strong>Litiges ouverts</strong>
+                                <p class="maison-muted">Arbitrage et signalements en cours.</p>
+                            </div>
+                            <strong id="attentionDisputes">—</strong>
+                        </div>
+                    </div>
+                    <div class="admin-card">
+                        <h3>Activité récente</h3>
+                        <p class="maison-muted" id="attentionRecent">Les compteurs ci-dessous sont lus en direct. Rien n’est inventé.</p>
                     </div>
                 </div>
 
@@ -378,20 +430,20 @@
                 </div>
 
                 <div class="admin-grid-3" style="margin-bottom: 24px;">
-                    <div class="admin-card">
-                        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #9A6F12;"><i class="ph-bold ph-newspaper"></i> Activité</h3>
-                        <div style="font-size: 1.4rem; font-weight: 800; color: var(--admin-text-main);" id="kpiActivityMix">—</div>
-                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 4px;">Demandes ouvertes, Lyanns et conversations</p>
+                    <div class="admin-card metric-tile">
+                        <h3><i class="ph-bold ph-newspaper"></i> Publications & annonces</h3>
+                        <div class="tile-value" id="kpiActivityMix">—</div>
+                        <p class="maison-muted">Demandes ouvertes, Lyanns et conversations</p>
                     </div>
-                    <div class="admin-card">
-                        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--admin-brand-primary);"><i class="ph-bold ph-robot"></i> Agents LYANN</h3>
-                        <div style="font-size: 1.4rem; font-weight: 800; color: var(--admin-text-main);" id="kpiActiveBots">—</div>
-                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 4px;">Agents actifs et tâches en attente</p>
+                    <div class="admin-card metric-tile">
+                        <h3><i class="ph-bold ph-robot"></i> Agents éditoriaux</h3>
+                        <div class="tile-value" id="kpiActiveBots">—</div>
+                        <p class="maison-muted">Agents actifs et tâches en attente</p>
                     </div>
-                    <div class="admin-card">
-                        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: #C45C4A;"><i class="ph-bold ph-scales"></i> Litiges & signalements</h3>
-                        <div style="font-size: 1.4rem; font-weight: 800; color: var(--admin-text-main);" id="kpiOpenDisputes">—</div>
-                        <p style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 4px;">Litiges ouverts et reports en cours</p>
+                    <div class="admin-card metric-tile">
+                        <h3><i class="ph-bold ph-scales"></i> Litiges & signalements</h3>
+                        <div class="tile-value" id="kpiOpenDisputes">—</div>
+                        <p class="maison-muted">Litiges ouverts et reports en cours</p>
                     </div>
                 </div>
             </section>
@@ -402,8 +454,8 @@
             <section id="sec-users" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">Utilisateurs & Membres de la Communauté</h1>
-                        <p class="admin-page-sub">Gérez les comptes demandeurs et prestataires, les vérifications KYC, les abonnements et les statuts.</p>
+                        <h1 class="admin-page-title">Utilisateurs</h1>
+                        <p class="admin-page-sub">Comptes membres, vérifications KYC, abonnements et statuts.</p>
                     </div>
                 </div>
 
@@ -892,8 +944,8 @@
             <section id="sec-content" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">🛡️ Modération & Registre des Signalements</h1>
-                        <p class="admin-page-sub">Gestion des signalements d'utilisateurs, litiges sur messagerie et respect de la charte de sérénité LYANN.</p>
+                        <h1 class="admin-page-title">Modération</h1>
+                        <p class="admin-page-sub">Signalements, file préventive et respect de la charte de sérénité LYANN.</p>
                     </div>
                 </div>
 
@@ -1056,8 +1108,8 @@
             <section id="sec-agents" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">🤖 Agents LYANN — Console de Contrôle & Task Engine</h1>
-                        <p class="admin-page-sub">Orchestration des agents logiciels non-humains. Strictement isolés du core financier (ni Connect, ni paiements, ni arbitrage litiges).</p>
+                        <h1 class="admin-page-title">Agents LYANN</h1>
+                        <p class="admin-page-sub">Orchestration des agents logiciels. Isolés du cœur financier : ni Connect, ni paiements, ni arbitrage de litiges.</p>
                     </div>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="admin-btn admin-btn-primary" id="btnOpenCreateAgentModal" style="background: linear-gradient(135deg, var(--admin-brand-primary), var(--admin-brand-primary-dark));"><i class="ph-bold ph-plus-circle"></i> Créer un Agent LYANN</button>
@@ -1104,8 +1156,8 @@
                 <!-- Agents Cards Container -->
                 <div style="margin-bottom: 32px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--admin-brand-yellow); display: flex; align-items: center; gap: 8px;">
-                            <i class="ph-bold ph-cards"></i> Flotte d'Agents LYANN Actifs
+                        <h2 class="admin-page-title" style="font-size: 1.05rem;">
+                            <i class="ph-bold ph-cards"></i> Flotte d'agents
                         </h2>
                         <div style="display: flex; gap: 8px;">
                             <span class="status-badge active" style="font-size: 0.75rem;">Tag Engine Relationnel Actif</span>
@@ -1173,7 +1225,7 @@
                         <h1 class="admin-page-title">Comptes éditoriaux</h1>
                         <p class="admin-page-sub">Les cinq agents préparent des propositions. Rien n’est publié sans validation humaine. Aucune actualité n’est inventée.</p>
                         <p id="editorialNotice" role="status" style="min-height: 1.4em; font-weight: 700;"></p>
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                        <div class="editorial-toolbar">
                             <button type="button" class="admin-btn admin-btn-primary" id="editorialCollectBtn">Générer maintenant</button>
                             <select id="editorialAgentFilter" class="admin-select" style="max-width:220px;">
                                 <option value="all">Tous les agents</option>
@@ -1195,7 +1247,7 @@
             </section>
             <section id="sec-mika" class="admin-section">
                 <!-- HEADER MIKA CONTROL ROOM -->
-                <div class="mika-header-card" style="background: linear-gradient(135deg, rgba(26, 43, 34, 0.95), rgba(18, 30, 24, 0.98)); border: 1px solid rgba(74, 124, 89, 0.4); border-radius: 16px; padding: 24px; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                <div class="mika-header-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                         <div style="display: flex; align-items: center; gap: 18px;">
                             <img src="avatar_01.png" id="mikaHeaderAvatar" style="width: 72px; height: 72px; border-radius: 50%; border: 3px solid #E5B345; object-fit: cover; box-shadow: 0 0 15px rgba(229, 179, 69, 0.3);">
@@ -1333,7 +1385,7 @@
             <section id="sec-taxonomy" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">⚙️ Moteur de Matching & Taxonomie LYANN</h1>
+                        <h1 class="admin-page-title">Configuration & taxonomie</h1>
                         <p class="admin-page-sub">Centre de contrôle de l'algorithme de mise en relation, de la taxonomie et de la diffusion ciblée.</p>
                     </div>
                     <button class="admin-btn admin-btn-primary" id="btnRunMatchingSimulation"><i class="ph-bold ph-lightning"></i> Tester une simulation de match</button>

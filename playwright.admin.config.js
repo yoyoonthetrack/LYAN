@@ -2,7 +2,7 @@ const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: './tests/e2e',
-  testMatch: 'admin_backoffice.spec.js',
+  testMatch: /admin_(backoffice|design_v2)\.spec\.js/,
   timeout: 30000,
   expect: { timeout: 8000 },
   fullyParallel: false,

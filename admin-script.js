@@ -687,6 +687,66 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    const toggleAdminSidebarBtn = document.getElementById('toggleAdminSidebarBtn');
+    if (toggleAdminSidebarBtn) {
+        const applyCollapsed = (collapsed) => {
+            document.body.classList.toggle('admin-sidebar-collapsed', collapsed);
+            toggleAdminSidebarBtn.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
+            const label = toggleAdminSidebarBtn.querySelector('span');
+            if (label) label.textContent = collapsed ? 'Menu' : 'Réduire';
+        };
+        applyCollapsed(window.localStorage.getItem('lyannAdminSidebarCollapsed') === '1');
+        toggleAdminSidebarBtn.addEventListener('click', () => {
+            const next = !document.body.classList.contains('admin-sidebar-collapsed');
+            window.localStorage.setItem('lyannAdminSidebarCollapsed', next ? '1' : '0');
+            applyCollapsed(next);
+        });
+    }
+
+    const ADMIN_SECTION_META = {
+        'sec-overview': { title: "Vue d'ensemble", crumb: 'Pilotage' },
+        'sec-editorial': { title: 'Comptes éditoriaux', crumb: 'Pilotage' },
+        'sec-users': { title: 'Utilisateurs', crumb: 'Communauté' },
+        'sec-maison': { title: 'Profils maison', crumb: 'Communauté' },
+        'sec-user-detail': { title: 'Fiche utilisateur', crumb: 'Communauté' },
+        'sec-lyanneurs': { title: 'Lyanneurs', crumb: 'Communauté' },
+        'sec-agents': { title: 'Agents LYANN', crumb: 'Communauté' },
+        'sec-mika': { title: 'Mika', crumb: 'Communauté' },
+        'sec-bokantaj': { title: 'Bokantaj', crumb: 'Activité' },
+        'sec-requests': { title: 'Demandes', crumb: 'Activité' },
+        'sec-services': { title: 'Prestations', crumb: 'Activité' },
+        'sec-quotes': { title: 'Devis', crumb: 'Activité' },
+        'sec-missions': { title: 'Missions', crumb: 'Activité' },
+        'sec-chat': { title: 'Messagerie', crumb: 'Activité' },
+        'sec-finances': { title: 'Paiements', crumb: 'Finance' },
+        'sec-invoices': { title: 'Facturation', crumb: 'Finance' },
+        'sec-payouts': { title: 'Versements', crumb: 'Finance' },
+        'sec-disputes': { title: 'Litiges', crumb: 'Finance' },
+        'sec-subscriptions': { title: 'Abonnements', crumb: 'Finance' },
+        'sec-protection': { title: 'Assurance', crumb: 'Finance' },
+        'sec-reviews': { title: 'Avis', crumb: 'Opérations' },
+        'sec-content': { title: 'Modération', crumb: 'Opérations' },
+        'sec-notifications': { title: 'Notifications', crumb: 'Opérations' },
+        'sec-support': { title: 'Support', crumb: 'Opérations' },
+        'sec-team': { title: 'Équipe LYANN', crumb: 'Administration' },
+        'sec-rbac': { title: 'Rôles & permissions', crumb: 'Administration' },
+        'sec-audit-logs': { title: 'Journaux', crumb: 'Administration' },
+        'sec-taxonomy': { title: 'Configuration', crumb: 'Administration' },
+        'sec-feature-flags': { title: 'Feature flags', crumb: 'Administration' },
+        'sec-territories': { title: 'Territoires', crumb: 'Administration' },
+        'sec-health': { title: 'Santé système', crumb: 'Administration' }
+    };
+
+    function syncAdminChrome(sectionId, item) {
+        const meta = ADMIN_SECTION_META[sectionId] || {};
+        const title = document.getElementById('adminHeaderTitle');
+        const crumb = document.getElementById('adminHeaderCrumb');
+        if (title) title.textContent = meta.title || (item?.querySelector('span')?.textContent || '').trim();
+        if (crumb) crumb.textContent = meta.crumb || 'Back-office';
+        const group = item?.closest('details.admin-nav-group');
+        if (group) group.open = true;
+    }
+
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
@@ -702,6 +762,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Mise à jour de la classe active sur le menu
             navItems.forEach(nav => nav.classList.remove('active'));
             item.classList.add('active');
+            syncAdminChrome(targetSectionId, item);
 
             // Affichage de la section cible
             sections.forEach(sec => sec.classList.remove('active'));
@@ -1818,11 +1879,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 if (btnKill) {
                     btnKill.innerHTML = globalKillSwitchActive ?
-                        '<i class="ph-bold ph-play"></i> 🟢 RÉACTIVER LES AGENTS' :
-                        '<i class="ph-bold ph-power"></i> ⚡ SUSPENDRE LES AGENTS';
-                    btnKill.style.background = globalKillSwitchActive ?
-                        'linear-gradient(135deg, #16A34A, #15803D)' :
-                        'linear-gradient(135deg, #DC2626, #991B1B)';
+                        '<i class="ph-bold ph-play"></i> Réactiver les agents' :
+                        '<i class="ph-bold ph-power"></i> Suspendre les agents';
+                    btnKill.style.background = '';
                 }
             }
         } catch (e) {
@@ -1860,6 +1919,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (disputeBadge) disputeBadge.textContent = String(data.openDisputes || 0);
                     const maisonBadge = document.getElementById('sidebarMaisonBadge');
                     if (maisonBadge && data.seedMembers !== undefined) maisonBadge.textContent = String(data.seedMembers);
+                    const attentionEditorial = document.getElementById('attentionEditorial');
+                    if (attentionEditorial) attentionEditorial.textContent = String(data.pendingApprovals || 0);
+                    const attentionModeration = document.getElementById('attentionModeration');
+                    if (attentionModeration) attentionModeration.textContent = String(data.openReports || 0);
+                    const attentionDisputes = document.getElementById('attentionDisputes');
+                    if (attentionDisputes) attentionDisputes.textContent = String(data.openDisputes || 0);
+                    const attentionRecent = document.getElementById('attentionRecent');
+                    if (attentionRecent) attentionRecent.textContent = `${data.bokantajPosts || 0} publications Bokantaj · ${data.openRequests || 0} annonces ouvertes · ${data.activeMembers || 0} membres`;
                 } else {
                     renderUnavailableState('kpiContainer');
                 }
@@ -1979,31 +2046,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tagsHtml = (agent.specialities || []).map(t => `<span class="status-badge" style="background: rgba(123, 197, 227, 0.15); color: var(--admin-brand-sky); border: 1px solid rgba(123, 197, 227, 0.3); font-size: 0.7rem;">${window.adminEscape(t)}</span>`).join(' ');
 
             return `
-                <div class="admin-card" style="border-top: 3px solid var(--admin-brand-yellow); cursor: pointer;" onclick="window.openAgentDetailDrawer('${window.adminEscape(agent.id)}')">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <img src="${window.adminEscape(agent.avatar || 'avatar-female-pink.png')}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--admin-brand-yellow);">
-                            <div>
-                                <h3 style="font-size: 0.95rem; color: var(--admin-text-main); font-weight: 800;">${window.adminEscape(agent.agent_name)}</h3>
-                                <div style="font-size: 0.72rem; color: var(--admin-brand-sky); font-family: var(--admin-font-mono);">${window.adminEscape(agent.zones ? (Array.isArray(agent.zones) ? agent.zones.join(', ') : agent.zones) : 'DOM')}</div>
-                            </div>
+                <div class="admin-card editorial-bot" style="cursor: pointer;" onclick="window.openAgentDetailDrawer('${window.adminEscape(agent.id)}')">
+                    <div class="editorial-bot-head">
+                        <img src="${window.adminEscape(agent.avatar || 'lyann-avatar-placeholder.svg')}" alt="">
+                        <div>
+                            <h3>${window.adminEscape(agent.agent_name)}</h3>
+                            <p class="maison-muted" style="margin:2px 0 0;">${window.adminEscape(agent.zones ? (Array.isArray(agent.zones) ? agent.zones.join(', ') : agent.zones) : 'DOM')}</p>
                         </div>
                         <span class="status-badge ${statusClass}">${window.adminEscape(agent.status)}</span>
                     </div>
-
-                    <div style="font-size: 0.8rem; color: var(--admin-text-muted); margin-bottom: 10px;">
-                        <div>Autonomie : <strong style="color: var(--admin-brand-yellow);">${window.adminEscape(autonomyText)}</strong></div>
-                        <div>Mission : ${window.adminEscape(agent.current_mission || 'Animation réseau')}</div>
-                    </div>
-
-                    <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px;">
-                        ${tagsHtml}
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--admin-border); padding-top: 8px; font-size: 0.75rem; color: var(--admin-text-muted);">
-                        <span>Dernière activité : ${window.adminEscape(agent.last_activity_at || 'Récemment')}</span>
-                        <span style="color: var(--admin-brand-yellow); font-weight: 700;">Gérer &rarr;</span>
-                    </div>
+                    <p class="maison-muted" style="margin:0;">Autonomie : <strong>${window.adminEscape(autonomyText)}</strong></p>
+                    <p class="maison-muted" style="margin:0;">Mission : ${window.adminEscape(agent.current_mission || 'Animation réseau')}</p>
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">${tagsHtml}</div>
+                    <div class="maison-muted">Dernière activité : ${window.adminEscape(agent.last_activity_at || 'Récemment')}</div>
                 </div>
             `;
         }).join('');
@@ -3035,6 +3090,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <h3 style="margin:0 0 8px; font-size:1rem;">Publier dans Bokantaj au nom de ${maisonEsc(maisonName(profile))}</h3>
                     <p class="maison-muted" id="maisonPublishNotice">Un enregistrement n’est pas une publication visible tant que la modération n’a pas approuvé.</p>
                     <textarea id="maisonBokantajInput" class="admin-input" rows="3" placeholder="Écrire un Lyann…" style="width:100%;"></textarea>
+                    <aside class="bokantaj-preview" style="margin-top:10px;">
+                        <div class="bokantaj-preview-label">Aperçu public</div>
+                        <div class="bokantaj-preview-author">
+                            <img src="${maisonEsc(profile.avatar_url || 'lyann-avatar-placeholder.svg')}" alt="" class="user-avatar-sm">
+                            <span>${maisonEsc(maisonName(profile))}</span>
+                        </div>
+                        <div class="bokantaj-preview-body" id="maisonBokantajPreview">Le texte apparaîtra ici avant soumission.</div>
+                        <p class="maison-muted" style="margin:8px 0 0;">Tant que la modération n’a pas approuvé, ce post n’est pas visible sur le fil public.</p>
+                    </aside>
                     <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">
                         <select id="maisonPostType" class="admin-input">
                             <option value="info">Info</option>
@@ -3118,6 +3182,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         photoInput?.addEventListener('change', refreshMediaLabel);
         videoInput?.addEventListener('change', refreshMediaLabel);
+        const maisonPreview = document.getElementById('maisonBokantajPreview');
+        document.getElementById('maisonBokantajInput')?.addEventListener('input', (event) => {
+            if (maisonPreview) maisonPreview.textContent = event.target.value.trim() || 'Le texte apparaîtra ici avant soumission.';
+        });
         const readDataUrl = (file) => new Promise((resolve, reject) => {
             if (!file) return resolve('');
             const reader = new FileReader();
@@ -3309,23 +3377,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ['Validées', approved.length],
                     ['Agents actifs', `${activeCount}/5`],
                     ['Passages', '07:00 · 12:00 · 17:00']
-                ].map(([label, value]) => `<div class="admin-card" style="padding:14px 16px;"><div class="maison-muted">${maisonEsc(label)}</div><strong style="font-size:1.15rem;">${maisonEsc(value)}</strong></div>`).join('');
+                ].map(([label, value]) => `<div class="admin-card metric-tile"><h3>${maisonEsc(label)}</h3><div class="tile-value">${maisonEsc(value)}</div></div>`).join('');
             }
+            const attentionEditorial = document.getElementById('attentionEditorial');
+            if (attentionEditorial) attentionEditorial.textContent = String(pending.length);
+            const domainOf = (bot) => bot.domain || bot.profile?.domain || bot.rubric || ({
+                'lyann-actu': 'Actualité',
+                'lyann-rimed': 'Santé',
+                'lyann-jardinaj': 'Jardin',
+                'lyann-trafik': 'Circulation',
+                'lyann-kilti': 'Culture'
+            }[bot.id] || bot.agent_name);
+            const lastCollect = (bot) => {
+                const hit = (bots.history || []).find((h) => h.agent_name === bot.agent_name);
+                return hit?.created_at ? new Date(hit.created_at).toLocaleString('fr-FR') : 'Pas encore de collecte';
+            };
             botsEl.innerHTML = (bots.bots || []).map((bot) => {
                 const waiting = pending.filter((item) => item.agent_name === bot.agent_name).length;
                 const active = bot.status === 'ACTIVE';
+                const territories = Array.isArray(bot.territories) ? bot.territories.join(', ') : (bot.profile?.territory || bot.zones || 'Antilles & Guyane');
                 return `
-                <article class="admin-card" style="padding:16px; display:flex; flex-direction:column; gap:8px;">
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <img src="${maisonEsc(bot.profile?.avatar_url || '')}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;background:#F4F0E8;">
+                <article class="admin-card editorial-bot">
+                    <div class="editorial-bot-head">
+                        <img src="${maisonEsc(bot.profile?.avatar_url || 'lyann-avatar-placeholder.svg')}" alt="">
                         <div style="min-width:0;">
-                            <h3 style="margin:0; font-size:1rem;">${maisonEsc(bot.agent_name)}</h3>
-                            <p class="maison-muted" style="margin:2px 0 0;">${active ? 'Actif' : 'Suspendu'} · 3 propositions / jour</p>
+                            <h3>${maisonEsc(bot.agent_name)}</h3>
+                            <p class="maison-muted" style="margin:2px 0 0;">${maisonEsc(domainOf(bot))} · ${active ? 'Actif' : 'Suspendu'}</p>
                         </div>
+                        <span class="status-badge ${active ? 'active' : 'suspended'}">${active ? 'Actif' : 'Suspendu'}</span>
                     </div>
-                    <p class="maison-muted" style="margin:0;">${(bot.sources || []).map((source) => maisonEsc(source.name)).join(' · ') || '—'}</p>
-                    <p style="margin:0; font-weight:700;">${waiting ? `${waiting} en attente de ta validation` : 'Aucune proposition en attente'}</p>
-                    <button type="button" class="admin-btn admin-btn-secondary" data-editorial-status="${maisonEsc(bot.id)}" data-next="${active ? 'SUSPENDED' : 'ACTIVE'}">${active ? 'Suspendre' : 'Activer'}</button>
+                    <p class="maison-muted" style="margin:0;">Territoires : ${maisonEsc(String(territories))}</p>
+                    <p class="maison-muted" style="margin:0;">Dernière collecte : ${maisonEsc(lastCollect(bot))}</p>
+                    <p style="margin:0; font-weight:700;">${waiting ? `${waiting} proposition${waiting > 1 ? 's' : ''} en attente` : 'Aucune proposition en attente'}</p>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="admin-btn admin-btn-primary editorial-open-bot" data-editorial-agent="${maisonEsc(bot.agent_name)}">Voir les propositions</button>
+                        <button type="button" class="admin-btn admin-btn-secondary" data-editorial-status="${maisonEsc(bot.id)}" data-next="${active ? 'SUSPENDED' : 'ACTIVE'}">${active ? 'Suspendre' : 'Activer'}</button>
+                    </div>
                 </article>`;
             }).join('') || '<p class="maison-muted">Aucun compte éditorial.</p>';
             const versionOf = (item) => {
@@ -3351,24 +3438,45 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 return 'Refusée — conservée';
             };
-            listEl.innerHTML = `<h3 style="margin:0 0 12px;">Toutes les propositions</h3>` + (errors.length ? `<p class="maison-muted">Collecte sans texte : ${errors.map((item) => `${maisonEsc(item.agent_name || '')}`).join(' · ')}. Rien n’est inventé.</p>` : '') + (visible.map((item) => {
+            listEl.innerHTML = `<h3 style="margin:0 0 12px;">Salle de validation</h3>` + (errors.length ? `<p class="maison-muted">Collecte sans texte : ${errors.map((item) => `${maisonEsc(item.agent_name || '')}`).join(' · ')}. Rien n’est inventé.</p>` : '') + (visible.map((item) => {
                 const pendingItem = item.approval_status === 'PENDING' && item.status !== 'CANCELLED';
+                const body = item.instruction || '';
                 return `
-                <article class="admin-card" style="padding:16px; margin-bottom:12px;" data-proposal="${maisonEsc(item.id)}">
-                    <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-                        <strong>${maisonEsc(item.agent_name || '')}</strong>
-                        <span class="maison-muted">${maisonEsc(statusLabel(item))}</span>
+                <article class="admin-card editorial-proposal" data-proposal="${maisonEsc(item.id)}">
+                    <div>
+                        <div class="editorial-proposal-meta">
+                            <strong>${maisonEsc(item.agent_name || '')}</strong>
+                            <span class="status-badge ${pendingItem ? 'pending' : (item.approval_status === 'APPROVED' ? 'verified' : 'suspended')}">${maisonEsc(statusLabel(item))}</span>
+                        </div>
+                        <p style="margin:8px 0 4px; font-weight:700;">${maisonEsc(item.title || '')}</p>
+                        <p class="maison-muted" style="margin:0 0 8px;">${maisonEsc(versionOf(item))} · Source : <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Lien d’origine')}</a></p>
+                        ${(item.controls && !item.controls.ok && (item.controls.reasons || []).some((reason) => /affirmation thérapeutique/.test(reason))) ? '<p class="editorial-warning">Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifie le texte avant validation.</p>' : ''}
+                        <textarea class="admin-input editorial-text" rows="6" style="width:100%;"${pendingItem ? '' : ' readonly'}>${maisonEsc(body)}</textarea>
+                        <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                            ${pendingItem ? '<button type="button" class="admin-btn admin-btn-secondary editorial-save">Enregistrer</button><button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider</button><button type="button" class="admin-btn admin-btn-danger editorial-reject">Refuser</button>' : ''}
+                            <button type="button" class="admin-btn admin-btn-secondary editorial-delete">Supprimer</button>
+                        </div>
                     </div>
-                    <p style="margin:8px 0 4px; font-weight:700;">${maisonEsc(item.title || '')}</p>
-                    <p class="maison-muted" style="margin:0 0 8px;">${maisonEsc(versionOf(item))} · <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Source')}</a></p>
-                    ${(item.controls && !item.controls.ok && (item.controls.reasons || []).some((reason) => /affirmation thérapeutique/.test(reason))) ? '<p class="editorial-warning">Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifie le texte avant validation.</p>' : ''}
-                    <textarea class="admin-input editorial-text" rows="5" style="width:100%;"${pendingItem ? '' : ' readonly'}>${maisonEsc(item.instruction || '')}</textarea>
-                    <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-                        ${pendingItem ? '<button type="button" class="admin-btn admin-btn-secondary editorial-save">Modifier</button><button type="button" class="admin-btn admin-btn-primary editorial-publish">Valider et publier</button><button type="button" class="admin-btn admin-btn-danger editorial-reject">Refuser</button>' : ''}
-                        <button type="button" class="admin-btn admin-btn-secondary editorial-delete">Supprimer</button>
-                    </div>
+                    <aside class="bokantaj-preview">
+                        <div class="bokantaj-preview-label">Aperçu du futur post</div>
+                        <div class="bokantaj-preview-author">
+                            <img src="${maisonEsc(item.agent_avatar || item.metadata?.avatar_url || 'lyann-avatar-placeholder.svg')}" alt="" class="user-avatar-sm">
+                            <span>${maisonEsc(item.agent_name || 'Agent')}</span>
+                        </div>
+                        <div class="bokantaj-preview-body">${maisonEsc(body)}</div>
+                    </aside>
                 </article>`;
             }).join('') || '<p class="maison-muted">Aucune proposition pour le moment. Le prochain passage en prépare s’il y a une source réelle.</p>');
+            botsEl.querySelectorAll('.editorial-open-bot').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const filter = document.getElementById('editorialAgentFilter');
+                    if (filter) {
+                        filter.value = button.getAttribute('data-editorial-agent') || 'all';
+                        filter.dispatchEvent(new Event('change'));
+                    }
+                    document.getElementById('editorialProposals')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
             botsEl.querySelectorAll('[data-editorial-status]').forEach((button) => {
                 button.addEventListener('click', async () => {
                     await maisonJson(`/v1/admin/editorial/bots/${button.getAttribute('data-editorial-status')}/status`, {
@@ -3379,6 +3487,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             });
             listEl.querySelectorAll('[data-proposal]').forEach((card) => {
+                const preview = card.querySelector('.bokantaj-preview-body');
+                const area = card.querySelector('.editorial-text');
+                area?.addEventListener('input', () => {
+                    if (preview) preview.textContent = area.value;
+                });
                 const notice = document.getElementById('editorialNotice');
                 const show = (message) => { if (notice) notice.textContent = message; };
                 const run = (button, pendingLabel, action) => async () => {
