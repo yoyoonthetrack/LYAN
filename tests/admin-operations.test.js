@@ -214,3 +214,32 @@ test('member API refuses anonymous and other-member access', async () => {
     await app.routes['GET /v1/me/helpdesk']({}, res);
     assert.equal(res.out.status, 401);
 });
+
+
+test('member helpdesk fails closed when profile lookup errors, is missing, or is suspended', async () => {
+    const memberId = 'a3401c97-c68f-4e2f-8b92-b920632b4c50';
+    for (const scenario of [
+        { dbResult: { data: null, error: { message: 'database unavailable' } }, status: 503 },
+        { dbResult: { data: null, error: null }, status: 403 },
+        { dbResult: { data: { id: memberId, restriction_status: 'suspended' }, error: null }, status: 403 }
+    ]) {
+        const app = captureApp();
+        registerMemberHelpdesk(app, {
+            supabaseAdmin: {
+                from() {
+                    return {
+                        select() { return this; },
+                        eq() { return this; },
+                        maybeSingle: async () => scenario.dbResult
+                    };
+                },
+                rpc: async () => ({ data: null })
+            },
+            requireBearerUser: async () => ({ id: memberId })
+        });
+        const res = mockRes();
+        await app.routes['GET /v1/me/helpdesk']({}, res);
+        assert.equal(res.out.status, scenario.status);
+        assert.equal(res.out.body.success, false);
+    }
+});
