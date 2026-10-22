@@ -90,3 +90,5 @@
 @media(max-width:600px){.bokantaj-map-canvas{height:57dvh;min-height:360px}.bokantaj-map-topbar{padding:12px 12px 8px}.bokantaj-map-gesture{font-size:.75rem}.bokantaj-map-chips button{padding:8px 12px}.bokantaj-map-detail{padding-bottom:max(16px,env(safe-area-inset-bottom))}}
 /* Leave the upper picker surface available when the provider is unreachable. */
 .bokantaj-picker-map .bokantaj-basemap-notice{top:auto;bottom:28px;right:12px;padding:6px 8px;font-size:.75rem}
+.bokantaj-map-topbar select{width:auto;max-width:48%;min-width:0;flex:0 1 auto}
+.bokantaj-map-section{scroll-margin-top:88px}

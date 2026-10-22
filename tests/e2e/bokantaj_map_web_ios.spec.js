@@ -128,9 +128,12 @@ for (const mobile of [false, true]) {
     await expect(page.getByRole('link', { name: '© OpenStreetMap', exact: true })).toBeVisible();
     const marker = page.locator('#bokantajMapCanvas .bokantaj-map-pin');
     await expect(marker).toHaveAttribute('title', 'Resto · Pointe-à-Pitre');
+    await page.locator('#bokantajMapDetail button').click();
     await marker.focus();
     await page.keyboard.press('Enter');
+    await expect(page.locator('#bokantajMapDetail')).toBeVisible();
     await expect(page.locator('#bokantajMapDetail')).toContainText('Publication de test');
+    await expect(page.locator('.bokantaj-popup .leaflet-popup-content')).toContainText('Pointe-à-Pitre');
     await page.locator('#bokantajMapSection').screenshot({ path: 'test-results/bokantaj-map-real-' + (mobile ? 'mobile' : 'desktop') + '.png' });
     await page.getByRole('button', { name: 'Zoomer', exact: true }).click();
     await expect(page.locator('#bokantajMapCanvas')).toHaveAttribute('data-basemap', 'ready');
