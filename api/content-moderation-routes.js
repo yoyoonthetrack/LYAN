@@ -133,7 +133,8 @@ function registerContentModerationRoutes(app, deps) {
         if (!authResult.authorized) {
             return res.status(authResult.status).json({ success: false, error: authResult.error });
         }
-        const decision = String(req.body && req.body.decision || '');
+        const raw = String(req.body && req.body.decision || '').toLowerCase();
+        const decision = raw === 'approve' ? 'approved' : (raw === 'reject' ? 'rejected' : raw);
         if (decision !== 'approved' && decision !== 'rejected') {
             return res.status(400).json({ success: false, error: 'Décision attendue : approved ou rejected.' });
         }
@@ -148,7 +149,11 @@ function registerContentModerationRoutes(app, deps) {
         if (!table) return res.status(404).json({ success: false, error: 'Sujet inconnu.' });
         const patch = subject === 'profile'
             ? { bio_moderation_status: decision, avatar_moderation_status: decision }
-            : { public_moderation_status: decision };
+            : {
+                public_moderation_status: decision,
+                human_moderation_lock: decision === 'rejected',
+                human_decision: decision === 'approved' ? 'approve' : 'reject'
+            };
         const { data, error } = await supabaseAdmin
             .from(table)
             .update(patch)

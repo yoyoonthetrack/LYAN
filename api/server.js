@@ -233,7 +233,7 @@ function requireConfiguredSupabaseUrl() {
     return url;
 }
 
-const { assertHostedIsolation } = require('./runtime-isolation');
+const { assertHostedIsolation, runtimeIdentity } = require('./runtime-isolation');
 const hostedIsolation = assertHostedIsolation(process.env);
 if (!hostedIsolation.ok) {
     console.error('❌ FATAL CONFIGURATION ERROR:', hostedIsolation.code, hostedIsolation.message);
@@ -282,6 +282,26 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 const { createPublicRequestsHandler } = require('./public-explorer-requests');
 app.get('/v1/explorer/requests', createPublicRequestsHandler(supabaseAdmin, Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)));
+app.get('/v1/runtime/identity', (req, res) => {
+    const identity = runtimeIdentity(process.env);
+    if (identity.production) {
+        return res.status(503).json({
+            success: false,
+            code: 'RUNTIME_IDENTITY_PRODUCTION_HIDDEN',
+            message: 'Identité runtime masquée hors Staging.'
+        });
+    }
+    res.json({
+        success: identity.success,
+        vercel_env: identity.vercel_env,
+        kind: identity.kind,
+        supabase_ref: identity.supabase_ref,
+        isolation: identity.isolation,
+        staging: identity.staging,
+        production: false,
+        commit: identity.commit
+    });
+});
 
 function getSupabaseClient(req) {
     const authHeader = req ? (req.headers['authorization'] || req.headers['Authorization']) : null;
@@ -1932,94 +1952,13 @@ app.get('/v1/admin/me', async (req, res) => {
     });
 });
 
-// 5.1 ADMIN KPIS (GET /v1/admin/kpis - Real DB Calculation, NO Mock Fallbacks)
-app.get('/v1/admin/kpis', async (req, res) => {
-    const authResult = await verifyAdminPermission(req);
-    if (!authResult.authorized) {
-        return res.status(authResult.status).json({ success: false, error: authResult.error });
-    }
-    try {
-        const [{ count: userCount, error: err1 }, { count: missionCount, error: err2 }, { data: paymentsData, error: err3 }, { count: openDisputesCount }, { count: activeAgentsCount }, { count: pendingTasksCount }] = await Promise.all([
-            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }),
-            supabaseAdmin.from('missions').select('*', { count: 'exact', head: true }),
-            supabaseAdmin.from('payments').select('customer_total_cents, lyann_revenue_cents, transfer_status').eq('payment_status', 'SUCCEEDED'),
-            supabaseAdmin.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'OPEN'),
-            supabaseAdmin.from('lyann_agents').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
-            supabaseAdmin.from('lyann_agent_tasks').select('*', { count: 'exact', head: true }).eq('status', 'WAITING_APPROVAL')
-        ]);
-
-        const validUserCount = userCount || 0;
-        const validMissionCount = missionCount || 0;
-        const validPayments = paymentsData || [];
-        const validDisputes = openDisputesCount || 0;
-        const validAgents = activeAgentsCount || 0;
-        const validPendingTasks = pendingTasksCount || 0;
-
-        let totalGmvCents = 0;
-        let totalLyannRevenueCents = 0;
-        let pendingTransfersCount = 0;
-
-        validPayments.forEach(p => {
-            totalGmvCents += (p.customer_total_cents || 0);
-            totalLyannRevenueCents += (p.lyann_revenue_cents || 0);
-            if (['PENDING_VALIDATION', 'TRANSFER_FAILED'].includes(p.transfer_status)) {
-                pendingTransfersCount++;
-            }
-        });
-
-        const extraCounts = await Promise.all([
-            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_type', 'real'),
-            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('account_type', 'seed'),
-            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('is_pro', true),
-            supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('kyc_verified', true),
-            supabaseAdmin.from('requests').select('*', { count: 'exact', head: true }),
-            supabaseAdmin.from('requests').select('*', { count: 'exact', head: true }).eq('status', 'OPEN'),
-            supabaseAdmin.from('bokantaj_posts').select('*', { count: 'exact', head: true }),
-            supabaseAdmin.from('conversations').select('*', { count: 'exact', head: true }),
-            supabaseAdmin.from('services').select('*', { count: 'exact', head: true }),
-            supabaseAdmin.from('quotes').select('*', { count: 'exact', head: true }),
-            supabaseAdmin.from('user_reports').select('*', { count: 'exact', head: true }).eq('status', 'OPEN')
-        ]);
-        const extra = extraCounts.map((row) => (row && !row.error ? (row.count || 0) : 0));
-
-        res.json({
-            success: true,
-            data_available: true,
-            activeMembers: validUserCount,
-            activeMissions: validMissionCount,
-            gmvMonth: (totalGmvCents / 100) || 0,
-            mrrCommissions: (totalLyannRevenueCents / 100) || 0,
-            pendingTransfers: pendingTransfersCount,
-            openDisputes: validDisputes,
-            activeAgents: validAgents,
-            pendingApprovals: validPendingTasks,
-            realMembers: extra[0],
-            seedMembers: extra[1],
-            lyanneurs: extra[2],
-            kycVerified: extra[3],
-            requests: extra[4],
-            openRequests: extra[5],
-            bokantajPosts: extra[6],
-            conversations: extra[7],
-            services: extra[8],
-            quotes: extra[9],
-            openReports: extra[10],
-            kpis: {
-                gmvCents: totalGmvCents,
-                lyannRevenueCents: totalLyannRevenueCents,
-                activeMissions: validMissionCount,
-                activeMembers: validUserCount
-            }
-        });
-    } catch (e) {
-        console.error("Admin KPIs calculation error:", e);
-        res.status(503).json({
-            success: false,
-            data_available: false,
-            error: "Données temporairement indisponibles"
-        });
-    }
-});
+const { registerAdminControlCenter } = require('./admin-control-center');
+registerAdminControlCenter(app, { supabaseAdmin, verifyAdminPermission });
+const { registerAdminModerationCenter } = require('./admin-moderation-center');
+registerAdminModerationCenter(app, { supabaseAdmin, verifyAdminPermission, recordAudit: recordMaisonAudit });
+const { registerAdminOperations, registerMemberHelpdesk } = require('./admin-operations');
+registerAdminOperations(app, { supabaseAdmin, verifyAdminPermission });
+registerMemberHelpdesk(app, { supabaseAdmin, requireBearerUser });
 
 function adminProfileName(profile) {
     if (!profile) return 'Membre';
@@ -2439,8 +2378,13 @@ app.post('/v1/admin/ops/users/:id/status', async (req, res) => {
         return res.status(authResult.status).json({ success: false, error: authResult.error });
     }
     try {
+        if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'is_verified')) {
+            return res.status(400).json({
+                success: false,
+                error: 'is_verified n’est pas une suspension. Utilisez /v1/admin/moderation-center/users/:id/sanction.'
+            });
+        }
         const patch = { updated_at: new Date().toISOString() };
-        if (typeof req.body?.is_verified === 'boolean') patch.is_verified = req.body.is_verified;
         if (typeof req.body?.kyc_verified === 'boolean') patch.kyc_verified = req.body.kyc_verified;
         if (typeof req.body?.is_pro === 'boolean') patch.is_pro = req.body.is_pro;
         if (typeof req.body?.professional_status === 'string') patch.professional_status = req.body.professional_status.trim() || null;
@@ -3060,6 +3004,9 @@ app.post('/v1/admin/agent-tasks/:id/approve', async (req, res) => {
         const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('*').eq('id', id).maybeSingle();
         if (error) throw error;
         if (!task) return res.status(404).json({ success: false, error: 'Tâche introuvable.' });
+        if (task.status === 'ARCHIVED' || task.status === 'SUSPENDED' || task.archived_at) {
+            return res.status(409).json({ success: false, error: 'Une tâche suspendue ou archivée ne peut pas être publiée.' });
+        }
         if (task.metadata && task.metadata.editorial) {
             if (decision === 'APPROVED') {
                 return await publishStoredEditorialProposal(res, task, task.instruction, {

@@ -14,12 +14,83 @@ window.adminEscape = function(value) {
     }[char]));
 };
 
+window.adminShowOutcome = function(message, isError) {
+    const text = String(message || '').trim();
+    if (!text) return;
+    if (typeof window.showModNotice === 'function' && document.getElementById('modNotice')) {
+        window.showModNotice(text, !!isError);
+    }
+    let bar = document.getElementById('adminGlobalNotice');
+    if (!bar) {
+        bar = document.createElement('p');
+        bar.id = 'adminGlobalNotice';
+        bar.className = 'admin-global-notice';
+        const header = document.querySelector('.admin-header');
+        if (header) header.insertAdjacentElement('afterend', bar);
+        else document.body.prepend(bar);
+    }
+    bar.hidden = false;
+    bar.textContent = text;
+    bar.classList.toggle('is-error', !!isError);
+};
+
+window.adminMarkUnavailable = function(el, reason) {
+    if (!el) return;
+    const why = String(reason || 'Fonction non branchée. Aucun changement n’est effectué.');
+    el.setAttribute('data-unavailable', why);
+    el.setAttribute('title', why);
+    el.setAttribute('aria-disabled', 'true');
+    if ('disabled' in el) el.disabled = true;
+    el.classList.add('is-unavailable');
+    el.removeAttribute('onclick');
+};
+
+window.adminMarkWired = function(el) {
+    if (el) el.setAttribute('data-admin-wired', '1');
+};
+
+window.adminSealDeadControls = function(root) {
+    const scope = root || document;
+    scope.querySelectorAll('button, [role="button"], a.admin-nav-item, .chip-btn, .mod-tab, input[type="submit"], .admin-icon-btn').forEach((el) => {
+        if (el.closest('#adminLoginView, #adminAuthLoadingView')) return;
+        if (el.hasAttribute('data-unavailable')) return;
+        const onclick = el.getAttribute('onclick') || '';
+        if (/alert\s*\(\s*['"`]🎁|Abonnement Pro offert à cet utilisateur avec succès/i.test(onclick)
+            || /alert\s*\(\s*['"`]Fonction indisponible/i.test(onclick)
+            || /alert\s*\(\s*['"`]Signalement classé sans suite/i.test(onclick)) {
+            window.adminMarkUnavailable(el, 'Cette action n’est pas branchée. Aucun changement n’est effectué.');
+            return;
+        }
+        if (el.hasAttribute('data-admin-wired') || el.matches('[data-section], [data-mod-tab], .admin-modal-close, .admin-context-tab')) {
+            window.adminMarkWired(el);
+            return;
+        }
+        if (onclick) {
+            window.adminMarkWired(el);
+            return;
+        }
+        if (el.disabled && (el.title || el.textContent)) {
+            el.setAttribute('data-unavailable', el.title || String(el.textContent || '').trim());
+            return;
+        }
+        if (el.id) {
+            window.adminMarkWired(el);
+            return;
+        }
+        if (!el.disabled && !onclick && !el.matches('[data-section], [data-mod-tab], .admin-modal-close, .admin-context-tab, .command-palette-item')) {
+            window.adminMarkUnavailable(el, 'Contrôle non branché. Aucune action n’est exécutée.');
+        }
+    });
+};
+
 window.fetchWithAdminAuth = async function(url, options = {}) {
     const headers = Object.assign({}, options.headers || {});
     let token = '';
     if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getSession === 'function') {
-        const { data: sData } = await window.LYANN_API_CLIENT.getSession();
-        token = sData?.session?.access_token || '';
+        try {
+            const { data: sData } = await window.LYANN_API_CLIENT.getSession();
+            token = sData?.session?.access_token || '';
+        } catch (_) {}
     }
     if (!token && window.currentAdminUser && window.currentAdminUser.token) {
         token = window.currentAdminUser.token;
@@ -126,6 +197,9 @@ window.hydrateAdminSection = async function(sectionId) {
         return data;
     }
     if (sectionId === 'sec-content') {
+        if (typeof window.loadAdminModerationCenter === 'function') {
+            return window.loadAdminModerationCenter();
+        }
         const res = await window.fetchWithAdminAuth('/v1/admin/ops/moderation');
         const data = await res.json().catch(() => ({}));
         putRows('adminModerationQueueBody', (data.posts || []).map((row) => `<tr><td>${esc(row.excerpt || row.id)}</td></tr>`).join(''));
@@ -494,6 +568,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Attach onAuthStateChange listener ONCE
+    try {
     if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
         window.LYANN_API_CLIENT.supabase.auth.onAuthStateChange(async (event, session) => {
             console.log(`[AUTH ENGINE] Event onAuthStateChange: ${event}`);
@@ -525,6 +600,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.runAdminAuthCheck('SIGNED_IN_EVENT');
             }
         });
+    }
+    } catch (clientErr) {
+        console.warn('[ADMIN BOOT] Client auth indisponible.', clientErr);
     }
 
     window.checkAdminPermission = function(permissionCode) {
@@ -704,30 +782,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const ADMIN_SECTION_META = {
-        'sec-overview': { title: "Vue d'ensemble", crumb: 'Pilotage' },
-        'sec-editorial': { title: 'Comptes éditoriaux', crumb: 'Pilotage' },
+        'sec-overview': { title: 'Centre de pilotage', crumb: 'Pilotage' },
+        'sec-action': { title: 'À traiter', crumb: 'Pilotage' },
+        'sec-marketplace': { title: 'Analytics marketplace', crumb: 'Pilotage' },
+        'sec-editorial': { title: 'Comptes éditoriaux', crumb: 'Bokantaj & rédaction' },
         'sec-users': { title: 'Utilisateurs', crumb: 'Communauté' },
         'sec-maison': { title: 'Profils maison', crumb: 'Communauté' },
         'sec-user-detail': { title: 'Fiche utilisateur', crumb: 'Communauté' },
         'sec-lyanneurs': { title: 'Lyanneurs', crumb: 'Communauté' },
-        'sec-agents': { title: 'Agents LYANN', crumb: 'Communauté' },
-        'sec-mika': { title: 'Mika', crumb: 'Communauté' },
-        'sec-bokantaj': { title: 'Bokantaj', crumb: 'Activité' },
-        'sec-requests': { title: 'Demandes', crumb: 'Activité' },
-        'sec-services': { title: 'Prestations', crumb: 'Activité' },
-        'sec-quotes': { title: 'Devis', crumb: 'Activité' },
-        'sec-missions': { title: 'Missions', crumb: 'Activité' },
-        'sec-chat': { title: 'Messagerie', crumb: 'Activité' },
-        'sec-finances': { title: 'Paiements', crumb: 'Finance' },
-        'sec-invoices': { title: 'Facturation', crumb: 'Finance' },
-        'sec-payouts': { title: 'Versements', crumb: 'Finance' },
-        'sec-disputes': { title: 'Litiges', crumb: 'Finance' },
-        'sec-subscriptions': { title: 'Abonnements', crumb: 'Finance' },
-        'sec-protection': { title: 'Assurance', crumb: 'Finance' },
-        'sec-reviews': { title: 'Avis', crumb: 'Opérations' },
-        'sec-content': { title: 'Modération', crumb: 'Opérations' },
-        'sec-notifications': { title: 'Notifications', crumb: 'Opérations' },
-        'sec-support': { title: 'Support', crumb: 'Opérations' },
+        'sec-agents': { title: 'Agents LYANN', crumb: 'Bokantaj & rédaction' },
+        'sec-mika': { title: 'Mika', crumb: 'Bokantaj & rédaction' },
+        'sec-bokantaj': { title: 'Fil Bokantaj', crumb: 'Bokantaj & rédaction' },
+        'sec-requests': { title: 'Demandes', crumb: 'Marketplace' },
+        'sec-services': { title: 'Prestations', crumb: 'Marketplace' },
+        'sec-quotes': { title: 'Devis', crumb: 'Marketplace' },
+        'sec-missions': { title: 'Missions', crumb: 'Marketplace' },
+        'sec-chat': { title: 'Messagerie', crumb: 'Marketplace' },
+        'sec-finances': { title: 'Paiements', crumb: 'Business & finances' },
+        'sec-invoices': { title: 'Facturation', crumb: 'Business & finances' },
+        'sec-payouts': { title: 'Versements', crumb: 'Business & finances' },
+        'sec-disputes': { title: 'Litiges', crumb: 'Confiance & support' },
+        'sec-subscriptions': { title: 'Abonnements', crumb: 'Business & finances' },
+        'sec-protection': { title: 'Assurance', crumb: 'Business & finances' },
+        'sec-reviews': { title: 'Avis', crumb: 'Confiance & support' },
+        'sec-content': { title: 'Modération', crumb: 'Confiance & support' },
+        'sec-notifications': { title: 'Notifications', crumb: 'Confiance & support' },
+        'sec-support': { title: 'Support', crumb: 'Confiance & support' },
         'sec-team': { title: 'Équipe LYANN', crumb: 'Administration' },
         'sec-rbac': { title: 'Rôles & permissions', crumb: 'Administration' },
         'sec-audit-logs': { title: 'Journaux', crumb: 'Administration' },
@@ -737,14 +817,59 @@ document.addEventListener('DOMContentLoaded', async () => {
         'sec-health': { title: 'Santé système', crumb: 'Administration' }
     };
 
+    function adminCanSeeFinance() {
+        const user = window.currentAdminUser || {};
+        if (user.isOwner || user.role === 'OWNER' || user.role === 'SUPER_ADMIN') return true;
+        const perms = user.permissions || [];
+        return perms.includes('*') || perms.some((p) => String(p).startsWith('finance'));
+    }
+
+    function applyAdminRbacVisibility() {
+        const showFinance = adminCanSeeFinance();
+        document.querySelectorAll('[data-rbac="finance"]').forEach((el) => {
+            el.hidden = !showFinance;
+        });
+    }
+
+    function renderAdminContextTabs(sectionId) {
+        const tabs = document.getElementById('adminContextTabs');
+        const item = document.querySelector(`.admin-nav-item[data-section="${sectionId}"]`);
+        const pole = item?.getAttribute('data-pole');
+        if (!tabs || !pole) {
+            if (tabs) tabs.hidden = true;
+            return;
+        }
+        const siblings = Array.from(document.querySelectorAll(`.admin-nav-item[data-pole="${pole}"]`))
+            .filter((nav) => !nav.hidden);
+        tabs.innerHTML = siblings.map((nav) => {
+            const id = nav.getAttribute('data-section');
+            const label = (nav.querySelector('span')?.textContent || id).trim();
+            return `<button type="button" class="admin-context-tab${id === sectionId ? ' active' : ''}" data-section="${id}">${label}</button>`;
+        }).join('');
+        tabs.hidden = siblings.length < 2;
+        tabs.querySelectorAll('.admin-context-tab').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                document.querySelector(`.admin-nav-item[data-section="${btn.getAttribute('data-section')}"]`)?.click();
+            });
+        });
+    }
+
     function syncAdminChrome(sectionId, item) {
         const meta = ADMIN_SECTION_META[sectionId] || {};
         const title = document.getElementById('adminHeaderTitle');
         const crumb = document.getElementById('adminHeaderCrumb');
         if (title) title.textContent = meta.title || (item?.querySelector('span')?.textContent || '').trim();
         if (crumb) crumb.textContent = meta.crumb || 'Back-office';
+        document.querySelectorAll('details.admin-nav-group').forEach((group) => group.classList.remove('is-current'));
         const group = item?.closest('details.admin-nav-group');
-        if (group) group.open = true;
+        if (group) {
+            group.open = true;
+            group.classList.add('is-current');
+        }
+        renderAdminContextTabs(sectionId);
+        applyAdminRbacVisibility();
+        const filters = document.getElementById('adminInsightFilters');
+        if (filters) filters.hidden = !['sec-overview', 'sec-action', 'sec-marketplace'].includes(sectionId);
     }
 
     navItems.forEach(item => {
@@ -775,6 +900,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 if (targetSectionId === 'sec-editorial' && typeof window.openEditorialDesk === 'function') {
                     window.openEditorialDesk();
+                }
+                if (['sec-overview', 'sec-action', 'sec-marketplace'].includes(targetSectionId) && typeof window.loadAdminControlCenter === 'function') {
+                    window.loadAdminControlCenter();
                 }
                 if (typeof window.loadAdminSection === 'function') {
                     window.loadAdminSection(targetSectionId);
@@ -833,9 +961,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert('Ouvre la fiche membre depuis la liste Utilisateurs pour modifier le statut.');
                 return;
             }
-            if (confirm(`⚠️ Suspendre le compte de ${userName} pour manquement aux règles communautaires ?`)) {
-                window.adminUpdateUserStatus(userId, { is_verified: false });
+            if (typeof window.openModerationUser === 'function') {
+                window.openModerationUser(userId, userName);
+                return;
             }
+            alert('Ouvre l’onglet Modération → Utilisateurs pour une vraie suspension. is_verified n’est plus utilisé.');
         });
     });
 
@@ -907,18 +1037,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Résolution de Ticket Support
     document.querySelectorAll('.btn-resolve-ticket').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const ticketId = btn.getAttribute('data-ticket-id') || 'T-1082';
-            alert('Aucun ticket Helpdesk n’est branché. Traite les signalements dans Modération ou Aide LYANN.');
-            const row = btn.closest('tr');
-            if (row) {
-                const statusBadge = row.querySelector('.status-badge');
-                if (statusBadge) {
-                    statusBadge.className = 'status-badge resolved';
-                    statusBadge.textContent = 'RÉSOLU';
-                }
-            }
-        });
+        window.adminMarkUnavailable(btn, 'Aucun ticket Helpdesk n’est branché. Traite les signalements dans Modération.');
     });
 
     // Approbation / Rejet des Publications IA
@@ -982,20 +1101,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.btn-ignore-mod').forEach(btn => {
         btn.addEventListener('click', () => {
             const modId = btn.getAttribute('data-mod-id');
-            const row = document.getElementById(`mod-row-${modId}`);
-            if (row) row.remove();
-            alert('Signalement classé sans suite.');
+            if (!modId || typeof window.adminUpdateReport !== 'function') {
+                window.adminShowOutcome('Utilise l’onglet Signalements pour classer un dossier réel.', true);
+                return;
+            }
+            window.adminUpdateReport(modId, 'user', 'DISMISSED');
         });
+        window.adminMarkWired(btn);
     });
 
     // Bouton de Pause Générale d'Urgence IA
     const btnPauseAllAI = document.getElementById('btnPauseAllAI');
     if (btnPauseAllAI) {
         btnPauseAllAI.addEventListener('click', () => {
-            if (confirm('🚨 ATTENTION : Mettre en pause TOUS les Agents IA du réseau simultanément ?')) {
-                alert('⏸️ Tout le réseau d\'Agents IA a été mis en pause conservatoire.');
-            }
+            document.getElementById('globalKillSwitchBtn')?.click();
         });
+        window.adminMarkWired(btnPauseAllAI);
     }
 
     // Feature Flags Toggles
@@ -1864,6 +1985,172 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --------------------------------------------------------------------------
     let globalKillSwitchActive = false;
 
+    function adminMetricText(metric, format) {
+        if (!metric || metric.available === false || metric.value == null) return 'Indisponible';
+        if (format === 'euro') return Number(metric.value).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+        if (format === 'pct') return `${Math.round(Number(metric.value) * 100)} %`;
+        if (format === 'hours') return `${Number(metric.value).toFixed(1)} h`;
+        return String(metric.value);
+    }
+
+    function renderActionRows(items, containerId, queue) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (queue && queue.available === false && !(items && items.length)) {
+            el.innerHTML = '<p class="maison-muted">File d’action indisponible. Les compteurs n’ont pas pu être lus.</p>';
+            return;
+        }
+        const warning = queue && queue.partial
+            ? '<p class="maison-muted">Certaines sources n’ont pas répondu. Les alertes ci-dessous sont partielles.</p>'
+            : '';
+        if (!items || !items.length) {
+            el.innerHTML = `${warning}<p class="maison-muted">Rien à traiter pour le moment.</p>`;
+            return;
+        }
+        el.innerHTML = warning + items.map((item) => `
+            <button type="button" class="admin-action-row" data-action-section="${window.adminEscape(item.section)}" data-action-filter="${window.adminEscape(item.filter || '')}">
+                <span><strong>${window.adminEscape(item.title)}</strong></span>
+                <span class="status-badge pending">${window.adminEscape(item.count)}</span>
+            </button>
+        `).join('');
+        el.querySelectorAll('[data-action-section]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const section = btn.getAttribute('data-action-section');
+                const filter = btn.getAttribute('data-action-filter');
+                document.querySelector(`.admin-nav-item[data-section="${section}"]`)?.click();
+                if (filter === 'unanswered') {
+                    const status = document.getElementById('requestStatusFilter');
+                    if (status) {
+                        status.value = 'OPEN';
+                        status.dispatchEvent(new Event('change'));
+                    }
+                }
+            });
+        });
+    }
+
+    window.loadAdminControlCenter = async function loadAdminControlCenter() {
+        const period = document.getElementById('adminPeriodFilter')?.value || '30d';
+        const territory = document.getElementById('adminTerritoryFilter')?.value || 'all';
+        const qs = `period=${encodeURIComponent(period)}&territory=${encodeURIComponent(territory)}`;
+        try {
+            const res = await window.fetchWithAdminAuth(`/v1/admin/control-center?${qs}`);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                renderUnavailableState('kpiContainer');
+                renderActionRows([], 'pilotageActionList', { available: false });
+                renderActionRows([], 'actionCenterList', { available: false });
+                return;
+            }
+            const kpis = data.kpis || {};
+            const metrics = kpis.metrics || {};
+            const set = (id, metric, format) => {
+                const node = document.getElementById(id);
+                if (!node) return;
+                node.textContent = adminMetricText(metric, format);
+                node.classList.toggle('admin-metric-unavailable', !metric || metric.available === false);
+            };
+            set('kpiTotalUsers', metrics.realMembers);
+            set('kpiOpenRequests', metrics.openRequests);
+            set('kpiGmv', metrics.gmvPeriod, 'euro');
+            set('kpiRevenue', metrics.collectedCommissions, 'euro');
+            set('kpiBokantajApproved', metrics.bokantajApproved);
+            set('kpiActiveBots', metrics.editorialPending);
+            set('kpiOpenDisputes', metrics.openDisputes);
+            const usersSub = document.getElementById('kpiUsersSub');
+            if (usersSub) usersSub.textContent = `Maison : ${adminMetricText(metrics.seedMembers)} · agents : ${adminMetricText(metrics.editorialAgents)} · KYC : ${adminMetricText(metrics.kycVerified)} · nouveaux : ${adminMetricText(metrics.newRealMembers)}`;
+            const recent = document.getElementById('attentionRecent');
+            if (recent) recent.textContent = `Période ${kpis.period || period} (${kpis.period_kind || ''}). Membres actifs : non mesurables.`;
+            const mix = document.getElementById('kpiActivityMix');
+            if (mix) mix.textContent = `Organique ${adminMetricText(metrics.bokantajOrganic)} · maison ${adminMetricText(metrics.bokantajAdministered)} · agents ${adminMetricText(metrics.bokantajEditorial)} · auteur inconnu ${adminMetricText(metrics.bokantajUnknown)}`;
+            const freshness = document.getElementById('adminDataFreshness');
+            if (freshness) freshness.textContent = `Dernière actualisation : ${new Date(data.generated_at || Date.now()).toLocaleString('fr-FR')}`;
+            const actionBadge = document.getElementById('sidebarActionBadge');
+            if (actionBadge) actionBadge.textContent = String((data.actions || []).length);
+            const editorialBadge = document.getElementById('sidebarEditorialBadge');
+            if (editorialBadge && metrics.editorialPending?.available) editorialBadge.textContent = String(metrics.editorialPending.value);
+            const disputeBadge = document.getElementById('sidebarDisputeBadge');
+            if (disputeBadge && metrics.openDisputes?.available) disputeBadge.textContent = String(metrics.openDisputes.value);
+            const maisonBadge = document.getElementById('sidebarMaisonBadge');
+            if (maisonBadge && metrics.seedMembers?.available) maisonBadge.textContent = String(metrics.seedMembers.value);
+            renderActionRows(data.actions || [], 'pilotageActionList', data.actionQueue);
+            renderActionRows(data.actions || [], 'actionCenterList', data.actionQueue);
+        } catch (error) {
+            console.warn('control-center', error);
+            renderUnavailableState('kpiContainer');
+            renderActionRows([], 'pilotageActionList', { available: false });
+            renderActionRows([], 'actionCenterList', { available: false });
+        }
+        try {
+            const market = await window.fetchWithAdminAuth(`/v1/admin/marketplace-stats?${qs}`);
+            const body = await market.json().catch(() => ({}));
+            if (!market.ok || !body.success) {
+                const grid = document.getElementById('marketplaceKpiGrid');
+                if (grid) grid.innerHTML = '<p class="maison-muted">Statistiques marketplace indisponibles.</p>';
+                return;
+            }
+            const grid = document.getElementById('marketplaceKpiGrid');
+            if (grid) {
+                const cards = [
+                    ['Membres réels', body.metrics.realMembers],
+                    ['Profils maison', body.metrics.seedMembers],
+                    ['Agents éditoriaux', body.metrics.editorialAgents],
+                    ['Nouveaux membres', body.metrics.newRealMembers],
+                    ['Profils complétés', body.metrics.completedProfiles],
+                    ['Membres actifs', body.metrics.activeMembers],
+                    ['Annonces (période)', body.metrics.requestsInPeriod],
+                    ['Sans devis 24 h', body.metrics.unanswered24h],
+                    ['Sans devis 48 h', body.metrics.unanswered48h],
+                    ['Sans premier contact', body.metrics.noFirstContact],
+                    ['Sans mission confirmée', body.metrics.noConfirmedMission],
+                    ['Délai 1er devis', body.metrics.medianFirstQuoteHours, 'hours'],
+                    ['Devis émis (période)', body.metrics.quotesIssued],
+                    ['Acceptations datées', body.metrics.quotesAcceptedInPeriod],
+                    ['Missions créées', body.metrics.missionsCreated],
+                    ['Missions terminées', body.metrics.missionsCompleted],
+                    ['Conversion annonce → devis', body.metrics.conversionRequestToQuote, 'pct'],
+                    ['Conversion devis → accepté', body.metrics.conversionQuoteToAccept, 'pct'],
+                    ['Bokantaj organique', body.metrics.bokantajOrganic],
+                    ['Bokantaj maison', body.metrics.bokantajAdministered],
+                    ['Bokantaj agents', body.metrics.bokantajEditorial],
+                    ['Bokantaj auteur inconnu', body.metrics.bokantajUnknown]
+                ];
+                grid.innerHTML = cards.map(([label, metric, format]) => `
+                    <div class="admin-card kpi-card">
+                        <div class="kpi-data">
+                            <div class="kpi-label">${label}</div>
+                            <div class="kpi-value">${adminMetricText(metric, format)}</div>
+                            <div class="kpi-sub">${window.adminEscape((metric && metric.kind) || '')} — ${window.adminEscape((metric && (metric.error || metric.definition)) || '')}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            const table = document.getElementById('marketplaceTerritoryTable');
+            if (table) {
+                if (body.byTerritoryAvailable === false) {
+                    table.innerHTML = `<p class="maison-muted">Répartition territoriale indisponible : ${window.adminEscape(body.byTerritoryError || 'jeu incomplet')}</p>`;
+                } else {
+                    const rows = body.byTerritory || [];
+                    table.innerHTML = rows.length
+                        ? `<table class="admin-table"><thead><tr><th>Territoire</th><th>Annonces (période)</th><th>Ouvertes</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${window.adminEscape(row.territory)}</td><td>${row.requests}</td><td>${row.open == null ? '—' : row.open}</td></tr>`).join('')}</tbody></table>`
+                        : '<p class="maison-muted">Aucune annonce dans cette fenêtre.</p>';
+                }
+            }
+            const missing = document.getElementById('marketplaceMissing');
+            if (missing) {
+                missing.innerHTML = (body.missingInstrumentation || []).map((row) => `<li><strong>${window.adminEscape(row.event)}</strong> — ${window.adminEscape(row.why)}</li>`).join('');
+            }
+        } catch (_error) {
+            /* marketplace is optional if KPIs already loaded */
+        }
+    };
+
+    document.getElementById('adminPeriodFilter')?.addEventListener('change', () => window.loadAdminControlCenter());
+    document.getElementById('adminTerritoryFilter')?.addEventListener('change', () => window.loadAdminControlCenter());
+    document.getElementById('gotoActionCenterBtn')?.addEventListener('click', () => {
+        document.querySelector('.admin-nav-item[data-section="sec-action"]')?.click();
+    });
+
     async function loadAdminRealData() {
         // 1. Fetch persistent Kill Switch state from DB
         try {
@@ -1888,54 +2175,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn("API /v1/admin/kill-switch/global fetch error:", e);
         }
 
-        // 2. Load KPIs from /v1/admin/kpis
-        try {
-            const res = await window.fetchWithAdminAuth('/v1/admin/kpis');
-            if (res.ok) {
-                const data = await res.json();
-                if (data.success && data.data_available) {
-                    const euro = (n) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
-                    const kpiGmv = document.getElementById('kpiGmv');
-                    if (kpiGmv && data.gmvMonth !== undefined) kpiGmv.textContent = euro(data.gmvMonth);
-                    const kpiRevenue = document.getElementById('kpiRevenue');
-                    if (kpiRevenue && data.mrrCommissions !== undefined) kpiRevenue.textContent = euro(data.mrrCommissions);
-                    const kpiUsers = document.getElementById('kpiTotalUsers');
-                    if (kpiUsers && data.activeMembers !== undefined) kpiUsers.textContent = data.activeMembers;
-                    const kpiMissions = document.getElementById('kpiTotalMissions');
-                    if (kpiMissions && data.activeMissions !== undefined) kpiMissions.textContent = data.activeMissions;
-                    const usersSub = document.getElementById('kpiUsersSub');
-                    if (usersSub) usersSub.textContent = `${data.realMembers || 0} membres • ${data.seedMembers || 0} profils maison • ${data.kycVerified || 0} KYC`;
-                    const missionsSub = document.getElementById('kpiMissionsSub');
-                    if (missionsSub) missionsSub.textContent = `${data.openRequests || 0} demandes ouvertes`;
-                    const activity = document.getElementById('kpiActivityMix');
-                    if (activity) activity.textContent = `${data.openRequests || 0} demandes • ${data.bokantajPosts || 0} Lyanns • ${data.conversations || 0} conv.`;
-                    const bots = document.getElementById('kpiActiveBots');
-                    if (bots) bots.textContent = `${data.activeAgents || 0} actifs • ${data.pendingApprovals || 0} en attente`;
-                    const disputes = document.getElementById('kpiOpenDisputes');
-                    if (disputes) disputes.textContent = `${data.openDisputes || 0} litiges • ${data.openReports || 0} signalements`;
-                    const agentBadge = document.getElementById('sidebarAgentBadge');
-                    if (agentBadge) agentBadge.textContent = String(data.activeAgents || 0);
-                    const disputeBadge = document.getElementById('sidebarDisputeBadge');
-                    if (disputeBadge) disputeBadge.textContent = String(data.openDisputes || 0);
-                    const maisonBadge = document.getElementById('sidebarMaisonBadge');
-                    if (maisonBadge && data.seedMembers !== undefined) maisonBadge.textContent = String(data.seedMembers);
-                    const attentionEditorial = document.getElementById('attentionEditorial');
-                    if (attentionEditorial) attentionEditorial.textContent = String(data.pendingApprovals || 0);
-                    const attentionModeration = document.getElementById('attentionModeration');
-                    if (attentionModeration) attentionModeration.textContent = String(data.openReports || 0);
-                    const attentionDisputes = document.getElementById('attentionDisputes');
-                    if (attentionDisputes) attentionDisputes.textContent = String(data.openDisputes || 0);
-                    const attentionRecent = document.getElementById('attentionRecent');
-                    if (attentionRecent) attentionRecent.textContent = `${data.bokantajPosts || 0} publications Bokantaj · ${data.openRequests || 0} annonces ouvertes · ${data.activeMembers || 0} membres`;
-                } else {
-                    renderUnavailableState('kpiContainer');
-                }
-            } else {
-                renderUnavailableState('kpiContainer');
-            }
-        } catch (e) {
-            console.warn("API /v1/admin/kpis error:", e);
-            renderUnavailableState('kpiContainer');
+        if (typeof window.loadAdminControlCenter === 'function') {
+            await window.loadAdminControlCenter();
         }
 
         // 3. Load Agents from /v1/admin/agents
@@ -1994,6 +2235,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     function renderUnavailableState(containerId) {
+        const ids = ['kpiTotalUsers', 'kpiOpenRequests', 'kpiGmv', 'kpiRevenue', 'kpiBokantajApproved', 'kpiActiveBots', 'kpiOpenDisputes'];
+        let marked = false;
+        ids.forEach((id) => {
+            const node = document.getElementById(id);
+            if (!node) return;
+            node.textContent = 'Indisponible';
+            node.classList.add('admin-metric-unavailable');
+            marked = true;
+        });
+        if (marked) return;
         const container = document.getElementById(containerId);
         if (!container) return;
         container.innerHTML = `
@@ -2013,7 +2264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 14px; max-width: 500px; margin-left: auto; margin-right: auto;">
                     La table des Agents LYANN est en cours d'initialisation en base de données Production (Migration 12 requise sur Supabase).
                 </p>
-                <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.loadAdminRealData()"><i class="ph-bold ph-arrows-clockwise"></i> Réessayer la connexion DB</button>
+                <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-admin-wired="1" onclick="window.loadAdminRealData()"><i class="ph-bold ph-arrows-clockwise"></i> Réessayer la connexion DB</button>
             </div>
         `;
     }
@@ -2088,7 +2339,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${task.requires_approval && task.status === 'WAITING_APPROVAL' ?
                             `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver</button>
                              <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>`
-                            : `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Fonction indisponible')"><i class="ph-bold ph-eye"></i> Détails</button>`
+                            : `<button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-admin-wired="1" onclick="window.openAgentTaskPanel('${window.adminEscape(task.id)}')"><i class="ph-bold ph-eye"></i> Détails</button>
+                             <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-admin-wired="1" onclick="window.openAgentTaskPanel('${window.adminEscape(task.id)}', true)"><i class="ph-bold ph-pencil"></i> Modifier</button>`
                         }
                     </td>
                 </tr>
@@ -2120,7 +2372,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'APPROVED')"><i class="ph-bold ph-check"></i> Approuver & Publier</button>
-                    <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="alert('Fonction indisponible')"><i class="ph-bold ph-pencil"></i> Modifier</button>
+                    <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-admin-wired="1" onclick="window.openAgentTaskPanel('${window.adminEscape(task.id)}', true)"><i class="ph-bold ph-pencil"></i> Modifier</button>
                     <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.approveAgentTask('${window.adminEscape(task.id)}', 'REJECTED')"><i class="ph-bold ph-x"></i> Refuser</button>
                 </div>
             </div>
@@ -2285,7 +2537,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Load Studio Profile Data
         try {
-            const res = await fetch(`/v1/admin/agents/${agentId}/studio`);
+            const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/studio`);
             if (res.ok) {
                 const data = await res.json();
                 if (data.success) {
@@ -2395,7 +2647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadStudioSubsections(agentId) {
         // 1. Performance
         try {
-            const perfRes = await fetch(`/v1/admin/agents/${agentId}/performance`);
+            const perfRes = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/performance`);
             if (perfRes.ok) {
                 const perf = await perfRes.json();
                 if (perf.success && perf.kpis) {
@@ -2409,7 +2661,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 2. Timeline
         try {
-            const timeRes = await fetch(`/v1/admin/agents/${agentId}/timeline`);
+            const timeRes = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/timeline`);
             if (timeRes.ok) {
                 const timeData = await timeRes.json();
                 const timelineContainer = document.getElementById('studioActivityTimeline');
@@ -2426,7 +2678,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 3. Schedules
         try {
-            const schedRes = await fetch(`/v1/admin/agents/${agentId}/schedules`);
+            const schedRes = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/schedules`);
             if (schedRes.ok) {
                 const sData = await schedRes.json();
                 const schedBody = document.getElementById('studioSchedulerTableBody');
@@ -2446,7 +2698,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 4. Memory
         try {
-            const memRes = await fetch(`/v1/admin/agents/${agentId}/memory`);
+            const memRes = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/memory`);
             if (memRes.ok) {
                 const mData = await memRes.json();
                 const memList = document.getElementById('studioMemoryList');
@@ -2484,7 +2736,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             languages: document.getElementById('studioLanguages')?.value.split(',').map(s=>s.trim())
         };
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'identity', identity })
@@ -2504,7 +2756,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             permanent_instructions: document.getElementById('studioPermanentInstructions')?.value
         };
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'personality', personality })
@@ -2523,7 +2775,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rawTags = document.getElementById('studioNewTagInput')?.value || '';
         const internal_tags = rawTags.split(',').map(s=>s.trim()).filter(s=>s.length > 0);
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'territory', perimeter, internal_tags })
@@ -2540,7 +2792,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (rad) permissions[k] = rad.value;
         });
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/studio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'permissions', permissions })
@@ -2554,7 +2806,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const prompt = document.getElementById('commanderPromptInput')?.value;
         if (!prompt) return alert("Veuillez entrer une instruction pour l'agent.");
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/tasks/commander`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/tasks/commander`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt, mode: 'parse' })
@@ -2578,41 +2830,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!window.currentStudioAgentId) return;
         const prompt = document.getElementById('commanderPromptInput')?.value;
 
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/tasks/commander`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/tasks/commander`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt, mode: 'create' })
         });
-        if (res.ok) {
-            const data = await res.json();
-            alert(`✅ Tâche ${data.task.id} créée avec statut ${data.task.status}.`);
-            document.getElementById('commanderPreviewBox').style.display = 'none';
-            document.getElementById('commanderPromptInput').value = '';
-            loadAdminRealData();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            window.adminShowOutcome(data.error || 'Tâche non créée.', true);
+            return;
         }
+        window.adminShowOutcome(`Tâche ${data.task && data.task.id ? data.task.id : ''} créée (${data.task && data.task.status ? data.task.status : 'enregistrée'}).`);
+        document.getElementById('commanderPreviewBox').style.display = 'none';
+        if (document.getElementById('commanderPromptInput')) document.getElementById('commanderPromptInput').value = '';
+        loadAdminRealData();
     });
 
     // Takeover Release Button
     document.getElementById('btnReleaseTakeoverConversation')?.addEventListener('click', async () => {
         if (!window.currentStudioAgentId) return;
-        const res = await fetch(`/v1/admin/conversations/takeover/release`, {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/conversations/takeover/release`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ agent_id: window.currentStudioAgentId })
         });
-        if (res.ok) alert("✅ Main rendue à l'agent avec succès.");
+        if (res.ok) window.adminShowOutcome('Main rendue à l’agent.');
+        else window.adminShowOutcome('Prise de main non levée.', true);
     });
 
     // Suspend/Resume Agent
     document.getElementById('btnPauseIndividualAgent')?.addEventListener('click', async () => {
         if (!window.currentStudioAgentId) return;
-        const res = await fetch(`/v1/admin/agents/${window.currentStudioAgentId}/suspend`, { method: 'POST' });
-        if (res.ok) alert(`✅ Agent ${window.currentStudioAgentId} suspendu.`);
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${window.currentStudioAgentId}/suspend`, { method: 'POST' });
+        if (res.ok) window.adminShowOutcome('Agent suspendu.');
+        else window.adminShowOutcome('Agent non suspendu.', true);
     });
 
     window.deleteAgentMemory = async function(agentId, memoryId) {
         if (!confirm("Supprimer cette mémoire opérationnelle ?")) return;
-        const res = await fetch(`/v1/admin/agents/${agentId}/memory?memory_id=${memoryId}`, { method: 'DELETE' });
+        const res = await window.fetchWithAdminAuth(`/v1/admin/agents/${agentId}/memory?memory_id=${memoryId}`, { method: 'DELETE' });
         if (res.ok) {
             alert("✅ Entrée mémoire supprimée.");
             loadStudioSubsections(agentId);
@@ -2643,6 +2899,98 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (typeof loadAdminRealData === 'function') loadAdminRealData();
         if (typeof window.openEditorialDesk === 'function') window.openEditorialDesk();
+    };
+
+    function formatDuration(ms) {
+        if (ms == null) return '—';
+        const hours = Math.floor(Number(ms) / 3600000);
+        const minutes = Math.floor((Number(ms) % 3600000) / 60000);
+        if (hours > 48) return `${Math.floor(hours / 24)} j`;
+        if (hours > 0) return `${hours} h ${minutes} min`;
+        return `${minutes} min`;
+    }
+
+    window.openAgentTaskPanel = async function(taskId, edit) {
+        const panel = document.getElementById('agentTaskPanel');
+        const empty = document.getElementById('agentTaskPanelEmpty');
+        const body = document.getElementById('agentTaskPanelBody');
+        if (panel) panel.hidden = false;
+        if (empty) empty.hidden = true;
+        if (body) {
+            body.hidden = false;
+            body.textContent = 'Chargement…';
+        }
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/tasks/${taskId}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            if (body) body.textContent = data.error || 'Tâche indisponible.';
+            return;
+        }
+        const task = data.task || {};
+        const runs = data.runs || [];
+        const history = data.history || [];
+        if (body) {
+            body.innerHTML = `
+                <p class="maison-muted">Agent ${adminEscape(task.agent_id || '—')} · ${adminEscape(task.status || '')}</p>
+                <label>Titre<input class="admin-input" id="agentTaskTitle" value="${adminEscape(task.title || '')}"></label>
+                <label>Instructions<textarea class="admin-input" id="agentTaskInstruction" rows="5">${adminEscape(task.instruction || '')}</textarea></label>
+                <p>Dernière erreur : ${adminEscape(task.error || 'aucune')}</p>
+                <div class="mod-actions">
+                    <button type="button" class="admin-btn admin-btn-primary" id="agentTaskSaveBtn">Enregistrer</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="agentTaskSuspendBtn">${task.status === 'SUSPENDED' ? 'Réactiver' : 'Suspendre'}</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="agentTaskRetryBtn">Relancer</button>
+                    <button type="button" class="admin-btn admin-btn-danger" id="agentTaskArchiveBtn">Archiver</button>
+                </div>
+                <h4>Exécutions</h4>
+                <ul>${runs.length ? runs.map((run) => `<li>${adminEscape(run.status)} · ${adminEscape(run.error || '')}</li>`).join('') : '<li>Aucune exécution enregistrée.</li>'}</ul>
+                <h4>Historique</h4>
+                <ul>${history.length ? history.map((row) => `<li>${adminEscape(row.action)} · ${adminDate(row.created_at)}</li>`).join('') : '<li>Aucun changement administrateur.</li>'}</ul>
+            `;
+            document.getElementById('agentTaskSaveBtn')?.addEventListener('click', () => window.saveAgentTask(taskId));
+            document.getElementById('agentTaskSuspendBtn')?.addEventListener('click', () => window.toggleAgentTask(taskId, task.status === 'SUSPENDED' ? 'resume' : 'suspend'));
+            document.getElementById('agentTaskRetryBtn')?.addEventListener('click', () => window.retryAgentTask(taskId));
+            document.getElementById('agentTaskArchiveBtn')?.addEventListener('click', () => window.archiveAgentTask(taskId));
+            if (edit) document.getElementById('agentTaskInstruction')?.focus();
+        }
+    };
+
+    window.saveAgentTask = async function(taskId) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/tasks/${taskId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: document.getElementById('agentTaskTitle')?.value,
+                instruction: document.getElementById('agentTaskInstruction')?.value
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        window.adminShowOutcome(data.success ? 'Tâche enregistrée.' : (data.error || 'Tâche non enregistrée.'), !data.success);
+        if (data.success) window.openAgentTaskPanel(taskId);
+    };
+
+    window.toggleAgentTask = async function(taskId, action) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/tasks/${taskId}/${action}`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        window.adminShowOutcome(data.success ? 'Statut de la tâche mis à jour.' : (data.error || 'Statut non modifié.'), !data.success);
+        if (data.success) window.openAgentTaskPanel(taskId);
+        if (typeof loadAdminRealData === 'function') loadAdminRealData();
+    };
+
+    window.retryAgentTask = async function(taskId) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/tasks/${taskId}/retry`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        window.adminShowOutcome(data.success
+            ? (data.executed ? 'Tâche exécutée.' : 'Relance enregistrée. Le worker n’a pas encore terminé.')
+            : (data.error || 'Relance impossible.'), !data.success);
+        if (data.success) window.openAgentTaskPanel(taskId);
+    };
+
+    window.archiveAgentTask = async function(taskId) {
+        if (!confirm('Archiver cette tâche ? Elle ne pourra plus s’exécuter.')) return;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/tasks/${taskId}/archive`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        window.adminShowOutcome(data.success ? 'Tâche archivée.' : (data.error || 'Archive impossible.'), !data.success);
+        if (typeof loadAdminRealData === 'function') loadAdminRealData();
     };
 
     // Tab Task Engine vs Approval Center toggle inside sec-agents
@@ -2814,7 +3162,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ command: cmd })
             });
             const data = await res.json();
-            if (!data.success) return;
+            if (!res.ok || !data.success) {
+                window.adminShowOutcome(data.error || 'Commande non interprétée.', true);
+                return;
+            }
 
             const interp = data.interpretation || {};
             document.getElementById('cmdInterpAgent').textContent = interp.agent || 'Mika';
@@ -2826,12 +3177,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             document.getElementById('commandInterpretationResult').style.display = 'block';
         } catch (e) {
-            console.error("Erreur parser commande:", e);
+            window.adminShowOutcome('Commande non interprétée.', true);
         }
     };
 
     window.confirmCommandExecution = function() {
-        alert('Fonction indisponible');
+        document.getElementById('commandInterpretationResult').style.display = 'none';
+        document.querySelector('.admin-nav-item[data-section="sec-agents"]')?.click();
+        document.getElementById('btnToggleApprovalCenter')?.click();
+        window.adminShowOutcome('Interprétation ouverte dans le centre de validations. Rien n’est publié automatiquement.');
     };
 
     window.cancelCommandExecution = function() {
@@ -2852,10 +3206,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert(`👍 Feedback [${type}] enregistré dans la mémoire de Mika !`);
             } else {
                 const body = await res.json().catch(() => ({}));
-                alert(body.error || 'Fonction indisponible');
+                window.adminShowOutcome(body.error || 'Feedback non enregistré.', true);
             }
         } catch (e) {
-            alert('Fonction indisponible');
+            window.adminShowOutcome('Feedback non enregistré.', true);
         }
     };
 
@@ -2867,10 +3221,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.loadMikaControlRoom();
             } else {
                 const body = await res.json().catch(() => ({}));
-                alert(body.error || 'Fonction indisponible');
+                window.adminShowOutcome(body.error || 'Tâches test non créées.', true);
             }
         } catch (e) {
-            alert('Fonction indisponible');
+            window.adminShowOutcome('Tâches test non créées.', true);
         }
     };
 
@@ -2883,14 +3237,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const payload = await list.json().catch(() => ({}));
             const agentId = payload.agent?.id || payload.id;
             if (!list.ok || !agentId) {
-                alert(payload.error || 'Fonction indisponible');
+                window.adminShowOutcome(payload.error || 'Suspension Mika impossible.', true);
                 return;
             }
             const path = currentlyActive ? `/v1/admin/agents/${agentId}/suspend` : `/v1/admin/agents/${agentId}/resume`;
             const res = await window.fetchWithAdminAuth(path, { method: 'POST' });
             const data = await res.json().catch(() => ({}));
             if (!res.ok || !data.success) {
-                alert(data.error || 'Fonction indisponible');
+                window.adminShowOutcome(data.error || 'Suspension Mika impossible.', true);
                 return;
             }
             if (badge) {
@@ -2905,7 +3259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : '<i class="ph-bold ph-pause-circle"></i> SUSPENDRE';
             }
         } catch (_) {
-            alert('Fonction indisponible');
+            window.adminShowOutcome('Suspension Mika impossible.', true);
         }
     };
 
@@ -2917,15 +3271,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    window.mikaTakeover = function() {
-        alert('Fonction indisponible');
+    window.mikaTakeover = async function() {
+        await window.openAgentStudioModal();
+        document.getElementById('drawerTabTakeover')?.click();
+        window.adminShowOutcome('Studio agent ouvert sur la prise de main. Choisis une conversation, puis confirme.');
     };
 
-    window.openAgentStudioModal = function(agentId = 'mika-001') {
-        const agentsNav = document.querySelector('.admin-nav-item[data-section="sec-agents"]');
-        if (agentsNav) {
-            agentsNav.click();
+    window.openAgentStudioModal = async function(agentId) {
+        document.querySelector('.admin-nav-item[data-section="sec-agents"]')?.click();
+        let id = agentId && agentId !== 'mika-001' ? agentId : '';
+        if (!id) {
+            try {
+                const res = await window.fetchWithAdminAuth('/v1/admin/agents/mika');
+                const body = await res.json().catch(() => ({}));
+                id = body.agent?.id || body.id || '';
+            } catch (_) {
+                id = '';
+            }
         }
+        if (id && typeof window.openAgentDetailDrawer === 'function') {
+            await window.openAgentDetailDrawer(id);
+            return;
+        }
+        window.adminShowOutcome('Liste des agents ouverte. Sélectionne un agent pour ouvrir le studio.');
     };
 
     window.exportAdminReportCSV = function(type = 'accounting') {
@@ -3564,8 +3932,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const label = String(status || '—');
         const key = label.toUpperCase();
         let cls = 'pending';
-        if (['OPEN','ACTIVE','SUCCEEDED','TRANSFERRED','RESOLVED','VERIFIED','ACCEPTED','COMPLETED','SEED','TRUE'].includes(key)) cls = 'verified';
-        if (['CANCELLED','FAILED','DISMISSED','SUSPENDED','DISPUTED'].includes(key) || key.includes('FAIL')) cls = 'suspended';
+        if (['OPEN','ACTIVE','SUCCEEDED','TRANSFERRED','RESOLVED','VERIFIED','ACCEPTED','COMPLETED','SEED','TRUE','NORMAL'].includes(key)) cls = 'verified';
+        if (['WARNED','AVERTI'].includes(key)) cls = 'pending';
+        if (['CANCELLED','FAILED','DISMISSED','SUSPENDED','DISPUTED','SUSPENDU','BANNED','BANNI'].includes(key) || key.includes('FAIL')) cls = 'suspended';
         return `<span class="status-badge ${cls}">${adminEscape(label)}</span>`;
     }
 
@@ -3665,17 +4034,362 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.adminDecideModeration = async function(subject, id, decision) {
-        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/moderation/${subject}/${id}`, {
+        const mapped = decision === 'approve' ? 'approved' : (decision === 'reject' ? 'rejected' : decision);
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/content/${subject}/${id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ decision })
+            body: JSON.stringify({ decision: mapped })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) {
-            alert(data.error || 'Décision de modération impossible.');
+            window.showModNotice(data.error || 'Décision de modération impossible.', true);
+            return false;
+        }
+        const label = data.row && data.row.status_label;
+        window.showModNotice(
+            data.visible
+                ? 'Contenu visible après confirmation serveur.'
+                : (label ? `${label}. Contenu retiré des flux publics.` : 'Contenu retiré des flux publics.'),
+            false
+        );
+        await window.loadAdminModerationCenter();
+        if (id) await window.openModerationDetail(subject, id);
+        return true;
+    };
+
+    window.__modTab = window.__modTab || 'queue';
+
+    window.showModNotice = function(message, isError) {
+        const el = document.getElementById('modNotice');
+        if (!el) {
+            if (isError) alert(message);
             return;
         }
-        window.loadAdminSection('sec-content');
+        el.hidden = !message;
+        el.textContent = message || '';
+        el.classList.toggle('is-error', !!isError);
+        el.classList.toggle('is-ok', !isError && !!message);
+    };
+
+    window.switchModTab = function(tab) {
+        window.__modTab = tab;
+        document.querySelectorAll('.mod-tab').forEach((btn) => btn.classList.toggle('is-active', btn.getAttribute('data-mod-tab') === tab));
+        document.querySelectorAll('.mod-pane').forEach((pane) => pane.classList.toggle('is-active', pane.getAttribute('data-mod-pane') === tab));
+        Promise.resolve()
+            .then(() => window.loadAdminModerationCenter())
+            .catch((err) => window.showModNotice(err && err.message ? err.message : 'Console de modération indisponible.', true));
+    };
+
+    window.modActivateUsersPane = function() {
+        window.__modTab = 'users';
+        document.querySelectorAll('.mod-tab').forEach((btn) => btn.classList.toggle('is-active', btn.getAttribute('data-mod-tab') === 'users'));
+        document.querySelectorAll('.mod-pane').forEach((pane) => pane.classList.toggle('is-active', pane.getAttribute('data-mod-pane') === 'users'));
+    };
+
+    window.modQuery = function() {
+        const params = new URLSearchParams();
+        params.set('tab', window.__modTab || 'queue');
+        const q = document.getElementById('modSearch')?.value || '';
+        const status = document.getElementById('modStatus')?.value || 'all';
+        const territory = document.getElementById('modTerritory')?.value || 'all';
+        const since = document.getElementById('modSince')?.value || '';
+        if (q) params.set('q', q);
+        if (status && status !== 'all') params.set('status', status);
+        if (territory && territory !== 'all') params.set('territory', territory);
+        if (since) params.set('since', new Date(since).toISOString());
+        if (window.__modTab === 'users') {
+            params.set('page', String(window.__modPage || 1));
+            params.set('page_size', '40');
+            if (window.__modSelectedUserId) params.set('selected', window.__modSelectedUserId);
+        }
+        return params.toString();
+    };
+
+        window.renderModEngine = function(engine) {
+        const bar = document.getElementById('modEngineBar');
+        if (!bar) return;
+        if (!engine) return;
+        if (engine.available === false) {
+            bar.textContent = 'Moteur IA : état indisponible. En cas de panne, le contenu reste en attente.';
+            return;
+        }
+        const delay = engine.median_delay_ms != null ? `${Math.round(engine.median_delay_ms / 1000)} s mesurées` : 'délai non mesuré';
+        bar.textContent = `Moteur IA — analysés ${engine.counts?.analyzed || 0} · auto-approuvés ${engine.counts?.approved || 0} · refusés ${engine.counts?.rejected || 0} · file ${engine.counts?.pending || 0} · bloqués ${engine.counts?.held || 0} · erreurs ${engine.counts?.errors || 0} · ${delay}. ${engine.promise || ''}`;
+    };
+
+    window.modRowActions = function(row) {
+        const subject = row.subject || row.subject_type || 'post';
+        const buttons = [];
+        if (row.status_key === 'pending' || row.public_moderation_status === 'pending') {
+            buttons.push(`<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminDecideModeration('${subject}','${row.id}','approved')">Approuver</button>`);
+            buttons.push(`<button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminDecideModeration('${subject}','${row.id}','rejected')">Refuser</button>`);
+        }
+        if (row.visible || row.status_key === 'approved') {
+            buttons.push(`<button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminDecideModeration('${subject}','${row.id}','hide')">Masquer</button>`);
+        }
+        if (row.status_key === 'hidden' || row.human_decision === 'hide') {
+            buttons.push(`<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminDecideModeration('${subject}','${row.id}','restore')">Restaurer</button>`);
+        }
+        buttons.push(`<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.openModerationDetail('${subject}','${row.id}')">Détail</button>`);
+        return buttons.join(' ');
+    };
+
+    window.openModerationDetail = async function(subject, id) {
+        const panel = document.getElementById('modDetail');
+        if (!panel) return;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/${subject}/${id}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            window.showModNotice(data.error || 'Détail indisponible.', true);
+            return;
+        }
+        const row = data.row;
+        const media = (row.media_urls || []).map((url) => `<a href="${adminEscape(url)}" target="_blank" rel="noopener">Média</a>`).join(' · ') || 'Aucun média';
+        const history = (row.history || []).map((item) => `${adminEscape(item.status)} · ${adminEscape(item.reason_code || '')}`).join('<br>') || 'Aucun job IA.';
+        const audit = (row.audit || []).map((item) => `${adminDate(item.created_at)} · ${adminEscape(item.action)} · ${adminEscape(item.reason || '')}`).join('<br>') || 'Aucun historique admin.';
+        const reports = (row.reports || []).map((item) => `${adminEscape(item.status)} · ${adminEscape(item.reason || '')}`).join('<br>') || 'Aucun signalement lié.';
+        panel.innerHTML = `
+            <h3>${adminEscape(row.status_label || row.public_moderation_status)}</h3>
+            <p class="mod-meta">${adminEscape(row.author_name || row.author_id || '—')} · ${adminDate(row.created_at)} · ${adminEscape(row.territory || '')}</p>
+            <div class="mod-full">${adminEscape(row.content || row.excerpt || '')}</div>
+            <p class="mod-meta">${media}</p>
+            ${row.subject === 'post' ? `<p><a class="admin-btn admin-btn-sm admin-btn-secondary" href="/#bokantaj" target="_blank" rel="noopener">Ouvrir sur Bokantaj</a></p>` : ''}
+            <h4>Signalements</h4><div class="mod-history">${reports}</div>
+            <h4>Historique</h4><div class="mod-history">${history}<br>${audit}</div>
+            <div class="mod-actions">${window.modRowActions(row)}</div>`;
+    };
+
+    window.modRestrictionBadge = function(restriction) {
+        const label = restriction && restriction.label ? restriction.label : 'Normal';
+        return adminBadge(label);
+    };
+
+    window.renderModerationUserPanel = function(user) {
+        const panel = document.getElementById('modDetail');
+        if (!panel || !user) return;
+        const restriction = user.restriction || {};
+        const until = restriction.until ? adminDate(restriction.until) : 'Sans échéance';
+        const history = (user.sanctions || []).map((item) => {
+            const end = item.ends_at ? ` · jusqu’au ${adminDate(item.ends_at)}` : '';
+            return `${adminDate(item.created_at)} · ${adminEscape(item.kind)} · ${adminEscape(item.reason || '')}${end}`;
+        }).join('<br>') || 'Aucun historique de sanction.';
+        const savedReason = document.getElementById('modSanctionReason')?.value || '';
+        const savedDuration = document.getElementById('modSanctionDuration')?.value || '24h';
+        panel.innerHTML = `
+            <h3 data-user-id="${adminEscape(user.id)}" data-user-status="${adminEscape(restriction.status || 'none')}">${adminEscape(user.name || 'Compte')}</h3>
+            <p class="mod-meta" data-user-id="${adminEscape(user.id)}">${window.modRestrictionBadge(restriction)} · ${adminEscape(user.id)}</p>
+            <p class="mod-meta" id="modUserUntil">${restriction.status === 'suspended' ? `Échéance : ${until}` : (restriction.status === 'banned' ? 'Bannissement durable' : 'Pas de restriction active')}</p>
+            <p class="mod-meta" id="modUserReason">${restriction.reason ? `Motif : ${adminEscape(restriction.reason)}` : 'Aucun motif courant.'}</p>
+            <textarea id="modSanctionReason" class="admin-input" rows="3" placeholder="Motif visible dans l’audit">${adminEscape(savedReason)}</textarea>
+            <select id="modSanctionDuration" class="admin-select">
+                <option value="24h"${savedDuration === '24h' ? ' selected' : ''}>24 heures</option>
+                <option value="7d"${savedDuration === '7d' ? ' selected' : ''}>7 jours</option>
+                <option value="30d"${savedDuration === '30d' ? ' selected' : ''}>30 jours</option>
+            </select>
+            <div class="mod-actions">
+                <button type="button" class="admin-btn admin-btn-secondary" data-user-id="${adminEscape(user.id)}" data-sanction="warning" onclick="window.adminSanctionUser('${user.id}','warning')">Avertir</button>
+                <button type="button" class="admin-btn admin-btn-danger" data-user-id="${adminEscape(user.id)}" data-sanction="suspend" onclick="window.adminSanctionUser('${user.id}','suspend')">Suspendre</button>
+                <button type="button" class="admin-btn admin-btn-danger" data-user-id="${adminEscape(user.id)}" data-sanction="ban" onclick="window.adminSanctionUser('${user.id}','ban')">Bannir</button>
+                <button type="button" class="admin-btn admin-btn-secondary" data-user-id="${adminEscape(user.id)}" data-sanction="lift" onclick="window.adminSanctionUser('${user.id}','lift')">Lever</button>
+            </div>
+            <h4>Historique</h4>
+            <div class="mod-history" id="modUserHistory">${history}</div>`;
+    };
+
+    window.openModerationUser = async function(userId) {
+        if (!userId) return;
+        window.__modSelectedUserId = userId;
+        try { sessionStorage.setItem('lyann-mod-user', userId); } catch (_) {}
+        window.modActivateUsersPane();
+        const panel = document.getElementById('modDetail');
+        if (panel) panel.innerHTML = `<p class="mod-meta" data-user-id="${adminEscape(userId)}">Chargement du compte…</p>`;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/users/${userId}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success || !data.user) {
+            window.showModNotice(data.error || 'Fiche membre indisponible.', true);
+            return;
+        }
+        window.renderModerationUserPanel(data.user);
+        const row = document.querySelector(`#modUsersBody tr[data-user-id="${userId}"]`);
+        if (row) {
+            document.querySelectorAll('#modUsersBody tr').forEach((el) => el.classList.toggle('is-selected', el === row));
+            const badge = row.querySelector('[data-restriction]');
+            if (badge && data.user.restriction) badge.outerHTML = `<span data-restriction="${adminEscape(data.user.restriction.status)}">${window.modRestrictionBadge(data.user.restriction)}</span>`;
+        }
+    };
+
+    window.adminSanctionUser = async function(userId, kind) {
+        if (window.__modSanctionBusy) return;
+        const reason = document.getElementById('modSanctionReason')?.value || '';
+        const duration = document.getElementById('modSanctionDuration')?.value || '24h';
+        if (!reason.trim()) {
+            window.showModNotice('Un motif est obligatoire.', true);
+            return;
+        }
+        const label = { warning: 'enregistrer un avertissement', suspend: 'suspendre ce compte', ban: 'bannir durablement ce compte', lift: 'lever la sanction' }[kind];
+        if (!confirm(`Confirmer : ${label} ?`)) return;
+        window.__modSanctionBusy = true;
+        document.querySelectorAll('#modDetail [data-sanction]').forEach((btn) => { btn.disabled = true; });
+        try {
+            const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/users/${userId}/sanction`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kind, reason, duration })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                window.showModNotice(data.error || 'Sanction non appliquée.', true);
+                return;
+            }
+            const partial = data.partial || data.complete === false;
+            window.showModNotice(data.note || 'Mesure enregistrée.', partial);
+            if (data.user) window.renderModerationUserPanel(data.user);
+            window.__modSelectedUserId = userId;
+            await window.loadAdminModerationCenter();
+            if (window.__modSelectedUserId === userId) {
+                if (data.user) window.renderModerationUserPanel(data.user);
+                else await window.openModerationUser(userId);
+            }
+        } catch (_) {
+            window.showModNotice('La mesure n’a pas abouti. Réessayez.', true);
+        } finally {
+            window.__modSanctionBusy = false;
+            document.querySelectorAll('#modDetail [data-sanction]').forEach((btn) => { btn.disabled = false; });
+        }
+    };
+
+    window.loadAdminModerationCenter = async function() {
+        const tab = window.__modTab || 'queue';
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center?${window.modQuery()}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            window.showModNotice(data.error || 'Console de modération indisponible.', true);
+            const failedBody = tab === 'users'
+                ? document.getElementById('modUsersBody')
+                : (tab === 'comments' ? document.getElementById('modCommentsBody') : null);
+            if (failedBody) failedBody.innerHTML = adminEmpty(5, data.error || 'Chargement impossible.');
+            return data;
+        }
+        window.renderModEngine(data.engine);
+        const rows = data.rows || [];
+        if (tab === 'queue') {
+            const items = [...rows, ...(data.extra || [])];
+            const body = document.getElementById('adminModerationQueueBody');
+            if (body) {
+                body.innerHTML = items.length ? items.map((item) => `<tr>
+                    <td>${adminEscape(item.subject || 'post')}</td>
+                    <td>${adminEscape(item.author_name || item.author_id || '—')}</td>
+                    <td>${adminEscape(item.excerpt || '')}</td>
+                    <td>${adminBadge(item.status_label || item.public_moderation_status)}</td>
+                    <td>${window.modRowActions(item)}</td>
+                </tr>`).join('') : adminEmpty(5, 'File de modération vide.');
+            }
+        }
+        if (tab === 'posts' || tab === 'queue') {
+            const body = document.getElementById('contentBokantajTableBody');
+            if (body && tab === 'posts') {
+                body.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape(row.author_name || '—')}</td>
+                    <td>${adminEscape(row.excerpt || '')}</td>
+                    <td>${adminBadge(row.status_label)}</td>
+                    <td>${window.modRowActions({ ...row, subject: 'post' })}</td>
+                </tr>`).join('') : adminEmpty(5, 'Aucune publication.');
+            }
+        }
+        if (tab === 'comments') {
+            const body = document.getElementById('modCommentsBody');
+            if (body) {
+                body.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td>${adminEscape(row.excerpt || '')}</td>
+                    <td>${adminEscape(row.author_name || '—')}</td>
+                    <td>${adminEscape(row.post_id || '—')}</td>
+                    <td>${adminBadge(row.status_label)}</td>
+                    <td>${window.modRowActions({ ...row, subject: 'comment' })}</td>
+                </tr>`).join('') : adminEmpty(5, 'Aucun commentaire.');
+            }
+        }
+        if (tab === 'users') {
+            if (!window.__modSelectedUserId) {
+                try { window.__modSelectedUserId = sessionStorage.getItem('lyann-mod-user') || ''; } catch (_) {}
+            }
+            const body = document.getElementById('modUsersBody');
+            if (body) {
+                body.innerHTML = rows.length ? rows.map((row) => {
+                    const selected = window.__modSelectedUserId === row.id;
+                    const restriction = row.restriction || { status: 'none', label: 'Normal' };
+                    return `<tr data-user-id="${adminEscape(row.id)}" class="${selected ? 'is-selected' : ''}">
+                    <td>${adminEscape(row.name)}</td>
+                    <td>${adminEscape(row.territory || row.city || '—')}</td>
+                    <td><span data-restriction="${adminEscape(restriction.status)}">${window.modRestrictionBadge(restriction)}</span></td>
+                    <td>${adminEscape(String((row.sanctions || []).length))}</td>
+                    <td><button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" data-user-id="${adminEscape(row.id)}" data-open-user="1" onclick="window.openModerationUser('${row.id}')">Mesures</button></td>
+                </tr>`;
+                }).join('') : adminEmpty(5, 'Aucun compte.');
+            }
+            const pager = document.getElementById('modUsersPager');
+            if (pager) {
+                const page = data.page || 1;
+                const total = data.total || 0;
+                const pageSize = data.page_size || 40;
+                const pages = Math.max(1, Math.ceil(total / pageSize));
+                window.__modPage = page;
+                pager.hidden = false;
+                pager.innerHTML = `<button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" ${page <= 1 ? 'disabled' : ''} onclick="window.modUsersPage(${page - 1})">Précédent</button>
+                    <span class="mod-meta">Page ${page} / ${pages} · ${total} compte${total > 1 ? 's' : ''}</span>
+                    <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" ${page >= pages ? 'disabled' : ''} onclick="window.modUsersPage(${page + 1})">Suivant</button>`;
+            }
+            if (window.__modSelectedUserId) {
+                const selectedRow = rows.find((row) => row.id === window.__modSelectedUserId);
+                if (selectedRow && !document.querySelector('#modDetail [data-sanction]')) {
+                    window.renderModerationUserPanel(selectedRow);
+                } else if (selectedRow) {
+                    const badge = document.querySelector(`#modUsersBody tr[data-user-id="${selectedRow.id}"] [data-restriction]`);
+                    if (badge) badge.outerHTML = `<span data-restriction="${adminEscape(selectedRow.restriction.status)}">${window.modRestrictionBadge(selectedRow.restriction)}</span>`;
+                }
+            }
+        }
+        if (tab === 'reports') {
+            const body = document.getElementById('adminReportsTableBody');
+            const count = document.getElementById('adminReportsCount');
+            if (count) count.textContent = String(rows.length);
+            if (body) {
+                body.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
+                    <td>${adminEscape(row.reporter_name || '—')}</td>
+                    <td>${adminEscape(row.target_name || row.target_type || '—')}</td>
+                    <td>${adminEscape(row.reason || '—')}</td>
+                    <td>${adminBadge(row.status_label || row.status)}</td>
+                    <td>
+                        ${row.target_type && row.target_id && row.target_type !== 'user' ? `<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.openModerationDetail('${row.target_type}','${row.target_id}')">Ouvrir</button>` : ''}
+                        ${row.status === 'OPEN' || row.status === 'PENDING' ? `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminUpdateModReport('${row.id}','${row.source}','${row.source === 'bokantaj' ? 'IN_REVIEW' : 'IN_REVIEW'}')">Examiner</button>` : ''}
+                        <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminUpdateModReport('${row.id}','${row.source}','RESOLVED')">Résoudre</button>
+                        <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminUpdateModReport('${row.id}','${row.source}','DISMISSED')">Classer</button>
+                    </td>
+                </tr>`).join('') : adminEmpty(6, 'Aucun signalement.');
+            }
+        }
+        return data;
+    };
+
+    window.modUsersPage = function(page) {
+        window.__modPage = Math.max(1, Number(page) || 1);
+        window.loadAdminModerationCenter();
+    };
+
+    window.adminUpdateModReport = async function(reportId, source, status) {
+        const res = await window.fetchWithAdminAuth(`/v1/admin/moderation-center/reports/${reportId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source, status })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            window.showModNotice(data.error || 'Signalement non mis à jour.', true);
+            return;
+        }
+        window.showModNotice(`Signalement : ${data.status_label || status}.`, false);
+        await window.loadAdminModerationCenter();
     };
 
     window.adminRunModerationOnce = async function() {
@@ -3837,6 +4551,191 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 8000);
     }
 
+    function helpdeskNotice(message, isError) {
+        const el = document.getElementById('helpdeskNotice');
+        if (!el) {
+            window.adminShowOutcome(message, isError);
+            return;
+        }
+        el.hidden = !message;
+        el.textContent = message || '';
+        el.classList.toggle('is-error', !!isError);
+    }
+
+    function helpdeskSinceIso(value) {
+        const now = Date.now();
+        if (value === '24h') return new Date(now - 86400000).toISOString();
+        if (value === '7d') return new Date(now - 7 * 86400000).toISOString();
+        if (value === '30d') return new Date(now - 30 * 86400000).toISOString();
+        return '';
+    }
+
+    window.loadAdminHelpdesk = async function() {
+        const tbody = document.getElementById('helpdeskTableBody');
+        if (!tbody) return;
+        const params = new URLSearchParams();
+        const q = document.getElementById('helpdeskSearch')?.value || '';
+        const status = document.getElementById('helpdeskStatus')?.value || 'all';
+        const priority = document.getElementById('helpdeskPriority')?.value || 'all';
+        const since = helpdeskSinceIso(document.getElementById('helpdeskSince')?.value);
+        if (q) params.set('q', q);
+        if (status !== 'all') params.set('status', status);
+        if (priority !== 'all') params.set('priority', priority);
+        if (since) params.set('since', since);
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk?${params.toString()}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            tbody.innerHTML = adminEmpty(6, data.error || 'Helpdesk indisponible.');
+            return;
+        }
+        const rows = data.tickets || [];
+        tbody.innerHTML = rows.length ? rows.map((row) => `<tr data-ticket-id="${adminEscape(row.id)}">
+            <td>${adminEscape(row.reference)}</td>
+            <td>${adminEscape(row.subject)}</td>
+            <td>${adminEscape((row.member_id || '—').toString().slice(0, 8))}</td>
+            <td>${adminEscape(row.priority)}</td>
+            <td>${adminBadge(row.status)}</td>
+            <td>${adminEscape(formatDuration(row.age_ms))}</td>
+        </tr>`).join('') : adminEmpty(6, 'Aucun ticket pour ces filtres.');
+        tbody.querySelectorAll('tr[data-ticket-id]').forEach((row) => {
+            row.addEventListener('click', () => window.openHelpdeskTicket(row.getAttribute('data-ticket-id')));
+        });
+    };
+
+    window.openHelpdeskTicket = async function(id) {
+        const empty = document.getElementById('helpdeskDetailEmpty');
+        const body = document.getElementById('helpdeskDetailBody');
+        if (empty) empty.hidden = true;
+        if (body) {
+            body.hidden = false;
+            body.textContent = 'Chargement…';
+        }
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk/${id}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            if (body) body.textContent = data.error || 'Ticket indisponible.';
+            return;
+        }
+        const ticket = data.ticket || {};
+        const messages = data.messages || [];
+        const events = data.events || [];
+        if (body) {
+            body.innerHTML = `
+                <p><strong>${adminEscape(ticket.reference)}</strong> · ${adminEscape(ticket.status)} · priorité ${adminEscape(ticket.priority)}</p>
+                <p>${adminEscape(ticket.subject)}</p>
+                <p class="maison-muted">Âge ${adminEscape(formatDuration(ticket.age_ms))} · 1re réponse ${adminEscape(formatDuration(ticket.first_response_ms))} · résolution ${adminEscape(formatDuration(ticket.resolution_ms))}</p>
+                ${ticket.member_id ? `<button type="button" class="admin-btn admin-btn-secondary" id="helpdeskOpenMember">Fiche membre</button>` : ''}
+                <div id="helpdeskThread">${messages.length ? messages.map((msg) => `<div class="${msg.kind === 'internal' ? 'maison-muted' : ''}"><strong>${adminEscape(msg.kind)}</strong> ${adminEscape(msg.body)}</div>`).join('') : '<p>Aucun message.</p>'}</div>
+                <textarea class="admin-input" id="helpdeskReply" rows="3" placeholder="Réponse visible par le membre"></textarea>
+                <textarea class="admin-input" id="helpdeskNote" rows="2" placeholder="Note interne"></textarea>
+                <div class="mod-actions">
+                    <button type="button" class="admin-btn admin-btn-primary" id="helpdeskReplyBtn">Répondre</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="helpdeskNoteBtn">Note interne</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="helpdeskAssignBtn">M’attribuer</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-helpdesk-status="in_progress">En cours</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-helpdesk-status="waiting">En attente</button>
+                    <button type="button" class="admin-btn admin-btn-primary" data-helpdesk-status="resolved">Résoudre</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-helpdesk-status="closed">Fermer</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" data-helpdesk-status="open">Rouvrir</button>
+                </div>
+                <h4>Historique</h4>
+                <ul>${events.length ? events.map((ev) => `<li>${adminEscape(ev.action)} · ${adminDate(ev.created_at)}</li>`).join('') : '<li>Aucune action.</li>'}</ul>
+            `;
+            document.getElementById('helpdeskOpenMember')?.addEventListener('click', () => {
+                if (typeof window.openAdminUserDetailModal === 'function') window.openAdminUserDetailModal(ticket.member_id);
+                else document.querySelector('.admin-nav-item[data-section="sec-users"]')?.click();
+            });
+            document.getElementById('helpdeskReplyBtn')?.addEventListener('click', () => window.helpdeskPostMessage(id, 'public'));
+            document.getElementById('helpdeskNoteBtn')?.addEventListener('click', () => window.helpdeskPostMessage(id, 'internal'));
+            document.getElementById('helpdeskAssignBtn')?.addEventListener('click', async () => {
+                const posted = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk/${id}/assign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assigned_to: window.currentAdminUser && window.currentAdminUser.userId })
+                });
+                const payload = await posted.json().catch(() => ({}));
+                helpdeskNotice(payload.success ? 'Ticket attribué.' : (payload.error || 'Attribution impossible.'), !payload.success);
+                if (payload.success) window.openHelpdeskTicket(id);
+            });
+            body.querySelectorAll('[data-helpdesk-status]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const posted = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk/${id}/status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: btn.getAttribute('data-helpdesk-status') })
+                    });
+                    const payload = await posted.json().catch(() => ({}));
+                    helpdeskNotice(payload.success ? 'Statut mis à jour.' : (payload.error || 'Statut non modifié.'), !payload.success);
+                    if (payload.success) {
+                        await window.loadAdminHelpdesk();
+                        window.openHelpdeskTicket(id);
+                    }
+                });
+            });
+        }
+    };
+
+    window.helpdeskPostMessage = async function(id, kind) {
+        const field = document.getElementById(kind === 'internal' ? 'helpdeskNote' : 'helpdeskReply');
+        const body = (field?.value || '').trim();
+        if (!body) {
+            helpdeskNotice(kind === 'internal' ? 'La note interne est vide.' : 'La réponse est vide.', true);
+            return;
+        }
+        const res = await window.fetchWithAdminAuth(`/v1/admin/operations/helpdesk/${id}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kind, body })
+        });
+        const data = await res.json().catch(() => ({}));
+        helpdeskNotice(data.success ? (kind === 'internal' ? 'Note enregistrée.' : 'Réponse envoyée.') : (data.error || 'Message non enregistré.'), !data.success);
+        if (data.success) {
+            if (field) field.value = '';
+            window.openHelpdeskTicket(id);
+        }
+    };
+
+    window.createHelpdeskTicket = async function() {
+        const form = document.getElementById('helpdeskCreateForm');
+        if (form) form.hidden = !form.hidden;
+        document.getElementById('helpdeskCreateSubject')?.focus();
+    };
+
+    document.getElementById('helpdeskCreateCancel')?.addEventListener('click', () => {
+        const form = document.getElementById('helpdeskCreateForm');
+        if (form) form.hidden = true;
+    });
+    document.getElementById('helpdeskCreateForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const subject = (document.getElementById('helpdeskCreateSubject')?.value || '').trim();
+        const member = (document.getElementById('helpdeskCreateMember')?.value || '').trim();
+        const body = (document.getElementById('helpdeskCreateBody')?.value || '').trim();
+        const priority = document.getElementById('helpdeskCreatePriority')?.value || 'medium';
+        const submit = document.getElementById('helpdeskCreateSubmit');
+        if (subject.length < 3) {
+            helpdeskNotice('Le sujet doit contenir au moins 3 caractères.', true);
+            return;
+        }
+        if (submit) submit.disabled = true;
+        helpdeskNotice('Enregistrement…', false);
+        const res = await window.fetchWithAdminAuth('/v1/admin/operations/helpdesk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, member_id: member, body, priority })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (submit) submit.disabled = false;
+        helpdeskNotice(data.success ? 'Ticket créé.' : (data.error || 'Création impossible.'), !data.success);
+        if (!data.success || !data.ticket) return;
+        const form = document.getElementById('helpdeskCreateForm');
+        if (form) form.hidden = true;
+        if (document.getElementById('helpdeskCreateSubject')) document.getElementById('helpdeskCreateSubject').value = '';
+        if (document.getElementById('helpdeskCreateMember')) document.getElementById('helpdeskCreateMember').value = '';
+        if (document.getElementById('helpdeskCreateBody')) document.getElementById('helpdeskCreateBody').value = '';
+        await window.loadAdminHelpdesk();
+        window.openHelpdeskTicket(data.ticket.id);
+    });
+
     window.loadAdminSection = async function(sectionId) {
         const loaders = {
             'sec-overview': () => loadAdminRealData(),
@@ -3984,6 +4883,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </tr>`).join('') : adminEmpty(7, 'Aucun Lyann publié.');
             },
             'sec-content': async () => {
+                if (typeof window.loadAdminModerationCenter === 'function') {
+                    await window.loadAdminModerationCenter();
+                    return;
+                }
                 const data = await fetchAdminOps('reports');
                 const tbody = document.getElementById('adminReportsTableBody');
                 const rows = data.rows || [];
@@ -4054,6 +4957,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'sec-taxonomy': async () => {
                 if (typeof loadAdminTaxonomyManagement === 'function') loadAdminTaxonomyManagement();
             },
+            'sec-support': () => window.loadAdminHelpdesk(),
             'sec-chat': async () => {
                 const data = await fetchAdminOps('conversations');
                 const tbody = document.getElementById('conversationsAdminTableBody');
@@ -4152,9 +5056,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         renderAdminUsers(filtered, 'usersAdminTableBody', 'users');
     });
+    document.getElementById('helpdeskCreateBtn')?.addEventListener('click', () => window.createHelpdeskTicket());
+    ['helpdeskSearch', 'helpdeskStatus', 'helpdeskPriority', 'helpdeskSince'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('change', () => window.loadAdminHelpdesk());
+    });
+    document.getElementById('helpdeskSearch')?.addEventListener('input', () => {
+        clearTimeout(window.__helpdeskSearchTimer);
+        window.__helpdeskSearchTimer = setTimeout(() => window.loadAdminHelpdesk(), 250);
+    });
     document.getElementById('btnRunModerationOnce')?.addEventListener('click', () => window.adminRunModerationOnce());
+    document.querySelectorAll('.mod-tab').forEach((btn) => {
+        btn.addEventListener('click', () => window.switchModTab(btn.getAttribute('data-mod-tab')));
+    });
+    ['modSearch', 'modStatus', 'modTerritory', 'modSince'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('change', () => {
+            window.__modPage = 1;
+            window.loadAdminModerationCenter();
+        });
+    });
+    document.getElementById('modSearch')?.addEventListener('input', () => {
+        clearTimeout(window.__modSearchTimer);
+        window.__modSearchTimer = setTimeout(() => {
+            window.__modPage = 1;
+            window.loadAdminModerationCenter();
+        }, 250);
+    });
     document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
-        btn.addEventListener('click', () => alert('Offrir un abonnement Pro n’est pas une opération financière activée ici.'));
+        window.adminMarkUnavailable(btn, 'Offrir un abonnement Pro n’est pas une opération financière activée ici.');
+    });
+    document.getElementById('btnAdminQuickNotifications')?.addEventListener('click', () => {
+        document.querySelector('.admin-nav-item[data-section="sec-notifications"]')?.click();
     });
     document.getElementById('userTerritoryFilter')?.addEventListener('change', () => {
         const territory = document.getElementById('userTerritoryFilter')?.value || 'all';
@@ -4178,6 +5109,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     window.loadMikaControlRoom();
 
+    document.querySelectorAll('button[id], .admin-icon-btn[id], .admin-nav-item, .mod-tab, .admin-modal-close, .command-palette-item, [onclick], [data-section], [data-mod-tab]').forEach((el) => {
+        if (!el.hasAttribute('data-unavailable')) window.adminMarkWired(el);
+    });
+    document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
+        window.adminMarkUnavailable(btn, 'Offrir un abonnement Pro n’est pas une opération financière activée ici.');
+    });
+    window.adminSealDeadControls();
     console.log('Back-office LYANN initialisé.');
     } catch (bootErr) {
         console.error('[ADMIN BOOT]', bootErr);

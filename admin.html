@@ -160,108 +160,136 @@
             </div>
         </div>
 
-        <nav class="admin-nav" aria-label="Rubriques du back-office">
-            <details class="admin-nav-group" open>
+        <nav class="admin-nav" aria-label="Rubriques du back-office" data-admin-nav="v3">
+            <details class="admin-nav-group" open data-pole="pilotage">
                 <summary class="admin-nav-section-title">Pilotage</summary>
-                <a href="#" class="admin-nav-item active" data-section="sec-overview">
+                <a href="#" class="admin-nav-item active" data-section="sec-overview" data-pole="pilotage" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-chart-line-up"></i> <span>Vue d'ensemble</span></div>
                 </a>
-                <a href="#comptes-editoriaux" class="admin-nav-item" data-section="sec-editorial">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Comptes éditoriaux</span></div>
-                    <span class="admin-nav-badge" id="sidebarEditorialBadge">—</span>
+                <a href="#" class="admin-nav-item" data-section="sec-action" data-pole="pilotage" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-list-checks"></i> <span>À traiter</span></div>
+                    <span class="admin-nav-badge" id="sidebarActionBadge">—</span>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-marketplace" data-pole="pilotage">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-chart-bar"></i> <span>Analytics marketplace</span></div>
                 </a>
             </details>
 
-            <details class="admin-nav-group" open>
+            <details class="admin-nav-group" data-pole="communaute">
                 <summary class="admin-nav-section-title">Communauté</summary>
-                <a href="#" class="admin-nav-item" data-section="sec-users">
+                <a href="#" class="admin-nav-item" data-section="sec-users" data-pole="communaute" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-users"></i> <span>Utilisateurs</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-maison">
+                <a href="#" class="admin-nav-item" data-section="sec-maison" data-pole="communaute" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-house-line"></i> <span>Profils maison</span></div>
                     <span class="admin-nav-badge warning" id="sidebarMaisonBadge">Relais</span>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-lyanneurs">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-lyanneurs" data-pole="communaute">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-user-check"></i> <span>Lyanneurs</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-agents">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-robot"></i> <span>Agents LYANN</span></div>
-                    <span class="admin-nav-badge success" id="sidebarAgentBadge">—</span>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-mika">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-lightning"></i> <span>Mika</span></div>
-                    <span class="admin-nav-badge">Pilote</span>
                 </a>
             </details>
 
-            <details class="admin-nav-group" open>
-                <summary class="admin-nav-section-title">Activité</summary>
-                <a href="#" class="admin-nav-item" data-section="sec-bokantaj">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-chat-teardrop-text"></i> <span>Bokantaj</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-requests">
+            <details class="admin-nav-group" data-pole="marketplace">
+                <summary class="admin-nav-section-title">Marketplace</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-requests" data-pole="marketplace" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-tray"></i> <span>Demandes</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-services">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-briefcase"></i> <span>Prestations</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-quotes">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-file-text"></i> <span>Devis</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-missions">
+                <a href="#" class="admin-nav-item" data-section="sec-missions" data-pole="marketplace" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-calendar-check"></i> <span>Missions</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-chat">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-services" data-pole="marketplace">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-briefcase"></i> <span>Prestations</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-quotes" data-pole="marketplace">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-file-text"></i> <span>Devis</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-chat" data-pole="marketplace">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-chat-circle-dots"></i> <span>Messagerie</span></div>
                 </a>
             </details>
 
-            <details class="admin-nav-group" open>
-                <summary class="admin-nav-section-title">Finance</summary>
-                <a href="#" class="admin-nav-item" data-section="sec-finances">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-bank"></i> <span>Paiements</span></div>
+            <details class="admin-nav-group" data-pole="bokantaj">
+                <summary class="admin-nav-section-title">Bokantaj & rédaction</summary>
+                <a href="#comptes-editoriaux" class="admin-nav-item" data-section="sec-editorial" data-pole="bokantaj" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Comptes éditoriaux</span></div>
+                    <span class="admin-nav-badge" id="sidebarEditorialBadge">—</span>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-payouts">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>Versements</span></div>
+                <a href="#" class="admin-nav-item" data-section="sec-bokantaj" data-pole="bokantaj" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-chat-teardrop-text"></i> <span>Fil Bokantaj</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-disputes">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-agents" data-pole="bokantaj">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-robot"></i> <span>Agents LYANN</span></div>
+                    <span class="admin-nav-badge success" id="sidebarAgentBadge">—</span>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-mika" data-pole="bokantaj">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-lightning"></i> <span>Mika</span></div>
+                </a>
+            </details>
+
+            <details class="admin-nav-group" data-pole="confiance">
+                <summary class="admin-nav-section-title">Confiance & support</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-content" data-pole="confiance" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-shield-warning"></i> <span>Modération</span></div>
+                </a>
+                <a href="#" class="admin-nav-item" data-section="sec-support" data-pole="confiance" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-headset"></i> <span>Support</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-disputes" data-pole="confiance">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-scales"></i> <span>Litiges</span></div>
                     <span class="admin-nav-badge" id="sidebarDisputeBadge">—</span>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-subscriptions">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-sparkle"></i> <span>Abonnements</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-protection">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-shield-check"></i> <span>Assurance</span></div>
-                </a>
-            </details>
-
-            <details class="admin-nav-group" open>
-                <summary class="admin-nav-section-title">Opérations</summary>
-                <a href="#" class="admin-nav-item" data-section="sec-content">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-shield-warning"></i> <span>Modération</span></div>
-                </a>
-                <a href="#" class="admin-nav-item" data-section="sec-notifications">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-notifications" data-pole="confiance">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-bell"></i> <span>Notifications</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-support">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-headset"></i> <span>Support</span></div>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-reviews" data-pole="confiance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-star"></i> <span>Avis</span></div>
                 </a>
             </details>
 
-            <details class="admin-nav-group" open>
+            <details class="admin-nav-group" data-pole="business">
+                <summary class="admin-nav-section-title">Business & finances</summary>
+                <a href="#" class="admin-nav-item" data-section="sec-finances" data-pole="business" data-nav-primary="1" data-rbac="finance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-bank"></i> <span>Paiements</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-payouts" data-pole="business" data-rbac="finance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-paper-plane-tilt"></i> <span>Versements</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-subscriptions" data-pole="business" data-rbac="finance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-sparkle"></i> <span>Abonnements</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-protection" data-pole="business" data-rbac="finance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-shield-check"></i> <span>Assurance</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-invoices" data-pole="business" data-rbac="finance">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-receipt"></i> <span>Facturation</span></div>
+                </a>
+            </details>
+
+            <details class="admin-nav-group" data-pole="admin">
                 <summary class="admin-nav-section-title">Administration</summary>
-                <a href="#" class="admin-nav-item" data-section="sec-team">
+                <a href="#" class="admin-nav-item" data-section="sec-taxonomy" data-pole="admin" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-gear"></i> <span>Configuration</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-team" data-pole="admin">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-users-three"></i> <span>Équipe LYANN</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-rbac">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-rbac" data-pole="admin">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-lock-key"></i> <span>Rôles & permissions</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-audit-logs">
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-audit-logs" data-pole="admin">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-scroll"></i> <span>Journaux</span></div>
                 </a>
-                <a href="#" class="admin-nav-item" data-section="sec-taxonomy">
-                    <div class="admin-nav-item-left"><i class="ph-bold ph-gear"></i> <span>Configuration</span></div>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-feature-flags" data-pole="admin">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-flag"></i> <span>Feature flags</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-territories" data-pole="admin">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-map-trifold"></i> <span>Territoires</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-health" data-pole="admin">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-heartbeat"></i> <span>Santé système</span></div>
+                </a>
+                <a href="#" class="admin-nav-item is-secondary" data-section="sec-user-detail" data-pole="communaute">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-identification-card"></i> <span>Fiche utilisateur</span></div>
                 </a>
             </details>
         </nav>
@@ -306,17 +334,28 @@
                         var host = String(location.hostname || '');
                         var label = document.getElementById('adminEnvPillLabel');
                         var pill = document.getElementById('adminEnvPill');
-                        var staging = host === 'staging.lyann.app' || host.indexOf('staging') !== -1;
                         if (!label || !pill) return;
-                        if (staging) {
-                            label.textContent = 'Préproduction';
-                            pill.classList.add('is-staging');
-                        } else if (host === 'lyann.app' || host === 'www.lyann.app' || host === 'admin.lyann.app') {
+                        if (host === 'lyann.app' || host === 'www.lyann.app' || host === 'admin.lyann.app') {
                             label.textContent = 'Production';
-                        } else {
-                            label.textContent = 'Préproduction';
-                            pill.classList.add('is-staging');
+                            return;
                         }
+                        label.textContent = 'Préproduction';
+                        pill.classList.add('is-staging');
+                        fetch('/v1/runtime/identity', { credentials: 'same-origin' }).then(function (res) {
+                            return res.json().then(function (body) {
+                                return { ok: res.ok, body: body };
+                            });
+                        }).then(function (result) {
+                            var body = result.body || {};
+                            if (result.ok && body.staging && body.supabase_ref) {
+                                label.textContent = 'Staging · ' + body.supabase_ref;
+                                return;
+                            }
+                            if (body.code === 'RUNTIME_IDENTITY_PRODUCTION_HIDDEN' || body.production) {
+                                label.textContent = 'Isolation refusée';
+                                pill.classList.remove('is-staging');
+                            }
+                        }).catch(function () {});
                     })();
                 </script>
                 <button class="admin-btn admin-btn-danger" id="globalKillSwitchBtn">
@@ -350,101 +389,135 @@
             <!-- ==========================================================================
                  PÔLE 1 : TABLEAU DE BORD GLOBAL & ANALYTICS BI
                  ========================================================================== -->
+            <div id="adminContextTabs" class="admin-context-tabs" hidden></div>
+            <div class="admin-insight-filters" id="adminInsightFilters">
+                <label>Période
+                    <select id="adminPeriodFilter" class="admin-select">
+                        <option value="7d">7 derniers jours</option>
+                        <option value="30d" selected>30 derniers jours</option>
+                        <option value="90d">90 derniers jours</option>
+                        <option value="month">Mois civil</option>
+                        <option value="all">Tout l’historique</option>
+                    </select>
+                </label>
+                <label>Territoire
+                    <select id="adminTerritoryFilter" class="admin-select">
+                        <option value="all">Tous</option>
+                        <option value="guadeloupe">Guadeloupe</option>
+                        <option value="martinique">Martinique</option>
+                        <option value="guyane">Guyane</option>
+                        <option value="reunion">La Réunion</option>
+                    </select>
+                </label>
+                <p class="maison-muted" id="adminDataFreshness">Dernière actualisation : —</p>
+            </div>
+
             <section id="sec-overview" class="admin-section active">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">Vue d'ensemble</h1>
-                        <p class="admin-page-sub">Bienvenue <strong id="adminWelcomeUsername">Administrateur</strong>. Chiffres lus en direct depuis Supabase — zéro si rien n'a encore eu lieu.</p>
+                        <h1 class="admin-page-title">Centre de pilotage</h1>
+                        <p class="admin-page-sub">Bienvenue <strong id="adminWelcomeUsername">Administrateur</strong>. Chaque chiffre a une définition. Une valeur indisponible reste vide, jamais zéro de substitution.</p>
                     </div>
                     <div class="admin-page-actions">
-                        <button class="admin-btn admin-btn-primary trigger-goto-aiops"><i class="ph-bold ph-robot"></i> Agents LYANN</button>
+                        <button class="admin-btn admin-btn-primary" id="gotoActionCenterBtn" type="button"><i class="ph-bold ph-list-checks"></i> À traiter</button>
                         <button class="admin-btn admin-btn-secondary" id="exportBiReportBtn"><i class="ph-bold ph-download-simple"></i> Exporter les paiements</button>
                     </div>
                 </div>
 
                 <div class="attention-board">
                     <div class="admin-card needs-action" id="attentionQueue">
-                        <h3>À traiter maintenant</h3>
-                        <div class="attention-item">
-                            <div>
-                                <strong>Propositions éditoriales</strong>
-                                <p class="maison-muted">Validation humaine avant toute publication.</p>
-                            </div>
-                            <strong id="attentionEditorial">—</strong>
-                        </div>
-                        <div class="attention-item">
-                            <div>
-                                <strong>Modération</strong>
-                                <p class="maison-muted">Contenus en attente dans la file préventive.</p>
-                            </div>
-                            <strong id="attentionModeration">—</strong>
-                        </div>
-                        <div class="attention-item">
-                            <div>
-                                <strong>Litiges ouverts</strong>
-                                <p class="maison-muted">Arbitrage et signalements en cours.</p>
-                            </div>
-                            <strong id="attentionDisputes">—</strong>
-                        </div>
+                        <h3>Actions prioritaires</h3>
+                        <div id="pilotageActionList"><p class="maison-muted">Chargement…</p></div>
                     </div>
                     <div class="admin-card">
                         <h3>Activité récente</h3>
-                        <p class="maison-muted" id="attentionRecent">Les compteurs ci-dessous sont lus en direct. Rien n’est inventé.</p>
+                        <p class="maison-muted" id="attentionRecent">Les compteurs ci-dessous sont lus en direct.</p>
+                        <p class="maison-muted" id="kpiActivityMix"></p>
                     </div>
                 </div>
 
-                <!-- KPI Grid -->
                 <div class="admin-grid-4" id="kpiContainer" style="margin-bottom: 24px;">
-                    <div class="admin-card kpi-card">
-                        <div class="kpi-icon green"><i class="ph-bold ph-currency-eur"></i></div>
-                        <div class="kpi-data">
-                            <div class="kpi-label">Volume encaissé (GMV)</div>
-                            <div class="kpi-value" id="kpiGmv">—</div>
-                            <div class="kpi-sub" id="kpiGmvSub">Paiements SUCCEEDED uniquement</div>
-                        </div>
-                    </div>
-                    <div class="admin-card kpi-card">
-                        <div class="kpi-icon yellow"><i class="ph-bold ph-bank"></i></div>
-                        <div class="kpi-data">
-                            <div class="kpi-label">Revenus LYANN</div>
-                            <div class="kpi-value" id="kpiRevenue">—</div>
-                            <div class="kpi-sub" id="kpiRevenueSub">Commissions réellement collectées</div>
-                        </div>
-                    </div>
                     <div class="admin-card kpi-card">
                         <div class="kpi-icon blue"><i class="ph-bold ph-users"></i></div>
                         <div class="kpi-data">
-                            <div class="kpi-label">Comptes</div>
+                            <div class="kpi-label">Membres réels</div>
                             <div class="kpi-value" id="kpiTotalUsers">—</div>
-                            <div class="kpi-sub" id="kpiUsersSub">Membres + profils maison</div>
+                            <div class="kpi-sub" id="kpiUsersSub">Profils account_type=real — pas une mesure d’activité</div>
                         </div>
                     </div>
                     <div class="admin-card kpi-card">
-                        <div class="kpi-icon green"><i class="ph-bold ph-check-square-offset"></i></div>
+                        <div class="kpi-icon green"><i class="ph-bold ph-tray"></i></div>
                         <div class="kpi-data">
-                            <div class="kpi-label">Missions</div>
-                            <div class="kpi-value" id="kpiTotalMissions">—</div>
-                            <div class="kpi-sub" id="kpiMissionsSub">Toutes statuts confondus</div>
+                            <div class="kpi-label">Annonces ouvertes</div>
+                            <div class="kpi-value" id="kpiOpenRequests">—</div>
+                            <div class="kpi-sub" id="kpiMissionsSub">Statut OPEN, période et territoire appliqués aux créations</div>
+                        </div>
+                    </div>
+                    <div class="admin-card kpi-card" data-rbac="finance">
+                        <div class="kpi-icon green"><i class="ph-bold ph-currency-eur"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Volume encaissé (période)</div>
+                            <div class="kpi-value" id="kpiGmv">—</div>
+                            <div class="kpi-sub" id="kpiGmvSub">Paiements SUCCEEDED de la période — lecture seule</div>
+                        </div>
+                    </div>
+                    <div class="admin-card kpi-card" data-rbac="finance">
+                        <div class="kpi-icon yellow"><i class="ph-bold ph-bank"></i></div>
+                        <div class="kpi-data">
+                            <div class="kpi-label">Commissions collectées</div>
+                            <div class="kpi-value" id="kpiRevenue">—</div>
+                            <div class="kpi-sub" id="kpiRevenueSub">Pas un MRR — sommes réellement collectées</div>
                         </div>
                     </div>
                 </div>
-
                 <div class="admin-grid-3" style="margin-bottom: 24px;">
                     <div class="admin-card metric-tile">
-                        <h3><i class="ph-bold ph-newspaper"></i> Publications & annonces</h3>
-                        <div class="tile-value" id="kpiActivityMix">—</div>
-                        <p class="maison-muted">Demandes ouvertes, Lyanns et conversations</p>
+                        <h3>Bokantaj approuvé</h3>
+                        <div class="tile-value" id="kpiBokantajApproved">—</div>
+                        <p class="maison-muted">Publications visibles après modération</p>
                     </div>
                     <div class="admin-card metric-tile">
-                        <h3><i class="ph-bold ph-robot"></i> Agents éditoriaux</h3>
+                        <h3>File éditoriale</h3>
                         <div class="tile-value" id="kpiActiveBots">—</div>
-                        <p class="maison-muted">Agents actifs et tâches en attente</p>
+                        <p class="maison-muted" id="attentionEditorial">Propositions PENDING, distinctes des tâches agents</p>
                     </div>
                     <div class="admin-card metric-tile">
-                        <h3><i class="ph-bold ph-scales"></i> Litiges & signalements</h3>
+                        <h3>Confiance</h3>
                         <div class="tile-value" id="kpiOpenDisputes">—</div>
-                        <p class="maison-muted">Litiges ouverts et reports en cours</p>
+                        <p class="maison-muted" id="attentionDisputes">Litiges ouverts · signalements ouverts à part</p>
                     </div>
+                </div>
+                <p class="maison-muted" id="attentionModeration" hidden></p>
+                <div id="kpiTotalMissions" hidden></div>
+            </section>
+
+            <section id="sec-action" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">À traiter</h1>
+                        <p class="admin-page-sub">File priorisée. Une alerte n’apparaît que si le compteur réel est supérieur à zéro. Une erreur de lecture n’est jamais affichée comme une file vide.</p>
+                    </div>
+                </div>
+                <div class="admin-card" id="actionCenterCard">
+                    <div id="actionCenterList"><p class="maison-muted">Chargement…</p></div>
+                </div>
+            </section>
+
+            <section id="sec-marketplace" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">Analytics marketplace</h1>
+                        <p class="admin-page-sub">Indicateurs calculables aujourd’hui. Les membres « actifs » ne sont pas estimés à partir de l’existence d’un profil.</p>
+                    </div>
+                </div>
+                <div class="admin-grid-4" id="marketplaceKpiGrid"></div>
+                <div class="admin-card" style="margin-top:16px;">
+                    <h3>Par territoire</h3>
+                    <div id="marketplaceTerritoryTable"><p class="maison-muted">Chargement…</p></div>
+                </div>
+                <div class="admin-card" style="margin-top:16px;">
+                    <h3>Données encore absentes</h3>
+                    <ul id="marketplaceMissing" class="maison-muted"></ul>
                 </div>
             </section>
 
@@ -564,7 +637,7 @@
                         <h3 style="margin-top: 24px; margin-bottom: 16px; color: var(--admin-brand-yellow);"><i class="ph-bold ph-gear"></i> Actions d'Administration Sensibles</h3>
                         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                             <button class="admin-btn admin-btn-primary btn-approve-kyc"><i class="ph-bold ph-check-circle"></i> Réattester KYC</button>
-                            <button class="admin-btn admin-btn-secondary btn-grant-subscription" onclick="alert('🎁 Abonnement Pro offert à cet utilisateur avec succès !');"><i class="ph-bold ph-sparkle"></i> Offrir Abonnement Pro</button>
+                            <button type="button" class="admin-btn admin-btn-secondary btn-grant-subscription" disabled data-unavailable="Offrir un abonnement Pro n’est pas une opération financière activée ici." title="Offrir un abonnement Pro n’est pas une opération financière activée ici."><i class="ph-bold ph-sparkle"></i> Offrir Abonnement Pro</button>
                             <button class="admin-btn admin-btn-danger btn-suspend-user"><i class="ph-bold ph-user-minus"></i> Suspendre le Compte</button>
                         </div>
                     </div>
@@ -945,70 +1018,133 @@
                 <div class="admin-page-header">
                     <div>
                         <h1 class="admin-page-title">Modération</h1>
-                        <p class="admin-page-sub">Signalements, file préventive et respect de la charte de sérénité LYANN.</p>
+                        <p class="admin-page-sub">Contrôle des publications, commentaires, comptes et signalements. Une décision humaine de retrait reste prioritaire sur l’IA.</p>
                     </div>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="btnRunModerationOnce">Lancer une passe IA</button>
                 </div>
 
-                <div class="admin-card" style="margin-bottom: 24px;">
-                    <h3 style="margin-bottom: 16px; font-weight: 800; color: var(--admin-text); display: flex; align-items: center; gap: 8px;">
-                        <i class="ph-bold ph-shield-warning" style="color: #EF4444;"></i> Signalements Transmis par les Membres (<span id="adminReportsCount">0</span>)
-                    </h3>
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Ref #</th>
-                                <th>Émetteur</th>
-                                <th>Membre Signalé</th>
-                                <th>Motif</th>
-                                <th>Précisions & Détails</th>
-                                <th>Date & Heure</th>
-                                <th>Statut</th>
-                                <th>Actions Modérateur</th>
-                            </tr>
-                        </thead>
-                        <tbody id="adminReportsTableBody">
-                            <!-- Dynamiquement alimenté par admin-script.js -->
-                        </tbody>
-                    </table>
+                <div class="mod-engine-bar" id="modEngineBar">État du moteur : chargement…</div>
+                <p class="mod-notice" id="modNotice" hidden></p>
+
+                <div class="mod-tabs" role="tablist">
+                    <button type="button" class="mod-tab is-active" data-mod-tab="queue">À vérifier</button>
+                    <button type="button" class="mod-tab" data-mod-tab="posts">Publications Bokantaj</button>
+                    <button type="button" class="mod-tab" data-mod-tab="comments">Commentaires</button>
+                    <button type="button" class="mod-tab" data-mod-tab="users">Utilisateurs</button>
+                    <button type="button" class="mod-tab" data-mod-tab="reports">Signalements</button>
                 </div>
 
-                <div class="admin-card" style="margin-bottom: 24px;">
-                    <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
-                        <h3 style="margin:0; font-weight: 800; color: var(--admin-text);">File de modération préventive</h3>
-                        <button type="button" class="admin-btn admin-btn-secondary" id="btnRunModerationOnce">Lancer une passe de modération</button>
+                <div class="mod-filters">
+                    <input type="search" id="modSearch" class="admin-input" placeholder="Rechercher un contenu, un auteur…">
+                    <select id="modStatus" class="admin-select">
+                        <option value="all">Tous les statuts</option>
+                        <option value="pending">À vérifier</option>
+                        <option value="approved">Approuvés</option>
+                        <option value="rejected">Refusés</option>
+                        <option value="hidden">Masqués</option>
+                        <option value="suspended">Suspendus</option>
+                        <option value="banned">Bannis</option>
+                        <option value="OPEN">Nouveaux signalements</option>
+                    </select>
+                    <select id="modTerritory" class="admin-select">
+                        <option value="all">Tous les territoires</option>
+                        <option value="guadeloupe">Guadeloupe</option>
+                        <option value="martinique">Martinique</option>
+                        <option value="guyane">Guyane</option>
+                        <option value="reunion">La Réunion</option>
+                    </select>
+                    <input type="date" id="modSince" class="admin-input" aria-label="Depuis">
+                </div>
+
+                <div class="mod-layout">
+                    <div class="admin-card mod-list-card">
+                        <div class="mod-pane is-active" data-mod-pane="queue">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sujet</th>
+                                        <th>Auteur</th>
+                                        <th>Extrait</th>
+                                        <th>Statut</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminModerationQueueBody">
+                                    <tr><td colspan="5" class="admin-empty-cell">Chargement de la file…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mod-pane" data-mod-pane="posts">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Publication</th>
+                                        <th>Auteur</th>
+                                        <th>Aperçu</th>
+                                        <th>Statut</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contentBokantajTableBody">
+                                    <tr><td colspan="5" class="admin-empty-cell">Chargement du fil…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mod-pane" data-mod-pane="comments">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Commentaire</th>
+                                        <th>Auteur</th>
+                                        <th>Publication</th>
+                                        <th>Statut</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modCommentsBody">
+                                    <tr><td colspan="5" class="admin-empty-cell">Chargement des commentaires…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mod-pane" data-mod-pane="users">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Membre</th>
+                                        <th>Territoire</th>
+                                        <th>Restriction</th>
+                                        <th>Historique</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modUsersBody">
+                                    <tr><td colspan="5" class="admin-empty-cell">Chargement des comptes…</td></tr>
+                                </tbody>
+                            </table>
+                            <div class="mod-pager" id="modUsersPager" hidden></div>
+                        </div>
+                        <div class="mod-pane" data-mod-pane="reports">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ref</th>
+                                        <th>Émetteur</th>
+                                        <th>Cible</th>
+                                        <th>Motif</th>
+                                        <th>Statut</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminReportsTableBody">
+                                    <tr><td colspan="6" class="admin-empty-cell">Chargement des signalements…</td></tr>
+                                </tbody>
+                            </table>
+                            <p class="mod-meta">Signalements visibles : <span id="adminReportsCount">0</span></p>
+                        </div>
                     </div>
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Sujet</th>
-                                <th>Auteur</th>
-                                <th>Extrait</th>
-                                <th>Statut</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="adminModerationQueueBody">
-                            <tr><td colspan="5" class="admin-empty-cell">Chargement de la file…</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="admin-card">
-                    <h3 style="margin-bottom: 16px; font-weight: 800; color: var(--admin-text);">Modération du Fil Bokantaj</h3>
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Post #</th>
-                                <th>Auteur</th>
-                                <th>Contenu Publication</th>
-                                <th>Signalements</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="contentBokantajTableBody">
-                            <tr><td colspan="5" class="admin-empty-cell">Chargement du fil…</td></tr>
-                        </tbody>
-                    </table>
+                    <aside class="admin-card mod-detail" id="modDetail">
+                        <p class="mod-detail-empty">Sélectionnez un élément pour voir le contenu, l’historique et décider ici.</p>
+                    </aside>
                 </div>
             </section>
 
@@ -1200,6 +1336,10 @@
                                 <!-- Populated dynamically -->
                             </tbody>
                         </table>
+                        <aside class="admin-card mod-detail" id="agentTaskPanel" hidden>
+                            <p class="maison-muted" id="agentTaskPanelEmpty">Ouvrez une tâche pour voir le détail.</p>
+                            <div id="agentTaskPanelBody" hidden></div>
+                        </aside>
                     </div>
 
                     <!-- Approval Center Container -->
@@ -1657,31 +1797,81 @@
             </section>
 
             <!-- ==========================================================================
-                 PÔLE 22 : SUPPORT CLIENT SLA
+                 PÔLE 22 : SUPPORT CLIENT
                  ========================================================================== -->
             <section id="sec-support" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">Helpdesk Support & SLA</h1>
-                        <p class="admin-page-sub">Traitement des tickets d'assistance avec garantie de réponse sous 15 min.</p>
+                        <h1 class="admin-page-title">Helpdesk</h1>
+                        <p class="admin-page-sub">Tickets d’assistance réellement enregistrés. Le temps de traitement est mesuré, sans promesse de délai.</p>
                     </div>
+                    <button type="button" class="admin-btn admin-btn-primary" id="helpdeskCreateBtn" data-admin-wired="1">Nouveau ticket</button>
                 </div>
-                <div class="admin-card">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Ticket ID</th>
-                                <th>Utilisateur</th>
-                                <th>Sujet & Priorité</th>
-                                <th>Attribué à</th>
-                                <th>Statut</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="supportAdminTableBody">
-                            <tr><td colspan="6" class="admin-empty-cell">Aucun ticket support. Les signalements membres se traitent dans Modération.</td></tr>
-                        </tbody>
-                    </table>
+                <p class="mod-notice" id="helpdeskNotice" hidden></p>
+                <form id="helpdeskCreateForm" class="admin-card" hidden>
+                    <h3>Nouveau ticket administratif</h3>
+                    <label>Sujet<input class="admin-input" id="helpdeskCreateSubject" required minlength="3" maxlength="160"></label>
+                    <label>UUID membre (optionnel)<input class="admin-input" id="helpdeskCreateMember" placeholder="uuid"></label>
+                    <label>Priorité
+                        <select class="admin-select" id="helpdeskCreatePriority">
+                            <option value="low">Basse</option>
+                            <option value="medium" selected>Moyenne</option>
+                            <option value="high">Haute</option>
+                            <option value="critical">Critique</option>
+                        </select>
+                    </label>
+                    <label>Premier message<textarea class="admin-input" id="helpdeskCreateBody" rows="4" placeholder="Contexte visible dans l’historique"></textarea></label>
+                    <div class="mod-actions">
+                        <button type="submit" class="admin-btn admin-btn-primary" id="helpdeskCreateSubmit" data-admin-wired="1">Enregistrer</button>
+                        <button type="button" class="admin-btn admin-btn-secondary" id="helpdeskCreateCancel" data-admin-wired="1">Annuler</button>
+                    </div>
+                </form>
+                <div class="mod-filters">
+                    <input type="search" id="helpdeskSearch" class="admin-input" placeholder="Référence, sujet ou UUID membre">
+                    <select id="helpdeskStatus" class="admin-select">
+                        <option value="all">Tous les statuts</option>
+                        <option value="open">Ouvert</option>
+                        <option value="in_progress">En cours</option>
+                        <option value="waiting">En attente</option>
+                        <option value="resolved">Résolu</option>
+                        <option value="closed">Fermé</option>
+                    </select>
+                    <select id="helpdeskPriority" class="admin-select">
+                        <option value="all">Toutes priorités</option>
+                        <option value="low">Basse</option>
+                        <option value="medium">Moyenne</option>
+                        <option value="high">Haute</option>
+                        <option value="critical">Critique</option>
+                    </select>
+                    <select id="helpdeskSince" class="admin-select">
+                        <option value="all">Toute période</option>
+                        <option value="24h">24 heures</option>
+                        <option value="7d">7 jours</option>
+                        <option value="30d">30 jours</option>
+                    </select>
+                </div>
+                <div class="mod-layout">
+                    <div class="admin-card mod-list-card">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Réf.</th>
+                                    <th>Sujet</th>
+                                    <th>Membre</th>
+                                    <th>Priorité</th>
+                                    <th>Statut</th>
+                                    <th>Âge</th>
+                                </tr>
+                            </thead>
+                            <tbody id="helpdeskTableBody">
+                                <tr><td colspan="6" class="admin-empty-cell">Aucun ticket pour le moment.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <aside class="admin-card mod-detail" id="helpdeskDetail">
+                        <p class="maison-muted" id="helpdeskDetailEmpty">Sélectionnez un ticket ou créez-en un.</p>
+                        <div id="helpdeskDetailBody" hidden></div>
+                    </aside>
                 </div>
             </section>
 

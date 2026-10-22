@@ -78,8 +78,41 @@ async function installAdminMocks(page, overrides = {}) {
       if (overrides.noPermission) return json(route, { success: false, error: 'Accès refusé.' }, 403);
       return json(route, { success: true, user_id: 'e2e-admin', role: 'OWNER', is_owner: true });
     }
-    if (path === '/v1/admin/kpis') {
-      return json(route, { success: true, gmvMonth: 12, mrrCommissions: 1.2, activeMembers: 8, activeMissions: 2, openDisputes: 0, realMembers: 6, kycVerified: 3, openRequests: 1, period: '30d', territory: 'all' });
+    if (path === '/v1/admin/kpis' || path === '/v1/admin/control-center') {
+      const metrics = {
+        realMembers: { value: 6, available: true },
+        seedMembers: { value: 2, available: true },
+        kycVerified: { value: 3, available: true },
+        newRealMembers: { value: 1, available: true },
+        openRequests: { value: 1, available: true },
+        bokantajApproved: { value: 4, available: true },
+        editorialPending: { value: 2, available: true },
+        openDisputes: { value: 0, available: true },
+        openReports: { value: 1, available: true },
+        conversations: { value: 3, available: true },
+        gmvPeriod: { value: 12, available: true },
+        collectedCommissions: { value: 1.2, available: true }
+      };
+      return json(route, {
+        success: true,
+        data_available: true,
+        generated_at: '2026-10-22T00:00:00Z',
+        period: '30 jours',
+        gmvMonth: 12,
+        mrrCommissions: 1.2,
+        activeMembers: 6,
+        realMembers: 6,
+        kycVerified: 3,
+        openRequests: 1,
+        openDisputes: 0,
+        pendingApprovals: 2,
+        kpis: { metrics, period: '30 jours' },
+        metrics,
+        actions: [{ id: 'editorial-pending', title: 'Propositions éditoriales à valider', count: 2, section: 'sec-editorial', priority: 1 }]
+      });
+    }
+    if (path === '/v1/admin/marketplace-stats') {
+      return json(route, { success: true, generated_at: '2026-10-22T00:00:00Z', metrics: {}, byTerritory: [], missingInstrumentation: [] });
     }
     if (path === '/v1/admin/editorial/bots') {
       return json(route, {
@@ -145,11 +178,21 @@ async function installAdminMocks(page, overrides = {}) {
       if (resource === 'team') return json(route, { success: true, rows: [{ id: 'tm1', name: 'Yoann', email: 'yoann@lyann.app', role: 'OWNER', status: 'ACTIVE' }] });
       return json(route, { success: true, rows: [] });
     }
-    if (path === '/v1/admin/ops/moderation') {
-      return json(route, { success: true, posts: [{ id: 'p1', excerpt: 'À vérifier', status: 'pending', author_id: 'seed-1' }], comments: [], requests: [], profiles: [] });
+    if (path === '/v1/admin/ops/moderation' || path === '/v1/admin/moderation-center') {
+      return json(route, {
+        success: true,
+        posts: [{ id: 'p1', excerpt: 'À vérifier', status: 'pending', author_id: 'seed-1' }],
+        comments: [],
+        requests: [],
+        profiles: [],
+        rows: [{ id: 'p1', subject: 'post', excerpt: 'À vérifier', status_label: 'À vérifier', public_moderation_status: 'pending' }],
+        extra: []
+      });
     }
     if (path.endsWith('/moderation/run-once')) return json(route, { success: true });
-    if (path.includes('/moderation/post/')) return json(route, { success: true, visible: true, lifecycle_label: 'Publié et visible' });
+    if (path.includes('/moderation/post/') || path.includes('/moderation-center/content/')) {
+      return json(route, { success: true, visible: true, lifecycle_label: 'Publié et visible' });
+    }
     if (path === '/v1/admin/system/settings' && method === 'POST') {
       return json(route, { success: true, saved: ['maintenance_mode'] });
     }
@@ -254,6 +297,7 @@ test.describe('LYANN back-office', () => {
       if (typeof window.loadAdminSection === 'function') await window.loadAdminSection('sec-content');
       else if (typeof window.hydrateAdminSection === 'function') await window.hydrateAdminSection('sec-content');
     });
+    await expect(page.locator('.mod-tab')).toHaveCount(5);
     await expect(page.locator('#adminModerationQueueBody')).toContainText('À vérifier');
     await page.locator('#btnRunModerationOnce').click({ force: true });
 
