@@ -53,5 +53,6 @@ for (const device of [
     await expect.poll(async () => page.evaluate(() => window.LyannNotificationEngine.getUnreadCount('qa-notif-member', 'qa-notif-member'))).toBe(0);
     await expect(page.locator('#notificationsModal .notif-item-card')).toHaveCount(105);
     await expect(badge).toBeHidden();
+    await page.screenshot({ path: 'test-results/qa-notifications-' + device.name + '.png', animations: 'disabled' });
   });
 }
