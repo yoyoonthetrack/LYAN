@@ -5885,7 +5885,7 @@ safeDomReady(() => {
                                 <div class="row-icon"><i class="ph ph-headset"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">Support LYANN</strong>
-                                    <span class="row-subtitle">Écrire à l'équipe dans la messagerie</span>
+                                    <span class="row-subtitle">Ouvrir un dossier et suivre les réponses de l’équipe</span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>

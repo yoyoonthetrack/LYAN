@@ -992,6 +992,41 @@ const LYANN_API_CLIENT = {
         return data;
     },
 
+    async memberHelpdeskRequest(path, options = {}) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) return { ok: false, status: 401, json: async () => ({ success: false, error: 'Authentification requise.' }) };
+        return lyannBackendFetch(path, {
+            method: options.method || 'GET',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: options.body ? JSON.stringify(options.body) : undefined
+        });
+    },
+
+    async listMyHelpdeskTickets() {
+        const res = await this.memberHelpdeskRequest('/v1/me/helpdesk');
+        return res.json();
+    },
+
+    async createMyHelpdeskTicket(payload) {
+        const res = await this.memberHelpdeskRequest('/v1/me/helpdesk', { method: 'POST', body: payload });
+        return res.json();
+    },
+
+    async getMyHelpdeskTicket(id) {
+        const res = await this.memberHelpdeskRequest(`/v1/me/helpdesk/${id}`);
+        return res.json();
+    },
+
+    async replyMyHelpdeskTicket(id, body) {
+        const res = await this.memberHelpdeskRequest(`/v1/me/helpdesk/${id}/messages`, { method: 'POST', body: { body } });
+        return res.json();
+    },
+
     async openSupportConversation() {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const supportId = await this.getSupportUserId();

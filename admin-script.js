@@ -4696,22 +4696,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.createHelpdeskTicket = async function() {
-        const subject = prompt('Sujet du ticket :');
-        if (!subject) return;
-        const member = prompt('UUID du membre concerné (optionnel) :') || '';
-        const body = prompt('Premier message (optionnel) :') || '';
+        const form = document.getElementById('helpdeskCreateForm');
+        if (form) form.hidden = !form.hidden;
+        document.getElementById('helpdeskCreateSubject')?.focus();
+    };
+
+    document.getElementById('helpdeskCreateCancel')?.addEventListener('click', () => {
+        const form = document.getElementById('helpdeskCreateForm');
+        if (form) form.hidden = true;
+    });
+    document.getElementById('helpdeskCreateForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const subject = (document.getElementById('helpdeskCreateSubject')?.value || '').trim();
+        const member = (document.getElementById('helpdeskCreateMember')?.value || '').trim();
+        const body = (document.getElementById('helpdeskCreateBody')?.value || '').trim();
+        const priority = document.getElementById('helpdeskCreatePriority')?.value || 'medium';
+        const submit = document.getElementById('helpdeskCreateSubmit');
+        if (subject.length < 3) {
+            helpdeskNotice('Le sujet doit contenir au moins 3 caractères.', true);
+            return;
+        }
+        if (submit) submit.disabled = true;
+        helpdeskNotice('Enregistrement…', false);
         const res = await window.fetchWithAdminAuth('/v1/admin/operations/helpdesk', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subject, member_id: member, body })
+            body: JSON.stringify({ subject, member_id: member, body, priority })
         });
         const data = await res.json().catch(() => ({}));
+        if (submit) submit.disabled = false;
         helpdeskNotice(data.success ? 'Ticket créé.' : (data.error || 'Création impossible.'), !data.success);
-        if (data.success && data.ticket) {
-            await window.loadAdminHelpdesk();
-            window.openHelpdeskTicket(data.ticket.id);
-        }
-    };
+        if (!data.success || !data.ticket) return;
+        const form = document.getElementById('helpdeskCreateForm');
+        if (form) form.hidden = true;
+        if (document.getElementById('helpdeskCreateSubject')) document.getElementById('helpdeskCreateSubject').value = '';
+        if (document.getElementById('helpdeskCreateMember')) document.getElementById('helpdeskCreateMember').value = '';
+        if (document.getElementById('helpdeskCreateBody')) document.getElementById('helpdeskCreateBody').value = '';
+        await window.loadAdminHelpdesk();
+        window.openHelpdeskTicket(data.ticket.id);
+    });
 
     window.loadAdminSection = async function(sectionId) {
         const loaders = {

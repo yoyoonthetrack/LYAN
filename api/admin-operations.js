@@ -2,6 +2,8 @@
 
 const TICKET_STATUSES = Object.freeze(['open', 'in_progress', 'waiting', 'resolved', 'closed']);
 const TICKET_PRIORITIES = Object.freeze(['low', 'medium', 'high', 'critical']);
+const MEMBER_REPLY_STATUSES = Object.freeze(['open', 'in_progress', 'waiting', 'resolved']);
+const MEMBER_SUBJECTS = Object.freeze(['Compte', 'Paiement', 'Mission', 'Profil', 'Technique', 'Autre']);
 const TRANSITIONS = Object.freeze({
     open: ['in_progress', 'waiting', 'resolved', 'closed'],
     in_progress: ['waiting', 'resolved', 'closed', 'open'],
@@ -134,17 +136,28 @@ function createOperationsEngine({ db, now = () => new Date().toISOString(), noti
             payload: { kind },
             created_at: now()
         });
-        if (kind === 'public' && typeof notify === 'function' && ticket.member_id) {
-            await notify({
-                userId: ticket.member_id,
-                type: 'SUPPORT_REPLY',
-                title: 'Réponse de l’équipe LYANN',
-                body: body.slice(0, 140),
-                entityType: 'helpdesk_ticket',
-                entityId: id
-            });
+        let notified = false;
+        if (kind === 'public' && typeof notify === 'function') {
+            const targetId = actorId && ticket.member_id && actorId === ticket.member_id
+                ? ticket.assigned_to
+                : ticket.member_id;
+            if (isUuid(targetId)) {
+                try {
+                    await notify({
+                        userId: targetId,
+                        type: 'SUPPORT_REPLY',
+                        title: actorId === ticket.member_id ? 'Nouveau message d’un membre' : 'Réponse de l’équipe LYANN',
+                        body: body.slice(0, 140),
+                        entityType: 'helpdesk_ticket',
+                        entityId: id
+                    });
+                    notified = true;
+                } catch (_) {
+                    notified = false;
+                }
+            }
         }
-        return { ok: true, message };
+        return { ok: true, message, notified };
     }
 
     async function setStatus(actorId, id, status) {
@@ -269,10 +282,70 @@ function createOperationsEngine({ db, now = () => new Date().toISOString(), noti
         updateTask,
         setTaskStatus,
         retryTask,
+        listMemberTickets: async function listMemberTickets(memberId) {
+            if (!isUuid(memberId)) return [];
+            return listTickets({ member_id: memberId });
+        },
+        createMemberTicket: async function createMemberTicket(memberId, input) {
+            if (!isUuid(memberId)) return { ok: false, status: 401, error: 'Authentification requise.' };
+            const subjectLabel = MEMBER_SUBJECTS.includes(input.subject) ? input.subject : String(input.subject || '').trim();
+            return createTicket(memberId, {
+                subject: subjectLabel,
+                body: input.body,
+                member_id: memberId,
+                assigned_to: null,
+                priority: 'medium'
+            });
+        },
+        getMemberTicket: async function getMemberTicket(memberId, id) {
+            if (!isUuid(memberId)) return { ok: false, status: 401, error: 'Authentification requise.' };
+            const detail = await getTicket(id);
+            if (!detail.ok || !detail.ticket || detail.ticket.member_id !== memberId) {
+                return { ok: false, status: 404, error: 'Ticket introuvable.' };
+            }
+            return {
+                ok: true,
+                ticket: {
+                    id: detail.ticket.id,
+                    reference: detail.ticket.reference,
+                    subject: detail.ticket.subject,
+                    status: detail.ticket.status,
+                    created_at: detail.ticket.created_at,
+                    updated_at: detail.ticket.updated_at,
+                    age_ms: detail.ticket.age_ms,
+                    first_response_ms: detail.ticket.first_response_ms,
+                    resolution_ms: detail.ticket.resolution_ms,
+                    can_reply: MEMBER_REPLY_STATUSES.includes(detail.ticket.status)
+                },
+                messages: (detail.messages || []).filter((row) => row.kind === 'public').map((row) => ({
+                    id: row.id,
+                    body: row.body,
+                    created_at: row.created_at,
+                    from_team: row.author_id !== memberId
+                })),
+                events: (detail.events || []).filter((row) => row.action !== 'note' && row.action !== 'assigned')
+            };
+        },
+        addMemberMessage: async function addMemberMessage(memberId, id, input) {
+            if (!isUuid(memberId)) return { ok: false, status: 401, error: 'Authentification requise.' };
+            const ticket = await db.getTicket(id);
+            if (!ticket || ticket.member_id !== memberId) return { ok: false, status: 404, error: 'Ticket introuvable.' };
+            if (!MEMBER_REPLY_STATUSES.includes(ticket.status)) {
+                return { ok: false, status: 409, error: 'Ce dossier est fermé. L’historique reste consultable.' };
+            }
+            const posted = await addMessage(memberId, id, { kind: 'public', body: input && input.body });
+            if (!posted.ok) return posted;
+            if (ticket.status === 'resolved') {
+                await setStatus(memberId, id, 'waiting');
+            }
+            return posted;
+        },
         canTransition,
         taskRunnable,
         TICKET_STATUSES,
-        TICKET_PRIORITIES
+        TICKET_PRIORITIES,
+        MEMBER_REPLY_STATUSES,
+        MEMBER_SUBJECTS
     };
 }
 
@@ -283,6 +356,7 @@ function supabaseOperationsDb(supabaseAdmin) {
             if (query.status && query.status !== 'all') q = q.eq('status', query.status);
             if (query.priority && query.priority !== 'all') q = q.eq('priority', query.priority);
             if (query.assigned_to) q = q.eq('assigned_to', query.assigned_to);
+            if (query.member_id && isUuid(query.member_id)) q = q.eq('member_id', query.member_id);
             if (query.since) q = q.gte('created_at', query.since);
             if (query.q) {
                 const term = escapeLike(query.q);
@@ -531,10 +605,111 @@ function registerAdminOperations(app, { supabaseAdmin, verifyAdminPermission }) 
     });
 }
 
+function isRestrictedMember(profile) {
+    const status = String(profile && (profile.restriction_status || profile.status) || '').toLowerCase();
+    return ['suspended', 'banned', 'hidden'].includes(status);
+}
+
+function registerMemberHelpdesk(app, { supabaseAdmin, requireBearerUser }) {
+    const engine = createOperationsEngine({
+        db: supabaseOperationsDb(supabaseAdmin),
+        notify: async ({ userId, type, title, body, entityType, entityId }) => {
+            await supabaseAdmin.rpc('lyann_insert_notification', {
+                p_user_id: userId,
+                p_type: type,
+                p_title: title,
+                p_body: body,
+                p_entity_type: entityType,
+                p_entity_id: entityId
+            });
+        }
+    });
+
+    async function authorizeMember(req) {
+        const user = await requireBearerUser(req);
+        if (!user) return { authorized: false, status: 401, error: 'Authentification requise.' };
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, restriction_status')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (isRestrictedMember(profile)) {
+            return { authorized: false, status: 403, error: 'Ce compte ne peut plus écrire à l’assistance.' };
+        }
+        return { authorized: true, userId: user.id };
+    }
+
+    function sendEngine(res, result) {
+        if (!result.ok) return res.status(result.status || 400).json({ success: false, error: result.error, code: result.code || null });
+        const payload = Object.assign({ success: true }, result);
+        delete payload.ok;
+        return res.json(payload);
+    }
+
+    app.get('/v1/me/helpdesk', async (req, res) => {
+        const auth = await authorizeMember(req);
+        if (!auth.authorized) return res.status(auth.status).json({ success: false, error: auth.error });
+        try {
+            const tickets = await engine.listMemberTickets(auth.userId);
+            return res.json({
+                success: true,
+                subjects: MEMBER_SUBJECTS,
+                tickets: tickets.map((row) => ({
+                    id: row.id,
+                    reference: row.reference,
+                    subject: row.subject,
+                    status: row.status,
+                    created_at: row.created_at,
+                    updated_at: row.updated_at,
+                    age_ms: row.age_ms,
+                    can_reply: MEMBER_REPLY_STATUSES.includes(row.status)
+                }))
+            });
+        } catch (error) {
+            if (missingTable(error)) return res.status(503).json({ success: false, error: 'Assistance indisponible pour le moment.' });
+            return res.status(500).json({ success: false, error: error.message || 'Assistance indisponible.' });
+        }
+    });
+
+    app.post('/v1/me/helpdesk', async (req, res) => {
+        const auth = await authorizeMember(req);
+        if (!auth.authorized) return res.status(auth.status).json({ success: false, error: auth.error });
+        try {
+            return sendEngine(res, await engine.createMemberTicket(auth.userId, req.body || {}));
+        } catch (error) {
+            if (missingTable(error)) return res.status(503).json({ success: false, error: 'Assistance indisponible pour le moment.' });
+            return res.status(500).json({ success: false, error: error.message || 'Envoi impossible.' });
+        }
+    });
+
+    app.get('/v1/me/helpdesk/:id', async (req, res) => {
+        const auth = await authorizeMember(req);
+        if (!auth.authorized) return res.status(auth.status).json({ success: false, error: auth.error });
+        try {
+            return sendEngine(res, await engine.getMemberTicket(auth.userId, req.params.id));
+        } catch (error) {
+            return res.status(500).json({ success: false, error: error.message || 'Dossier indisponible.' });
+        }
+    });
+
+    app.post('/v1/me/helpdesk/:id/messages', async (req, res) => {
+        const auth = await authorizeMember(req);
+        if (!auth.authorized) return res.status(auth.status).json({ success: false, error: auth.error });
+        try {
+            return sendEngine(res, await engine.addMemberMessage(auth.userId, req.params.id, req.body || {}));
+        } catch (error) {
+            return res.status(500).json({ success: false, error: error.message || 'Message non enregistré.' });
+        }
+    });
+}
+
 module.exports = {
     createOperationsEngine,
     registerAdminOperations,
+    registerMemberHelpdesk,
     canTransition,
     taskRunnable,
-    TICKET_STATUSES
+    TICKET_STATUSES,
+    MEMBER_SUBJECTS,
+    MEMBER_REPLY_STATUSES
 };
