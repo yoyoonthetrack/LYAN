@@ -382,9 +382,10 @@
             <div class="admin-insight-filters" id="adminInsightFilters">
                 <label>Période
                     <select id="adminPeriodFilter" class="admin-select">
-                        <option value="7d">7 jours</option>
-                        <option value="30d" selected>30 jours</option>
-                        <option value="90d">90 jours</option>
+                        <option value="7d">7 derniers jours</option>
+                        <option value="30d" selected>30 derniers jours</option>
+                        <option value="90d">90 derniers jours</option>
+                        <option value="month">Mois civil</option>
                         <option value="all">Tout l’historique</option>
                     </select>
                 </label>
@@ -441,7 +442,7 @@
                             <div class="kpi-sub" id="kpiMissionsSub">Statut OPEN, période et territoire appliqués aux créations</div>
                         </div>
                     </div>
-                    <div class="admin-card kpi-card">
+                    <div class="admin-card kpi-card" data-rbac="finance">
                         <div class="kpi-icon green"><i class="ph-bold ph-currency-eur"></i></div>
                         <div class="kpi-data">
                             <div class="kpi-label">Volume encaissé (période)</div>
@@ -449,7 +450,7 @@
                             <div class="kpi-sub" id="kpiGmvSub">Paiements SUCCEEDED de la période — lecture seule</div>
                         </div>
                     </div>
-                    <div class="admin-card kpi-card">
+                    <div class="admin-card kpi-card" data-rbac="finance">
                         <div class="kpi-icon yellow"><i class="ph-bold ph-bank"></i></div>
                         <div class="kpi-data">
                             <div class="kpi-label">Commissions collectées</div>
@@ -483,7 +484,7 @@
                 <div class="admin-page-header">
                     <div>
                         <h1 class="admin-page-title">À traiter</h1>
-                        <p class="admin-page-sub">File priorisée. Une alerte n’apparaît que si le compteur réel est supérieur à zéro.</p>
+                        <p class="admin-page-sub">File priorisée. Une alerte n’apparaît que si le compteur réel est supérieur à zéro. Une erreur de lecture n’est jamais affichée comme une file vide.</p>
                     </div>
                 </div>
                 <div class="admin-card" id="actionCenterCard">

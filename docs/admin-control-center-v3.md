@@ -1,61 +1,58 @@
-# LYANN — Centre de pilotage V3
+# LYANN — Centre de pilotage V3.1
 
 Branche : `feature/admin-control-center-v3`  
-Style : conserve le design V2. Aucune règle de modération, Stripe, iOS ou Android n’est modifiée.
+Style : design V2 conservé. Aucune règle de modération, Stripe, iOS ou Android n’est modifiée.
 
-## Arborescence
+## Fenêtres de temps
 
-1. **Pilotage** — Vue d’ensemble, À traiter, Analytics marketplace  
-2. **Communauté** — Utilisateurs, Profils maison, Lyanneurs, fiche utilisateur  
-3. **Marketplace** — Demandes, Missions, Prestations, Devis, Messagerie  
-4. **Bokantaj & rédaction** — Comptes éditoriaux, Fil Bokantaj, Agents LYANN, Mika  
-5. **Confiance & support** — Modération (KYC dans la fiche utilisateur), Support, Litiges, Notifications, Avis  
-6. **Business & finances** — Paiements, Versements, Abonnements, Assurance, Facturation (lecture seule, masqués sans droit finance / owner)  
-7. **Administration** — Configuration, Équipe, RBAC, Journaux, Feature flags, Territoires, Santé  
+| Clé | Sens |
+|---|---|
+| `7d` / `30d` / `90d` | Fenêtre glissante |
+| `month` | **Mois civil UTC** en cours (du 1er 00:00 à maintenant) |
+| `all` | Sans borne inférieure |
 
-Les sous-rubriques secondaires restent dans le DOM (tests et recherche) et apparaissent via les onglets contextuels et le groupe courant.
+## Types d’indicateurs
 
-## Définitions fiables
+- **Instantané** : état actuel, indépendant de la fenêtre sauf mention contraire.
+- **Période** : événement dont la date pertinente tombe dans la fenêtre.
+- **Cohorte** : ensemble créé dans la fenêtre, observé ensuite (statut actuel, premier devis…).
 
-| Indicateur | Définition | Ancien défaut corrigé |
+## Définitions définitives
+
+| Indicateur | Type | Définition |
 |---|---|---|
-| Membres réels | `profiles.account_type = real` | `activeMembers` comptait tous les profils |
-| Membres actifs | Indisponible | Ne plus déduire une activité de l’existence d’un profil |
-| GMV période | Somme `customer_total_cents` des paiements `SUCCEEDED` **dans la période** | `gmvMonth` n’était pas borné au mois |
-| Commissions collectées | Somme `lyann_revenue_cents` des mêmes paiements | `mrrCommissions` n’était pas un MRR |
-| File éditoriale | `lyann_agent_tasks.approval_status = PENDING` hors `CANCELLED` | Distinct de `WAITING_APPROVAL` |
-| Modération | Posts `public_moderation_status = pending` | Plus confondu avec les signalements ouverts |
-| Signalements | `user_reports.status = OPEN` | Compteur séparé |
-| Sans devis 24 h / 48 h | Annonces `OPEN` sans devis `SENT`/`ACCEPTED` | Nouveau |
-| Délai 1er devis | Médiane `quote.created_at - request.created_at` | Sans lire le contenu des messages |
+| Membres réels | Instantané | `account_type=real`. Pas une activité. |
+| Profils maison | Instantané | `account_type=seed`. Jamais additionné à l’organique. |
+| Agents éditoriaux | Instantané | Lignes `lyann_agents`. |
+| Nouveaux membres | Période | Réels créés dans la fenêtre. |
+| Profils complétés | Instantané | Réels avec prénom, nom et commune non vides. Comptage exact. |
+| Membres actifs | Indisponible | Pas d’événement de session. |
+| Annonces ouvertes | Instantané | `status=OPEN`. |
+| Annonces (période) | Période | `created_at` dans la fenêtre. |
+| Sans devis 24 h / 48 h | Instantané | OPEN assez anciennes **sans aucun devis admissible**. Indisponible si le jeu est tronqué. |
+| Sans premier contact | Indisponible | Pas d’événement vérifiable sans lire les messages. |
+| Sans mission confirmée | Instantané | OPEN sans `missions.related_request_id`. |
+| Devis émis | Période | Devis créés dans la fenêtre hors `DRAFT`. Un devis ensuite accepté reste émis. |
+| Acceptations datées | Indisponible | Pas de `accepted_at`. |
+| Conversion annonce → devis | Cohorte | Part des annonces **créées dans la période** ayant ≥ 1 devis admissible. Plusieurs devis = une conversion. |
+| Conversion devis → accepté | Cohorte | Part des devis **créés dans la période** (hors DRAFT) aujourd’hui `ACCEPTED`. Ce n’est pas une date d’acceptation. |
+| Missions créées | Période | `created_at` dans la fenêtre. |
+| Missions terminées | Période | `completed_at` dans la fenêtre. Jamais un proxy sur `created_at`. |
+| Délai 1er devis | Cohorte | Médiane sur **toutes** les annonces de la période qui ont un devis. Indisponible si pagination incomplète. |
+| GMV / commissions | Période | Sommes paginées jusqu’à épuisement. Lecture seule. Masquées sans droit finance. Indisponibles si filtre territoire (paiements non territorialisés) ou jeu tronqué. |
+| Bokantaj organique / maison | Instantané | Auteur réel vs auteur seed. Jamais fusionnés en « activité organique ». |
 
-Une requête en erreur rend l’indicateur **indisponible**, jamais `0`.
+Devis admissible : `SENT`, `ACCEPTED`, `REJECTED`, `EXPIRED`.
 
-## Données manquantes à instrumenter
+Une donnée tronquée, absente ou en erreur s’affiche **Indisponible**, jamais comme un total exact.
 
-- `session_started` — seul moyen honnête de compter un membre actif  
-- `request_first_viewed` — délai avant première lecture  
-- `quote_accepted_at` — conversion à la date d’acceptation  
-- Connexions par jour, sans analyse du texte privé des conversations  
+## File d’action
 
-## Fonctionnalités intelligentes (préparées, non branchées)
+Une erreur de lecture n’est jamais « Rien à traiter ».  
+`available=false` ou `partial=true` est renvoyé au client.
 
-| Id | Besoin | Déjà là | Manque | Complexité | Coût | Risques | Priorité |
-|---|---|---|---|---|---|---|---|
-| A Briefing quotidien | Résumé déterministe des files et de la croissance | KPIs + file d’action | Session, historique long | Faible | Faible | Ton trop alarmiste | P1 |
-| B Radar métiers | Offre vs demande par territoire | Annonces, catégories, territoires | Volume trop faible, pas de série | Moyenne | Faible | Fausse pénurie | P2 |
-| C Conversions / abandons | Entonnoir annonce → devis → mission | Compteurs période | Dates d’acceptation, vues | Moyenne | Faible | Attribution | P2 |
-| D Sujets éditoriaux | Suggestions de rubriques | Sources RSS existantes | Validation humaine obligatoire | Moyenne | IA optionnelle | Invention | P3 |
-| E Alertes sans réponse | File déjà calculée | 24 h / 48 h | Seuil métier | Faible | Faible | Spam d’alertes | P1 |
-| F Mika lecteur | Expliquer un chiffre | APIs admin | RBAC strict, aucun ordre finance | Haute | LLM | Contournement, PII | P3, garde-fous |
+## Données encore absentes
 
-Règle : calculs déterministes d’abord. Toute suggestion IA est traçable et soumise à validation humaine. Mika n’exécute aucune opération financière.
-
-## Volontairement non implémenté
-
-- LLM génératif sur le dashboard  
-- Tracking de nouvelles sessions  
-- Graphiques de tendance simulés  
-- Migration Production  
-- Levée des verrous Stripe  
-- Merge vers `release/admin-backoffice` ou Production  
+- `session_started`
+- `request_first_viewed`
+- `quote_accepted_at`

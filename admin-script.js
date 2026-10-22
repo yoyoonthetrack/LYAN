@@ -1922,22 +1922,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         return String(metric.value);
     }
 
-    function renderActionRows(items, containerId) {
+    function renderActionRows(items, containerId, queue) {
         const el = document.getElementById(containerId);
         if (!el) return;
-        if (!items || !items.length) {
-            el.innerHTML = '<p class="maison-muted">Rien à traiter pour le moment.</p>';
+        if (queue && queue.available === false && !(items && items.length)) {
+            el.innerHTML = '<p class="maison-muted">File d’action indisponible. Les compteurs n’ont pas pu être lus.</p>';
             return;
         }
-        el.innerHTML = items.map((item) => `
-            <button type="button" class="admin-action-row" data-action-section="${window.adminEscape(item.section)}">
+        const warning = queue && queue.partial
+            ? '<p class="maison-muted">Certaines sources n’ont pas répondu. Les alertes ci-dessous sont partielles.</p>'
+            : '';
+        if (!items || !items.length) {
+            el.innerHTML = `${warning}<p class="maison-muted">Rien à traiter pour le moment.</p>`;
+            return;
+        }
+        el.innerHTML = warning + items.map((item) => `
+            <button type="button" class="admin-action-row" data-action-section="${window.adminEscape(item.section)}" data-action-filter="${window.adminEscape(item.filter || '')}">
                 <span><strong>${window.adminEscape(item.title)}</strong></span>
                 <span class="status-badge pending">${window.adminEscape(item.count)}</span>
             </button>
         `).join('');
         el.querySelectorAll('[data-action-section]').forEach((btn) => {
             btn.addEventListener('click', () => {
-                document.querySelector(`.admin-nav-item[data-section="${btn.getAttribute('data-action-section')}"]`)?.click();
+                const section = btn.getAttribute('data-action-section');
+                const filter = btn.getAttribute('data-action-filter');
+                document.querySelector(`.admin-nav-item[data-section="${section}"]`)?.click();
+                if (filter === 'unanswered') {
+                    const status = document.getElementById('requestStatusFilter');
+                    if (status) {
+                        status.value = 'OPEN';
+                        status.dispatchEvent(new Event('change'));
+                    }
+                }
             });
         });
     }
@@ -1951,6 +1967,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await res.json().catch(() => ({}));
             if (!res.ok || !data.success) {
                 renderUnavailableState('kpiContainer');
+                renderActionRows([], 'pilotageActionList', { available: false });
+                renderActionRows([], 'actionCenterList', { available: false });
                 return;
             }
             const kpis = data.kpis || {};
@@ -1969,11 +1987,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             set('kpiActiveBots', metrics.editorialPending);
             set('kpiOpenDisputes', metrics.openDisputes);
             const usersSub = document.getElementById('kpiUsersSub');
-            if (usersSub) usersSub.textContent = `Maison : ${adminMetricText(metrics.seedMembers)} · KYC : ${adminMetricText(metrics.kycVerified)} · nouveaux : ${adminMetricText(metrics.newRealMembers)}`;
+            if (usersSub) usersSub.textContent = `Maison : ${adminMetricText(metrics.seedMembers)} · agents : ${adminMetricText(metrics.editorialAgents)} · KYC : ${adminMetricText(metrics.kycVerified)} · nouveaux : ${adminMetricText(metrics.newRealMembers)}`;
             const recent = document.getElementById('attentionRecent');
-            if (recent) recent.textContent = `Période ${kpis.period || period}. Membres actifs : non mesurables (pas d’événement de session).`;
+            if (recent) recent.textContent = `Période ${kpis.period || period} (${kpis.period_kind || ''}). Membres actifs : non mesurables.`;
             const mix = document.getElementById('kpiActivityMix');
-            if (mix) mix.textContent = `Annonces ouvertes ${adminMetricText(metrics.openRequests)} · Bokantaj approuvé ${adminMetricText(metrics.bokantajApproved)} · conversations ${adminMetricText(metrics.conversations)}`;
+            if (mix) mix.textContent = `Organique ${adminMetricText(metrics.bokantajOrganic)} · maison ${adminMetricText(metrics.bokantajAdministered)} · file éditoriale ${adminMetricText(metrics.editorialPending)}`;
             const freshness = document.getElementById('adminDataFreshness');
             if (freshness) freshness.textContent = `Dernière actualisation : ${new Date(data.generated_at || Date.now()).toLocaleString('fr-FR')}`;
             const actionBadge = document.getElementById('sidebarActionBadge');
@@ -1984,50 +2002,66 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (disputeBadge && metrics.openDisputes?.available) disputeBadge.textContent = String(metrics.openDisputes.value);
             const maisonBadge = document.getElementById('sidebarMaisonBadge');
             if (maisonBadge && metrics.seedMembers?.available) maisonBadge.textContent = String(metrics.seedMembers.value);
-            renderActionRows(data.actions || [], 'pilotageActionList');
-            renderActionRows(data.actions || [], 'actionCenterList');
+            renderActionRows(data.actions || [], 'pilotageActionList', data.actionQueue);
+            renderActionRows(data.actions || [], 'actionCenterList', data.actionQueue);
         } catch (error) {
             console.warn('control-center', error);
             renderUnavailableState('kpiContainer');
+            renderActionRows([], 'pilotageActionList', { available: false });
+            renderActionRows([], 'actionCenterList', { available: false });
         }
         try {
             const market = await window.fetchWithAdminAuth(`/v1/admin/marketplace-stats?${qs}`);
             const body = await market.json().catch(() => ({}));
-            if (!market.ok || !body.success) return;
+            if (!market.ok || !body.success) {
+                const grid = document.getElementById('marketplaceKpiGrid');
+                if (grid) grid.innerHTML = '<p class="maison-muted">Statistiques marketplace indisponibles.</p>';
+                return;
+            }
             const grid = document.getElementById('marketplaceKpiGrid');
             if (grid) {
                 const cards = [
                     ['Membres réels', body.metrics.realMembers],
+                    ['Profils maison', body.metrics.seedMembers],
+                    ['Agents éditoriaux', body.metrics.editorialAgents],
                     ['Nouveaux membres', body.metrics.newRealMembers],
                     ['Profils complétés', body.metrics.completedProfiles],
                     ['Membres actifs', body.metrics.activeMembers],
                     ['Annonces (période)', body.metrics.requestsInPeriod],
                     ['Sans devis 24 h', body.metrics.unanswered24h],
                     ['Sans devis 48 h', body.metrics.unanswered48h],
+                    ['Sans premier contact', body.metrics.noFirstContact],
+                    ['Sans mission confirmée', body.metrics.noConfirmedMission],
                     ['Délai 1er devis', body.metrics.medianFirstQuoteHours, 'hours'],
-                    ['Devis envoyés', body.metrics.quotesSent],
-                    ['Devis acceptés', body.metrics.quotesAccepted],
+                    ['Devis émis (période)', body.metrics.quotesIssued],
+                    ['Acceptations datées', body.metrics.quotesAcceptedInPeriod],
                     ['Missions créées', body.metrics.missionsCreated],
                     ['Missions terminées', body.metrics.missionsCompleted],
                     ['Conversion annonce → devis', body.metrics.conversionRequestToQuote, 'pct'],
-                    ['Conversion devis → accepté', body.metrics.conversionQuoteToAccept, 'pct']
+                    ['Conversion devis → accepté', body.metrics.conversionQuoteToAccept, 'pct'],
+                    ['Bokantaj organique', body.metrics.bokantajOrganic],
+                    ['Bokantaj maison', body.metrics.bokantajAdministered]
                 ];
                 grid.innerHTML = cards.map(([label, metric, format]) => `
                     <div class="admin-card kpi-card">
                         <div class="kpi-data">
                             <div class="kpi-label">${label}</div>
                             <div class="kpi-value">${adminMetricText(metric, format)}</div>
-                            <div class="kpi-sub">${window.adminEscape((metric && metric.definition) || '')}</div>
+                            <div class="kpi-sub">${window.adminEscape((metric && metric.kind) || '')} — ${window.adminEscape((metric && (metric.error || metric.definition)) || '')}</div>
                         </div>
                     </div>
                 `).join('');
             }
             const table = document.getElementById('marketplaceTerritoryTable');
             if (table) {
-                const rows = body.byTerritory || [];
-                table.innerHTML = rows.length
-                    ? `<table class="admin-table"><thead><tr><th>Territoire</th><th>Annonces</th><th>Ouvertes</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${window.adminEscape(row.territory)}</td><td>${row.requests}</td><td>${row.open}</td></tr>`).join('')}</tbody></table>`
-                    : '<p class="maison-muted">Pas assez de données territorialisées sur cet échantillon.</p>';
+                if (body.byTerritoryAvailable === false) {
+                    table.innerHTML = `<p class="maison-muted">Répartition territoriale indisponible : ${window.adminEscape(body.byTerritoryError || 'jeu incomplet')}</p>`;
+                } else {
+                    const rows = body.byTerritory || [];
+                    table.innerHTML = rows.length
+                        ? `<table class="admin-table"><thead><tr><th>Territoire</th><th>Annonces (période)</th><th>Ouvertes</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${window.adminEscape(row.territory)}</td><td>${row.requests}</td><td>${row.open == null ? '—' : row.open}</td></tr>`).join('')}</tbody></table>`
+                        : '<p class="maison-muted">Aucune annonce dans cette fenêtre.</p>';
+                }
             }
             const missing = document.getElementById('marketplaceMissing');
             if (missing) {
@@ -2128,6 +2162,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     function renderUnavailableState(containerId) {
+        const ids = ['kpiTotalUsers', 'kpiOpenRequests', 'kpiGmv', 'kpiRevenue', 'kpiBokantajApproved', 'kpiActiveBots', 'kpiOpenDisputes'];
+        let marked = false;
+        ids.forEach((id) => {
+            const node = document.getElementById(id);
+            if (!node) return;
+            node.textContent = 'Indisponible';
+            node.classList.add('admin-metric-unavailable');
+            marked = true;
+        });
+        if (marked) return;
         const container = document.getElementById(containerId);
         if (!container) return;
         container.innerHTML = `
