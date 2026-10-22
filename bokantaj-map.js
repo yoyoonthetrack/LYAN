@@ -300,6 +300,14 @@
                 alt: crowded ? group.length + ' partages' : category.label + ' · ' + first.place_label, keyboard: true
             });
             marker.addTo(markerLayer);
+            // Leaflet's keyboard flag makes a marker focusable; activation must be
+            // wired explicitly because these popups belong to the map, not bindPopup.
+            marker.getElement()?.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                event.stopPropagation();
+                marker.fire('click');
+            });
             marker.on('click', () => {
                 if (crowded) {
                     if (map.getZoom() < 18) map.setView([centerLat, centerLng], Math.min(18, map.getZoom() + 2));
