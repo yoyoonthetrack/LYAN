@@ -96,10 +96,7 @@ test('map API requests moderation status and recent traffic expires correctly', 
       not() { return this; }, gte() { return this; }, lte() { return this; }, order() { return this; },
       limit() { return Promise.resolve({ data: [], error: null }); }
     };
-    const original = window.LYANN_API_CLIENT.supabase;
-    window.LYANN_API_CLIENT.supabase = { from: () => query };
-    await window.LYANN_API_CLIENT.getMappedBokantajPosts({ south: 16, north: 17, west: -62, east: -61 });
-    window.LYANN_API_CLIENT.supabase = original;
+    await window.LYANN_API_CLIENT.getMappedBokantajPosts.call({ supabase: { from: () => query } }, { south: 16, north: 17, west: -62, east: -61 });
     const post = { type: 'trafic', place_lat: 16.25, place_lng: -61.55, place_label: 'Jarry', public_moderation_status: 'approved' };
     return { selection, filters,
       recent: window.LYANN_BOKANTAJ_MAP.publiclyVisible({ ...post, created_at: new Date().toISOString() }),
