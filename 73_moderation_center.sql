@@ -100,8 +100,52 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.lyann_account_is_restricted(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.lyann_account_is_restricted(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.lyann_account_is_restricted(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.lyann_account_is_restricted(uuid) TO service_role;
+
+-- Fail closed: user-owned RLS UPDATE must never let someone clear their own ban
+-- or remove a human moderation lock on a post/comment.
+CREATE OR REPLACE FUNCTION public.lyann_guard_sensitive_moderation_fields()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $
+BEGIN
+    IF public.lyann_is_service_role() THEN
+        RETURN NEW;
+    END IF;
+    IF TG_TABLE_NAME = 'profiles' THEN
+        IF NEW.restriction_status IS DISTINCT FROM OLD.restriction_status
+           OR NEW.restricted_until IS DISTINCT FROM OLD.restricted_until
+           OR NEW.restriction_reason IS DISTINCT FROM OLD.restriction_reason THEN
+            RAISE EXCEPTION 'Seul le centre de moderation peut modifier une sanction.'
+                USING ERRCODE = '42501';
+        END IF;
+    ELSIF TG_TABLE_NAME IN ('bokantaj_posts', 'bokantaj_comments') THEN
+        IF OLD.human_moderation_lock IS TRUE
+           OR NEW.human_moderation_lock IS DISTINCT FROM OLD.human_moderation_lock
+           OR NEW.human_decision IS DISTINCT FROM OLD.human_decision
+           OR NEW.previous_public_status IS DISTINCT FROM OLD.previous_public_status THEN
+            RAISE EXCEPTION 'Modification du verrou de moderation interdite.'
+                USING ERRCODE = '42501';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$;
+
+DROP TRIGGER IF EXISTS trg_guard_mod_fields_profiles ON public.profiles;
+CREATE TRIGGER trg_guard_mod_fields_profiles
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW EXECUTE FUNCTION public.lyann_guard_sensitive_moderation_fields();
+DROP TRIGGER IF EXISTS trg_guard_mod_fields_posts ON public.bokantaj_posts;
+CREATE TRIGGER trg_guard_mod_fields_posts
+    BEFORE UPDATE ON public.bokantaj_posts
+    FOR EACH ROW EXECUTE FUNCTION public.lyann_guard_sensitive_moderation_fields();
+DROP TRIGGER IF EXISTS trg_guard_mod_fields_comments ON public.bokantaj_comments;
+CREATE TRIGGER trg_guard_mod_fields_comments
+    BEFORE UPDATE ON public.bokantaj_comments
+    FOR EACH ROW EXECUTE FUNCTION public.lyann_guard_sensitive_moderation_fields();
 
 CREATE OR REPLACE FUNCTION public.lyann_block_restricted_writes()
 RETURNS trigger
