@@ -1,0 +1,92 @@
+name: LYANN Bokantaj Android Touch and APK
+
+on:
+  pull_request:
+    paths:
+      - 'tests/e2e/bokantaj_map_android_touch.spec.js'
+      - '.github/workflows/bokantaj-android-validation.yml'
+      - 'bokantaj-map.js'
+      - 'bokantaj-map.css'
+      - 'feed.html'
+      - 'build_mobile.js'
+      - 'capacitor.config.json'
+      - 'android/**'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Java 21 for Capacitor Android
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+
+      - name: Install JavaScript dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build shared Web iOS Android bundle
+        run: npm run build:mobile
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Prepare Chromium and system libraries
+        run: npx playwright install --with-deps chromium
+
+      - name: Start isolated web fixture
+        run: |
+          python3 -m http.server 8090 --bind 127.0.0.1 > /tmp/lyann-android-web-fixture.log 2>&1 &
+          echo $! > /tmp/lyann-android-web-fixture.pid
+
+      - name: Test Android Pixel touch interactions
+        env:
+          LYANN_E2E_BASE_URL: http://127.0.0.1:8090
+        run: npx playwright test tests/e2e/bokantaj_map_android_touch.spec.js
+
+      - name: Install Android 36 SDK build tools
+        run: |
+          sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Compile Android debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --max-workers=2
+
+      - name: Upload unsigned debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lyann-bokantaj-android-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Chromium evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lyann-bokantaj-android-test-evidence
+          path: |
+            test-results/**
+          if-no-files-found: warn
+          retention-days: 7
