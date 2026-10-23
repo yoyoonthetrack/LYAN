@@ -1204,7 +1204,7 @@ async function recordMaisonAudit(adminUserId, action, targetId, details) {
 
 
 const { runModerationOnce } = require('./moderation-worker');
-const { releaseMedia, sweep: sweepBokantajMedia } = require('./bokantaj-media-retention');
+const { releaseMedia, sweep: sweepBokantajMedia, isVerifiedStagingUrl } = require('./bokantaj-media-retention');
 
 setInterval(() => {
     sweepBokantajMedia({
@@ -1718,7 +1718,7 @@ function editorialAuthorized(req) {
 }
 
 app.all('/v1/editorial/collect', async (req, res) => {
-    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
     }
     if (!editorialAuthorized(req)) {
@@ -1740,7 +1740,7 @@ app.all('/v1/editorial/collect', async (req, res) => {
 app.post('/v1/admin/editorial/collect', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
-    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
     }
     try {
@@ -1807,7 +1807,7 @@ app.get('/v1/admin/editorial/proposals', async (req, res) => {
 });
 
 async function publishStoredEditorialProposal(res, task, content, approver) {
-    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, code: 'environment', error: 'Erreur d’environnement.' });
     }
     if (!task || !task.metadata || !task.metadata.editorial) {
@@ -1908,7 +1908,7 @@ app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
 app.post('/v1/admin/editorial/proposals/:id/delete', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
-    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, error: 'Suppression éditoriale interdite sur Production.' });
     }
     const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('id, metadata').eq('id', req.params.id).maybeSingle();
@@ -2419,7 +2419,7 @@ app.post('/v1/admin/ops/bokantaj/:id/delete', async (req, res) => {
     if (!authResult.authorized) {
         return res.status(authResult.status).json({ success: false, error: authResult.error });
     }
-    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, error: 'Suppression directe interdite sur Production sans autorisation.' });
     }
     try {
