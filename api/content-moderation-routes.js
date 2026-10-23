@@ -118,12 +118,14 @@ function registerContentModerationRoutes(app, deps) {
             verifyAdminPermission,
             bucket: String(req.params[0] || ''),
             path: safePath(req.params[1]),
-            authorization: req.headers.authorization || req.headers.Authorization
+            authorization: req.headers.authorization || req.headers.Authorization,
+            range: req.headers.range || ''
         });
         res.status(result.status);
         res.set('Cache-Control', 'private, no-store');
         res.set('X-Content-Type-Options', 'nosniff');
         if (result.type) res.set('Content-Type', result.type);
+        if (result.headers) Object.entries(result.headers).forEach(([key, value]) => res.set(key, String(value)));
         if (result.body == null) return res.end();
         return res.send(result.body);
     });
@@ -339,7 +341,39 @@ function ownerIdFromPath(path) {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(first) ? first : '';
 }
 
-async function serveModeratedMedia({ supabaseAdmin, verifyAdminPermission, bucket, path, authorization }) {
+// RFC 7233 single-range support for iOS/Android Safari seeking. Multi-range
+// requests are rejected instead of allocating arbitrary multipart responses.
+function sliceMediaRange(buffer, rangeHeader) {
+    const size = buffer.length;
+    const raw = String(rangeHeader || '').trim();
+    const base = { 'Accept-Ranges': 'bytes' };
+    if (!raw) return { status: 200, body: buffer, headers: { ...base, 'Content-Length': size } };
+    const match = raw.match(/^bytes=(\d*)-(\d*)$/i);
+    if (!match || (!match[1] && !match[2])) {
+        return { status: 416, body: null, headers: { ...base, 'Content-Range': 'bytes */' + size, 'Content-Length': 0 } };
+    }
+    let start;
+    let end;
+    if (!match[1]) {
+        const suffix = Number(match[2]);
+        if (!Number.isSafeInteger(suffix) || suffix <= 0) {
+            return { status: 416, body: null, headers: { ...base, 'Content-Range': 'bytes */' + size, 'Content-Length': 0 } };
+        }
+        start = Math.max(0, size - suffix);
+        end = size - 1;
+    } else {
+        start = Number(match[1]);
+        end = match[2] ? Number(match[2]) : size - 1;
+        if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || start >= size) {
+            return { status: 416, body: null, headers: { ...base, 'Content-Range': 'bytes */' + size, 'Content-Length': 0 } };
+        }
+        end = Math.min(end, size - 1);
+    }
+    const body = buffer.subarray(start, end + 1);
+    return { status: 206, body, headers: { ...base, 'Content-Range': 'bytes ' + start + '-' + end + '/' + size, 'Content-Length': body.length } };
+}
+
+async function serveModeratedMedia({ supabaseAdmin, verifyAdminPermission, bucket, path, authorization, range }) {
     if (!path || !MEDIA_BUCKETS.includes(bucket)) return { status: 404, body: null };
     const release = await supabaseAdmin
         .from('public_media_releases')
@@ -370,12 +404,15 @@ async function serveModeratedMedia({ supabaseAdmin, verifyAdminPermission, bucke
     const downloaded = await supabaseAdmin.storage.from(bucket).download(path);
     if (downloaded.error || !downloaded.data) return { status: 404, body: null };
     const bytes = Buffer.from(await downloaded.data.arrayBuffer());
-    return { status: 200, type: downloaded.data.type || 'application/octet-stream', body: bytes };
+    // The storage object is small (Bokantaj <=10 MiB), and range extraction
+    // happens only after the existing moderation access control above.
+    return { ...sliceMediaRange(bytes, range), type: downloaded.data.type || 'application/octet-stream' };
 }
 
 module.exports = {
     registerContentModerationRoutes,
     secretMatches,
     workerAuthorized,
+    sliceMediaRange,
     serveModeratedMedia
 };
