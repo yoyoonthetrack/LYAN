@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-test('LYANN's actual map style uses vector geographic sources only', () => {
+test('LYANN map style uses vector geographic sources only', () => {
   const style = require('../../assets/maps/lyann-liberty.json');
   const sourceKinds = Object.values(style.sources).map((source) => source.type);
   expect(sourceKinds).toEqual(['vector']);
