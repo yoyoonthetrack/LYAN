@@ -138,7 +138,7 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
     await expect.poll(async () => page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace())).toBeNull();
     await expect(page.locator('#qa-post')).toBeVisible();
     await expect(page.locator('#qa-post')).toContainText('Mon info du quartier');
-    await expect(page.locator('#qa-post')).toContainText('En vérification');
+    await expect(page.locator('#qa-post')).toContainText('En cours de chargement');
   });
 }
 
