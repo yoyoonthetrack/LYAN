@@ -141,7 +141,9 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
     await page.locator('#bokantajPlaceSave').click();
     await expect(page.locator('#bokantajPlaceTriggerLabel')).toContainText('Jarry');
     expect(await page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace())).toEqual(expect.objectContaining({ label: 'Rond-point de Jarry' }));
-    await page.locator('input[name="bokantajPostType"][value="trafic"]').check({ force: true });
+    // Exercise the visible label, not a forced click on a visually hidden native radio.
+    await page.locator('.bokantaj-type-picks label').filter({ has: page.locator('input[value="trafic"]') }).click();
+    await expect(page.locator('input[name="bokantajPostType"][value="trafic"]')).toBeChecked();
     await page.locator('#createFlashForm').evaluate(form => form.requestSubmit());
     await expect.poll(async () => page.evaluate(() => window.__qaCreatedPayload?.type)).toBe('trafic');
     const post = await page.evaluate(() => window.__qaCreatedPayload);
@@ -169,7 +171,7 @@ test('map API requests moderation status and recent traffic expires correctly', 
     const query = {
       select(s) { selection = s; return this; },
       eq(...args) { filters.push(args); return this; },
-      not() { return this; }, gte() { return this; }, lte() { return this; }, order() { return this; },
+      not() { return this; }, gte() { return this; }, lt() { return this; }, lte() { return this; }, order() { return this; },
       limit() { return Promise.resolve({ data: [], error: null }); }
     };
     await window.LYANN_API_CLIENT.getMappedBokantajPosts.call({ supabase: { from: () => query } }, { south: 16, north: 17, west: -62, east: -61 });
