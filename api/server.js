@@ -1204,6 +1204,15 @@ async function recordMaisonAudit(adminUserId, action, targetId, details) {
 
 
 const { runModerationOnce } = require('./moderation-worker');
+const { releaseMedia, sweep: sweepBokantajMedia } = require('./bokantaj-media-retention');
+
+setInterval(() => {
+    sweepBokantajMedia({
+        supabaseAdmin,
+        supabaseUrl: process.env.SUPABASE_URL,
+        apply: true
+    }).catch(() => {});
+}, 6 * 60 * 60 * 1000).unref?.();
 
 function financialSettingBlocked(key, value) {
     const blob = `${key} ${typeof value === 'string' ? value : JSON.stringify(value || {})}`;
@@ -1909,6 +1918,8 @@ app.post('/v1/admin/editorial/proposals/:id/delete', async (req, res) => {
     }
     const postId = task.metadata.published_post_id;
     if (postId) {
+        const { data: published } = await supabaseAdmin.from('bokantaj_posts').select('media_urls').eq('id', postId).maybeSingle();
+        await releaseMedia({ supabaseAdmin, supabaseUrl: process.env.SUPABASE_URL, urls: published && published.media_urls });
         const { error: postError } = await supabaseAdmin.from('bokantaj_posts').delete().eq('id', postId);
         if (postError) return res.status(500).json({ success: false, error: postError.message });
     }
@@ -2412,14 +2423,26 @@ app.post('/v1/admin/ops/bokantaj/:id/delete', async (req, res) => {
         return res.status(403).json({ success: false, error: 'Suppression directe interdite sur Production sans autorisation.' });
     }
     try {
-        const { data: existing } = await supabaseAdmin.from('bokantaj_posts').select('id, author_id, content').eq('id', req.params.id).maybeSingle();
+        const { data: existing } = await supabaseAdmin.from('bokantaj_posts').select('id, author_id, content, media_urls').eq('id', req.params.id).maybeSingle();
         if (!existing) return res.status(404).json({ success: false, error: 'Publication introuvable.' });
+        await releaseMedia({ supabaseAdmin, supabaseUrl: process.env.SUPABASE_URL, urls: existing.media_urls });
         const { error } = await supabaseAdmin.from('bokantaj_posts').delete().eq('id', req.params.id);
         if (error) return res.status(500).json({ success: false, error: error.message });
         await recordMaisonAudit(authResult.userId, 'BOKANTAJ_POST_DELETED', req.params.id, { author_id: existing.author_id });
         return res.json({ success: true, id: req.params.id });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Impossible de supprimer la publication.' });
+    }
+});
+
+app.get('/v1/admin/bokantaj/media-volume', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'moderation.manage');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    try {
+        const report = await sweepBokantajMedia({ supabaseAdmin, supabaseUrl: process.env.SUPABASE_URL, apply: false });
+        return res.json({ success: true, ...report });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Volume indisponible.' });
     }
 });
 

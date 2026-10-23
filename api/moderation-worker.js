@@ -6,6 +6,7 @@ const {
     mediaFromStoredUrl,
     normalizeMedia
 } = require('./content-moderation');
+const { inspectMp4 } = require('../bokantaj-video-policy');
 
 const SUBJECTS = Object.freeze({
     post: { table: 'bokantaj_posts', status: 'public_moderation_status' },
@@ -182,7 +183,7 @@ async function applyDecision(supabaseAdmin, job, loaded, decision) {
         return 'approved';
     }
     const reason = (decision && decision.reason) || 'unavailable';
-    if (reason === 'video_unreviewed') {
+    if (reason === 'video_unreviewed' || reason === 'video_unverified') {
         await finishJob(supabaseAdmin, job, 'held', reason);
         return 'held';
     }
@@ -234,6 +235,12 @@ async function runModerationOnce({ supabaseAdmin, apiKey, fetchImpl, downloadMed
                 media: files,
                 apiKey,
                 fetchImpl: fetchImpl || global.fetch,
+                inspectVideo: async (file) => {
+                    const downloaded = await supabaseAdmin.storage.from(file.bucket).download(file.path);
+                    if (downloaded.error || !downloaded.data) return { verified: false, reason: 'unreadable' };
+                    const bytes = Buffer.from(await downloaded.data.arrayBuffer());
+                    return inspectMp4(bytes);
+                },
                 downloadMedia: downloadMedia || (async (media) => {
                     const images = [];
                     for (const file of normalizeMedia(media)) {

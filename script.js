@@ -2603,6 +2603,8 @@ safeDomReady(() => {
     let attachedPhotoFiles = [];
     let attachedVideo = null;
     let attachedVideoFile = null;
+    let attachedPosterBlob = null;
+    let pendingTrimFile = null;
     let bokantajFeedState = 'LOADING'; // 'LOADING' | 'ERROR' | 'EMPTY' | 'READY'
 
     const flashFeedContainer = document.getElementById('flashFeedContainer');
@@ -2774,18 +2776,79 @@ safeDomReady(() => {
     }
 
     if (flashVideoInput) {
-        flashVideoInput.addEventListener('change', (e) => {
+        flashVideoInput.addEventListener('change', async (e) => {
             const file = e.target.files && e.target.files[0];
             e.target.value = '';
-            if (!file) return;
+            if (!file || !window.LYANN_BOKANTAJ_VIDEO) return;
+            const meta = await window.LYANN_BOKANTAJ_VIDEO.readMeta(file);
+            if (Number.isFinite(meta.duration) && meta.duration > window.LYANN_BOKANTAJ_VIDEO.MAX_SECONDS) {
+                pendingTrimFile = file;
+                openTrim(meta.duration);
+                return;
+            }
+            await acceptPreparedVideo(file, 0, meta.duration);
+        });
+    }
+
+    function openTrim(duration) {
+        const panel = document.getElementById('bokantajTrim');
+        const start = document.getElementById('bokantajTrimStart');
+        const end = document.getElementById('bokantajTrimEnd');
+        if (!panel || !start || !end) return;
+        start.max = String(duration);
+        end.max = String(duration);
+        start.value = '0';
+        end.value = String(Math.min(duration, 60));
+        panel.hidden = false;
+        paintTrimWindow();
+    }
+
+    function paintTrimWindow() {
+        const start = document.getElementById('bokantajTrimStart');
+        const end = document.getElementById('bokantajTrimEnd');
+        const label = document.getElementById('bokantajTrimWindow');
+        if (!start || !end || !label || !window.LYANN_BOKANTAJ_VIDEO) return;
+        const windowClip = window.LYANN_BOKANTAJ_VIDEO.clipWindow(Number(end.max) || 60, Number(start.value), Number(end.value));
+        label.textContent = windowClip.ok
+            ? `Passage retenu : ${windowClip.seconds} s.`
+            : 'Le passage doit durer entre 1 et 60 secondes.';
+    }
+
+    document.getElementById('bokantajTrimStart')?.addEventListener('input', paintTrimWindow);
+    document.getElementById('bokantajTrimEnd')?.addEventListener('input', paintTrimWindow);
+    document.getElementById('bokantajTrimApply')?.addEventListener('click', async () => {
+        if (!pendingTrimFile || !window.LYANN_BOKANTAJ_VIDEO) return;
+        const start = Number(document.getElementById('bokantajTrimStart')?.value || 0);
+        const end = Number(document.getElementById('bokantajTrimEnd')?.value || 60);
+        await acceptPreparedVideo(pendingTrimFile, start, end);
+    });
+
+    async function acceptPreparedVideo(file, start, end) {
+        const button = document.getElementById('bokantajTrimApply');
+        if (button) button.disabled = true;
+        try {
+            const prepared = await window.LYANN_BOKANTAJ_VIDEO.prepareClip(file, start, end);
             if (attachedVideo) URL.revokeObjectURL(attachedVideo);
-            attachedVideoFile = file;
-            attachedVideo = URL.createObjectURL(file);
+            attachedVideoFile = prepared.file;
+            attachedPosterBlob = prepared.poster;
+            attachedVideo = URL.createObjectURL(prepared.poster || prepared.file);
             attachedPhotos.forEach(url => URL.revokeObjectURL(url));
             attachedPhotos = [];
             attachedPhotoFiles = [];
+            pendingTrimFile = null;
+            const panel = document.getElementById('bokantajTrim');
+            if (panel) panel.hidden = true;
             updateMediaPreview();
-        });
+        } catch (err) {
+            const label = document.getElementById('bokantajTrimWindow');
+            const panel = document.getElementById('bokantajTrim');
+            if (panel && label) {
+                panel.hidden = false;
+                label.textContent = err.message || 'Vidéo impossible à préparer.';
+            }
+        } finally {
+            if (button) button.disabled = false;
+        }
     }
 
     function updateMediaPreview() {
@@ -2808,16 +2871,11 @@ safeDomReady(() => {
                 mediaUploadBadge.style.display = 'inline';
                 mediaUploadBadge.textContent = 'Vidéo jointe';
             }
-            const vid = document.createElement('video');
-            vid.src = attachedVideo;
-            vid.className = 'flash-media-preview-thumb';
-            vid.controls = true;
-            vid.playsInline = true;
-            vid.muted = true;
-            vid.setAttribute('playsinline', '');
-            vid.style.width = '96px';
-            vid.style.height = '96px';
-            flashMediaPreviewContainer.appendChild(vid);
+            const img = document.createElement('img');
+            img.src = attachedVideo;
+            img.alt = 'Miniature de la vidéo';
+            img.className = 'flash-media-preview-thumb';
+            flashMediaPreviewContainer.appendChild(img);
         } else {
             if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
         }
@@ -2907,7 +2965,7 @@ safeDomReady(() => {
             return;
         }
         if (!token) return;
-        const nodes = root.querySelectorAll('img[src*="/v1/media/bokantaj-media-hold/"], img[src*="/v1/media/avatars-hold/"], video[src*="/v1/media/bokantaj-media-hold/"]');
+        const nodes = root.querySelectorAll('img[src*="/v1/media/bokantaj-media-hold/"], img[src*="/v1/media/avatars-hold/"]');
         for (const node of nodes) {
             try {
                 const response = await fetch(node.getAttribute('src'), {
@@ -2920,6 +2978,43 @@ safeDomReady(() => {
             } catch (err) {}
         }
     }
+
+    document.addEventListener('click', async (event) => {
+        const button = event.target.closest && event.target.closest('.bokantaj-video-poster');
+        if (!button || button.dataset.loading === '1') return;
+        const source = button.getAttribute('data-video-src');
+        if (!source) return;
+        button.dataset.loading = '1';
+        let src = source;
+        try {
+            if (source.includes('/v1/media/')) {
+                let token = '';
+                try {
+                    const session = await window.LYANN_API_CLIENT.supabase.auth.getSession();
+                    token = session && session.data && session.data.session && session.data.session.access_token;
+                } catch (err) {}
+                const response = await fetch(source, {
+                    headers: token ? { Authorization: 'Bearer ' + token } : {},
+                    cache: 'no-store'
+                });
+                if (!response.ok) throw new Error('video');
+                src = URL.createObjectURL(await response.blob());
+            }
+            const video = document.createElement('video');
+            video.className = 'bokantaj-video';
+            video.controls = true;
+            video.playsInline = true;
+            video.setAttribute('playsinline', '');
+            video.preload = 'auto';
+            const poster = button.querySelector('img');
+            if (poster) video.poster = poster.src;
+            video.src = src;
+            button.replaceWith(video);
+            video.play().catch(() => {});
+        } catch (err) {
+            button.dataset.loading = '';
+        }
+    });
 
     function bokantajPhotoGrid(images) {
         const urls = (Array.isArray(images) ? images : []).filter(Boolean).slice(0, 4);
@@ -3440,10 +3535,11 @@ safeDomReady(() => {
                     
                     let mediaHTML = '';
                     const photoList = (post.images && post.images.length) ? post.images : (post.image ? [post.image] : []);
-                    if (photoList.length) mediaHTML = bokantajPhotoGrid(photoList);
+                    const stills = photoList.filter((url) => !window.LYANN_BOKANTAJ_VIDEO?.isPosterUrl?.(url));
+                    if (stills.length) mediaHTML = bokantajPhotoGrid(stills);
                     const videoList = Array.isArray(post.videos) ? post.videos.filter(Boolean) : [];
-                    if (videoList.length) {
-                        mediaHTML += videoList.map((url) => `<video class="bokantaj-video" controls playsinline preload="metadata" src="${window.escapeHtmlAttr(url)}"></video>`).join('');
+                    if (videoList.length && window.LYANN_BOKANTAJ_VIDEO) {
+                        mediaHTML += videoList.map((url) => window.LYANN_BOKANTAJ_VIDEO.playbackMarkup(url, window.LYANN_BOKANTAJ_VIDEO.posterFor(url, photoList.concat(videoList)))).join('');
                     }
 
                     let actionBtnHTML = '';
@@ -4050,7 +4146,11 @@ safeDomReady(() => {
                 }
                 if (submitBtn && attachedVideoFile) submitBtn.textContent = 'Envoi de la vidéo…';
                 if (attachedVideoFile && window.LYANN_API_CLIENT.uploadPostVideo) {
-                    mediaUrls.push(await window.LYANN_API_CLIENT.uploadPostVideo(attachedVideoFile));
+                    const uploaded = await window.LYANN_API_CLIENT.uploadPostVideo(attachedVideoFile, attachedPosterBlob);
+                    if (uploaded && uploaded.video) {
+                        mediaUrls.push(uploaded.video);
+                        if (uploaded.poster) mediaUrls.push(uploaded.poster);
+                    } else if (typeof uploaded === 'string') mediaUrls.push(uploaded);
                 }
                 if (submitBtn) submitBtn.textContent = 'Publication…';
                 let createdPost = null;
@@ -4079,6 +4179,8 @@ safeDomReady(() => {
                 if (attachedVideo) URL.revokeObjectURL(attachedVideo);
                 attachedVideo = null;
                 attachedVideoFile = null;
+                attachedPosterBlob = null;
+                pendingTrimFile = null;
                 if (flashMediaPreviewContainer) flashMediaPreviewContainer.innerHTML = '';
                 if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
 

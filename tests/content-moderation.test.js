@@ -79,6 +79,35 @@ test('videos stay pending even when the accompanying text is acceptable', async 
     assert.equal(called, 1);
 });
 
+test('a verified short MP4 with a clear poster is published, anything unverifiable waits', async () => {
+    const clear = async () => ({
+        ok: true,
+        json: async () => ({ results: [{ flagged: false, categories: {}, category_scores: { harassment: 0.01 } }] })
+    });
+    const approved = await moderation.classifyContent({
+        text: 'La route est dégagée.',
+        media: [
+            { bucket: 'bokantaj-media-hold', path: 'user/clip.mp4' },
+            { bucket: 'bokantaj-media-hold', path: 'user/clip-poster.jpg' }
+        ],
+        apiKey: 'test-key',
+        fetchImpl: clear,
+        inspectVideo: async () => ({ verified: true, seconds: 12 }),
+        downloadMedia: async () => ['data:image/jpeg;base64,aa']
+    });
+    assert.equal(approved.decision, 'approved');
+    assert.equal(approved.reason, 'video_checked');
+    const unverified = await moderation.classifyContent({
+        text: 'La route est dégagée.',
+        media: [{ bucket: 'bokantaj-media-hold', path: 'user/clip.mp4' }],
+        apiKey: 'test-key',
+        fetchImpl: clear,
+        inspectVideo: async () => ({ verified: false, reason: 'duration_unreadable' })
+    });
+    assert.equal(unverified.decision, 'pending');
+    assert.equal(unverified.reason, 'video_unverified');
+});
+
 test('classifier outage, missing key and unreadable image stay pending', async () => {
     const outage = await moderation.classifyContent({
         text: 'Bonjour',

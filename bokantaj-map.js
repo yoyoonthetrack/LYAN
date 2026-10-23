@@ -62,6 +62,8 @@
 
     function publiclyVisible(post, now = Date.now()) {
         if (!post || post.public_moderation_status !== 'approved' || !publishedPoint(post)) return false;
+        const policy = window.LYANN_BOKANTAJ_VIDEO;
+        if (policy && typeof policy.mapPinVisible === 'function') return policy.mapPinVisible(post, now);
         if (post.type === 'trafic') {
             const created = Date.parse(post.created_at);
             if (!Number.isFinite(created) || now - created > TRAFFIC_LIFETIME_MS) return false;

@@ -2,7 +2,9 @@
 
 ## Statut
 
-Périmètre produit complet : découpage, compression, miniatures, lecture différée, modération, stockage et nettoyage. **Spécification uniquement : ces fonctions ne sont pas toutes développées.** Ce fichier n'active aucune fonctionnalité à lui seul. Ne pas fusionner la PR #10 vers Production avant la validation fonctionnelle sur appareils réels.
+Le compositeur découpe au-delà de 60 secondes, compresse dans la WebView vers 720p et 10 Mo, produit une miniature JPEG, et le Fil ne charge la vidéo qu’au clic. Le serveur n’approuve une vidéo que si le MP4, la durée, la taille, le cadre, le texte et la miniature sont vérifiables ; sinon elle reste en revue humaine. Le rejet, la suppression et les fichiers orphelins de plus de 48 heures retirent les médias sur Staging uniquement. L’expiration d’un repère, y compris la règle de densité déjà en place, ne supprime ni le post ni ses fichiers. Les repères de `bokantaj_map_featured` restent sur la carte.
+
+Limites encore ouvertes : export natif AVFoundation / Android, conservation du son lorsque la WebView n’expose pas la piste audio, et lecture HTTP `Range` sur `/v1/media`. Un MP4 déjà conforme n’est pas réencodé, donc son son est conservé. Ne pas fusionner la PR #10 vers Production avant un essai sur iPhone physique.
 
 ## Problème actuel (vérifié le 23 octobre 2026)
 
@@ -99,3 +101,16 @@ Périmètre produit complet : découpage, compression, miniatures, lecture diff�
 
 Pas d'activation d'une offre payante, pas de suppression à 7 jours des vidéos ni des posts du Fil, pas de modification automatique de Production/Stripe Live. Les optimisations et la modération avancée constituent un travail d'implémentation distinct dont les tests et les limites doivent être indiqués honnêtement.
 
+=======
+# Bokantaj vidéo V1.6
+
+Le fichier n’était pas versionné. Ce document fixe le contrat implémenté.
+
+Une vidéo de plus de 60 secondes se découpe dans le compositeur. Le passage envoyé dure 60 secondes au plus, en MP4 720p, 10 Mo maximum, avec une miniature JPEG. Le fil affiche la miniature. Le fichier vidéo n’est demandé qu’au clic sur « Lire la vidéo ».
+
+Avant diffusion, le serveur vérifie le conteneur, la durée, la taille et le cadre. Le texte et la miniature passent par la modération existante. Une vidéo illisible, trop longue, trop grande, sans miniature, ou dont le score est intermédiaire, reste en revue humaine. Un refus explicite du modèle refuse la publication.
+
+La suppression d’une publication, son rejet, ou un envoi abandonné retire la vidéo et la miniature du stockage Staging. Un masquage réversible conserve les fichiers. Le nettoyage des orphelins ne touche pas un fichier encore référencé, ni Production.
+
+Un repère quitte la carte au bout de 7 jours (24 heures pour le trafic). La publication, ses photos et sa vidéo restent dans le Fil. Un repère marqué permanent par le back-office reste sur la carte. Cette disparition ne supprime aucune ligne ni aucun fichier.
+>>>>>>> 3382873 (Keep Bokantaj videos playable on demand and leave expired map pins in the feed.)

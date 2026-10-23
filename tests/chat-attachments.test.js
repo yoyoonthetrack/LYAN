@@ -69,7 +69,8 @@ test('private chat uploads use the session and can be cancelled', () => {
 
 test('bokantaj keeps photos and adds an inline video player', () => {
     assert.match(feed, /uploadPostVideo/);
-    assert.match(feed, /class="bokantaj-video" controls playsinline preload="metadata"/);
+    assert.match(feed, /bokantaj-video-poster/);
+    assert.doesNotMatch(feed, /<video class="bokantaj-video"[^>]*src=/);
     assert.doesNotMatch(feed, /<video class="bokantaj-video"[^>]*autoplay/);
     assert.match(api, /from\('bokantaj-media-hold'\)/);
 });

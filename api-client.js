@@ -1720,10 +1720,20 @@ const LYANN_API_CLIENT = {
         if (!Number.isFinite(duration) || duration <= 0 || duration > 60) {
             throw new Error('La vidéo doit durer 60 secondes au plus.');
         }
-        const path = `${user.id}/${crypto.randomUUID()}.${allowed[mime]}`;
+        const id = crypto.randomUUID();
+        const path = `${user.id}/${id}.${allowed[mime]}`;
         const { error } = await this.supabase.storage.from('bokantaj-media-hold').upload(path, file, { contentType: mime });
         if (error) throw new Error('La vidéo n’a pas pu être envoyée. Réessayez avant de publier.');
-        return holdMediaUrl('bokantaj-media-hold', path);
+        const videoUrl = holdMediaUrl('bokantaj-media-hold', path);
+        const posterBlob = arguments[1];
+        if (!posterBlob) return { video: videoUrl, poster: null };
+        const posterPath = `${user.id}/${id}-poster.jpg`;
+        const posterUpload = await this.supabase.storage.from('bokantaj-media-hold').upload(posterPath, posterBlob, { contentType: 'image/jpeg' });
+        if (posterUpload.error) {
+            await this.supabase.storage.from('bokantaj-media-hold').remove([path]);
+            throw new Error('La miniature n’a pas pu être envoyée. Réessayez avant de publier.');
+        }
+        return { video: videoUrl, poster: holdMediaUrl('bokantaj-media-hold', posterPath) };
     },
 
     async uploadPostPhoto(file) {

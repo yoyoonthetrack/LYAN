@@ -178,6 +178,13 @@
                                 <div class="composer-char-counter"><span id="flashCharCount">0</span>/280</div>
                             </div>
                             <div class="flash-media-preview-container" id="flashMediaPreviewContainer"></div>
+                            <div id="bokantajTrim" class="bokantaj-trim" hidden>
+                                <p id="bokantajTrimHint">Cette vidéo dépasse 60 secondes. Choisissez le passage à publier.</p>
+                                <label>Début <input id="bokantajTrimStart" type="range" min="0" step="0.1" value="0"></label>
+                                <label>Fin <input id="bokantajTrimEnd" type="range" min="0" step="0.1" value="60"></label>
+                                <p id="bokantajTrimWindow" role="status"></p>
+                                <button type="button" id="bokantajTrimApply">Utiliser ce passage</button>
+                            </div>
                             <div class="bokantaj-place-composer">
                                 <button type="button" id="bokantajPlaceTrigger" class="bokantaj-place-trigger" aria-expanded="false" aria-controls="bokantajPlacePicker"><i class="ph ph-map-pin" aria-hidden="true"></i> <span id="bokantajPlaceTriggerLabel">Ajouter un lieu (facultatif)</span></button>
                                 <div id="bokantajPlacePicker" class="bokantaj-place-picker" hidden>
@@ -1833,11 +1840,13 @@
 <script src="notifications-ui.js"></script>
     <script src="app-shell.js?v=20261011c"></script>
     <script src="messaging-ui.js?v=20261015j"></script>
-    <script src="script.js?v=20261023-bokv11"></script>
+    <script src="bokantaj-video-policy.js?v=20261023-video"></script>
+    <script src="bokantaj-video.js?v=20261023-video"></script>
+    <script src="script.js?v=20261023-video"></script>
     <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
     <script src="vendor/maplibre/maplibre-gl.js?v=5.6.1"></script>
     <script src="vendor/maplibre/leaflet-maplibre-gl.js?v=0.1.4"></script>
-    <script src="bokantaj-map.js?v=20261023-place"></script>
+    <script src="bokantaj-map.js?v=20261023-video"></script>
     <script src="onboarding.js"></script>
     <script src="profile-completion.js"></script>
 
