@@ -1,5 +1,17 @@
 const { test, expect } = require('@playwright/test');
 
+test('LYANN's actual map style uses vector geographic sources only', () => {
+  const style = require('../../assets/maps/lyann-liberty.json');
+  const sourceKinds = Object.values(style.sources).map((source) => source.type);
+  expect(sourceKinds).toEqual(['vector']);
+  expect(style.layers.some((layer) => layer.type === 'raster' || layer.type === 'hillshade')).toBe(false);
+  expect(style.layers.some((layer) => layer['source-layer'] === 'transportation')).toBe(true);
+  expect(style.layers.some((layer) => layer['source-layer'] === 'building')).toBe(true);
+  expect(style.layers.some((layer) => layer['source-layer'] === 'water')).toBe(true);
+  expect(style.layers.some((layer) => layer.type === 'symbol' && layer.layout?.['text-field'])).toBe(true);
+});
+
+
 for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w: 390, h: 844 }]) {
   test('Bokantaj Carte ' + screen.name + ': explore, filter and open a mapped post', async ({ page }) => {
     await page.setViewportSize({ width: screen.w, height: screen.h });
