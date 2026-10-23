@@ -1206,13 +1206,8 @@ async function recordMaisonAudit(adminUserId, action, targetId, details) {
 const { runModerationOnce } = require('./moderation-worker');
 const { releaseMedia, sweep: sweepBokantajMedia, isVerifiedStagingUrl } = require('./bokantaj-media-retention');
 
-setInterval(() => {
-    sweepBokantajMedia({
-        supabaseAdmin,
-        supabaseUrl: process.env.SUPABASE_URL,
-        apply: true
-    }).catch(() => {});
-}, 6 * 60 * 60 * 1000).unref?.();
+// No process-local timer: Vercel functions are ephemeral. A verified
+// Staging scheduler must call the guarded endpoint below with a secret.
 
 function financialSettingBlocked(key, value) {
     const blob = `${key} ${typeof value === 'string' ? value : JSON.stringify(value || {})}`;
@@ -2432,6 +2427,27 @@ app.post('/v1/admin/ops/bokantaj/:id/delete', async (req, res) => {
         return res.json({ success: true, id: req.params.id });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Impossible de supprimer la publication.' });
+    }
+});
+
+app.get('/v1/internal/bokantaj/media-sweep', async (req, res) => {
+    const { workerAuthorized } = require('./content-moderation-routes');
+    if (!workerAuthorized(req)) return res.status(401).json({ success: false, error: 'Autorisation requise.' });
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
+        return res.status(403).json({ success: false, error: 'Nettoyage réservé au projet Staging validé.' });
+    }
+    try {
+        // Explicitly opt in to real deletion; observability / manual checks
+        // default to a dry-run to reduce accidents.
+        const apply = req.query?.apply === 'true';
+        const report = await sweepBokantajMedia({
+            supabaseAdmin,
+            supabaseUrl: process.env.SUPABASE_URL,
+            apply
+        });
+        return res.json({ success: true, applied: apply, ...report });
+    } catch (e) {
+        return res.status(503).json({ success: false, error: 'Nettoyage suspendu : inventaire incomplet ou stockage indisponible.' });
     }
 });
 
