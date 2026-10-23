@@ -29,6 +29,20 @@ test('LYANN map typography uses real Nunito Sans glyph bundles, not CSS-only lab
   }
 });
 
+test('legacy Staging photo URLs resolve to local Preview, never Production', async ({ page }) => {
+  await page.goto('/feed.html?demo=true', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof window.LYANN_BOKANTAJ_RESOLVE_MEDIA_URL === 'function');
+  const result = await page.evaluate(() => {
+    window.LYANN_SUPABASE_URL = 'https://tdktfbtqceldlaeqjtow.supabase.co';
+    window.LYANN_SUPABASE_LOCK = 'tdktfbtqceldlaeqjtow';
+    window.LYANN_BACKEND_ORIGIN = '';
+    return window.LYANN_BOKANTAJ_RESOLVE_MEDIA_URL('https://lyann.app/v1/media/bokantaj-media-hold/example/post.jpg');
+  });
+  expect(result).toContain('/v1/media/bokantaj-media-hold/example/post.jpg');
+  expect(result).toMatch(/^http:\/\/127\.0\.0\.1:/);
+  expect(result).not.toContain('lyann.app');
+});
+
 for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w: 390, h: 844 }]) {
   test('Bokantaj Carte ' + screen.name + ': explore, filter and open a mapped post', async ({ page }) => {
     await page.setViewportSize({ width: screen.w, height: screen.h });
@@ -107,6 +121,9 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
     await page.locator('#bokantajPlaceTrigger').click();
     await expect(page.locator('#bokantajPlacePicker')).toBeVisible();
     await page.locator('#bokantajPickerMap').click({ position: { x: 130, y: 90 } });
+    // One intentional map tap must persist a point, even before optional naming.
+    await expect(page.locator('#bokantajPlaceTriggerLabel')).toContainText('Repère partagé');
+    expect(await page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace())).toEqual(expect.objectContaining({ label: 'Repère partagé' }));
     await page.locator('#bokantajPlaceName').fill('Rond-point de Jarry');
     await page.locator('#bokantajPlaceSave').click();
     await expect(page.locator('#bokantajPlaceTriggerLabel')).toContainText('Jarry');
