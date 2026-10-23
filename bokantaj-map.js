@@ -30,6 +30,8 @@
     let pickerMarker;
     let savedPlace = null;
     let pickerPoint = null;
+    let pickerRaw = null;
+    let placeNameAuto = false;
     let activeType = 'all';
     let isMapView = false;
     let fetchGeneration = 0;
@@ -49,6 +51,13 @@
         return post?.place_lat != null && post?.place_lng != null
             && validPoint(point) && typeof post?.place_label === 'string'
             && post.place_label.trim().length >= 2;
+    }
+
+    function publicCoordinate(lat, lng, exact) {
+        const point = { lat: Number(lat), lng: Number(lng) };
+        if (!validPoint(point)) return null;
+        if (exact) return { lat: +point.lat.toFixed(6), lng: +point.lng.toFixed(6), exact: true };
+        return { lat: +point.lat.toFixed(3), lng: +point.lng.toFixed(3), exact: false };
     }
 
     function publiclyVisible(post, now = Date.now()) {
@@ -137,6 +146,7 @@
                     if (failed || !instance._mapPane) return;
                     layer = window.L.maplibreGL({ style, interactive: false, attributionControl: false }).addTo(instance);
                     const gl = layer.getMaplibreMap();
+                    instance._lyannGl = gl;
                     gl.on('error', fail);
                     gl.on('idle', () => {
                         if (failed || !gl.isStyleLoaded() || !gl.areTilesLoaded()) return;
@@ -175,24 +185,100 @@
         if (trigger) trigger.classList.toggle('has-place', !!savedPlace);
     }
 
+    function placeWantsExact() {
+        return !!$('bokantajPlaceExact')?.checked;
+    }
+
+    function refreshPlaceSummary(name) {
+        const title = $('bokantajPlaceSummaryTitle');
+        const meta = $('bokantajPlaceSummaryMeta');
+        const precision = $('bokantajPlaceSummaryPrecision');
+        const exact = placeWantsExact();
+        if (title) title.textContent = 'Position actuelle';
+        if (meta) {
+            meta.textContent = pickerPoint
+                ? (name || 'Repère sur la carte')
+                : 'Touchez la carte ou localisez-vous.';
+        }
+        if (precision) {
+            precision.textContent = exact
+                ? 'Le point exact sera visible par les autres.'
+                : 'Les autres verront le quartier, pas votre position exacte.';
+        }
+    }
+
+    function suggestPlaceName() {
+        const gl = pickerMap && pickerMap._lyannGl;
+        if (!gl || !pickerRaw || typeof gl.querySourceFeatures !== 'function' || !gl.isStyleLoaded?.()) return '';
+        let features = [];
+        try {
+            features = gl.querySourceFeatures('openmaptiles', { sourceLayer: 'place' }) || [];
+        } catch (_) {
+            return '';
+        }
+        const rank = { neighbourhood: 0, suburb: 1, quarter: 2, hamlet: 3, village: 4, town: 5, city: 6 };
+        let best = null;
+        features.forEach((feature) => {
+            const kind = feature.properties && feature.properties.class;
+            const coords = feature.geometry && feature.geometry.coordinates;
+            const name = feature.properties && (feature.properties['name:latin'] || feature.properties.name);
+            if (!(kind in rank) || !coords || !name) return;
+            const distance = Math.hypot(coords[1] - pickerRaw.lat, coords[0] - pickerRaw.lng);
+            const limit = rank[kind] <= 2 ? 0.06 : 0.2;
+            if (distance > limit) return;
+            const score = distance + rank[kind] * 0.01;
+            if (!best || score < best.score) best = { score, name: String(name).trim() };
+        });
+        return best ? best.name.slice(0, 90) : '';
+    }
+
     function setPickerPoint(latlng) {
         const lat = Number(latlng.lat), lng = Number(latlng.lng);
         if (!validPoint({ lat, lng }) || !pickerMap) return;
-        pickerPoint = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
-        // A deliberate map tap selects and retains the point immediately.
-        // Requiring a second confirmation and a typed label previously caused
-        // posts to silently lose the location the member had just selected.
+        pickerRaw = { lat, lng };
+        const pub = publicCoordinate(lat, lng, placeWantsExact());
+        pickerPoint = { lat: pub.lat, lng: pub.lng };
         const typed = $('bokantajPlaceName')?.value.trim() || '';
-        savedPlace = { ...pickerPoint, label: typed.length >= 2 ? typed : (savedPlace?.label || 'Repère partagé') };
+        const kept = savedPlace && savedPlace.label && savedPlace.label !== 'Repère partagé' ? savedPlace.label : '';
+        const label = typed.length >= 2 ? typed : (kept || 'Repère partagé');
+        savedPlace = { lat: pub.lat, lng: pub.lng, label, exact: pub.exact };
         updatePlaceButton();
-        if (pickerMarker) pickerMarker.setLatLng([lat, lng]);
+        const icon = window.L.divIcon({
+            className: 'bokantaj-picker-pin',
+            html: '<span></span>',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        });
+        if (pickerMarker) pickerMarker.setLatLng([pub.lat, pub.lng]);
         else {
-            pickerMarker = window.L.circleMarker([lat, lng], {
-                radius: 11, color: '#285B3E', fillColor: '#E4B44E',
-                fillOpacity: 1, weight: 3
-            }).addTo(pickerMap);
+            pickerMarker = window.L.marker([pub.lat, pub.lng], { icon, draggable: true, keyboard: true, title: 'Repère' }).addTo(pickerMap);
+            pickerMarker.on('dragend', () => {
+                const next = pickerMarker.getLatLng();
+                setPickerPoint(next);
+            });
         }
-        if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = '📍 Localisation enregistrée ✓ Vous pouvez préciser un nom, puis fermer la carte.';
+        const guessed = suggestPlaceName();
+        const input = $('bokantajPlaceName');
+        if (input && guessed && (placeNameAuto || !input.value.trim() || input.value.trim() === 'Repère partagé')) {
+            input.value = guessed;
+            placeNameAuto = true;
+            savedPlace = { ...savedPlace, label: guessed };
+            updatePlaceButton();
+        }
+        refreshPlaceSummary(guessed || input?.value.trim() || '');
+        if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Repère placé. Localisation enregistrée ✓ Vous pouvez confirmer, déplacer ou retirer.';
+        const gl = pickerMap._lyannGl;
+        if (gl && typeof gl.once === 'function' && !guessed) {
+            gl.once('idle', () => {
+                if (!pickerRaw) return;
+                const later = suggestPlaceName();
+                const field = $('bokantajPlaceName');
+                if (!later || !field || (!placeNameAuto && field.value.trim())) return;
+                field.value = later;
+                placeNameAuto = true;
+                refreshPlaceSummary(later);
+            });
+        }
     }
 
     function togglePicker(open) {
@@ -228,7 +314,7 @@
                 const start = touchStart;
                 touchStart = null;
                 if (!start || event.pointerType !== 'touch' || !event.isPrimary) return;
-                if (event.target.closest?.('.leaflet-control')) return;
+                if (event.target.closest?.('.leaflet-control, .bokantaj-basemap-notice')) return;
                 if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12 || Date.now() - start.at > 650) return;
                 const rect = pickerElement.getBoundingClientRect();
                 const point = pickerMap.containerPointToLatLng([event.clientX - rect.left, event.clientY - rect.top]);
@@ -238,13 +324,60 @@
         }
         pickerMap.setView([center[0], center[1]], center[2]);
         pickerPoint = null;
+        pickerRaw = null;
         if (pickerMarker) { pickerMarker.remove(); pickerMarker = null; }
-        if (savedPlace) setPickerPoint(savedPlace);
-        $('bokantajPlaceName').value = savedPlace?.label || '';
+        if ($('bokantajPlaceExact')) $('bokantajPlaceExact').checked = !!savedPlace?.exact;
+        placeNameAuto = false;
+        if (savedPlace) setPickerPoint({ lat: savedPlace.exact ? savedPlace.lat : savedPlace.lat, lng: savedPlace.lng });
+        if ($('bokantajPlaceName')) $('bokantajPlaceName').value = savedPlace?.label || '';
+        refreshPlaceSummary(savedPlace?.label || '');
         $('bokantajPickerStatus').textContent = savedPlace
-            ? 'Vous pouvez déplacer votre repère ou modifier son nom.'
+            ? 'Repère placé. Confirmez, déplacez-le ou retirez-le.'
             : 'Touchez la carte pour choisir un point.';
         requestAnimationFrame(() => pickerMap.invalidateSize());
+    }
+
+    function readPosition() {
+        const plugin = window.Capacitor?.Plugins?.Geolocation;
+        if (plugin && typeof plugin.getCurrentPosition === 'function') {
+            return plugin.getCurrentPosition({ enableHighAccuracy: true, timeout: 12000 }).then((position) => ({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            }));
+        }
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('unavailable'));
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+                reject,
+                { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 }
+            );
+        });
+    }
+
+    async function locateMe() {
+        const button = $('bokantajLocateMe');
+        $('bokantajPickOnMap')?.setAttribute('aria-pressed', 'false');
+        button?.setAttribute('aria-pressed', 'true');
+        if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Recherche de votre position…';
+        try {
+            const position = await readPosition();
+            if (!pickerMap || !validPoint(position)) throw new Error('invalid');
+            pickerMap.setView([position.lat, position.lng], 16);
+            setPickerPoint(position);
+        } catch (error) {
+            button?.setAttribute('aria-pressed', 'false');
+            $('bokantajPickOnMap')?.setAttribute('aria-pressed', 'true');
+            const denied = error && (error.code === 1 || /denied|permission/i.test(String(error.message || '')));
+            if ($('bokantajPickerStatus')) {
+                $('bokantajPickerStatus').textContent = denied
+                    ? 'La localisation est restée privée. Choisissez un endroit sur la carte.'
+                    : 'Position introuvable. Choisissez un endroit sur la carte.';
+            }
+        }
     }
 
     function savePlace() {
@@ -258,7 +391,8 @@
             $('bokantajPlaceName')?.focus();
             return;
         }
-        savedPlace = { ...pickerPoint, label };
+        const pub = publicCoordinate(pickerRaw?.lat ?? pickerPoint.lat, pickerRaw?.lng ?? pickerPoint.lng, placeWantsExact());
+        savedPlace = { lat: pub.lat, lng: pub.lng, label, exact: pub.exact };
         updatePlaceButton();
         togglePicker(false);
     }
@@ -266,8 +400,12 @@
     function resetComposerPlace() {
         savedPlace = null;
         pickerPoint = null;
+        pickerRaw = null;
+        placeNameAuto = false;
         if (pickerMarker) { pickerMarker.remove(); pickerMarker = null; }
-        $('bokantajPlaceName') && ($('bokantajPlaceName').value = '');
+        if ($('bokantajPlaceName')) $('bokantajPlaceName').value = '';
+        if ($('bokantajPlaceExact')) $('bokantajPlaceExact').checked = false;
+        refreshPlaceSummary('');
         updatePlaceButton();
         togglePicker(false);
     }
@@ -284,38 +422,87 @@
         return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
     }
 
+    function excerpt(post) {
+        return String(post?.content || post?.headline || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function authorLabel(post) {
+        const name = String(post?.author_name || '').trim();
+        return name || 'Lyanneur';
+    }
+
+    async function openInFeed(post) {
+        if (!post || post.public_moderation_status !== 'approved') {
+            if ($('bokantajMapStatus')) $('bokantajMapStatus').textContent = 'Cette publication n’est plus disponible.';
+            return;
+        }
+        map?.closePopup();
+        switchView('feed');
+        const reveal = window.LYANN_BOKANTAJ_FEED && window.LYANN_BOKANTAJ_FEED.revealPost;
+        if (typeof reveal !== 'function') return;
+        const result = await reveal(post.id);
+        if (!result?.ok && $('bokantajMapStatus')) {
+            $('bokantajMapStatus').textContent = 'Cette publication n’est plus disponible.';
+        }
+    }
+
+    function previewCard(post) {
+        const category = CATEGORY[post.type] || CATEGORY.info;
+        const card = document.createElement('div');
+        card.className = 'bokantaj-preview';
+        const kicker = document.createElement('div');
+        kicker.className = 'bokantaj-preview-kicker';
+        kicker.textContent = category.icon + ' ' + category.label + ' · ' + authorLabel(post);
+        const where = document.createElement('div');
+        where.className = 'bokantaj-preview-place';
+        where.textContent = post.place_label || '';
+        const body = document.createElement('p');
+        body.className = 'bokantaj-preview-excerpt';
+        body.textContent = excerpt(post);
+        const when = document.createElement('time');
+        when.dateTime = post.created_at || '';
+        when.textContent = compactDate(post.created_at);
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'bokantaj-preview-open';
+        open.textContent = 'Voir le Bokantaj';
+        open.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openInFeed(post);
+        });
+        card.append(kicker, where, body, when, open);
+        return card;
+    }
+
     function showDetail(post) {
         const panel = $('bokantajMapDetail');
         if (!panel || !post) return;
         detailPostId = String(post.id);
-        panel.replaceChildren();
-        const category = CATEGORY[post.type] || CATEGORY.info;
-        const eyebrow = document.createElement('div');
-        eyebrow.className = 'bokantaj-map-eyebrow';
-        eyebrow.textContent = category.icon + ' ' + category.label + ' · 📍 ' + post.place_label + ' · ' + compactDate(post.created_at);
-        const body = document.createElement('p');
-        body.className = 'bokantaj-map-body';
-        body.textContent = String(post.content || post.headline || '').slice(0, 2000);
-        const bottom = document.createElement('div');
-        bottom.className = 'bokantaj-map-detail-actions';
-        const close = document.createElement('button');
-        close.type = 'button';
-        close.textContent = 'Fermer';
-        close.addEventListener('click', () => { panel.hidden = true; map?.closePopup(); });
-        bottom.append(close);
+        panel.replaceChildren(previewCard(post));
         const image = (post.media_urls || []).find((url) => typeof url === 'string'
             && /^https:\/\//i.test(url) && !/\.(mp4|mov|webm)(?:\?|$)/i.test(url));
-        panel.append(eyebrow);
         if (image) {
             const img = document.createElement('img');
             img.src = image;
             img.loading = 'lazy';
             img.alt = 'Photo partagée avec cette publication';
             img.onerror = () => img.remove();
-            panel.append(img);
+            panel.insertBefore(img, panel.querySelector('.bokantaj-preview-open'));
         }
-        panel.append(body, bottom);
         panel.hidden = false;
+    }
+
+    function openPreview(post, latlng) {
+        showDetail(post);
+        if (!map) return;
+        window.L.popup({
+            className: 'bokantaj-popup',
+            closeButton: true,
+            maxWidth: 280,
+            offset: [0, -46],
+            autoPan: true
+        }).setLatLng(latlng).setContent(previewCard(post)).openOn(map);
     }
 
     function paintMarkers(posts) {
@@ -368,15 +555,18 @@
                         group.forEach((post) => {
                             const button = document.createElement('button');
                             button.type = 'button';
-                            button.textContent = (CATEGORY[post.type] || CATEGORY.info).label + ' · ' + post.place_label + ' — ' + String(post.content || '').slice(0, 70);
-                            button.addEventListener('click', () => { map.closePopup(); showDetail(post); });
+                            const categoryName = (CATEGORY[post.type] || CATEGORY.info).label;
+                            button.textContent = categoryName + ' · ' + authorLabel(post) + ' — ' + excerpt(post).slice(0, 70);
+                            button.addEventListener('click', () => {
+                                map.closePopup();
+                                openPreview(post, [Number(post.place_lat), Number(post.place_lng)]);
+                            });
                             list.append(button);
                         });
                         window.L.popup({ maxWidth: 280, className: 'bokantaj-popup' }).setLatLng([centerLat, centerLng]).setContent(list).openOn(map);
                     }
                 } else {
-                    window.L.popup({ className: 'bokantaj-popup', closeButton: false, offset: [0, -46] }).setLatLng([centerLat, centerLng]).setContent('<strong>' + escapeText(category.label) + '</strong><br>' + escapeText(first.place_label)).openOn(map);
-                    showDetail(first);
+                    openPreview(first, [centerLat, centerLng]);
                 }
             });
         }
@@ -498,6 +688,28 @@
         });
         $('bokantajPlaceTrigger').addEventListener('click', () =>
             togglePicker($('bokantajPlacePicker').hidden));
+        $('bokantajLocateMe')?.addEventListener('click', () => locateMe());
+        $('bokantajPickOnMap')?.addEventListener('click', () => {
+            $('bokantajLocateMe')?.setAttribute('aria-pressed', 'false');
+            $('bokantajPickOnMap')?.setAttribute('aria-pressed', 'true');
+            if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Déplacez la carte, puis touchez l’endroit.';
+        });
+        $('bokantajPlaceExact')?.addEventListener('change', () => {
+            if (pickerRaw) setPickerPoint(pickerRaw);
+            else refreshPlaceSummary($('bokantajPlaceName')?.value.trim() || '');
+        });
+        $('bokantajPlaceName')?.addEventListener('input', () => {
+            placeNameAuto = false;
+            refreshPlaceSummary($('bokantajPlaceName').value.trim());
+        });
+        $('bokantajPlaceMove')?.addEventListener('click', () => {
+            if (!pickerMap || !pickerPoint) {
+                if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Touchez d’abord un endroit sur la carte.';
+                return;
+            }
+            pickerMap.setView([pickerPoint.lat, pickerPoint.lng], Math.max(pickerMap.getZoom(), 16));
+            if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Repère placé. Faites-le glisser ou touchez un autre endroit.';
+        });
         $('bokantajPlaceSave').addEventListener('click', savePlace);
         $('bokantajPlaceRemove').addEventListener('click', resetComposerPlace);
         window.addEventListener('popstate', () => {
@@ -517,7 +729,13 @@
     }
 
     window.LYANN_BOKANTAJ_MAP = Object.freeze({
-        getComposerPlace() { const typed = $('bokantajPlaceName')?.value.trim() || ''; return savedPlace ? { ...savedPlace, label: typed.length >= 2 && typed.length <= 90 ? typed : savedPlace.label } : null; },
+        getComposerPlace() {
+            const typed = $('bokantajPlaceName')?.value.trim() || '';
+            if (!savedPlace) return null;
+            const label = typed.length >= 2 && typed.length <= 90 ? typed : savedPlace.label;
+            return { ...savedPlace, label };
+        },
+        publicCoordinate,
         resetComposerPlace,
         showPost,
         switchView,

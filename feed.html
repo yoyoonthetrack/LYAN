@@ -181,14 +181,24 @@
                             <div class="bokantaj-place-composer">
                                 <button type="button" id="bokantajPlaceTrigger" class="bokantaj-place-trigger" aria-expanded="false" aria-controls="bokantajPlacePicker"><i class="ph ph-map-pin" aria-hidden="true"></i> <span id="bokantajPlaceTriggerLabel">Ajouter un lieu (facultatif)</span></button>
                                 <div id="bokantajPlacePicker" class="bokantaj-place-picker" hidden>
-                                    <p class="bokantaj-place-hint">Touchez la carte pour poser votre repère. Ne placez pas votre domicile : ce point sera visible par tous.</p>
+                                    <div class="bokantaj-place-modes" role="group" aria-label="Placer le repère">
+                                        <button type="button" id="bokantajLocateMe"><i class="ph ph-navigation-arrow" aria-hidden="true"></i> Me localiser</button>
+                                        <button type="button" id="bokantajPickOnMap" aria-pressed="true"><i class="ph ph-map-trifold" aria-hidden="true"></i> Choisir sur la carte</button>
+                                    </div>
                                     <div id="bokantajPickerMap" class="bokantaj-picker-map" aria-label="Choisir un lieu sur la carte"></div>
-                                    <label for="bokantajPlaceName">Nom du quartier ou du repère</label>
-                                    <input type="text" id="bokantajPlaceName" maxlength="90" placeholder="Ex. Jarry, près du rond-point…" autocomplete="off">
+                                    <div class="bokantaj-place-summary" id="bokantajPlaceSummary">
+                                        <strong id="bokantajPlaceSummaryTitle">Position actuelle</strong>
+                                        <span id="bokantajPlaceSummaryMeta">Touchez la carte ou localisez-vous.</span>
+                                        <span id="bokantajPlaceSummaryPrecision">Les autres verront le quartier, pas votre position exacte.</span>
+                                    </div>
+                                    <label class="bokantaj-exact-consent"><input type="checkbox" id="bokantajPlaceExact"> Partager le point exact</label>
+                                    <label for="bokantajPlaceName">Nom du quartier</label>
+                                    <input type="text" id="bokantajPlaceName" maxlength="90" placeholder="Ex. Jarry, Les Abymes…" autocomplete="off">
                                     <p class="bokantaj-place-status" id="bokantajPickerStatus" role="status">Touchez la carte pour choisir un point.</p>
                                     <div class="bokantaj-place-picker-actions">
-                                        <button type="button" id="bokantajPlaceRemove" class="bokantaj-place-secondary">Sans lieu</button>
-                                        <button type="button" id="bokantajPlaceSave" class="bokantaj-place-primary">Utiliser ce lieu</button>
+                                        <button type="button" id="bokantajPlaceMove" class="bokantaj-place-secondary">Déplacer</button>
+                                        <button type="button" id="bokantajPlaceRemove" class="bokantaj-place-secondary">Retirer</button>
+                                        <button type="button" id="bokantajPlaceSave" class="bokantaj-place-primary">Confirmer</button>
                                     </div>
                                 </div>
                             </div>
@@ -1827,7 +1837,7 @@
     <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
     <script src="vendor/maplibre/maplibre-gl.js?v=5.6.1"></script>
     <script src="vendor/maplibre/leaflet-maplibre-gl.js?v=0.1.4"></script>
-    <script src="bokantaj-map.js?v=20261023-chic"></script>
+    <script src="bokantaj-map.js?v=20261023-place"></script>
     <script src="onboarding.js"></script>
     <script src="profile-completion.js"></script>
 

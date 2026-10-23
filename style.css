@@ -33,18 +33,18 @@
     --pop-purple-light: #F6EDFC;
 
     /* Neutrals — Warm Sandy Tone */
-    --bg: #FDFCF9;
+    --bg: #F4EDE3;
     --bg-white: #FFFFFF;
-    --bg-warm: #F7F4EE;
+    --bg-warm: #EFE4D6;
     --bg-dark: #1E2822;
     --text: #243329;
     --text-muted: #5C6E62;
     --text-light: #FDFCF9;
 
     /* UI Tokens */
-    --border: #E5DFD5;
-    --shadow-sm: 0 2px 8px rgba(36, 51, 41, 0.05);
-    --shadow-md: 0 8px 24px rgba(36, 51, 41, 0.07);
+    --border: #E0D2C0;
+    --shadow-sm: 0 2px 10px rgba(72, 52, 32, 0.08);
+    --shadow-md: 0 12px 28px rgba(72, 52, 32, 0.1);
     --shadow-lg: 0 16px 40px rgba(36, 51, 41, 0.1);
     --shadow-3d: 0 20px 40px rgba(74, 124, 89, 0.12), 0 4px 12px rgba(229, 179, 69, 0.08);
     --radius-sm: 14px;
@@ -5710,8 +5710,8 @@ input:checked + .slider:before {
 /* Compositeur de Lyann */
 .flash-composer-card,
 .lyann-composer-card {
-    background: #FFFFFF;
-    border: 2px solid var(--border);
+    background: #FFFDF9;
+    border: 1px solid #E4D3C0;
     border-radius: var(--radius-xl);
     padding: 24px;
     margin-bottom: 24px;
@@ -6089,8 +6089,8 @@ input:checked + .slider:before {
 
 /* Sidebar & Widgets */
 .sidebar-widget {
-    background: #FFFFFF;
-    border: 1.5px solid var(--border);
+    background: #FFFDF9;
+    border: 1px solid #E4D3C0;
     border-radius: var(--radius-xl);
     padding: 24px;
     margin-bottom: 24px;

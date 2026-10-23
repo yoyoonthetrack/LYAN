@@ -73,6 +73,19 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
     await page.locator('#bokantajMapCanvas .bokantaj-map-pin').click();
     await expect(page.locator('#bokantajMapDetail')).toContainText('Jarry');
     await expect(page.locator('#bokantajMapDetail')).toContainText('bouchon');
+    await expect(page.locator('#bokantajMapDetail')).toContainText('Voir le Bokantaj');
+    await page.evaluate(() => {
+      window.LYANN_API_CLIENT.getApprovedBokantajPost = async (id) => id === 'qa-traffic' ? {
+        id: 'qa-traffic', author_id: 'qa-author', type: 'trafic', content: 'Attention, bouchon vers Jarry',
+        place_label: 'Jarry', place_lat: 16.265, place_lng: -61.55, public_moderation_status: 'approved',
+        author_name: 'Vim', created_at: new Date().toISOString(), media_urls: []
+      } : null;
+    });
+    await page.locator('#bokantajMapDetail .bokantaj-preview-open').click();
+    await expect(page.locator('#bokantajFeedSection')).toBeVisible();
+    await expect(page.locator('#qa-traffic')).toBeVisible();
+    await expect(page.locator('#qa-traffic')).toHaveClass(/is-map-focus/);
+    await expect(page.locator('#qa-traffic')).toContainText('bouchon');
     await page.screenshot({ path: 'test-results/bokantaj-map-' + screen.name + '.png', animations: 'disabled' });
     await page.locator('#bokantajViewFeed').click();
     await expect(page.locator('#bokantajFeedSection')).toBeVisible();
@@ -136,6 +149,10 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
     expect(post.place.lat).toBeGreaterThan(14);
     expect(post.place.lng).toBeLessThan(-60);
     await expect.poll(async () => page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace())).toBeNull();
+    expect(post.place.exact).toBe(false);
+    const rounded = await page.evaluate((place) => window.LYANN_BOKANTAJ_MAP.publicCoordinate(place.lat, place.lng, false), post.place);
+    expect(post.place.lat).toBe(rounded.lat);
+    expect(post.place.lng).toBe(rounded.lng);
     await expect(page.locator('#qa-post')).toBeVisible();
     await expect(page.locator('#qa-post')).toContainText('Mon info du quartier');
     await expect(page.locator('#qa-post')).toContainText('En cours de chargement');
@@ -187,7 +204,7 @@ for (const mobile of [false, true]) {
     await expect(page.getByRole('link', { name: '© OpenStreetMap', exact: true })).toBeVisible();
     const marker = page.locator('#bokantajMapCanvas .bokantaj-map-pin');
     await expect(marker).toHaveAttribute('title', 'Resto · Pointe-à-Pitre');
-    await page.locator('#bokantajMapDetail button').click();
+    await page.evaluate(() => { document.getElementById('bokantajMapDetail').hidden = true; });
     await marker.focus();
     await page.keyboard.press('Enter');
     await expect(page.locator('#bokantajMapDetail')).toBeVisible();
@@ -199,3 +216,37 @@ for (const mobile of [false, true]) {
     await context.close();
   });
 }
+
+test('GPS place stays approximate until the author shares the exact point', async ({ page }) => {
+  await page.route('**/*', (route) => {
+    const host = new URL(route.request().url()).hostname;
+    return ['localhost', '127.0.0.1'].includes(host) ? route.continue() : route.abort();
+  });
+  await page.context().grantPermissions(['geolocation']);
+  await page.context().setGeolocation({ latitude: 16.24119, longitude: -61.53381 });
+  await page.goto('/feed.html?demo=true', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.LYANN_BOKANTAJ_MAP?.publicCoordinate && window.openBokantajComposer);
+  await page.evaluate(() => {
+    document.body.classList.add('user-is-logged-in');
+    window.LYANN_AUTH_STATE = { ...window.LYANN_AUTH_STATE, isAuthenticated: () => true, getSnapshot: () => ({ userId: 'qa-geo' }) };
+  });
+  await page.locator('#bokantajComposerOpen').click();
+  await page.locator('#bokantajPlaceTrigger').click();
+  await page.locator('#bokantajLocateMe').click();
+  await expect(page.locator('#bokantajPickerStatus')).toContainText('Repère placé');
+  await expect(page.locator('#bokantajPlaceSummaryTitle')).toHaveText('Position actuelle');
+  await expect(page.locator('#bokantajPlaceSummaryPrecision')).toContainText('quartier');
+  await page.locator('#bokantajPlaceName').fill('Pointe-à-Pitre');
+  await page.locator('#bokantajPlaceSave').click();
+  const approx = await page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace());
+  expect(approx).toEqual({ lat: 16.241, lng: -61.534, label: 'Pointe-à-Pitre', exact: false });
+  await page.locator('#bokantajPlaceTrigger').click();
+  await page.locator('#bokantajLocateMe').click();
+  await expect(page.locator('#bokantajPickerStatus')).toContainText('Repère placé');
+  await page.locator('#bokantajPlaceExact').check();
+  await page.locator('#bokantajPlaceSave').click();
+  const exact = await page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace());
+  expect(exact.exact).toBe(true);
+  expect(exact.lat).toBeCloseTo(16.24119, 5);
+  expect(exact.lng).toBeCloseTo(-61.53381, 5);
+});

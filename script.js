@@ -3207,6 +3207,70 @@ safeDomReady(() => {
         return query ? query.sortPosts(list, mode) : list;
     }
 
+    async function revealBokantajPost(postId) {
+        const id = String(postId || '');
+        if (!/^[A-Za-z0-9-]{1,80}$/.test(id)) return { ok: false, reason: 'missing' };
+        bokantajFilters.types = [];
+        bokantajFilters.zone = 'all';
+        bokantajFilters.period = 'all';
+        bokantajFilters.commune = '';
+        bokantajSortMode = 'recent';
+        activeFeedTypeFilter = 'all';
+        activeFeedTerritoryFilter = 'all';
+        if (typeof paintBokantajFilterDraft === 'function') paintBokantajFilterDraft();
+        let post = (currentFlashPosts || []).find((item) => item && String(item.id) === id);
+        if (!post && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getApprovedBokantajPost === 'function') {
+            let fetched = null;
+            try { fetched = await window.LYANN_API_CLIENT.getApprovedBokantajPost(id); } catch (_) { fetched = null; }
+            if (fetched && fetched.public_moderation_status === 'approved') {
+                const card = formatOwnCreatedPost(fetched);
+                card.author_name = fetched.author_name || card.author_name;
+                card.moderation_status = 'approved';
+                currentFlashPosts = [card, ...currentFlashPosts.filter((item) => item && item.id !== card.id)];
+                bokantajFeedState = 'READY';
+                post = card;
+            }
+        }
+        let guard = 0;
+        while (!post && bokantajHasMore && bokantajCursor && guard < 6 && window.LYANN_BOKANTAJ_REPOSITORY) {
+            guard += 1;
+            const page = await window.LYANN_BOKANTAJ_REPOSITORY.load({ before: bokantajCursor });
+            const items = Array.isArray(page) ? page : [];
+            const seen = new Set(currentFlashPosts.map((item) => item && item.id));
+            items.forEach((item) => {
+                if (item && !seen.has(item.id)) currentFlashPosts.push(item);
+            });
+            bokantajHasMore = items.length > 0 && window.LYANN_BOKANTAJ_REPOSITORY.hasMore();
+            if (items.length) bokantajCursor = items[items.length - 1].created_at;
+            if (!items.length) bokantajHasMore = false;
+            post = currentFlashPosts.find((item) => item && String(item.id) === id);
+        }
+        const visible = post && window.LYANN_BOKANTAJ_REPOSITORY
+            && typeof window.LYANN_BOKANTAJ_REPOSITORY.isPubliclyVisible === 'function'
+            ? window.LYANN_BOKANTAJ_REPOSITORY.isPubliclyVisible(post)
+            : !!post;
+        const feed = document.getElementById('flashFeedContainer');
+        if (!post || !visible) {
+            renderFlashFeed();
+            if (feed) {
+                const note = document.createElement('p');
+                note.className = 'bokantaj-reveal-miss';
+                note.setAttribute('role', 'status');
+                note.textContent = 'Cette publication n’est plus disponible.';
+                feed.prepend(note);
+            }
+            return { ok: false, reason: 'unavailable' };
+        }
+        renderFlashFeed();
+        const card = document.getElementById(post.id);
+        if (!card) return { ok: false, reason: 'unavailable' };
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('is-map-focus');
+        window.setTimeout(() => card.classList.remove('is-map-focus'), 3200);
+        return { ok: true };
+    }
+    window.LYANN_BOKANTAJ_FEED = Object.freeze({ revealPost: revealBokantajPost });
+
     function syncBokantajChrome() {
         document.querySelectorAll('.bokantaj-sort-tab').forEach((btn) => {
             const on = btn.dataset.sort === bokantajSortMode;

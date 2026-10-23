@@ -11,13 +11,21 @@
 .bokantaj-place-composer{margin:8px 0 13px}
 .bokantaj-place-trigger{border:1px solid #d9e5dc;border-radius:999px;background:#f4f8f1;color:#436350;min-height:40px;padding:8px 13px;cursor:pointer;font:650 .9rem 'Outfit',sans-serif;max-width:100%;text-align:left}
 .bokantaj-place-trigger.has-place{background:#e4efe2;color:#225c38;border-color:#78a885}
-.bokantaj-place-picker{margin-top:9px;padding:12px;border:1px solid #dde8db;border-radius:16px;background:#fcfdf9}
+.bokantaj-place-picker{margin-top:9px;padding:12px;border:1px solid #e4d3c0;border-radius:16px;background:#fffdf9;box-shadow:0 8px 22px rgba(92,68,40,.06)}
+.bokantaj-place-modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.bokantaj-place-modes button{min-height:44px;border:1px solid #e4d3c0;border-radius:999px;background:#f7f1e6;color:#4d5648;font:700 .84rem 'Outfit',sans-serif;cursor:pointer}
+.bokantaj-place-modes button[aria-pressed="true"]{background:#4a7c59;color:#fff;border-color:#4a7c59}
+.bokantaj-place-summary{display:grid;gap:2px;margin:8px 0;padding:10px 12px;border-radius:14px;background:#f7f1e6;border:1px solid #eadcc8}
+.bokantaj-place-summary strong{font-size:.92rem;color:#3d4a43}
+.bokantaj-place-summary span{font-size:.82rem;line-height:1.35;color:#5c534a}
+.bokantaj-exact-consent{display:flex;align-items:center;gap:8px;min-height:44px;font:650 .86rem 'Outfit',sans-serif;color:#4d5648}
+.bokantaj-exact-consent input{width:18px;height:18px;accent-color:#4a7c59}
 .bokantaj-place-hint,.bokantaj-place-status{font-size:.82rem;line-height:1.4;color:#52665a;margin:0 0 10px}
 .bokantaj-picker-map{height:230px;border-radius:13px;background:#eaf0e6;overflow:hidden;margin-bottom:10px;z-index:1}
 .bokantaj-place-picker label{display:block;font:650 .84rem 'Outfit',sans-serif;margin:6px 0}
 #bokantajPlaceName{display:block;box-sizing:border-box;width:100%;height:42px;background:#fff;border-radius:11px;border:1px solid #d7ded4;padding:10px;font-size:1rem}
 .bokantaj-place-status{margin:8px 0 2px;min-height:18px}
-.bokantaj-place-picker-actions{display:flex;justify-content:space-between;gap:12px;margin-top:9px}
+.bokantaj-place-picker-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:9px}
 .bokantaj-place-secondary,.bokantaj-place-primary{border:0;border-radius:999px;padding:9px 15px;min-height:42px;cursor:pointer;font-weight:700}
 .bokantaj-place-secondary{background:#f0f0e9;color:#435349}
 .bokantaj-place-primary{background:#4a7c59;color:#fff}
@@ -80,8 +88,19 @@
 .bokantaj-map-eyebrow{font-size:.87rem;color:#6a5940;line-height:1.6}
 .bokantaj-map-body{font-size:1rem;color:#3c493d}
 .bokantaj-map-detail-actions button{min-height:44px;background:#eadfbf;color:#584b32}
-.bokantaj-popup .leaflet-popup-content-wrapper,.bokantaj-popup .leaflet-popup-tip{background:#fffaf0;color:#58452f;box-shadow:0 4px 16px #69543526}
-.bokantaj-popup .leaflet-popup-content{font:500 .9rem/1.5 'Outfit',sans-serif;margin:12px 16px}
+.bokantaj-popup .leaflet-popup-content-wrapper,.bokantaj-popup .leaflet-popup-tip{background:#fffaf0;color:#58452f;box-shadow:0 8px 22px #69543526;border-radius:16px}
+.bokantaj-popup .leaflet-popup-content{font:500 .9rem/1.4 'Outfit',sans-serif;margin:12px 14px;width:220px}
+.bokantaj-preview{display:grid;gap:4px}
+.bokantaj-preview-kicker{font:750 .84rem 'Outfit',sans-serif;color:#3d4a43}
+.bokantaj-preview-place{font-size:.78rem;color:#6a6158}
+.bokantaj-preview-excerpt{margin:0;color:#4d5648;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bokantaj-preview time{font-size:.75rem;color:#6a6158}
+.bokantaj-preview-open{min-height:44px;margin-top:6px;border:0;border-radius:999px;background:#4a7c59;color:#fff;font:700 .9rem 'Outfit',sans-serif;cursor:pointer}
+body.feed-page .flash-card{background:#fffdf9 !important;border:1px solid #e4d3c0 !important;box-shadow:0 10px 26px rgba(92,68,40,.08),0 1px 2px rgba(92,68,40,.04) !important}
+body.feed-page .flash-card.is-map-focus{box-shadow:0 0 0 4px rgba(229,179,69,.45),0 12px 28px rgba(92,68,40,.12) !important}
+.bokantaj-reveal-miss{margin:0 0 12px;padding:12px 14px;border-radius:14px;background:#fff6ea;border:1px solid #eadcc8;color:#5c534a}
+.bokantaj-picker-pin{background:transparent;border:0}
+.bokantaj-picker-pin span{display:block;width:22px;height:22px;border-radius:50%;background:#e4b44e;border:3px solid #285b3e;box-shadow:0 2px 8px rgba(40,60,40,.25)}
 .bokantaj-cluster-list{max-height:190px;overflow:auto;display:grid;gap:6px}
 .bokantaj-cluster-list button{min-height:44px;text-align:left;background:#f6ebd7;border:0;border-radius:10px;padding:10px;color:#4a4939}
 .bokantaj-basemap-notice{position:absolute;z-index:450;left:12px;right:68px;top:12px;padding:10px 12px;border-radius:12px;background:#fffaf1f5;color:#655336;box-shadow:0 2px 10px #594b3420;font:500 .85rem/1.4 'Outfit',sans-serif}

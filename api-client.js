@@ -1598,7 +1598,7 @@ const LYANN_API_CLIENT = {
         }
         const { data, error } = await this.supabase
             .from('bokantaj_posts')
-            .select('id, type, content, city, territory, media_urls, created_at, place_lat, place_lng, place_label, public_moderation_status')
+            .select('id, author_id, type, content, city, territory, media_urls, created_at, place_lat, place_lng, place_label, public_moderation_status')
             .eq('public_moderation_status', 'approved')
             .not('place_lat', 'is', null)
             .not('place_lng', 'is', null)
@@ -1607,7 +1607,59 @@ const LYANN_API_CLIENT = {
             .gte('place_lng', west).lte('place_lng', east)
             .order('created_at', { ascending: false })
             .limit(250);
-        return { data: (data || []).map((post) => ({ ...post, media_urls: (post.media_urls || []).map(displayedBokantajMediaUrl) })), error: error ? error.message : null };
+        const rows = (data || []).map((post) => ({
+            ...post,
+            media_urls: (post.media_urls || []).map(displayedBokantajMediaUrl)
+        }));
+        const authorIds = [...new Set(rows.map((row) => row && row.author_id).filter(Boolean))];
+        const names = {};
+        if (authorIds.length && !error) {
+            try {
+                const profiles = await this.supabase.from('public_profiles')
+                    .select('id, first_name, last_name')
+                    .in('id', authorIds);
+                (profiles.data || []).forEach((profile) => {
+                    const first = String(profile.first_name || '').trim();
+                    if (!first || /^(step|prod|user_|req_user_|check_|ua_|ub_|h_step)/.test(first)) return;
+                    names[profile.id] = window.formatPublicName
+                        ? window.formatPublicName(profile, null, 'Lyanneur')
+                        : first;
+                });
+            } catch (_) { /* the pin still opens without a name */ }
+        }
+        return {
+            data: rows.map((row) => Object.assign({}, row, { author_name: names[row.author_id] || 'Lyanneur' })),
+            error: error ? error.message : null
+        };
+    },
+
+    async getApprovedBokantajPost(id) {
+        const key = String(id || '');
+        if (!this.supabase || !/^[A-Za-z0-9-]{1,80}$/.test(key)) return null;
+        const { data, error } = await this.supabase
+            .from('bokantaj_posts')
+            .select('id, author_id, type, content, headline, city, territory, media_urls, created_at, place_lat, place_lng, place_label, public_moderation_status')
+            .eq('id', key)
+            .eq('public_moderation_status', 'approved')
+            .maybeSingle();
+        if (error || !data || data.public_moderation_status !== 'approved') return null;
+        data.media_urls = (data.media_urls || []).map(displayedBokantajMediaUrl);
+        if (data.author_id) {
+            try {
+                const profile = await this.supabase.from('public_profiles')
+                    .select('id, first_name, last_name, avatar_url, city, territory')
+                    .eq('id', data.author_id)
+                    .maybeSingle();
+                if (profile.data) {
+                    data.profiles = profile.data;
+                    const first = String(profile.data.first_name || '').trim();
+                    data.author_name = first && window.formatPublicName
+                        ? window.formatPublicName(profile.data, null, 'Lyanneur')
+                        : (first || 'Lyanneur');
+                }
+            } catch (_) { data.author_name = 'Lyanneur'; }
+        }
+        return data;
     },
 
     // --- BOKANTAJ SOCIAL API METHODS ---
