@@ -9,8 +9,10 @@ removed, so **all map geometry sources are vector** at every zoom level.
 MapLibre draws vector geometry from OpenFreeMap/OpenMapTiles PBF tiles, not
 static PNG street-map images. Style sprites for small point-of-interest icons
 may still be image assets; they do not replace map geometry.
-Paint colors and label halos are customized; geographic detail remains real.
-This is not a decorative map.
+V1.2 paint is a light editorial drawing on that same vector geometry:
+cream land, pastel turquoise water, tender green, sand-colored roads with
+round caps, and pale building fills. Labels stay Nunito Sans with a light halo.
+This is not a cartoon and not a raster picture.
 
 Sources and terms:
 - https://openfreemap.org/quick_start/
