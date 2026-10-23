@@ -53,7 +53,7 @@ jobs:
 
       - name: Test video byte ranges and retention safeguards
         run: |
-          node --test tests/bokantaj-video-range.test.js tests/bokantaj-video-policy.test.js
+          node --test tests/bokantaj-video-range.test.js tests/bokantaj-video-policy.test.js tests/bokantaj-video-retention.test.js
 
       - name: Install Chromium and system dependencies
         run: npx playwright install --with-deps chromium
