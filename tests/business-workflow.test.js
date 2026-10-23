@@ -39,7 +39,7 @@ test('required evidence depends on activity and cannot be replaced by an arbitra
 const owner='11111111-1111-4111-a111-111111111111',other='22222222-2222-4222-a222-222222222222';
 function fixture(){
  const state={membership:null,dossier:null,downloads:0,updates:0,storageWrites:0,reviewer:other,permission:false,conflict:false};
- const db={auth:{async getUser(token){return token==='valid'?{data:{user:{id:owner}}}:{error:true};}},
+ const db={async rpc(name,args){state.rpc={name,args};return {data:{plan:'FREE',enforced:true,limits:{missions:2,photos:5,categories:1},usage:{missions:0,photos:0,categories:0}}};},auth:{async getUser(token){return token==='valid'?{data:{user:{id:owner}}}:{error:true};}},
  from(table){
   let op='select',patch;
   const q={select(){return q;},eq(){return q;},order(){return q;},range(){return q;},gte(){return q;},lt(){return q;},limit(){return q;},
@@ -139,4 +139,16 @@ test('activity CSV protects spreadsheet formula cells and preserves cent amounts
  state.missions=[{id:owner,title:'=HYPERLINK("bad")',status:'AGREED',total_amount:12.34,created_at:'2026-10-10'}];
  const res=await call('/v1/business/activity?month=2026-10&format=csv');assert.equal(res.status,200);
  const csv=await res.text();assert.ok(csv.includes("'=HYPERLINK"));assert.ok(csv.includes('1234'));
+}));
+
+test('rights endpoint scopes usage to the authenticated account and denies anonymous reads',()=>withApi(async(state,call)=>{
+ let res=await call('/v1/business/rights?user_id='+other);assert.equal(res.status,200);
+ assert.equal(state.rpc.name,'lyann_get_entitlements');assert.equal(state.rpc.args.p_user,owner);
+ state.rpc=null;res=await call('/v1/business/rights',null,'bad');assert.equal(res.status,401);assert.equal(state.rpc,null);
+}));
+test('quota trial requires admin permission, a boolean, and records the server actor',()=>withApi(async(state,call)=>{
+ let res=await call('/v1/admin/business/quota-test',{user_id:owner,enabled:true,actor_id:owner});assert.equal(res.status,403);assert.equal(state.rpc,undefined);
+ state.permission=true;res=await call('/v1/admin/business/quota-test',{user_id:owner,enabled:'true'});assert.equal(res.status,400);
+ res=await call('/v1/admin/business/quota-test',{user_id:owner,enabled:true,actor_id:owner});assert.equal(res.status,200);
+ assert.deepEqual(state.rpc,{name:'lyann_set_entitlement_test',args:{p_user:owner,p_enabled:true,p_actor:other}});
 }));

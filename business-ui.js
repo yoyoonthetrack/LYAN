@@ -153,6 +153,20 @@
    });
   }
 
+
+  if($('businessRights')){
+   const loadRights=async()=>{
+    const r=await request('/v1/business/rights');
+    const count=(key)=>esc(r.usage[key])+' / '+(r.limits[key]===null?'illimité':esc(r.limits[key]));
+    $('businessRights').innerHTML='<p>'+esc(r.enforced?'Limites appliquées à ce compte de test.':'Limites préparées, pas encore appliquées à ce compte.')+'</p><ul><li>Missions comme prestataire ce mois-ci : '+count('missions')+'</li><li>Photos du portfolio : '+count('photos')+'</li><li>Catégories actives : '+count('categories')+'</li></ul><p>Demandes et paiement par étape : accessibles dans toutes les formules.</p><p>Le compteur des missions est renouvelé le '+esc(new Date(r.resets_at).toLocaleDateString('fr-FR',{timeZone:'UTC'}))+' à 00 h UTC. Les contenus existants sont conservés après une baisse de formule.</p><p>Achats et vidéos du portfolio : pas encore activés.</p>';
+   };
+   $('refreshRights').onclick=e=>action(e.target,loadRights);
+   loadRights().catch(e=>{$('businessRights').textContent=e.message;});
+  }
+  if($('testQuota'))$('testQuota').onsubmit=e=>{e.preventDefault();action(e.submitter,async()=>{
+   const b=formData(e.target);b.enabled=b.enabled==='true';notice((await request('/v1/admin/business/quota-test',b)).message);
+  });};
+
   if($('invoiceForm')){
    let invoiceKey=crypto.randomUUID();
    const form=$('invoiceForm');

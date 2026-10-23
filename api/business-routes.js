@@ -86,6 +86,17 @@ function registerBusinessRoutes(app,{supabaseAdmin:db,verifyAdminPermission,env=
   const u=await user(req);const p=await plan(u.id);const d=await dossier(u.id);
   res.json({plan:p,dossier:safeDossier(d),verified:verifiedBadge(p,d),purchasesEnabled:false});
  }));
+
+ app.get('/v1/business/rights',wrap(async(req,res)=>{
+  const u=await user(req);
+  res.json(checked(await db.rpc('lyann_get_entitlements',{p_user:u.id})));
+ }));
+ app.post('/v1/admin/business/quota-test',wrap(async(req,res)=>{
+  const actor=await admin(req,'settings.manage'),b=req.body||{};
+  if(!UUID.test(b.user_id)||typeof b.enabled!=='boolean')fail(400,'Compte ou mode de test invalide.');
+  const rights=checked(await db.rpc('lyann_set_entitlement_test',{p_user:b.user_id,p_enabled:b.enabled,p_actor:actor}));
+  res.json({rights,message:b.enabled?'Limites activées pour ce compte de test pendant 24 heures. Aucun achat activé.':'Limites de test retirées pour ce compte.'});
+ }));
  app.post('/v1/business/dossier',wrap(async(req,res)=>{
   const u=await user(req);await requirePro(u.id);
   const identity=identityInput(req.body||{});const current=await dossier(u.id);

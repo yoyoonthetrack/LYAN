@@ -28,6 +28,7 @@ const {buildHtml}=require('../shared-html-build');
      contacts++;const body=route.request().postDataJSON();assert.equal(body.kind,'enterprise');assert.equal(body.organization,'Atelier QA');
      await route.fulfill({json:{id:'fixture',message:'Votre demande est enregistrée.'}});return;
     }
+    if(url.includes('/v1/business/rights')){await route.fulfill({json:{plan:'FREE',enforced:true,limits:{missions:2,photos:5,categories:1},usage:{missions:1,photos:3,categories:1},resets_at:'2026-11-01T00:00:00Z'}});return;}
     if(url.includes('/v1/business/me')){await route.fulfill({json:{plan:{code:'FREE',name:'Gratuit'},dossier:null,verified:false}});return;}
     await route.continue();
    });
@@ -59,7 +60,12 @@ const {buildHtml}=require('../shared-html-build');
     const data=await window.LYANN_BUSINESS.request('/v1/business/me');window.__qaPlan=data.plan.code;
    });
    assert.equal(await page.evaluate(()=>window.__qaPlan),'FREE');
-   await page.close();console.log('PASS browser '+width+'px: prices, 4 plans, free staged payment, dialog, contact persistence response, private workspace session.');
+   await page.locator('#refreshRights').click();
+   await page.waitForFunction(()=>document.querySelector('#businessRights').textContent.includes('1 / 2'));
+   assert.ok((await page.locator('#businessRights').innerText()).includes('3 / 5'));
+   assert.match(await page.locator('#businessRights').innerText(),/00 h UTC/);
+
+   await page.close();console.log('PASS browser '+width+'px: prices, 4 plans, free staged payment, dialog, contact persistence response, private workspace session and server usage counters.');
   }
  }finally{await browser?.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1});

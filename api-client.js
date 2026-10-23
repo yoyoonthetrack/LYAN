@@ -836,6 +836,11 @@ const LYANN_API_CLIENT = {
         }
     },
 
+    async getPlanEntitlements() {
+        if (!this.supabase || window.LYANN_SUPABASE_LOCK !== 'tdktfbtqceldlaeqjtow') return { data: null };
+        return await this.supabase.rpc('lyann_my_entitlements');
+    },
+
     async syncUserSkills(userId, skillsArray) {
         if (!this.supabase || !userId) {
             return { error: { message: 'Supabase non initialisé ou session manquante.' } };
@@ -844,6 +849,10 @@ const LYANN_API_CLIENT = {
         const selectedSkills = Array.isArray(skillsArray) 
             ? [...new Set(skillsArray.map(s => String(s).trim()).filter(Boolean))]
             : [];
+
+        if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow') {
+            return await this.supabase.rpc('lyann_sync_profile_skills', { p_user: userId, p_titles: selectedSkills });
+        }
 
         try {
             // Fetch current services state from canonical public.services table
@@ -975,6 +984,12 @@ const LYANN_API_CLIENT = {
 
     async uploadPortfolioImage(userId, file) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const rights = await this.getPlanEntitlements();
+        if (rights.error) return { error: rights.error };
+        if (rights.data?.enforced && rights.data.usage.photos >= rights.data.limits.photos) {
+            return { error: { code: 'P0001', message: 'PORTFOLIO_QUOTA_REACHED: Limite de photos atteinte. Vos photos existantes sont conservées.' } };
+        }
+
         const fileExt = file.name ? file.name.split('.').pop() : 'png';
         const filePath = `${userId}/portfolio_${Date.now()}.${fileExt}`;
 

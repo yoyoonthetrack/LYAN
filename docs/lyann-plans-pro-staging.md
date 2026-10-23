@@ -17,7 +17,7 @@ Branche : `feature/bokantaj-map-v1`. Aucun changement de Production, Stripe Live
 | Suivi / CSV / documents PDF | Historique existant | Historique existant | Espace professionnel | — |
 | Souscription dans cette version | Gratuit | Désactivée | Désactivée | Nous contacter |
 
-La grille décrit la cible commerciale. Les quotas portfolio, catégories et missions ne sont pas encore appliqués aux flux existants : ne pas bloquer un membre sans possibilité effective de souscrire. La règle des deux missions côté prestataire et les demandes illimitées constituent une proposition à confirmer avant activation.
+La règle est confirmée : deux missions par mois comme prestataire en Gratuit ; demandes illimitées comme client. Les contrôles serveur sont installés pour les missions, photos et catégories, avec activation de test par compte pendant 24 heures. L’activation générale reste désactivée tant que les achats ne sont pas disponibles. Les limites vidéo restent une cible : le parcours vidéo du portfolio n’est pas activé.
 
 ## Parcours réellement livré
 - Page tarifs, quatre cartes, détails, Entreprise grisée avec contact actif, espace Partenariat.
@@ -51,7 +51,7 @@ Tests SQL transactionnels annulés par ROLLBACK : droits anon/authenticated, aud
 
 ## Limites avant ouverture commerciale
 1. Configurer les produits et la vérification serveur Apple/Google, restauration, annulation, renouvellement et notifications avant d'activer l'achat. La facturation de services réels et l'achat d'un abonnement numérique sont des parcours distincts. Ne pas déclarer à Apple une intégration IAP qui n'existe pas.
-2. Activer ensuite les quotas serveur, migrer les droits historiques, distribuer les badges authentifiés sur toutes les surfaces de profils. Le badge Vérifié du parcours Pro exige déjà les pièces validées ; les anciens badges de profil ne sont pas encore unifiés.
+2. Activer ensuite les quotas serveur déjà installés (actuellement réservés aux comptes de test sélectionnés), migrer les droits historiques, distribuer les badges authentifiés sur toutes les surfaces de profils. Le badge Vérifié du parcours Pro exige déjà les pièces validées ; les anciens badges de profil ne sont pas encore unifiés.
 3. Valider les mentions fiscales, TVA, règles de facturation/avoirs et obligations de facturation électronique avant d'émettre une facture réelle. Le CSV est un export d'activité, pas une comptabilité certifiée.
 4. Définir conservation, purge revue et analyse antivirus des justificatifs. Les signatures de fichier sont contrôlées ; cela ne remplace pas une analyse antivirus. Pas de suppression automatique ajoutée.
 5. Prévoir vérification registre SIRENE, notifications de renouvellement/expiration et traitement opérationnel des contacts. Le SIRET n'est pas validé auprès du registre. Aucun email envoyé automatiquement.
