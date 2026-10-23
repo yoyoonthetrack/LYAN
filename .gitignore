@@ -36,3 +36,8 @@ scratch/
 # Map runtime assets copied from pinned npm packages by both builds
 vendor/leaflet/
 vendor/maplibre/
+
+# Local MapLibre Nunito Sans SDF glyph assets built from pinned Google Fonts.
+# The source TTF files are never committed or bundled.
+assets/maps/glyphs/**/*.pbf
+assets/maps/glyphs/.nunito-glyphs-manifest.json

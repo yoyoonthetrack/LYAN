@@ -37,6 +37,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "fontnik": "0.7.7",
     "leaflet": "1.9.4",
     "maplibre-gl": "5.6.1",
     "stripe": "^23.0.0",

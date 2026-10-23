@@ -37,3 +37,23 @@ Leaflet 1.9.4 owns interaction and pins; MapLibre GL 5.6.1 with the 0.1.4 Leafle
 adapter draws the vector basemap. All three are pinned and copied from npm into
 `vendor/` by the existing shared build preparation step (licenses included).
 Do not edit generated iOS assets separately.
+
+## Nunito Sans: bundled map labels (2026-10-23)
+The city, neighborhood, street, water and POI labels use **Nunito Sans**.
+The style's 23 text symbol layers are mapped to Nunito Sans Regular, Bold
+or Italic. SDF glyph ranges (0–1535) were generated from the static
+Nunito Sans TTF faces licensed under SIL OFL 1.1, using fontnik. The
+license is retained at assets/maps/glyphs/OFL-NunitoSans.txt. No raw
+TTF or OTF files are shipped or committed. European Latin diacritics
+and Cyrillic ranges are included; other scripts require a future
+fallback glyph strategy.
+
+bokantaj-map.js loads the local style JSON and resolves its
+glyphs template at runtime using document.baseURI, so fonts load
+from the **same origin** in Vercel, iOS Capacitor and Android Capacitor.
+No production-domain font URL is embedded. External HTTPS
+LYANN_MAP_STYLE_URL overrides are unaffected.
+
+Never change text-font families unless matching SDF .pbf
+glyph ranges exist and are tested. These are fonts **inside the map
+style**, not merely CSS fonts.

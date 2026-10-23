@@ -117,17 +117,34 @@
             };
             try {
                 const configured = window.LYANN_MAP_STYLE_URL;
-                const style = typeof configured === 'string' && /^https:\/\//.test(configured)
-                    ? configured : new URL('assets/maps/lyann-liberty.json', document.baseURI).href;
-                layer = window.L.maplibreGL({ style, interactive: false, attributionControl: false }).addTo(instance);
-                const gl = layer.getMaplibreMap();
+                // External operator styles stay untouched. For LYANN's bundled
+                // vector style, resolve font glyphs against the running origin
+                // (Vercel / iOS Capacitor / Android WebView), never Production.
+                const custom = typeof configured === 'string' && /^https:\/\//.test(configured);
+                const styleURL = new URL('assets/maps/lyann-liberty.json', document.baseURI);
+                const stylePromise = custom ? Promise.resolve(configured) :
+                    fetch(styleURL.href, { credentials: 'same-origin' }).then((response) => {
+                        if (!response.ok) throw new Error('LYANN vector style unavailable');
+                        return response.json();
+                    }).then((style) => {
+                        if (!style || !Array.isArray(style.layers) || !style.sources?.openmaptiles) {
+                            throw new Error('LYANN vector style invalid');
+                        }
+                        style.glyphs = new URL('assets/maps/glyphs/', document.baseURI).href + '{fontstack}/{range}.pbf';
+                        return style;
+                    });
+                stylePromise.then((style) => {
+                    if (failed || !instance._mapPane) return;
+                    layer = window.L.maplibreGL({ style, interactive: false, attributionControl: false }).addTo(instance);
+                    const gl = layer.getMaplibreMap();
+                    gl.on('error', fail);
+                    gl.on('idle', () => {
+                        if (failed || !gl.isStyleLoaded() || !gl.areTilesLoaded()) return;
+                        clearTimeout(timer); notice.hidden = true;
+                        element.dataset.basemap = 'ready';
+                    });
+                }).catch(fail);
                 timer = setTimeout(fail, 15000);
-                gl.on('error', fail);
-                gl.on('idle', () => {
-                    if (failed || !gl.isStyleLoaded() || !gl.areTilesLoaded()) return;
-                    clearTimeout(timer); notice.hidden = true;
-                    element.dataset.basemap = 'ready';
-                });
             } catch (_) { fail(); }
         }
         window.L.DomEvent.disableClickPropagation(notice);

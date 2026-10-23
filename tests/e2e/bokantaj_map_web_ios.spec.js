@@ -12,6 +12,23 @@ test('LYANN map style uses vector geographic sources only', () => {
 });
 
 
+test('LYANN map typography uses real Nunito Sans glyph bundles, not CSS-only labels', async ({ request }) => {
+  const style = require('../../assets/maps/lyann-liberty.json');
+  const fonts = new Set(style.layers.filter(x => x.type === 'symbol')
+    .flatMap(x => x.layout?.['text-font'] || []));
+  expect([...fonts].sort()).toEqual(['Nunito Sans Bold', 'Nunito Sans Italic', 'Nunito Sans Regular']);
+  expect(Object.values(style.sources).map(x => x.type)).toEqual(['vector']);
+  const base = process.env.LYANN_E2E_BASE_URL || 'http://127.0.0.1:8090';
+  for (const font of fonts) {
+    for (const range of ['0-255', '256-511', '1024-1279']) {
+      const endpoint = base + '/assets/maps/glyphs/' + encodeURIComponent(font) + '/' + range + '.pbf';
+      const response = await request.get(endpoint);
+      expect(response.status(), 'missing glyph ' + font + ' ' + range).toBe(200);
+      expect((await response.body()).byteLength).toBeGreaterThan(100);
+    }
+  }
+});
+
 for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w: 390, h: 844 }]) {
   test('Bokantaj Carte ' + screen.name + ': explore, filter and open a mapped post', async ({ page }) => {
     await page.setViewportSize({ width: screen.w, height: screen.h });

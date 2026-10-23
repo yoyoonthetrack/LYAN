@@ -27,6 +27,17 @@ function ensureLeafletAssets() {
         if (JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'))).version !== version) throw new Error(pkgName + ' must be pinned to ' + version);
         for (const [from, to] of files) fs.copyFileSync(path.join(pkgRoot, from), path.join(vectorDest, to));
     }
+    // Generate same-origin Nunito MapLibre PBFs before Web/Capacitor packaging.
+    // Uses a separate Node process so this build helper remains synchronous.
+    const child = require('node:child_process').spawnSync(
+        process.execPath,
+        [path.join(ROOT, 'scripts/ensure-nunito-map-glyphs.js')],
+        { cwd: ROOT, stdio: 'inherit', timeout: 150000 }
+    );
+    if (child.error || child.status !== 0) {
+        throw new Error('LYANN local vector label glyph preparation failed: ' +
+            (child.error?.message || child.status));
+    }
     return dest;
 }
 module.exports = ensureLeafletAssets;
