@@ -3945,6 +3945,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         return data;
     }
 
+    window.adminToggleMapFeatured = async function(id, featured) {
+        if (!/^[a-f0-9-]{36}$/i.test(String(id || ''))) return;
+        if (!featured && !window.confirm('Retirer ce repère permanent de la carte LYANN ? Le post restera dans le Fil.')) return;
+        const path = '/v1/admin/bokantaj/map-featured/' + encodeURIComponent(id);
+        const response = await window.fetchWithAdminAuth(path, {
+            method: featured ? 'PUT' : 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: featured ? JSON.stringify({ reason: 'Sélection éditoriale LYANN' }) : undefined
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) {
+            window.alert(result.error || 'Impossible de modifier la sélection cartographique.');
+            return;
+        }
+        if (typeof window.loadAdminSection === 'function') await window.loadAdminSection('sec-bokantaj');
+    };
+
     function renderAdminUsers(rows, tbodyId, kind) {
         const tbody = document.getElementById(tbodyId);
         if (!tbody) return;
@@ -4872,17 +4889,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await fetchAdminOps('bokantaj');
                 const tbody = document.getElementById('bokantajAdminTableBody');
                 const rows = data.rows || [];
-                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                let featured = null;
+                try {
+                    const response = await window.fetchWithAdminAuth('/v1/admin/bokantaj/map-featured');
+                    const body = await response.json();
+                    if (response.ok && body.success) featured = new Set((body.rows || []).map((row) => row.post_id));
+                } catch (_) { /* no administrative edits if the curated pin service is unavailable */ }
+                tbody.innerHTML = rows.length ? rows.map((row) => {
+                    const geo = row.place_lat != null && row.place_lng != null && row.place_label;
+                    const eligible = row.public_moderation_status === 'approved' && geo;
+                    const fixed = featured?.has(row.id) || false;
+                    const control = eligible && featured && /^[a-f0-9-]{36}$/i.test(row.id)
+                        ? `<button class="admin-btn admin-btn-sm ${fixed ? 'admin-btn-secondary' : 'admin-btn-primary'}"
+                            type="button" onclick="window.adminToggleMapFeatured('${row.id}', ${fixed ? 'false' : 'true'})">
+                            ${fixed ? '📌 Retirer de la carte permanente' : '📌 Conserver sur la carte'}
+                          </button>`
+                        : (geo ? '—' : 'Sans localisation');
+                    return `<tr>
                     <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
                     <td>${adminEscape(row.author_name)}</td>
                     <td>${adminEscape(row.city || row.territory || '—')}</td>
                     <td>${adminEscape((row.content || '').slice(0, 120))}</td>
                     <td>${adminDate(row.created_at)}</td>
                     <td>${adminBadge(row.account_type === 'seed' ? 'MAISON' : row.type || 'LYANN')}</td>
-                    <td>${adminBadge(row.lifecycle_label || row.moderation_status || row.type || 'info')}</td>
-                </tr>`).join('') : adminEmpty(7, 'Aucun Lyann publié.');
+                    <td>${adminBadge(row.public_moderation_status || row.lifecycle_label || '—')}</td>
+                    <td>${fixed ? '<strong>Permanent · équipe LYANN</strong>' : ''} ${control}</td>
+                </tr>`;
+                }).join('') : adminEmpty(8, 'Aucun Lyann publié.');
             },
-            'sec-content': async () => {
+                        'sec-content': async () => {
                 if (typeof window.loadAdminModerationCenter === 'function') {
                     await window.loadAdminModerationCenter();
                     return;
