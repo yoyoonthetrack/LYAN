@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const policy = require('../bokantaj-video-policy');
+const retention = require('../api/bokantaj-media-retention');
 
 function box(type, payload) {
     const body = Buffer.concat([Buffer.from(type), payload]);
@@ -88,4 +89,22 @@ test('orphan cleanup keeps referenced files and refuses production', () => {
     assert.equal(policy.volumeOf(objects).bytes, 170);
     assert.equal(policy.isProductionTarget('https://gzispjfoywklpqatjyop.supabase.co'), true);
     assert.equal(policy.isProductionTarget('https://tdktfbtqceldlaeqjtow.supabase.co'), false);
+});
+
+
+test('media cleanup never calls Storage outside the explicitly verified Staging project', async () => {
+    assert.equal(retention.isVerifiedStagingUrl('https://tdktfbtqceldlaeqjtow.supabase.co'), true);
+    assert.equal(retention.isVerifiedStagingUrl('https://gzispjfoywklpqatjyop.supabase.co'), false);
+    for (const target of [undefined, '', 'https://gzispjfoywklpqatjyop.supabase.co',
+        'https://other-project.supabase.co', 'not-a-url', 'https://tdktfbtqceldlaeqjtow.supabase.co.attacker.example']) {
+        assert.equal(retention.isVerifiedStagingUrl(target), false);
+        const forbidden = { storage: { from: () => { throw Error('STORAGE ACCESSED OUTSIDE STAGING'); } } };
+        const release = await retention.releaseMedia({
+            supabaseAdmin: forbidden, supabaseUrl: target,
+            urls: ['https://lyann.app/v1/media/bokantaj-media-hold/test/a.mp4']
+        });
+        assert.equal(release.skipped, 'unverified_environment');
+        const sweep = await retention.sweep({ supabaseAdmin: forbidden, supabaseUrl: target, apply: true });
+        assert.equal(sweep.skipped, 'unverified_environment');
+    }
 });
