@@ -170,7 +170,7 @@
 
     function updatePlaceButton() {
         const label = $('bokantajPlaceTriggerLabel');
-        if (label) label.textContent = savedPlace ? '📍 ' + savedPlace.label : 'Ajouter un lieu (facultatif)';
+        if (label) label.textContent = savedPlace ? '📍 ' + savedPlace.label : '📍 Partager une localisation';
         const trigger = $('bokantajPlaceTrigger');
         if (trigger) trigger.classList.toggle('has-place', !!savedPlace);
     }
@@ -179,6 +179,12 @@
         const lat = Number(latlng.lat), lng = Number(latlng.lng);
         if (!validPoint({ lat, lng }) || !pickerMap) return;
         pickerPoint = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
+        // A deliberate map tap selects and retains the point immediately.
+        // Requiring a second confirmation and a typed label previously caused
+        // posts to silently lose the location the member had just selected.
+        const typed = $('bokantajPlaceName')?.value.trim() || '';
+        savedPlace = { ...pickerPoint, label: typed.length >= 2 ? typed : (savedPlace?.label || 'Repère partagé') };
+        updatePlaceButton();
         if (pickerMarker) pickerMarker.setLatLng([lat, lng]);
         else {
             pickerMarker = window.L.circleMarker([lat, lng], {
@@ -186,7 +192,7 @@
                 fillOpacity: 1, weight: 3
             }).addTo(pickerMap);
         }
-        if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Repère placé ✓ Ajoutez simplement son nom.';
+        if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = '📍 Localisation enregistrée ✓ Vous pouvez préciser un nom, puis fermer la carte.';
     }
 
     function togglePicker(open) {
@@ -221,13 +227,13 @@
     }
 
     function savePlace() {
-        const label = $('bokantajPlaceName')?.value.trim() || '';
+        const label = $('bokantajPlaceName')?.value.trim() || savedPlace?.label || 'Repère partagé';
         if (!pickerPoint) {
             $('bokantajPickerStatus').textContent = 'Touchez d’abord un endroit sur la carte.';
             return;
         }
         if (label.length < 2 || label.length > 90) {
-            $('bokantajPickerStatus').textContent = 'Indiquez un nom de quartier ou un repère (2 caractères minimum).';
+            $('bokantajPickerStatus').textContent = 'Le nom du repère doit comporter entre 2 et 90 caractères.';
             $('bokantajPlaceName')?.focus();
             return;
         }
@@ -490,7 +496,7 @@
     }
 
     window.LYANN_BOKANTAJ_MAP = Object.freeze({
-        getComposerPlace() { return savedPlace ? { ...savedPlace } : null; },
+        getComposerPlace() { const typed = $('bokantajPlaceName')?.value.trim() || ''; return savedPlace ? { ...savedPlace, label: typed.length >= 2 && typed.length <= 90 ? typed : savedPlace.label } : null; },
         resetComposerPlace,
         showPost,
         switchView,
