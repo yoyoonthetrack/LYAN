@@ -41,8 +41,13 @@ async function releaseMedia({ supabaseAdmin, supabaseUrl, urls }) {
     if (!isVerifiedStagingUrl(supabaseUrl)) return { skipped: 'unverified_environment', removed: [] };
     const objects = objectsFromUrls(urls);
     if (!objects.length) return { removed: [] };
-    const removed = await removeObjects(supabaseAdmin, objects);
-    return { removed };
+    // Check all remaining posts before touching any bytes. Another live post
+    // may reference the same media, even after the original author deletes
+    // their post. Fail closed if the reference list is incomplete.
+    const { keep } = await referencedPaths(supabaseAdmin);
+    const safe = objects.filter((object) => !keep.has(object.path));
+    const removed = safe.length ? await removeObjects(supabaseAdmin, safe) : [];
+    return { removed, still_referenced: objects.length - safe.length };
 }
 
 async function clearPostMedia(supabaseAdmin, postId) {
