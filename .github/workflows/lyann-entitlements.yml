@@ -43,7 +43,7 @@ jobs:
       - name: Install dependencies without lifecycle scripts
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: API rights and payment regression tests
-        run: node --test tests/business-workflow.test.js tests/payment-quote-type.test.js tests/phase635-milestone-editor.test.js
+        run: node --test tests/plan-badges.test.js tests/business-workflow.test.js tests/payment-quote-type.test.js tests/phase635-milestone-editor.test.js
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update

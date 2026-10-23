@@ -633,9 +633,40 @@ const LYANN_API_CLIENT = {
         return res;
     },
 
+    async decoratePlanBadges(profiles) {
+        if (window.LYANN_SUPABASE_LOCK !== 'tdktfbtqceldlaeqjtow') return profiles;
+        const rows = (profiles || []).filter(Boolean);
+        // Clear legacy hints first; an outage must never restore a stale paid/verified badge.
+        rows.forEach(p => {
+            p.is_verified = false; p.is_pro_verified = false; p.kyc_verified = false;
+            p.verification_status = null; p.pro_verification_status = null;
+            p.subscription_plan = 'FREE'; p.badge = ''; p.lyann_badges = null;
+        });
+        const ids = [...new Set(rows.map(p => p.id || p.user_id).filter(isUUID))];
+        for (let offset = 0; offset < ids.length; offset += 100) {
+            const batch = ids.slice(offset, offset + 100);
+            try {
+                const result = await this.supabase.rpc('lyann_public_badges', { p_users: batch });
+                if (result.error || !Array.isArray(result.data)) continue;
+                const byId = new Map(result.data.filter(b => batch.includes(b.user_id)).map(b => [b.user_id,b]));
+                rows.forEach(p => {
+                    const b = byId.get(p.id || p.user_id);
+                    if (!b || !['FREE','PLUS','PRO'].includes(b.plan) || !(Date.parse(b.valid_until) > Date.now())) return;
+                    p.lyann_badges = { plan:b.plan, verified:b.plan === 'PRO' && b.verified === true, valid_until:b.valid_until };
+                    p.subscription_plan = b.plan;
+                    p.is_verified = p.is_pro_verified = p.lyann_badges.verified;
+                    p.badge = window.LYANN_PLANS?.badgeLabel(p) || '';
+                });
+            } catch (_) { /* Keep neutral badges while the service is unavailable. */ }
+        }
+        return profiles;
+    },
+
     async getProfile(userId) {
         if (!this.supabase) return { data: null };
-        return await this.supabase.from('profiles').select('*').eq('id', userId).single();
+        const result = await this.supabase.from('profiles').select('*').eq('id', userId).single();
+        if (result.data) await this.decoratePlanBadges([result.data]);
+        return result;
     },
 
     async rememberAppleIdentity(user, hints) {
@@ -693,7 +724,7 @@ const LYANN_API_CLIENT = {
         if (iz !== undefined && iz !== null) safeData.intervention_zone = Array.isArray(iz) ? iz : [String(iz)];
 
         if (profileData.is_pro !== undefined) safeData.is_pro = !!profileData.is_pro;
-        if (profileData.is_verified !== undefined) safeData.is_verified = !!profileData.is_verified;
+        // Verification is issued by the document review workflow, never by profile editing.
 
         if (profileData.notification_prefs && typeof profileData.notification_prefs === 'object') {
             safeData.notification_prefs = {
@@ -1255,6 +1286,7 @@ const LYANN_API_CLIENT = {
         const read = columns => this.supabase.from('public_profiles').select(columns).eq('id', userId).maybeSingle();
         let { data, error } = await read(`${identity}, is_verified, is_pro_verified, average_rating, reviews_count`);
         if (error) ({ data } = await read(identity));
+        if (data) await this.decoratePlanBadges([data]);
         return data || null;
     },
 
@@ -1271,7 +1303,7 @@ const LYANN_API_CLIENT = {
                     .select(select)
                     .eq('id', userId)
                     .maybeSingle();
-                if (!error && data) return data;
+                if (!error && data) { await this.decoratePlanBadges([data]); return data; }
                 if (error && !/column|schema cache/i.test(error.message || '')) return null;
             } catch (e) {
                 return null;

@@ -79,3 +79,7 @@ Le domaine Staging doit servir le commit testé et pointer sur tdktfbtqceldlaeqj
 - Suivi : sélection de mois, téléchargement CSV/PDF, acompte puis solde et avoir. Vérifier les téléchargements/partage dans WKWebView ; comportement physique non validé ici.
 - Expiration d'accès : plus de dépôt/vitrine visible, anciens documents encore téléchargeables par le propriétaire.
 - Paiement par étape : parcours existant accessible en Gratuit et libellé lisible.
+
+
+### Badges serveur
+Les badges sont désormais raccordés aux droits actifs et aux justificatifs approuvés sur les surfaces principales. Voir [règles, limites et validation iPhone](lyann-badges-subscriptions-staging.md). Les achats natifs restent désactivés.

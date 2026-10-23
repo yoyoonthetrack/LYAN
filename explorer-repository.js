@@ -43,6 +43,7 @@
                 readAll('public_profiles'), readAll('services')
             ]);
             const api = client();
+            if (api.decoratePlanBadges) await api.decoratePlanBadges(profiles);
             const services = serviceRows
                 .filter(s => api.isPublishedService(s))
                 .map(s => api.presentService(s));
@@ -65,6 +66,7 @@
             ({ data, error } = await read(authorColumns));
         }
         if (error) throw error;
+        if (client().decoratePlanBadges) await client().decoratePlanBadges(data || []);
         return data || [];
     }
 
@@ -85,6 +87,7 @@
                     if (next !== null && (!Number.isSafeInteger(next) || next <= offset)) throw new Error('Invalid public discovery pagination');
                     offset = next;
                 } while (offset !== null);
+                if (client()?.decoratePlanBadges) await client().decoratePlanBadges(rows.map(r => r.profiles).filter(Boolean));
                 return rows;
             }
             const requests = await readAll('requests', q => q.eq('visibility', 'PUBLIC').eq('status', 'OPEN').eq('safety_status', 'SAFE').is('target_user_id', null).in('classification_status', ['CLASSIFIED', 'UNCLASSIFIED']));

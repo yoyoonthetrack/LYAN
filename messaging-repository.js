@@ -299,6 +299,8 @@
         }
       }
 
+      if (client.decoratePlanBadges) await client.decoratePlanBadges([...profilesById.values()]);
+
       const invitationsByConversation = new Map();
       try {
         const invitationResult = await client.supabase.from('request_invitations').select('id,conversation_id,request_id,requester_id,recipient_id,status').in('conversation_id', conversationIds);

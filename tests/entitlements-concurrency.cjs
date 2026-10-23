@@ -21,8 +21,10 @@ function checkRace(results,code){
  execFileSync('createdb',[...base,database]);
  try{
   file('tests/fixtures/entitlements-schema.sql');
-  for(const migration of ['82_lyann_entitlement_guards_staging.sql','83_lyann_atomic_profile_skills_staging.sql','84_lyann_self_entitlements_staging.sql'])file(migration);
+  for(const migration of ['82_lyann_entitlement_guards_staging.sql','83_lyann_atomic_profile_skills_staging.sql','84_lyann_self_entitlements_staging.sql','85_lyann_public_badges_staging.sql'])file(migration);
   file('tests/entitlements-staging.sql');
+  file('tests/plan-badges-staging.sql');
+  console.log('PASS public badges, expiry, evidence and anonymous RPC');
   const u=randomUUID(),c=randomUUID();
   sql("INSERT INTO auth.users(id,email) VALUES('"+u+"','local-provider@example.invalid'),('"+c+"','local-client@example.invalid'); SELECT lyann_set_entitlement_test('"+u+"',true,'"+c+"');");
   sql("INSERT INTO missions(helper_id,requester_id,status) VALUES('"+u+"','"+c+"','AGREED')");

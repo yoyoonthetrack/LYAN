@@ -1389,8 +1389,13 @@ safeDomReady(() => {
 
         // Build Real Badges Only
         let badgesHTML = '';
-        if (pData.is_verified) badgesHTML += '<span class="lyann-badge lyann-badge-verified"><i class="ph-fill ph-seal-check"></i> Profil vérifié</span> ';
-        if (pData.is_pro_verified) badgesHTML += '<span class="lyann-badge lyann-badge-pro"><i class="ph ph-briefcase"></i> PRO</span>';
+        if (window.LYANN_SUPABASE_LOCK !== 'tdktfbtqceldlaeqjtow' && pData.is_verified) badgesHTML += '<span class="lyann-badge lyann-badge-verified"><i class="ph-fill ph-seal-check"></i> Profil vérifié</span> ';
+        if (window.LYANN_SUPABASE_LOCK !== 'tdktfbtqceldlaeqjtow' && pData.is_pro_verified) badgesHTML += '<span class="lyann-badge lyann-badge-pro"><i class="ph ph-briefcase"></i> PRO</span>';
+
+        if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow') {
+            const label = window.LYANN_PLANS?.badgeLabel(pData);
+            if (label) badgesHTML = '<span class="lyann-badge lyann-badge-pro">' + window.escapeHtmlAttr(label) + '</span>';
+        }
 
         // Build Real Trust Metrics
         let trustItems = [];
@@ -4463,7 +4468,7 @@ safeDomReady(() => {
         const avatarSrc = window.getLyannAvatarUrl(member.avatar_url || member.avatar);
         const cityText = window.formatProfileLocation(member.commune || member.city || member.locationName, member.territory);
         const roleText = member.role || (member.is_pro ? 'Professionnel' : 'Membre LYANN');
-        const badgeText = member.badge || (member.is_pro_verified ? 'Pro vérifié' : (member.is_verified ? 'Profil vérifié' : ''));
+        const badgeText = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? (window.LYANN_PLANS?.badgeLabel(member) || '') : member.badge || (member.is_pro_verified ? 'Pro vérifié' : (member.is_verified ? 'Profil vérifié' : ''));
         const rawSkills = Array.isArray(member.skills) && member.skills.length > 0 ? member.skills : (Array.isArray(member.intervention_zone) && member.intervention_zone.length > 0 ? member.intervention_zone : (typeof member.skills === 'string' ? member.skills.split(',') : []));
         const skillsList = rawSkills.filter(Boolean);
 
@@ -6179,8 +6184,14 @@ safeDomReady(() => {
                 verifText = 'Profil vérifié';
                 verifClass = 'pill-green';
             }
-            const isVerified = !!(userProf?.is_pro_verified || userProf?.is_verified);
-            const verifRowTitle = isVerified ? 'Vérification' : 'Vérifier mon identité';
+            if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow') {
+                verifText = window.LYANN_PLANS?.badgeLabel(userProf) || 'Gratuit';
+                verifClass = userProf?.lyann_badges?.verified ? 'pill-green' : 'pill-yellow';
+            }
+            const isVerified = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow'
+                ? !!(window.LYANN_PLANS?.badgeLabel(userProf) && userProf?.lyann_badges?.verified)
+                : !!(userProf?.is_pro_verified || userProf?.is_verified);
+            const verifRowTitle = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? 'Formule et vérification professionnelle' : (isVerified ? 'Vérification' : 'Vérifier mon identité');
             const emailEmpty = !userEmail;
 
             subViewContent = `
@@ -6215,7 +6226,7 @@ safeDomReady(() => {
                                 </div>
                             </div>
                             <div class="account-divider"></div>
-                            <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
+                            <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(window.LYANN_SUPABASE_LOCK==='tdktfbtqceldlaeqjtow') { location.href='professional.html'; } else if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
                                 <div class="row-icon"><i class="ph ph-shield-check"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">${verifRowTitle}</strong>
@@ -7394,7 +7405,11 @@ safeDomReady(() => {
 
             // Render drawer badge ONLY IF real backend data verifies it
             if (drawerUserBadge) {
-                if (profileData.is_pro || profileData.is_pro_verified || profileData.pro_verification_status === 'verified') {
+                if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow') {
+                    const label = window.LYANN_PLANS?.badgeLabel(profileData) || '';
+                    drawerUserBadge.textContent = label;
+                    drawerUserBadge.style.display = label ? 'inline-flex' : 'none';
+                } else if (profileData.is_pro || profileData.is_pro_verified || profileData.pro_verification_status === 'verified') {
                     drawerUserBadge.innerHTML = '<span class="account-v3-badge account-v3-badge-pro"><i class="ph-fill ph-seal-check"></i> PRO</span>';
                     drawerUserBadge.style.display = 'inline-flex';
                 } else if (profileData.is_verified || profileData.verification_status === 'verified') {

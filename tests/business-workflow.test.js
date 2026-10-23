@@ -9,7 +9,7 @@ test('catalogue and entitlements never upgrade an expired or forged plan',()=>{
  assert.equal(effectivePlan({plan:'PRO',status:'cancel_at_period_end',expires_at:'2099-01-01'}).code,'PRO');
 });
 test('verified badge requires active Pro, approved documents and unexpired evidence',()=>{
- const d={status:'approved',documents:[{decision:'approved',expires_at:'2099-01-01'}]};
+ const d={status:'approved',identity:{activity:'general'},documents:[{kind:'registration',decision:'approved',expires_at:'2099-01-01'}]};
  assert.equal(verifiedBadge(PLANS.PRO,d),true);
  assert.equal(verifiedBadge(PLANS.PLUS,d),false);
  assert.equal(verifiedBadge(PLANS.PRO,{...d,documents:[]}),false);

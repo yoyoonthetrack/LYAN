@@ -164,7 +164,7 @@
             const place = window.formatProfileLocation
                 ? window.formatProfileLocation(p.city, p.territory)
                 : ([p.city, p.territory].filter(Boolean).join(' · ') || 'Guadeloupe');
-            const badgeText = p.badge || (p.is_pro_verified ? 'PRO VÉRIFIÉ' : (p.is_verified || p.kyc_verified ? 'PROFIL VÉRIFIÉ' : ''));
+            const badgeText = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? (window.LYANN_PLANS?.badgeLabel(p) || '') : p.badge || (p.is_pro_verified ? 'PRO VÉRIFIÉ' : (p.is_verified || p.kyc_verified ? 'PROFIL VÉRIFIÉ' : ''));
             const rawSkills = Array.isArray(p.skills) && p.skills.length ? p.skills : (Array.isArray(p.intervention_zone) && p.intervention_zone.length ? p.intervention_zone : (p.services || []).map(s => s.title || s.name).filter(Boolean));
             const skillsText = rawSkills.slice(0, 4).join(' · ');
             const bioQuote = formatBioQuote(p, skillsText);

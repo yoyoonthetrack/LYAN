@@ -36,11 +36,21 @@ function effectivePlan(subscription, now = Date.now()) {
  return PLANS[subscription.plan];
 }
 function verifiedBadge(plan, dossier, now = Date.now()) {
- return plan.code === 'PRO' && dossier?.status === 'approved' &&
- Array.isArray(dossier.documents) && dossier.documents.length > 0 &&
- dossier.documents.every(d => d.decision === 'approved' && (!d.expires_at || Date.parse(d.expires_at+'T23:59:59Z') > now));
+ if(plan.code!=='PRO'||dossier?.status!=='approved'||!['general','construction','regulated'].includes(dossier.identity?.activity)||!Array.isArray(dossier.documents)||!dossier.documents.length)return false;
+ const required=['registration',...(dossier.identity.activity==='construction'?['insurance','decennial']:[]),...(dossier.identity.activity==='regulated'?['qualification','insurance']:[])];
+ return required.every(kind=>dossier.documents.some(d=>d.kind===kind))&&dossier.documents.every(d=>{
+  if(d.decision!=='approved'||(['insurance','decennial'].includes(d.kind)&&!d.expires_at))return false;
+  if(!d.expires_at)return true;
+  const date=Date.parse(d.expires_at+'T00:00:00Z');
+  return /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(d.expires_at)&&Number.isFinite(date)&&new Date(date).toISOString().slice(0,10)===d.expires_at&&date+86400000>now;
+ });
 }
-const api = Object.freeze({PLANS,FEATURES,effectivePlan,verifiedBadge});
+function badgeLabel(profile, now = Date.now()) {
+ const b=profile?.lyann_badges;
+ if(!b||!Number.isFinite(Date.parse(b.valid_until))||Date.parse(b.valid_until)<=now)return '';
+ return b.plan==='PLUS'?'Lyanneur Plus':b.plan==='PRO'?(b.verified===true?'Pro · Vérifié':'Pro'):'';
+}
+const api = Object.freeze({PLANS,FEATURES,effectivePlan,verifiedBadge,badgeLabel});
 if(typeof module !== 'undefined' && module.exports) module.exports=api;
 else root.LYANN_PLANS=api;
 })(typeof window === 'undefined' ? globalThis : window);
