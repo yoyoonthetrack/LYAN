@@ -89,7 +89,9 @@
         return new Promise((resolve, reject) => {
             const url = URL.createObjectURL(file);
             const video = document.createElement('video');
-            video.muted = true;
+            // Keep the audio source unmuted for capture. The Web Audio graph
+            // routes it only into the recorder, not to the device speakers.
+            video.muted = false;
             video.playsInline = true;
             video.preload = 'auto';
             video.onerror = () => {
@@ -109,27 +111,54 @@
                     reject(error);
                     return;
                 }
-                const mime = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')
-                    ? 'video/mp4;codecs=avc1'
-                    : (MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm');
-                let stream;
-                try { stream = canvas.captureStream(24); } catch (err) {
+                const mime = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')
+                    ? 'video/mp4;codecs=avc1,mp4a.40.2'
+                    : (MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : '');
+                if (!mime) {
                     URL.revokeObjectURL(url);
-                    reject(err);
+                    reject(new Error('Cet appareil ne peut pas exporter un MP4 avec le son. Choisissez un MP4 déjà raccourci.'));
                     return;
                 }
-                if (typeof video.captureStream === 'function') {
-                    try {
-                        video.captureStream().getAudioTracks().forEach((track) => stream.addTrack(track));
-                    } catch (err) { /* a clip without an exposed audio track keeps its picture */ }
+                let stream, audioContext;
+                const cleanAudio = () => {
+                    if (stream) stream.getTracks().forEach((track) => track.stop());
+                    if (audioContext) audioContext.close().catch(() => {});
+                };
+                try {
+                    stream = canvas.captureStream(24);
+                    const Audio = window.AudioContext || window.webkitAudioContext;
+                    if (!Audio) throw new Error('Le son ne peut pas être préservé sur cet appareil.');
+                    audioContext = new Audio();
+                    const fromVideo = audioContext.createMediaElementSource(video);
+                    const recorderOutput = audioContext.createMediaStreamDestination();
+                    fromVideo.connect(recorderOutput); // deliberately not connected to speakers
+                    const tracks = recorderOutput.stream.getAudioTracks();
+                    if (tracks.length !== 1) throw new Error('Piste audio non disponible.');
+                    stream.addTrack(tracks[0]);
+                    await audioContext.resume();
+                    if (audioContext.state !== 'running') throw new Error('Capture audio non disponible.');
+                } catch (err) {
+                    cleanAudio();
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Impossible de conserver le son avec la compression sur cet appareil. Utilisez un MP4 déjà raccourci.'));
+                    return;
                 }
-                const recorder = new MediaRecorder(stream, {
-                    mimeType: mime,
-                    videoBitsPerSecond: policy.targetVideoBitsPerSecond(end - start)
-                });
+                let recorder;
+                try {
+                    recorder = new MediaRecorder(stream, {
+                        mimeType: mime,
+                        videoBitsPerSecond: policy.targetVideoBitsPerSecond(end - start)
+                    });
+                } catch (err) {
+                    cleanAudio();
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Export MP4 avec son indisponible sur cet appareil.'));
+                    return;
+                }
                 const chunks = [];
                 recorder.ondataavailable = (event) => { if (event.data && event.data.size) chunks.push(event.data); };
                 recorder.onerror = () => {
+                    cleanAudio();
                     URL.revokeObjectURL(url);
                     reject(new Error('La compression a échoué.'));
                 };
@@ -139,8 +168,9 @@
                 }, Math.ceil((end - start) * 1000) + 1500);
                 recorder.onstop = () => {
                     window.clearTimeout(limit);
+                    cleanAudio();
                     URL.revokeObjectURL(url);
-                    const type = mime.indexOf('mp4') !== -1 ? 'video/mp4' : 'video/webm';
+                    const type = 'video/mp4';
                     const blob = new Blob(chunks, { type });
                     if (!blob.size || blob.size > policy.MAX_BYTES) {
                         reject(new Error('Le passage choisi dépasse encore 10 Mo. Raccourcissez-le.'));
@@ -159,7 +189,11 @@
                 };
                 video.onseeked = () => {
                     recorder.start(200);
-                    video.play().then(() => requestAnimationFrame(paint)).catch(reject);
+                    video.play().then(() => requestAnimationFrame(paint)).catch((err) => {
+                        cleanAudio();
+                        reject(new Error('Lecture nécessaire à la conversion indisponible.'));
+                        try { if (recorder.state === 'recording') recorder.stop(); } catch (_) {}
+                    });
                 };
                 try { video.currentTime = start; } catch (err) { reject(err); }
             };
