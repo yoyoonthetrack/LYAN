@@ -212,8 +212,29 @@
         const center = savedPlace
             ? [savedPlace.lat, savedPlace.lng, 14] : selectedCenter();
         if (!pickerMap) {
-            pickerMap = setupLeafletMap($('bokantajPickerMap'), center);
+            const pickerElement = $('bokantajPickerMap');
+            pickerMap = setupLeafletMap(pickerElement, center);
             pickerMap.on('click', (event) => setPickerPoint(event.latlng));
+            // On WebViews, MapLibre's overlay can swallow Leaflet's synthetic
+            // touch click. Capture deliberate taps on the picker container;
+            // avoid selecting a pin when the user pans/zooms the map.
+            let touchStart = null;
+            pickerElement.addEventListener('pointerdown', (event) => {
+                if (event.pointerType !== 'touch' || !event.isPrimary) return;
+                if (event.target.closest?.('.leaflet-control')) return;
+                touchStart = { x: event.clientX, y: event.clientY, at: Date.now() };
+            }, true);
+            pickerElement.addEventListener('pointerup', (event) => {
+                const start = touchStart;
+                touchStart = null;
+                if (!start || event.pointerType !== 'touch' || !event.isPrimary) return;
+                if (event.target.closest?.('.leaflet-control')) return;
+                if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12 || Date.now() - start.at > 650) return;
+                const rect = pickerElement.getBoundingClientRect();
+                const point = pickerMap.containerPointToLatLng([event.clientX - rect.left, event.clientY - rect.top]);
+                setPickerPoint(point);
+            }, true);
+            pickerElement.addEventListener('pointercancel', () => { touchStart = null; }, true);
         }
         pickerMap.setView([center[0], center[1]], center[2]);
         pickerPoint = null;
