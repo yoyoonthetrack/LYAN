@@ -373,6 +373,28 @@ function sliceMediaRange(buffer, rangeHeader) {
     return { status: 206, body, headers: { ...base, 'Content-Range': 'bytes ' + start + '-' + end + '/' + size, 'Content-Length': body.length } };
 }
 
+// A moderation release alone is not enough: a post can later be hidden
+// without its media release row being updated. Re-check the underlying post
+// before serving video bytes or poster frames from reusable URLs.
+async function isApprovedBokantajMediaReference(supabaseAdmin, bucket, path) {
+    const ownerId = ownerIdFromPath(path);
+    if (!ownerId || !['bokantaj-media-hold', 'bokantaj-media'].includes(bucket)) return false;
+    const { data, error } = await supabaseAdmin.from('bokantaj_posts')
+        .select('media_urls, public_moderation_status, human_decision')
+        .eq('author_id', ownerId).limit(1000);
+    // Fail closed when an incomplete PostgREST result could hide a matching
+    // deleted/rejected reference; query pagination can be added later.
+    if (error || !Array.isArray(data) || data.length >= 1000) return false;
+    return data.some((post) => {
+        if (post.public_moderation_status !== 'approved' ||
+            post.human_decision === 'hide' || post.human_decision === 'reject') return false;
+        return (post.media_urls || []).some((storedUrl) => {
+            const parsed = mediaFromStoredUrl(storedUrl);
+            return parsed && parsed.bucket === bucket && parsed.path === path;
+        });
+    });
+}
+
 async function serveModeratedMedia({ supabaseAdmin, verifyAdminPermission, bucket, path, authorization, range }) {
     if (!path || !MEDIA_BUCKETS.includes(bucket)) return { status: 404, body: null };
     const release = await supabaseAdmin
@@ -401,6 +423,12 @@ async function serveModeratedMedia({ supabaseAdmin, verifyAdminPermission, bucke
         };
     }
     if (access !== 'stream') return { status: 404, body: null };
+    if (release.data?.status === 'approved' &&
+        ['bokantaj-media-hold', 'bokantaj-media'].includes(bucket) &&
+        (release.data?.kind === 'video' || /-poster\.jpe?g$/i.test(path))) {
+        const stillPublished = await isApprovedBokantajMediaReference(supabaseAdmin, bucket, path);
+        if (!stillPublished) return { status: 404, body: null };
+    }
     const downloaded = await supabaseAdmin.storage.from(bucket).download(path);
     if (downloaded.error || !downloaded.data) return { status: 404, body: null };
     const bytes = Buffer.from(await downloaded.data.arrayBuffer());
@@ -414,5 +442,6 @@ module.exports = {
     secretMatches,
     workerAuthorized,
     sliceMediaRange,
+    isApprovedBokantajMediaReference,
     serveModeratedMedia
 };
