@@ -28,17 +28,31 @@ test('video gateway understands normal, suffix, open-ended and invalid byte rang
 test('range download happens only after moderation visibility allows it', async () => {
   let downloadCount = 0;
   let status = 'pending';
+  const owner = '11111111-1111-4111-8111-111111111111';
+  const path = owner + '/movie.mp4';
+  let postStatus = 'approved';
+  const postUrl = 'https://lyann.app/v1/media/bokantaj-media-hold/' + path;
   const supabaseAdmin = {
     from(table) {
-      assert.equal(table, 'public_media_releases');
-      return { select() { return this; }, eq() { return this; },
-        async maybeSingle() { return { data: { status, kind: 'video' }, error: null }; } };
+      if (table === 'public_media_releases') return {
+        select() { return this; }, eq() { return this; },
+        async maybeSingle() { return { data: { status, kind: 'video' }, error: null }; }
+      };
+      assert.equal(table, 'bokantaj_posts');
+      return {
+        select() { return this; }, eq() { return this; },
+        async limit() { return { data: postStatus === 'deleted' ? [] : [
+          { public_moderation_status: postStatus === 'hidden' ? 'rejected' : 'approved',
+            human_decision: postStatus === 'hidden' ? 'hide' : null,
+            media_urls: [postUrl] }
+        ], error: null }; }
+      };
     },
     storage: { from() { return {
       async download() { downloadCount += 1; return { data: new Blob(['abcdefghij'], { type: 'video/mp4' }), error: null }; }
     }; } }
   };
-  const args = { supabaseAdmin, bucket: 'bokantaj-media-hold', path: 'owner-id/movie.mp4', range: 'bytes=2-5' };
+  const args = { supabaseAdmin, bucket: 'bokantaj-media-hold', path, range: 'bytes=2-5' };
   const held = await serveModeratedMedia(args);
   assert.equal(held.status, 404);
   assert.equal(downloadCount, 0);
@@ -47,4 +61,9 @@ test('range download happens only after moderation visibility allows it', async 
   assert.equal(approved.status, 206);
   assert.equal(approved.body.toString(), 'cdef');
   assert.equal(downloadCount, 1);
+  postStatus = 'hidden';
+  assert.equal((await serveModeratedMedia(args)).status, 404);
+  postStatus = 'deleted';
+  assert.equal((await serveModeratedMedia(args)).status, 404);
+  assert.equal(downloadCount, 1, 'hidden/deleted video must not reach Storage');
 });
