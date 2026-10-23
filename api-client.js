@@ -1596,40 +1596,76 @@ const LYANN_API_CLIENT = {
             || south > north || west > east) {
             return { data: [], error: 'Zone géographique invalide.' };
         }
-        const { data, error } = await this.supabase
-            .from('bokantaj_posts')
-            .select('id, author_id, type, content, city, territory, media_urls, created_at, place_lat, place_lng, place_label, public_moderation_status')
+        // The map (not the feed) is temporary. A 7-day SQL limit keeps old
+        // posts out of the map query; admin-curated exceptions are fetched
+        // separately from a read-only RLS table. Nothing is deleted.
+        const lastSevenDays = new Date(Date.now() - 7 * 86400000).toISOString();
+        const columns = 'id, author_id, type, content, city, territory, media_urls, created_at, place_lat, place_lng, place_label, public_moderation_status';
+        const inBounds = (query) => query
             .eq('public_moderation_status', 'approved')
             .not('place_lat', 'is', null)
             .not('place_lng', 'is', null)
             .not('place_label', 'is', null)
             .gte('place_lat', south).lte('place_lat', north)
-            .gte('place_lng', west).lte('place_lng', east)
-            .order('created_at', { ascending: false })
-            .limit(250);
-        const rows = (data || []).map((post) => ({
-            ...post,
-            media_urls: (post.media_urls || []).map(displayedBokantajMediaUrl)
-        }));
-        const authorIds = [...new Set(rows.map((row) => row && row.author_id).filter(Boolean))];
+            .gte('place_lng', west).lte('place_lng', east);
+        // Density is measured in fixed roughly 25 km geographic cells. It
+        // does not fluctuate when people merely zoom the map. Thresholds are
+        // intentionally conservative until real neighbourhood traffic grows.
+        const step = 0.25;
+        const cellLat = Math.floor(((south + north) / 2) / step) * step;
+        const cellLng = Math.floor(((west + east) / 2) / step) * step;
+        const results = await Promise.all([
+            inBounds(this.supabase.from('bokantaj_posts').select(columns))
+                .gte('created_at', lastSevenDays).order('created_at', { ascending: false }).limit(250),
+            this.supabase.from('bokantaj_posts').select('id', { count: 'exact', head: true })
+                .eq('public_moderation_status', 'approved')
+                .not('place_lat', 'is', null).not('place_lng', 'is', null)
+                .gte('created_at', lastSevenDays)
+                .gte('place_lat', cellLat).lt('place_lat', cellLat + step)
+                .gte('place_lng', cellLng).lt('place_lng', cellLng + step),
+            this.supabase.from('bokantaj_map_featured').select('post_id').limit(250)
+        ]);
+        const [recent, density, curated] = results;
+        if (recent.error) return { data: [], error: recent.error.message || 'Carte indisponible.' };
+        if (curated.error) return { data: [], error: 'Sélections cartographiques indisponibles. Vérifier la migration Staging.' };
+        const activity = Number.isFinite(density.count) ? density.count : 0;
+        const mapLifetimeDays = activity >= 250 ? 1 : activity >= 120 ? 3 : activity >= 40 ? 5 : 7;
+        const curatedIds = (curated.data || []).map((item) => item.post_id).filter(Boolean);
+        let selected = [];
+        if (curatedIds.length) {
+            const result = await inBounds(this.supabase.from('bokantaj_posts').select(columns))
+                .in('id', curatedIds).order('created_at', { ascending: false }).limit(250);
+            if (result.error) return { data: [], error: result.error.message || 'Repères permanents indisponibles.' };
+            selected = (result.data || []).map((row) => ({ ...row, map_featured: true }));
+        }
+        const seen = new Set(selected.map((row) => row.id));
+        const combined = [
+            ...selected,
+            ...(recent.data || []).filter((row) => !seen.has(row.id))
+                .map((row) => ({ ...row, map_featured: false }))
+        ];
+        const threshold = Date.now() - mapLifetimeDays * 86400000;
+        const rows = combined.filter((row) => row.map_featured
+            || (Date.parse(row.created_at) >= threshold && (row.type !== 'trafic'
+                || Date.parse(row.created_at) >= Date.now() - 86400000)));
+        rows.forEach((row) => { row.media_urls = (row.media_urls || []).map(displayedBokantajMediaUrl); });
+        const authorIds = [...new Set(rows.map((row) => row?.author_id).filter(Boolean))];
         const names = {};
-        if (authorIds.length && !error) {
+        if (authorIds.length) {
             try {
                 const profiles = await this.supabase.from('public_profiles')
-                    .select('id, first_name, last_name')
-                    .in('id', authorIds);
+                    .select('id, first_name, last_name').in('id', authorIds);
                 (profiles.data || []).forEach((profile) => {
                     const first = String(profile.first_name || '').trim();
                     if (!first || /^(step|prod|user_|req_user_|check_|ua_|ub_|h_step)/.test(first)) return;
                     names[profile.id] = window.formatPublicName
-                        ? window.formatPublicName(profile, null, 'Lyanneur')
-                        : first;
+                        ? window.formatPublicName(profile, null, 'Lyanneur') : first;
                 });
-            } catch (_) { /* the pin still opens without a name */ }
+            } catch (_) { /* map remains accessible if profiles are unavailable */ }
         }
         return {
-            data: rows.map((row) => Object.assign({}, row, { author_name: names[row.author_id] || 'Lyanneur' })),
-            error: error ? error.message : null
+            data: rows.map((row) => ({ ...row, author_name: names[row.author_id] || 'Lyanneur' })),
+            error: null, mapLifetimeDays, activity
         };
     },
 
