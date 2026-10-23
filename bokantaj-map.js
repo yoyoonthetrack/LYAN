@@ -121,7 +121,7 @@
                 // vector style, resolve font glyphs against the running origin
                 // (Vercel / iOS Capacitor / Android WebView), never Production.
                 const custom = typeof configured === 'string' && /^https:\/\//.test(configured);
-                const styleURL = new URL('assets/maps/lyann-liberty.json?v=20261023-draw', document.baseURI);
+                const styleURL = new URL('assets/maps/lyann-liberty.json?v=20261023-chic', document.baseURI);
                 const stylePromise = custom ? Promise.resolve(configured) :
                     fetch(styleURL.href, { credentials: 'same-origin' }).then((response) => {
                         if (!response.ok) throw new Error('LYANN vector style unavailable');
