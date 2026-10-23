@@ -2231,7 +2231,7 @@ app.get('/v1/admin/ops', async (req, res) => {
         if (resource === 'bokantaj') {
             const rows = await adminSafeSelect(
                 'bokantaj_posts',
-                'id, author_id, type, content, city, territory, created_at',
+                'id, author_id, type, content, city, territory, created_at, place_lat, place_lng, place_label, public_moderation_status',
                 (q) => q.order('created_at', { ascending: false }).limit(limit)
             );
             const profiles = await adminMapProfiles(rows.map((row) => row.author_id));
