@@ -249,11 +249,36 @@ function pageHttpOrigin() {
     }
 }
 
+// Isolated Staging must never ask Production to serve private moderation media.
+function isolatedBokantajMediaOrigin() {
+    const binding = resolveLyannClientBinding();
+    if (!binding.ok || !String(binding.url || '').includes('tdktfbtqceldlaeqjtow')) return '';
+    const backend = String(getLyannBackendOrigin() || '').replace(/\/$/, '');
+    if (backend && backend !== 'https://lyann.app') return backend;
+    // A browser Preview hosts its own /v1/media route. Capacitor needs an
+    // explicit reachable Staging backend; its local origin cannot proxy media.
+    return isCapacitorRuntime() ? '' : pageHttpOrigin();
+}
+
+function displayedBokantajMediaUrl(value) {
+    const url = String(value || '');
+    if (!/^https:\/\/lyann\.app\/v1\/media\/(?:bokantaj-media-hold|bokantaj-media)\//i.test(url)) return url;
+    const staging = isolatedBokantajMediaOrigin();
+    return staging ? staging + url.slice('https://lyann.app'.length) : url;
+}
+
 function holdMediaUrl(bucket, objectPath) {
-    const origin = (typeof getLyannBackendOrigin === 'function' && getLyannBackendOrigin()) || 'https://lyann.app';
+    const binding = resolveLyannClientBinding();
+    if (!binding.ok) throw new Error('Environnement média non configuré.');
+    const isStaging = String(binding.url || '').includes('tdktfbtqceldlaeqjtow');
+    const origin = isStaging
+        ? isolatedBokantajMediaOrigin()
+        : (getLyannBackendOrigin() || 'https://lyann.app');
+    if (!origin) throw new Error('Passerelle média Staging manquante. Envoi arrêté pour protéger vos photos.');
     const encoded = String(objectPath || '').split('/').filter(Boolean).map(encodeURIComponent).join('/');
     return `${String(origin).replace(/\/$/, '')}/v1/media/${bucket}/${encoded}`;
 }
+if (typeof window !== 'undefined') window.LYANN_BOKANTAJ_RESOLVE_MEDIA_URL = displayedBokantajMediaUrl;
 
 function getLyannBackendOrigin() {
     const binding = resolveLyannClientBinding();
@@ -1542,8 +1567,8 @@ const LYANN_API_CLIENT = {
                     source_url: p.source_url || '',
                     source_published_at: p.source_published_at || '',
                     editorial: /Compte éditorial LYANN/i.test(authorProf?.bio || ''),
-                    images: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
-                    videos: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
+                    images: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)).map(displayedBokantajMediaUrl),
+                    videos: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)).map(displayedBokantajMediaUrl),
                     moderation_status: p.public_moderation_status || null,
                     likes: (postLikesCountMap[p.id] !== undefined) ? postLikesCountMap[p.id] : (p.likes_count || 0),
                     user_has_liked: userLikedPostsSet.has(p.id),
@@ -1582,7 +1607,7 @@ const LYANN_API_CLIENT = {
             .gte('place_lng', west).lte('place_lng', east)
             .order('created_at', { ascending: false })
             .limit(250);
-        return { data: data || [], error: error ? error.message : null };
+        return { data: (data || []).map((post) => ({ ...post, media_urls: (post.media_urls || []).map(displayedBokantajMediaUrl) })), error: error ? error.message : null };
     },
 
     // --- BOKANTAJ SOCIAL API METHODS ---
