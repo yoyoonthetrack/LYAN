@@ -4,6 +4,18 @@ const policy = require('../bokantaj-video-policy');
 const { mediaFromStoredUrl } = require('./content-moderation');
 
 const BUCKETS = ['bokantaj-media', 'bokantaj-media-hold'];
+const STAGING_PROJECT_REF = 'tdktfbtqceldlaeqjtow';
+
+// Never infer that an unknown or missing URL is safe to delete from.
+// This module must fail closed even when a deployment is misconfigured.
+function isVerifiedStagingUrl(supabaseUrl) {
+    try {
+        return new URL(String(supabaseUrl || '')).hostname === STAGING_PROJECT_REF + '.supabase.co';
+    } catch (_) {
+        return false;
+    }
+}
+
 
 function objectsFromUrls(urls) {
     return (Array.isArray(urls) ? urls : []).map(mediaFromStoredUrl).filter((item) => item && BUCKETS.includes(item.bucket));
@@ -26,7 +38,7 @@ async function removeObjects(supabaseAdmin, objects) {
 }
 
 async function releaseMedia({ supabaseAdmin, supabaseUrl, urls }) {
-    if (policy.isProductionTarget(supabaseUrl)) return { skipped: 'production', removed: [] };
+    if (!isVerifiedStagingUrl(supabaseUrl)) return { skipped: 'unverified_environment', removed: [] };
     const objects = objectsFromUrls(urls);
     if (!objects.length) return { removed: [] };
     const removed = await removeObjects(supabaseAdmin, objects);
@@ -40,11 +52,14 @@ async function clearPostMedia(supabaseAdmin, postId) {
 async function listBucket(supabaseAdmin, bucket) {
     const root = await supabaseAdmin.storage.from(bucket).list('', { limit: 1000 });
     if (root.error) throw new Error(root.error.message || 'Lecture du stockage impossible.');
+    if ((root.data || []).length >= 1000) throw new Error('Inventaire du bucket tronqué : nettoyage désactivé.');
     const objects = [];
     for (const entry of root.data || []) {
         if (!entry || !entry.name) continue;
         const nested = await supabaseAdmin.storage.from(bucket).list(entry.name, { limit: 1000 });
-        if (nested.error || !nested.data || !nested.data.length) continue;
+        if (nested.error) throw new Error(nested.error.message || 'Inventaire incomplet : nettoyage désactivé.');
+        if ((nested.data || []).length >= 1000) throw new Error('Inventaire du dossier tronqué : nettoyage désactivé.');
+        if (!nested.data || !nested.data.length) continue;
         nested.data.forEach((file) => {
             if (!file || !file.name || file.id == null && !file.metadata) return;
             objects.push({
@@ -64,6 +79,9 @@ async function referencedPaths(supabaseAdmin) {
         rows = await supabaseAdmin.from('bokantaj_posts').select('id, media_urls, public_moderation_status');
     }
     if (rows.error) throw new Error(rows.error.message || 'Lecture des publications impossible.');
+    // PostgREST frequently caps results at 1,000. Never purge storage based
+    // on a truncated reference set: fail closed until pagination is implemented.
+    if ((rows.data || []).length >= 1000) throw new Error('Références incomplètes (>999 posts) : nettoyage désactivé.');
     const keep = new Set();
     const rejected = [];
     (rows.data || []).forEach((row) => {
@@ -81,7 +99,7 @@ async function referencedPaths(supabaseAdmin) {
 }
 
 async function sweep({ supabaseAdmin, supabaseUrl, now, apply }) {
-    if (policy.isProductionTarget(supabaseUrl)) return { skipped: 'production', removed: [], volume: { files: 0, bytes: 0 } };
+    if (!isVerifiedStagingUrl(supabaseUrl)) return { skipped: 'unverified_environment', removed: [], volume: { files: 0, bytes: 0 } };
     const listed = [];
     for (const bucket of BUCKETS) listed.push(...await listBucket(supabaseAdmin, bucket));
     const refs = await referencedPaths(supabaseAdmin);
@@ -112,6 +130,7 @@ async function sweep({ supabaseAdmin, supabaseUrl, now, apply }) {
 }
 
 module.exports = {
+    isVerifiedStagingUrl,
     objectsFromUrls,
     releaseMedia,
     clearPostMedia,
