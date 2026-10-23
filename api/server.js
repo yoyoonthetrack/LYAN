@@ -2420,11 +2420,20 @@ app.post('/v1/admin/ops/bokantaj/:id/delete', async (req, res) => {
     try {
         const { data: existing } = await supabaseAdmin.from('bokantaj_posts').select('id, author_id, content, media_urls').eq('id', req.params.id).maybeSingle();
         if (!existing) return res.status(404).json({ success: false, error: 'Publication introuvable.' });
-        await releaseMedia({ supabaseAdmin, supabaseUrl: process.env.SUPABASE_URL, urls: existing.media_urls });
+        // Never delete media while the post still exists: if the DB write
+        // fails, all referenced media must stay intact. Failed file removals
+        // are retried by the guarded orphan sweeper after its grace period.
         const { error } = await supabaseAdmin.from('bokantaj_posts').delete().eq('id', req.params.id);
         if (error) return res.status(500).json({ success: false, error: error.message });
-        await recordMaisonAudit(authResult.userId, 'BOKANTAJ_POST_DELETED', req.params.id, { author_id: existing.author_id });
-        return res.json({ success: true, id: req.params.id });
+        let mediaCleanup = 'complete';
+        try {
+            await releaseMedia({ supabaseAdmin, supabaseUrl: process.env.SUPABASE_URL, urls: existing.media_urls });
+        } catch (cleanupError) {
+            mediaCleanup = 'deferred';
+            console.warn('Bokantaj deletion media cleanup deferred:', String(cleanupError?.message || 'storage unavailable').slice(0, 120));
+        }
+        await recordMaisonAudit(authResult.userId, 'BOKANTAJ_POST_DELETED', req.params.id, { author_id: existing.author_id, media_cleanup: mediaCleanup });
+        return res.json({ success: true, id: req.params.id, media_cleanup: mediaCleanup });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Impossible de supprimer la publication.' });
     }
