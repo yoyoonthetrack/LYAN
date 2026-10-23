@@ -1,8 +1,8 @@
-# LYANN — Bokantaj : vidéo courte, découpage et compression (Staging)
+# LYANN — Bokantaj V1.6 : chaîne vidéo complète (Staging)
 
 ## Statut
 
-Spécification validée côté produit ; **implémentation non terminée**. Cette spécification n'active pas elle-même l'éditeur. Ne pas fusionner la PR #10 vers Production avant la validation fonctionnelle sur appareils réels.
+Périmètre produit complet : découpage, compression, miniatures, lecture différée, modération, stockage et nettoyage. **Spécification uniquement : ces fonctions ne sont pas toutes développées.** Ce fichier n'active aucune fonctionnalité à lui seul. Ne pas fusionner la PR #10 vers Production avant la validation fonctionnelle sur appareils réels.
 
 ## Problème actuel (vérifié le 23 octobre 2026)
 
@@ -18,7 +18,7 @@ Spécification validée côté produit ; **implémentation non terminée**. Cett
 6. Générer un **nouveau** MP4 compatible mobile (cible H.264/AAC, orientation respectée, son préservé, cible 720p), puis vérifier à nouveau la durée et le poids du **fichier de sortie**. Aucun upload si durée >60 s, fichier >10 MiB ou format non pris en charge.
 7. Afficher le progrès réellement mesurable : préparation, conversion, vérification, puis upload. Désactiver le double clic et autoriser l'annulation si prise en charge.
 8. Remplacer l'aperçu du post par l'extrait final, garder le texte, le lieu et les photos/draft existants. Sur échec, montrer un message compréhensible et **ne jamais publier silencieusement le post sans sa vidéo**.
-9. La publication existante reprend avec l'upload du MP4 final vers Storage privé et le processus de modération actuel (notamment l'attente de validation humaine des vidéos). Ne contourner ni RLS ni modération.
+9. La publication existante reprend avec l'upload du MP4 final vers Storage privé et une validation avant exposition publique. Ne contourner ni RLS ni modération. Les étapes de contrôle et d'approbation sont précisées ci-dessous.
 
 ## Réalisation technique attendue de Cursor
 
@@ -40,6 +40,62 @@ Spécification validée côté produit ; **implémentation non terminée**. Cett
 - Test Android natif et iPhone physique ; test Web desktop/mobile ; pas seulement un build simulé. Évaluer les temps de conversion et le poids des artefacts natifs.
 - Préserver la PR #10 sur Staging, pas de Production, pas de Stripe Live.
 
+## Chaîne de traitement et règles de diffusion — à implémenter et tester
+
+### 1. Modération vidéo : réduire l'attente, pas les protections
+
+- État initial `pending` : le post et les médias privés ne sont visibles que par leur auteur / administrateurs autorisés, pas dans le Fil public ni sur la Carte.
+- Analyser avant publication : limites de format, MIME réel, durée, taille, scan de sécurité pertinent, image(s) d'échantillonnage de la vidéo, pistes audio lorsque nécessaire. Prévoir analyse automatique asynchrone et déclenchement immédiat du traitement après enregistrement, plutôt qu'attendre exclusivement le cron à la minute.
+- Les vidéos ne doivent **jamais être publiées automatiquement** si les contrôles obligatoires échouent, sont indisponibles, ou retournent un résultat douteux : les conserver `pending/held` pour une revue humaine.
+- Pour une vidéo sans signal de risque et dont les contrôles automatisés sont tous concluants, étudier une approbation automatique **seulement si la politique de sécurité validée par LYANN et les exigences de la distribution mobile le permettent**. Prévoir le signalement, le blocage, le retrait administratif, un journal des décisions, et un bouton de revue humaine.
+- Permettre de publier le texte rapidement si l'utilisateur a explicitement choisi un post texte indépendant de la vidéo ; **ne jamais détacher silencieusement une vidéo en attente** et diffuser un message différent de celui que l'utilisateur a voulu publier.
+- Messages côté utilisateur : « Envoi de la vidéo », « Analyse de sécurité », « En attente de validation » ; ne pas qualifier un contenu de « chargé » ou « public » avant que l'état réel ne le confirme.
+- Instrumenter durées upload / analyse / attente / modération et afficher dans le back-office les contenus vidéo bloqués avec leur raison. Tests de refus, attente, approbation, signalement, masquage, et nouvelle modération après modification.
+
+### 2. Miniature optimisée et lecture volontaire
+
+- Produire **une seule miniature** légère (JPEG ou WebP, ~320–640 px de large, taille cible <100 Ko) à partir d'une image choisie ou d'un instant représentatif **de la version réellement publiée** après découpage.
+- Enregistrer le lien de miniature et ses références aux médias ; afficher l'image avec un bouton lecture, la durée et éventuellement le nom d'auteur dans la carte de post.
+- **Ne pas charger le fichier vidéo dans le Fil avant l'action explicite « Lire »** : pas de `src` vidéo/automatisme, pas de `preload=metadata` sur des dizaines de posts ; au clic, attacher l'URL puis lancer les contrôles natifs du lecteur, `playsinline`, sans autoplay forcé avec son.
+- La miniature est elle-même un dérivé de média soumis aux mêmes règles de visibilité/modération. Elle ne doit pas fuiter des images de contenus `pending`, `rejected`, `hidden`.
+- Optimiser le serveur `/v1/media/...` : le code actuel lit l'objet entier en mémoire avec `download()` avant réponse et ne gère pas explicitement `Range`. Remplacer par un mécanisme de lecture/flux/URLs signées courtes **avec contrôle d'accès à chaque étape**, et prise en charge HTTP `Range`/`206 Partial Content`, nécessaire au seeking vidéo. Éviter les copies massives en mémoire Vercel et les URL permanentes contournant la modération.
+- Tester chargement sans lecture, lecture, pause, saut temporel, reprise réseau, iOS Safari/WebView, Android WebView, format portrait/paysage.
+
+### 3. Cycle de vie des fichiers : aucune fuite de stockage
+
+- Ajouter un inventaire fiable des objets vidéo et miniatures : propriétaire, bucket, chemin, post_id, date d'envoi, statut, taille, éventuellement hash et référence(s). Documenter explicitement les chemins `bokantaj-media-hold` et médias libérés.
+- Une suppression autorisée d'un post doit déclencher **côté serveur** un nettoyage idempotent des objets média et miniatures après l'enregistrement de la suppression, pas uniquement la suppression SQL côté navigateur. Respecter les politiques de suppression de compte et les obligations légales/recours en cours.
+- En cas de rejet final, purger les uploads et dérivés inutiles lorsque la politique de conservation le permet (le worker supprime déjà certains fichiers `-hold` rejetés ; conserver et étendre ce comportement sans doubler les suppressions).
+- Nettoyer les uploads abandonnés (conversion terminée mais post non créé) et les fichiers orphelins via un job serveur périodique, avec délai de grâce prudent (ex. 48 heures), exclusion des transferts en cours, contrôle de non-référence, journaux et relances sûres. Ne jamais supprimer un média référencé par un autre post ou une revue de modération.
+- Ajouter métriques par bucket : objets, octets, vidéos en attente, objets orphelins, suppressions confirmées, erreurs de stockage. Mettre en place des alertes d'augmentation anormale.
+- Privilégier `queue` + worker robuste plutôt qu'un effacement fragile depuis le navigateur. Procédures traçables et réessayables, aucune suppression non autorisée, aucune modification Production depuis la Preview.
+- Staging : un test suppression d'un post avec vidéo approuvée, un test suppression d'un post pending/held, un test média partagé, un test nettoyage d'orphelin >48h, un test échec Storage/réessai, un test annulation de suppression.
+
+### 4. Conservation Fil vs Carte : ne jamais les confondre
+
+- La durée d'affichage des repères sur la Carte est de **7 jours maximum par défaut**, réduite à mesure que la densité augmente dans la zone ; un repère éditorial explicitement conservé par l'équipe LYANN peut persister. Le retrait d'une épingle **ne modifie pas** le post ni son média.
+- Les posts restent dans le **Fil** selon les règles de compte/modération/rétention applicables et la vidéo doit rester disponible tant que le post existe, est accessible et n'est pas juridiquement supprimable.
+- Aucun cron de fin de visibilité sur la carte ne doit lancer un `storage.remove()`, révoquer une vidéo du Fil ou masquer un post du Fil.
+- La suppression du post, le rejet définitif et la politique de conservation de compte sont des événements distincts de l'expiration du repère. Prévoir des tests explicites prouvant cette séparation.
+
+### 5. Performances et budget
+
+- Cible vidéo 720p (maximum 60 s, <=10 MiB), résolution/orientation conservées quand plus petites, H.264 + AAC lorsque le fichier contient une piste audio. Un clip de 45 s et 5 MiB déjà compatible doit éviter tout transcodage inutile.
+- Compression préférentiellement sur l'appareil, upload simple sans charger simultanément tout le fichier dans la RAM ; progressions explicites. Pour Web, ne pas télécharger un moteur lourd au chargement initial de Bokantaj.
+- Activer le poster seul sur le fil. Mesurer `bytes transferred`, temps vers la première image, temps jusqu'au démarrage vidéo, % de conversions échouées et débit sortant Storage/CDN. 1 000 vidéos de 10 Mo représentent ~10 Go, avant les miniatures, variantes, copies et visionnages.
+- Garder les formats et tailles protégés par contrôles client **et serveur** ; limites Storage raisonnables et contrôles d'authentification/rate limiting par membre pour empêcher les uploads excessifs.
+
+## Tests fonctionnels et critères complémentaires
+
+- Vidéo 70 s : l'utilisateur choisit une plage <=60 s, son préservé ; la vidéo ne quitte jamais l'appareil avant conversion conforme.
+- Une vidéo `pending` ne s'affiche ni dans le Fil public ni dans la Carte ; pas d'URL signée utilisable publiquement, ni miniature visible.
+- Une vidéo approuvée se lit après clic, avec une requête `Range` correctement traitée, et n'est pas téléchargée avant action de lecture.
+- Une vidéo rejetée ou masquée n'est plus servie au public, miniature comprise, même si son URL a déjà circulé.
+- Suppression d'un post : données utilisateur et médias physiques sont effectivement nettoyés après délai/préservation légale documentés ; un réessai est sûr.
+- À expiration des 7 jours de repère : repère disparu, post et vidéo **toujours visibles dans le Fil**.
+- Ne pas prétendre qu'une CI Playwright desktop valide iPhone natif : ouvrir et tester un build Staging sur appareil physique.
+
 ## Périmètre exclu
 
-Aucun changement d'abonnement ou de tarif ; aucune modification des délais de modération ni suppression des fichiers de posts au bout de 7 jours. La durée 7 jours évoquée ailleurs concerne **les repères de la carte**, pas la conservation des vidéos dans le Fil.
+Pas d'activation d'une offre payante, pas de suppression à 7 jours des vidéos ni des posts du Fil, pas de modification automatique de Production/Stripe Live. Les optimisations et la modération avancée constituent un travail d'implémentation distinct dont les tests et les limites doivent être indiqués honnêtement.
+
