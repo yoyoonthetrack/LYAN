@@ -175,8 +175,12 @@
     function togglePicker(open) {
         const picker = $('bokantajPlacePicker');
         if (!picker) return;
+        const wasOpen = !picker.hidden;
         picker.hidden = !open;
         $('bokantajPlaceTrigger')?.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open && !wasOpen) {
+            try { history.pushState({ bokantajPicker: 1 }, ''); } catch (_) {}
+        }
         if (!open) return;
         if (!window.L) {
             $('bokantajPickerStatus').textContent = 'Carte momentanément indisponible.';
@@ -263,6 +267,7 @@
             img.src = image;
             img.loading = 'lazy';
             img.alt = 'Photo partagée avec cette publication';
+            img.onerror = () => img.remove();
             panel.append(img);
         }
         panel.append(body, bottom);
@@ -451,6 +456,19 @@
             togglePicker($('bokantajPlacePicker').hidden));
         $('bokantajPlaceSave').addEventListener('click', savePlace);
         $('bokantajPlaceRemove').addEventListener('click', resetComposerPlace);
+        window.addEventListener('popstate', () => {
+            if ($('bokantajPlacePicker') && !$('bokantajPlacePicker').hidden) togglePicker(false);
+        });
+        const app = window.Capacitor?.Plugins?.App;
+        if (app && typeof app.addListener === 'function') {
+            app.addListener('backButton', () => {
+                if ($('bokantajPlacePicker') && !$('bokantajPlacePicker').hidden) {
+                    togglePicker(false);
+                    return;
+                }
+                if (isMapView) switchView('feed');
+            });
+        }
         updatePlaceButton();
     }
 

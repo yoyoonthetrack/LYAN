@@ -57,7 +57,17 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
       document.body.classList.add('user-is-logged-in');
       window.LYANN_API_CLIENT.createPost = async (payload) => {
         window.__qaCreatedPayload = payload;
-        return { id: 'qa-post', public_moderation_status: 'pending' };
+        return {
+          id: 'qa-post',
+          author_id: 'qa-composer',
+          content: payload.content,
+          type: payload.type,
+          public_moderation_status: 'pending',
+          place_lat: payload.place && payload.place.lat,
+          place_lng: payload.place && payload.place.lng,
+          place_label: payload.place && payload.place.label,
+          created_at: new Date().toISOString()
+        };
       };
       window.loadBokantajFeedFromSupabase = async () => {};
     });
@@ -80,6 +90,9 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
     expect(post.place.lat).toBeGreaterThan(14);
     expect(post.place.lng).toBeLessThan(-60);
     await expect.poll(async () => page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace())).toBeNull();
+    await expect(page.locator('#qa-post')).toBeVisible();
+    await expect(page.locator('#qa-post')).toContainText('Mon info du quartier');
+    await expect(page.locator('#qa-post')).toContainText('En vérification');
   });
 }
 

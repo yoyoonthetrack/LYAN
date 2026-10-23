@@ -2853,6 +2853,40 @@ safeDomReady(() => {
         if (message && window.NotificationService) window.NotificationService.showToast(tone, message);
     }
 
+    function formatOwnCreatedPost(row) {
+        const author = row.profiles || window.LYANN_CURRENT_USER_PROFILE || {};
+        const media = Array.isArray(row.media_urls) ? row.media_urls : [];
+        const type = row.type || 'info';
+        return {
+            id: row.id,
+            item_type: 'POST',
+            author_id: row.author_id,
+            author_name: window.formatPublicName ? window.formatPublicName(author, null, 'Vous') : 'Vous',
+            author_avatar: window.getLyannAvatarUrl ? window.getLyannAvatarUrl(author.avatar_url) : (author.avatar_url || ''),
+            author_city: author.city || row.city || '',
+            badge: ({ trafic: '🚗 Trafic', bon_plan: '✨ Bon plan', restaurant: '🍴 Resto', avis: '⭐ Avis', evenement: '🎉 Sortie', info: '💬 Info' })[type] || 'Info Bokantaj',
+            badgeIcon: 'ph-newspaper',
+            type,
+            city: row.city || '',
+            territory: row.territory || author.territory || '',
+            location: row.city || row.territory || '',
+            place_lat: row.place_lat,
+            place_lng: row.place_lng,
+            place_label: row.place_label || null,
+            created_at: row.created_at || new Date().toISOString(),
+            content: row.content || '',
+            title: row.headline || '',
+            images: media.filter((url) => typeof url === 'string' && /^https?:\/\//i.test(url) && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
+            videos: media.filter((url) => typeof url === 'string' && /^https?:\/\//i.test(url) && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
+            moderation_status: row.public_moderation_status || 'pending',
+            likes: 0,
+            comments_count: 0,
+            repliesCount: 0,
+            user_has_liked: false
+        };
+    }
+    window.formatOwnCreatedPost = formatOwnCreatedPost;
+
     function rememberPendingPublication(id, status) {
         if (!id || status !== 'pending' || !window.sessionStorage) return;
         try {
@@ -2893,7 +2927,7 @@ safeDomReady(() => {
         const encoded = encodeURIComponent(JSON.stringify(urls));
         const cells = urls.map((url, index) => `
             <button type="button" class="bokantaj-photo" data-photo-index="${index}" aria-label="Agrandir la photo ${index + 1}">
-                <img src="${window.escapeHtmlAttr(url)}" alt="">
+                <img src="${window.escapeHtmlAttr(url)}" alt="" onerror="this.closest('.bokantaj-photo')?.classList.add('is-broken'); this.removeAttribute('src');">
             </button>
         `).join('');
         return `<div class="bokantaj-photos bokantaj-photos-${urls.length}" data-photos="${encoded}">${cells}</div>`;
@@ -3483,6 +3517,7 @@ safeDomReady(() => {
                                 </div>
                                 <div class="flash-meta-badges" style="display: flex; align-items: center; width: 100%; box-sizing: border-box; margin-top: 2px;">
                                     <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; text-transform: uppercase; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; letter-spacing: 0.02em;' : 'background: #F1F5F9; color: #475569; font-weight: 600; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box;'}">${badgeText}</span>
+                                    ${!isLyann && post.moderation_status === 'pending' ? '<span class="bokantaj-pending-chip">En vérification</span>' : ''}
                                 </div>
                             </div>
 
@@ -3902,6 +3937,8 @@ safeDomReady(() => {
             }
 
             const submitBtn = createFlashForm.querySelector('button[type="submit"]');
+            if (createFlashForm.dataset.publishing === '1') return;
+            createFlashForm.dataset.publishing = '1';
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="ph ph-spinner spin"></i> Publication...';
@@ -3912,11 +3949,16 @@ safeDomReady(() => {
                 const publishedWithImage = attachedPhotoFiles.length > 0;
                 const publishedWithVideo = Boolean(attachedVideoFile);
                 const mediaUrls = [];
-                for (const file of attachedPhotoFiles) mediaUrls.push(await window.LYANN_API_CLIENT.uploadPostPhoto(file));
+                if (attachedPhotoFiles.length) {
+                    if (submitBtn) submitBtn.textContent = attachedPhotoFiles.length > 1 ? 'Envoi des photos…' : 'Envoi de la photo…';
+                    const uploaded = await Promise.all(attachedPhotoFiles.map((file) => window.LYANN_API_CLIENT.uploadPostPhoto(file)));
+                    mediaUrls.push(...uploaded);
+                }
                 if (submitBtn && attachedVideoFile) submitBtn.textContent = 'Envoi de la vidéo…';
                 if (attachedVideoFile && window.LYANN_API_CLIENT.uploadPostVideo) {
                     mediaUrls.push(await window.LYANN_API_CLIENT.uploadPostVideo(attachedVideoFile));
                 }
+                if (submitBtn) submitBtn.textContent = 'Publication…';
                 let createdPost = null;
                 if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.createPost === 'function') {
                     createdPost = await window.LYANN_API_CLIENT.createPost({
@@ -3929,6 +3971,13 @@ safeDomReady(() => {
                     });
                 }
                 rememberPendingPublication(createdPost && createdPost.id, createdPost && createdPost.public_moderation_status);
+                if (createdPost && createdPost.id) {
+                    const ownCard = formatOwnCreatedPost(createdPost);
+                    currentFlashPosts = [ownCard, ...currentFlashPosts.filter((post) => post && post.id !== ownCard.id)];
+                    bokantajFeedState = 'READY';
+                    window.LYANN_BOKANTAJ_REPOSITORY?.invalidate?.();
+                    renderFlashFeed();
+                }
 
                 attachedPhotos.forEach(url => URL.revokeObjectURL(url));
                 attachedPhotos = [];
@@ -3938,10 +3987,6 @@ safeDomReady(() => {
                 attachedVideoFile = null;
                 if (flashMediaPreviewContainer) flashMediaPreviewContainer.innerHTML = '';
                 if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
-
-                if (typeof window.loadBokantajFeedFromSupabase === 'function') {
-                    await window.loadBokantajFeedFromSupabase({ force: true });
-                }
 
                 createFlashForm.reset();
                 window.LYANN_BOKANTAJ_MAP?.resetComposerPlace?.();
@@ -3954,11 +3999,15 @@ safeDomReady(() => {
                 if (typeof window.closeBokantajComposer === 'function') {
                     window.closeBokantajComposer();
                 }
+                if (typeof window.loadBokantajFeedFromSupabase === 'function') {
+                    window.loadBokantajFeedFromSupabase({ force: true, background: true });
+                }
             } catch (err) {
                 if (window.NotificationService) {
                     window.NotificationService.showToast('warning', err.message || "Veuillez vous connecter pour publier.");
                 }
             } finally {
+                delete createFlashForm.dataset.publishing;
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = 'Publier';

@@ -88,6 +88,12 @@
 .bokantaj-basemap-notice[hidden]{display:none}
 .bokantaj-basemap-notice button{min-height:44px;background:#eddaab;border:0;border-radius:8px;padding:8px 12px;color:#4c422f;font-weight:700}
 @media(max-width:600px){.bokantaj-map-canvas{height:57dvh;min-height:360px}.bokantaj-map-topbar{padding:12px 12px 8px}.bokantaj-map-gesture{font-size:.75rem}.bokantaj-map-chips button{padding:8px 12px}.bokantaj-map-detail{padding-bottom:max(16px,env(safe-area-inset-bottom))}}
+.bokantaj-pending-chip{display:inline-block;margin-left:6px;padding:3px 8px;border-radius:999px;background:#f4ead1;color:#5a4a2a;font-size:.7rem;font-weight:750}
+.bokantaj-photo.is-broken{min-height:72px;background:#f3eee4;border-radius:12px}
+.bokantaj-photo.is-broken::after{content:'Photo indisponible';display:grid;place-items:center;min-height:72px;color:#6b6254;font-size:.8rem;font-weight:650}
+@media(max-width:767px){
+ body.feed-page.keyboard-open .composer-actions-bar{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:6;background:#fff;padding-bottom:8px}
+}
 /* Leave the upper picker surface available when the provider is unreachable. */
 .bokantaj-picker-map .bokantaj-basemap-notice{top:auto;bottom:28px;right:12px;padding:6px 8px;font-size:.75rem}
 .bokantaj-map-topbar select{width:auto;max-width:48%;min-width:0;flex:0 1 auto}

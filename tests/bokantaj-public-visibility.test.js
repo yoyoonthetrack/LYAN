@@ -27,6 +27,17 @@ test('only approved Bokantaj items are treated as public', () => {
     assert.equal(repo.isPubliclyVisible({}), false);
 });
 
+test('the author can still see their own pending post', () => {
+    const mine = { id: 'mine', item_type: 'POST', author_id: 'qa-a', public_moderation_status: 'pending' };
+    const other = { id: 'other', item_type: 'POST', author_id: 'qa-b', public_moderation_status: 'pending' };
+    assert.equal(repo.isPubliclyVisible(mine, 'qa-a'), true);
+    assert.equal(repo.isPubliclyVisible(other, 'qa-a'), false);
+    assert.deepEqual(repo.sanitizeFeed([mine, other]).map((row) => row.id), []);
+    global.window.LYANN_CURRENT_USER = { id: 'qa-a' };
+    assert.deepEqual(repo.sanitizeFeed([mine, other, { id: 'ok', item_type: 'POST', moderation_status: 'approved' }]).map((row) => row.id), ['mine', 'ok']);
+    delete global.window.LYANN_CURRENT_USER;
+});
+
 test('api-client public queries keep the approved-only filter', () => {
     const source = fs.readFileSync(path.join(__dirname, '../api-client.js'), 'utf8');
     assert.match(source, /from\('bokantaj_posts'\)[\s\S]{0,220}\.eq\('public_moderation_status', 'approved'\)/);

@@ -16,6 +16,40 @@ function isUUID(str) {
 }
 window.isUUID = isUUID;
 
+window.LYANN_BOKANTAJ_MEDIA = {
+    MAX_EDGE: 1600,
+    JPEG_QUALITY: 0.82,
+    MAX_INPUT_BYTES: 12 * 1024 * 1024,
+    async preparePhoto(file) {
+        if (!file) throw new Error('Photo indisponible');
+        const type = String(file.type || '').toLowerCase();
+        const looksImage = !type || type.startsWith('image/');
+        if (!looksImage) throw new Error('Choisissez une photo JPG, PNG, WEBP ou HEIC.');
+        if (file.size > this.MAX_INPUT_BYTES) throw new Error('Cette photo est trop lourde (12 Mo maximum).');
+        let bitmap = null;
+        if (typeof createImageBitmap === 'function') {
+            bitmap = await createImageBitmap(file).catch(() => null);
+        }
+        if (!bitmap) {
+            if (['image/jpeg', 'image/png', 'image/webp'].includes(type) && file.size <= 5 * 1024 * 1024) {
+                return file;
+            }
+            throw new Error('Cette photo ne peut pas être lue. Essayez JPG, PNG ou WEBP.');
+        }
+        const scale = Math.min(1, this.MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Compression photo indisponible sur cet appareil.');
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        if (typeof bitmap.close === 'function') bitmap.close();
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', this.JPEG_QUALITY));
+        if (!blob) throw new Error('La photo n’a pas pu être préparée.');
+        return new File([blob], 'bokantaj.jpg', { type: 'image/jpeg' });
+    }
+};
+
 // The annonce title is a one-line summary shown on every card.
 const LYANN_REQUEST_TITLE_MAX = 60;
 const LYANN_FEED_PAGE_SIZE = 60;
@@ -1377,6 +1411,7 @@ const LYANN_API_CLIENT = {
         if (!this.supabase) return { data: [], error: "Supabase non disponible" };
 
         try {
+            const sessionUser = await this.getCurrentUser();
             // 1. Fetch Bokantaj Posts
             let postsQuery = this.supabase
                 .from('bokantaj_posts')
@@ -1386,10 +1421,22 @@ const LYANN_API_CLIENT = {
                 .order('created_at', { ascending: false })
                 .limit(LYANN_FEED_PAGE_SIZE);
             if (pageOptions.before) postsQuery = postsQuery.lt('created_at', pageOptions.before);
-            const { data: postsData, error: postsError } = await postsQuery;
+            const pendingQuery = sessionUser?.id && !pageOptions.before
+                ? this.supabase
+                    .from('bokantaj_posts')
+                    .select('*')
+                    .eq('author_id', sessionUser.id)
+                    .eq('public_moderation_status', 'pending')
+                    .order('created_at', { ascending: false })
+                    .limit(10)
+                : Promise.resolve({ data: [], error: null });
+            const [{ data: postsData, error: postsError }, pendingRes] = await Promise.all([postsQuery, pendingQuery]);
 
             if (postsError) throw postsError;
-            const posts = postsData || [];
+            const approved = postsData || [];
+            const ownPending = (pendingRes && pendingRes.data) || [];
+            const seen = new Set(approved.map((row) => row.id));
+            const posts = [...ownPending.filter((row) => row && !seen.has(row.id)), ...approved];
             // Community discovery never queries or merges transactional Requests.
             const authorIds = [...new Set(posts.map(p => p.author_id).filter(Boolean))];
 
@@ -1530,6 +1577,7 @@ const LYANN_API_CLIENT = {
             .eq('public_moderation_status', 'approved')
             .not('place_lat', 'is', null)
             .not('place_lng', 'is', null)
+            .not('place_label', 'is', null)
             .gte('place_lat', south).lte('place_lat', north)
             .gte('place_lng', west).lte('place_lng', east)
             .order('created_at', { ascending: false })
@@ -1569,12 +1617,9 @@ const LYANN_API_CLIENT = {
         if (!this.supabase || !file) throw new Error('Photo indisponible');
         const user = await this.getCurrentUser();
         if (!user) throw new Error('Veuillez vous connecter');
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-            throw new Error('Choisissez une photo JPG, PNG ou WEBP de moins de 5 Mo.');
-        }
-        const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type];
-        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await this.supabase.storage.from('bokantaj-media-hold').upload(path, file);
+        const prepared = await window.LYANN_BOKANTAJ_MEDIA.preparePhoto(file);
+        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+        const { error } = await this.supabase.storage.from('bokantaj-media-hold').upload(path, prepared, { contentType: 'image/jpeg' });
         if (error) throw new Error('La photo n’a pas pu être envoyée. Réessayez avant de publier.');
         return holdMediaUrl('bokantaj-media-hold', path);
     },
