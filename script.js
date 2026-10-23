@@ -2835,8 +2835,8 @@ safeDomReady(() => {
         const hasVideo = Boolean(input && input.hasVideo);
         if (status === 'rejected') return { tone: 'warning', message: 'Ce contenu ne peut pas être publié.' };
         if (status === 'pending') {
-            if (hasImage && !hasVideo) return { tone: 'success', message: 'Votre photo est en cours de vérification.' };
-            return { tone: 'success', message: 'Votre publication est en cours de vérification.' };
+            if (hasImage && !hasVideo) return { tone: 'success', message: 'Votre photo est enregistrée. Elle sera visible par tous après validation.' };
+            return { tone: 'success', message: 'Publication enregistrée. Mise en ligne après validation de sécurité.' };
         }
         if (status === 'approved' && input.edited) {
             return { tone: 'success', message: 'Votre modification est en cours de vérification. La version déjà publiée reste visible.' };
@@ -2876,8 +2876,8 @@ safeDomReady(() => {
             created_at: row.created_at || new Date().toISOString(),
             content: row.content || '',
             title: row.headline || '',
-            images: media.filter((url) => typeof url === 'string' && /^https?:\/\//i.test(url) && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
-            videos: media.filter((url) => typeof url === 'string' && /^https?:\/\//i.test(url) && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
+            images: media.filter((url) => typeof url === 'string' && /^https?:\/\//i.test(url) && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)).map((url) => window.LYANN_BOKANTAJ_RESOLVE_MEDIA_URL?.(url) || url),
+            videos: media.filter((url) => typeof url === 'string' && /^https?:\/\//i.test(url) && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)).map((url) => window.LYANN_BOKANTAJ_RESOLVE_MEDIA_URL?.(url) || url),
             moderation_status: row.public_moderation_status || 'pending',
             likes: 0,
             comments_count: 0,
@@ -3422,8 +3422,8 @@ safeDomReady(() => {
                     const mapShortcut = mappedPoint
                         ? '<button type="button" class="bokantaj-post-map-link" data-bokantaj-map-post="' + window.escapeHtmlAttr(targetId)
                             + '" data-map-lat="' + Number(post.place_lat) + '" data-map-lng="' + Number(post.place_lng)
-                            + '"><i class="ph ph-map-pin" aria-hidden="true"></i> ' + window.escapeHtmlAttr(post.place_label)
-                            + ' · Voir sur la carte</button>'
+                            + '"><i class="ph ph-map-pin" aria-hidden="true"></i> 📍 Localisation · ' + window.escapeHtmlAttr(post.place_label)
+                            + '</button>'
                         : '';
                     const distanceLabel = Number.isFinite(post._distanceKm) && window.LYANN_BOKANTAJ_QUERY
                         ? window.LYANN_BOKANTAJ_QUERY.formatDistanceKm(post._distanceKm, window.LYANN_GEO?.hasPreciseLocation?.())
@@ -3517,7 +3517,7 @@ safeDomReady(() => {
                                 </div>
                                 <div class="flash-meta-badges" style="display: flex; align-items: center; width: 100%; box-sizing: border-box; margin-top: 2px;">
                                     <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; text-transform: uppercase; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; letter-spacing: 0.02em;' : 'background: #F1F5F9; color: #475569; font-weight: 600; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box;'}">${badgeText}</span>
-                                    ${!isLyann && post.moderation_status === 'pending' ? '<span class="bokantaj-pending-chip">En vérification</span>' : ''}
+                                    ${!isLyann && post.moderation_status === 'pending' ? '<span class="bokantaj-pending-chip" title="Publication enregistrée, vérification avant diffusion aux autres membres">En cours de chargement</span>' : ''}
                                 </div>
                             </div>
 
@@ -3944,6 +3944,36 @@ safeDomReady(() => {
                 submitBtn.innerHTML = '<i class="ph ph-spinner spin"></i> Publication...';
             }
 
+            // A local-only preview appears immediately; server moderation still
+            // determines when the post becomes visible to other members.
+            let uploadingCard = null;
+            const feedForPreview = document.getElementById('flashFeedContainer');
+            if (feedForPreview?.parentNode) {
+                uploadingCard = document.createElement('article');
+                uploadingCard.className = 'bokantaj-optimistic-card';
+                uploadingCard.setAttribute('role', 'status');
+                uploadingCard.style.cssText = 'background:#fffdf7;border:1px solid #deded0;border-radius:18px;margin:12px 0;padding:15px;box-shadow:0 2px 8px #24432a0e;';
+                const info = document.createElement('div');
+                info.style.cssText = 'font-weight:750;color:#375d44;margin-bottom:8px;';
+                info.textContent = '⏳ En cours de chargement…';
+                uploadingCard.append(info);
+                if (text) {
+                    const body = document.createElement('p');
+                    body.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0;color:#35453b;';
+                    body.textContent = text;
+                    uploadingCard.append(body);
+                }
+                if (attachedPhotos[0]) {
+                    const photo = document.createElement('img');
+                    photo.src = attachedPhotos[0];
+                    photo.alt = 'Aperçu de votre photo';
+                    photo.style.cssText = 'display:block;max-width:160px;max-height:130px;object-fit:cover;border-radius:12px;margin-top:10px;';
+                    uploadingCard.append(photo);
+                }
+                feedForPreview.parentNode.insertBefore(uploadingCard, feedForPreview);
+                createFlashForm.hidden = true;
+            }
+
             try {
                 if (!window.LYANN_API_CLIENT?.createPost) throw new Error('Publication indisponible');
                 const publishedWithImage = attachedPhotoFiles.length > 0;
@@ -4003,10 +4033,13 @@ safeDomReady(() => {
                     window.loadBokantajFeedFromSupabase({ force: true, background: true });
                 }
             } catch (err) {
+                // A failed upload does not erase the draft or expose it publicly.
+                createFlashForm.hidden = false;
                 if (window.NotificationService) {
                     window.NotificationService.showToast('warning', err.message || "Veuillez vous connecter pour publier.");
                 }
             } finally {
+                uploadingCard?.remove();
                 delete createFlashForm.dataset.publishing;
                 if (submitBtn) {
                     submitBtn.disabled = false;
