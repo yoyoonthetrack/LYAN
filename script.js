@@ -2250,176 +2250,8 @@ safeDomReady(() => {
     // ==========================================================================
     // GESTION CANONIQUE DES CARTES TARIFAIRES & ABONNEMENTS (4 FORMULES LYANN)
     // ==========================================================================
-    window.openSubscriptionDetailModal = function(planCode, period) {
-        try {
-            const normalizedPlan = String(planCode || 'FREE').toUpperCase();
-            const isYearly = String(period).toUpperCase() === 'YEARLY';
-
-            let modal = document.getElementById('modalSubscriptionDetail');
-
-            // Dynamically create modal element if missing from DOM
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.className = 'modal-overlay active';
-                modal.id = 'modalSubscriptionDetail';
-                modal.style.cssText = 'display: flex; z-index: 99999; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; opacity: 1; visibility: visible;';
-                modal.innerHTML = `
-                    <div class="modal-card" style="max-width: 480px; width: 90%; padding: 28px; text-align: center; border-radius: 24px; position: relative; background: #FFFFFF; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
-                        <button type="button" class="modal-close-btn" id="closeSubDetailBtn" aria-label="Fermer" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #6B7280;"><i class="ph ph-x"></i></button>
-                        <div id="subDetailHeader" style="margin-bottom: 18px;"></div>
-                        <div id="subDetailPriceBox" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 18px; margin-bottom: 20px;"></div>
-                        <div id="subDetailFeatures" style="text-align: left; margin-bottom: 24px; font-size: 0.9rem; color: #334155; line-height: 1.6;"></div>
-                        <div style="background: rgba(231, 111, 81, 0.08); border: 1px solid rgba(231, 111, 81, 0.25); border-radius: 14px; padding: 14px; margin-bottom: 24px; text-align: left; display: flex; gap: 12px; align-items: flex-start;">
-                            <i class="ph ph-info" style="color: #E76F51; font-size: 1.3rem; flex-shrink: 0; margin-top: 2px;"></i>
-                            <span style="font-size: 0.84rem; color: #1E293B; line-height: 1.45;">
-                                <strong>Information LYANN :</strong> Les abonnements payants seront disponibles prochainement sur LYANN. Votre compte conserve la formule <strong>Lyanneur (Gratuit)</strong> sans aucun frais.
-                            </span>
-                        </div>
-                        <button type="button" class="btn btn-primary" id="btnSubDetailClose" style="width: 100%; justify-content: center; font-weight: 800; padding: 14px; font-size: 1rem; border-radius: 14px;">Compris</button>
-                    </div>
-                `;
-                document.body.appendChild(modal);
-
-                modal.querySelector('#closeSubDetailBtn')?.addEventListener('click', () => window.closeSubscriptionDetailModal());
-                modal.querySelector('#btnSubDetailClose')?.addEventListener('click', () => window.closeSubscriptionDetailModal({ requireCgv: true }));
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) window.closeSubscriptionDetailModal();
-                });
-            }
-
-            const header = modal.querySelector('#subDetailHeader');
-            const priceBox = modal.querySelector('#subDetailPriceBox');
-            const features = modal.querySelector('#subDetailFeatures');
-
-            if (normalizedPlan === 'FREE' || normalizedPlan === 'LYANNEUR') {
-                if (header) {
-                    header.innerHTML = `
-                        <span class="plan-badge badge-lyanneur" style="background: #A8C9B0; color: #1E2822; font-weight: 800; padding: 4px 12px; border-radius: 8px; font-size: 0.8rem; display: inline-block;">LYANNEUR</span>
-                        <h3 style="font-size: 1.5rem; font-weight: 800; color: #1F3827; margin-top: 10px; margin-bottom: 4px;">Offre Lyanneur (Gratuit)</h3>
-                    `;
-                }
-                if (priceBox) {
-                    priceBox.innerHTML = `
-                        <div style="font-size: 1.8rem; font-weight: 800; color: #1F3827;">Gratuit</div>
-                        <div style="font-size: 0.85rem; color: #64748B; margin-top: 4px;">0 € pour toujours</div>
-                    `;
-                }
-                if (features) {
-                    features.innerHTML = `
-                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
-                            <li><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i> Profil public complet</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i> 5 photos maxi de vos réalisations</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i> Recommandations et avis certifiés</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #4A7C59;"></i> Réponses limitées aux besoins</li>
-                        </ul>
-                    `;
-                }
-            } else if (normalizedPlan === 'PLUS') {
-                if (header) {
-                    header.innerHTML = `
-                        <span class="plan-badge badge-plus" style="background: #62B9C7; color: white; font-weight: 800; padding: 4px 12px; border-radius: 8px; font-size: 0.8rem; display: inline-block;">LYANNEUR +</span>
-                        <h3 style="font-size: 1.5rem; font-weight: 800; color: #1F3827; margin-top: 10px; margin-bottom: 4px;">Formule Lyanneur Plus</h3>
-                    `;
-                }
-                if (priceBox) {
-                    priceBox.innerHTML = `
-                        <div style="font-size: 1.8rem; font-weight: 800; color: #1F3827;">${isYearly ? '99 €' : '9,90 €'}</div>
-                        <div style="font-size: 0.85rem; color: #64748B; margin-top: 4px;">Facturation ${isYearly ? 'annuelle (99 €/an)' : 'mensuelle (9,90 €/mois)'}</div>
-                    `;
-                }
-                if (features) {
-                    features.innerHTML = `
-                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
-                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> <strong>Réponses illimitées aux demandes</strong></li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Galerie jusqu'à 20 photos</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Plusieurs catégories d'activités</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Profil référencé en priorité</li>
-                        </ul>
-                    `;
-                }
-            } else if (normalizedPlan === 'ULTIME') {
-                if (header) {
-                    header.innerHTML = `
-                        <span class="plan-badge badge-ultime" style="background: #E8B83F; color: white; font-weight: 800; padding: 4px 12px; border-radius: 8px; font-size: 0.8rem; display: inline-block;">LYANNEUR ULTIME</span>
-                        <h3 style="font-size: 1.5rem; font-weight: 800; color: #1F3827; margin-top: 10px; margin-bottom: 4px;">Formule Lyanneur Ultime ⭐</h3>
-                    `;
-                }
-                if (priceBox) {
-                    priceBox.innerHTML = `
-                        <div style="font-size: 1.8rem; font-weight: 800; color: #1F3827;">${isYearly ? '299 €' : '29,90 €'}</div>
-                        <div style="font-size: 0.85rem; color: #64748B; margin-top: 4px;">Facturation ${isYearly ? 'annuelle (299 €/an)' : 'mensuelle (29,90 €/mois)'}</div>
-                    `;
-                }
-                if (features) {
-                    features.innerHTML = `
-                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
-                            <li><i class="ph-fill ph-star" style="color: #E8B83F;"></i> <strong>Mise en avant sponsorisée</strong></li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Portfolio illimité de réalisations</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Réception prioritaire des demandes directes</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Mini-page pro personnalisée</li>
-                        </ul>
-                    `;
-                }
-            } else if (normalizedPlan === 'PRO') {
-                if (header) {
-                    header.innerHTML = `
-                        <span class="plan-badge" style="background: #173F36; color: white; font-weight: 800; padding: 4px 12px; border-radius: 8px; font-size: 0.8rem; display: inline-block;">LYANNEUR PRO</span>
-                        <h3 style="font-size: 1.5rem; font-weight: 800; color: #1F3827; margin-top: 10px; margin-bottom: 4px;">Formule Lyanneur PRO</h3>
-                    `;
-                }
-                if (priceBox) {
-                    priceBox.innerHTML = `
-                        <div style="font-size: 1.8rem; font-weight: 800; color: #1F3827;">${isYearly ? '599 €' : '59,90 €'}</div>
-                        <div style="font-size: 0.85rem; color: #64748B; margin-top: 4px;">Facturation ${isYearly ? 'annuelle (599 €/an)' : 'mensuelle (59,90 €/mois)'}</div>
-                    `;
-                }
-                if (features) {
-                    features.innerHTML = `
-                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
-                            <li><i class="ph-fill ph-shield-check" style="color: #173F36;"></i> <strong>Équipes, multi-membres & collaborateurs</strong></li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Multi-zones géographiques d'intervention</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Tableau de bord entreprise & export CSV</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Support client prioritaire 7j/7</li>
-                        </ul>
-                    `;
-                }
-            }
-
-            let legalBox = modal.querySelector('#subDetailLegal');
-            if (!legalBox) {
-                legalBox = document.createElement('div');
-                legalBox.id = 'subDetailLegal';
-                const closeBtn = modal.querySelector('#btnSubDetailClose');
-                if (closeBtn && closeBtn.parentNode) closeBtn.parentNode.insertBefore(legalBox, closeBtn);
-                else modal.querySelector('.modal-card')?.appendChild(legalBox);
-            }
-            if (normalizedPlan === 'FREE' || normalizedPlan === 'LYANNEUR') {
-                legalBox.innerHTML = '';
-                legalBox.style.display = 'none';
-            } else {
-                legalBox.style.display = 'block';
-                legalBox.innerHTML = `
-                    <div style="text-align:left;margin-bottom:18px;padding:14px;border:1px solid var(--border);border-radius:14px;background:#F8FAF8;">
-                        <p style="font-size:0.84rem;line-height:1.5;margin:0 0 10px;color:#1E293B;"><strong>Informations précontractuelles.</strong> Prix et périodicité ci-dessus. Abonnement renouvelé automatiquement jusqu’à résiliation. La résiliation empêche le renouvellement futur. Le droit de rétractation s’applique lorsqu’il est légalement ouvert au consommateur.</p>
-                        <p style="font-size:0.84rem;line-height:1.5;margin:0 0 12px;color:#1E293B;">Les fonctionnalités et tarifs applicables sont ceux présentés avant la validation de la commande. Un abonnement payant ne garantit pas l’obtention d’une mission.</p>
-                        <label class="lyann-cgu-accept" for="subAcceptCgv" style="margin-top:0;">
-                            <input type="checkbox" id="subAcceptCgv">
-                            <span>J'accepte les <a href="legal.html#cgv-abonnements" target="_blank" rel="noopener">Conditions générales de vente</a> et j'ai pris connaissance des informations précontractuelles.</span>
-                        </label>
-                    </div>
-                `;
-            }
-
-            modal.style.display = 'flex';
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-
-            const computed = window.getComputedStyle(modal);
-            console.log(`[PricingModal] elementFound=true contentUpdated=true openFunctionCalled=true activeClassApplied=${modal.classList.contains('active')} computedDisplay=${computed.display} computedVisibility=${computed.visibility} computedOpacity=${computed.opacity} computedZIndex=${computed.zIndex}`);
-
-        } catch (err) {
-            console.error('[PricingModalError] name=' + err.name + ' message=' + err.message + ' stackLine=' + (err.stack ? err.stack.split('\n')[1] : ''));
-        }
+    window.openSubscriptionDetailModal = function(planCode) {
+        window.LYANN_BUSINESS.openPlan(String(planCode || 'FREE').toUpperCase());
     };
 
     window.closeSubscriptionDetailModal = function(options) {
@@ -2543,13 +2375,13 @@ safeDomReady(() => {
                     priceValEl.textContent = 'Gratuit';
                     pricePeriodEl.textContent = '/ 0 € pour toujours';
                 } else if (planCode === 'PLUS') {
-                    priceValEl.textContent = isYearly ? '99 €' : '9,90 €';
+                    priceValEl.textContent = '7,90 €';
                     pricePeriodEl.textContent = isYearly ? '/ an' : '/ mois';
                 } else if (planCode === 'ULTIME') {
-                    priceValEl.textContent = isYearly ? '299 €' : '29,90 €';
+                    priceValEl.textContent = '19,90 €';
                     pricePeriodEl.textContent = isYearly ? '/ an' : '/ mois';
                 } else if (planCode === 'PRO') {
-                    priceValEl.textContent = isYearly ? '599 €' : '59,90 €';
+                    priceValEl.textContent = 'Sur demande';
                     pricePeriodEl.textContent = isYearly ? '/ an' : '/ mois';
                 }
             });

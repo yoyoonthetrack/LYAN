@@ -293,7 +293,7 @@
             '</header>',
             '<section class="chat-dossier-next" aria-label="Prochaine étape"><h4>Prochaine étape</h4><p data-dossier-next></p></section>',
             '<div data-dossier-actions></div>',
-            '<details class="chat-dossier-history"><summary>Historique et jalons</summary><div data-dossier-history></div></details>'
+            '<details class="chat-dossier-history"><summary>Historique et paiements par étape</summary><div data-dossier-history></div></details>'
         ].join('');
         list.appendChild(shell);
         const actionsHost = shell.querySelector('[data-dossier-actions]');
@@ -315,7 +315,7 @@
         if (historyHost && milestones.length) {
             milestones.forEach((milestone) => {
                 const line = document.createElement('p');
-                line.textContent = (milestone.title || 'Jalon') + (milestone.amount != null ? ' · ' + milestone.amount + ' €' : '');
+                line.textContent = (milestone.title || 'Paiement par étape') + (milestone.amount != null ? ' · ' + milestone.amount + ' €' : '');
                 historyHost.appendChild(line);
             });
         }

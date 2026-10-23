@@ -65,7 +65,7 @@ test('the old ledger stays disconnected and no longer classifies quotes by 200 e
     assert.match(reader, /return \[\];/);
     assert.match(payments, /return this\.financialUnavailable\('Création de demande'\)/);
     assert.match(payments, /return this\.financialUnavailable\('Paiement du devis'\)/);
-    assert.match(payments, /return this\.financialUnavailable\('Soumission de jalon'\)/);
+    assert.match(payments, /return this\.financialUnavailable\('Soumission de paiement par étape'\)/);
     assert.match(payments, /return this\.financialUnavailable\('Versement'\)/);
     const quote = payments.slice(payments.indexOf('submitQuotation: function'), payments.indexOf('PAYMENT_MODE'));
     assert.doesNotMatch(quote, /amount > 200|>= 200|< 200/);

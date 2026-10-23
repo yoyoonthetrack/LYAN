@@ -2044,7 +2044,7 @@ window.openQuoteRevision = function(quoteId) {
     panel.style.cssText = 'width:min(560px, 100%); max-height:min(88vh, 760px); overflow:auto; background:#fff; border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:10px;';
     const title = document.createElement('h3');
     title.style.margin = '0';
-    title.textContent = rows.length > 1 ? 'Modifier le devis par jalons' : 'Modifier le devis';
+    title.textContent = rows.length > 1 ? 'Modifier le devis avec paiement par étape' : 'Modifier le devis';
     const hint = document.createElement('p');
     hint.style.cssText = 'margin:0; font-size:0.82rem; color:#64748b;';
     hint.textContent = 'Version ' + decision.version + '. Le client devra voir cette version avant toute acceptation. Aucun paiement n’est lancé.';
@@ -2082,7 +2082,7 @@ window.openQuoteRevision = function(quoteId) {
             const head = document.createElement('div');
             head.style.cssText = 'display:flex; justify-content:space-between; align-items:center; gap:8px;';
             const label = document.createElement('strong');
-            label.textContent = nextRows.length === 1 ? 'Prestation' : 'Jalon ' + (index + 1);
+            label.textContent = nextRows.length === 1 ? 'Prestation' : 'Paiement par étape ' + (index + 1);
             const moves = document.createElement('div');
             moves.style.display = 'flex';
             const up = document.createElement('button');
@@ -2155,7 +2155,7 @@ window.openQuoteRevision = function(quoteId) {
     const add = document.createElement('button');
     add.type = 'button';
     add.className = 'btn btn-outline';
-    add.textContent = 'Ajouter un jalon';
+    add.textContent = 'Ajouter un paiement par étape';
     add.addEventListener('click', () => {
         const current = readRows();
         if (current.length >= revision.MAX_MILESTONES) return;
@@ -3092,8 +3092,8 @@ function applyServerCheckoutAmounts(amounts) {
     }
     if (note) {
         note.textContent = customerFee === 149 && rawFee != null && rawFee < 149
-            ? 'Le minimum de 1,49 € s’applique à ce jalon. Il n’est pas calculé une seule fois pour tout le devis.'
-            : 'Ces frais sont calculés sur ce jalon seulement.';
+            ? 'Le minimum de 1,49 € s’applique à ce paiement par étape. Il n’est pas calculé une seule fois pour tout le devis.'
+            : 'Ces frais sont calculés sur ce paiement par étape seulement.';
     }
 }
 window.applyServerCheckoutAmounts = applyServerCheckoutAmounts;
@@ -3130,9 +3130,9 @@ const TIMELINE_LABELS = {
     payment_requested: '💳 Paiement demandé',
     payment_secured: '🔒 Fonds sécurisés',
     payment_failed: '❌ Paiement échoué',
-    milestone_created: '🔨 Jalon',
+    milestone_created: '🔨 Paiement par étape',
     milestone_completed: '✓ Travail déclaré terminé',
-    milestone_approved: '✅ Jalon validé',
+    milestone_approved: '✅ Paiement par étape validé',
     funds_released: '💶 Fonds libérés',
     mission_started: 'Mission commencée',
     mission_completed: 'Mission terminée',
@@ -3461,7 +3461,7 @@ function renderActionPanelShell(view, quote) {
         const details = document.createElement('details');
         details.className = 'chat-mission-details';
         const summary = document.createElement('summary');
-        summary.textContent = 'Voir les jalons';
+        summary.textContent = 'Voir les paiements par étape';
         details.appendChild(summary);
         view.details.forEach((line) => {
             const row = document.createElement('div');
@@ -7449,14 +7449,14 @@ document.addEventListener('touchstart', (e) => {
             const head = document.createElement('div');
             head.className = 'md-milestone-head';
             const label = document.createElement('strong');
-            label.textContent = 'Jalon ' + (index + 1);
+            label.textContent = 'Paiement par étape ' + (index + 1);
             const remove = document.createElement('button');
             remove.type = 'button';
             remove.className = 'btn btn-outline md-milestone-remove';
             remove.textContent = 'Supprimer';
             remove.disabled = milestoneEditorState.rows.length <= 1;
             remove.addEventListener('click', () => {
-                if (milestoneEditorApi.rowHasData(row) && !window.confirm('Supprimer ce jalon et conserver les autres tels quels ?')) return;
+                if (milestoneEditorApi.rowHasData(row) && !window.confirm('Supprimer ce paiement par étape et conserver les autres tels quels ?')) return;
                 milestoneEditorApi.removeRow(milestoneEditorState, row.id);
                 paintMilestoneRows();
             });
@@ -7464,7 +7464,7 @@ document.addEventListener('touchstart', (e) => {
             const title = document.createElement('input');
             title.type = 'text';
             title.className = 'modal-input';
-            title.placeholder = 'Nom du jalon';
+            title.placeholder = 'Nom du paiement par étape';
             title.value = row.title;
             title.setAttribute('data-field', 'title');
             title.addEventListener('input', () => { row.title = title.value; });
@@ -7478,7 +7478,7 @@ document.addEventListener('touchstart', (e) => {
             percent.autocomplete = 'off';
             percent.className = 'modal-input';
             percent.setAttribute('data-field', 'percent');
-            percent.setAttribute('aria-label', 'Pourcentage du jalon ' + (index + 1));
+            percent.setAttribute('aria-label', 'Pourcentage du paiement par étape ' + (index + 1));
             percent.value = milestoneEditorApi.formatPercent(row.percent);
             percent.addEventListener('input', () => {
                 const parsed = milestoneEditorApi.parseDecimal(percent.value);
@@ -7497,7 +7497,7 @@ document.addEventListener('touchstart', (e) => {
             amount.autocomplete = 'off';
             amount.className = 'modal-input';
             amount.setAttribute('data-field', 'amount');
-            amount.setAttribute('aria-label', 'Montant du jalon ' + (index + 1));
+            amount.setAttribute('aria-label', 'Montant du paiement par étape ' + (index + 1));
             amount.value = milestoneEditorApi.formatMoney(milestoneEditorApi.fromCents(row.amountCents));
             amount.addEventListener('input', () => {
                 const parsed = milestoneEditorApi.parseDecimal(amount.value);
@@ -7512,7 +7512,7 @@ document.addEventListener('touchstart', (e) => {
             remainder.type = 'button';
             remainder.className = 'btn btn-outline md-assign-remainder';
             remainder.setAttribute('data-assign-remainder', row.id);
-            remainder.textContent = 'Affecter le reste à ce jalon';
+            remainder.textContent = 'Affecter le reste à ce paiement par étape';
             remainder.addEventListener('click', () => {
                 milestoneEditorApi.assignRemainder(milestoneEditorState, row.id, milestoneTotal());
                 paintMilestoneRows();
@@ -7598,7 +7598,7 @@ document.addEventListener('touchstart', (e) => {
 
                 const checked = milestoneEditorApi && milestoneEditorState
                     ? milestoneEditorApi.validate(milestoneEditorState, total)
-                    : { ok: false, message: 'Les jalons sont indisponibles.' };
+                    : { ok: false, message: 'Les paiements par étape sont indisponibles.' };
                 if (!checked.ok) {
                     if (window.lyannAlert) window.lyannAlert(checked.message);
                     else alert(checked.message);
@@ -9317,7 +9317,7 @@ window.openMissionDetailsModal = async function(missionId) {
     const startPane = document.getElementById('missionStartActionPane');
     const listEl = document.getElementById('missionModalMilestonesList');
 
-    if (listEl) listEl.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:16px;">Chargement des jalons...</p>';
+    if (listEl) listEl.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:16px;">Chargement des paiements par étape...</p>';
 
     if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.getMissionDetailsSecure !== 'function') {
         if (listEl) listEl.innerHTML = '<p style="font-size:0.85rem; color:red;">Client API indisponible</p>';
@@ -9370,7 +9370,7 @@ window.openMissionDetailsModal = async function(missionId) {
     // Milestones Render
     if (listEl) {
         if (!milestones || milestones.length === 0) {
-            listEl.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center;">Aucun jalon configuré sur ce devis.</p>';
+            listEl.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center;">Aucun paiement par étape configuré sur ce devis.</p>';
             return;
         }
 

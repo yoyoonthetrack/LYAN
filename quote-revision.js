@@ -34,7 +34,7 @@
         }
         const milestones = Array.isArray(quote.milestones) ? quote.milestones : [];
         if (milestones.some((milestone) => milestone && LOCKED_MILESTONE_STATUSES.has(String(milestone.status || '').toUpperCase()))) {
-            return { ok: false, code: 'locked_milestone', message: 'Un jalon déjà engagé ne peut pas être modifié.' };
+            return { ok: false, code: 'locked_milestone', message: 'Un paiement par étape déjà engagé ne peut pas être modifié.' };
         }
         const payments = Array.isArray(quote.payments) ? quote.payments : [];
         if (payments.some((payment) => payment && !IGNORED_PAYMENT_STATUSES.has(paymentStatus(payment)))) {

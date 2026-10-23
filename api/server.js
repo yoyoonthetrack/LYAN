@@ -129,6 +129,8 @@ app.use(cors({
 }));
 
 const PRODUCT_HTML = {
+    '/professional.html': 'professional.html',
+    '/business-admin.html': 'business-admin.html',
     '/': 'index.html',
     '/index.html': 'index.html',
     '/feed': 'feed.html',
@@ -321,7 +323,7 @@ app.use((req, res, next) => {
         express.raw({ type: '*/*' })(req, res, next);
     } else {
         const maisonMedia = url.includes('/v1/admin/maison/');
-        express.json({ limit: maisonMedia ? '16mb' : '1mb' })(req, res, next);
+        express.json({ limit: req.path === '/v1/business/documents' ? '3mb' : maisonMedia ? '16mb' : '1mb' })(req, res, next);
     }
 });
 
@@ -4515,7 +4517,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         if (milestone.status !== 'PENDING') {
@@ -4838,7 +4840,7 @@ app.post('/v1/milestones/start-work', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         const quote = milestone.quotes;
@@ -4944,7 +4946,7 @@ app.post('/v1/milestones/submit-completion', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         const quote = milestone.quotes;
@@ -5460,7 +5462,7 @@ app.post('/v1/milestones/release-payment', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         const quote = milestone.quotes;
@@ -5600,7 +5602,7 @@ app.post('/v1/milestones/claim-transfer', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         const quote = milestone.quotes;
@@ -5663,7 +5665,7 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         const quote = milestone.quotes;
@@ -6529,6 +6531,7 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
     }
 });
 
+require('./business-routes').registerBusinessRoutes(app, { supabaseAdmin, verifyAdminPermission });
 const { registerContentModerationRoutes } = require('./content-moderation-routes');
 registerContentModerationRoutes(app, {
     supabaseAdmin,

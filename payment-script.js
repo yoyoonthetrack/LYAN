@@ -347,7 +347,7 @@
         },
 
         submitMilestoneCompletion: function(txId, milestoneId, data) {
-            return this.financialUnavailable('Soumission de jalon');
+            return this.financialUnavailable('Soumission de paiement par étape');
             const txs = this.getTransactions();
             const idx = txs.findIndex(t => t.id === txId);
             if (idx === -1) return null;

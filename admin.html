@@ -17,8 +17,10 @@
     <link rel="stylesheet" href="admin-style.css">
     <link rel="stylesheet" href="admin-design-v2.css">
     <link rel="stylesheet" href="finance-desk.css?v=20261015a">
+<link rel="stylesheet" href="business.css">
 </head>
 <body class="admin-body">
+<a href="business-admin.html" class="business-link">Dossiers Pro · Entreprise · Partenariats</a>
 
     <!-- ==========================================================================
          0.A NEUTRAL LOADING SCREEN (NO FLASH OF LOGIN OR DASHBOARD)
@@ -800,7 +802,7 @@
             </section>
 
             <!-- ==========================================================================
-                 PÔLE 8 : DEVIS & JALONS
+                 PÔLE 8 : DEVIS & PAIEMENTS PAR ÉTAPE
                  ========================================================================== -->
             <section id="sec-quotes" class="admin-section">
                 <div class="admin-page-header">
@@ -817,7 +819,7 @@
                                 <th>Prestataire</th>
                                 <th>Client</th>
                                 <th>Total TTC</th>
-                                <th>Jalons Validés</th>
+                                <th>Paiements par étape Validés</th>
                                 <th>Statut</th>
                             </tr>
                         </thead>
@@ -909,13 +911,13 @@
                     </div>
                     <div class="admin-card" style="border-top: 3px solid var(--admin-brand-yellow);">
                         <h3 style="color: #9A6F12;">Lyanneur Plus</h3>
-                        <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0; color: #9A6F12;">9,90 € / mois</div>
-                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">99 € / an. Aligné sur pricing.lyann.app.</p>
+                        <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0; color: #9A6F12;">7,90 € / mois</div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">Formule mensuelle en préparation.</p>
                     </div>
                     <div class="admin-card" style="border-top: 3px solid var(--admin-brand-primary);">
-                        <h3 style="color: var(--admin-brand-primary);">Lyanneur Ultime</h3>
-                        <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0; color: var(--admin-brand-primary);">29,90 € / mois</div>
-                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">299 € / an. Les abonnements Stripe n'ont pas encore de lignes en production.</p>
+                        <h3 style="color: var(--admin-brand-primary);">Pro</h3>
+                        <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0; color: var(--admin-brand-primary);">19,90 € / mois</div>
+                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">Formule mensuelle en préparation. Achat non activé.</p>
                     </div>
                 </div>
             </section>
@@ -2454,8 +2456,6 @@
     <!-- Scripts Integration -->
     <script src="deal-flow-engine.js"></script>
     <script src="safety-disputes-engine.js"></script>
-    <script src="subscriptions-engine.js"></script>
-    <script src="pro-verification-engine.js"></script>
     <script src="search-engine.js"></script>
     <script src="deal-notification-policy.js?v=20261014e6"></script>
     <script src="notification-engine.js"></script>

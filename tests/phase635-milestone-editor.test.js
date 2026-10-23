@@ -98,5 +98,5 @@ test('6.35 source no longer rebalances sibling jalons on input', () => {
     const chat = fs.readFileSync(path.join(__dirname, '..', 'chat-logic.js'), 'utf8');
     assert.match(chat, /LYANN_MILESTONE_EDITOR/);
     assert.doesNotMatch(chat, /function rebalanceMilestones/);
-    assert.match(chat, /Affecter le reste à ce jalon/);
+    assert.match(chat, /Affecter le reste à ce paiement par étape/);
 });

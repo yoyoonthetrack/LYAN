@@ -602,6 +602,7 @@
             if (result?.error) throw new Error(result.error);
             renderedPosts = filteredPosts(result.data);
             paintMarkers(renderedPosts);
+            window.LYANN_BUSINESS_MAP?.refresh(map, queryBounds, () => gen === fetchGeneration && isMapView);
             status.textContent = renderedPosts.length
                 ? renderedPosts.length + ' partage' + (renderedPosts.length > 1 ? 's' : '') + ' ici · Zoomez pour explorer les quartiers.'
                 : 'Aucun partage géolocalisé ici pour le moment. Soyez le premier !';

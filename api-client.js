@@ -2216,7 +2216,7 @@ const LYANN_API_CLIENT = {
 
     async markMilestoneDoneSecure(milestoneId, comments = null, deliverables = []) {
         if (!this.supabase || !milestoneId) {
-            return { error: { message: "Identifiant de jalon invalide." } };
+            return { error: { message: "Identifiant de paiement par étape invalide." } };
         }
         try {
             const { data, error } = await this.supabase.rpc('mark_milestone_done_secure', {
@@ -2227,13 +2227,13 @@ const LYANN_API_CLIENT = {
             if (error) return { error };
             return { data };
         } catch (e) {
-            return { error: { message: e.message || "Erreur lors de la mise à jour du jalon." } };
+            return { error: { message: e.message || "Erreur lors de la mise à jour du paiement par étape." } };
         }
     },
 
     async validateMilestoneSecure(milestoneId) {
         if (!this.supabase || !milestoneId) {
-            return { error: { message: "Identifiant de jalon invalide." } };
+            return { error: { message: "Identifiant de paiement par étape invalide." } };
         }
         try {
             const { data, error } = await this.supabase.rpc('validate_milestone_secure', {
@@ -2242,7 +2242,7 @@ const LYANN_API_CLIENT = {
             if (error) return { error };
             return { data };
         } catch (e) {
-            return { error: { message: e.message || "Erreur lors de la validation du jalon." } };
+            return { error: { message: e.message || "Erreur lors de la validation du paiement par étape." } };
         }
     },
 

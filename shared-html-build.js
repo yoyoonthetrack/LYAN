@@ -5,6 +5,9 @@ const os = require('os');
 
 const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260922w" defer></script>';
 const SHARED_RUNTIME_TAGS = [
+  '<script src="lyann-plans.js"></script>',
+  '<script src="business-map.js"></script>',
+  '<script src="business-ui.js" defer></script>',
   '<script src="sentry-init.js?v=20260916-5"></script>',
   '<script src="surface-manager.js?v=20261015j"></script>',
   '<script src="app-router.js?v=20260916-5"></script>',
