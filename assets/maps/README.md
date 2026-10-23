@@ -3,7 +3,14 @@
 `lyann-liberty.json` is a local palette adaptation of OpenFreeMap Liberty, retrieved
 2026-10-22 from https://tiles.openfreemap.org/styles/liberty. Geometry, source
 layers, road widths, labels and zoom rules remain those of the original style.
-Only paint colors/label halos were changed. This is not a decorative map.
+The LYANN palette keeps real geographic vector features: roads, buildings, parks,
+water and labels. The optional Natural Earth raster overview layer has been
+removed, so **all map geometry sources are vector** at every zoom level.
+MapLibre draws vector geometry from OpenFreeMap/OpenMapTiles PBF tiles, not
+static PNG street-map images. Style sprites for small point-of-interest icons
+may still be image assets; they do not replace map geometry.
+Paint colors and label halos are customized; geographic detail remains real.
+This is not a decorative map.
 
 Sources and terms:
 - https://openfreemap.org/quick_start/
