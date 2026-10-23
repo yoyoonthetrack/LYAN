@@ -79,7 +79,13 @@
                     }, 'image/jpeg', 0.72);
                 };
                 video.onseeked = draw;
-                try { video.currentTime = seekTo; } catch (err) { draw(); }
+                // Seeking to 0 when the player is already at 0 does not fire
+                // seeked on many WebViews, leaving the poster Promise pending.
+                if (Math.abs(video.currentTime - seekTo) < 0.02) {
+                    draw();
+                } else {
+                    try { video.currentTime = seekTo; } catch (err) { draw(); }
+                }
             };
             video.src = url;
         });
@@ -187,15 +193,27 @@
                     }
                     requestAnimationFrame(paint);
                 };
-                video.onseeked = () => {
-                    recorder.start(200);
-                    video.play().then(() => requestAnimationFrame(paint)).catch((err) => {
+                let started = false;
+                const startRecording = () => {
+                    if (started) return;
+                    started = true;
+                    try { recorder.start(200); } catch (err) {
+                        cleanAudio();
+                        URL.revokeObjectURL(url);
+                        reject(new Error('Impossible de démarrer la compression.'));
+                        return;
+                    }
+                    video.play().then(() => requestAnimationFrame(paint)).catch(() => {
                         cleanAudio();
                         reject(new Error('Lecture nécessaire à la conversion indisponible.'));
                         try { if (recorder.state === 'recording') recorder.stop(); } catch (_) {}
                     });
                 };
-                try { video.currentTime = start; } catch (err) { reject(err); }
+                video.onseeked = startRecording;
+                if (Math.abs(video.currentTime - start) < 0.02) startRecording();
+                else {
+                    try { video.currentTime = start; } catch (err) { cleanAudio(); reject(err); }
+                }
             };
             video.src = url;
         });
