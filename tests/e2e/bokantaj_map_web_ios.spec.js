@@ -166,21 +166,21 @@ test('map API requests moderation status and recent traffic expires correctly', 
   await page.route('**/*', r => ['localhost', '127.0.0.1'].includes(new URL(r.request().url()).hostname) ? r.continue() : r.abort());
   await page.goto('/feed.html?demo=true');
   const result = await page.evaluate(async () => {
-    let selection = '';
+    const selections = [];
     const filters = [];
     const query = {
-      select(s) { selection = s; return this; },
+      select(columns) { selections.push(columns); return this; },
       eq(...args) { filters.push(args); return this; },
       not() { return this; }, gte() { return this; }, lt() { return this; }, lte() { return this; }, order() { return this; },
       limit() { return Promise.resolve({ data: [], error: null }); }
     };
     await window.LYANN_API_CLIENT.getMappedBokantajPosts.call({ supabase: { from: () => query } }, { south: 16, north: 17, west: -62, east: -61 });
     const post = { type: 'trafic', place_lat: 16.25, place_lng: -61.55, place_label: 'Jarry', public_moderation_status: 'approved' };
-    return { selection, filters,
+    return { selections, filters,
       recent: window.LYANN_BOKANTAJ_MAP.publiclyVisible({ ...post, created_at: new Date().toISOString() }),
       expired: window.LYANN_BOKANTAJ_MAP.publiclyVisible({ ...post, created_at: new Date(Date.now() - 25 * 3600000).toISOString() }) };
   });
-  expect(result.selection.split(', ')).toContain('public_moderation_status');
+  expect(result.selections.some(columns => columns.split(', ').includes('public_moderation_status'))).toBe(true);
   expect(result.filters).toContainEqual(['public_moderation_status', 'approved']);
   expect(result.recent).toBe(true);
   expect(result.expired).toBe(false);
