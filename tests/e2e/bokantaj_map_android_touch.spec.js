@@ -60,7 +60,7 @@ test('Bokantaj Carte Pixel Android: publication et repère facultatif au toucher
   await page.locator('#bokantajPlaceTrigger').tap();
   await expect(page.locator('#bokantajPlacePicker')).toBeVisible();
   await page.locator('#bokantajPickerMap').tap({ position: { x: 120, y: 90 } });
-  await expect(page.locator('#bokantajPickerStatus')).toContainText('Repère placé');
+  await expect(page.locator('#bokantajPickerStatus')).toContainText('Localisation enregistrée');
   await page.locator('#bokantajPlaceName').fill('Jarry');
   await page.locator('#bokantajPlaceSave').tap();
   await expect(page.locator('#bokantajPlaceTriggerLabel')).toContainText('Jarry');
