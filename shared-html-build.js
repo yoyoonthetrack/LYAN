@@ -8,6 +8,7 @@ const SHARED_RUNTIME_TAGS = [
   '<script src="lyann-plans.js"></script>',
   '<script src="business-map.js"></script>',
   '<script src="business-ui.js" defer></script>',
+  '<script src="store-subscriptions.js" defer></script>',
   '<script src="sentry-init.js?v=20260916-5"></script>',
   '<script src="surface-manager.js?v=20261015j"></script>',
   '<script src="app-router.js?v=20260916-5"></script>',

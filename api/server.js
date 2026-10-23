@@ -6532,6 +6532,7 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
 });
 
 require('./business-routes').registerBusinessRoutes(app, { supabaseAdmin, verifyAdminPermission });
+require('./store-routes').registerStoreRoutes(app, { supabaseAdmin });
 const { registerContentModerationRoutes } = require('./content-moderation-routes');
 registerContentModerationRoutes(app, {
     supabaseAdmin,

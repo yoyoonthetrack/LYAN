@@ -23,7 +23,7 @@ CREATE TABLE public.user_portfolio_items(
 );
 CREATE TABLE public.lyann_plan_memberships(
  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,plan text NOT NULL,status text NOT NULL,
- expires_at timestamptz NOT NULL,source text,updated_at timestamptz DEFAULT now()
+ expires_at timestamptz NOT NULL,external_id text UNIQUE,source text,updated_at timestamptz DEFAULT now()
 );
 
 CREATE VIEW public.public_profiles AS SELECT id FROM profiles;

@@ -15,6 +15,8 @@ on:
       - '76_bokantaj_map_places.sql'
       - 'tests/e2e/bokantaj_map_web_ios.spec.js'
       - 'scripts/ensure-leaflet-assets.js'
+      - 'store-subscriptions.js'
+      - 'tests/store-browser.cjs'
       - 'package.json'
       - 'api/content-moderation-routes.js'
       - 'api/bokantaj-media-retention.js'
@@ -57,6 +59,9 @@ jobs:
 
       - name: Install Chromium and system dependencies
         run: npx playwright install --with-deps chromium
+
+      - name: Test store purchase and restore UI with isolated native fixtures
+        run: node tests/store-browser.cjs
 
       - name: Serve isolated web app
         run: |

@@ -21,9 +21,11 @@ function checkRace(results,code){
  execFileSync('createdb',[...base,database]);
  try{
   file('tests/fixtures/entitlements-schema.sql');
-  for(const migration of ['82_lyann_entitlement_guards_staging.sql','83_lyann_atomic_profile_skills_staging.sql','84_lyann_self_entitlements_staging.sql','85_lyann_public_badges_staging.sql'])file(migration);
+  for(const migration of ['82_lyann_entitlement_guards_staging.sql','83_lyann_atomic_profile_skills_staging.sql','84_lyann_self_entitlements_staging.sql','85_lyann_public_badges_staging.sql','86_lyann_store_subscriptions_staging.sql'])file(migration);
   file('tests/entitlements-staging.sql');
   file('tests/plan-badges-staging.sql');
+  file('tests/store-subscriptions-staging.sql');
+  console.log('PASS store account binding, out-of-order verification and test-only environments');
   console.log('PASS public badges, expiry, evidence and anonymous RPC');
   const u=randomUUID(),c=randomUUID();
   sql("INSERT INTO auth.users(id,email) VALUES('"+u+"','local-provider@example.invalid'),('"+c+"','local-client@example.invalid'); SELECT lyann_set_entitlement_test('"+u+"',true,'"+c+"');");
@@ -38,5 +40,10 @@ function checkRace(results,code){
   checkRace(await Promise.all([1,2].map(i=>concurrent("INSERT INTO services(owner_id,title,category,slug) VALUES('"+u+"','Category "+i+"','Category "+i+"','local-category-"+i+"')"))),'CATEGORY_QUOTA_REACHED');
   assert.equal(sql("SELECT count(*) FROM services WHERE owner_id='"+u+"'"),'1');
   console.log('PASS concurrent category insertion: one category remains');
+  const storeA=sql("SELECT lyann_store_account('"+u+"')"),storeB=sql("SELECT lyann_store_account('"+c+"')");
+  checkRace(await Promise.all([[u,storeA],[c,storeB]].map(([id,account])=>concurrent("SELECT lyann_apply_store_subscription('"+id+"','"+account+"','google',repeat('c',64),'test.plus','PLUS','active',now()+interval '1 hour',now(),'Test')"))),'STORE_PURCHASE_ALREADY_BOUND');
+  assert.equal(sql("SELECT count(*) FROM lyann_store_subscriptions WHERE purchase_key=repeat('c',64)"),'1');
+  console.log('PASS concurrent purchase claims: a store purchase belongs to one LYANN account');
+
  }finally{execFileSync('dropdb',[...base,database]);}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -18,7 +18,15 @@
       "enabled": true
     },
     "PushNotifications": {
-      "presentationOptions": ["banner", "list", "badge", "sound"]
+      "presentationOptions": [
+        "banner",
+        "list",
+        "badge",
+        "sound"
+      ]
+    },
+    "NativePurchases": {
+      "autoFinishTransactions": false
     }
   }
 }

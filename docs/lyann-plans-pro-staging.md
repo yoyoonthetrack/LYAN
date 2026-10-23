@@ -83,3 +83,7 @@ Le domaine Staging doit servir le commit testé et pointer sur tdktfbtqceldlaeqj
 
 ### Badges serveur
 Les badges sont désormais raccordés aux droits actifs et aux justificatifs approuvés sur les surfaces principales. Voir [règles, limites et validation iPhone](lyann-badges-subscriptions-staging.md). Les achats natifs restent désactivés.
+
+
+### Achats natifs en préparation
+Le plugin et les parcours achat/restauration/vérification serveur sont intégrés mais désactivés. Les produits des magasins ne sont pas encore créés. Voir [création des produits et validation physique](lyann-native-subscriptions-staging.md). Aucun achat réel ni ouverture commerciale.
