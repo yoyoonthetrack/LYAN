@@ -28,7 +28,7 @@
   current=data.dossier;currentPlan=data.plan;
   $('businessPlan').textContent=data.plan.name+(data.verified?' · Vérifié':'');
   const allowed=data.plan.code==='PRO';
-  $('proEligibility').textContent=allowed?'Votre formule Pro vous permet de faire vérifier votre activité.':'Le dépôt des justificatifs est réservé aux abonnés Pro. Vos documents existants restent consultables.';
+  if($('proEligibility'))$('proEligibility').textContent=allowed?'LYANN lit vos documents, puis décide.':'';
   $('dossierStatus').textContent=current?labels[current.status]:'Aucun dossier envoyé';
   $('dossierMessage').textContent=current?.message||'';
   const editable=allowed&&(!current||['draft','needs_info','rejected'].includes(current.status));
@@ -77,11 +77,13 @@
  }
  function applyPlanDisclosure(data){
   const allowed=data?.plan?.code==='PRO';
-  document.querySelectorAll('[data-pro-tools]').forEach((el)=>{el.hidden=!allowed;});
+  document.querySelectorAll('[data-pro-tools], [data-pro-verify]').forEach((el)=>{el.hidden=!allowed;});
   const gate=$('proToolsGate');
   if(gate)gate.hidden=!!allowed;
   const identity=$('proIdentity');
-  if(identity)identity.hidden=!allowed&&!data?.dossier;
+  if(identity)identity.hidden=!allowed;
+  const eligibility=$('proEligibility');
+  if(eligibility)eligibility.hidden=!allowed;
  }
  async function loadMe(){const data=await request('/v1/business/me');if($('proIdentity'))renderDossier(data);applyPlanDisclosure(data);return data;}
  window.LYANN_BUSINESS={openPlan,contact,request,loadMe};
@@ -141,6 +143,42 @@
   }
   const join=$('lyannJoinFree');
   if(join)join.onclick=()=>document.querySelector('.open-signup-trigger')?.click();
+  const grid=document.querySelector('.lyann-offer-grid');
+  function pickOffer(code,fromUser){
+   if(!grid)return;
+   document.querySelectorAll('[data-offer]').forEach((card)=>{
+    const on=card.dataset.offer===code;
+    card.classList.toggle('is-picked',on);
+    card.setAttribute('aria-pressed',on?'true':'false');
+   });
+   const note=$('lyannOfferChoice');
+   if(note){
+    note.textContent=code==='PRO'
+     ?'Pro : votre activité peut être examinée par LYANN. L’achat s’ouvrira dans l’application, au prix du magasin.'
+     :code==='PLUS'
+      ?'Plus : missions illimitées, à votre rythme. L’achat s’ouvrira dans l’application, au prix du magasin.'
+      :code==='ENTERPRISE'
+       ?'Entreprise n’est pas en vente. Écrivez-nous si vous représentez une organisation.'
+       :'Gratuit reste avec vous. Plus et Pro s’ouvrent quand vous en avez besoin.';
+   }
+   if(fromUser&&code==='ENTERPRISE')contact('enterprise');
+  }
+  if(grid){
+   grid.querySelectorAll('[data-offer]').forEach((card)=>{
+    card.tabIndex=0;
+    card.addEventListener('keydown',(e)=>{
+     if(e.key==='Enter'||e.key===' '){e.preventDefault();pickOffer(card.dataset.offer,true);}
+    });
+   });
+   grid.addEventListener('click',(e)=>{
+    if(e.target.closest('a, [data-business-contact], [data-store-buy] button, #lyannJoinFree'))return;
+    const choose=e.target.closest('[data-offer-choose]');
+    const card=e.target.closest('[data-offer]');
+    if(choose){e.stopPropagation();pickOffer(choose.dataset.offerChoose,true);return;}
+    if(card)pickOffer(card.dataset.offer,true);
+   });
+   pickOffer(document.querySelector('[data-offer].is-picked')?.dataset.offer||'PLUS',false);
+  }
   if($('lyannPlanState')){
    (async()=>{
     const client=window.apiClient||window.LYANN_API_CLIENT;
@@ -165,6 +203,7 @@
       badge.textContent='Votre formule';
       head.append(badge);
      }
+     pickOffer(data.plan.code,false);
     }catch(_){
      $('lyannPlanState').textContent='Votre formule n’a pas pu être vérifiée. Les achats dans l’application ne sont pas encore ouverts.';
     }
@@ -246,7 +285,7 @@
     const r=await request('/v1/business/rights');
     const count=(key)=>esc(r.usage[key])+' / '+(r.limits[key]===null?'illimité':esc(r.limits[key]));
     const over=!r.enforced&&['missions','photos','categories'].some((key)=>r.limits[key]!==null&&Number(r.usage[key])>Number(r.limits[key]));
-    $('businessRights').innerHTML='<p>'+esc(r.enforced?'Limites appliquées à ce compte de test.':'Limites préparées, pas encore appliquées à ce compte.')+(over?' Ce compte dépasse déjà un plafond prévu.':'')+'</p><ul><li>Missions comme prestataire ce mois-ci : '+count('missions')+'</li><li>Photos du portfolio : '+count('photos')+'</li><li>Catégories actives : '+count('categories')+'</li></ul><p>Chaque compteur se lit « utilisé / plafond de la formule ».</p><p>Demandes et paiement par étape : accessibles dans toutes les formules.</p><p>Le compteur des missions est renouvelé le '+esc(new Date(r.resets_at).toLocaleDateString('fr-FR',{timeZone:'UTC'}))+' à 00 h UTC. Les contenus existants sont conservés après une baisse de formule.</p><p>Achats et vidéos du portfolio : pas encore activés.</p>';
+    $('businessRights').innerHTML='<p>'+esc(r.enforced?'Limites de test actives.':'Plafonds prévus, pas encore appliqués.')+(over?' Un compteur dépasse déjà le plafond.':'')+'</p><ul><li>Missions : '+count('missions')+'</li><li>Photos : '+count('photos')+'</li><li>Catégories : '+count('categories')+'</li></ul><p>Renouvellement missions : '+esc(new Date(r.resets_at).toLocaleDateString('fr-FR',{timeZone:'UTC'}))+' à 00 h UTC.</p>';
    };
    $('refreshRights').onclick=e=>action(e.target,loadRights);
    loadRights().catch(e=>{$('businessRights').textContent=e.message;});

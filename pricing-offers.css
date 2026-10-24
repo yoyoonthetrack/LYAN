@@ -31,12 +31,20 @@ body.is-native-app.pricing-page .lyann-offers {
     color: #3d4f44;
 }
 
-.lyann-plan-state {
+.lyann-plan-state,
+.lyann-offer-choice {
     margin-top: 12px;
     padding: 10px 12px;
     background: #fff;
     border: 1px solid #e6ddd2;
     border-radius: 12px;
+}
+
+.lyann-offer-choice {
+    background: #eef4ef;
+    border-color: #c9d7cc;
+    color: #1e3a2a;
+    font-weight: 650;
 }
 
 .lyann-offer-grid {
@@ -53,10 +61,19 @@ body.is-native-app.pricing-page .lyann-offers {
     border: 1px solid #e6ddd2;
     border-radius: 14px;
     box-shadow: 0 1px 4px rgba(36, 56, 43, 0.04);
+    cursor: pointer;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
-.lyann-offer.is-current {
+.lyann-offer.is-current,
+.lyann-offer.is-picked {
     border-color: #35583f;
+}
+
+.lyann-offer.is-picked {
+    background: #f4f8f4;
+    box-shadow: 0 8px 20px rgba(53, 88, 63, 0.12);
+    transform: translateY(-1px);
 }
 
 .lyann-offer-head {
@@ -169,6 +186,32 @@ body.is-native-app.pricing-page .lyann-offers {
 
 .lyann-offer.is-soon li::before {
     background: #b7bdb8;
+}
+
+.lyann-offer-more {
+    display: none;
+    margin-top: 8px;
+}
+
+.lyann-offer.is-picked .lyann-offer-more {
+    display: block;
+}
+
+.lyann-offer .lyann-choose {
+    width: 100%;
+    margin-top: 12px;
+    min-height: 44px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 12px;
+    background: #35583f;
+    color: #fff;
+    font: 700 0.95rem 'Outfit', sans-serif;
+    cursor: pointer;
+}
+
+.lyann-offer.is-picked .lyann-choose {
+    background: #2a4633;
 }
 
 .lyann-offer .lyann-quiet,

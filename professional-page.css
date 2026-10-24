@@ -38,7 +38,8 @@ body.professional-page .business-panel h2 {
 }
 
 #proToolsGate[hidden],
-[data-pro-tools][hidden] {
+[data-pro-tools][hidden],
+[data-pro-verify][hidden] {
     display: none !important;
 }
 
@@ -49,4 +50,10 @@ body.professional-page .business-panel h2 {
     margin-top: 8px;
     color: #35583f;
     font-weight: 700;
+}
+
+@media (max-width: 799px) {
+    body.professional-page .footer {
+        display: none;
+    }
 }

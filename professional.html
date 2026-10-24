@@ -123,27 +123,25 @@
     </div>
 
     <main class="business-wrap">
-        <h1>Mon activité professionnelle</h1>
+        <h1>Mon espace</h1>
         <p id="businessNotice" role="status" aria-live="polite"></p>
-        <p>Votre formule : <strong id="businessPlan">Chargement…</strong></p>
-        <p id="proEligibility"></p>
+        <p>Formule : <strong id="businessPlan">Chargement…</strong></p>
+        <p id="proEligibility" hidden></p>
         <section class="business-panel" data-store-subscriptions data-store-layout="manage">
-            <h2>Gérer l’abonnement</h2>
+            <h2>Abonnement</h2>
             <p data-store-status role="status" aria-live="polite">Les achats dans l’application ne sont pas encore ouverts.</p>
             <div class="lyann-manage-actions">
-                <button type="button" data-store-restore disabled>Restaurer mes achats</button>
-                <button type="button" data-store-manage disabled>Gérer mon abonnement</button>
+                <button type="button" data-store-restore disabled>Restaurer</button>
+                <button type="button" data-store-manage disabled>Gérer</button>
             </div>
-            <p class="lyann-fine">Abonnement mensuel à renouvellement automatique. Le prix et les conditions du magasin sont présentés avant confirmation.</p>
-            <p class="lyann-fine"><a href="legal.html">Conditions d’utilisation</a> · <a href="confidentialite.html">Confidentialité</a></p>
         </section>
         <section class="business-panel">
-            <h2>Mes droits et mon utilisation</h2>
-            <button id="refreshRights" type="button">Actualiser mes droits</button>
+            <h2>Mes droits</h2>
+            <button id="refreshRights" type="button">Actualiser</button>
             <div id="businessRights" aria-live="polite">Chargement des droits…</div>
         </section>
-        <section class="business-panel">
-            <h2>Faire vérifier mon activité</h2>
+        <section class="business-panel" data-pro-verify hidden>
+            <h2>Vérification</h2>
             <p>État : <strong id="dossierStatus">Chargement…</strong></p>
             <p id="dossierMessage"></p>
             <form id="proIdentity" hidden>
@@ -156,9 +154,9 @@
                 <button>Enregistrer les informations</button>
             </form>
         </section>
-        <section class="business-panel">
-            <h2>Mes justificatifs</h2>
-            <p>Pièces privées, accessibles à vous et aux personnes habilitées de LYANN. PDF, JPEG ou PNG : 2 Mo maximum. Ne joignez pas de pièce d’identité ou de coordonnées bancaires ici.</p>
+        <section class="business-panel" data-pro-verify hidden>
+            <h2>Justificatifs</h2>
+            <p>PDF, JPEG ou PNG, 2 Mo. Pas de pièce d’identité ni d’IBAN.</p>
             <ul id="proDocuments"></ul>
             <form id="proUpload" hidden>
                 <label>Type de document<select name="kind"><option value="registration">Immatriculation (RNE / Kbis)</option><option value="representation">Lien avec l’entreprise</option><option value="insurance">Assurance professionnelle</option><option value="decennial">Assurance décennale</option><option value="qualification">Qualification / autorisation</option></select></label>
@@ -170,9 +168,9 @@
             <button id="proSubmit" hidden>Soumettre mon dossier à LYANN</button>
         </section>
         <section class="business-panel" id="proToolsGate">
-            <h2>Outils Pro</h2>
-            <p>Le dépôt des documents, la vitrine et les essais de facturation sont réservés à la formule Pro. Le paiement seul ne donne pas le badge Vérifié.</p>
-            <a href="pricing.html">Voir les formules</a>
+            <h2>Envie d’aller plus loin ?</h2>
+            <p>La vérification et la vitrine arrivent avec Pro.</p>
+            <a href="pricing.html">Choisir une formule</a>
         </section>
         <section class="business-panel" data-pro-tools hidden>
             <h2>Ma vitrine d’établissement</h2>
@@ -234,9 +232,7 @@
         </section>
         <section class="business-panel">
             <h2>Partenariat</h2>
-            <p>Entreprises, associations et collectivités : écrivons ensemble un partenariat avec LYANN.</p>
             <button type="button" data-business-contact="partnership">Nous écrire</button>
-            <button type="button" data-business-contact="enterprise">Nous contacter pour Entreprise</button>
         </section>
     </main>
         <!-- ========== FOOTER ========== -->

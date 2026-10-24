@@ -6185,19 +6185,23 @@ safeDomReady(() => {
                 verifClass = 'pill-green';
             }
             let currentPlanName = '';
+            let currentPlanCode = '';
             if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow') {
                 try {
                     const me = await window.LYANN_BUSINESS?.request?.('/v1/business/me');
                     currentPlanName = me?.plan?.name || '';
+                    currentPlanCode = me?.plan?.code || '';
                 } catch (_) {
                     currentPlanName = '';
+                    currentPlanCode = '';
                 }
-                verifText = userProf?.lyann_badges?.verified ? 'Vérifié' : 'Pas de dossier vérifié';
+                verifText = userProf?.lyann_badges?.verified ? 'Vérifié' : 'Dossier en cours';
                 verifClass = userProf?.lyann_badges?.verified ? 'pill-green' : 'pill-yellow';
             }
             const isVerified = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow'
                 ? !!userProf?.lyann_badges?.verified
                 : !!(userProf?.is_pro_verified || userProf?.is_verified);
+            const showProVerify = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? currentPlanCode === 'PRO' : true;
             const verifRowTitle = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? 'Vérification professionnelle' : (isVerified ? 'Vérification' : 'Vérifier mon identité');
             const planSubtitle = currentPlanName
                 ? ('Votre formule : ' + currentPlanName)
@@ -6226,7 +6230,7 @@ safeDomReady(() => {
 
                     <!-- SECTION 2: SÉCURITÉ & VÉRIFICATION -->
                     <section class="account-desktop-section">
-                        <h4 class="account-section-heading">SÉCURITÉ & VÉRIFICATION</h4>
+                        <h4 class="account-section-heading">${showProVerify ? 'SÉCURITÉ & VÉRIFICATION' : 'SÉCURITÉ'}</h4>
                         <div class="account-group-box">
                             <div class="account-touch-row">
                                 <div class="row-icon"><i class="ph ph-user-check"></i></div>
@@ -6235,7 +6239,7 @@ safeDomReady(() => {
                                     <span class="row-subtitle">Compte actif • Membre LYANN</span>
                                 </div>
                             </div>
-                            <div class="account-divider"></div>
+                            ${showProVerify ? `<div class="account-divider"></div>
                             <div class="account-touch-row" onclick="window.closeUserAccountModal(); if(window.LYANN_SUPABASE_LOCK==='tdktfbtqceldlaeqjtow') { location.href='professional.html'; } else if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();">
                                 <div class="row-icon"><i class="ph ph-shield-check"></i></div>
                                 <div class="row-content">
@@ -6243,7 +6247,7 @@ safeDomReady(() => {
                                     <span class="row-subtitle"><span class="pill-badge ${verifClass}">${verifText}</span></span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>
-                            </div>
+                            </div>` : ''}
                             <div class="account-divider"></div>
                             <div class="account-touch-row"${emailEmpty ? ' onclick="window.closeUserAccountModal(); if(typeof window.openCompleteProfileModal===\'function\') window.openCompleteProfileModal();"' : ''}>
                                 <div class="row-icon"><i class="ph ph-envelope-simple"></i></div>
@@ -6268,12 +6272,13 @@ safeDomReady(() => {
                     <section class="account-desktop-section">
                         <h4 class="account-section-heading">ABONNEMENT</h4>
                         <div class="account-group-box">
-                            <div class="account-touch-row">
+                            <div class="account-touch-row" onclick="window.location.href='pricing.html'">
                                 <div class="row-icon"><i class="ph ph-sparkle"></i></div>
                                 <div class="row-content">
                                     <strong class="row-title">Formule actuelle</strong>
                                     <span class="row-subtitle">${planSubtitle}</span>
                                 </div>
+                                <i class="ph ph-caret-right row-chevron"></i>
                             </div>
                             <div class="account-divider"></div>
                             <div class="account-touch-row" onclick="window.location.href='pricing.html'">

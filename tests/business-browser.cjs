@@ -43,6 +43,9 @@ const {buildHtml}=require('../shared-html-build');
    assert.equal(await page.locator('[data-store-buy] button').count(),0);
    assert.doesNotMatch(await page.locator('[data-store-status]').innerText(),/Vérification des achats/);
    assert.match(await page.locator('#plansComparison summary').innerText(),/Comparer les formules/);
+   await page.getByRole('button',{name:'Choisir Pro',exact:true}).click();
+   assert.equal(await page.locator('[data-offer="PRO"].is-picked').count(),1);
+   assert.match(await page.locator('#lyannOfferChoice').innerText(),/Pro/);
    assert.equal(await page.locator('#plansComparison tr').filter({hasText:'Paiement par étape'}).locator('td').filter({hasText:'Inclus'}).count(),3);
    await page.locator('#plansComparison summary').click();
    if(width<800){
@@ -92,6 +95,8 @@ const {buildHtml}=require('../shared-html-build');
     await window.LYANN_BUSINESS.loadMe();
    });
    assert.equal(await page.locator('#proToolsGate').isVisible(),true);
+   assert.equal(await page.locator('[data-pro-verify]:visible').count(),0);
+   assert.equal(await page.locator('#proIdentity').isVisible(),false);
    assert.equal(await page.locator('[data-pro-tools]').count(),3);
    assert.equal(await page.locator('[data-pro-tools]:visible').count(),0);
    assert.doesNotMatch(await page.locator('body').innerText(),/Découverte|Premium/);
