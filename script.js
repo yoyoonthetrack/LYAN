@@ -2792,27 +2792,44 @@ safeDomReady(() => {
         } catch (err) {}
     }
 
-    async function hydrateHoldMedia(root) {
-        if (!root || !window.LYANN_API_CLIENT || !window.LYANN_API_CLIENT.supabase) return;
-        let token = '';
+    async function bokantajMediaToken() {
         try {
             const session = await window.LYANN_API_CLIENT.supabase.auth.getSession();
-            token = session && session.data && session.data.session && session.data.session.access_token;
+            return session && session.data && session.data.session && session.data.session.access_token || '';
         } catch (err) {
-            return;
+            return '';
         }
-        if (!token) return;
-        const nodes = root.querySelectorAll('img[src*="/v1/media/bokantaj-media-hold/"], img[src*="/v1/media/avatars-hold/"]');
+    }
+
+    async function loadBokantajMedia(url) {
+        const source = String(url || '');
+        if (!source || source.startsWith('blob:') || source.startsWith('data:')) return source;
+        if (!source.includes('/v1/media/')) return source;
+        const token = await bokantajMediaToken();
+        const response = await fetch(source, {
+            headers: token ? { Authorization: 'Bearer ' + token } : {},
+            cache: 'no-store'
+        });
+        if (!response.ok) throw new Error('media');
+        const type = String(response.headers.get('content-type') || '');
+        if (type && !type.startsWith('image/') && !type.startsWith('video/')) throw new Error('media');
+        return URL.createObjectURL(await response.blob());
+    }
+
+    async function hydrateHoldMedia(root) {
+        if (!root) return;
+        const nodes = root.querySelectorAll('img[src*="/v1/media/bokantaj-media"], img[src*="/v1/media/avatars-hold/"]');
         for (const node of nodes) {
+            const source = node.getAttribute('src');
+            if (!source || node.dataset.mediaReady === '1') continue;
             try {
-                const response = await fetch(node.getAttribute('src'), {
-                    headers: { Authorization: 'Bearer ' + token },
-                    cache: 'no-store'
-                });
-                if (!response.ok) continue;
-                const blob = await response.blob();
-                node.src = URL.createObjectURL(blob);
-            } catch (err) {}
+                node.src = await loadBokantajMedia(source);
+                node.dataset.mediaReady = '1';
+                node.closest('.bokantaj-photo')?.classList.remove('is-broken');
+            } catch (err) {
+                node.closest('.bokantaj-photo')?.classList.add('is-broken');
+                node.removeAttribute('src');
+            }
         }
     }
 
@@ -2865,6 +2882,32 @@ safeDomReady(() => {
         return `<div class="bokantaj-photos bokantaj-photos-${urls.length}" data-photos="${encoded}">${cells}</div>`;
     }
 
+    function closeBokantajCarousel() {
+        const overlay = document.getElementById('bokantajCarousel');
+        if (!overlay) return;
+        overlay.hidden = true;
+        document.body.classList.remove('bokantaj-carousel-open');
+    }
+
+    function showBokantajCarouselPhoto() {
+        const overlay = document.getElementById('bokantajCarousel');
+        if (!overlay) return;
+        const list = overlay._photos || [];
+        const img = overlay.querySelector('.bokantaj-carousel-img');
+        const count = overlay.querySelector('.bokantaj-carousel-count');
+        const nav = overlay.querySelectorAll('.bokantaj-carousel-nav');
+        if (!list.length || !img) return;
+        overlay._index = (overlay._index + list.length) % list.length;
+        const paint = (src) => { img.src = src; };
+        const current = list[overlay._index];
+        if (String(current).includes('/v1/media/')) {
+            img.removeAttribute('src');
+            loadBokantajMedia(current).then(paint).catch(() => { img.alt = 'Photo indisponible'; });
+        } else paint(current);
+        if (count) count.textContent = list.length > 1 ? `${overlay._index + 1} / ${list.length}` : '';
+        nav.forEach((button) => { button.hidden = list.length < 2; });
+    }
+
     function openBokantajCarousel(urls, startIndex) {
         const photos = (urls || []).filter(Boolean);
         if (!photos.length) return;
@@ -2874,32 +2917,64 @@ safeDomReady(() => {
             overlay.id = 'bokantajCarousel';
             overlay.className = 'bokantaj-carousel';
             overlay.innerHTML = `
-                <button type="button" class="bokantaj-carousel-close" data-carousel-close aria-label="Fermer">×</button>
+                <div class="bokantaj-carousel-bar">
+                    <span class="bokantaj-carousel-count"></span>
+                    <button type="button" class="bokantaj-carousel-close" data-carousel-close>Fermer</button>
+                </div>
                 <button type="button" class="bokantaj-carousel-nav bokantaj-carousel-prev" data-carousel-prev aria-label="Photo précédente">‹</button>
-                <img class="bokantaj-carousel-img" alt="">
+                <img class="bokantaj-carousel-img" alt="Photo du Bokantaj">
                 <button type="button" class="bokantaj-carousel-nav bokantaj-carousel-next" data-carousel-next aria-label="Photo suivante">›</button>
             `;
             overlay.hidden = true;
             document.body.appendChild(overlay);
-            overlay.addEventListener('click', (event) => {
-                if (event.target === overlay || event.target.closest('[data-carousel-close]')) {
-                    overlay.hidden = true;
+            let touchX = 0;
+            let touchY = 0;
+            overlay.addEventListener('touchstart', (event) => {
+                const point = event.changedTouches && event.changedTouches[0];
+                if (!point) return;
+                touchX = point.clientX;
+                touchY = point.clientY;
+            }, { passive: true });
+            overlay.addEventListener('touchend', (event) => {
+                const point = event.changedTouches && event.changedTouches[0];
+                if (!point) return;
+                const dx = point.clientX - touchX;
+                const dy = point.clientY - touchY;
+                if (dy > 72 && Math.abs(dy) > Math.abs(dx)) {
+                    closeBokantajCarousel();
                     return;
                 }
-                const list = overlay._photos || [];
-                if (!list.length) return;
-                if (event.target.closest('[data-carousel-prev]')) overlay._index = (overlay._index - 1 + list.length) % list.length;
-                if (event.target.closest('[data-carousel-next]')) overlay._index = (overlay._index + 1) % list.length;
-                const img = overlay.querySelector('.bokantaj-carousel-img');
-                if (img) img.src = list[overlay._index];
+                if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+                overlay._index += dx < 0 ? 1 : -1;
+                showBokantajCarouselPhoto();
+            }, { passive: true });
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay || event.target.closest('[data-carousel-close]')) {
+                    closeBokantajCarousel();
+                    return;
+                }
+                if (event.target.closest('[data-carousel-prev]')) overlay._index -= 1;
+                else if (event.target.closest('[data-carousel-next]')) overlay._index += 1;
+                else if (!event.target.closest('button')) {
+                    closeBokantajCarousel();
+                    return;
+                } else return;
+                showBokantajCarouselPhoto();
+            });
+            document.addEventListener('keydown', (event) => {
+                if (!overlay || overlay.hidden) return;
+                if (event.key === 'Escape') closeBokantajCarousel();
+                if (event.key === 'ArrowLeft') { overlay._index -= 1; showBokantajCarouselPhoto(); }
+                if (event.key === 'ArrowRight') { overlay._index += 1; showBokantajCarouselPhoto(); }
             });
         }
         overlay._photos = photos;
         overlay._index = Math.max(0, Math.min(startIndex || 0, photos.length - 1));
-        const img = overlay.querySelector('.bokantaj-carousel-img');
-        if (img) img.src = photos[overlay._index];
+        document.body.classList.add('bokantaj-carousel-open');
         overlay.hidden = false;
+        showBokantajCarouselPhoto();
     }
+    window.LYANN_BOKANTAJ_PHOTOS = { open: openBokantajCarousel, close: closeBokantajCarousel };
 
     window.renderBokantajCommentRow = function(comment, targetId) {
         const author = comment.profiles;

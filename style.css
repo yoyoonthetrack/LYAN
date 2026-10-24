@@ -18076,36 +18076,72 @@ div:has(> #cpHeadline) { display: none !important; }
 .bokantaj-carousel {
     position: fixed;
     inset: 0;
-    z-index: 1000002;
+    z-index: 2147483600;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(15, 23, 18, 0.92);
-    padding: 48px 64px;
+    background: rgba(23, 28, 24, 0.94);
+    padding:
+        calc(72px + env(safe-area-inset-top, 0px))
+        16px
+        calc(88px + env(safe-area-inset-bottom, 0px));
 }
 .bokantaj-carousel[hidden] { display: none; }
+body.bokantaj-carousel-open { overflow: hidden; }
+body.bokantaj-carousel-open .navbar,
+body.bokantaj-carousel-open .lyann-universe-header,
+body.bokantaj-carousel-open .mobile-bottom-nav,
+body.bokantaj-carousel-open .bokantaj-view-tabs {
+    visibility: hidden;
+}
+.bokantaj-carousel-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+    background: rgba(23, 28, 24, 0.96);
+}
+.bokantaj-carousel-count {
+    color: #fff;
+    font-weight: 700;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
 .bokantaj-carousel-img {
-    max-width: min(960px, 100%);
-    max-height: calc(100vh - 96px);
+    width: min(960px, 100%);
+    height: calc(100dvh - 180px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     object-fit: contain;
     border-radius: 12px;
+    background: transparent;
 }
 .bokantaj-carousel-close,
 .bokantaj-carousel-nav {
-    position: absolute;
     border: 0;
     background: #fff;
     color: #17231C;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    font-size: 1.6rem;
-    line-height: 1;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 750;
     cursor: pointer;
 }
-.bokantaj-carousel-close { top: 16px; right: 16px; }
-.bokantaj-carousel-prev { left: 12px; }
-.bokantaj-carousel-next { right: 12px; }
+.bokantaj-carousel-close { padding: 0 16px; }
+.bokantaj-carousel-nav {
+    position: absolute;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 48px;
+    font-size: 1.6rem;
+    line-height: 1;
+}
+.bokantaj-carousel-prev { left: 16px; }
+.bokantaj-carousel-next { right: 16px; }
 
 .lyann-post-menu { position: relative; flex-shrink: 0; }
 .lyann-post-menu summary {

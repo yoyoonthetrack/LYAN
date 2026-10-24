@@ -134,6 +134,9 @@ test('a public bucket remains fetchable before release, a private one does not',
     assert.equal(moderation.mediaAccess({ status: 'pending', kind: 'image' }, 'bokantaj-media-hold', { id: 'author', ownerId: 'author' }), 'stream');
     assert.equal(moderation.mediaAccess({ status: 'pending', kind: 'video' }, 'bokantaj-media-hold'), 'hidden');
     assert.equal(moderation.mediaAccess({ status: 'approved', kind: 'image' }, 'bokantaj-media-hold'), 'stream');
+    assert.equal(moderation.mediaAccess(null, 'bokantaj-media-hold', { id: 'author', ownerId: 'author' }), 'stream');
+    assert.equal(moderation.mediaAccess(null, 'bokantaj-media-hold', { id: 'other', ownerId: 'author' }), 'missing');
+    assert.equal(moderation.mediaAccess(null, 'bokantaj-media', { id: 'author', ownerId: 'author' }), 'missing');
     assert.equal(moderation.publicationNotice({ status: 'pending' }).message, 'Votre publication est en cours de vérification.');
     assert.equal(moderation.publicationNotice({ status: 'pending', hasImage: true }).message, 'Votre photo est en cours de vérification.');
     assert.equal(moderation.publicationNotice({ status: 'rejected' }).message, 'Ce contenu ne peut pas être publié.');
@@ -214,6 +217,12 @@ test('build 9 can show a refusal sentence and still has no pending-state label',
     assert.match(vercel, /"maxDuration": 60/);
     assert.doesNotMatch(vercel, /OPENAI_API_KEY|MODERATION_WORKER_SECRET/);
     assert.equal(pattern.test('Erreur lors de la publication : ' + refusal), false);
+});
+
+test('bokantaj photos load with a session and close the viewer with Fermer', () => {
+    assert.match(script, /function loadBokantajMedia/);
+    assert.match(script, /img\[src\*="\/v1\/media\/bokantaj-media"\]/);
+    assert.match(script, /data-carousel-close>Fermer/);
 });
 
 test('the OpenAI key is not shipped in the public client or the moderation SQL', () => {

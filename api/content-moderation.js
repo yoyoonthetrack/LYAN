@@ -194,9 +194,12 @@ function explorerRowIsPublic(row) {
 
 function mediaAccess(release, bucket, viewer) {
     if (!MEDIA_BUCKETS.includes(bucket)) return 'denied';
-    if (!release) return 'missing';
     const ownerId = String((viewer && viewer.ownerId) || '');
     const privileged = Boolean(viewer && (viewer.isAdmin || (viewer.id && ownerId && viewer.id === ownerId)));
+    if (!release) {
+        if (privileged && PRIVATE_MEDIA_BUCKETS.includes(bucket)) return 'stream';
+        return 'missing';
+    }
     if (release.status === 'approved') return 'stream';
     if (privileged && release.status !== 'rejected') return 'stream';
     if (release.kind === 'video' || release.status === 'rejected') return release.status === 'rejected' ? 'rejected' : 'hidden';
