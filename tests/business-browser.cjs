@@ -18,7 +18,7 @@ const {buildHtml}=require('../shared-html-build');
  let browser;
  try{
   browser=await chromium.launch({headless:true,args:['--no-sandbox']});
-  for(const width of [390,1280]){
+  for(const width of [375,390,430,768,1280]){
    const page=await browser.newPage({viewport:{width,height:900}});
    let contacts=0;
    await page.route('**/*',async route=>{
@@ -29,19 +29,37 @@ const {buildHtml}=require('../shared-html-build');
      await route.fulfill({json:{id:'fixture',message:'Votre demande est enregistrée.'}});return;
     }
     if(url.includes('/v1/business/rights')){await route.fulfill({json:{plan:'FREE',enforced:true,limits:{missions:2,photos:5,categories:1},usage:{missions:1,photos:3,categories:1},resets_at:'2026-11-01T00:00:00Z'}});return;}
-    if(url.includes('/v1/business/me')){await route.fulfill({json:{plan:{code:'FREE',name:'Gratuit'},dossier:null,verified:false}});return;}
+    if(url.includes('/v1/business/me')){await route.fulfill({json:{plan:{code:'FREE',name:'Gratuit'},dossier:null,verified:false,purchasesEnabled:false}});return;}
     await route.continue();
    });
    await page.goto(origin+'/pricing.html');
    await page.waitForFunction(()=>window.LYANN_BUSINESS && document.querySelector('#plansComparison table'));
-   assert.equal(await page.locator('.pricing-main-section .pricing-card').count(),4);
-   assert.match(await page.locator('.pricing-main-section').innerText(),/7,90/);
-   assert.match(await page.locator('.pricing-main-section').innerText(),/19,90/);
+   assert.equal(await page.locator('.lyann-offer').count(),4);
+   assert.match(await page.locator('h1').innerText(),/À chacun son rythme/);
+   assert.match(await page.locator('.pricing-main-section').innerText(),/7,99 €/);
+   assert.match(await page.locator('.pricing-main-section').innerText(),/19,99 €/);
+   assert.doesNotMatch(await page.locator('.pricing-main-section').innerText(),/7,90|19,90/);
+   assert.match(await page.locator('#lyannPlanState').innerText(),/ne sont pas encore ouverts/);
+   assert.equal(await page.locator('[data-store-buy] button').count(),0);
    assert.equal(await page.locator('#plansComparison tr').filter({hasText:'Paiement par étape'}).locator('td').filter({hasText:'Inclus'}).count(),3);
-   await page.getByRole('button',{name:'Découvrir Plus',exact:true}).click();
-   assert.equal(await page.locator('#businessDialog').isVisible(),true);
-   assert.match(await page.locator('#businessDialog').innerText(),/Aucun abonnement payant/);
-   await page.keyboard.press('Escape');
+   await page.locator('#plansComparison summary').click();
+   if(width<800){
+    await page.getByRole('tab',{name:'Plus'}).click();
+    assert.match(await page.locator('.lyann-compare-mobile').innerText(),/pas encore disponible/);
+    await page.getByRole('tab',{name:'Pro'}).click();
+    assert.match(await page.locator('.lyann-compare-mobile').innerText(),/50/);
+    assert.match(await page.locator('.lyann-compare-mobile').innerText(),/pas encore disponible/);
+   }else{
+    assert.match(await page.locator('#plansComparison').innerText(),/pas encore disponible/);
+   }
+   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1);
+   assert.equal(overflow,false);
+   if(width===390){
+    await page.evaluate(()=>{document.documentElement.style.fontSize='22px';});
+    const large=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1);
+    assert.equal(large,false);
+    await page.evaluate(()=>{document.documentElement.style.fontSize='';});
+   }
    await page.getByRole('button',{name:'Nous contacter',exact:true}).click();
    await page.evaluate(()=>{window.apiClient.getSession=async()=>({data:{session:{access_token:'fixture'}}});window.getLyannBackendOrigin=()=>location.origin;});
    await page.locator('#businessContact [name=name]').fill('Test');
@@ -51,6 +69,7 @@ const {buildHtml}=require('../shared-html-build');
    await page.locator('#businessContact button').click();
    await page.waitForFunction(()=>document.querySelector('#businessDialog #businessNotice').textContent.includes('enregistrée'));
    assert.equal(contacts,1);
+   contacts=0;
    await page.keyboard.press('Escape');
    await page.screenshot({path:'work/plans-'+width+'.png',fullPage:true});
    await page.goto(origin+'/professional.html');
@@ -67,5 +86,41 @@ const {buildHtml}=require('../shared-html-build');
 
    await page.close();console.log('PASS browser '+width+'px: prices, 4 plans, free staged payment, dialog, contact persistence response, private workspace session and server usage counters.');
   }
+  const statePage=await browser.newPage({viewport:{width:390,height:900}});
+  let planMode='error';
+  await statePage.addInitScript(()=>{
+   let client;
+   Object.defineProperty(window,'apiClient',{configurable:true,enumerable:true,get(){return client;},set(value){
+    value.getSession=async()=>({data:{session:{access_token:'fixture'}}});
+    client=value;
+    window.getLyannBackendOrigin=()=>location.origin;
+   }});
+  });
+  await statePage.route('**/*',async route=>{
+   const url=route.request().url();
+   if(!url.startsWith(origin)){await route.abort();return;}
+   if(url.includes('/v1/business/me')){
+    const headers={'cache-control':'no-store'};
+    if(planMode==='error')await route.fulfill({status:503,headers,json:{error:'indisponible'}});
+    else await route.fulfill({status:200,headers,json:{plan:{code:'PLUS',name:'Plus'},purchasesEnabled:false}});
+    return;
+   }
+   await route.continue();
+  });
+  await statePage.goto(origin+'/pricing.html');
+  await statePage.waitForFunction(()=>document.querySelector('#lyannPlanState').textContent.includes('pas pu être vérifiée'));
+  assert.equal(await statePage.locator('.is-current').count(),0);
+  assert.equal(await statePage.locator('[data-store-restore]').isDisabled(),true);
+  assert.equal(await statePage.locator('[data-store-manage]').isDisabled(),true);
+  assert.equal(await statePage.locator('[data-store-buy] button').count(),0);
+  planMode='plus';
+  await statePage.reload();
+  await statePage.waitForFunction(()=>document.querySelector('#lyannPlanState').textContent.includes('Votre formule : Plus'));
+  assert.equal(await statePage.locator('[data-offer="PLUS"].is-current').count(),1);
+  assert.equal(await statePage.locator('#lyannJoinFree').isHidden(),true);
+  assert.equal(await statePage.locator('[data-offer="FREE"].is-current').count(),0);
+  await statePage.screenshot({path:'work/plans-plus-390.png',fullPage:true});
+  await statePage.close();
+  console.log('PASS plan states: network error stays unverified, Plus is current, purchases stay closed.');
  }finally{await browser?.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1});

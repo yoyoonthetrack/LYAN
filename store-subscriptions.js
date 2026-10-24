@@ -75,9 +75,21 @@
  const exported={selectProducts,createController};
  if(typeof module!=='undefined'&&module.exports){module.exports=exported;return;}
  root.LYANN_STORE=exported;
+ function paintStorePrice(plan, priceString){
+  const slot=document.querySelector('[data-store-price="'+plan+'"]');
+  if(!slot)return;
+  slot.replaceChildren();
+  const source=document.createElement('span');
+  source.className='lyann-offer-source';
+  source.textContent='Prix du magasin';
+  slot.append(source, document.createTextNode(priceString+' '), Object.assign(document.createElement('small'),{textContent:'/ mois'}));
+ }
  async function mount(){
   const host=document.querySelector('[data-store-subscriptions]');if(!host)return;
-  host.innerHTML='<h2>Mon abonnement dans l’application</h2><p data-store-status role="status" aria-live="polite"></p><div data-store-products></div><button type="button" data-store-restore disabled>Restaurer mes achats</button> <button type="button" data-store-manage disabled>Gérer mon abonnement</button><p>Abonnement mensuel à renouvellement automatique. Le prix et les conditions du magasin sont présentés avant confirmation. Vous pouvez annuler le renouvellement dans votre magasin.</p><p><a href="legal.html">Conditions d’utilisation</a> · <a href="confidentialite.html">Confidentialité</a></p>';
+  const managed=host.dataset.storeLayout==='manage';
+  if(!managed){
+   host.innerHTML='<h2>Mon abonnement dans l’application</h2><p data-store-status role="status" aria-live="polite"></p><div data-store-products></div><button type="button" data-store-restore disabled>Restaurer mes achats</button> <button type="button" data-store-manage disabled>Gérer mon abonnement</button><p>Abonnement mensuel à renouvellement automatique. Le prix et les conditions du magasin sont présentés avant confirmation. Vous pouvez annuler le renouvellement dans votre magasin.</p><p><a href="legal.html">Conditions d’utilisation</a> · <a href="confidentialite.html">Confidentialité</a></p>';
+  }
   const status=host.querySelector('[data-store-status]'),restore=host.querySelector('[data-store-restore]'),manage=host.querySelector('[data-store-manage]');
   if(root.LYANN_SUPABASE_LOCK!=='tdktfbtqceldlaeqjtow'){status.textContent='Les abonnements ne sont pas encore disponibles.';return;}
   if(!root.Capacitor?.isNativePlatform?.()){status.textContent='Les achats Apple et Google seront disponibles dans l’application mobile. Aucun achat Web n’est activé.';return;}
@@ -115,10 +127,13 @@
     await recover();
    }
    for(const item of items){
+    paintStorePrice(item.plan, item.product.priceString);
+    if(!config.purchasesEnabled)continue;
     const button=document.createElement('button');button.type='button';button.textContent=item.plan==='PRO'?'Pro':'Lyanneur Plus';
-    button.textContent+=' — '+item.product.priceString+' / mois';button.disabled=!config.purchasesEnabled;
-    button.onclick=()=>action(async()=>{await controller.purchase(item);status.textContent='Achat confirmé. Vos droits ont été actualisés.';for(const b of host.querySelectorAll('[data-store-products] button')){b.dataset.storeLocked='true';b.disabled=true;}});
-    host.querySelector('[data-store-products]').append(button);
+    button.textContent+=' — '+item.product.priceString+' / mois';
+    button.onclick=()=>action(async()=>{await controller.purchase(item);status.textContent='Achat confirmé. Vos droits ont été actualisés.';for(const b of host.querySelectorAll('[data-store-products] button, [data-store-buy] button')){b.dataset.storeLocked='true';b.disabled=true;}});
+    const slot=document.querySelector('[data-store-buy="'+item.plan+'"]')||host.querySelector('[data-store-products]');
+    slot?.append(button);
    }
   }catch(e){status.textContent=e.message;}
  }

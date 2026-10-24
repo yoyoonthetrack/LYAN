@@ -23,6 +23,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261017pale">
 <link rel="stylesheet" href="business.css">
+<link rel="stylesheet" href="pricing-offers.css?v=20261024offers">
 </head>
 <body class="pricing-page">
 
@@ -119,23 +120,98 @@
         </div>
     </div>
 
-    <!-- ========== HERO PAGE NOS OFFRES ========== -->
-    <section class="pricing-hero-section">
-        <div class="container">
-            <div class="pricing-hero-content text-center">
-                <span class="pill-badge pill-yellow"><i class="ph ph-crown-simple"></i> Des offres adaptées à chaque profil</span>
-                <h1 class="pricing-page-title">Développez votre activité avec LYANN</h1>
-                <p class="pricing-page-subtitle">Que vous soyez un voisin passionné, un indépendant ambitieux ou une entreprise certifiée, découvrez la formule qui propulsera vos demandes.</p>
-                
-                <!-- Toggle Mensuel / Annuel -->
-                <p>Des formules mensuelles, pour avancer à votre rythme.</p>
-            </div>
+    <section class="lyann-offers pricing-main-section">
+        <header class="lyann-offers-intro">
+            <h1>À chacun son rythme</h1>
+            <p>LYANN reste gratuit. Choisissez plus de possibilités selon vos besoins.</p>
+        </header>
+        <p id="lyannPlanState" class="lyann-plan-state" role="status">Les achats dans l’application ne sont pas encore ouverts.</p>
+        <div class="lyann-offer-grid">
+            <article class="lyann-offer" data-offer="FREE">
+                <div class="lyann-offer-head"><h2>Gratuit</h2></div>
+                <p class="lyann-offer-lead">Pour la vie du quartier et les services occasionnels.</p>
+                <p class="lyann-offer-price">0 € <small>/ mois</small></p>
+                <ul>
+                    <li>2 missions par mois comme prestataire</li>
+                    <li>5 photos de portfolio</li>
+                    <li>1 catégorie d’activité</li>
+                </ul>
+                <button type="button" class="lyann-quiet" id="lyannJoinFree">Créer un compte</button>
+            </article>
+            <article class="lyann-offer" data-offer="PLUS">
+                <div class="lyann-offer-head"><h2>Plus</h2></div>
+                <p class="lyann-offer-lead">Pour proposer vos services plus régulièrement.</p>
+                <p class="lyann-offer-price" data-store-price="PLUS"><span class="lyann-offer-source">Tarif indicatif, France</span>7,99 € <small>/ mois</small></p>
+                <p class="lyann-offer-note">Le prix d’un achat est celui du magasin, lorsqu’il est disponible.</p>
+                <p class="lyann-offer-id">Identifiant Apple : app.lyann.plus.monthly</p>
+                <ul>
+                    <li>Missions comme prestataire illimitées</li>
+                    <li>Badge Lyanneur Plus, sans vérification d’identité</li>
+                    <li>20 photos de portfolio</li>
+                    <li>3 catégories d’activité</li>
+                    <li class="is-planned">1 vidéo de portfolio : prévu</li>
+                </ul>
+                <div data-store-buy="PLUS"></div>
+            </article>
+            <article class="lyann-offer" data-offer="PRO">
+                <div class="lyann-offer-head"><h2>Pro</h2></div>
+                <p class="lyann-offer-lead">Pour développer et faire examiner votre activité.</p>
+                <p class="lyann-offer-price" data-store-price="PRO"><span class="lyann-offer-source">Tarif indicatif, France</span>19,99 € <small>/ mois</small></p>
+                <p class="lyann-offer-note">Le prix d’un achat est celui du magasin, lorsqu’il est disponible.</p>
+                <p class="lyann-offer-id">Identifiant Apple : app.lyann.pro.monthly</p>
+                <ul>
+                    <li>Les avantages Plus</li>
+                    <li>Badge Pro</li>
+                    <li>Dépôt et examen des documents professionnels</li>
+                    <li>Badge Vérifié seulement après validation humaine</li>
+                    <li>50 photos de portfolio</li>
+                    <li>5 catégories d’activité</li>
+                    <li>1 vitrine après validation des documents</li>
+                    <li class="is-planned">3 vidéos de portfolio : prévu</li>
+                    <li class="is-planned">Suivi et exports : espace professionnel. Les PDF Staging sont des documents de test</li>
+                </ul>
+                <div data-store-buy="PRO"></div>
+            </article>
+            <article class="lyann-offer is-soon" data-offer="ENTERPRISE">
+                <div class="lyann-offer-head"><h2>Entreprise</h2><span class="lyann-soon">Bientôt disponible</span></div>
+                <p class="lyann-offer-lead">Pour une équipe ou plusieurs établissements. Cette formule n’est pas en vente.</p>
+                <ul>
+                    <li>Plusieurs collaborateurs ou établissements</li>
+                    <li>Une proposition adaptée à votre organisation</li>
+                </ul>
+                <button type="button" data-business-contact="enterprise">Nous contacter</button>
+            </article>
         </div>
+        <section class="lyann-shared" aria-labelledby="lyannSharedTitle">
+            <h2 id="lyannSharedTitle">Inclus dans toutes les formules</h2>
+            <ul>
+                <li>Consultation et publication de Bokantaj</li>
+                <li>Consultation des annonces, des profils et de la carte</li>
+                <li>Messagerie, favoris et avis</li>
+                <li>Demandes de service illimitées comme client</li>
+                <li>Paiement par étape</li>
+            </ul>
+        </section>
+        <details class="lyann-compare" id="plansComparison">
+            <summary>Comparer les formules</summary>
+        </details>
+        <section class="lyann-manage" data-store-subscriptions data-store-layout="manage">
+            <h2>Gérer l’abonnement</h2>
+            <p data-store-status role="status" aria-live="polite">Vérification des achats…</p>
+            <div class="lyann-manage-actions">
+                <button type="button" data-store-restore disabled>Restaurer mes achats</button>
+                <button type="button" data-store-manage disabled>Gérer mon abonnement</button>
+            </div>
+            <p class="lyann-fine">Abonnement mensuel à renouvellement automatique. Le prix et les conditions du magasin sont présentés avant confirmation. Vous pouvez annuler le renouvellement dans votre magasin.</p>
+            <p class="lyann-fine"><a href="legal.html">Conditions d’utilisation</a> · <a href="confidentialite.html">Confidentialité</a></p>
+        </section>
+        <section class="lyann-partner">
+            <h2>Partenariat</h2>
+            <p>Entreprises, associations et collectivités : écrivons ensemble un partenariat avec LYANN.</p>
+            <button type="button" data-business-contact="partnership">Nous écrire</button>
+        </section>
+        <a class="lyann-pro-link" href="professional.html">Mon activité professionnelle et mes justificatifs<span>Le dépôt des documents de vérification est réservé à la formule Pro.</span></a>
     </section>
-
-    <!-- ========== GRILLE DES 4 FORMULES D'ABONNEMENT ========== -->
-    <section class="business-panel container" data-store-subscriptions></section>
-<section class="section pricing-main-section"><div class="container"><p><strong>Les formules payantes sont en préparation.</strong> Aucun achat n’est encore activé. La grille ci-dessous présente les fonctionnalités prévues.</p><div class="pricing-grid"><article class="pricing-card "><span class="plan-badge">Gratuit</span><h2>Gratuit</h2><p>Pour la vie du quartier et les services occasionnels.</p><p class="business-price">0 €</p><ul class="plan-features-list"><li>Bokantaj, annonces et messagerie</li><li>2 missions par mois comme prestataire</li><li>5 photos de portfolio</li><li>Paiement par étape inclus</li></ul><button type="button" class="btn btn-primary" data-plan-cta="FREE">Découvrir</button></article><article class="pricing-card "><span class="plan-badge">Plus</span><h2>Plus</h2><p>Pour proposer vos services plus régulièrement.</p><p class="business-price">7,90 € <small>/ mois</small></p><ul class="plan-features-list"><li>Missions sans limite</li><li>20 photos et 1 vidéo de portfolio</li><li>Badge Lyanneur Plus</li><li>Paiement par étape inclus</li></ul><button type="button" class="btn btn-primary" data-plan-cta="PLUS">Découvrir Plus</button></article><article class="pricing-card "><span class="plan-badge">Pro</span><h2>Pro</h2><p>Pour développer et gérer votre activité.</p><p class="business-price">19,90 € <small>/ mois</small></p><ul class="plan-features-list"><li>50 photos et 3 vidéos de portfolio</li><li>Dossier professionnel et badge Vérifié après validation</li><li>Vitrine, gestion et facturation prévues</li><li>Paiement par étape inclus</li></ul><button type="button" class="btn btn-primary" data-plan-cta="PRO">Découvrir Pro</button></article><article class="pricing-card plan-enterprise"><span class="plan-badge">Entreprise</span><h2>Entreprise</h2><p>LYANN pour votre équipe.</p><p class="business-price">Sur demande</p><ul class="plan-features-list"><li>Plusieurs collaborateurs ou établissements</li><li>Une offre adaptée à vos besoins</li><li>Bientôt disponible</li></ul><button type="button" class="btn btn-primary" data-business-contact="enterprise">Nous contacter</button></article></div><div id="plansComparison" class="business-comparison"></div><section class="business-panel"><h2>Partenariat</h2><p>Entreprise, association ou collectivité : construisons ensemble un partenariat avec LYANN.</p><button type="button" class="btn btn-primary" data-business-contact="partnership">Nous écrire</button></section><a href="professional.html">Mon activité professionnelle et mes justificatifs</a></div></section>
 
         <!-- ========== FOOTER ========== -->
     <footer class="footer">

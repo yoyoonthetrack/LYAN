@@ -63,7 +63,18 @@
   if(code==='ENTERPRISE'){contact('enterprise');return;}
   const plan=window.LYANN_PLANS.PLANS[code];
   if(!plan)return;
-  dialog(plan.name,'<p class="business-price">'+(plan.monthlyCents?(plan.monthlyCents/100).toLocaleString('fr-FR',{minimumFractionDigits:2})+' € / mois':'Gratuit')+'</p><p>'+ (code==='FREE'?'Échangez avec votre quartier et profitez du paiement par étape.':'Cette formule est en préparation. Aucun abonnement payant ne peut encore être acheté.')+'</p><a class="business-link" href="'+(code==='FREE'?'index.html#signup':'professional.html')+'">'+(code==='FREE'?'Rejoindre LYANN':'Voir mon espace professionnel')+'</a>');
+  dialog(plan.name,'<p>'+(code==='FREE'?'Cette formule est incluse avec un compte LYANN.':'Cette formule est en préparation. Aucun abonnement payant ne peut encore être acheté. Le prix d’un achat sera celui du magasin.')+'</p><a class="business-link" href="'+(code==='FREE'?'index.html#signup':'professional.html')+'">'+(code==='FREE'?'Rejoindre LYANN':'Voir mon espace professionnel')+'</a>');
+ }
+ const PLAN_NOTES={
+  'Vidéos du portfolio':'Prévu, pas encore disponible',
+  'Gestion des devis et factures PDF':'Documents de test sur Staging, pas une facturation définitive',
+  'Acomptes, avoirs et export CSV':'Export d’activité disponible. Facturation conforme non ouverte',
+  'Assistance':'L’assistance prioritaire reste prévue'
+ };
+ function cellText(label,value){
+  const base=value===true?'Inclus':value===false?'—':String(value??'');
+  const offered=value===true||(typeof value==='number'&&value>0)||(label==='Assistance'&&value==='Prioritaire');
+  return offered&&PLAN_NOTES[label]?base+' · '+PLAN_NOTES[label]:base;
  }
  window.LYANN_BUSINESS={openPlan,contact,request};
  async function renderAdmin(which,page=0){
@@ -81,7 +92,75 @@
  }
  function init(){
   if($('plansComparison')){
-   $('plansComparison').innerHTML='<table><caption>Fonctionnalités prévues par formule</caption><thead><tr><th scope="col">Fonctionnalité</th><th scope="col">Gratuit</th><th scope="col">Plus</th><th scope="col">Pro</th><th scope="col">Entreprise</th></tr></thead><tbody>'+window.LYANN_PLANS.FEATURES.map(([label,...values])=>'<tr><th scope="row">'+esc(label)+'</th>'+values.map(v=>'<td>'+(v===true?'Inclus':v===false?'—':esc(v))+'</td>').join('')+'<td class="business-muted">Bientôt</td></tr>').join('')+'</tbody></table>';
+   const rows=window.LYANN_PLANS.FEATURES;
+   const names=['Gratuit','Plus','Pro'];
+   const summary=$('plansComparison').querySelector('summary');
+   const body=document.createElement('div');
+   const switcher=document.createElement('div');
+   switcher.className='lyann-compare-switch';
+   switcher.setAttribute('role','tablist');
+   switcher.setAttribute('aria-label','Choisir une formule à comparer');
+   const mobile=document.createElement('div');
+   mobile.className='lyann-compare-mobile';
+   function showPlan(index){
+    switcher.querySelectorAll('button').forEach((button,i)=>button.setAttribute('aria-selected',i===index?'true':'false'));
+    mobile.replaceChildren();
+    rows.forEach(([label,...values])=>{
+     const row=document.createElement('div');
+     if(cellText(label,values[index])!==(values[index]===true?'Inclus':values[index]===false?'—':String(values[index]??'')))row.className='is-planned';
+     const name=document.createElement('span');
+     name.textContent=label;
+     const value=document.createElement('strong');
+     value.textContent=cellText(label,values[index]);
+     row.append(name,value);
+     mobile.append(row);
+    });
+   }
+   names.forEach((name,index)=>{
+    const button=document.createElement('button');
+    button.type='button';
+    button.setAttribute('role','tab');
+    button.textContent=name;
+    button.onclick=()=>showPlan(index);
+    switcher.append(button);
+   });
+   showPlan(0);
+   const table=document.createElement('table');
+   table.className='lyann-compare-desktop';
+   table.innerHTML='<caption>Comparer les formules</caption><thead><tr><th scope="col">Fonctionnalité</th><th scope="col">Gratuit</th><th scope="col">Plus</th><th scope="col">Pro</th><th scope="col">Entreprise</th></tr></thead><tbody>'+rows.map(([label,...values])=>'<tr><th scope="row">'+esc(label)+'</th>'+values.map(v=>'<td>'+esc(cellText(label,v))+'</td>').join('')+'<td>Bientôt</td></tr>').join('')+'</tbody>';
+   body.append(switcher,mobile,table);
+   $('plansComparison').replaceChildren(summary||Object.assign(document.createElement('summary'),{textContent:'Comparer les formules'}),body);
+  }
+  const join=$('lyannJoinFree');
+  if(join)join.onclick=()=>document.querySelector('.open-signup-trigger')?.click();
+  if($('lyannPlanState')){
+   (async()=>{
+    const client=window.apiClient||window.LYANN_API_CLIENT;
+    let session=null;
+    try{session=await client?.getSession?.();}catch(_){}
+    const token=session?.data?.session?.access_token;
+    if(!token){
+     $('lyannPlanState').textContent='Connectez-vous pour afficher votre formule. Les achats dans l’application ne sont pas encore ouverts.';
+     return;
+    }
+    if(join)join.hidden=true;
+    try{
+     const data=await request('/v1/business/me');
+     const name=data?.plan?.name;
+     if(!name)throw Error('missing');
+     $('lyannPlanState').textContent='Votre formule : '+name+'.'+(data.purchasesEnabled===false?' Les achats dans l’application ne sont pas encore ouverts.':'');
+     document.querySelector('[data-offer="'+data.plan.code+'"]')?.classList.add('is-current');
+     const head=document.querySelector('[data-offer="'+data.plan.code+'"] .lyann-offer-head');
+     if(head&&!head.querySelector('.lyann-current')){
+      const badge=document.createElement('span');
+      badge.className='lyann-current';
+      badge.textContent='Votre formule';
+      head.append(badge);
+     }
+    }catch(_){
+     $('lyannPlanState').textContent='Votre formule n’a pas pu être vérifiée. Les achats dans l’application ne sont pas encore ouverts.';
+    }
+   })();
   }
   document.addEventListener('click',e=>{
    const contactButton=e.target.closest('[data-business-contact]');
