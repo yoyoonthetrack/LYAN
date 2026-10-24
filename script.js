@@ -2782,6 +2782,44 @@ safeDomReady(() => {
     }
     window.formatOwnCreatedPost = formatOwnCreatedPost;
 
+    const PENDING_FEED_POLL_MS = 5000;
+    const PENDING_FEED_POLL_MAX = 24;
+    let pendingFeedPollTimer = null;
+    let pendingFeedPollLeft = 0;
+
+    function pendingPostsStillWaiting() {
+        try {
+            const ids = JSON.parse(sessionStorage.getItem('lyann_pending_posts') || '[]');
+            return Array.isArray(ids) && ids.length > 0;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function stopPendingFeedPoll() {
+        if (pendingFeedPollTimer) {
+            clearInterval(pendingFeedPollTimer);
+            pendingFeedPollTimer = null;
+        }
+        pendingFeedPollLeft = 0;
+    }
+
+    function startPendingFeedPoll() {
+        stopPendingFeedPoll();
+        if (!pendingPostsStillWaiting()) return;
+        pendingFeedPollLeft = PENDING_FEED_POLL_MAX;
+        pendingFeedPollTimer = window.setInterval(() => {
+            if (pendingFeedPollLeft <= 0 || !pendingPostsStillWaiting()) {
+                stopPendingFeedPoll();
+                return;
+            }
+            pendingFeedPollLeft -= 1;
+            if (typeof window.loadBokantajFeedFromSupabase === 'function') {
+                window.loadBokantajFeedFromSupabase({ force: true, background: true });
+            }
+        }, PENDING_FEED_POLL_MS);
+    }
+
     function rememberPendingPublication(id, status) {
         if (!id || status !== 'pending' || !window.sessionStorage) return;
         try {
@@ -2801,19 +2839,32 @@ safeDomReady(() => {
         }
     }
 
+    const bokantajMediaCache = new Map();
+
     async function loadBokantajMedia(url) {
         const source = String(url || '');
         if (!source || source.startsWith('blob:') || source.startsWith('data:')) return source;
         if (!source.includes('/v1/media/')) return source;
-        const token = await bokantajMediaToken();
-        const response = await fetch(source, {
-            headers: token ? { Authorization: 'Bearer ' + token } : {},
-            cache: 'no-store'
-        });
-        if (!response.ok) throw new Error('media');
-        const type = String(response.headers.get('content-type') || '');
-        if (type && !type.startsWith('image/') && !type.startsWith('video/')) throw new Error('media');
-        return URL.createObjectURL(await response.blob());
+        const cached = bokantajMediaCache.get(source);
+        if (cached) return cached;
+        const request = (async () => {
+            const token = await bokantajMediaToken();
+            const response = await fetch(source, {
+                headers: token ? { Authorization: 'Bearer ' + token } : {},
+                cache: 'no-store'
+            });
+            if (!response.ok) throw new Error('media');
+            const type = String(response.headers.get('content-type') || '');
+            if (type && !type.startsWith('image/') && !type.startsWith('video/')) throw new Error('media');
+            return URL.createObjectURL(await response.blob());
+        })();
+        bokantajMediaCache.set(source, request);
+        try {
+            return await request;
+        } catch (err) {
+            bokantajMediaCache.delete(source);
+            throw err;
+        }
     }
 
     async function hydrateHoldMedia(root) {
@@ -2885,8 +2936,37 @@ safeDomReady(() => {
     function closeBokantajCarousel() {
         const overlay = document.getElementById('bokantajCarousel');
         if (!overlay) return;
+        overlay._loadId = (overlay._loadId || 0) + 1;
         overlay.hidden = true;
+        setBokantajCarouselWait(overlay, 'ready');
         document.body.classList.remove('bokantaj-carousel-open');
+    }
+
+    function ensureBokantajCarouselWait(overlay) {
+        if (!overlay || overlay.querySelector('[data-carousel-wait]')) return;
+        const wait = document.createElement('div');
+        wait.className = 'bokantaj-carousel-wait';
+        wait.setAttribute('data-carousel-wait', '');
+        wait.hidden = true;
+        wait.innerHTML = '<i class="ph ph-spinner lyann-btn-spin" data-carousel-wait-spin aria-hidden="true"></i><span data-carousel-wait-label>Chargement de la photo…</span>';
+        overlay.appendChild(wait);
+    }
+
+    function setBokantajCarouselWait(overlay, state) {
+        ensureBokantajCarouselWait(overlay);
+        const wait = overlay.querySelector('[data-carousel-wait]');
+        const spin = overlay.querySelector('[data-carousel-wait-spin]');
+        const label = overlay.querySelector('[data-carousel-wait-label]');
+        overlay.classList.toggle('is-loading', state === 'loading');
+        overlay.setAttribute('aria-busy', state === 'loading' ? 'true' : 'false');
+        if (!wait) return;
+        if (state === 'ready') {
+            wait.hidden = true;
+            return;
+        }
+        wait.hidden = false;
+        if (spin) spin.hidden = state !== 'loading';
+        if (label) label.textContent = state === 'error' ? 'Photo indisponible' : 'Chargement de la photo…';
     }
 
     function showBokantajCarouselPhoto() {
@@ -2898,12 +2978,27 @@ safeDomReady(() => {
         const nav = overlay.querySelectorAll('.bokantaj-carousel-nav');
         if (!list.length || !img) return;
         overlay._index = (overlay._index + list.length) % list.length;
-        const paint = (src) => { img.src = src; };
+        overlay._loadId = (overlay._loadId || 0) + 1;
+        const loadId = overlay._loadId;
         const current = list[overlay._index];
+        const paint = (src) => {
+            if (overlay._loadId !== loadId) return;
+            img.src = src;
+            img.alt = 'Photo du Bokantaj';
+            setBokantajCarouselWait(overlay, 'ready');
+        };
         if (String(current).includes('/v1/media/')) {
             img.removeAttribute('src');
-            loadBokantajMedia(current).then(paint).catch(() => { img.alt = 'Photo indisponible'; });
-        } else paint(current);
+            setBokantajCarouselWait(overlay, 'loading');
+            loadBokantajMedia(current).then(paint).catch(() => {
+                if (overlay._loadId !== loadId) return;
+                img.removeAttribute('src');
+                img.alt = 'Photo indisponible';
+                setBokantajCarouselWait(overlay, 'error');
+            });
+        } else {
+            paint(current);
+        }
         if (count) count.textContent = list.length > 1 ? `${overlay._index + 1} / ${list.length}` : '';
         nav.forEach((button) => { button.hidden = list.length < 2; });
     }
@@ -2923,6 +3018,10 @@ safeDomReady(() => {
                 </div>
                 <button type="button" class="bokantaj-carousel-nav bokantaj-carousel-prev" data-carousel-prev aria-label="Photo précédente">‹</button>
                 <img class="bokantaj-carousel-img" alt="Photo du Bokantaj">
+                <div class="bokantaj-carousel-wait" data-carousel-wait hidden>
+                    <i class="ph ph-spinner lyann-btn-spin" data-carousel-wait-spin aria-hidden="true"></i>
+                    <span data-carousel-wait-label>Chargement de la photo…</span>
+                </div>
                 <button type="button" class="bokantaj-carousel-nav bokantaj-carousel-next" data-carousel-next aria-label="Photo suivante">›</button>
             `;
             overlay.hidden = true;
@@ -3523,7 +3622,7 @@ safeDomReady(() => {
                     }
 
                     const cardTitleHTML = cardHeadline ? `<div class="lyann-card-title" style="font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif; font-weight: 650; font-size: 1.15rem; color: #17231C; line-height: 1.3; letter-spacing: -0.015em; margin-bottom: 4px; word-break: break-word;">${window.escapeHtmlAttr(cardHeadline)}</div>` : '';
-                    const cardBodyHTML = cardBody ? `<div class="lyann-card-description" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 450; font-size: 0.95rem; color: #334155; line-height: 1.5; word-break: break-word; margin-top: 2px;">${safeMentions(cardBody)}</div>` : '';
+                    const cardBodyHTML = cardBody ? `<div class="lyann-card-description" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 450; font-size: 1.05rem; color: #334155; line-height: 1.5; word-break: break-word; margin-top: 2px;">${safeMentions(cardBody)}</div>` : '';
                     const sourceDate = post.source_published_at ? new Date(post.source_published_at) : null;
                     const sourceDateText = sourceDate && !Number.isNaN(sourceDate.getTime()) ? sourceDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
                     const sourceHTML = post.source_url ? `<p class="lyann-post-source" style="margin:8px 0 0; font-size:0.75rem; color:#64748B;">Source · <a href="${window.escapeHtmlAttr(post.source_url)}" target="_blank" rel="noopener noreferrer">${window.escapeHtmlAttr(post.source_name || 'Publication originale')}</a>${sourceDateText ? ` · ${window.escapeHtmlAttr(sourceDateText)}` : ''}</p>` : '';
@@ -3577,7 +3676,7 @@ safeDomReady(() => {
                                     <div class="flash-author-block trigger-quick-profile" role="button" tabindex="0" data-member-id="${authorId}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
                                         <img src="${window.escapeHtmlAttr(window.resolveLyannAvatarSrc(post.author_avatar || post.authorAvatar))}" onerror="window.handleAvatarError(this)" alt="${window.escapeHtmlAttr(authorDisplayName)}" class="flash-avatar" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
                                         <div class="flash-author-info" style="line-height: 1.25; min-width: 0; flex: 1;">
-                                            <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayNameHtml}${post.editorial ? '' : ' <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i>'}</strong>
+                                            <strong class="lyann-author-name" style="font-family: 'Plus Jakarta Sans', sans-serif; color: #17231C; font-size: 0.92rem; font-weight: 600; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authorDisplayNameHtml}${post.editorial ? '' : ' <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 0.82rem; flex-shrink: 0;"></i>'}</strong>
                                             ${post.editorial ? '<span style="display:block; font-size:0.72rem; font-weight:650; color:#35583F;">Compte éditorial LYANN</span>' : ''}
                                             <span class="lyann-author-meta" style="display: block; font-size: 0.76rem; font-weight: 500; color: #64748B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${locationText ? `<i class="ph ph-map-pin" style="font-size: 0.74rem;"></i> ${locationText} · ` : ''}${distanceLabel ? `${window.escapeHtmlAttr(distanceLabel)} · ` : ''}${timeAgoText}${budgetHTML}</span>
                                         </div>
@@ -3588,7 +3687,7 @@ safeDomReady(() => {
                                     </button>
                                 </div>
                                 <div class="flash-meta-badges" style="display: flex; align-items: center; width: 100%; box-sizing: border-box; margin-top: 2px;">
-                                    <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; text-transform: uppercase; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; letter-spacing: 0.02em;' : 'background: #F1F5F9; color: #475569; font-weight: 600; padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box;'}">${badgeText}</span>
+                                    <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 500; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; text-transform: uppercase; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; letter-spacing: 0.02em;' : 'background: #F1F5F9; color: #475569; font-weight: 500; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box;'}">${badgeText}</span>
                                     ${!isLyann && post.moderation_status === 'pending' ? '<span class="bokantaj-pending-chip" title="Publication enregistrée, vérification avant diffusion aux autres membres">En cours de chargement</span>' : ''}
                                 </div>
                             </div>
@@ -3603,13 +3702,13 @@ safeDomReady(() => {
                                 <!-- L1: SOCIAL ROW (DISCRÈTE, LÉGÈRE, SANS BOUTON VOIR) -->
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; box-sizing: border-box;">
                                     <div class="flash-actions-bar" style="display: flex; align-items: center; gap: 16px; min-width: 0; width: 100%;">
-                                        <button class="flash-action-btn btn-like-flash ${userHasLiked ? 'liked' : ''}" data-target-id="${targetId}" data-target-type="${targetType}" style="background: none; border: none; color: ${userHasLiked ? '#E76F51' : '#64748B'}; font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 2px 0; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                                        <button class="flash-action-btn btn-like-flash ${userHasLiked ? 'liked' : ''}" data-target-id="${targetId}" data-target-type="${targetType}" style="background: none; border: none; color: ${userHasLiked ? '#E76F51' : '#64748B'}; font-weight: 500; font-size: 0.75rem; cursor: pointer; padding: 2px 0; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
                                             <i class="ph-fill ph-heart" style="color: ${userHasLiked ? '#E76F51' : '#94A3B8'}; font-size: 1.05rem;"></i> <span class="like-count">${displayLikes} J'aime</span>
                                         </button>
-                                        <button class="flash-action-btn btn-comments-toggle" data-target-id="${targetId}" data-target-type="${targetType}" style="background: none; border: none; color: #64748B; font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 2px 0; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                                        <button class="flash-action-btn btn-comments-toggle" data-target-id="${targetId}" data-target-type="${targetType}" style="background: none; border: none; color: #64748B; font-weight: 500; font-size: 0.75rem; cursor: pointer; padding: 2px 0; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
                                             <i class="ph ph-chat-circle" style="font-size: 1.05rem;"></i> <span class="comments-count-label">Commenter ${(post.comments_count || 0) > 0 ? `(${post.comments_count})` : ''}</span>
                                         </button>
-                                        <button class="flash-action-btn btn-share-post" data-target-id="${targetId}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: none; border: none; color: #64748B; font-weight: 700; font-size: 0.82rem; cursor: pointer; padding: 2px 0; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                                        <button class="flash-action-btn btn-share-post" data-target-id="${targetId}" data-title="${(post.title || post.content || '').replace(/"/g, '&quot;')}" style="background: none; border: none; color: #64748B; font-weight: 500; font-size: 0.75rem; cursor: pointer; padding: 2px 0; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
                                             <i class="ph ph-share-network" style="font-size: 1.05rem;"></i> <span>Partager</span>
                                         </button>
                                     </div>
@@ -3979,7 +4078,13 @@ safeDomReady(() => {
                 const grid = photo.closest('.bokantaj-photos');
                 let urls = [];
                 try { urls = JSON.parse(decodeURIComponent(grid?.dataset.photos || '')); } catch (err) { urls = []; }
-                openBokantajCarousel(urls, Number(photo.dataset.photoIndex) || 0);
+                const index = Number(photo.dataset.photoIndex) || 0;
+                const preview = photo.querySelector('img');
+                if (preview && /^blob:|^data:/i.test(preview.src) && urls[index]) {
+                    urls = urls.slice();
+                    urls[index] = preview.src;
+                }
+                openBokantajCarousel(urls, index);
             });
             feedRoot.addEventListener('click', openAuthorProfile);
             feedRoot.addEventListener('keydown', (event) => {
@@ -4110,6 +4215,7 @@ safeDomReady(() => {
                 if (typeof window.loadBokantajFeedFromSupabase === 'function') {
                     window.loadBokantajFeedFromSupabase({ force: true, background: true });
                 }
+                startPendingFeedPoll();
             } catch (err) {
                 // A failed upload does not erase the draft or expose it publicly.
                 createFlashForm.hidden = false;

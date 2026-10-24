@@ -6577,9 +6577,9 @@ if (require.main === module) {
                 req.on('error', () => {});
                 req.end();
             };
-            setInterval(moderate, 30000);
+            setInterval(moderate, 5000);
             setTimeout(moderate, 2000);
-            console.log('Modération active : file traitée toutes les 30 s');
+            console.log('Modération active : file traitée toutes les 5 s');
         }
     };
     if (bind) app.listen(PORT, bind, onListen);

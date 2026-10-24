@@ -15695,12 +15695,25 @@ body.capacitor-native .nav-msg-btn,
     }
 }
 
-/* Bokantaj Card Typography Polish (Scoped strictly to .flash-card / .lyann-card) */
-.flash-card .lyann-author-name {
+/* Bokantaj Card Typography Polish (Scoped strictly to .flash-card / .lyann-card)
+   Hierarchy: publication message first; chrome (meta, social, owner actions) quieter. */
+.flash-card .lyann-author-name,
+.flash-card .flash-author-info strong.lyann-author-name {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 600 !important;
-    font-size: 0.98rem !important;
+    font-size: 0.92rem !important;
     color: #17231C !important;
+}
+
+.flash-card .lyann-author-meta {
+    font-size: 0.74rem !important;
+    font-weight: 500 !important;
+    color: #64748B !important;
+}
+
+.flash-card .flash-badge-default {
+    font-weight: 500 !important;
+    font-size: 0.7rem !important;
 }
 
 .flash-card .lyann-card-title {
@@ -15712,12 +15725,37 @@ body.capacitor-native .nav-msg-btn,
     letter-spacing: -0.015em !important;
 }
 
-.flash-card .lyann-card-description {
+.flash-card .lyann-card-description,
+.flash-card .flash-card-body {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 450 !important;
-    font-size: 0.95rem !important;
+    font-size: 1.05rem !important;
     color: #334155 !important;
     line-height: 1.5 !important;
+}
+
+.flash-card .flash-actions-bar .flash-action-btn {
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    min-height: 44px !important;
+    min-width: 44px !important;
+    padding: 10px 2px !important;
+    gap: 5px !important;
+}
+
+.flash-card .flash-actions-bar .flash-action-btn i {
+    font-size: 1.05rem !important;
+}
+
+.flash-card .lyann-own-toolbar button {
+    font-weight: 500 !important;
+    font-size: 0.82rem !important;
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+}
+
+.flash-card .lyann-own-toolbar button i {
+    font-size: 1rem !important;
 }
 /* ==========================================================================
    LYANN — CTA IDENTITY TOKENS (REUSABLE CONCEPTUALLY)
@@ -18119,6 +18157,28 @@ body.bokantaj-carousel-open .bokantaj-view-tabs {
     object-fit: contain;
     border-radius: 12px;
     background: transparent;
+}
+.bokantaj-carousel.is-loading .bokantaj-carousel-img {
+    opacity: 0;
+}
+.bokantaj-carousel-wait {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #fffaf0;
+    font: 650 0.95rem 'Outfit', sans-serif;
+    pointer-events: none;
+    text-align: center;
+    padding: 24px;
+}
+.bokantaj-carousel-wait[hidden] { display: none; }
+.bokantaj-carousel-wait .ph {
+    font-size: 2.4rem;
+    color: #eadfbf;
 }
 .bokantaj-carousel-close,
 .bokantaj-carousel-nav {

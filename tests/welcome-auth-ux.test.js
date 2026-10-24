@@ -38,3 +38,17 @@ test('Fil/Carte switch and Bokantaj cards stay white', () => {
     assert.match(css, /\.bokantaj-view-tabs button\.is-selected\{color:#fff;background:#35583F/);
     assert.match(css, /body\.feed-page \.flash-card\{background:#fff !important/);
 });
+
+test('Bokantaj flash-card message outranks social chrome', () => {
+    const css = read('style.css');
+    const script = read('script.js');
+    const feed = read('feed.html');
+    assert.match(css, /\.flash-card \.lyann-card-description,\s*\.flash-card \.flash-card-body \{[\s\S]*?font-size: 1\.05rem !important/);
+    assert.match(css, /\.flash-card \.lyann-card-title \{[\s\S]*?font-size: 1\.15rem !important/);
+    assert.match(css, /\.flash-card \.flash-actions-bar \.flash-action-btn \{[\s\S]*?font-size: 0\.75rem !important[\s\S]*?font-weight: 500 !important[\s\S]*?min-height: 44px !important/);
+    assert.match(css, /\.flash-card \.lyann-own-toolbar button \{[\s\S]*?font-weight: 500 !important[\s\S]*?font-size: 0\.82rem !important/);
+    assert.match(css, /\.flash-card \.lyann-author-name[\s\S]*?font-size: 0\.92rem !important/);
+    assert.match(script, /class="lyann-card-description"[^>]*font-size: 1\.05rem/);
+    assert.match(script, /btn-like-flash[\s\S]*?font-weight: 500; font-size: 0\.75rem/);
+    assert.match(feed, /style\.css\?v=20261024type/);
+});

@@ -198,7 +198,7 @@ test('build 9 can show a refusal sentence and still has no pending-state label',
     const refusal = 'Ce contenu ne peut pas être publié.';
     assert.equal(pattern.test(refusal), false);
     assert.match(script, /err\.message \|\| "Veuillez vous connecter pour publier\."/);
-    assert.match(script, /Votre publication est en cours de vérification\./);
+    assert.match(script, /Publication enregistrée\. Mise en ligne après validation de sécurité\./);
     assert.match(script, /Votre photo est en cours de vérification\./);
     assert.match(script, /Ce contenu ne peut pas être publié\./);
     assert.match(script, /Votre publication est maintenant visible\./);
@@ -211,6 +211,9 @@ test('build 9 can show a refusal sentence and still has no pending-state label',
     const routeSource = fs.readFileSync(path.join(root, 'api/content-moderation-routes.js'), 'utf8');
     assert.doesNotMatch(routeSource, /createSignedUrl/);
     assert.match(routeSource, /private, no-store/);
+    const server = fs.readFileSync(path.join(root, 'api/server.js'), 'utf8');
+    assert.match(server, /setInterval\(moderate, 5000\)/);
+    assert.doesNotMatch(server, /setInterval\(moderate, 30000\)/);
     assert.match(routeSource, /\/v1\/internal\/moderation\/run/);
     const vercel = fs.readFileSync(path.join(root, 'vercel.json'), 'utf8');
     assert.match(vercel, /\/v1\/internal\/moderation\/run/);
@@ -223,6 +226,9 @@ test('bokantaj photos load with a session and close the viewer with Fermer', () 
     assert.match(script, /function loadBokantajMedia/);
     assert.match(script, /img\[src\*="\/v1\/media\/bokantaj-media"\]/);
     assert.match(script, /data-carousel-close>Fermer/);
+    assert.match(script, /data-carousel-wait/);
+    assert.match(script, /Chargement de la photo/);
+    assert.match(script, /bokantajMediaCache/);
 });
 
 test('the OpenAI key is not shipped in the public client or the moderation SQL', () => {
