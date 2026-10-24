@@ -22,6 +22,7 @@
     
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261017pale">
+<link rel="stylesheet" href="business.css">
 </head>
 <body>
 
@@ -102,6 +103,7 @@
                     <a href="feed.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <span class="nav-live-dot"></span> <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="#" class="open-chat-trigger" data-lyann-route="messages" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+<a href="professional.html" class="desktop-nav-link">Mon activité</a>
                     <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="about.html" class="active" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                 </nav>
@@ -1286,11 +1288,11 @@
                                     <button type="button" class="btn btn-primary choice-card-btn" id="btnChooseDirectPrice">Choisir le Tarif Direct</button>
                                 </div>
 
-                                <!-- CARTE 2: DEVIS PAR JALONS -->
+                                <!-- CARTE 2: DEVIS avec paiement par étape -->
                                 <div class="choice-card-vertical">
-                                    <div class="choice-card-title">Devis par Jalons</div>
+                                    <div class="choice-card-title">Devis avec paiement par étape</div>
                                     <div class="choice-card-desc">Plusieurs étapes avec paiements progressifs.</div>
-                                    <button type="button" class="btn btn-outline choice-card-btn" id="btnChooseMilestoneDevis">Choisir le Devis par Jalons</button>
+                                    <button type="button" class="btn btn-outline choice-card-btn" id="btnChooseMilestoneDevis">Choisir le Devis avec paiement par étape</button>
                                 </div>
                             </div>
                             
@@ -1392,10 +1394,10 @@
                             
                                                         <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
                                 <div class="milestone-allocation-section">
-                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
-                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque jalon garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
+                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Paiements par étape de paiement</label>
+                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque paiement par étape garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
                                     <div id="mdMilestoneList" class="md-milestone-list"></div>
-                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un jalon</button>
+                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un paiement par étape</button>
                                     <div id="mdAllocationSummary" class="md-allocation-summary">
                                         <div class="md-allocation-row"><span>Total du devis</span><strong id="mdAllocationQuoteTotal">0,00 €</strong></div>
                                         <div class="md-allocation-row"><span>Total réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
@@ -1474,15 +1476,15 @@
                     <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
                     <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
                         <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
-                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
-                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Paiement par étape Terminé</h4>
+                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Paiement par étape X</div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
                             </div>
                             <div style="display: flex; gap: 10px; margin-top: 8px;">
                                 <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
-                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Jalon</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Paiement par étape</button>
                             </div>
                         </form>
                     </div>

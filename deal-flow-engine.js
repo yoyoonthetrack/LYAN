@@ -779,7 +779,7 @@
             refunded_amount: refundedAmount > 0 ? refundedAmount : parseFloat(mission.total_amount || 0),
             held_commission: 0, // NO cancellation penalty, NO retained LYANN commission solely due to cancellation
             message: approvedAmount > 0 
-                ? `Mission annulée. Jalons validés (${approvedAmount} €) conservés, solde (${refundedAmount} €) remboursé.`
+                ? `Mission annulée. Paiements par étape validés (${approvedAmount} €) conservés, solde (${refundedAmount} €) remboursé.`
                 : "Mission annulée avant démarrage. Remboursement intégral sans commission d'annulation."
         };
     }
@@ -894,8 +894,8 @@
             status: "DEFINED & IMPLEMENTED",
             cancellation_policy: {
                 pre_start: "Remboursement 100% au demandeur, 0 commission retenue, 0 paiement Lyanneur.",
-                post_start_approved: "Jalons validés conservés et versés au Lyanneur.",
-                post_start_unstarted: "Jalons non commencés remboursés au demandeur.",
+                post_start_approved: "Paiements par étape validés conservés et versés au Lyanneur.",
+                post_start_unstarted: "Paiements par étape non commencés remboursés au demandeur.",
                 submitted_contested: "Pas de virement automatique. Le paiement reste conservé par Stripe le temps de la dispute.",
                 penalties: "Aucune pénalité 24h, aucun frais d'annulation, aucun forfait."
             },

@@ -16,6 +16,40 @@ function isUUID(str) {
 }
 window.isUUID = isUUID;
 
+window.LYANN_BOKANTAJ_MEDIA = {
+    MAX_EDGE: 1600,
+    JPEG_QUALITY: 0.82,
+    MAX_INPUT_BYTES: 12 * 1024 * 1024,
+    async preparePhoto(file) {
+        if (!file) throw new Error('Photo indisponible');
+        const type = String(file.type || '').toLowerCase();
+        const looksImage = !type || type.startsWith('image/');
+        if (!looksImage) throw new Error('Choisissez une photo JPG, PNG, WEBP ou HEIC.');
+        if (file.size > this.MAX_INPUT_BYTES) throw new Error('Cette photo est trop lourde (12 Mo maximum).');
+        let bitmap = null;
+        if (typeof createImageBitmap === 'function') {
+            bitmap = await createImageBitmap(file).catch(() => null);
+        }
+        if (!bitmap) {
+            if (['image/jpeg', 'image/png', 'image/webp'].includes(type) && file.size <= 5 * 1024 * 1024) {
+                return file;
+            }
+            throw new Error('Cette photo ne peut pas être lue. Essayez JPG, PNG ou WEBP.');
+        }
+        const scale = Math.min(1, this.MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Compression photo indisponible sur cet appareil.');
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        if (typeof bitmap.close === 'function') bitmap.close();
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', this.JPEG_QUALITY));
+        if (!blob) throw new Error('La photo n’a pas pu être préparée.');
+        return new File([blob], 'bokantaj.jpg', { type: 'image/jpeg' });
+    }
+};
+
 // The annonce title is a one-line summary shown on every card.
 const LYANN_REQUEST_TITLE_MAX = 60;
 const LYANN_FEED_PAGE_SIZE = 60;
@@ -215,11 +249,36 @@ function pageHttpOrigin() {
     }
 }
 
+// Isolated Staging must never ask Production to serve private moderation media.
+function isolatedBokantajMediaOrigin() {
+    const binding = resolveLyannClientBinding();
+    if (!binding.ok || !String(binding.url || '').includes('tdktfbtqceldlaeqjtow')) return '';
+    const backend = String(getLyannBackendOrigin() || '').replace(/\/$/, '');
+    if (backend && backend !== 'https://lyann.app') return backend;
+    // A browser Preview hosts its own /v1/media route. Capacitor needs an
+    // explicit reachable Staging backend; its local origin cannot proxy media.
+    return isCapacitorRuntime() ? '' : pageHttpOrigin();
+}
+
+function displayedBokantajMediaUrl(value) {
+    const url = String(value || '');
+    if (!/^https:\/\/lyann\.app\/v1\/media\/(?:bokantaj-media-hold|bokantaj-media)\//i.test(url)) return url;
+    const staging = isolatedBokantajMediaOrigin();
+    return staging ? staging + url.slice('https://lyann.app'.length) : url;
+}
+
 function holdMediaUrl(bucket, objectPath) {
-    const origin = (typeof getLyannBackendOrigin === 'function' && getLyannBackendOrigin()) || 'https://lyann.app';
+    const binding = resolveLyannClientBinding();
+    if (!binding.ok) throw new Error('Environnement média non configuré.');
+    const isStaging = String(binding.url || '').includes('tdktfbtqceldlaeqjtow');
+    const origin = isStaging
+        ? isolatedBokantajMediaOrigin()
+        : (getLyannBackendOrigin() || 'https://lyann.app');
+    if (!origin) throw new Error('Passerelle média Staging manquante. Envoi arrêté pour protéger vos photos.');
     const encoded = String(objectPath || '').split('/').filter(Boolean).map(encodeURIComponent).join('/');
     return `${String(origin).replace(/\/$/, '')}/v1/media/${bucket}/${encoded}`;
 }
+if (typeof window !== 'undefined') window.LYANN_BOKANTAJ_RESOLVE_MEDIA_URL = displayedBokantajMediaUrl;
 
 function getLyannBackendOrigin() {
     const binding = resolveLyannClientBinding();
@@ -397,6 +456,9 @@ function normalizeAuthError(error) {
     if (msg.includes('email not confirmed')) {
         return { message: 'Votre compte est créé. Ouvrez le lien reçu par email pour activer la connexion, puis réessayez.' };
     }
+    if (msg.includes('email rate limit') || msg.includes('over_email_send_rate_limit')) {
+        return { message: 'L’envoi des emails est momentanément saturé. Réessayez dans une heure, ou connectez-vous si vous avez déjà un compte.' };
+    }
     if (msg.includes('rate limit') || msg.includes('too many requests')) {
         return { message: 'Trop de tentatives effectuées. Veuillez patienter quelques minutes.' };
     }
@@ -561,7 +623,9 @@ const LYANN_API_CLIENT = {
     async resetPasswordForEmail(email) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const res = await this.supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + '/index.html?action=reset_password'
+            redirectTo: isCapacitorRuntime()
+                ? 'app.lyann.dom://confirm-signup?action=reset_password'
+                : window.location.origin + '/index.html?action=reset_password'
         });
         if (res.error) res.error = normalizeAuthError(res.error);
         return res;
@@ -574,9 +638,40 @@ const LYANN_API_CLIENT = {
         return res;
     },
 
+    async decoratePlanBadges(profiles) {
+        if (window.LYANN_SUPABASE_LOCK !== 'tdktfbtqceldlaeqjtow') return profiles;
+        const rows = (profiles || []).filter(Boolean);
+        // Clear legacy hints first; an outage must never restore a stale paid/verified badge.
+        rows.forEach(p => {
+            p.is_verified = false; p.is_pro_verified = false; p.kyc_verified = false;
+            p.verification_status = null; p.pro_verification_status = null;
+            p.subscription_plan = 'FREE'; p.badge = ''; p.lyann_badges = null;
+        });
+        const ids = [...new Set(rows.map(p => p.id || p.user_id).filter(isUUID))];
+        for (let offset = 0; offset < ids.length; offset += 100) {
+            const batch = ids.slice(offset, offset + 100);
+            try {
+                const result = await this.supabase.rpc('lyann_public_badges', { p_users: batch });
+                if (result.error || !Array.isArray(result.data)) continue;
+                const byId = new Map(result.data.filter(b => batch.includes(b.user_id)).map(b => [b.user_id,b]));
+                rows.forEach(p => {
+                    const b = byId.get(p.id || p.user_id);
+                    if (!b || !['FREE','PLUS','PRO'].includes(b.plan) || !(Date.parse(b.valid_until) > Date.now())) return;
+                    p.lyann_badges = { plan:b.plan, verified:b.plan === 'PRO' && b.verified === true, valid_until:b.valid_until };
+                    p.subscription_plan = b.plan;
+                    p.is_verified = p.is_pro_verified = p.lyann_badges.verified;
+                    p.badge = window.LYANN_PLANS?.badgeLabel(p) || '';
+                });
+            } catch (_) { /* Keep neutral badges while the service is unavailable. */ }
+        }
+        return profiles;
+    },
+
     async getProfile(userId) {
         if (!this.supabase) return { data: null };
-        return await this.supabase.from('profiles').select('*').eq('id', userId).single();
+        const result = await this.supabase.from('profiles').select('*').eq('id', userId).single();
+        if (result.data) await this.decoratePlanBadges([result.data]);
+        return result;
     },
 
     async rememberAppleIdentity(user, hints) {
@@ -634,7 +729,7 @@ const LYANN_API_CLIENT = {
         if (iz !== undefined && iz !== null) safeData.intervention_zone = Array.isArray(iz) ? iz : [String(iz)];
 
         if (profileData.is_pro !== undefined) safeData.is_pro = !!profileData.is_pro;
-        if (profileData.is_verified !== undefined) safeData.is_verified = !!profileData.is_verified;
+        // Verification is issued by the document review workflow, never by profile editing.
 
         if (profileData.notification_prefs && typeof profileData.notification_prefs === 'object') {
             safeData.notification_prefs = {
@@ -777,6 +872,11 @@ const LYANN_API_CLIENT = {
         }
     },
 
+    async getPlanEntitlements() {
+        if (!this.supabase || window.LYANN_SUPABASE_LOCK !== 'tdktfbtqceldlaeqjtow') return { data: null };
+        return await this.supabase.rpc('lyann_my_entitlements');
+    },
+
     async syncUserSkills(userId, skillsArray) {
         if (!this.supabase || !userId) {
             return { error: { message: 'Supabase non initialisé ou session manquante.' } };
@@ -785,6 +885,10 @@ const LYANN_API_CLIENT = {
         const selectedSkills = Array.isArray(skillsArray) 
             ? [...new Set(skillsArray.map(s => String(s).trim()).filter(Boolean))]
             : [];
+
+        if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow') {
+            return await this.supabase.rpc('lyann_sync_profile_skills', { p_user: userId, p_titles: selectedSkills });
+        }
 
         try {
             // Fetch current services state from canonical public.services table
@@ -916,6 +1020,12 @@ const LYANN_API_CLIENT = {
 
     async uploadPortfolioImage(userId, file) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const rights = await this.getPlanEntitlements();
+        if (rights.error) return { error: rights.error };
+        if (rights.data?.enforced && rights.data.usage.photos >= rights.data.limits.photos) {
+            return { error: { code: 'P0001', message: 'PORTFOLIO_QUOTA_REACHED: Limite de photos atteinte. Vos photos existantes sont conservées.' } };
+        }
+
         const fileExt = file.name ? file.name.split('.').pop() : 'png';
         const filePath = `${userId}/portfolio_${Date.now()}.${fileExt}`;
 
@@ -1181,6 +1291,7 @@ const LYANN_API_CLIENT = {
         const read = columns => this.supabase.from('public_profiles').select(columns).eq('id', userId).maybeSingle();
         let { data, error } = await read(`${identity}, is_verified, is_pro_verified, average_rating, reviews_count`);
         if (error) ({ data } = await read(identity));
+        if (data) await this.decoratePlanBadges([data]);
         return data || null;
     },
 
@@ -1197,7 +1308,7 @@ const LYANN_API_CLIENT = {
                     .select(select)
                     .eq('id', userId)
                     .maybeSingle();
-                if (!error && data) return data;
+                if (!error && data) { await this.decoratePlanBadges([data]); return data; }
                 if (error && !/column|schema cache/i.test(error.message || '')) return null;
             } catch (e) {
                 return null;
@@ -1377,6 +1488,7 @@ const LYANN_API_CLIENT = {
         if (!this.supabase) return { data: [], error: "Supabase non disponible" };
 
         try {
+            const sessionUser = await this.getCurrentUser();
             // 1. Fetch Bokantaj Posts
             let postsQuery = this.supabase
                 .from('bokantaj_posts')
@@ -1386,10 +1498,22 @@ const LYANN_API_CLIENT = {
                 .order('created_at', { ascending: false })
                 .limit(LYANN_FEED_PAGE_SIZE);
             if (pageOptions.before) postsQuery = postsQuery.lt('created_at', pageOptions.before);
-            const { data: postsData, error: postsError } = await postsQuery;
+            const pendingQuery = sessionUser?.id && !pageOptions.before
+                ? this.supabase
+                    .from('bokantaj_posts')
+                    .select('*')
+                    .eq('author_id', sessionUser.id)
+                    .eq('public_moderation_status', 'pending')
+                    .order('created_at', { ascending: false })
+                    .limit(10)
+                : Promise.resolve({ data: [], error: null });
+            const [{ data: postsData, error: postsError }, pendingRes] = await Promise.all([postsQuery, pendingQuery]);
 
             if (postsError) throw postsError;
-            const posts = postsData || [];
+            const approved = postsData || [];
+            const ownPending = (pendingRes && pendingRes.data) || [];
+            const seen = new Set(approved.map((row) => row.id));
+            const posts = [...ownPending.filter((row) => row && !seen.has(row.id)), ...approved];
             // Community discovery never queries or merges transactional Requests.
             const authorIds = [...new Set(posts.map(p => p.author_id).filter(Boolean))];
 
@@ -1478,13 +1602,16 @@ const LYANN_API_CLIENT = {
                     author_name: authorName,
                     author_avatar: avatarUrl,
                     author_city: authorProf?.city || authorProf?.territory || p.territory || 'Guadeloupe',
-                    badge: p.type === 'dispo' ? 'Disponibilité' : (p.type === 'besoin' ? 'Besoin' : 'Info Bokantaj'),
+                    badge: ({ trafic: '🚗 Trafic', bon_plan: '✨ Bon plan', restaurant: '🍴 Resto', avis: '⭐ Avis', evenement: '🎉 Sortie', info: '💬 Info', alerte: '⚠️ Alerte', astuce: '💡 Astuce' })[p.type] || 'Info Bokantaj',
                     badgeIcon: p.type === 'dispo' ? 'ph-lightning' : (p.type === 'besoin' ? 'ph-magnifying-glass' : 'ph-newspaper'),
                     type: p.type,
                     city: p.city || '',
                     territory: p.territory || authorProf?.territory || '',
                     location: p.city || p.territory || authorProf?.city || '',
                     territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
+                    place_lat: p.place_lat,
+                    place_lng: p.place_lng,
+                    place_label: p.place_label || null,
                     created_at: p.created_at,
                     content: p.content,
                     title: p.headline || '',
@@ -1492,8 +1619,8 @@ const LYANN_API_CLIENT = {
                     source_url: p.source_url || '',
                     source_published_at: p.source_published_at || '',
                     editorial: /Compte éditorial LYANN/i.test(authorProf?.bio || ''),
-                    images: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
-                    videos: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)),
+                    images: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && !/\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)).map(displayedBokantajMediaUrl),
+                    videos: (p.media_urls || []).filter(url => typeof url === 'string' && /^https?:\/\//i.test(url) && /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)).map(displayedBokantajMediaUrl),
                     moderation_status: p.public_moderation_status || null,
                     likes: (postLikesCountMap[p.id] !== undefined) ? postLikesCountMap[p.id] : (p.likes_count || 0),
                     user_has_liked: userLikedPostsSet.has(p.id),
@@ -1509,6 +1636,118 @@ const LYANN_API_CLIENT = {
             console.error("❌ Error loading unified Bokantaj feed:", err);
             return { data: [], error: err.message || "Erreur serveur" };
         }
+    },
+
+    // Map requests are independent of the paginated feed and always public / approved only.
+    // Bounding-box filtering happens at PostgREST before the server-side cap.
+    async getMappedBokantajPosts(bounds) {
+        if (!this.supabase) return { data: [], error: 'Carte indisponible.' };
+        const { south, north, west, east } = bounds || {};
+        if (![south, north, west, east].every(Number.isFinite)
+            || south < -90 || north > 90 || west < -180 || east > 180
+            || south > north || west > east) {
+            return { data: [], error: 'Zone géographique invalide.' };
+        }
+        // The map (not the feed) is temporary. A 7-day SQL limit keeps old
+        // posts out of the map query; admin-curated exceptions are fetched
+        // separately from a read-only RLS table. Nothing is deleted.
+        const lastSevenDays = new Date(Date.now() - 7 * 86400000).toISOString();
+        const columns = 'id, author_id, type, content, city, territory, media_urls, created_at, place_lat, place_lng, place_label, public_moderation_status';
+        const inBounds = (query) => query
+            .eq('public_moderation_status', 'approved')
+            .not('place_lat', 'is', null)
+            .not('place_lng', 'is', null)
+            .not('place_label', 'is', null)
+            .gte('place_lat', south).lte('place_lat', north)
+            .gte('place_lng', west).lte('place_lng', east);
+        // Density is measured in fixed roughly 25 km geographic cells. It
+        // does not fluctuate when people merely zoom the map. Thresholds are
+        // intentionally conservative until real neighbourhood traffic grows.
+        const step = 0.25;
+        const cellLat = Math.floor(((south + north) / 2) / step) * step;
+        const cellLng = Math.floor(((west + east) / 2) / step) * step;
+        const results = await Promise.all([
+            inBounds(this.supabase.from('bokantaj_posts').select(columns))
+                .gte('created_at', lastSevenDays).order('created_at', { ascending: false }).limit(250),
+            this.supabase.from('bokantaj_posts').select('id', { count: 'exact', head: true })
+                .eq('public_moderation_status', 'approved')
+                .not('place_lat', 'is', null).not('place_lng', 'is', null)
+                .gte('created_at', lastSevenDays)
+                .gte('place_lat', cellLat).lt('place_lat', cellLat + step)
+                .gte('place_lng', cellLng).lt('place_lng', cellLng + step),
+            this.supabase.from('bokantaj_map_featured').select('post_id').limit(250)
+        ]);
+        const [recent, density, curated] = results;
+        if (recent.error) return { data: [], error: recent.error.message || 'Carte indisponible.' };
+        if (curated.error) return { data: [], error: 'Sélections cartographiques indisponibles. Vérifier la migration Staging.' };
+        const activity = Number.isFinite(density.count) ? density.count : 0;
+        const mapLifetimeDays = activity >= 250 ? 1 : activity >= 120 ? 3 : activity >= 40 ? 5 : 7;
+        const curatedIds = (curated.data || []).map((item) => item.post_id).filter(Boolean);
+        let selected = [];
+        if (curatedIds.length) {
+            const result = await inBounds(this.supabase.from('bokantaj_posts').select(columns))
+                .in('id', curatedIds).order('created_at', { ascending: false }).limit(250);
+            if (result.error) return { data: [], error: result.error.message || 'Repères permanents indisponibles.' };
+            selected = (result.data || []).map((row) => ({ ...row, map_featured: true }));
+        }
+        const seen = new Set(selected.map((row) => row.id));
+        const combined = [
+            ...selected,
+            ...(recent.data || []).filter((row) => !seen.has(row.id))
+                .map((row) => ({ ...row, map_featured: false }))
+        ];
+        const threshold = Date.now() - mapLifetimeDays * 86400000;
+        const rows = combined.filter((row) => row.map_featured
+            || (Date.parse(row.created_at) >= threshold && (row.type !== 'trafic'
+                || Date.parse(row.created_at) >= Date.now() - 86400000)));
+        rows.forEach((row) => { row.media_urls = (row.media_urls || []).map(displayedBokantajMediaUrl); });
+        const authorIds = [...new Set(rows.map((row) => row?.author_id).filter(Boolean))];
+        const names = {};
+        if (authorIds.length) {
+            try {
+                const profiles = await this.supabase.from('public_profiles')
+                    .select('id, first_name, last_name').in('id', authorIds);
+                (profiles.data || []).forEach((profile) => {
+                    const first = String(profile.first_name || '').trim();
+                    if (!first || /^(step|prod|user_|req_user_|check_|ua_|ub_|h_step)/.test(first)) return;
+                    names[profile.id] = window.formatPublicName
+                        ? window.formatPublicName(profile, null, 'Lyanneur') : first;
+                });
+            } catch (_) { /* map remains accessible if profiles are unavailable */ }
+        }
+        return {
+            data: rows.map((row) => ({ ...row, author_name: names[row.author_id] || 'Lyanneur' })),
+            error: null, mapLifetimeDays, activity
+        };
+    },
+
+    async getApprovedBokantajPost(id) {
+        const key = String(id || '');
+        if (!this.supabase || !/^[A-Za-z0-9-]{1,80}$/.test(key)) return null;
+        const { data, error } = await this.supabase
+            .from('bokantaj_posts')
+            .select('id, author_id, type, content, headline, city, territory, media_urls, created_at, place_lat, place_lng, place_label, public_moderation_status')
+            .eq('id', key)
+            .eq('public_moderation_status', 'approved')
+            .maybeSingle();
+        if (error || !data || data.public_moderation_status !== 'approved') return null;
+        data.media_urls = (data.media_urls || []).map(displayedBokantajMediaUrl);
+        if (data.author_id) {
+            try {
+                const profile = await this.supabase.from('public_profiles')
+                    .select('id, first_name, last_name, avatar_url, city, territory')
+                    .eq('id', data.author_id)
+                    .maybeSingle();
+                if (profile.data) {
+                    data.profiles = profile.data;
+                    const first = String(profile.data.first_name || '').trim();
+                    data.author_name = first && window.formatPublicName
+                        ? window.formatPublicName(profile.data, null, 'Lyanneur')
+                        : (first || 'Lyanneur');
+                }
+            } catch (_) { data.author_name = 'Lyanneur'; }
+        }
+        return data;
     },
 
     // --- BOKANTAJ SOCIAL API METHODS ---
@@ -1533,22 +1772,29 @@ const LYANN_API_CLIENT = {
         if (!Number.isFinite(duration) || duration <= 0 || duration > 60) {
             throw new Error('La vidéo doit durer 60 secondes au plus.');
         }
-        const path = `${user.id}/${crypto.randomUUID()}.${allowed[mime]}`;
+        const id = crypto.randomUUID();
+        const path = `${user.id}/${id}.${allowed[mime]}`;
         const { error } = await this.supabase.storage.from('bokantaj-media-hold').upload(path, file, { contentType: mime });
         if (error) throw new Error('La vidéo n’a pas pu être envoyée. Réessayez avant de publier.');
-        return holdMediaUrl('bokantaj-media-hold', path);
+        const videoUrl = holdMediaUrl('bokantaj-media-hold', path);
+        const posterBlob = arguments[1];
+        if (!posterBlob) return { video: videoUrl, poster: null };
+        const posterPath = `${user.id}/${id}-poster.jpg`;
+        const posterUpload = await this.supabase.storage.from('bokantaj-media-hold').upload(posterPath, posterBlob, { contentType: 'image/jpeg' });
+        if (posterUpload.error) {
+            await this.supabase.storage.from('bokantaj-media-hold').remove([path]);
+            throw new Error('La miniature n’a pas pu être envoyée. Réessayez avant de publier.');
+        }
+        return { video: videoUrl, poster: holdMediaUrl('bokantaj-media-hold', posterPath) };
     },
 
     async uploadPostPhoto(file) {
         if (!this.supabase || !file) throw new Error('Photo indisponible');
         const user = await this.getCurrentUser();
         if (!user) throw new Error('Veuillez vous connecter');
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-            throw new Error('Choisissez une photo JPG, PNG ou WEBP de moins de 5 Mo.');
-        }
-        const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type];
-        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await this.supabase.storage.from('bokantaj-media-hold').upload(path, file);
+        const prepared = await window.LYANN_BOKANTAJ_MEDIA.preparePhoto(file);
+        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+        const { error } = await this.supabase.storage.from('bokantaj-media-hold').upload(path, prepared, { contentType: 'image/jpeg' });
         if (error) throw new Error('La photo n’a pas pu être envoyée. Réessayez avant de publier.');
         return holdMediaUrl('bokantaj-media-hold', path);
     },
@@ -1566,6 +1812,17 @@ const LYANN_API_CLIENT = {
             territory: payload.territory || null,
             media_urls: payload.media_urls || []
         };
+        if (payload.place) {
+            const { lat, lng, label } = payload.place;
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)
+                || lat < -90 || lat > 90 || lng < -180 || lng > 180
+                || typeof label !== 'string' || label.trim().length < 2 || label.trim().length > 90) {
+                throw new Error('Sélectionnez un repère valide sur la carte.');
+            }
+            postRecord.place_lat = lat;
+            postRecord.place_lng = lng;
+            postRecord.place_label = label.trim();
+        }
 
         const { data, error } = await this.supabase
             .from('bokantaj_posts')
@@ -2011,7 +2268,7 @@ const LYANN_API_CLIENT = {
 
     async markMilestoneDoneSecure(milestoneId, comments = null, deliverables = []) {
         if (!this.supabase || !milestoneId) {
-            return { error: { message: "Identifiant de jalon invalide." } };
+            return { error: { message: "Identifiant de paiement par étape invalide." } };
         }
         try {
             const { data, error } = await this.supabase.rpc('mark_milestone_done_secure', {
@@ -2022,13 +2279,13 @@ const LYANN_API_CLIENT = {
             if (error) return { error };
             return { data };
         } catch (e) {
-            return { error: { message: e.message || "Erreur lors de la mise à jour du jalon." } };
+            return { error: { message: e.message || "Erreur lors de la mise à jour du paiement par étape." } };
         }
     },
 
     async validateMilestoneSecure(milestoneId) {
         if (!this.supabase || !milestoneId) {
-            return { error: { message: "Identifiant de jalon invalide." } };
+            return { error: { message: "Identifiant de paiement par étape invalide." } };
         }
         try {
             const { data, error } = await this.supabase.rpc('validate_milestone_secure', {
@@ -2037,7 +2294,7 @@ const LYANN_API_CLIENT = {
             if (error) return { error };
             return { data };
         } catch (e) {
-            return { error: { message: e.message || "Erreur lors de la validation du jalon." } };
+            return { error: { message: e.message || "Erreur lors de la validation du paiement par étape." } };
         }
     },
 

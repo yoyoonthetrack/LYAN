@@ -54,12 +54,12 @@
     /** Tarif Direct = one payable milestone; Devis par jalons = several. No €200 gate. */
     function dealTypeOf(quote) {
         const count = activeMilestones(quote).length;
-        if (count > 1) return 'jalons';
+        if (count > 1) return 'paiements par étape';
         return 'tarif_direct';
     }
 
     function dealTypeLabel(dealType) {
-        return dealType === 'jalons' ? 'Devis par jalons' : 'Tarif Direct';
+        return dealType === 'paiements par étape' ? 'Devis avec paiement par étape' : 'Tarif Direct';
     }
 
     function resolveAnnonceTitle(quote, options) {
@@ -255,7 +255,7 @@
         } else if (quote.status === 'ACCEPTED' && !milestones.length) {
             status = 'Devis accepté';
             actorToAct = null;
-            context = 'Le jalon de paiement n’est plus disponible. Aucun paiement ne peut être lancé.';
+            context = 'Le paiement par étape de paiement n’est plus disponible. Aucun paiement ne peut être lancé.';
         } else if (quote.status === 'ACCEPTED') {
             const payoutWait = phase === 'paiement' && payoutBlocked;
             const prompts = guidanceApi();
@@ -354,7 +354,7 @@
                     actorToAct = role;
                     if (firstAction.id === 'pay') {
                         status = 'Devis accepté';
-                        context = 'Sécurisez le paiement du prochain jalon.';
+                        context = 'Sécurisez le paiement du prochain paiement par étape.';
                     } else if (firstAction.id === 'done') {
                         status = 'Paiement sécurisé';
                         context = role === 'provider'
@@ -390,7 +390,7 @@
             const inFlight = milestone.status === 'PENDING' && milestonePaymentInFlight(quote, milestone);
             return {
                 id: milestone.id,
-                title: milestone.title || 'Jalon',
+                title: milestone.title || 'Paiement par étape',
                 amount: euros(milestone.amount),
                 status: milestone.status,
                 paymentState: milestoneSettled(quote, milestone) || milestone.status === 'FUNDED' || milestone.status === 'IN_PROGRESS' || milestone.status === 'COMPLETED' || milestone.status === 'RELEASED' || milestone.status === 'VALIDATED'

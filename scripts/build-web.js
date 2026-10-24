@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { buildHtmlFile } = require('../shared-html-build');
+require('./ensure-leaflet-assets')();
 
 const root = path.resolve(__dirname, '..');
 if (!process.env.VERCEL && !process.argv.includes('--force')) {

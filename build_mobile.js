@@ -6,6 +6,7 @@ process.env.LYANN_NATIVE_BUILD_AT = new Date().toISOString();
 process.env.LYANN_NATIVE_BUILD_ID = process.env.LYANN_NATIVE_BUILD_ID
   || ('ios-' + Date.now().toString(36) + '-' + crypto.randomBytes(3).toString('hex'));
 const { buildHtml, injectIsolatedSupabaseConfig, resolveInjectedBackendOrigin } = require('./shared-html-build');
+require('./scripts/ensure-leaflet-assets')();
 
 const srcDir = __dirname;
 const sharedDist = path.join(__dirname, 'www');

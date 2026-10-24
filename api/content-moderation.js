@@ -194,9 +194,12 @@ function explorerRowIsPublic(row) {
 
 function mediaAccess(release, bucket, viewer) {
     if (!MEDIA_BUCKETS.includes(bucket)) return 'denied';
-    if (!release) return 'missing';
     const ownerId = String((viewer && viewer.ownerId) || '');
     const privileged = Boolean(viewer && (viewer.isAdmin || (viewer.id && ownerId && viewer.id === ownerId)));
+    if (!release) {
+        if (privileged && PRIVATE_MEDIA_BUCKETS.includes(bucket)) return 'stream';
+        return 'missing';
+    }
     if (release.status === 'approved') return 'stream';
     if (privileged && release.status !== 'rejected') return 'stream';
     if (release.kind === 'video' || release.status === 'rejected') return release.status === 'rejected' ? 'rejected' : 'hidden';
@@ -204,25 +207,50 @@ function mediaAccess(release, bucket, viewer) {
     return 'hidden';
 }
 
-async function classifyContent({ text, media, apiKey, fetchImpl, downloadMedia }) {
+function isPosterPath(path) {
+    return /-poster\.jpe?g$/i.test(String(path || '').split(/[?#]/)[0]);
+}
+
+async function decideVideoRelease({ textDecision, files, inspectVideo, downloadMedia, apiKey, fetchImpl }) {
+    if (textDecision && textDecision.decision === 'rejected') return textDecision;
+    if (typeof inspectVideo !== 'function') return { decision: 'pending', reason: 'video_unreviewed' };
+    const videos = files.filter((file) => VIDEO_EXT.has(extensionOf(file.path)));
+    const posters = files.filter((file) => isPosterPath(file.path));
+    if (!videos.length || posters.length < videos.length) return { decision: 'pending', reason: 'video_unverified' };
+    for (const video of videos) {
+        let report = null;
+        try { report = await inspectVideo(video); } catch (err) { report = null; }
+        if (!report || report.verified !== true) return { decision: 'pending', reason: 'video_unverified' };
+    }
+    if (typeof downloadMedia !== 'function') return { decision: 'pending', reason: 'video_unverified' };
+    let posterImages;
+    try { posterImages = await downloadMedia(posters); } catch (err) { return { decision: 'pending', reason: 'video_unverified' }; }
+    if (!Array.isArray(posterImages) || posterImages.length !== posters.length || posterImages.some((image) => !image)) {
+        return { decision: 'pending', reason: 'video_unverified' };
+    }
+    const posterDecision = await moderateInput(fetchImpl, apiKey, posterImages.map((image) => ({
+        type: 'image_url',
+        image_url: { url: image }
+    })), true);
+    if (!posterDecision) return { decision: 'pending', reason: 'video_unverified' };
+    if (posterDecision.decision !== 'approved') return posterDecision;
+    if (textDecision && textDecision.decision === 'pending') return textDecision;
+    return { decision: 'approved', reason: 'video_checked' };
+}
+
+async function classifyContent({ text, media, apiKey, fetchImpl, downloadMedia, inspectVideo }) {
     const files = normalizeMedia(media);
     const trimmed = String(text || '').trim();
     if (!trimmed && files.length === 0) return { decision: 'approved', reason: 'empty' };
     if (!apiKey || typeof fetchImpl !== 'function') {
         return combineDecisions({ decision: 'pending', reason: 'unconfigured' }, files);
     }
-    if (containsVideo(files) && trimmed) {
-        const textDecision = await classifyContent({
-            text: trimmed,
-            media: [],
-            apiKey,
-            fetchImpl,
-            downloadMedia
-        });
-        if (textDecision.decision === 'rejected') return textDecision;
-        return { decision: 'pending', reason: 'video_unreviewed' };
+    if (containsVideo(files)) {
+        const textDecision = trimmed
+            ? await classifyContent({ text: trimmed, media: [], apiKey, fetchImpl, downloadMedia })
+            : { decision: 'approved', reason: 'clear' };
+        return decideVideoRelease({ textDecision, files, inspectVideo, downloadMedia, apiKey, fetchImpl });
     }
-    if (containsVideo(files)) return { decision: 'pending', reason: 'video_unreviewed' };
 
     let images = [];
     if (files.length && typeof downloadMedia === 'function') {

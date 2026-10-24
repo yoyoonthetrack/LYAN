@@ -1,0 +1,454 @@
+/* Abonnements : styles limités à la page Tarifs. */
+body.pricing-page {
+    background: #F7F4EE;
+}
+
+body.pricing-page .lyann-offers {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: calc(76px + env(safe-area-inset-top, 0px)) 16px calc(28px + env(safe-area-inset-bottom, 0px));
+    color: #24382b;
+}
+
+body.is-native-app.pricing-page .lyann-offers {
+    padding-top: calc(92px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+.lyann-offers-intro h1 {
+    margin: 0 0 6px;
+    font-size: 1.55rem;
+    line-height: 1.15;
+    font-weight: 750;
+    color: #1e3a2a;
+}
+
+.lyann-offers-intro p,
+.lyann-plan-state {
+    margin: 0;
+    font-size: 0.98rem;
+    line-height: 1.45;
+    color: #3d4f44;
+}
+
+.lyann-plan-state,
+.lyann-offer-choice {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid #e6ddd2;
+    border-radius: 12px;
+}
+
+.lyann-offer-choice {
+    background: #eef4ef;
+    border-color: #c9d7cc;
+    color: #1e3a2a;
+    font-weight: 650;
+}
+
+.lyann-offer-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.lyann-offer {
+    margin: 0;
+    padding: 14px 14px 12px;
+    background: #fff;
+    border: 1px solid #e6ddd2;
+    border-radius: 14px;
+    box-shadow: 0 1px 4px rgba(36, 56, 43, 0.04);
+    cursor: pointer;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.lyann-offer.is-current,
+.lyann-offer.is-picked {
+    border-color: #35583f;
+}
+
+.lyann-offer.is-picked {
+    background: #f4f8f4;
+    box-shadow: 0 8px 20px rgba(53, 88, 63, 0.12);
+    transform: translateY(-1px);
+}
+
+.lyann-offer-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.lyann-offer h2 {
+    margin: 0;
+    font-size: 1.12rem;
+    line-height: 1.2;
+    font-weight: 750;
+}
+
+.lyann-current,
+.lyann-soon {
+    flex: none;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 4px 8px;
+    border-radius: 999px;
+}
+
+.lyann-current {
+    color: #1e3a2a;
+    background: #e7f0e8;
+}
+
+.lyann-soon {
+    color: #4d564e;
+    background: #eceeed;
+}
+
+.lyann-offer-lead,
+.lyann-offer-note,
+.lyann-offer-id {
+    margin: 6px 0 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #4d564e;
+}
+
+.lyann-offer-price {
+    margin: 8px 0 0;
+    font-size: 1.15rem;
+    font-weight: 750;
+    color: #1e3a2a;
+}
+
+.lyann-offer-price small,
+.lyann-offer-source {
+    font-size: 0.78rem;
+    font-weight: 650;
+    color: #5c675f;
+}
+
+.lyann-offer-source {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.lyann-offer ul {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lyann-offer li {
+    position: relative;
+    margin: 0;
+    padding: 3px 0 3px 16px;
+    font-size: 0.92rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.lyann-offer li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4a7c59;
+}
+
+.lyann-offer li.is-planned {
+    color: #5c675f;
+}
+
+.lyann-offer li.is-planned::before {
+    background: #c5c9c4;
+}
+
+.lyann-offer.is-soon {
+    background: #f3f4f2;
+    border-color: #d9ddd8;
+    box-shadow: none;
+}
+
+.lyann-offer.is-soon h2,
+.lyann-offer.is-soon p,
+.lyann-offer.is-soon li {
+    color: #5c675f;
+}
+
+.lyann-offer.is-soon li::before {
+    background: #b7bdb8;
+}
+
+.lyann-offer-more {
+    display: none;
+    margin-top: 8px;
+}
+
+.lyann-offer.is-picked .lyann-offer-more {
+    display: block;
+}
+
+.lyann-offer .lyann-choose {
+    width: 100%;
+    margin-top: 12px;
+    min-height: 44px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 12px;
+    background: #35583f;
+    color: #fff;
+    font: 700 0.95rem 'Outfit', sans-serif;
+    cursor: pointer;
+}
+
+.lyann-offer.is-picked .lyann-choose {
+    background: #2a4633;
+}
+
+.lyann-offer .lyann-quiet,
+.lyann-manage button,
+.lyann-partner button,
+.lyann-offer.is-soon button {
+    min-height: 44px;
+    border-radius: 12px;
+    font: 700 0.95rem 'Outfit', sans-serif;
+    cursor: pointer;
+}
+
+.lyann-offer .lyann-quiet,
+.lyann-manage button[data-store-restore],
+.lyann-manage button[data-store-manage]:disabled,
+.lyann-partner button,
+.lyann-offer.is-soon button {
+    margin-top: 10px;
+    padding: 8px 14px;
+    background: #fff;
+    color: #35583f;
+    border: 1px solid #c9d7cc;
+}
+
+.lyann-manage button[data-store-manage],
+.lyann-offer [data-store-buy] button {
+    margin-top: 8px;
+    padding: 8px 14px;
+}
+
+.lyann-manage button[data-store-manage]:not(:disabled),
+.lyann-offer [data-store-buy] button:not(:disabled) {
+    background: #35583f;
+    color: #fff;
+    border: 0;
+}
+
+.lyann-offer [data-store-buy] button:disabled,
+.lyann-manage button:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.lyann-shared,
+.lyann-manage,
+.lyann-partner,
+.lyann-compare {
+    margin-top: 14px;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid #e6ddd2;
+    border-radius: 14px;
+}
+
+.lyann-shared h2,
+.lyann-manage h2,
+.lyann-partner h2,
+.lyann-compare summary {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.lyann-shared ul {
+    margin: 8px 0 0;
+    padding-left: 18px;
+}
+
+.lyann-shared li,
+.lyann-partner p,
+.lyann-fine {
+    margin: 4px 0 0;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    color: #3d4f44;
+}
+
+.lyann-compare summary {
+    cursor: pointer;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    list-style: none;
+}
+
+.lyann-compare summary::-webkit-details-marker {
+    display: none;
+}
+
+.lyann-compare-hint {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #5c675f;
+}
+
+.lyann-compare summary::after {
+    content: "▾";
+    color: #35583f;
+}
+
+.lyann-compare[open] summary::after {
+    content: "▴";
+}
+
+.lyann-compare-switch {
+    display: flex;
+    gap: 6px;
+    margin: 10px 0;
+}
+
+.lyann-compare-switch button {
+    flex: 1;
+    min-height: 44px;
+    border: 1px solid #d5ddd6;
+    border-radius: 10px;
+    background: #f7f4ee;
+    color: #1e3a2a;
+    font: 700 0.92rem 'Outfit', sans-serif;
+}
+
+.lyann-compare-switch button[aria-selected="true"] {
+    background: #35583f;
+    color: #fff;
+    border-color: #35583f;
+}
+
+.lyann-compare-mobile {
+    display: grid;
+    gap: 0;
+}
+
+.lyann-compare-mobile div {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 8px;
+    padding: 8px 0;
+    border-top: 1px solid #efe8df;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.lyann-compare-mobile .is-planned {
+    color: #5c675f;
+}
+
+.lyann-compare-desktop {
+    display: none;
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+}
+
+.lyann-compare-desktop th,
+.lyann-compare-desktop td {
+    text-align: left;
+    vertical-align: top;
+    padding: 8px 10px;
+    border-bottom: 1px solid #efe8df;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.lyann-compare-desktop caption {
+    text-align: left;
+    font-weight: 750;
+    padding: 4px 0 8px;
+}
+
+.lyann-pro-link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+    margin-top: 14px;
+    min-height: 52px;
+    padding: 12px 14px;
+    background: #fff;
+    border: 1px solid #e6ddd2;
+    border-radius: 14px;
+    color: #1e3a2a;
+    font-weight: 700;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.lyann-pro-link::after {
+    content: "›";
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    font-size: 1.45rem;
+    line-height: 1;
+    color: #35583f;
+}
+
+.lyann-pro-link span {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    margin-top: 2px;
+    font-size: 0.84rem;
+    font-weight: 500;
+    color: #5c675f;
+}
+
+.lyann-manage-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.lyann-offers a:focus-visible,
+.lyann-offers button:focus-visible,
+.lyann-compare summary:focus-visible {
+    outline: 2px solid #35583f;
+    outline-offset: 2px;
+}
+
+@media (min-width: 800px) {
+    .lyann-offer-grid {
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+    }
+
+    .lyann-compare-switch,
+    .lyann-compare-mobile {
+        display: none;
+    }
+
+    .lyann-compare-desktop {
+        display: table;
+    }
+}
+
+@media (min-width: 1100px) {
+    .lyann-offer-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}

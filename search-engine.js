@@ -354,6 +354,12 @@
                 proSubscriptionBadge = "PRO";
             }
 
+            if (global.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow') {
+                const label = global.LYANN_PLANS?.badgeLabel(c) || '';
+                isVerifiedPro = !!label && c.lyann_badges?.verified === true;
+                verifiedBadge = isVerifiedPro ? 'Vérifié' : null;
+                proSubscriptionBadge = label ? (c.lyann_badges.plan === 'PLUS' ? 'Lyanneur Plus' : 'Pro') : null;
+            }
             // Format Name (Canonical Prénom.N)
             const displayName = window.formatPublicName ? window.formatPublicName(c, null, c.name || "Lyanneur") : (c.first_name || c.name || "Lyanneur");
 

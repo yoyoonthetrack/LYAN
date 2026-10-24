@@ -59,7 +59,7 @@
 
     function policyCopy(code) {
         const map = {
-            FUNDED_NOT_STARTED: 'Remboursement automatique possible seulement si les conditions d’annulation sont remplies. Pas de droit automatique du seul fait que le jalon est FUNDED.',
+            FUNDED_NOT_STARTED: 'Remboursement automatique possible seulement si les conditions d’annulation sont remplies. Pas de droit automatique du seul fait que le paiement par étape est FUNDED.',
             FUNDED_HOLD: 'Les fonds sont reçus et conservés. Ce n’est pas un versement au prestataire.',
             WORK_STARTED: 'Accord du prestataire ou arbitrage LYANN obligatoire.',
             WORK_DONE: 'Pas de remboursement automatique.',
@@ -331,7 +331,7 @@
         const payments = Array.isArray(quote.payments) ? quote.payments : [];
         if (!steps.length) return dossierMoney(userId, payments);
         return steps.map((milestone) => {
-            const name = milestone.title || 'Jalon';
+            const name = milestone.title || 'Paiement par étape';
             const pay = payments.find((item) => item && String(item.milestone_id) === String(milestone.id)) || null;
             const status = String(milestone.status || '').toUpperCase();
             if (!pay) {
@@ -411,7 +411,7 @@
         const lines = (milestones || []).map((milestone) => {
             const charge = forecastMilestoneCharge(milestone && milestone.amount);
             if (!charge) return null;
-            return Object.assign({ title: (milestone && milestone.title) || 'Jalon' }, charge);
+            return Object.assign({ title: (milestone && milestone.title) || 'Paiement par étape' }, charge);
         }).filter(Boolean);
         return lines.reduce((sum, line) => {
             sum.lines.push(line);

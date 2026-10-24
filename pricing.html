@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>LYANN - Nos Offres & Formules d'Abonnement</title>
-    <meta name="description" content="Découvrez nos 4 formules d'abonnement LYANN : Lyanneur Gratuit, Lyanneur Plus, Lyanneur Ultime et Lyanneur PRO pour propulser votre activité dans les DOM.">
+    <meta name="description" content="Découvrez nos formules LYANN : Gratuit, Plus, Pro et Entreprise.">
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M12 42 L50 14 L88 42' stroke='%234A7C59' stroke-width='8' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='34' cy='46' r='7' fill='%234A7C59'/%3E%3Ccircle cx='50' cy='42' r='7' fill='%23709C7D'/%3E%3Ccircle cx='66' cy='46' r='7' fill='%23E5B345'/%3E%3Cpath d='M 23 72 C 23 60 31 56 38 56 C 45 56 47 62 50 62 C 53 62 55 56 62 56 C 69 56 77 60 77 72' stroke='%234A7C59' stroke-width='7.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
@@ -22,6 +22,8 @@
     
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261017pale">
+<link rel="stylesheet" href="business.css">
+<link rel="stylesheet" href="pricing-offers.css?v=20261024offers2">
 </head>
 <body class="pricing-page">
 
@@ -118,162 +120,97 @@
         </div>
     </div>
 
-    <!-- ========== HERO PAGE NOS OFFRES ========== -->
-    <section class="pricing-hero-section">
-        <div class="container">
-            <div class="pricing-hero-content text-center">
-                <span class="pill-badge pill-yellow"><i class="ph ph-crown-simple"></i> Des offres adaptées à chaque profil</span>
-                <h1 class="pricing-page-title">Développez votre activité avec LYANN</h1>
-                <p class="pricing-page-subtitle">Que vous soyez un voisin passionné, un indépendant ambitieux ou une entreprise certifiée, découvrez la formule qui propulsera vos demandes.</p>
-                
-                <!-- Toggle Mensuel / Annuel -->
-                <div class="pricing-billing-toggle">
-                    <span class="billing-label active" id="monthlyBillingLabel">Facturation mensuelle</span>
-                    <label class="switch">
-                        <input type="checkbox" id="billingToggleInput">
-                        <span class="slider round"></span>
-                    </label>
-                    <span class="billing-label" id="yearlyBillingLabel">Facturation annuelle <span class="discount-badge">-20%</span></span>
+    <section class="lyann-offers pricing-main-section">
+        <header class="lyann-offers-intro">
+            <h1>À chacun son rythme</h1>
+            <p>Restez gratuit, ou ouvrez plus de missions quand vous êtes prêt.</p>
+        </header>
+        <p id="lyannPlanState" class="lyann-plan-state" role="status">Les achats dans l’application ne sont pas encore ouverts.</p>
+        <p id="lyannOfferChoice" class="lyann-offer-choice" role="status">Touchez une formule pour la regarder de plus près.</p>
+        <div class="lyann-offer-grid">
+            <article class="lyann-offer" data-offer="FREE">
+                <div class="lyann-offer-head"><h2>Gratuit</h2></div>
+                <p class="lyann-offer-lead">Le quartier, sans abonnement.</p>
+                <p class="lyann-offer-price">0 € <small>/ mois</small></p>
+                <ul>
+                    <li>2 missions par mois comme prestataire</li>
+                    <li>5 photos de portfolio</li>
+                </ul>
+                <button type="button" class="lyann-quiet" data-offer-choose="FREE">Voir Gratuit</button>
+                <button type="button" class="lyann-quiet" id="lyannJoinFree">Créer un compte</button>
+            </article>
+            <article class="lyann-offer is-picked" data-offer="PLUS">
+                <div class="lyann-offer-head"><h2>Plus</h2></div>
+                <p class="lyann-offer-lead">Pour proposer vos services aussi souvent que vous voulez.</p>
+                <p class="lyann-offer-price" data-store-price="PLUS"><span class="lyann-offer-source">Tarif indicatif, France</span>7,99 € <small>/ mois</small></p>
+                <ul>
+                    <li>Missions comme prestataire illimitées</li>
+                    <li>Badge Lyanneur Plus</li>
+                    <li>20 photos · 3 catégories</li>
+                </ul>
+                <div class="lyann-offer-more">
+                    <p class="lyann-offer-note">Le prix d’un achat sera celui du magasin.</p>
+                    <p class="lyann-offer-id">Identifiant Apple : app.lyann.plus.monthly</p>
+                    <ul><li class="is-planned">1 vidéo de portfolio : prévu</li></ul>
                 </div>
-            </div>
+                <button type="button" class="lyann-choose" data-offer-choose="PLUS">Choisir Plus</button>
+                <div data-store-buy="PLUS"></div>
+            </article>
+            <article class="lyann-offer" data-offer="PRO">
+                <div class="lyann-offer-head"><h2>Pro</h2></div>
+                <p class="lyann-offer-lead">Pour faire reconnaître votre activité par LYANN.</p>
+                <p class="lyann-offer-price" data-store-price="PRO"><span class="lyann-offer-source">Tarif indicatif, France</span>19,99 € <small>/ mois</small></p>
+                <ul>
+                    <li>Tout Plus, plus le dossier professionnel</li>
+                    <li>Badge Pro · vitrine après examen</li>
+                    <li>50 photos · 5 catégories</li>
+                </ul>
+                <div class="lyann-offer-more">
+                    <p class="lyann-offer-note">Le badge Vérifié vient après lecture humaine des documents, pas après le paiement.</p>
+                    <p class="lyann-offer-id">Identifiant Apple : app.lyann.pro.monthly</p>
+                    <ul>
+                        <li class="is-planned">3 vidéos de portfolio : prévu</li>
+                        <li class="is-planned">Exports et PDF Staging : documents de test</li>
+                    </ul>
+                </div>
+                <button type="button" class="lyann-choose" data-offer-choose="PRO">Choisir Pro</button>
+                <div data-store-buy="PRO"></div>
+            </article>
+            <article class="lyann-offer is-soon" data-offer="ENTERPRISE">
+                <div class="lyann-offer-head"><h2>Entreprise</h2><span class="lyann-soon">Bientôt disponible</span></div>
+                <p class="lyann-offer-lead">Pour une équipe. Pas encore en vente.</p>
+                <button type="button" data-business-contact="enterprise">Nous contacter</button>
+            </article>
         </div>
-    </section>
-
-    <!-- ========== GRILLE DES 4 FORMULES D'ABONNEMENT ========== -->
-    <section class="section pricing-main-section">
-        <div class="container">
-            <div class="pricing-grid">
-                
-                <!-- 1. LYANNEUR (Gratuit) -->
-                <div class="pricing-card plan-lyanneur" data-plan="FREE" tabindex="0" role="button" aria-label="Offre Lyanneur Gratuit">
-                    <div>
-                        <span class="plan-badge badge-lyanneur">LYANNEUR</span>
-                        <h3 class="plan-name">Lyanneur</h3>
-                        <p class="plan-tagline">Pour commencer et être visible dans la communauté.</p>
-                        <div class="plan-price">
-                            <span class="price-val">Gratuit</span>
-                            <span class="price-period">/ 0 € pour toujours</span>
-                        </div>
-                        <ul class="plan-features-list">
-                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> Profil public complet</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> 5 photos maxi</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> Avis clients certifiés</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> Réponses limitées aux demandes</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> Positionnement standard</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #A8C9B0;"></i> 1 seule catégorie d’activité</li>
-                        </ul>
-                    </div>
-                    <div class="plan-action">
-                        <button type="button" class="btn btn-plan-lyanneur" data-plan-cta="FREE">Commencer gratuitement</button>
-                    </div>
-                </div>
-
-                <!-- 2. LYANNEUR PLUS (9,90 € / mois | 99 € / an) -->
-                <div class="pricing-card plan-plus" data-plan="PLUS" tabindex="0" role="button" aria-label="Offre Lyanneur Plus">
-                    <div>
-                        <span class="plan-badge badge-plus">LYANNEUR +</span>
-                        <h3 class="plan-name">Lyanneur Plus</h3>
-                        <p class="plan-tagline">Pour les talents qui souhaitent recevoir davantage de demandes.</p>
-                        <div class="plan-price">
-                            <span class="price-val" data-monthly="9,90 €" data-yearly="99 €">9,90 €</span>
-                            <span class="price-period">/ mois</span>
-                        </div>
-                        <ul class="plan-features-list">
-                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> <strong>Réponses illimitées</strong></li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Jusqu’à 20 photos</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Plusieurs catégories d'activités</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Statistiques de base du profil</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Profil mieux référencé</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #62B9C7;"></i> Badge « Profil vérifié »</li>
-                        </ul>
-                    </div>
-                    <div class="plan-action">
-                        <button type="button" class="btn btn-plan-plus" data-plan-cta="PLUS">Choisir Plus</button>
-                    </div>
-                </div>
-
-                <!-- 3. LYANNEUR ULTIME (29,90 € / mois | 299 € / an) — OFFRE STAR -->
-                <div class="pricing-card plan-ultime popular-plan" data-plan="ULTIME" tabindex="0" role="button" aria-label="Offre Lyanneur Ultime">
-                    <div class="popular-ribbon">⭐ La plus populaire</div>
-                    <div>
-                        <span class="plan-badge badge-ultime">LYANNEUR ULTIME</span>
-                        <h3 class="plan-name">Lyanneur Ultime</h3>
-                        <p class="plan-tagline">Pour maximiser sa visibilité et recevoir un maximum de demandes directes.</p>
-                        <div class="plan-price">
-                            <span class="price-val" data-monthly="29,90 €" data-yearly="299 €">29,90 €</span>
-                            <span class="price-period">/ mois</span>
-                        </div>
-                        <ul class="plan-features-list">
-                            <li><i class="ph-fill ph-star" style="color: #E8B83F;"></i> <strong>Tout Lyanneur Plus inclus</strong></li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> <strong>Mise en avant sponsorisée</strong></li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Portfolio de réalisations illimité</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Réception prioritaire des demandes</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Statistiques de visites détaillées</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Mini-page pro personnalisée</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Sélection ponctuelle LYANN</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #E8B83F;"></i> Réservation ou contact direct</li>
-                        </ul>
-                    </div>
-                    <div class="plan-action">
-                        <button type="button" class="btn btn-plan-ultime" data-plan-cta="ULTIME">Choisir Ultime</button>
-                        <div class="plan-target-note">Idéal indépendant & autoentrepreneur</div>
-                    </div>
-                </div>
-
-                <!-- 4. LYANNEUR PRO (59,90 € / mois | 599 € / an) -->
-                <div class="pricing-card plan-pro" data-plan="PRO" tabindex="0" role="button" aria-label="Offre Lyanneur PRO">
-                    <div>
-                        <div class="pro-official-badge-preview">
-                            <i class="ph-fill ph-shield-check" style="color: #E8B83F;"></i>
-                            <span class="pro-text">PRO</span>
-                            <span class="verified-text">VÉRIFIÉ PAR LYANN</span>
-                        </div>
-                        <h3 class="plan-name">Lyanneur PRO</h3>
-                        <p class="plan-tagline">Pour les entreprises structurées et artisans certifiés avec SIRET.</p>
-                        <div class="plan-price">
-                            <span class="price-val" data-monthly="59,90 €" data-yearly="599 €">59,90 €</span>
-                            <span class="price-period">/ mois</span>
-                        </div>
-                        <ul class="plan-features-list">
-                            <li><i class="ph-fill ph-shield-check" style="color: #173F36;"></i> <strong>Tout Lyanneur Ultime inclus</strong></li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> <strong>Badge « PRO VÉRIFIÉ PAR LYANN »</strong></li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Numéro SIRET vérifié & certifié</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Assurance pro vérifiée (RC/Décennale)</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Multi-membres & collaborateurs</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Multi-zones géographiques</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Tableau de bord entreprise avancé</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Export contacts & statistiques CSV</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Support client prioritaire 7j/7</li>
-                            <li><i class="ph-fill ph-check-circle" style="color: #173F36;"></i> Demandes réservées aux PRO</li>
-                        </ul>
-                    </div>
-                    <div class="plan-action">
-                        <button type="button" class="btn btn-plan-pro" data-plan-cta="PRO">Choisir PRO</button>
-                        <div class="pro-verification-note">
-                            <i class="ph ph-info"></i> Le badge <strong>PRO VÉRIFIÉ PAR LYANN</strong> est accordé après contrôle SIRET & Assurance par notre équipe.
-                        </div>
-                    </div>
-                </div>
-
+        <section class="lyann-shared" aria-labelledby="lyannSharedTitle">
+            <h2 id="lyannSharedTitle">Inclus dans toutes les formules</h2>
+            <ul>
+                <li>Consultation et publication de Bokantaj</li>
+                <li>Consultation des annonces, des profils et de la carte</li>
+                <li>Messagerie, favoris et avis</li>
+                <li>Demandes de service illimitées comme client</li>
+                <li>Paiement par étape</li>
+            </ul>
+        </section>
+        <details class="lyann-compare" id="plansComparison">
+            <summary>Comparer les formules<span class="lyann-compare-hint">Toutes les fonctionnalités</span></summary>
+        </details>
+        <section class="lyann-manage" data-store-subscriptions data-store-layout="manage">
+            <h2>Gérer l’abonnement</h2>
+            <p data-store-status role="status" aria-live="polite">Les achats dans l’application ne sont pas encore ouverts.</p>
+            <div class="lyann-manage-actions">
+                <button type="button" data-store-restore disabled>Restaurer mes achats</button>
+                <button type="button" data-store-manage disabled>Gérer mon abonnement</button>
             </div>
-
-            <div class="pricing-paid-disclosure">
-                <button type="button" id="btnShowPaidPlans" class="btn btn-outline" style="min-height:44px;font-weight:700;">Voir les offres payantes</button>
-                <p style="margin:10px 0 0; font-size:0.85rem; color:var(--text-muted);">Les offres payantes ouvriront prochainement. Leurs fonctionnalités seront activées au lancement de chaque offre ; aucun paiement n'est demandé aujourd'hui.</p>
-            </div>
-
-            <!-- Note d'information & Upgrade pour déjà inscrits -->
-            <div class="already-member-upgrade-banner">
-                <div class="upgrade-banner-content">
-                    <i class="ph-fill ph-lightning" style="font-size: 2rem; color: #E5B345;"></i>
-                    <div>
-                        <h4>Déjà membre LYANN ?</h4>
-                        <p>La formule gratuite reste active sur votre compte. Vous pourrez faire évoluer votre offre dès l'ouverture des formules payantes.</p>
-                    </div>
-                    <a href="#login" class="btn btn-outline open-login-trigger logged-out-only">Me connecter</a>
-                </div>
-            </div>
-        </div>
+            <p class="lyann-fine">Abonnement mensuel à renouvellement automatique. Le prix et les conditions du magasin sont présentés avant confirmation. Vous pouvez annuler le renouvellement dans votre magasin.</p>
+            <p class="lyann-fine"><a href="legal.html">Conditions d’utilisation</a> · <a href="confidentialite.html">Confidentialité</a></p>
+        </section>
+        <section class="lyann-partner">
+            <h2>Partenariat</h2>
+            <p>Entreprises, associations et collectivités : écrivons ensemble un partenariat avec LYANN.</p>
+            <button type="button" data-business-contact="partnership">Nous écrire</button>
+        </section>
+        <a class="lyann-pro-link" href="professional.html">Mon espace professionnel<span>Droits et abonnement. La vérification arrive avec Pro.</span></a>
     </section>
 
         <!-- ========== FOOTER ========== -->
@@ -1171,11 +1108,11 @@
                                     <button type="button" class="btn btn-primary choice-card-btn" id="btnChooseDirectPrice">Choisir le Tarif Direct</button>
                                 </div>
 
-                                <!-- CARTE 2: DEVIS PAR JALONS -->
+                                <!-- CARTE 2: DEVIS avec paiement par étape -->
                                 <div class="choice-card-vertical">
-                                    <div class="choice-card-title">Devis par Jalons</div>
+                                    <div class="choice-card-title">Devis avec paiement par étape</div>
                                     <div class="choice-card-desc">Plusieurs étapes avec paiements progressifs.</div>
-                                    <button type="button" class="btn btn-outline choice-card-btn" id="btnChooseMilestoneDevis">Choisir le Devis par Jalons</button>
+                                    <button type="button" class="btn btn-outline choice-card-btn" id="btnChooseMilestoneDevis">Choisir le Devis avec paiement par étape</button>
                                 </div>
                             </div>
                             
@@ -1277,10 +1214,10 @@
                             
                                                         <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
                                 <div class="milestone-allocation-section">
-                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
-                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque jalon garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
+                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Paiements par étape de paiement</label>
+                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque paiement par étape garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
                                     <div id="mdMilestoneList" class="md-milestone-list"></div>
-                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un jalon</button>
+                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un paiement par étape</button>
                                     <div id="mdAllocationSummary" class="md-allocation-summary">
                                         <div class="md-allocation-row"><span>Total du devis</span><strong id="mdAllocationQuoteTotal">0,00 €</strong></div>
                                         <div class="md-allocation-row"><span>Total réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
@@ -1359,15 +1296,15 @@
                     <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
                     <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
                         <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
-                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
-                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Paiement par étape Terminé</h4>
+                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Paiement par étape X</div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
                             </div>
                             <div style="display: flex; gap: 10px; margin-top: 8px;">
                                 <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
-                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Jalon</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Paiement par étape</button>
                             </div>
                         </form>
                     </div>

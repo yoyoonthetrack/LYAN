@@ -20,7 +20,7 @@
             demo: true,
             roleAllowed: ['client', 'provider', 'admin'],
             mission: { id: 'demo-mission-' + id, status: 'AGREED', title: 'Aide jardinage — démonstration' },
-            milestone: { id: 'demo-ms-' + id, status: milestoneStatus, title: 'Jalon 42 €' },
+            milestone: { id: 'demo-ms-' + id, status: milestoneStatus, title: 'Paiement par étape 42 €' },
             payment: {
                 id: 'demo-pay-' + id,
                 payment_status: paymentStatus,
@@ -38,7 +38,7 @@
             provider: { id: 'demo-B', name: 'Lyanneur QA' },
             events: [
                 { at: 'Paiement reçu', detail: '4349 cents conservés par Stripe.' },
-                { at: 'Jalon ' + milestoneStatus, detail: 'État technique, pas un droit contractuel automatique.' }
+                { at: 'Paiement par étape ' + milestoneStatus, detail: 'État technique, pas un droit contractuel automatique.' }
             ],
             cancellation: { requested: id === 'work_started', accepted: false },
             refundRequest: { status: id === 'refunded' ? 'CONFIRMED' : (id === 'work_started' ? 'OPEN' : null), amount_cents: 4349 },

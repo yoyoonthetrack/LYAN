@@ -79,6 +79,35 @@ test('videos stay pending even when the accompanying text is acceptable', async 
     assert.equal(called, 1);
 });
 
+test('a verified short MP4 with a clear poster is published, anything unverifiable waits', async () => {
+    const clear = async () => ({
+        ok: true,
+        json: async () => ({ results: [{ flagged: false, categories: {}, category_scores: { harassment: 0.01 } }] })
+    });
+    const approved = await moderation.classifyContent({
+        text: 'La route est dégagée.',
+        media: [
+            { bucket: 'bokantaj-media-hold', path: 'user/clip.mp4' },
+            { bucket: 'bokantaj-media-hold', path: 'user/clip-poster.jpg' }
+        ],
+        apiKey: 'test-key',
+        fetchImpl: clear,
+        inspectVideo: async () => ({ verified: true, seconds: 12 }),
+        downloadMedia: async () => ['data:image/jpeg;base64,aa']
+    });
+    assert.equal(approved.decision, 'approved');
+    assert.equal(approved.reason, 'video_checked');
+    const unverified = await moderation.classifyContent({
+        text: 'La route est dégagée.',
+        media: [{ bucket: 'bokantaj-media-hold', path: 'user/clip.mp4' }],
+        apiKey: 'test-key',
+        fetchImpl: clear,
+        inspectVideo: async () => ({ verified: false, reason: 'duration_unreadable' })
+    });
+    assert.equal(unverified.decision, 'pending');
+    assert.equal(unverified.reason, 'video_unverified');
+});
+
 test('classifier outage, missing key and unreadable image stay pending', async () => {
     const outage = await moderation.classifyContent({
         text: 'Bonjour',
@@ -105,6 +134,9 @@ test('a public bucket remains fetchable before release, a private one does not',
     assert.equal(moderation.mediaAccess({ status: 'pending', kind: 'image' }, 'bokantaj-media-hold', { id: 'author', ownerId: 'author' }), 'stream');
     assert.equal(moderation.mediaAccess({ status: 'pending', kind: 'video' }, 'bokantaj-media-hold'), 'hidden');
     assert.equal(moderation.mediaAccess({ status: 'approved', kind: 'image' }, 'bokantaj-media-hold'), 'stream');
+    assert.equal(moderation.mediaAccess(null, 'bokantaj-media-hold', { id: 'author', ownerId: 'author' }), 'stream');
+    assert.equal(moderation.mediaAccess(null, 'bokantaj-media-hold', { id: 'other', ownerId: 'author' }), 'missing');
+    assert.equal(moderation.mediaAccess(null, 'bokantaj-media', { id: 'author', ownerId: 'author' }), 'missing');
     assert.equal(moderation.publicationNotice({ status: 'pending' }).message, 'Votre publication est en cours de vérification.');
     assert.equal(moderation.publicationNotice({ status: 'pending', hasImage: true }).message, 'Votre photo est en cours de vérification.');
     assert.equal(moderation.publicationNotice({ status: 'rejected' }).message, 'Ce contenu ne peut pas être publié.');
@@ -166,7 +198,7 @@ test('build 9 can show a refusal sentence and still has no pending-state label',
     const refusal = 'Ce contenu ne peut pas être publié.';
     assert.equal(pattern.test(refusal), false);
     assert.match(script, /err\.message \|\| "Veuillez vous connecter pour publier\."/);
-    assert.match(script, /Votre publication est en cours de vérification\./);
+    assert.match(script, /Publication enregistrée\. Mise en ligne après validation de sécurité\./);
     assert.match(script, /Votre photo est en cours de vérification\./);
     assert.match(script, /Ce contenu ne peut pas être publié\./);
     assert.match(script, /Votre publication est maintenant visible\./);
@@ -179,12 +211,24 @@ test('build 9 can show a refusal sentence and still has no pending-state label',
     const routeSource = fs.readFileSync(path.join(root, 'api/content-moderation-routes.js'), 'utf8');
     assert.doesNotMatch(routeSource, /createSignedUrl/);
     assert.match(routeSource, /private, no-store/);
+    const server = fs.readFileSync(path.join(root, 'api/server.js'), 'utf8');
+    assert.match(server, /setInterval\(moderate, 5000\)/);
+    assert.doesNotMatch(server, /setInterval\(moderate, 30000\)/);
     assert.match(routeSource, /\/v1\/internal\/moderation\/run/);
     const vercel = fs.readFileSync(path.join(root, 'vercel.json'), 'utf8');
     assert.match(vercel, /\/v1\/internal\/moderation\/run/);
     assert.match(vercel, /"maxDuration": 60/);
     assert.doesNotMatch(vercel, /OPENAI_API_KEY|MODERATION_WORKER_SECRET/);
     assert.equal(pattern.test('Erreur lors de la publication : ' + refusal), false);
+});
+
+test('bokantaj photos load with a session and close the viewer with Fermer', () => {
+    assert.match(script, /function loadBokantajMedia/);
+    assert.match(script, /img\[src\*="\/v1\/media\/bokantaj-media"\]/);
+    assert.match(script, /data-carousel-close>Fermer/);
+    assert.match(script, /data-carousel-wait/);
+    assert.match(script, /Chargement de la photo/);
+    assert.match(script, /bokantajMediaCache/);
 });
 
 test('the OpenAI key is not shipped in the public client or the moderation SQL', () => {

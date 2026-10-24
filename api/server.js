@@ -129,6 +129,8 @@ app.use(cors({
 }));
 
 const PRODUCT_HTML = {
+    '/professional.html': 'professional.html',
+    '/business-admin.html': 'business-admin.html',
     '/': 'index.html',
     '/index.html': 'index.html',
     '/feed': 'feed.html',
@@ -321,7 +323,7 @@ app.use((req, res, next) => {
         express.raw({ type: '*/*' })(req, res, next);
     } else {
         const maisonMedia = url.includes('/v1/admin/maison/');
-        express.json({ limit: maisonMedia ? '16mb' : '1mb' })(req, res, next);
+        express.json({ limit: req.path === '/v1/business/documents' ? '3mb' : maisonMedia ? '16mb' : '1mb' })(req, res, next);
     }
 });
 
@@ -1204,6 +1206,10 @@ async function recordMaisonAudit(adminUserId, action, targetId, details) {
 
 
 const { runModerationOnce } = require('./moderation-worker');
+const { releaseMedia, sweep: sweepBokantajMedia, isVerifiedStagingUrl } = require('./bokantaj-media-retention');
+
+// No process-local timer: Vercel functions are ephemeral. A verified
+// Staging scheduler must call the guarded endpoint below with a secret.
 
 function financialSettingBlocked(key, value) {
     const blob = `${key} ${typeof value === 'string' ? value : JSON.stringify(value || {})}`;
@@ -1709,7 +1715,7 @@ function editorialAuthorized(req) {
 }
 
 app.all('/v1/editorial/collect', async (req, res) => {
-    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
     }
     if (!editorialAuthorized(req)) {
@@ -1731,7 +1737,7 @@ app.all('/v1/editorial/collect', async (req, res) => {
 app.post('/v1/admin/editorial/collect', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
-    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
     }
     try {
@@ -1798,7 +1804,7 @@ app.get('/v1/admin/editorial/proposals', async (req, res) => {
 });
 
 async function publishStoredEditorialProposal(res, task, content, approver) {
-    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, code: 'environment', error: 'Erreur d’environnement.' });
     }
     if (!task || !task.metadata || !task.metadata.editorial) {
@@ -1899,7 +1905,7 @@ app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
 app.post('/v1/admin/editorial/proposals/:id/delete', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
-    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, error: 'Suppression éditoriale interdite sur Production.' });
     }
     const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('id, metadata').eq('id', req.params.id).maybeSingle();
@@ -1909,6 +1915,8 @@ app.post('/v1/admin/editorial/proposals/:id/delete', async (req, res) => {
     }
     const postId = task.metadata.published_post_id;
     if (postId) {
+        const { data: published } = await supabaseAdmin.from('bokantaj_posts').select('media_urls').eq('id', postId).maybeSingle();
+        await releaseMedia({ supabaseAdmin, supabaseUrl: process.env.SUPABASE_URL, urls: published && published.media_urls });
         const { error: postError } = await supabaseAdmin.from('bokantaj_posts').delete().eq('id', postId);
         if (postError) return res.status(500).json({ success: false, error: postError.message });
     }
@@ -2231,7 +2239,7 @@ app.get('/v1/admin/ops', async (req, res) => {
         if (resource === 'bokantaj') {
             const rows = await adminSafeSelect(
                 'bokantaj_posts',
-                'id, author_id, type, content, city, territory, created_at',
+                'id, author_id, type, content, city, territory, created_at, place_lat, place_lng, place_label, public_moderation_status',
                 (q) => q.order('created_at', { ascending: false }).limit(limit)
             );
             const profiles = await adminMapProfiles(rows.map((row) => row.author_id));
@@ -2408,18 +2416,60 @@ app.post('/v1/admin/ops/bokantaj/:id/delete', async (req, res) => {
     if (!authResult.authorized) {
         return res.status(authResult.status).json({ success: false, error: authResult.error });
     }
-    if (String(process.env.SUPABASE_URL || '').includes('gzispjfoywklpqatjyop')) {
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, error: 'Suppression directe interdite sur Production sans autorisation.' });
     }
     try {
-        const { data: existing } = await supabaseAdmin.from('bokantaj_posts').select('id, author_id, content').eq('id', req.params.id).maybeSingle();
+        const { data: existing } = await supabaseAdmin.from('bokantaj_posts').select('id, author_id, content, media_urls').eq('id', req.params.id).maybeSingle();
         if (!existing) return res.status(404).json({ success: false, error: 'Publication introuvable.' });
+        // Never delete media while the post still exists: if the DB write
+        // fails, all referenced media must stay intact. Failed file removals
+        // are retried by the guarded orphan sweeper after its grace period.
         const { error } = await supabaseAdmin.from('bokantaj_posts').delete().eq('id', req.params.id);
         if (error) return res.status(500).json({ success: false, error: error.message });
-        await recordMaisonAudit(authResult.userId, 'BOKANTAJ_POST_DELETED', req.params.id, { author_id: existing.author_id });
-        return res.json({ success: true, id: req.params.id });
+        let mediaCleanup = 'complete';
+        try {
+            await releaseMedia({ supabaseAdmin, supabaseUrl: process.env.SUPABASE_URL, urls: existing.media_urls });
+        } catch (cleanupError) {
+            mediaCleanup = 'deferred';
+            console.warn('Bokantaj deletion media cleanup deferred:', String(cleanupError?.message || 'storage unavailable').slice(0, 120));
+        }
+        await recordMaisonAudit(authResult.userId, 'BOKANTAJ_POST_DELETED', req.params.id, { author_id: existing.author_id, media_cleanup: mediaCleanup });
+        return res.json({ success: true, id: req.params.id, media_cleanup: mediaCleanup });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Impossible de supprimer la publication.' });
+    }
+});
+
+app.get('/v1/internal/bokantaj/media-sweep', async (req, res) => {
+    const { workerAuthorized } = require('./content-moderation-routes');
+    if (!workerAuthorized(req)) return res.status(401).json({ success: false, error: 'Autorisation requise.' });
+    if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
+        return res.status(403).json({ success: false, error: 'Nettoyage réservé au projet Staging validé.' });
+    }
+    try {
+        // Explicitly opt in to real deletion; observability / manual checks
+        // default to a dry-run to reduce accidents.
+        const apply = req.query?.apply === 'true';
+        const report = await sweepBokantajMedia({
+            supabaseAdmin,
+            supabaseUrl: process.env.SUPABASE_URL,
+            apply
+        });
+        return res.json({ success: true, applied: apply, ...report });
+    } catch (e) {
+        return res.status(503).json({ success: false, error: 'Nettoyage suspendu : inventaire incomplet ou stockage indisponible.' });
+    }
+});
+
+app.get('/v1/admin/bokantaj/media-volume', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'moderation.manage');
+    if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    try {
+        const report = await sweepBokantajMedia({ supabaseAdmin, supabaseUrl: process.env.SUPABASE_URL, apply: false });
+        return res.json({ success: true, ...report });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Volume indisponible.' });
     }
 });
 
@@ -4467,7 +4517,7 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         if (milestone.status !== 'PENDING') {
@@ -4790,7 +4840,7 @@ app.post('/v1/milestones/start-work', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         const quote = milestone.quotes;
@@ -4896,7 +4946,7 @@ app.post('/v1/milestones/submit-completion', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         const quote = milestone.quotes;
@@ -5412,7 +5462,7 @@ app.post('/v1/milestones/release-payment', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         const quote = milestone.quotes;
@@ -5552,7 +5602,7 @@ app.post('/v1/milestones/claim-transfer', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         const quote = milestone.quotes;
@@ -5615,7 +5665,7 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
             .single();
 
         if (mErr || !milestone) {
-            return res.status(404).json({ error: "Partie/Jalon introuvable." });
+            return res.status(404).json({ error: "Étape de paiement introuvable." });
         }
 
         const quote = milestone.quotes;
@@ -6481,6 +6531,8 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
     }
 });
 
+require('./business-routes').registerBusinessRoutes(app, { supabaseAdmin, verifyAdminPermission });
+require('./store-routes').registerStoreRoutes(app, { supabaseAdmin });
 const { registerContentModerationRoutes } = require('./content-moderation-routes');
 registerContentModerationRoutes(app, {
     supabaseAdmin,
@@ -6525,9 +6577,9 @@ if (require.main === module) {
                 req.on('error', () => {});
                 req.end();
             };
-            setInterval(moderate, 30000);
+            setInterval(moderate, 5000);
             setTimeout(moderate, 2000);
-            console.log('Modération active : file traitée toutes les 30 s');
+            console.log('Modération active : file traitée toutes les 5 s');
         }
     };
     if (bind) app.listen(PORT, bind, onListen);

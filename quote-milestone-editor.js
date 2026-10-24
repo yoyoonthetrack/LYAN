@@ -157,11 +157,11 @@
     function validate(state, totalEuros) {
         const totalCents = roundCents(totalEuros);
         if (!(totalCents > 0)) return { ok: false, message: 'Indiquez un montant total.' };
-        if (!state.rows.length) return { ok: false, message: 'Ajoutez au moins un jalon.' };
+        if (!state.rows.length) return { ok: false, message: 'Ajoutez au moins un paiement par étape.' };
         for (let i = 0; i < state.rows.length; i += 1) {
             const row = state.rows[i];
             if (!String(row.title || '').trim()) {
-                return { ok: false, message: 'Chaque jalon doit avoir un nom.' };
+                return { ok: false, message: 'Chaque paiement par étape doit avoir un nom.' };
             }
             if (row.amountCents < 0 || row.percent < 0) {
                 return { ok: false, message: 'Les montants et pourcentages ne peuvent pas être négatifs.' };
@@ -172,7 +172,7 @@
             const view = summary(state, totalEuros);
             return {
                 ok: false,
-                message: 'La somme des jalons doit égaler le total du devis (' + formatMoney(view.total) + ' €). Réparti : ' + formatMoney(view.allocated) + ' €.'
+                message: 'La somme des paiements par étape doit égaler le total du devis (' + formatMoney(view.total) + ' €). Réparti : ' + formatMoney(view.allocated) + ' €.'
             };
         }
         return {

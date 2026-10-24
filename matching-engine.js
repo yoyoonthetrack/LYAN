@@ -279,7 +279,7 @@
             public_location: candCity,
             rating: rating,
             reviewsCount: reviewsCount,
-            badge: candidate.badge || (candidate.is_verified_pro ? "Artisan Vérifié" : "Membre Vérifié"),
+            badge: window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? (window.LYANN_PLANS?.badgeLabel(candidate) || '') : candidate.badge || (candidate.is_verified_pro ? "Artisan Vérifié" : "Membre Vérifié"),
             distance_km: distKm,
             total_score: totalScore,
             relevance_score: breakdown.relevance,

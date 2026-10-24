@@ -35,6 +35,7 @@ function showAppWelcomeScreen() {
         <div class="welcome-actions">
             <button class="btn btn-primary btn-lg" id="btnWelcomeRegister" style="justify-content: center;">Créer un compte</button>
             <button class="btn btn-outline btn-lg" id="btnWelcomeLogin" style="justify-content: center; background: white;">Se connecter</button>
+            <button type="button" class="forgot-link" id="btnWelcomeForgot" style="justify-content: center; background: none; border: 0; width: 100%;">Mot de passe oublié ?</button>
 
             <div style="display: flex; align-items: center; gap: 8px; margin: 2px 0;">
                 <div style="flex: 1; height: 1px; background: rgba(0, 0, 0, 0.12);"></div>
@@ -70,6 +71,11 @@ function showAppWelcomeScreen() {
     document.getElementById('btnWelcomeLogin')?.addEventListener('click', () => {
         triggerHaptic('light');
         document.querySelector('.open-login-trigger')?.click();
+    });
+
+    document.getElementById('btnWelcomeForgot')?.addEventListener('click', () => {
+        triggerHaptic('light');
+        document.querySelector('.forgot-link:not(#btnWelcomeForgot)')?.click();
     });
 
     document.getElementById('btnWelcomeGuest')?.addEventListener('click', () => {
