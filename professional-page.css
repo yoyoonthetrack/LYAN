@@ -1,0 +1,52 @@
+/* Espace professionnel : styles limités à cette page. */
+body.professional-page {
+    background: #F7F4EE;
+}
+
+body.professional-page .business-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: calc(76px + env(safe-area-inset-top, 0px)) 16px calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+body.is-native-app.professional-page .business-wrap {
+    padding-top: calc(92px + env(safe-area-inset-top, 0px));
+}
+
+body.professional-page .business-wrap > h1 {
+    margin: 0 0 8px;
+    font-size: 1.45rem;
+    line-height: 1.2;
+    color: #1e3a2a;
+}
+
+body.professional-page .business-panel {
+    margin: 12px 0;
+    padding: 14px;
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+body.professional-page .business-panel h2 {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+}
+
+#proToolsGate {
+    background: #fff;
+    border: 1px solid #e6ddd2;
+}
+
+#proToolsGate[hidden],
+[data-pro-tools][hidden] {
+    display: none !important;
+}
+
+#proToolsGate a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-top: 8px;
+    color: #35583f;
+    font-weight: 700;
+}

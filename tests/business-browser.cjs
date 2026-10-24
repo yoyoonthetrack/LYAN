@@ -41,6 +41,8 @@ const {buildHtml}=require('../shared-html-build');
    assert.doesNotMatch(await page.locator('.pricing-main-section').innerText(),/7,90|19,90/);
    assert.match(await page.locator('#lyannPlanState').innerText(),/ne sont pas encore ouverts/);
    assert.equal(await page.locator('[data-store-buy] button').count(),0);
+   assert.doesNotMatch(await page.locator('[data-store-status]').innerText(),/Vérification des achats/);
+   assert.match(await page.locator('#plansComparison summary').innerText(),/Comparer les formules/);
    assert.equal(await page.locator('#plansComparison tr').filter({hasText:'Paiement par étape'}).locator('td').filter({hasText:'Inclus'}).count(),3);
    await page.locator('#plansComparison summary').click();
    if(width<800){
@@ -83,6 +85,16 @@ const {buildHtml}=require('../shared-html-build');
    await page.waitForFunction(()=>document.querySelector('#businessRights').textContent.includes('1 / 2'));
    assert.ok((await page.locator('#businessRights').innerText()).includes('3 / 5'));
    assert.match(await page.locator('#businessRights').innerText(),/00 h UTC/);
+   assert.equal(await page.locator('text=Back-office').count(),0);
+   assert.equal(await page.locator('.navbar').count(),1);
+   await page.evaluate(async()=>{
+    window.apiClient.getSession=async()=>({data:{session:{access_token:'fixture'}}});window.getLyannBackendOrigin=()=>location.origin;
+    await window.LYANN_BUSINESS.loadMe();
+   });
+   assert.equal(await page.locator('#proToolsGate').isVisible(),true);
+   assert.equal(await page.locator('[data-pro-tools]').count(),3);
+   assert.equal(await page.locator('[data-pro-tools]:visible').count(),0);
+   assert.doesNotMatch(await page.locator('body').innerText(),/Découverte|Premium/);
 
    await page.close();console.log('PASS browser '+width+'px: prices, 4 plans, free staged payment, dialog, contact persistence response, private workspace session and server usage counters.');
   }

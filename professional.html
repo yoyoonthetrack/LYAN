@@ -1,2 +1,1553 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Mon activité professionnelle — LYANN</title><link rel="stylesheet" href="business.css"><link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css"></head><body class="business-page"><main class="business-wrap"><header><a href="feed.html">LYANN</a><a href="pricing.html">Nos formules</a>
-<a href="professional.html" class="desktop-nav-link">Mon activité</a><a href="index.html#login">Se connecter</a><a href="admin.html">Back-office</a></header><h1>Mon activité professionnelle</h1><p id="businessNotice" role="status" aria-live="polite"></p><p>Votre formule : <strong id="businessPlan">Chargement…</strong></p><p id="proEligibility"></p><section class="business-panel" data-store-subscriptions></section><section class="business-panel"><h2>Mes droits et mon utilisation</h2><button id="refreshRights" type="button">Actualiser mes droits</button><div id="businessRights" aria-live="polite">Chargement des droits…</div></section><section class="business-panel"><h2>Faire vérifier mon activité</h2><p>État : <strong id="dossierStatus">Chargement…</strong></p><p id="dossierMessage"></p><form id="proIdentity"><label>Nom commercial<input name="business_name" maxlength="160" required></label><label>Raison sociale<input name="legal_name" maxlength="160" required></label><label>SIRET<input name="siret" inputmode="numeric" pattern="[0-9]{14}" maxlength="14" required></label><label>Adresse de l’entreprise<input name="address" maxlength="300" required></label><label>Représentant<input name="representative" maxlength="160" required></label><label>Activité<select name="activity"><option value="general">Activité générale</option><option value="construction">Construction / travaux concernés par la décennale</option><option value="regulated">Profession réglementée</option></select></label><button>Enregistrer les informations</button></form></section><section class="business-panel"><h2>Mes justificatifs</h2><p>Pièces privées, accessibles à vous et aux personnes habilitées de LYANN. PDF, JPEG ou PNG : 2 Mo maximum. Ne joignez pas de pièce d’identité ou de coordonnées bancaires ici.</p><ul id="proDocuments"></ul><form id="proUpload" hidden><label>Type de document<select name="kind"><option value="registration">Immatriculation (RNE / Kbis)</option><option value="representation">Lien avec l’entreprise</option><option value="insurance">Assurance professionnelle</option><option value="decennial">Assurance décennale</option><option value="qualification">Qualification / autorisation</option></select></label><label>Fin de validité (obligatoire pour une assurance)<input name="expires_at" type="date"></label><label>Document<input name="file" type="file" accept="application/pdf,image/jpeg,image/png" required></label><p>Un nouveau document du même type remplace la pièce présentée à l’examen.</p><button>Envoyer le document</button></form><button id="proSubmit" hidden>Soumettre mon dossier à LYANN</button></section><section class="business-panel"><h2>Ma vitrine d’établissement</h2><p>Un établissement par compte Pro vérifié. La publication et chaque modification sont examinées par LYANN.</p><button id="loadPlace" type="button">Charger ma vitrine</button><p id="placeStatus"></p><form id="placeForm" hidden><label>Nom de l’établissement<input name="name" required maxlength="160"></label><label>Description<textarea name="description" required maxlength="2000"></textarea></label><label>Adresse publique<input name="address" required maxlength="300"></label><label>Téléphone public<input name="phone" maxlength="40"></label><label>Horaires d’ouverture<textarea name="hours" required maxlength="1000" placeholder="Du lundi au vendredi : 8h – 17h"></textarea></label><label>Fermetures exceptionnelles<textarea name="closures" maxlength="500"></textarea></label><label>Promotion en cours<textarea name="promotion" maxlength="500"></textarea></label><label>Fin de la promotion<input type="date" name="promotion_until"></label><p>Cliquez sur la carte pour placer votre établissement. Le repère peut être déplacé.</p><button id="locatePlace" type="button">Utiliser ma position actuelle</button><div id="placeMap" style="height:320px;border-radius:12px"></div><p id="placeLocation" role="status"></p><input type="hidden" name="lat"><input type="hidden" name="lng"><label>Photos déjà approuvées de votre portfolio (4 maximum)<select id="placePhotos" name="photo_ids" multiple></select></label><button>Envoyer ma vitrine pour publication</button></form></section><section class="business-panel"><h2>Suivi de mon activité</h2><label>Mois<input id="activityMonth" type="month"></label><button id="loadActivity">Afficher les missions et paiements</button><button id="exportActivity">Télécharger le CSV</button><p>Les montants sont détaillés par opération. Cet export ne remplace pas une facture.</p><div id="activityRows"></div></section><section class="business-panel"><h2>Facturation — essais Staging</h2><p>Les PDF générés ici portent la mention « document de test ». Ils ne constituent pas des factures à envoyer à des clients réels.</p><button id="loadInvoices">Mes documents émis et reçus</button><div id="invoiceRows"></div><form id="invoiceForm"><label>Mission (chargez d’abord le suivi d’activité du mois)<select name="mission_id" id="invoiceMission" required><option value="">Choisir une mission</option></select></label><label>Document<select name="kind"><option value="deposit">Facture d’acompte</option><option value="invoice">Facture du solde restant</option><option value="credit">Avoir intégral</option></select></label><label>Facture d’origine pour un avoir<select name="original_id" id="invoiceOriginal"><option value="">Sans objet</option></select></label><fieldset id="invoiceFields"><legend>Informations de facturation</legend><label>Nom du client<input name="customer_name" maxlength="160"></label><label>Adresse du client<textarea name="customer_address" maxlength="400"></textarea></label><label>Description de la prestation<textarea name="description" maxlength="1500"></textarea></label><label>Montant TTC à facturer (€)<input name="amount" inputmode="decimal" placeholder="150,00"></label><label>Taux de TVA<select name="vat_rate"><option value="0">0 % — exonération à préciser</option><option value="2.1">2,1 %</option><option value="5.5">5,5 %</option><option value="8.5">8,5 %</option><option value="10">10 %</option><option value="20">20 %</option></select></label><label>Motif légal d’exonération si TVA à 0 %<input name="tax_notice" maxlength="400"></label><label>Numéro de TVA si applicable<input name="vat_number" maxlength="60"></label><label>Mentions de votre entreprise (statut, immatriculation, capital si applicable)<textarea name="legal_details" maxlength="1000"></textarea></label><label>Date de la prestation<input name="service_date" type="date"></label><label>Date d’échéance<input name="due_date" type="date"></label><label>Conditions de paiement et mentions applicables au client<textarea name="payment_terms" maxlength="1500"></textarea></label><label><input name="confirmIssuer" type="checkbox"> Je confirme les informations de l’entreprise et le régime fiscal renseignés.</label></fieldset><button>Émettre le document de test</button></form></section><section class="business-panel"><h2>Développer votre activité</h2><p>Vitrine, suivi d’activité et documents de facturation peuvent être essayés avec un compte Pro sur Staging. Les achats d’abonnements restent désactivés.</p><button data-business-contact="enterprise">Contacter LYANN Entreprise</button><button data-business-contact="partnership">Proposer un partenariat</button></section></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="lyann-runtime-config.js"></script><script src="api-client.js"></script><script src="lyann-plans.js"></script><script src="vendor/maplibre/maplibre-gl.js"></script><script src="business-ui.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mon activité professionnelle — LYANN</title>
+    <meta name="description" content="Espace professionnel LYANN : droits, justificatifs et outils Pro.">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M12 42 L50 14 L88 42' stroke='%234A7C59' stroke-width='8' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='34' cy='46' r='7' fill='%234A7C59'/%3E%3Ccircle cx='50' cy='42' r='7' fill='%23709C7D'/%3E%3Ccircle cx='66' cy='46' r='7' fill='%23E5B345'/%3E%3Cpath d='M 23 72 C 23 60 31 56 38 56 C 45 56 47 62 50 62 C 53 62 55 56 62 56 C 69 56 77 60 77 72' stroke='%234A7C59' stroke-width='7.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+    <meta property="og:title" content="LYANN - Tarifs & Offres">
+    <meta property="og:description" content="Découvrez nos formules d'abonnement pour propulser votre activité dans les DOM.">
+    <meta name="theme-color" content="#4A7C59">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css?v=20261017pale">
+<link rel="stylesheet" href="business.css">
+<link rel="stylesheet" href="pricing-offers.css?v=20261024offers">
+<link rel="stylesheet" href="professional-page.css?v=20261024pro">
+<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
+</head>
+<body class="pricing-page professional-page business-page">
+
+    <!-- ========== NAVIGATION ========== -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">
+                <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon-svg">
+                    <defs>
+                        <linearGradient id="lyanGradient" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="55%" stop-color="#80A86E"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                        <linearGradient id="lyanRoof" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4A7C59"/>
+                            <stop offset="100%" stop-color="#E5B345"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                    <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                    <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                    <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                          stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                </svg>
+                <div class="logo-text-block">
+                    <span class="logo-title">LYANN</span>
+                    <span class="logo-subtitle">LE LIEN QUI COMPTE</span>
+                </div>
+            </a>
+
+            <!-- Menu Navigation Desktop -->
+            <div class="desktop-nav-menu">
+                <a href="index.html" class="desktop-nav-link"><i class="ph ph-house"></i> Accueil</a>
+                <a href="results.html?mode=lyanneurs" class="desktop-nav-link" data-explorer-nav="lyanneurs"><i class="ph ph-users-three"></i> Lyanneurs</a>
+                <a href="results.html?mode=annonces" class="desktop-nav-link" data-explorer-nav="annonces"><i class="ph ph-list"></i> Annonces</a>
+                <a href="feed.html" class="desktop-nav-link nav-link-bokantaj"><i class="ph ph-broadcast" style="color: #E76F51;"></i> Bokantaj</a>
+                <a href="how-it-works.html" class="desktop-nav-link"><i class="ph ph-info"></i> Comment ça marche</a>
+            </div>
+
+            <div class="mobile-header-actions" style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
+                <a href="results.html" class="nav-search-icon-link" title="Rechercher" style="display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: rgba(229, 179, 69, 0.18); color: #E5B345;"><i class="ph ph-magnifying-glass" style="font-size: 1.2rem; font-weight: bold;"></i></a>
+                <a href="#" class="nav-msg-btn open-chat-trigger logged-in-only" title="Ma Messagerie" style="display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: rgba(74, 124, 89, 0.12); color: var(--primary);">
+                    <i class="ph ph-chat-circle-dots" style="font-size: 1.3rem;"></i>
+                </a>
+                <button class="nav-profile-btn open-account-modal-trigger logged-in-only" title="Mon Espace">
+                    <div class="nav-profile-avatar-wrap">
+                        <img src="lyann-avatar-placeholder.svg" alt="Mon Profil" class="nav-profile-avatar">
+                        <span class="nav-profile-status-dot"></span>
+                    </div>
+                </button>
+                <a href="#login" class="btn btn-outline open-login-trigger logged-out-only" style="padding: 8px 16px; border-radius: 20px; font-size: 0.85rem;">Connexion</a>
+                <button class="hamburger-menu-btn" id="openMobileDrawerBtn" aria-label="Menu Principal" onclick="if(typeof window.openLyannHamburgerDrawer==='function') window.openLyannHamburgerDrawer();">
+                    <i class="ph-bold ph-list" style="font-size: 1.35rem;"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay" id="mobileMenu">
+        <div class="mobile-menu-content">
+            <div>
+                <div class="mobile-menu-header">
+                    <span class="logo-title" style="font-weight: 800; font-size: 1.2rem; color: var(--primary-dark);">LYANN DOM</span>
+                    <button class="mobile-menu-close" aria-label="Fermer le menu"><i class="ph ph-x"></i></button>
+                </div>
+                <nav class="mobile-nav-list">
+                    <a href="#" class="open-account-modal-trigger" data-lyann-route="profile" style="display: flex; align-items: center; gap: 10px; color: var(--primary-dark); font-weight: 800; background: rgba(74, 124, 89, 0.12); padding: 12px 16px; border-radius: var(--radius-md); margin: 6px 0;">
+                        <img src="lyann-avatar-placeholder.svg" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
+                        PROFIL
+                        <i class="ph ph-caret-right" style="margin-left: auto;"></i>
+                    </a>
+                    <a href="index.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-house" style="color: var(--primary); font-size: 1.2rem;"></i> ACCUEIL <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="results.html?mode=lyanneurs" data-explorer-nav="lyanneurs" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> LYANNEURS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="results.html?mode=annonces" data-explorer-nav="annonces" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-list" style="color: #E5B345; font-size: 1.2rem;"></i> ANNONCES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="feed.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <span class="nav-live-dot"></span> <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="#" class="open-chat-trigger" data-lyann-route="messages" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                    <a href="about.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+                </nav>
+            </div>
+
+            <!-- Docked Action Buttons at Bottom -->
+            <div class="mobile-menu-docked-footer">
+                <a href="#login" class="btn btn-outline open-login-trigger logged-out-only" style="width: 100%; justify-content: center;">Connexion</a>
+                <a href="#" class="btn btn-primary open-signup-trigger logged-out-only" style="width: 100%; justify-content: center;">S'inscrire à LYANN <i class="ph-fill ph-rocket"></i></a>
+                <button type="button" class="btn btn-outline btn-logout-trigger drawer-logout-btn logged-in-only" style="width: 100%; justify-content: center; color: #E76F51; border-color: #E76F51; gap: 8px;">
+                    <i class="ph ph-sign-out" style="font-size: 1.2rem;"></i> Se déconnecter
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <main class="business-wrap">
+        <h1>Mon activité professionnelle</h1>
+        <p id="businessNotice" role="status" aria-live="polite"></p>
+        <p>Votre formule : <strong id="businessPlan">Chargement…</strong></p>
+        <p id="proEligibility"></p>
+        <section class="business-panel" data-store-subscriptions data-store-layout="manage">
+            <h2>Gérer l’abonnement</h2>
+            <p data-store-status role="status" aria-live="polite">Les achats dans l’application ne sont pas encore ouverts.</p>
+            <div class="lyann-manage-actions">
+                <button type="button" data-store-restore disabled>Restaurer mes achats</button>
+                <button type="button" data-store-manage disabled>Gérer mon abonnement</button>
+            </div>
+            <p class="lyann-fine">Abonnement mensuel à renouvellement automatique. Le prix et les conditions du magasin sont présentés avant confirmation.</p>
+            <p class="lyann-fine"><a href="legal.html">Conditions d’utilisation</a> · <a href="confidentialite.html">Confidentialité</a></p>
+        </section>
+        <section class="business-panel">
+            <h2>Mes droits et mon utilisation</h2>
+            <button id="refreshRights" type="button">Actualiser mes droits</button>
+            <div id="businessRights" aria-live="polite">Chargement des droits…</div>
+        </section>
+        <section class="business-panel">
+            <h2>Faire vérifier mon activité</h2>
+            <p>État : <strong id="dossierStatus">Chargement…</strong></p>
+            <p id="dossierMessage"></p>
+            <form id="proIdentity" hidden>
+                <label>Nom commercial<input name="business_name" maxlength="160" required></label>
+                <label>Raison sociale<input name="legal_name" maxlength="160" required></label>
+                <label>SIRET<input name="siret" inputmode="numeric" pattern="[0-9]{14}" maxlength="14" required></label>
+                <label>Adresse de l’entreprise<input name="address" maxlength="300" required></label>
+                <label>Représentant<input name="representative" maxlength="160" required></label>
+                <label>Activité<select name="activity"><option value="general">Activité générale</option><option value="construction">Construction / travaux concernés par la décennale</option><option value="regulated">Profession réglementée</option></select></label>
+                <button>Enregistrer les informations</button>
+            </form>
+        </section>
+        <section class="business-panel">
+            <h2>Mes justificatifs</h2>
+            <p>Pièces privées, accessibles à vous et aux personnes habilitées de LYANN. PDF, JPEG ou PNG : 2 Mo maximum. Ne joignez pas de pièce d’identité ou de coordonnées bancaires ici.</p>
+            <ul id="proDocuments"></ul>
+            <form id="proUpload" hidden>
+                <label>Type de document<select name="kind"><option value="registration">Immatriculation (RNE / Kbis)</option><option value="representation">Lien avec l’entreprise</option><option value="insurance">Assurance professionnelle</option><option value="decennial">Assurance décennale</option><option value="qualification">Qualification / autorisation</option></select></label>
+                <label>Fin de validité (obligatoire pour une assurance)<input name="expires_at" type="date"></label>
+                <label>Document<input name="file" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
+                <p>Un nouveau document du même type remplace la pièce présentée à l’examen.</p>
+                <button>Envoyer le document</button>
+            </form>
+            <button id="proSubmit" hidden>Soumettre mon dossier à LYANN</button>
+        </section>
+        <section class="business-panel" id="proToolsGate">
+            <h2>Outils Pro</h2>
+            <p>Le dépôt des documents, la vitrine et les essais de facturation sont réservés à la formule Pro. Le paiement seul ne donne pas le badge Vérifié.</p>
+            <a href="pricing.html">Voir les formules</a>
+        </section>
+        <section class="business-panel" data-pro-tools hidden>
+            <h2>Ma vitrine d’établissement</h2>
+            <p>Un établissement par compte Pro vérifié. La publication et chaque modification sont examinées par LYANN.</p>
+            <button id="loadPlace" type="button">Charger ma vitrine</button>
+            <p id="placeStatus"></p>
+            <form id="placeForm" hidden>
+                <label>Nom de l’établissement<input name="name" required maxlength="160"></label>
+                <label>Description<textarea name="description" required maxlength="2000"></textarea></label>
+                <label>Adresse publique<input name="address" required maxlength="300"></label>
+                <label>Téléphone public<input name="phone" maxlength="40"></label>
+                <label>Horaires d’ouverture<textarea name="hours" required maxlength="1000" placeholder="Du lundi au vendredi : 8h – 17h"></textarea></label>
+                <label>Fermetures exceptionnelles<textarea name="closures" maxlength="500"></textarea></label>
+                <label>Promotion en cours<textarea name="promotion" maxlength="500"></textarea></label>
+                <label>Fin de la promotion<input type="date" name="promotion_until"></label>
+                <p>Cliquez sur la carte pour placer votre établissement. Le repère peut être déplacé.</p>
+                <button id="locatePlace" type="button">Utiliser ma position actuelle</button>
+                <div id="placeMap" style="height:320px;border-radius:12px"></div>
+                <p id="placeLocation" role="status"></p>
+                <input type="hidden" name="lat"><input type="hidden" name="lng">
+                <label>Photos déjà approuvées de votre portfolio (4 maximum)<select id="placePhotos" name="photo_ids" multiple></select></label>
+                <button>Envoyer ma vitrine pour publication</button>
+            </form>
+        </section>
+        <section class="business-panel" data-pro-tools hidden>
+            <h2>Suivi de mon activité</h2>
+            <label>Mois<input id="activityMonth" type="month"></label>
+            <button id="loadActivity">Afficher les missions et paiements</button>
+            <button id="exportActivity">Télécharger le CSV</button>
+            <p>Les montants sont détaillés par opération. Cet export ne remplace pas une facture.</p>
+            <div id="activityRows"></div>
+        </section>
+        <section class="business-panel" data-pro-tools hidden>
+            <h2>Facturation — essais Staging</h2>
+            <p>Les PDF générés ici portent la mention « document de test ». Ils ne constituent pas des factures à envoyer à des clients réels.</p>
+            <button id="loadInvoices">Mes documents émis et reçus</button>
+            <div id="invoiceRows"></div>
+            <form id="invoiceForm">
+                <label>Mission (chargez d’abord le suivi d’activité du mois)<select name="mission_id" id="invoiceMission" required><option value="">Choisir une mission</option></select></label>
+                <label>Document<select name="kind"><option value="deposit">Facture d’acompte</option><option value="invoice">Facture du solde restant</option><option value="credit">Avoir intégral</option></select></label>
+                <label>Facture d’origine pour un avoir<select name="original_id" id="invoiceOriginal"><option value="">Sans objet</option></select></label>
+                <fieldset id="invoiceFields">
+                    <legend>Informations de facturation</legend>
+                    <label>Nom du client<input name="customer_name" maxlength="160"></label>
+                    <label>Adresse du client<textarea name="customer_address" maxlength="400"></textarea></label>
+                    <label>Description de la prestation<textarea name="description" maxlength="1500"></textarea></label>
+                    <label>Montant TTC à facturer (€)<input name="amount" inputmode="decimal" placeholder="150,00"></label>
+                    <label>Taux de TVA<select name="vat_rate"><option value="0">0 % — exonération à préciser</option><option value="2.1">2,1 %</option><option value="5.5">5,5 %</option><option value="8.5">8,5 %</option><option value="10">10 %</option><option value="20">20 %</option></select></label>
+                    <label>Motif légal d’exonération si TVA à 0 %<input name="tax_notice" maxlength="400"></label>
+                    <label>Numéro de TVA si applicable<input name="vat_number" maxlength="60"></label>
+                    <label>Mentions de votre entreprise (statut, immatriculation, capital si applicable)<textarea name="legal_details" maxlength="1000"></textarea></label>
+                    <label>Date de la prestation<input name="service_date" type="date"></label>
+                    <label>Date d’échéance<input name="due_date" type="date"></label>
+                    <label>Conditions de paiement et mentions applicables au client<textarea name="payment_terms" maxlength="1500"></textarea></label>
+                    <label><input name="confirmIssuer" type="checkbox"> Je confirme les informations de l’entreprise et le régime fiscal renseignés.</label>
+                </fieldset>
+                <button>Émettre le document de test</button>
+            </form>
+        </section>
+        <section class="business-panel">
+            <h2>Partenariat</h2>
+            <p>Entreprises, associations et collectivités : écrivons ensemble un partenariat avec LYANN.</p>
+            <button type="button" data-business-contact="partnership">Nous écrire</button>
+            <button type="button" data-business-contact="enterprise">Nous contacter pour Entreprise</button>
+        </section>
+    </main>
+        <!-- ========== FOOTER ========== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid-2col">
+                <!-- Colonne 1 : Marque & Présentation -->
+                <div class="footer-brand-col">
+                    <a href="index.html" class="logo">
+                        <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="lyanGradientNav" x1="12" y1="14" x2="88" y2="75" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#4A7C59"/>
+                                    <stop offset="55%" stop-color="#80A86E"/>
+                                    <stop offset="100%" stop-color="#E5B345"/>
+                                </linearGradient>
+                                <linearGradient id="lyanRoofNav" x1="10" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stop-color="#4A7C59"/>
+                                    <stop offset="100%" stop-color="#E5B345"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoofNav)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                            <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                            <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                            <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                                  stroke="url(#lyanGradientNav)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                        </svg>
+                        <div class="logo-text-block">
+                            <span class="logo-title" style="color: #FAF7F2;">LYANN</span>
+                            <span class="logo-subtitle" style="color: #E5B345;">LE LIEN QUI COMPTE</span>
+                        </div>
+                    </a>
+                    <p class="footer-desc">Le premier réseau de confiance qui connecte les habitants et les talents de quartier dans tous les DOM.</p>
+                    <div class="footer-territoires-pills">
+                        Guadeloupe • Martinique • Guyane • La Réunion • Saint-Martin
+                    </div>
+                </div>
+
+                <!-- Colonne 2 : Liens Utiles -->
+                <div class="footer-links-col">
+                    <div class="footer-links-group"><a href="about.html">Notre Histoire</a>
+                        <a href="how-it-works.html">Comment ça marche</a>
+                        <a href="results.html">Trouver un service</a>
+                        <a href="pricing.html">Tarifs & Offres</a>
+                    </div>
+                    <div class="footer-links-group">
+                        <a href="#" class="open-signup-trigger">Inscrire mon activité</a>
+                        <a href="#" class="open-login-trigger">Espace Membre</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <nav class="footer-legal-strip" aria-label="Conditions et informations légales">
+                    <a href="legal.html">Conditions</a>
+                    <a href="confidentialite.html">Confidentialité</a>
+                    <a href="legal.html#cookies">Cookies</a>
+                    <a href="legal.html#mentions-legales">Mentions légales</a>
+                    <a href="#contact" class="open-contact-trigger">Contact</a>
+                </nav>
+                <p>&copy; 2026 LYANN, édité par YOYOOTT. Tous droits réservés. Conçu avec passion dans les Caraïbes pour nos territoires.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========== MODAL CONNEXION ========== -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeLoginModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Connexion LYANN</span>
+                <h3 class="step-title" style="font-size: 1.5rem; margin-bottom: 4px;">Heureux de vous revoir !</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Connectez-vous à votre espace personnel.</p>
+            </div>
+
+            <div class="modal-body">
+                <button type="button" class="btn btn-google" id="googleAuthBtn">
+                    <i class="ph-bold ph-google-logo"></i> Continuer avec Google
+                </button>
+                <div class="modal-divider"><span>ou avec votre email</span></div>
+
+                <form id="loginForm" onsubmit="event.preventDefault();">
+                    <div class="form-group">
+                        <label for="loginEmail">Adresse email</label>
+                        <input type="email" id="loginEmail" class="modal-input" placeholder="votre.email@exemple.com" autocomplete="email" inputmode="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Mot de passe</label>
+                        <input type="password" id="loginPassword" class="modal-input" placeholder="Votre mot de passe" autocomplete="current-password" required>
+                    </div>
+                    <div class="login-options-row" style="display:flex; justify-content:flex-end; margin-top:8px;"><a href="#" class="forgot-link">Mot de passe oublié ?</a></div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 12px;">Se connecter</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL PARCOURS D'INSCRIPTION INTERACTIF ========== -->
+        <!-- ========== MODAL ONBOARDING (COMPTE UNIQUE) ========== -->
+    <div class="modal-overlay" id="onboardingModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeOnboardingBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 42 L50 14 L88 42" stroke="url(#lyanRoof)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <circle cx="34" cy="46" r="7" fill="#4A7C59"/>
+                        <circle cx="50" cy="42" r="7" fill="#709C7D"/>
+                        <circle cx="66" cy="46" r="7" fill="#E5B345"/>
+                        <path d="M 23 72 C 23 60, 31 56, 38 56 C 45 56, 47 62, 50 62 C 53 62, 55 56, 62 56 C 69 56, 77 60, 77 72" 
+                              stroke="url(#lyanGradient)" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+                    </svg>
+                    <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59;">Créer mon Compte LYANN</span>
+                </div>
+                <div class="step-indicator">
+                    <span class="step-count" id="obStepCountText">Étape 1 sur 2</span>
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" id="obProgressBarFill"></div>
+                </div>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body" id="obModalBody">
+                
+                <!-- STEP 1 : INFORMATIONS -->
+                <div class="modal-step active" id="obStep2">
+                    <h3 class="step-title">Faisons connaissance</h3>
+                    <p class="step-desc">Ces informations seront visibles par la communauté pour créer un lien de confiance.</p>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="obFirstName">Prénom</label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-user"></i>
+                                <input type="text" id="obFirstName" class="modal-input" placeholder="Votre prénom">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="obLastName">Nom</label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-user"></i>
+                                <input type="text" id="obLastName" class="modal-input" placeholder="Votre nom">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="obEmail">Adresse Email</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-envelope"></i>
+                            <input type="email" id="obEmail" class="modal-input" placeholder="votre.email@exemple.com">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="obPassword">Mot de passe</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-lock"></i>
+                            <input type="password" id="obPassword" class="modal-input" placeholder="Min. 8 caractères">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3 : LA PROMESSE LYANN -->
+                <div class="modal-step" id="obStep3">
+                    <div class="success-screen" style="text-align: left; padding: 1rem;">
+                        <div class="success-icon" style="margin: 0 auto 1.5rem auto;">🤝</div>
+                        <h3 class="step-title" style="text-align: center;">L'Engagement LYANN</h3>
+                        <p class="step-desc" style="text-align: center;">En rejoignant LYANN, vous rejoignez une communauté basée sur l'entraide et le respect.</p>
+                        
+                        <div style="background: rgba(74, 124, 89, 0.05); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(74, 124, 89, 0.1); margin-top: 1.5rem;">
+                            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem;">
+                                <li style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                                    <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.2rem; margin-top: 2px;"></i>
+                                    <span style="font-size: 0.95rem; color: #2D3748;"><strong>Un seul compte pour tout :</strong> Demandez de l'aide aujourd'hui, proposez vos services demain.</span>
+                                </li>
+                                <li style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                                    <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.2rem; margin-top: 2px;"></i>
+                                    <span style="font-size: 0.95rem; color: #2D3748;"><strong>Bienveillance & Respect :</strong> Chaque échange doit être courtois et constructif.</span>
+                                </li>
+                                <li style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                                    <i class="ph-fill ph-check-circle" style="color: #4A7C59; font-size: 1.2rem; margin-top: 2px;"></i>
+                                    <span style="font-size: 0.95rem; color: #2D3748;"><strong>Sécurité avant tout :</strong> Vos données sont protégées. Nous encourageons les profils authentiques.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4 : SUCCÈS & BIENVENUE -->
+                <div class="modal-step" id="obStep4">
+                    <div class="success-screen" style="text-align: center; padding: 1.5rem 1rem;">
+                        <div class="success-icon" style="margin: 0 auto 1rem auto; background: rgba(74, 124, 89, 0.1); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                            <i class="ph-fill ph-sparkle" style="font-size: 2rem;"></i>
+                        </div>
+                        <h3 class="step-title" style="font-size: 1.4rem; font-weight: 800; color: #1F3827;">Bienvenue sur LYANN, <span id="obSuccessName">Membre</span> !</h3>
+                        <p class="step-desc" style="font-size: 0.95rem; color: #4A5568; margin-top: 6px;">Votre Compte Unique a été créé avec succès.</p>
+                        
+                        <div style="background: #F4F8F5; border: 1px solid rgba(74, 124, 89, 0.18); border-radius: 16px; padding: 1.25rem; margin: 1.25rem 0; text-align: left;">
+                            <div style="font-weight: 800; font-size: 0.95rem; color: #1F3827; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                                <i class="ph-fill ph-user-circle" style="color: var(--primary); font-size: 1.2rem;"></i>
+                                <span>Prochaine étape conseillée :</span>
+                            </div>
+                            <p style="font-size: 0.88rem; color: #4A5568; margin: 0; line-height: 1.45;">
+                                Complétez votre profil (photo, commune, services) pour inspirer confiance et être visible par tous les habitants de votre quartier.
+                            </p>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 1rem;">
+                            <button class="btn btn-primary btn-lg" id="obBtnFinalProfile" onclick="if(document.getElementById('onboardingModal')){document.getElementById('onboardingModal').style.display='none';document.getElementById('onboardingModal').classList.remove('active');}if(typeof window.openCompleteProfileModal==='function'){window.openCompleteProfileModal();}else if(document.getElementById('userAccountModal')){document.getElementById('userAccountModal').style.display='flex';}" style="width: 100%; justify-content: center; font-weight: 800;">
+                                <i class="ph ph-user-circle"></i> Compléter mon profil maintenant
+                            </button>
+                            <button class="btn btn-outline" id="obBtnFinalAction" style="width: 100%; justify-content: center; font-weight: 700; color: #4A5568;">
+                                <i class="ph ph-compass"></i> Découvrir d'abord (Compléter plus tard)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer" id="obModalFooter">
+                <button class="btn btn-outline" id="obPrevBtn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i> Précédent</button>
+                <button class="btn btn-primary" id="obNextBtn">Continuer <i class="ph ph-arrow-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="userAccountModal">
+        <div class="modal-card modal-card-user-account">
+            <button class="modal-close-btn" id="closeUserAccountModalBtn" aria-label="Fermer" style="color: #FFFFFF; top: 16px; right: 16px; z-index: 10;"><i class="ph ph-x"></i></button>
+
+            <div class="account-modal-header">
+                <div class="account-user-profile-summary">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=LyannUser" alt="Avatar Utilisateur" id="accountModalAvatar" class="account-avatar-lg">
+                    <div>
+                        <h3 class="account-user-name" id="accountModalName">Mon Compte LYANN</h3>
+                        <div class="account-user-meta">
+                            <span id="accountModalTerritory"><i class="ph ph-map-pin"></i> Guadeloupe (971)</span>
+                            <span class="pill-badge pill-green" id="accountModalBadge" style="font-size: 0.75rem;">🌟 Membre LYANN</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BARRE DES 6 GRANDS HUBS REGROUPÉS -->
+            <div class="account-tabs-nav">
+                <button class="account-tab-btn active" data-account-tab="tab-acc-dashboard"><i class="ph ph-layout"></i> Tableau de bord</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-profile-services"><i class="ph ph-user"></i> Mon Profil & Services</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-activities"><i class="ph ph-briefcase"></i> Mes Activités & Échanges</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-finances"><i class="ph ph-credit-card"></i> Finances & Paiements</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-reputation"><i class="ph ph-star"></i> Avis & Vérification</button>
+                <button class="account-tab-btn" data-account-tab="tab-acc-settings-sec"><i class="ph ph-gear"></i> Réglages & Sécurité</button>
+            </div>
+
+            <div class="modal-body" style="padding: 24px; max-height: 75vh; overflow-y: auto;">
+                
+                <!-- HUB 1 : TABLEAU DE BORD -->
+                <div class="account-tab-content active" id="tab-acc-dashboard">
+                    <div class="profile-dashboard-grid">
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val" id="accountKpiRating">Non noté</span>
+                            <span class="profile-kpi-label">Note moyenne</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val" id="accountKpiMissions">0</span>
+                            <span class="profile-kpi-label">Missions réalisées</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val" id="accountKpiDemandes">0</span>
+                            <span class="profile-kpi-label">Demandes publiées</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val">-</span>
+                            <span class="profile-kpi-label">Temps moyen de réponse</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val" id="accountKpiRevenue" style="color: #2E7D32;">0,00 €</span>
+                            <span class="profile-kpi-label">Revenus du mois</span>
+                        </div>
+                        <div class="profile-kpi-card">
+                            <span class="profile-kpi-val" id="accountKpiExpenses" style="color: #C95140;">0,00 €</span>
+                            <span class="profile-kpi-label">Dépenses du mois</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <div class="profile-section-title">
+                            <span>🔔 Activité récente & Alertes</span>
+                            <span class="pill-badge pill-green">Compte LYANN ✅</span>
+                        </div>
+                        <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5;">
+                            Bienvenue sur votre Espace Unique LYANN. Votre compte est unifié : vous pouvez simultanément proposer des services, faire des demandes et recevoir des paiements sans changer de profil.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- HUB 2 : MON PROFIL & SERVICES -->
+                <div class="account-tab-content" id="tab-acc-profile-services">
+                    <!-- Section Profil Public -->
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">👤 Profil Public & Présentation</h4>
+                        <form id="publicProfileForm" onsubmit="event.preventDefault();">
+                            <div class="form-group" style="margin-bottom: 14px;">
+                                <label>Bio / Présentation</label>
+                                <textarea class="modal-input" style="height: 75px;" placeholder="Présentez-vous à la communauté..."></textarea>
+                            </div>
+                            <div class="form-group-row" style="display: flex; gap: 12px; margin-bottom: 14px;">
+                                <div class="form-group flex-1">
+                                    <label>Compétences</label>
+                                    <input type="text" class="modal-input" placeholder="Ex: Climatisation, Plomberie...">
+                                </div>
+                                <div class="form-group flex-1">
+                                    <label>Rayon d'intervention (km)</label>
+                                    <input type="number" class="modal-input" value="30">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">Mettre à jour mon profil 💾</button>
+                        </form>
+                    </div>
+
+                    <!-- Section Mes Services -->
+                    <div class="profile-section-card">
+                        <div class="profile-section-title">
+                            <span>🛠️ Offres de Services Proposées</span>
+                            <button class="btn btn-primary btn-sm" id="btnAddNewServiceHub">+ Nouveau service</button>
+                        </div>
+                        <div id="accountServicesContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                            <p style="font-size: 0.85rem; color: var(--text-muted);">Aucun service proposé pour le moment.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section Disponibilités -->
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">📅 Horaires & Disponibilités</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">Lundi au Samedi : 07:30 — 18:00. Dimanche : Indisponible.</p>
+                    </div>
+                </div>
+
+                <!-- HUB 3 : MES ACTIVITÉS & ÉCHANGES -->
+                <div class="account-tab-content" id="tab-acc-activities">
+                    <!-- Section Demandes -->
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">📝 Mes Demandes d'Intervention (Acheteur)</h4>
+                        <div id="accountRequestsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                            <p style="font-size: 0.85rem; color: var(--text-muted);">Aucune demande publiée pour le moment.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section Missions -->
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">💼 Mes Missions Réalisées (Intervenant)</h4>
+                        <div id="accountMissionsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                            <p style="font-size: 0.85rem; color: var(--text-muted);">Vous n'avez encore réalisé aucune mission.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section Bokantaj -->
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">📡 Mes Publications Bokantaj</h4>
+                        <div id="accountBokantajContainer">
+                            <p style="font-size: 0.85rem; color: var(--text-muted);">Aucune publication Bokantaj pour le moment.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HUB 4 : FINANCES & PAIEMENTS -->
+                <div class="account-tab-content" id="tab-acc-finances">
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">Activité financière</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">Un seul compte. Les gains et les dépenses restent séparés.</p>
+                        <div id="lyannUnifiedFinanceHub" data-unified-finance></div>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">👑 Mon Formule d'Abonnement : Lyanneur Gratuit</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">Accès standard aux services et messagerie LYANN.</p>
+                        <button class="btn btn-outline btn-sm">Changer de formule d'abonnement</button>
+                    </div>
+                </div>
+
+                <!-- HUB 5 : AVIS & VÉRIFICATION -->
+                <div class="account-tab-content" id="tab-acc-reputation">
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">⭐ Avis & Évaluations</h4>
+                        <div id="accountReviewsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                            <p style="font-size: 0.85rem; color: var(--text-muted);">Aucun avis pour le moment.</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">🛡️ Statut de Vérification & KYC</h4>
+                        <ul id="accountKycList" style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 0.88rem;">
+                            <li>⏳ Statut de vérification en cours d'actualisation...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- HUB 6 : RÉGLAGES & SÉCURITÉ -->
+                <div class="account-tab-content" id="tab-acc-settings-sec">
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">🔔 Notifications</h4>
+                        <label style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; margin-bottom: 8px;">
+                            <input type="checkbox" checked> Notifications SMS pour les nouveaux messages
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem;">
+                            <input type="checkbox" checked> Notifications Email pour les devis et paiements
+                        </label>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">🔒 Confidentialité & RGPD</h4>
+                        <label style="display: flex; align-items: center; gap: 10px; font-size: 0.88rem; margin-bottom: 10px;">
+                            <input type="checkbox"> Mode incognito (Masquer la présence en ligne)
+                        </label>
+                        <button class="btn btn-outline btn-sm">Télécharger mes données personnelles (ZIP)</button>
+                    </div>
+
+                    <div class="profile-section-card">
+                        <h4 class="profile-section-title">🔑 Sécurité du Compte</h4>
+                        <form id="accountSecurityFormHub" onsubmit="event.preventDefault();">
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label>Mot de passe actuel</label>
+                                <input type="password" class="modal-input" placeholder="••••••••">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label>Nouveau mot de passe</label>
+                                <input type="password" class="modal-input" placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">Mettre à jour 🔒</button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="vendor/maplibre/maplibre-gl.js"></script>
+    <script src="matching-engine.js"></script>
+    <script src="api-client.js"></script>
+    <script src="session-store.js"></script>
+    <script src="auth-state.js"></script>
+    <script src="data-cache.js"></script>
+    <script src="explorer-repository.js"></script>
+    <script src="dialog.js"></script>
+        <script src="messaging-repository.js"></script>
+<script src="quote-revision.js?v=20261012b"></script>
+<script src="mission-dossier.js?v=20261015g"></script>
+<script src="mission-surfaces.js?v=20261015g"></script>
+<script src="finance-policy-ui.js"></script>
+<script src="quote-payment-eligibility.js?v=20261007d"></script>
+<script src="deal-context-sync.js?v=20261013e4"></script>
+<script src="payout-prompt.js?v=20261009a"></script>
+<script src="realtime-session.js?v=20261014p0"></script>
+<script src="quote-milestone-editor.js?v=20261015n"></script>
+<script src="chat-logic.js?v=20261015g"></script>
+    <script src="ai-classifier.js"></script>
+    <script src="platform-core.js"></script>
+    <script src="deal-notification-policy.js?v=20261014e6"></script>
+    <script src="notification-engine.js"></script>
+    <script src="mission-reminders.js"></script>
+<script src="notifications-ui.js"></script>
+    <script src="app-shell.js?v=20261011c"></script>
+    <script src="messaging-ui.js?v=20260923a"></script>
+    <script src="maison-catalog.js?v=20260922c"></script>
+    <script src="profile-repository.js?v=20260922c"></script>
+    <script src="script.js?v=20261015f"></script>
+    <script src="onboarding.js"></script>
+
+    <!-- MODALE BESOIN D'UN COUP DE MAIN (WIZARD) -->
+    <div class="modal-overlay" id="modal-request-help">
+        <div class="modal-card" style="max-width: 600px; height: 90vh; max-height: 800px; display: flex; flex-direction: column; overflow: hidden;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border); padding: 20px 24px; flex-shrink: 0;">
+                <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--primary-dark); display: flex; align-items: center; gap: 10px;">
+                    <i class="ph-fill ph-hand-heart"></i> Publier un besoin
+                </h3>
+                <button class="modal-close-btn" aria-label="Fermer la modale"><i class="ph ph-x"></i></button>
+            </div>
+            
+            <!-- Barre de progression -->
+            <div class="wizard-progress-bar" style="height: 6px; background: #EBF3EE; width: 100%; flex-shrink: 0;">
+                <div class="wizard-progress-fill" style="height: 100%; background: var(--primary); width: 16.66%; transition: width 0.3s ease;"></div>
+            </div>
+
+            <div class="modal-body" style="padding: 0; flex: 1; overflow-y: auto; overflow-x: hidden; position: relative;">
+                
+                <!-- ETAPE 1 : Description -->
+                <div class="wizard-step active" data-step="1" style="padding: 24px;">
+                    <h4 style="font-size: 1.1rem; margin-bottom: 16px;">1. Décrivez votre besoin naturellement</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Expliquez ce qu'il vous faut avec vos propres mots. Notre système comprendra.</p>
+                    <textarea id="wizardDescInput" class="modal-input" style="height: 120px; font-size: 1.05rem;" placeholder="Ex: Bonjour, j'ai une fuite sous mon évier de cuisine, il me faudrait quelqu'un pour réparer ça ce week-end..."></textarea>
+
+                    <!-- Le titre court est proposé d'après la description, puis reste modifiable.
+                         La description complète, elle, n'apparaît que sur la page de l'annonce. -->
+                    <div id="wizardTitleBlock" hidden style="margin-top: 20px;">
+                        <p id="wizardTitleHeading" style="font-weight: 700; margin: 0 0 4px;">Choisissez un titre</p>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 8px;">Un titre court est repris de votre texte. Vous pouvez le corriger. 60 caractères maximum.</p>
+                        <p id="wizardTitleStatus" class="wizard-title-status" hidden></p>
+                        <div id="wizardTitleChoices" class="wizard-title-choices" role="radiogroup" aria-labelledby="wizardTitleHeading"></div>
+                        <div id="wizardTitleEdit" hidden style="margin-top: 12px;">
+                            <label for="wizardTitleInput">Corriger le titre choisi</label>
+                            <input type="text" id="wizardTitleInput" class="modal-input" maxlength="60" style="margin: 0;" placeholder="Ex: Photographe pour un anniversaire">
+                            <span id="wizardTitleCounter" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 6px;" aria-live="polite">0 / 60</span>
+                        </div>
+                        <button type="button" id="wizardTitleSuggest" class="btn btn-outline" hidden style="font-size: 0.82rem; padding: 7px 12px; margin-top: 10px;">Proposer d'autres titres</button>
+                    </div>
+                </div>
+
+                <!-- ETAPE 2 : Domaine / Catégorie -->
+                <div class="wizard-step" data-step="2" style="padding: 24px; display: none;">
+                    <h4 style="font-size: 1.1rem; margin-bottom: 16px;">2. Catégorie</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Nous avons pré-sélectionné cette catégorie d'après votre description.</p>
+                    
+                    <label>Domaine principal</label>
+                    <select class="modal-input" id="wizardDomain" style="margin-bottom: 16px;">
+                        <option value="" selected>Choisir un domaine</option>
+                        <option value="maison">Maison & Travaux</option>
+                        <option value="jardin">Jardin & Extérieur</option>
+                        <option value="cours">Cours & Soutien</option>
+                        <option value="bien-etre">Beauté & Bien-être</option>
+                    </select>
+
+                    <label>Catégorie</label>
+                    <select class="modal-input" id="wizardCategory" style="margin-bottom: 16px;">
+                        <option value="" selected>Choisir une catégorie</option>
+                        <option value="plomberie">Plomberie</option>
+                        <option value="electricite">Électricité</option>
+                        <option value="menage">Ménage</option>
+                    </select>
+
+                    <label>Sous-catégorie</label>
+                    <select class="modal-input" id="wizardSubCat">
+                        <option value="" selected>Choisir une sous-catégorie</option>
+                        <option value="reparation-fuite">Réparation de fuite</option>
+                        <option value="installation">Installation d'équipement</option>
+                    </select>
+                </div>
+
+                <!-- ETAPE 3 : Photos -->
+                <div class="wizard-step" data-step="3" style="padding: 24px; display: none;">
+                    <h4 style="font-size: 1.1rem; margin-bottom: 16px;">3. Photos (Optionnel mais recommandé)</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Montrez l'ampleur de la tâche pour recevoir de meilleures propositions.</p>
+                    
+                    <div class="upload-zone" id="wizardPhotoUploadZone" style="border: 2px dashed var(--primary-light); border-radius: var(--radius-md); padding: 32px; text-align: center; background: rgba(74, 124, 89, 0.04); cursor: pointer; position: relative; overflow: hidden;">
+                        <input type="file" id="wizardPhotoInput" accept="image/jpeg,image/png,image/webp" multiple style="display: none;">
+                        <div id="wizardPhotoPlaceholder">
+                            <i class="ph-fill ph-camera" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 12px;"></i>
+                            <p style="font-weight: 700; color: var(--primary-dark);">Ajouter des photos</p>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Format JPG, PNG, WEBP (Max 5Mo par photo)</p>
+                        </div>
+                        <div id="wizardPhotoPreviewContainer" style="display: none; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; width: 100%;"></div>
+                    </div>
+                </div>
+
+                
+                <!-- ETAPE 4 : Commune & Dispo -->
+                <div class="wizard-step" data-step="4" style="padding: 24px; display: none;">
+                    <h4 style="font-size: 1.1rem; margin-bottom: 16px;">4. Commune & Date (Proximité)</h4>
+                    
+                    <label>Territoire</label>
+                    <select id="wizardTerritorySelect" class="modal-input" style="margin-bottom: 14px;">
+                        <option value="guadeloupe" selected>971 - Guadeloupe</option>
+                        <option value="martinique">972 - Martinique</option>
+                        <option value="guyane">973 - Guyane</option>
+                        <option value="reunion">974 - La Réunion</option>
+                        <option value="saint-martin">978 - St-Martin</option>
+                    </select>
+                    
+                    <label>Commune de la mission</label>
+                    <select id="wizardCitySelect" class="modal-input" style="margin-bottom: 16px;">
+                        <option value="" selected>Choisir une commune</option>
+                        <option value="Les Abymes">Les Abymes</option>
+                        <option value="Baie-Mahault">Baie-Mahault</option>
+                        <option value="Le Gosier">Le Gosier</option>
+                        <option value="Sainte-Anne">Sainte-Anne</option>
+                        <option value="Petit-Bourg">Petit-Bourg</option>
+                        <option value="Le Moule">Le Moule</option>
+                        <option value="Sainte-Rose">Sainte-Rose</option>
+                        <option value="Capesterre-Belle-Eau">Capesterre-Belle-Eau</option>
+                        <option value="Pointe-à-Pitre">Pointe-à-Pitre</option>
+                        <option value="Morne-à-l'Eau">Morne-à-l'Eau</option>
+                        <option value="Lamentin">Lamentin</option>
+                        <option value="Saint-François">Saint-François</option>
+                        <option value="Basse-Terre">Basse-Terre</option>
+                    </select>
+                    
+                    <label>Quand avez-vous besoin d'aide ?</label>
+                    <select class="modal-input" id="wizardDateType" style="margin-bottom: 16px;">
+                        <option value="ASAP">Le plus tôt possible (Urgent)</option>
+                        <option value="FLEXIBLE" selected>Dans les prochains jours (Flexible)</option>
+                        <option value="EXACT">À une date et une heure précises</option>
+                        <option value="TO_AGREE">À convenir ensemble</option>
+                    </select>
+
+                    <div id="wizardExactDateRow" class="wizard-exact-date-row" hidden>
+                        <div style="flex: 1 1 150px; min-width: 0;">
+                            <label for="wizardDateInput">Date</label>
+                            <input type="date" id="wizardDateInput" class="modal-input" style="margin: 0;">
+                        </div>
+                        <div style="flex: 0 1 170px; min-width: 150px;">
+                            <label for="wizardTimeInput">Heure</label>
+                            <input type="time" id="wizardTimeInput" class="modal-input" step="900" style="margin: 0;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ETAPE 5 : Tarif -->
+                <div class="wizard-step" data-step="5" style="padding: 24px; display: none;">
+                    <h4 style="font-size: 1.1rem; margin-bottom: 16px;">5. Budget</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Laissez les professionnels vous faire des propositions, ou fixez un budget estimé.</p>
+                    
+                    <div style="background: #F4F6F4; padding: 16px; border-radius: var(--radius-md); margin-bottom: 16px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="radio" name="wizardBudget" value="devis" checked style="width: 20px; height: 20px;">
+                            <span style="font-weight: 600;">Sur devis : les Lyanneurs me proposent un prix</span>
+                        </label>
+                    </div>
+
+                    <div style="background: #F4F6F4; padding: 16px; border-radius: var(--radius-md); margin-bottom: 16px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 10px;">
+                            <input type="radio" name="wizardBudget" value="fixe" style="width: 20px; height: 20px;">
+                            <span style="font-weight: 600;">Prix fixe</span>
+                        </label>
+                        <div id="wizardBudgetInputContainer" style="display: flex; align-items: center; gap: 10px; padding-left: 30px; opacity: 0.5; transition: opacity 0.2s ease;">
+                            <input type="number" id="wizardBudgetInput" class="modal-input" placeholder="Ex: 50" min="1" step="any" inputmode="decimal" style="width: 120px; margin: 0;" disabled aria-disabled="true" aria-label="Prix fixe en euros"> <span style="font-weight: 700;">€</span>
+                        </div>
+                    </div>
+
+                    <div style="background: #F4F6F4; padding: 16px; border-radius: var(--radius-md);">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 10px;">
+                            <input type="radio" name="wizardBudget" value="fourchette" style="width: 20px; height: 20px;">
+                            <span style="font-weight: 600;">Fourchette de prix</span>
+                        </label>
+                        <div id="wizardRangeInputContainer" style="display: flex; align-items: center; gap: 10px; padding-left: 30px; opacity: 0.5; transition: opacity 0.2s ease; flex-wrap: wrap;">
+                            <input type="number" id="wizardBudgetMinInput" class="modal-input" placeholder="Min" min="1" step="any" inputmode="decimal" style="width: 100px; margin: 0;" disabled aria-disabled="true" aria-label="Prix minimum en euros">
+                            <span style="font-weight: 700;">–</span>
+                            <input type="number" id="wizardBudgetMaxInput" class="modal-input" placeholder="Max" min="1" step="any" inputmode="decimal" style="width: 100px; margin: 0;" disabled aria-disabled="true" aria-label="Prix maximum en euros">
+                            <span style="font-weight: 700;">€</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ETAPE 6 : Résumé -->
+                <div class="wizard-step" data-step="6" style="padding: 24px; display: none;">
+                    <h4 style="font-size: 1.1rem; margin-bottom: 16px;">6. Résumé de votre demande</h4>
+                    
+                    <div style="background: #FFFFFF; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; box-shadow: var(--shadow-sm);">
+                        <div style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 800; font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase;">
+                            <span id="wizardSummaryCategory"><i class="ph-fill ph-wrench"></i> Catégorie à renseigner</span>
+                        </div>
+                        <p id="wizardSummaryTitle" style="font-weight: 800; font-size: 1.1rem; margin-bottom: 6px; color: var(--text);">Titre à renseigner</p>
+                        <p id="wizardSummaryDesc" style="font-size: 0.9rem; line-height: 1.5; margin-bottom: 12px; color: var(--text-muted);"></p>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; color: var(--text-muted);">
+                            <div style="display: flex; align-items: center; gap: 6px;" id="wizardSummaryCity"><i class="ph ph-map-pin"></i> Lieu à renseigner</div>
+                            <div style="display: flex; align-items: center; gap: 6px;" id="wizardSummaryDate"><i class="ph ph-calendar"></i> Date à renseigner</div>
+                            <div style="display: flex; align-items: center; gap: 6px;" id="wizardSummaryPrice"><i class="ph ph-currency-eur"></i> Prix à renseigner</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 24px; text-align: center; font-size: 0.9rem; color: var(--text-muted);">
+                        <i class="ph-fill ph-shield-check" style="color: var(--primary); font-size: 1.2rem; vertical-align: middle;"></i> Votre annonce va être publiée sur LYANN. Vous serez notifié dès qu'un artisan y répondra !
+                    </div>
+                </div>
+
+            </div>
+            
+            <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-shrink: 0; background: #FFFFFF;">
+                <button class="btn btn-outline" id="wizardBtnPrev" style="visibility: hidden;">Précédent</button>
+                <button class="btn btn-primary" id="wizardBtnNext">Suivant</button>
+                <button class="btn btn-primary" id="wizardBtnSubmit" style="display: none; background: #E5B345; color: #FFF; border-color: #E5B345;">PUBLIER</button>
+            </div>
+        </div>
+    </div>
+
+
+
+<div class="modal-overlay" id="bookingModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeBookingModalBtn" aria-label="Fermer"><i class="ph ph-x"></i></button>
+
+            <div class="modal-header">
+                <span style="font-weight: 800; font-size: 1.1rem; color: #4A7C59;">Réservation & Devis LYANN</span>
+                <h3 class="step-title" id="bookingTargetMemberName" style="font-size: 1.35rem; margin-bottom: 4px;">Demande d'intervention</h3>
+                <p class="step-desc" style="margin-bottom: 0;">Remplissez les détails de votre besoin pour réserver un créneau.</p>
+            </div>
+
+            <div class="modal-body">
+                <form id="bookingForm" onsubmit="event.preventDefault();">
+                    <div class="form-group">
+                        <label for="bookingServiceType">Domaine d'intervention</label>
+                        <select id="bookingServiceType" class="modal-input" required>
+                            <option value="climatisation">❄️ Climatisation & Entretien</option>
+                            <option value="plomberie">💧 Plomberie & Dépannage</option>
+                            <option value="electricite">⚡ Électricité & Tableau</option>
+                            <option value="jardin">🌴 Jardin & Espaces Verts</option>
+                            <option value="peinture">🎨 Peinture & Rénovation</option>
+                            <option value="autre">🛠️ Autre service à domicile</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row booking-datetime-row">
+                        <div class="form-group">
+                            <label for="bookingDate"><i class="ph ph-calendar"></i> Date souhaitée</label>
+                            <input type="date" id="bookingDate" class="modal-input clean-padding-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="bookingTimeSlot"><i class="ph ph-clock"></i> Créneau horaire</label>
+                            <select id="bookingTimeSlot" class="modal-input clean-padding-input" required>
+                                <option value="matin">Matin (8h - 12h)</option>
+                                <option value="apres-midi">Après-midi (14h - 18h)</option>
+                                <option value="soiree">Soirée (18h - 20h)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bookingLocation">Commune / Adresse d'intervention</label>
+                        <div class="input-with-icon" style="position: relative;">
+                            <i class="ph ph-map-pin" id="btnBookingGPS" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); cursor: pointer;" title="Utiliser ma position GPS"></i>
+                            <input type="text" id="bookingLocation" class="modal-input" placeholder="Ex: Baie-Mahault, Fort-de-France..." required style="width: 100%; box-sizing: border-box; padding-left: 38px;">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bookingNotes">Précisions sur votre besoin</label>
+                        <textarea id="bookingNotes" class="modal-input" style="height: 90px; padding: 10px;" placeholder="Explicitez les travaux (ex: clim Split 12000 BTU qui fuit, accès facile...)" required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 10px;">Envoyer la demande de réservation 📅</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+<div class="modal-overlay" id="quickProfileModal">
+        <div class="modal-card modal-card-quick-profile">
+            <button class="modal-close-btn" id="closeQuickProfileModalBtn" aria-label="Fermer" style="top: 14px; right: 14px; color: #FFFFFF;"><i class="ph ph-x"></i></button>
+
+            <div class="quick-profile-header">
+                <img src="lyann-avatar-placeholder.svg" alt="Avatar Quick" id="quickAvatarImg" class="quick-profile-avatar">
+                <h3 id="quickProfileName" style="font-size: 1.3rem; margin-bottom: 2px;">Membre LYANN</h3>
+                <div id="quickProfileRole" style="font-size: 0.88rem; opacity: 0.9;">Plomberie & Clim Inverter</div>
+                <div id="quickProfileCity" style="font-size: 0.8rem; opacity: 0.85; margin-top: 4px;"><i class="ph ph-map-pin"></i> Baie-Mahault, Guadeloupe (971)</div>
+            </div>
+
+            <div class="quick-profile-body">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <span id="quickProfileBadge" class="pill-badge pill-green" style="font-size: 0.78rem;">Artisan Vérifié</span>
+                    <span id="quickProfileRating" style="font-weight: 800; color: #E8B83F;">⭐ 4.9 (48 avis)</span>
+                </div>
+
+                <p id="quickProfileBio" style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 12px;">
+                    Plombier et technicien clim passionné à Baie-Mahault. Dépannage rapide de fuites d'eau, entretien clim et chauffe-eau.
+                </p>
+
+                <div class="quick-skills-list" id="quickProfileSkills">
+                    <span class="quick-skill-pill">Entretien Clim Inverter</span>
+                    <span class="quick-skill-pill">Détection de fuite</span>
+                    <span class="quick-skill-pill">Chauffe-eau</span>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 18px;">
+                    <button class="btn btn-primary start-chat-from-quick" id="quickStartChatBtn" style="flex: 1; justify-content: center; font-size: 0.9rem; font-weight: 700;">
+                        🤝 Proposer une aide
+                    </button>
+                    <button class="btn btn-outline start-booking-from-quick" id="quickStartBookingBtn" style="flex: 1; justify-content: center; font-size: 0.88rem;">
+                        💬 Discuter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div class="modal-overlay" id="chatModal">
+        <div class="modal-card modal-card-chat">
+            <button class="modal-close-btn close-chat-modal-trigger desktop-only-close-btn" id="closeChatModalBtn" aria-label="Fermer" onclick="window.closeLyannChatModal(event)"><i class="ph ph-x"></i></button>
+
+            <div class="chat-modal-layout">
+                <!-- Sidebar contacts -->
+                <div class="chat-contacts-sidebar">
+                    <div class="chat-sidebar-header lyann-inbox-header">
+                        <div class="lyann-inbox-brand">
+                            <svg class="lyann-inbox-mark" viewBox="0 0 100 100" aria-hidden="true"><path d="M12 42 L50 14 L88 42" stroke="#4A7C59" stroke-width="8" stroke-linecap="round" fill="none"/><circle cx="34" cy="46" r="7" fill="#4A7C59"/><circle cx="50" cy="42" r="7" fill="#709C7D"/><circle cx="66" cy="46" r="7" fill="#E5B345"/><path d="M23 72 C23 60 31 56 38 56 C45 56 47 62 50 62 C53 62 55 56 62 56 C69 56 77 60 77 72" stroke="#4A7C59" stroke-width="7.5" stroke-linecap="round" fill="none"/></svg>
+                            <span class="lyann-inbox-word">LYANN</span>
+                        </div>
+                        <h2 class="lyann-inbox-title">Messages</h2>
+                        <p class="lyann-inbox-subtitle">Échangez avec vos voisins, talents et pros en toute simplicité.</p>
+                        <div class="lyann-inbox-motifs" aria-hidden="true">
+                            <svg class="lyann-inbox-motif is-leaf" viewBox="0 0 48 48"><path d="M24 40V22M24 28c-8-1-14-8-12-16 7 1 12 7 12 16zM24 26c8-1 13-7 11-14-7 1-11 6-11 14z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                            <svg class="lyann-inbox-motif is-bubble" viewBox="0 0 48 48"><path d="M10 14h20a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6H20l-6 5v-5h-4a6 6 0 0 1-6-6v-8a6 6 0 0 1 6-6z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                            <svg class="lyann-inbox-motif is-share" viewBox="0 0 48 48"><circle cx="14" cy="24" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="34" cy="14" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="34" cy="34" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M17 22 31 16M17 26 31 32" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                        </div>
+                    </div>
+                    <div class="chat-search-wrapper">
+                        <i class="ph ph-magnifying-glass chat-search-icon"></i>
+                        <input type="text" id="chatSearchInput" class="chat-search-input" placeholder="Rechercher une conversation">
+                    </div>
+                    <div class="lyann-inbox-filters" role="tablist" aria-label="Filtrer les conversations">
+                        <button type="button" class="lyann-inbox-pill is-active" data-inbox-filter="all" aria-pressed="true"><i class="ph ph-chat-circle" aria-hidden="true"></i> Tous</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="unread" aria-pressed="false"><i class="ph ph-circle" aria-hidden="true"></i> Non lus</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="annonces" aria-pressed="false"><i class="ph ph-storefront" aria-hidden="true"></i> Annonces</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="devis" aria-pressed="false"><i class="ph ph-file-text" aria-hidden="true"></i> Devis</button>
+                        <button type="button" class="lyann-inbox-pill" data-inbox-filter="favoris" aria-pressed="false"><i class="ph ph-star" aria-hidden="true"></i> Favoris</button>
+                    </div>
+                    <button type="button" class="lyann-inbox-compose" aria-label="Nouvelle conversation"><i class="ph ph-pencil-simple" aria-hidden="true"></i></button>
+                    <div class="chat-contacts-list" id="chatContactsList">
+                    </div>
+                </div>
+
+                <!-- Chat Main Area -->
+                <div class="chat-main-area chat-main-pane">
+                    <!-- HEADER BAR (Collé en haut de la fenêtre) -->
+                    <div class="chat-header-bar">
+                        <div class="chat-header-user">
+                            <button type="button" class="chat-back-to-contacts-btn" aria-label="Retour" onclick="window.backToChatContacts(event)"><i class="ph ph-arrow-left"></i></button>
+                            <div class="chat-header-avatar-wrap" style="position: relative;">
+                                <img src="lyann-avatar-placeholder.svg" alt="Avatar" id="chatHeaderAvatar" class="chat-header-avatar">
+                                <span class="online-dot" style="bottom: 0; right: 0;"></span>
+                            </div>
+                            <div class="chat-header-info">
+                                <div class="chat-header-name-row">
+                                    <strong id="chatHeaderName">Nom</strong>
+                                </div>
+                                <div id="chatHeaderSubTitle" class="chat-header-subtitle">
+                                    En ligne
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- HEADER ACTIONS (Options + Quitter) -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <!-- MORE OPTIONS MENU (•••) -->
+                            <div style="position: relative;">
+                                <button type="button" class="chat-more-btn" id="chatMoreOptionsBtn" aria-label="Options" onclick="window.toggleChatHeaderDropdown(event)">
+                                    <i class="ph ph-dots-three-vertical"></i>
+                                </button>
+                                <div class="chat-header-dropdown" id="chatHeaderDropdownMenu" style="display: none;">
+                                    <button type="button" class="chat-dropdown-item" id="chatDropViewProfile"><i class="ph ph-user"></i> Voir le profil</button>
+                                    <button type="button" class="chat-dropdown-item" id="chatDropViewMission" style="display: none;"><i class="ph ph-briefcase"></i> Voir la mission</button>
+                                    <button type="button" class="chat-dropdown-item" id="chatDropShareProfile"><i class="ph ph-share-network"></i> Partager le profil</button>
+                                    <div class="chat-dropdown-divider"></div>
+                                    <button type="button" class="chat-dropdown-item danger" id="chatDropBlockUser"><i class="ph ph-user-minus"></i> Bloquer</button>
+                                    <button type="button" class="chat-dropdown-item danger" id="chatDropReportUser"><i class="ph ph-warning"></i> Signaler</button>
+                                </div>
+                            </div>
+
+                            <button type="button" class="chat-close-modal-btn close-chat-modal-trigger" aria-label="Fermer la messagerie" title="Quitter la discussion" onclick="window.closeLyannChatModal(event)"><i class="ph ph-x"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- MISSION BANNER COMPACT (Sous le Header, 44-52px max) -->
+                    <div id="chatMissionContextBar" class="chat-mission-banner" style="display: none;">
+                        <div class="chat-mission-banner-info">
+                            <span class="chat-mission-banner-title" id="chatBannerTitle">Réparation portail</span>
+                            <span class="chat-mission-banner-meta" id="chatBannerMeta">80 € · En cours</span>
+                        </div>
+                        <i class="ph ph-caret-right chat-mission-banner-arrow"></i>
+                    </div>
+
+                    <!-- CONTEXTUAL ACTIONS BAR (Actions directes) -->
+                    <div id="chatContextualActionsBar" class="chat-contextual-actions"></div>
+
+                    <!-- MESSAGES WRAPPER -->
+                    <div class="chat-messages-scroll" id="chatMessagesContainer">
+                        <!-- Messages dynamically rendered -->
+                    </div>
+
+                    <!-- REPLY QUOTE PREVIEW BAR -->
+                    <div id="chatReplyBar" class="chat-reply-bar" style="display: none;">
+                        <div class="chat-reply-bar-content">
+                            <div class="chat-reply-bar-author" id="chatReplyAuthor">Réponse à Marc</div>
+                            <div class="chat-reply-bar-text" id="chatReplyText">Extrait du message...</div>
+                        </div>
+                        <button type="button" id="chatCancelReplyBtn" class="chat-reply-cancel-btn"><i class="ph ph-x"></i></button>
+                    </div>
+
+                    <!-- OVERLAY: ACTION CHOICES (DIRECT OR DETAILED DEVIS) -->
+                    <div id="chatActionChoicesOverlay" class="chat-overlay-pane" style="display: none;">
+                        <div style="padding: 24px 20px; text-align: left; width: 100%;">
+                            <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text); margin-bottom: 6px;">Quel type de proposition souhaitez-vous envoyer ?</h3>
+                            <p style="font-size: 0.92rem; color: var(--text-muted); margin-bottom: 20px;">Choisissez le format adapté à votre intervention.</p>
+                            
+                            <div class="choice-cards-container">
+                                <!-- CARTE 1: TARIF DIRECT -->
+                                <div class="choice-card-vertical">
+                                    <div class="choice-card-title">Tarif Direct</div>
+                                    <div class="choice-card-desc">Un montant unique pour votre prestation.</div>
+                                    <button type="button" class="btn btn-primary choice-card-btn" id="btnChooseDirectPrice">Choisir le Tarif Direct</button>
+                                </div>
+
+                                <!-- CARTE 2: DEVIS avec paiement par étape -->
+                                <div class="choice-card-vertical">
+                                    <div class="choice-card-title">Devis avec paiement par étape</div>
+                                    <div class="choice-card-desc">Plusieurs étapes avec paiements progressifs.</div>
+                                    <button type="button" class="btn btn-outline choice-card-btn" id="btnChooseMilestoneDevis">Choisir le Devis avec paiement par étape</button>
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="mobile-form-btn-cancel close-overlay-btn" style="margin-top: 10px;">Annuler</button>
+                        </div>
+                    </div>
+
+                    <!-- OVERLAY: DIRECT PRICE FORM -->
+                    <div id="chatDirectPriceForm" class="chat-overlay-pane" style="display: none;">
+                        <form id="directPriceForm" class="mobile-form-container" style="width: 100%;" onsubmit="event.preventDefault();">
+                            <h3 class="mobile-form-title">Proposer un prix</h3>
+                            <p class="mobile-form-subtitle">Envoyez une proposition claire à votre interlocuteur.</p>
+                            
+                            <div class="mobile-form-group">
+                                <label class="mobile-form-label">Que proposez-vous ?</label>
+                                <textarea id="dpDescription" class="mobile-form-textarea" placeholder="Ex. Réparation de la fuite sous l'évier" required></textarea>
+                            </div>
+
+                            <div class="mobile-form-group">
+                                <label class="mobile-form-label">Montant proposé</label>
+                                <div class="amount-input-wrapper">
+                                    <input type="number" id="dpAmount" class="amount-input-field" placeholder="80" min="0.01" step="0.01" inputmode="decimal" required>
+                                    <span class="amount-input-symbol">€</span>
+                                </div>
+                            </div>
+
+                            <div class="mobile-form-actions">
+                                <button type="submit" class="mobile-form-btn-submit">Envoyer la proposition</button>
+                                <button type="button" class="mobile-form-btn-cancel cancel-overlay-btn">Annuler</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- OVERLAY: PROPOSE DATE FORM -->
+                    <div id="chatProposeDateForm" class="chat-overlay-pane" style="display: none;">
+                        <form id="proposeDateForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Proposer une date d'intervention 📅</h4>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Date souhaitée</label>
+                                <input type="date" id="pdDate" class="modal-input" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Créneau horaire</label>
+                                <select id="pdTimeSlot" class="modal-input" style="width: 100%; box-sizing: border-box;">
+                                    <option value="Matin (8h - 12h)">Matin (8h - 12h)</option>
+                                    <option value="Après-midi (14h - 18h)">Après-midi (14h - 18h)</option>
+                                    <option value="Fin de journée (17h - 20h)">Fin de journée (17h - 20h)</option>
+                                    <option value="Toute la journée">Toute la journée</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Note ou précision (optionnel)</label>
+                                <input type="text" id="pdNote" class="modal-input" placeholder="Ex: Je serai présent à partir de 8h30" style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Envoyer la proposition</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- OVERLAY: LEAVE REVIEW FORM -->
+                    <div id="chatLeaveReviewForm" class="chat-overlay-pane" style="display: none;">
+                        <form id="leaveReviewForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Laisser un avis ⭐</h4>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Note (sur 5 étoiles)</label>
+                                <select id="revRating" class="modal-input" style="width: 100%; box-sizing: border-box;">
+                                    <option value="5">⭐⭐⭐⭐⭐ 5/5 - Excellent travail !</option>
+                                    <option value="4">⭐⭐⭐⭐ 4/5 - Très satisfait</option>
+                                    <option value="3">⭐⭐⭐ 3/5 - Correct</option>
+                                    <option value="2">⭐⭐ 2/5 - Décevant</option>
+                                    <option value="1">⭐ 1/5 - Insatisfaisant</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Votre commentaire</label>
+                                <textarea id="revComment" class="modal-input" placeholder="Partagez votre expérience avec ce lyanneur..." required style="width: 100%; box-sizing: border-box; height: 80px; resize: none;"></textarea>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Publier l'avis</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- OVERLAY: DETAILED DEVIS FORM -->
+                    <div id="chatMilestoneDevisForm" class="chat-overlay-pane" style="display: none;">
+                        <form id="milestoneDevisForm" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto;" onsubmit="event.preventDefault();">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Créer un Devis détaillé</h4>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Libellé général du chantier</label>
+                                <input type="text" id="mdTitle" class="modal-input" placeholder="Ex: Rénovation peinture salon" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Montant total (€)</label>
+                                <input type="number" id="mdTotalAmount" class="modal-input" placeholder="Ex: 850" min="0.01" step="0.01" inputmode="decimal" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            
+                                                        <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
+                                <div class="milestone-allocation-section">
+                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Paiements par étape de paiement</label>
+                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque paiement par étape garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
+                                    <div id="mdMilestoneList" class="md-milestone-list"></div>
+                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un paiement par étape</button>
+                                    <div id="mdAllocationSummary" class="md-allocation-summary">
+                                        <div class="md-allocation-row"><span>Total du devis</span><strong id="mdAllocationQuoteTotal">0,00 €</strong></div>
+                                        <div class="md-allocation-row"><span>Total réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
+                                        <div class="md-allocation-row"><span>Pourcentage réparti</span><strong id="mdAllocationPercentTotal">0 %</strong></div>
+                                        <div class="md-allocation-row"><span>Reste à répartir</span><strong id="mdAllocationRemaining">—</strong></div>
+                                    </div>
+                                    <p id="mdAllocationLive" class="md-allocation-live">La somme des montants doit égaler exactement le total.</p>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button type="button" class="btn btn-outline cancel-overlay-btn" style="flex: 1; justify-content: center;">Retour</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Envoyer le Devis</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- OVERLAY: CHECKOUT / SECURE PAYMENT -->
+                    <div id="chatCheckoutOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
+                        <div style="padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); overflow-y: auto; max-height: min(78dvh, 640px); -webkit-overflow-scrolling: touch;">
+                            <h4 style="font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; color: var(--primary-dark);">
+                                <i class="ph ph-shield-check"></i> Paiement Sécurisé LYANN
+                            </h4>
+                            
+                            <div class="checkout-summary-box" style="background: #F9FBF9; border: 1px solid var(--border); padding: 12px; border-radius: var(--radius-md); margin-bottom: 15px; font-size: 0.88rem;">
+                                <div style="font-weight: 700; margin-bottom: 8px;" id="coPrestationTitle">Prestation</div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span>Montant des travaux :</span>
+                                    <strong id="coDevisAmount">0.00 €</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span>Frais de protection (3 %, min. 1,49 €) :</span>
+                                    <strong id="coLyannFee">0.00 €</strong>
+                                </div>
+                                <div style="border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 800; font-size: 1rem; color: var(--primary-dark);">
+                                    <span>Total à régler :</span>
+                                    <span id="coTotalAmount">0.00 €</span>
+                                </div>
+                            </div>
+
+                            <form id="checkoutPaymentForm" style="display: flex; flex-direction: column; gap: 10px;" onsubmit="event.preventDefault();">
+                                <div>
+                                    <label for="lyannCardPaymentElement" style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 6px;">Carte bancaire</label>
+                                    <div id="lyannCardPaymentElement" style="min-height: 48px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff;"></div>
+                                    <p id="lyannCardPaymentError" role="alert" style="min-height: 1.2em; margin: 8px 0 0; font-size: 0.78rem; color: #B42318;"></p>
+                                    <fieldset id="lyannSavedCardChooser" hidden style="border:0;margin:8px 0 0;padding:0;"></fieldset>
+                                    <p id="lyannSaveCardUnavailable" hidden style="font-size: 0.78rem; color: var(--text-muted); margin: 8px 0 0;">L’enregistrement de carte est momentanément indisponible. Vous pouvez quand même payer.</p>
+                                    <label id="lyannSaveCardLabel" for="lyannSaveCardConsent" hidden style="display:flex; align-items:center; gap:10px; min-height:44px; margin-top:10px; font-size:0.85rem; line-height:1.35; color:#1F3827;">
+                                        <input type="checkbox" id="lyannSaveCardConsent" style="width:22px; height:22px; accent-color:#2E7D32; flex:0 0 auto;">
+                                        <span>Enregistrer cette carte pour mes prochains Lyanns</span>
+                                    </label>
+                                    <p id="lyannSavedCardInfo" hidden style="font-size: 0.75rem; color: var(--text-muted); margin: 6px 0 0;">Votre carte est enregistrée en toute sécurité par Stripe. Vous pouvez la supprimer à tout moment dans vos paramètres.</p>
+                                </div>
+                                <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+                                    Paiement sécurisé via Stripe. Les numéros de carte ne transitent pas par LYANN.
+                                </div>
+                                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                    <button type="button" id="btnCancelCheckout" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
+                                    <button type="submit" id="btnConfirmCheckoutPay" class="btn btn-primary" style="flex: 1; justify-content: center; background: #2E7D32;">Payer & Bloquer</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- OVERLAY: SHARED TRACKING / SUIVI DE CHANTIER -->
+                    <div id="chatTrackingOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF; flex-direction: column;">
+                        <div style="padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="font-weight: 800; margin: 0; color: var(--primary-dark);">🛠️ Suivi du chantier</h4>
+                            <button type="button" id="btnExitTracking" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.75rem; border-radius: var(--radius-sm);">Retour au chat 💬</button>
+                        </div>
+                        <div style="flex: 1; overflow-y: auto; padding: 16px;" id="trackingMilestonesList">
+                            <!-- Milestones dynamically rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
+                    <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
+                        <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Paiement par étape Terminé</h4>
+                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Paiement par étape X</div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
+                                <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Paiement par étape</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- INPUT AREA (COMPOSER MOBILE) -->
+                    <div class="chat-input-area">
+                        <form id="chatInputForm" style="display: flex; gap: 8px; align-items: flex-end; width: 100%; margin: 0;" onsubmit="event.preventDefault();">
+                            <button type="button" class="btn-chat-attach" id="chatAttachBtn" title="Ajouter une pièce jointe"><i class="ph ph-plus"></i></button>
+                            <textarea id="chatInputField" class="modal-input chat-input-field-mobile" placeholder="Écrivez un message..." rows="1"></textarea>
+                            <button type="submit" class="btn btn-primary chat-send-btn-mobile" title="Envoyer"><i class="ph-fill ph-paper-plane-right"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script src="notifications-service.js"></script>
+<script src="payment-script.js"></script>
+<script src="profile-completion.js"></script>
+
+    <!-- ========== MODAL PARCOURS COMPLÉTION DE PROFIL (#modalCompleteProfile) ========== -->
+    <div class="modal-overlay" id="modalCompleteProfile" style="display: none; z-index: 99999;">
+        <div class="modal-card modal-card-complete-profile">
+            <button class="modal-close-btn" id="closeCompleteProfileBtn" aria-label="Fermer" style="top: 16px; right: 16px; z-index: 10;"><i class="ph ph-x"></i></button>
+
+            <!-- Header Wizard -->
+            <div class="modal-complete-profile-header">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="ph-fill ph-user-gear" style="color: var(--accent-light);"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #FFFFFF;">Complétez votre profil</h3>
+                        <div style="font-size: 0.82rem; color: rgba(255,255,255,0.8);" id="cpStepIndicator">Étape 1 sur 4 : Photo & Identité</div>
+                    </div>
+                </div>
+                
+                <!-- Progress Track -->
+                <div style="background: rgba(255,255,255,0.2); height: 6px; border-radius: 3px; margin-top: 14px; overflow: hidden;">
+                    <div id="cpProgressBarFill" style="background: var(--accent-light); height: 100%; width: 25%; transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+
+            <div class="modal-complete-profile-body">
+                <form id="completeProfileForm" onsubmit="return false;">
+                    
+                    <!-- ÉTAPE 1 : PHOTO & IDENTITÉ -->
+                    <div class="cp-step active" id="cpStep1">
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: #1F3827; margin-bottom: 6px;">1. Photo de profil & Titre</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 18px;">Une photo aide les autres Lyanneurs à mieux vous reconnaître.</p>
+                        
+                        <!-- Avatar Selection -->
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <div style="position: relative; display: inline-block; margin-bottom: 12px;">
+                                <img id="cpAvatarPreview" src="/default-avatar.svg" alt="Avatar" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.1);" onerror="this.src='/default-avatar.svg'">
+                                <label for="cpAvatarUploadInput" style="position: absolute; bottom: 0; right: 0; background: var(--primary); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.2);" title="Changer la photo">
+                                    <i class="ph ph-camera" style="font-size: 1rem;"></i>
+                                </label>
+                                <input type="file" id="cpAvatarUploadInput" accept="image/jpeg,image/png,image/webp" style="display: none;">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Prénom *</label>
+                                <input type="text" id="cpFirstName" class="modal-input" placeholder="Ex: Alex" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Nom</label>
+                                <input type="text" id="cpLastName" class="modal-input" placeholder="Ex: Dupont" style="width: 100%; box-sizing: border-box;">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Titre / Présentation courte</label>
+                            <input type="text" id="cpHeadline" class="modal-input" placeholder="Ex: Voisine disponible & passionnée de jardinage" style="width: 100%; box-sizing: border-box;">
+                        </div>
+                    </div>
+
+                    <!-- ÉTAPE 2 : LOCALISATION & TERRITOIRE -->
+                    <div class="cp-step" id="cpStep2" style="display: none;">
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: #1F3827; margin-bottom: 6px;">2. Localisation & Quartier</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 18px;">Indiquez où vous êtes pour voir les besoins et voisins les plus proches.</p>
+
+                        <div style="margin-bottom: 14px;">
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Territoire / Région *</label>
+                            <select id="cpTerritorySelect" class="modal-input" style="width: 100%;">
+                                <option value="Guadeloupe (971)" selected>🇬🇵 Guadeloupe (971)</option>
+                                <option value="Martinique (972)">🇲🇶 Martinique (972)</option>
+                                <option value="Guyane (973)">🇬🇫 Guyane (973)</option>
+                                <option value="La Réunion (974)">🇷🇪 La Réunion (974)</option>
+                                <option value="Mayotte (976)">🇾🇹 Mayotte (976)</option>
+                                <option value="France Métropolitaine">🇫🇷 France Métropolitaine</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 14px;" id="cpIslandContainer">
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Île / Zone *</label>
+                            <select id="cpIslandSelect" class="modal-input" style="width: 100%;">
+                                <option value="Grande-Terre">Grande-Terre</option>
+                                <option value="Basse-Terre">Basse-Terre</option>
+                                <option value="Marie-Galante">Marie-Galante</option>
+                                <option value="Les Saintes">Les Saintes</option>
+                                <option value="La Désirade">La Désirade</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 14px;">
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Commune / Ville *</label>
+                            <div style="display: flex; gap: 8px;">
+                                <select id="cpCitySelect" class="modal-input" style="flex: 1; box-sizing: border-box;">
+                                    <option value="Saint-François">Saint-François</option>
+                                </select>
+                                <button type="button" id="cpGpsBtn" class="btn btn-outline" title="Localisation automatique par GPS" style="padding: 0 12px; font-size: 0.85rem; white-space: nowrap;">
+                                    <i class="ph ph-crosshair"></i> GPS
+                                </button>
+                            </div>
+                            <input type="hidden" id="cpCityInput" value="Saint-François">
+                        </div>
+
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Rayon d'intervention / Proximité</label>
+                            <select id="cpRadiusSelect" class="modal-input" style="width: 100%;">
+                                <option value="Mon quartier uniquement">Mon quartier uniquement</option>
+                                <option value="5 km" selected>5 km autour de chez moi</option>
+                                <option value="15 km">15 km autour de chez moi</option>
+                                <option value="50 km">Tout le territoire</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- ÉTAPE 3 : MES COMPÉTENCES & SERVICES PROPOSÉS -->
+                    <div class="cp-step" id="cpStep3" style="display: none;">
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: #1F3827; margin-bottom: 6px;">3. Mes Compétences & Services</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Sélectionnez ce que vous savez faire ou pouvez proposer aux habitants.</p>
+
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;" id="cpSkillsTagsContainer">
+                            <button type="button" class="cp-skill-tag" data-skill="Bricolage & Fixation"><i class="ph ph-wrench"></i> Bricolage & Fixation</button>
+                            <button type="button" class="cp-skill-tag" data-skill="Jardinage & Élagage"><i class="ph ph-plant"></i> Jardinage & Élagage</button>
+                            <button type="button" class="cp-skill-tag" data-skill="Transport & Déménagement"><i class="ph ph-truck"></i> Transport & Colis</button>
+                            <button type="button" class="cp-skill-tag" data-skill="Informatique & High-Tech"><i class="ph ph-desktop"></i> Informatique & Dépannage</button>
+                            <button type="button" class="cp-skill-tag" data-skill="Ménage & Entretien"><i class="ph ph-broom"></i> Ménage & Entretien</button>
+                            <button type="button" class="cp-skill-tag" data-skill="Garde d'enfants / Babysitting"><i class="ph ph-baby"></i> Garde d'enfants</button>
+                            <button type="button" class="cp-skill-tag" data-skill="Garde d'animaux"><i class="ph ph-dog"></i> Garde d'animaux</button>
+                            <button type="button" class="cp-skill-tag" data-skill="Cuisine & Traiteur"><i class="ph ph-cooking-pot"></i> Cuisine & Repas</button>
+                            <button type="button" class="cp-skill-tag" data-skill="Cours & Soutien scolaire"><i class="ph ph-graduation-cap"></i> Cours & Soutien</button>
+                        </div>
+
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Autre compétence ou détail</label>
+                            <input type="text" id="cpCustomSkill" class="modal-input" placeholder="Ex: Plomberie, soudure, montage meuble IKEA..." style="width: 100%; box-sizing: border-box;">
+                        </div>
+                    </div>
+
+                    <!-- ÉTAPE 4 : TÉLÉPHONE & BIO DE PRÉSENTATION -->
+                    <div class="cp-step" id="cpStep4" style="display: none;">
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: #1F3827; margin-bottom: 6px;">4. Contact & Présentation (Bio)</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Finalisez votre profil pour obtenir votre macaron <strong>Membre Vérifié 🌟</strong>.</p>
+
+                        <div style="margin-bottom: 14px;">
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">Numéro de téléphone portable *</label>
+                            <div class="input-with-icon">
+                                <i class="ph ph-phone"></i>
+                                <input type="tel" id="cpPhone" class="modal-input" placeholder="06 90 12 34 56" inputmode="tel" autocomplete="tel" style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Votre numéro reste confidentiel et n'est partagé qu'en cas de réservation validée.</span>
+                        </div>
+
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #374151; display: block; margin-bottom: 4px;">À propos de vous (Bio)</label>
+                            <textarea id="cpBio" class="modal-input" placeholder="Présentez-vous en quelques mots à vos voisins (vos disponibilités, votre expérience, vos passions...)" rows="3" style="width: 100%; box-sizing: border-box; resize: none;"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Boutons de Navigation du Wizard -->
+                    <div style="display: flex; gap: 10px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+                        <button type="button" id="cpPrevBtn" class="btn btn-outline" style="flex: 1; justify-content: center; visibility: hidden;">
+                            <i class="ph ph-arrow-left"></i> Précédent
+                        </button>
+                        <button type="button" id="cpNextBtn" class="btn btn-primary" style="flex: 2; justify-content: center; font-weight: 800;">
+                            Continuer <i class="ph ph-arrow-right"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL DÉTAIL / SOUSCRIPTION ABONNEMENT (#modalSubscriptionDetail) ========== -->
+    <div class="modal-overlay" id="modalSubscriptionDetail" style="display: none; z-index: 99999;">
+        <div class="modal-card" style="max-width: 480px; width: 90%; padding: 28px; text-align: center; border-radius: 24px; position: relative; background: #FFFFFF; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
+            <button type="button" class="modal-close-btn" id="closeSubDetailBtn" aria-label="Fermer" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #6B7280;"><i class="ph ph-x"></i></button>
+
+            <div id="subDetailHeader" style="margin-bottom: 18px;">
+                <!-- Badge & Title dynamically inserted -->
+            </div>
+
+            <div id="subDetailPriceBox" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 18px; margin-bottom: 20px;">
+                <!-- Dynamic price & period -->
+            </div>
+
+            <div id="subDetailFeatures" style="text-align: left; margin-bottom: 24px; font-size: 0.9rem; color: #334155; line-height: 1.6;">
+                <!-- Features -->
+            </div>
+
+            <div style="background: rgba(231, 111, 81, 0.08); border: 1px solid rgba(231, 111, 81, 0.25); border-radius: 14px; padding: 14px; margin-bottom: 24px; text-align: left; display: flex; gap: 12px; align-items: flex-start;">
+                <i class="ph ph-info" style="color: #E76F51; font-size: 1.3rem; flex-shrink: 0; margin-top: 2px;"></i>
+                <span style="font-size: 0.84rem; color: #1E293B; line-height: 1.45;">
+                    <strong>Information LYANN :</strong> Les abonnements payants seront disponibles prochainement sur LYANN. Votre compte conserve la formule <strong>Lyanneur (Gratuit)</strong> sans aucun frais.
+                </span>
+            </div>
+
+            <button type="button" class="btn btn-primary" id="btnSubDetailClose" style="width: 100%; justify-content: center; font-weight: 800; padding: 14px; font-size: 1rem; border-radius: 14px;">Compris</button>
+        </div>
+    </div>
+
+</body>
+</html>

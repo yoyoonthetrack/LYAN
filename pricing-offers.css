@@ -251,6 +251,28 @@ body.is-native-app.pricing-page .lyann-offers {
     min-height: 44px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    list-style: none;
+}
+
+.lyann-compare summary::-webkit-details-marker {
+    display: none;
+}
+
+.lyann-compare-hint {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #5c675f;
+}
+
+.lyann-compare summary::after {
+    content: "▾";
+    color: #35583f;
+}
+
+.lyann-compare[open] summary::after {
+    content: "▴";
 }
 
 .lyann-compare-switch {

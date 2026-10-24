@@ -91,8 +91,9 @@
    host.innerHTML='<h2>Mon abonnement dans l’application</h2><p data-store-status role="status" aria-live="polite"></p><div data-store-products></div><button type="button" data-store-restore disabled>Restaurer mes achats</button> <button type="button" data-store-manage disabled>Gérer mon abonnement</button><p>Abonnement mensuel à renouvellement automatique. Le prix et les conditions du magasin sont présentés avant confirmation. Vous pouvez annuler le renouvellement dans votre magasin.</p><p><a href="legal.html">Conditions d’utilisation</a> · <a href="confidentialite.html">Confidentialité</a></p>';
   }
   const status=host.querySelector('[data-store-status]'),restore=host.querySelector('[data-store-restore]'),manage=host.querySelector('[data-store-manage]');
-  if(root.LYANN_SUPABASE_LOCK!=='tdktfbtqceldlaeqjtow'){status.textContent='Les abonnements ne sont pas encore disponibles.';return;}
-  if(!root.Capacitor?.isNativePlatform?.()){status.textContent='Les achats Apple et Google seront disponibles dans l’application mobile. Aucun achat Web n’est activé.';return;}
+  if(status)status.textContent='Les achats dans l’application ne sont pas encore ouverts.';
+  if(root.LYANN_SUPABASE_LOCK!=='tdktfbtqceldlaeqjtow'){if(status)status.textContent='Les abonnements ne sont pas encore disponibles.';return;}
+  if(!root.Capacitor?.isNativePlatform?.()){if(status)status.textContent='Les achats Apple et Google seront disponibles dans l’application mobile. Aucun achat Web n’est activé.';return;}
   const platform=root.Capacitor.getPlatform(),provider=platform==='ios'?'apple':platform==='android'?'google':null;
   if(!provider||!root.Capacitor.isPluginAvailable('NativePurchases')){status.textContent='Mettez à jour l’application pour accéder aux abonnements.';return;}
   const plugin=root.Capacitor.registerPlugin('NativePurchases');
@@ -118,7 +119,12 @@
    ?'Certains achats n’ont pas pu être restaurés ou appartiennent à un autre compte LYANN. Réessayez sans racheter.'
    :r.restored?'Vos achats ont été vérifiés et vos droits actualisés.':'Aucun abonnement à restaurer pour ce compte.';});
   try{
-   const {config,items}=await controller.catalog();status.textContent=config.message;
+   const catalog=await Promise.race([
+    controller.catalog(),
+    new Promise((_,reject)=>setTimeout(()=>reject(Error('Le magasin ne répond pas. Aucun achat n’est possible pour le moment.')),8000))
+   ]);
+   const {config,items}=catalog;
+   status.textContent=config.message||'Les achats dans l’application ne sont pas encore ouverts.';
    restore.disabled=!config.restoreEnabled;
    if(config.restoreEnabled){
     const recover=async()=>{try{const r=await controller.recover();if(r.restored)status.textContent='Votre achat en attente a été confirmé.';else if(r.failed)status.textContent='Un achat reste à vérifier. Réessayez avec Restaurer mes achats, sans racheter.';}catch(_){}};

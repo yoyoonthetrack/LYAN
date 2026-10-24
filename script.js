@@ -5425,13 +5425,13 @@ safeDomReady(() => {
         let tabsHTML = `
             <div class="activity-switch-tabs">
                 <button type="button" class="activity-tab-chip ${activeTab === 'requests' ? 'active' : ''}" onclick="window.switchActivityTab('requests', '${currentUserId}')">
-                    <i class="ph ph-broadcast"></i> Mes annonces (${reqCount})
+                    <i class="ph ph-broadcast"></i> Annonces (${reqCount})
                 </button>
                 <button type="button" class="activity-tab-chip ${activeTab === 'missions' ? 'active' : ''}" onclick="window.switchActivityTab('missions', '${currentUserId}')">
-                    <i class="ph ph-hand-heart"></i> Mes missions (${missCount})
+                    <i class="ph ph-hand-heart"></i> Missions (${missCount})
                 </button>
                 <button type="button" class="activity-tab-chip ${activeTab === 'offers' ? 'active' : ''}" onclick="window.switchActivityTab('offers', '${currentUserId}')">
-                    <i class="ph ph-paper-plane-tilt"></i> Mes propositions (${offCount})
+                    <i class="ph ph-paper-plane-tilt"></i> Propositions (${offCount})
                 </button>
             </div>
         `;
@@ -6184,14 +6184,24 @@ safeDomReady(() => {
                 verifText = 'Profil vérifié';
                 verifClass = 'pill-green';
             }
+            let currentPlanName = '';
             if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow') {
-                verifText = window.LYANN_PLANS?.badgeLabel(userProf) || 'Gratuit';
+                try {
+                    const me = await window.LYANN_BUSINESS?.request?.('/v1/business/me');
+                    currentPlanName = me?.plan?.name || '';
+                } catch (_) {
+                    currentPlanName = '';
+                }
+                verifText = userProf?.lyann_badges?.verified ? 'Vérifié' : 'Pas de dossier vérifié';
                 verifClass = userProf?.lyann_badges?.verified ? 'pill-green' : 'pill-yellow';
             }
             const isVerified = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow'
-                ? !!(window.LYANN_PLANS?.badgeLabel(userProf) && userProf?.lyann_badges?.verified)
+                ? !!userProf?.lyann_badges?.verified
                 : !!(userProf?.is_pro_verified || userProf?.is_verified);
-            const verifRowTitle = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? 'Formule et vérification professionnelle' : (isVerified ? 'Vérification' : 'Vérifier mon identité');
+            const verifRowTitle = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? 'Vérification professionnelle' : (isVerified ? 'Vérification' : 'Vérifier mon identité');
+            const planSubtitle = currentPlanName
+                ? ('Votre formule : ' + currentPlanName)
+                : (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? 'Votre formule n’a pas pu être vérifiée' : 'Formule en cours');
             const emailEmpty = !userEmail;
 
             subViewContent = `
@@ -6261,16 +6271,16 @@ safeDomReady(() => {
                             <div class="account-touch-row">
                                 <div class="row-icon"><i class="ph ph-sparkle"></i></div>
                                 <div class="row-content">
-                                    <strong class="row-title">Plan actuel</strong>
-                                    <span class="row-subtitle">Formule Découverte Gratuit</span>
+                                    <strong class="row-title">Formule actuelle</strong>
+                                    <span class="row-subtitle">${planSubtitle}</span>
                                 </div>
                             </div>
                             <div class="account-divider"></div>
                             <div class="account-touch-row" onclick="window.location.href='pricing.html'">
                                 <div class="row-icon"><i class="ph ph-credit-card"></i></div>
                                 <div class="row-content">
-                                    <strong class="row-title">Gérer l'abonnement</strong>
-                                    <span class="row-subtitle">Découvrir les offres LYANN Pro & Premium</span>
+                                    <strong class="row-title">Voir les formules</strong>
+                                    <span class="row-subtitle">Gratuit, Plus et Pro</span>
                                 </div>
                                 <i class="ph ph-caret-right row-chevron"></i>
                             </div>

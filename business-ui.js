@@ -38,7 +38,6 @@
   $('proSubmit').hidden=!editable||!current;
   $('proDocuments').innerHTML=(current?.documents||[]).map(d=>'<li><strong>'+esc(d.name)+'</strong> — '+esc(d.kind)+(d.expires_at?' · valable jusqu’au '+esc(d.expires_at):'')+' <button type="button" data-document="'+esc(d.id)+'" data-owner="'+esc(current.user_id)+'">Télécharger</button></li>').join('');
  }
- async function loadMe(){renderDossier(await request('/v1/business/me'));}
  function contactForm(kind){
   return '<form id="businessContact"><input type="hidden" name="kind" value="'+kind+'"><label>Nom<input name="name" maxlength="160" required autocomplete="name"></label><label>Organisation<input name="organization" maxlength="160" required autocomplete="organization"></label><label>E-mail<input name="email" type="email" maxlength="254" required autocomplete="email"></label><label>Nombre de collaborateurs ou d’établissements<input name="size" maxlength="100"></label><label>Votre message<textarea name="message" maxlength="3000" required rows="4"></textarea></label><p>Votre demande sera consultée par l’équipe LYANN. Une connexion est nécessaire pour l’envoyer.</p><button type="submit">Envoyer ma demande</button></form>';
  }
@@ -76,7 +75,16 @@
   const offered=value===true||(typeof value==='number'&&value>0)||(label==='Assistance'&&value==='Prioritaire');
   return offered&&PLAN_NOTES[label]?base+' · '+PLAN_NOTES[label]:base;
  }
- window.LYANN_BUSINESS={openPlan,contact,request};
+ function applyPlanDisclosure(data){
+  const allowed=data?.plan?.code==='PRO';
+  document.querySelectorAll('[data-pro-tools]').forEach((el)=>{el.hidden=!allowed;});
+  const gate=$('proToolsGate');
+  if(gate)gate.hidden=!!allowed;
+  const identity=$('proIdentity');
+  if(identity)identity.hidden=!allowed&&!data?.dossier;
+ }
+ async function loadMe(){const data=await request('/v1/business/me');if($('proIdentity'))renderDossier(data);applyPlanDisclosure(data);return data;}
+ window.LYANN_BUSINESS={openPlan,contact,request,loadMe};
  async function renderAdmin(which,page=0){
   const dossiers=which==='dossiers', path='/v1/admin/business/'+which;
   const result=await request(path+'?page='+page);
@@ -177,7 +185,7 @@
    });
   });
   if($('proIdentity')){
-   loadMe().catch(e=>notice(e.message,true));
+   loadMe().catch(e=>{notice(e.message,true);applyPlanDisclosure({plan:{code:'FREE'}});});
    $('proIdentity').onsubmit=e=>{e.preventDefault();action(e.submitter,async()=>{
     await request('/v1/business/dossier',{...formData(e.target),version:current?.version});await loadMe();notice('Informations enregistrées.');
    });};
@@ -237,7 +245,8 @@
    const loadRights=async()=>{
     const r=await request('/v1/business/rights');
     const count=(key)=>esc(r.usage[key])+' / '+(r.limits[key]===null?'illimité':esc(r.limits[key]));
-    $('businessRights').innerHTML='<p>'+esc(r.enforced?'Limites appliquées à ce compte de test.':'Limites préparées, pas encore appliquées à ce compte.')+'</p><ul><li>Missions comme prestataire ce mois-ci : '+count('missions')+'</li><li>Photos du portfolio : '+count('photos')+'</li><li>Catégories actives : '+count('categories')+'</li></ul><p>Demandes et paiement par étape : accessibles dans toutes les formules.</p><p>Le compteur des missions est renouvelé le '+esc(new Date(r.resets_at).toLocaleDateString('fr-FR',{timeZone:'UTC'}))+' à 00 h UTC. Les contenus existants sont conservés après une baisse de formule.</p><p>Achats et vidéos du portfolio : pas encore activés.</p>';
+    const over=!r.enforced&&['missions','photos','categories'].some((key)=>r.limits[key]!==null&&Number(r.usage[key])>Number(r.limits[key]));
+    $('businessRights').innerHTML='<p>'+esc(r.enforced?'Limites appliquées à ce compte de test.':'Limites préparées, pas encore appliquées à ce compte.')+(over?' Ce compte dépasse déjà un plafond prévu.':'')+'</p><ul><li>Missions comme prestataire ce mois-ci : '+count('missions')+'</li><li>Photos du portfolio : '+count('photos')+'</li><li>Catégories actives : '+count('categories')+'</li></ul><p>Chaque compteur se lit « utilisé / plafond de la formule ».</p><p>Demandes et paiement par étape : accessibles dans toutes les formules.</p><p>Le compteur des missions est renouvelé le '+esc(new Date(r.resets_at).toLocaleDateString('fr-FR',{timeZone:'UTC'}))+' à 00 h UTC. Les contenus existants sont conservés après une baisse de formule.</p><p>Achats et vidéos du portfolio : pas encore activés.</p>';
    };
    $('refreshRights').onclick=e=>action(e.target,loadRights);
    loadRights().catch(e=>{$('businessRights').textContent=e.message;});
