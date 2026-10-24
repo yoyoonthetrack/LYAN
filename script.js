@@ -4938,10 +4938,12 @@ safeDomReady(() => {
     const passwordResetModal = document.getElementById('passwordResetModal');
     const closePasswordResetModalBtn = document.getElementById('closePasswordResetModalBtn');
     const passwordResetForm = document.getElementById('passwordResetForm');
-    const forgotLinks = document.querySelectorAll('.forgot-link');
 
-    forgotLinks.forEach(link => {
-        link.addEventListener('click', async (e) => {
+    if (!window.__lyannForgotPasswordBound) {
+        window.__lyannForgotPasswordBound = true;
+        document.addEventListener('click', async (e) => {
+            const link = e.target.closest && e.target.closest('.forgot-link');
+            if (!link || link.id === 'btnWelcomeForgot') return;
             e.preventDefault();
             const loginModal = document.getElementById('loginModal');
             if (loginModal) loginModal.classList.remove('active');
@@ -4949,17 +4951,22 @@ safeDomReady(() => {
                 passwordResetModal.classList.add('active');
             } else if (window.lyannPrompt) {
                 const email = await window.lyannPrompt("Veuillez saisir votre adresse email pour recevoir un lien de réinitialisation :");
-                if (email) {
-                    if (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.resetPasswordForEmail) {
-                        await window.LYANN_API_CLIENT.resetPasswordForEmail(email);
+                if (email && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.resetPasswordForEmail) {
+                    const { error } = await window.LYANN_API_CLIENT.resetPasswordForEmail(email);
+                    if (error) {
+                        const normErr = window.LYANN_API_CLIENT.normalizeAuthError
+                            ? window.LYANN_API_CLIENT.normalizeAuthError(error)
+                            : error;
+                        window.lyannAlert(normErr.message || 'Le lien n’a pas pu être envoyé.');
+                        return;
                     }
                     window.lyannAlert(`📩 Si l'adresse ${email} correspond à un compte LYANN, un lien sécurisé a été envoyé.`);
                 }
             } else {
-                window.lyannAlert('📩 Un lien de réinitialisation a été envoyé à votre adresse email.');
+                window.lyannAlert('La réinitialisation du mot de passe n’est pas disponible sur cet écran.');
             }
         });
-    });
+    }
 
     if (closePasswordResetModalBtn) {
         closePasswordResetModalBtn.addEventListener('click', () => {

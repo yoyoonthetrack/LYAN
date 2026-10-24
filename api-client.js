@@ -456,6 +456,9 @@ function normalizeAuthError(error) {
     if (msg.includes('email not confirmed')) {
         return { message: 'Votre compte est créé. Ouvrez le lien reçu par email pour activer la connexion, puis réessayez.' };
     }
+    if (msg.includes('email rate limit') || msg.includes('over_email_send_rate_limit')) {
+        return { message: 'L’envoi des emails est momentanément saturé. Réessayez dans une heure, ou connectez-vous si vous avez déjà un compte.' };
+    }
     if (msg.includes('rate limit') || msg.includes('too many requests')) {
         return { message: 'Trop de tentatives effectuées. Veuillez patienter quelques minutes.' };
     }
@@ -620,7 +623,9 @@ const LYANN_API_CLIENT = {
     async resetPasswordForEmail(email) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const res = await this.supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + '/index.html?action=reset_password'
+            redirectTo: isCapacitorRuntime()
+                ? 'app.lyann.dom://confirm-signup?action=reset_password'
+                : window.location.origin + '/index.html?action=reset_password'
         });
         if (res.error) res.error = normalizeAuthError(res.error);
         return res;

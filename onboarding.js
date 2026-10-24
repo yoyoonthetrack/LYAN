@@ -227,6 +227,15 @@ runOnDomReady(() => {
                         if (error) {
                             showOAuthFailure(error, providerName);
                         } else if (isNative && data?.url) {
+                            let providerPage = null;
+                            try {
+                                providerPage = await fetch(data.url, { method: 'GET', redirect: 'manual' });
+                            } catch (_) { providerPage = null; }
+                            if (providerPage && providerPage.status >= 400) {
+                                const detail = await providerPage.text().catch(() => '');
+                                showOAuthFailure({ message: detail || 'provider' }, providerName);
+                                return;
+                            }
                             const opened = window.open(data.url, '_blank');
                             if (!opened) window.location.assign(data.url);
                         } else if (isNative) {
@@ -280,6 +289,9 @@ runOnDomReady(() => {
                             }
                         }
 
+                        if (/reset_password|type=recovery/i.test(data.url) && typeof window.openLyannPasswordRecovery === 'function') {
+                            window.openLyannPasswordRecovery();
+                        }
                         if (typeof window.updateHeaderAuthState === 'function') {
                             await window.updateHeaderAuthState();
                         } else if (typeof window.checkAuthState === 'function') {
