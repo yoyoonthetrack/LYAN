@@ -245,7 +245,7 @@ function nativeBuildStamp() {
 function resolveInjectedBackendOrigin() {
   if (String(process.env.LYANN_RUNTIME || '').toLowerCase() === 'staging') {
     const origin = String(process.env.LYANN_STAGING_PUBLIC_ORIGIN || '').replace(/\/$/, '');
-    return origin === 'https://staging.lyann.app' ? origin : '';
+    return ['https://staging.lyann.app', 'https://staging-bokantaj.lyann.app'].includes(origin) ? origin : '';
   }
   let backend = process.env.LYANN_E2E_BASE_URL != null
     ? String(process.env.LYANN_E2E_BASE_URL).replace(/\/$/, '')

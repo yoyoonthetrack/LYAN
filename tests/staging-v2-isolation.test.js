@@ -240,3 +240,26 @@ test('messaging repository reads missions and milestones with live columns', () 
   assert.match(messaging, /order\('display_order', \{ ascending: true \}\)/);
   assert.doesNotMatch(messaging, /order\('position'/);
 });
+
+test('mobile Staging backend accepts only the two approved HTTPS origins', () => {
+  const { resolveInjectedBackendOrigin } = require('../shared-html-build');
+  const keys = ['LYANN_RUNTIME', 'LYANN_STAGING_PUBLIC_ORIGIN'];
+  const previous = Object.fromEntries(keys.map(k => [k, process.env[k]]));
+  try {
+    process.env.LYANN_RUNTIME = 'staging';
+    for (const origin of ['https://staging.lyann.app', 'https://staging-bokantaj.lyann.app']) {
+      process.env.LYANN_STAGING_PUBLIC_ORIGIN = origin;
+      assert.equal(resolveInjectedBackendOrigin(), origin);
+    }
+    for (const origin of ['https://lyann.app', 'http://staging-bokantaj.lyann.app',
+      'https://staging-bokantaj.lyann.app.evil.example', 'https://evil.example', '']) {
+      process.env.LYANN_STAGING_PUBLIC_ORIGIN = origin;
+      assert.equal(resolveInjectedBackendOrigin(), '');
+    }
+  } finally {
+    for (const k of keys) {
+      if (previous[k] === undefined) delete process.env[k];
+      else process.env[k] = previous[k];
+    }
+  }
+});
