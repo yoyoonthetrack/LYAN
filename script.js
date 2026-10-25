@@ -827,6 +827,18 @@ safeDomReady(() => {
         }
         window.keepBokantajPublishVisible = keepBokantajPublishVisible;
 
+        // Touching anywhere outside a field closes the keyboard. Without this,
+        // a screen filled by the keyboard can leave no way back.
+        document.addEventListener('pointerdown', (event) => {
+            const active = document.activeElement;
+            if (!active || !/^(INPUT|TEXTAREA)$/.test(active.tagName)) return;
+            const target = event.target;
+            if (!target || !target.closest) return;
+            if (target === active) return;
+            if (target.closest('input, textarea, select, label, button, a, [contenteditable="true"]')) return;
+            active.blur();
+        }, true);
+
         document.addEventListener('focusin', (e) => {
             const tag = e.target.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
@@ -2440,6 +2452,10 @@ safeDomReady(() => {
     let attachedPhotoFiles = [];
     let attachedVideo = null;
     let attachedVideoFile = null;
+    let videoAttachFailed = false;
+    let videoPicked = false;
+    let videoPreparePromise = null;
+    const VIDEO_PREPARE_WAIT_MS = 160000;
     let attachedPosterBlob = null;
     let pendingTrimFile = null;
     let bokantajFeedState = 'LOADING'; // 'LOADING' | 'ERROR' | 'EMPTY' | 'READY'
@@ -2482,11 +2498,29 @@ safeDomReady(() => {
     };
 
     let bokantajFeedLoading = false;
+    function keepOwnPendingPosts(next, previous) {
+        let pendingIds = [];
+        try { pendingIds = JSON.parse(sessionStorage.getItem('lyann_pending_posts') || '[]'); } catch (err) { pendingIds = []; }
+        if (!Array.isArray(pendingIds) || !pendingIds.length) return next;
+        const have = new Set(next.map((post) => post && post.id));
+        const extras = (previous || []).filter((post) => post && pendingIds.includes(post.id) && !have.has(post.id));
+        return extras.length ? extras.concat(next) : next;
+    }
+
+    function flashFeedSignature(posts) {
+        return (Array.isArray(posts) ? posts : []).map((post) => {
+            if (!post || !post.id) return '';
+            return `${post.id}:${post.moderation_status || post.public_moderation_status || ''}`;
+        }).join('|');
+    }
+
     window.loadBokantajFeedFromSupabase = async function(options = {}) {
         const gen = ++bokantajLoadGen;
         bokantajFeedLoading = true;
         const quiet = options.background === true && bokantajFeedState === 'READY' && currentFlashPosts.length > 0;
         const previousPublicIds = currentFlashPosts.map((post) => post && post.id).filter(Boolean);
+        const previousSignature = flashFeedSignature(currentFlashPosts);
+        const previousPosts = currentFlashPosts.slice();
         console.log("[BOKANTAJ] init start");
         const isExplicitDemoMode = typeof window !== 'undefined' && (
             window.LYANN_FORCE_DEMO_DATA === true ||
@@ -2513,7 +2547,7 @@ safeDomReady(() => {
             }
             const data = await window.LYANN_BOKANTAJ_REPOSITORY.load({ force: options.force === true });
             if (gen !== bokantajLoadGen) return;
-            currentFlashPosts = Array.isArray(data) ? data : [];
+            currentFlashPosts = keepOwnPendingPosts(Array.isArray(data) ? data : [], previousPosts);
             bokantajHasMore = window.LYANN_BOKANTAJ_REPOSITORY.hasMore();
             bokantajCursor = currentFlashPosts.length ? currentFlashPosts[currentFlashPosts.length - 1].created_at : null;
             bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
@@ -2531,7 +2565,8 @@ safeDomReady(() => {
                 const nextPublicIds = currentFlashPosts.map((post) => post && post.id).filter(Boolean);
                 const samePublicSet = quiet
                     && previousPublicIds.length === nextPublicIds.length
-                    && previousPublicIds.every((id, index) => id === nextPublicIds[index]);
+                    && previousPublicIds.every((id, index) => id === nextPublicIds[index])
+                    && previousSignature === flashFeedSignature(currentFlashPosts);
                 if (!samePublicSet) {
                     const openIds = [...document.querySelectorAll('.comments-drawer')]
                         .filter((drawer) => drawer.style.display && drawer.style.display !== 'none')
@@ -2541,6 +2576,7 @@ safeDomReady(() => {
                         const drawer = document.getElementById(`comments-drawer-${id}`);
                         if (drawer) drawer.style.display = 'block';
                     });
+                    if (openIds.length) paintOpenCommentDrawers(openIds);
                     window.renderTalentsSidebar(isExplicitDemoMode);
                 }
             }
@@ -2566,7 +2602,16 @@ safeDomReady(() => {
         if (!document.getElementById('flashFeedContainer')) return;
         if (typeof window.loadBokantajFeedFromSupabase !== 'function') return;
         window.loadBokantajFeedFromSupabase({ force: true, background: true });
-        document.querySelectorAll('.comments-drawer[style*="display: block"], .comments-drawer:not([style*="display: none"])').forEach((drawer) => {
+        paintOpenCommentDrawers();
+    }
+
+    // A re-render rebuilds every drawer on its loading placeholder, so the comments
+    // have to be fetched again or an open drawer stays empty until the next tap.
+    function paintOpenCommentDrawers(ids) {
+        const drawers = Array.isArray(ids)
+            ? ids.map((id) => document.getElementById(`comments-drawer-${id}`)).filter(Boolean)
+            : [...document.querySelectorAll('.comments-drawer[style*="display: block"], .comments-drawer:not([style*="display: none"])')];
+        drawers.forEach((drawer) => {
             const targetId = drawer.id && drawer.id.replace('comments-drawer-', '');
             if (targetId && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.getComments === 'function') {
                 window.LYANN_API_CLIENT.getComments(targetId, 'POST').then((rows) => {
@@ -2574,7 +2619,7 @@ safeDomReady(() => {
                     if (!list || !Array.isArray(rows)) return;
                     // A comment hidden while the drawer is open must disappear from the visible DOM,
                     // not merely from its counter. Only repaint if the visible set changed.
-                    const approved = rows.filter((row) => !row.public_moderation_status || row.public_moderation_status === 'approved');
+                    const approved = rows.filter((row) => row.awaiting_review || !row.public_moderation_status || row.public_moderation_status === 'approved');
                     const visibleIds = [...list.querySelectorAll('.comment-item-row[data-comment-id]')]
                         .map((node) => node.dataset.commentId);
                     const approvedIds = approved.map((row) => String(row.id));
@@ -2616,14 +2661,44 @@ safeDomReady(() => {
         flashVideoInput.addEventListener('change', async (e) => {
             const file = e.target.files && e.target.files[0];
             e.target.value = '';
-            if (!file || !window.LYANN_BOKANTAJ_VIDEO) return;
-            const meta = await window.LYANN_BOKANTAJ_VIDEO.readMeta(file);
-            if (Number.isFinite(meta.duration) && meta.duration > window.LYANN_BOKANTAJ_VIDEO.MAX_SECONDS) {
-                pendingTrimFile = file;
-                openTrim(meta.duration);
+            if (typeof window.openBokantajComposer === 'function') window.openBokantajComposer();
+            if (!file) return;
+            if (!window.LYANN_BOKANTAJ_VIDEO) {
+                showVideoAttachError('La préparation vidéo n’est pas disponible. Réessayez.');
                 return;
             }
-            await acceptPreparedVideo(file, 0, meta.duration);
+            const sourceLimit = window.LYANN_BOKANTAJ_VIDEO.MAX_SOURCE_BYTES || 512 * 1024 * 1024;
+            if (file.size > sourceLimit) {
+                videoAttachFailed = true;
+                showVideoAttachError('Cette vidéo est trop volumineuse. Choisissez un extrait de 60 secondes.');
+                return;
+            }
+            showVideoAttachProgress(file);
+            videoPicked = true;
+            videoAttachFailed = false;
+            const prepare = (async () => {
+                const meta = await window.LYANN_BOKANTAJ_VIDEO.readMeta(file);
+                if (Number.isFinite(meta.duration) && meta.duration > window.LYANN_BOKANTAJ_VIDEO.MAX_SECONDS) {
+                    pendingTrimFile = file;
+                    openTrim(meta.duration);
+                    return;
+                }
+                await acceptPreparedVideo(file, 0, meta.duration);
+            })();
+            videoPreparePromise = prepare;
+            try {
+                await prepare;
+            } catch (err) {
+                videoAttachFailed = true;
+                videoPicked = false;
+                attachedVideoFile = null;
+                attachedPosterBlob = null;
+                if (attachedVideo) URL.revokeObjectURL(attachedVideo);
+                attachedVideo = null;
+                showVideoAttachError(err.message || 'Cette vidéo n’a pas pu être ajoutée.');
+            } finally {
+                if (videoPreparePromise === prepare) videoPreparePromise = null;
+            }
         });
     }
 
@@ -2666,6 +2741,7 @@ safeDomReady(() => {
         try {
             const prepared = await window.LYANN_BOKANTAJ_VIDEO.prepareClip(file, start, end);
             if (attachedVideo) URL.revokeObjectURL(attachedVideo);
+            videoAttachFailed = false;
             attachedVideoFile = prepared.file;
             attachedPosterBlob = prepared.poster;
             attachedVideo = URL.createObjectURL(prepared.poster || prepared.file);
@@ -2677,15 +2753,54 @@ safeDomReady(() => {
             if (panel) panel.hidden = true;
             updateMediaPreview();
         } catch (err) {
+            videoAttachFailed = true;
             const label = document.getElementById('bokantajTrimWindow');
             const panel = document.getElementById('bokantajTrim');
-            if (panel && label) {
+            if (panel && label && pendingTrimFile) {
                 panel.hidden = false;
                 label.textContent = err.message || 'Vidéo impossible à préparer.';
             }
+            showVideoAttachError(err.message || 'Cette vidéo n’a pas pu être ajoutée.');
         } finally {
             if (button) button.disabled = false;
         }
+    }
+
+    // A publication that never reached the server must say so where the draft
+    // still is; a toast alone reads like the card silently vanished.
+    function showPublishFailure(message) {
+        if (!createFlashForm) return;
+        let notice = createFlashForm.querySelector('.bokantaj-publish-failure');
+        if (!notice) {
+            notice = document.createElement('p');
+            notice.className = 'bokantaj-publish-failure';
+            notice.setAttribute('role', 'alert');
+            const anchor = createFlashForm.querySelector('.composer-actions-bar') || createFlashForm.lastElementChild;
+            if (anchor) createFlashForm.insertBefore(notice, anchor);
+            else createFlashForm.append(notice);
+        }
+        notice.textContent = `${message} Votre texte est conservé ici : rien n’a été publié.`;
+    }
+
+    function clearPublishFailure() {
+        createFlashForm?.querySelector('.bokantaj-publish-failure')?.remove();
+    }
+
+    function showVideoAttachProgress(file) {
+        if (!flashMediaPreviewContainer) return;
+        const heavy = file && window.LYANN_BOKANTAJ_VIDEO
+            && file.size > (window.LYANN_BOKANTAJ_VIDEO.MAX_BYTES || 0);
+        flashMediaPreviewContainer.innerHTML = heavy
+            ? '<p class="bokantaj-video-attach-status">Conversion de la vidéo… Gardez cet écran ouvert, cela dure le temps de la vidéo.</p>'
+            : '<p class="bokantaj-video-attach-status">Préparation de la vidéo…</p>';
+    }
+
+    function showVideoAttachError(message) {
+        if (flashMediaPreviewContainer) {
+            flashMediaPreviewContainer.innerHTML = `<p class="bokantaj-video-attach-status is-error">${window.escapeHtmlAttr ? window.escapeHtmlAttr(message) : message}</p>`;
+        }
+        if (window.NotificationService) window.NotificationService.showToast('warning', message);
+        else if (window.lyannAlert) window.lyannAlert(message);
     }
 
     function updateMediaPreview() {
@@ -2703,16 +2818,31 @@ safeDomReady(() => {
                 img.className = 'flash-media-preview-thumb';
                 flashMediaPreviewContainer.appendChild(img);
             });
-        } else if (attachedVideo) {
+        } else if (attachedVideo || attachedVideoFile) {
             if (mediaUploadBadge) {
                 mediaUploadBadge.style.display = 'inline';
                 mediaUploadBadge.textContent = 'Vidéo jointe';
             }
-            const img = document.createElement('img');
-            img.src = attachedVideo;
-            img.alt = 'Miniature de la vidéo';
-            img.className = 'flash-media-preview-thumb';
-            flashMediaPreviewContainer.appendChild(img);
+            if (attachedPosterBlob && attachedVideo) {
+                const img = document.createElement('img');
+                img.src = attachedVideo;
+                img.alt = 'Miniature de la vidéo';
+                img.className = 'flash-media-preview-thumb';
+                flashMediaPreviewContainer.appendChild(img);
+            } else {
+                const video = document.createElement('video');
+                video.className = 'flash-media-preview-thumb';
+                video.muted = true;
+                video.playsInline = true;
+                video.controls = false;
+                video.setAttribute('playsinline', '');
+                video.src = attachedVideo || URL.createObjectURL(attachedVideoFile);
+                flashMediaPreviewContainer.appendChild(video);
+            }
+            const note = document.createElement('p');
+            note.className = 'bokantaj-video-attach-status';
+            note.textContent = 'Vidéo jointe';
+            flashMediaPreviewContainer.appendChild(note);
         } else {
             if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
         }
@@ -2841,6 +2971,26 @@ safeDomReady(() => {
 
     const bokantajMediaCache = new Map();
 
+    function typedBokantajMediaBlob(blob, url, headerType) {
+        const header = String(headerType || blob && blob.type || '').toLowerCase();
+        if (header.startsWith('image/') || header.startsWith('video/')) {
+            return header === String(blob.type || '').toLowerCase() ? blob : new Blob([blob], { type: header.split(';')[0] });
+        }
+        const ext = String(url || '').split(/[?#]/)[0].split('.').pop().toLowerCase();
+        const guessed = ({
+            mp4: 'video/mp4',
+            m4v: 'video/mp4',
+            mov: 'video/quicktime',
+            webm: 'video/webm',
+            jpg: 'image/jpeg',
+            jpeg: 'image/jpeg',
+            png: 'image/png',
+            webp: 'image/webp'
+        })[ext];
+        if (guessed) return new Blob([blob], { type: guessed });
+        return null;
+    }
+
     async function loadBokantajMedia(url) {
         const source = String(url || '');
         if (!source || source.startsWith('blob:') || source.startsWith('data:')) return source;
@@ -2854,9 +3004,10 @@ safeDomReady(() => {
                 cache: 'no-store'
             });
             if (!response.ok) throw new Error('media');
-            const type = String(response.headers.get('content-type') || '');
-            if (type && !type.startsWith('image/') && !type.startsWith('video/')) throw new Error('media');
-            return URL.createObjectURL(await response.blob());
+            const blob = await response.blob();
+            const typed = typedBokantajMediaBlob(blob, source, response.headers.get('content-type'));
+            if (!typed) throw new Error('media');
+            return URL.createObjectURL(typed);
         })();
         bokantajMediaCache.set(source, request);
         try {
@@ -2867,59 +3018,246 @@ safeDomReady(() => {
         }
     }
 
+    // A post keeps the shape of what was shot: portrait stays portrait, wide
+    // stays wide, always at the card width.
+    function applyMediaRatio(node, width, height) {
+        if (!node || !(width > 0) || !(height > 0)) return;
+        const holder = node.closest('.bokantaj-photos-1 .bokantaj-photo')
+            || node.closest('.bokantaj-video-poster')
+            || node;
+        holder.style.setProperty('--media-ratio', `${Math.round(width)} / ${Math.round(height)}`);
+        holder.classList.add('has-media-ratio');
+    }
+
+    function watchPhotoRatio(node) {
+        if (!node || node.dataset.ratioBound === '1') return;
+        node.dataset.ratioBound = '1';
+        const paint = () => applyMediaRatio(node, node.naturalWidth, node.naturalHeight);
+        if (node.complete && node.naturalWidth) paint();
+        node.addEventListener('load', paint);
+    }
+
     async function hydrateHoldMedia(root) {
         if (!root) return;
-        const nodes = root.querySelectorAll('img[src*="/v1/media/bokantaj-media"], img[src*="/v1/media/avatars-hold/"]');
-        for (const node of nodes) {
+        // Bound before any download: a video entering the screen must not wait
+        // for every avatar and photo of the feed to be fetched first.
+        observeFeedVideos(root);
+        const nodes = root.querySelectorAll('img[src*="/v1/media/bokantaj-media"], img[src*="/v1/media/avatars-hold/"], .bokantaj-video-poster img[src*="/v1/media/"]');
+        // Fetched together rather than one after the other, for the same reason.
+        await Promise.all(Array.from(nodes).map(async (node) => {
             const source = node.getAttribute('src');
-            if (!source || node.dataset.mediaReady === '1') continue;
+            if (!source || node.dataset.mediaReady === '1') return;
             try {
                 node.src = await loadBokantajMedia(source);
                 node.dataset.mediaReady = '1';
+                watchPhotoRatio(node);
                 node.closest('.bokantaj-photo')?.classList.remove('is-broken');
             } catch (err) {
                 node.closest('.bokantaj-photo')?.classList.add('is-broken');
                 node.removeAttribute('src');
             }
-        }
+        }));
+        root.querySelectorAll('.bokantaj-photos-1 img, .bokantaj-video-poster img').forEach(watchPhotoRatio);
+        observeFeedVideos(root);
     }
 
-    document.addEventListener('click', async (event) => {
-        const button = event.target.closest && event.target.closest('.bokantaj-video-poster');
-        if (!button || button.dataset.loading === '1') return;
-        const source = button.getAttribute('data-video-src');
-        if (!source) return;
-        button.dataset.loading = '1';
-        let src = source;
-        try {
-            if (source.includes('/v1/media/')) {
-                let token = '';
-                try {
-                    const session = await window.LYANN_API_CLIENT.supabase.auth.getSession();
-                    token = session && session.data && session.data.session && session.data.session.access_token;
-                } catch (err) {}
-                const response = await fetch(source, {
-                    headers: token ? { Authorization: 'Bearer ' + token } : {},
-                    cache: 'no-store'
-                });
-                if (!response.ok) throw new Error('video');
-                src = URL.createObjectURL(await response.blob());
+    // Muted autoplay is the only form iOS allows without a tap, so the feed
+    // starts videos silently and keeps the sound under an explicit control.
+    let bokantajFeedMuted = true;
+
+    // The vendored Phosphor subset ships no speaker glyph, so the button stayed
+    // empty; the icon is drawn inline instead of depending on the font.
+    function soundIcon(muted) {
+        const waves = muted
+            ? '<path d="m16.8 9.6 4.4 4.8m0-4.8-4.4 4.8"/>'
+            : '<path d="M16.4 9a4.6 4.6 0 0 1 0 6"/><path d="M19 6.4a8.2 8.2 0 0 1 0 11.2"/>';
+        return `<svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none"
+            stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path fill="currentColor" stroke="none" d="M4.6 9h2.7L12 5.1v13.8L7.3 15H4.6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1Z"/>
+            ${waves}
+        </svg>`;
+    }
+
+    function setBokantajFeedSound(muted) {
+        bokantajFeedMuted = muted;
+        document.querySelectorAll('video.bokantaj-video[data-feed-video="1"]').forEach((video) => {
+            video.muted = muted;
+            const toggle = video.parentElement?.querySelector('.bokantaj-video-sound');
+            if (toggle) {
+                toggle.setAttribute('aria-pressed', muted ? 'false' : 'true');
+                toggle.setAttribute('aria-label', muted ? 'Activer le son' : 'Couper le son');
+                toggle.innerHTML = soundIcon(muted);
             }
+        });
+    }
+
+    function videoShapeReady(video) {
+        return new Promise((resolve) => {
+            if (video.readyState >= 1) {
+                applyMediaRatio(video, video.videoWidth, video.videoHeight);
+                resolve();
+                return;
+            }
+            const done = () => {
+                video.removeEventListener('loadedmetadata', done);
+                window.clearTimeout(timer);
+                applyMediaRatio(video, video.videoWidth, video.videoHeight);
+                resolve();
+            };
+            // A WebView that never reports the size must not hide the video.
+            const timer = window.setTimeout(done, 4000);
+            video.addEventListener('loadedmetadata', done);
+        });
+    }
+
+    async function openBokantajVideo(button, options) {
+        if (!button || button.dataset.loading === '1') return null;
+        const source = button.getAttribute('data-video-src');
+        if (!source) return null;
+        const inFeed = Boolean(options && options.inFeed);
+        button.dataset.loading = '1';
+        button.classList.add('is-loading');
+        button.setAttribute('aria-busy', 'true');
+        try {
+            const src = source.includes('/v1/media/') ? await loadBokantajMedia(source) : source;
             const video = document.createElement('video');
             video.className = 'bokantaj-video';
-            video.controls = true;
+            video.controls = !inFeed;
             video.playsInline = true;
             video.setAttribute('playsinline', '');
+            video.setAttribute('webkit-playsinline', '');
             video.preload = 'auto';
             const poster = button.querySelector('img');
             if (poster) video.poster = poster.src;
+            const ratio = button.style.getPropertyValue('--media-ratio');
+            if (ratio) {
+                video.style.setProperty('--media-ratio', ratio);
+                video.classList.add('has-media-ratio');
+            }
+            video.addEventListener('loadedmetadata', () => {
+                applyMediaRatio(video, video.videoWidth, video.videoHeight);
+            });
             video.src = src;
-            button.replaceWith(video);
-            video.play().catch(() => {});
+            // The shape is read before the swap, otherwise a clip whose poster
+            // carries no size would appear at a wrong height for a second.
+            if (!ratio) await videoShapeReady(video);
+            if (inFeed) {
+                video.dataset.feedVideo = '1';
+                video.dataset.videoSrc = source;
+                video.loop = true;
+                video.muted = bokantajFeedMuted;
+                video.setAttribute('muted', '');
+                const shell = document.createElement('div');
+                shell.className = 'bokantaj-video-shell';
+                const overlay = document.createElement('div');
+                overlay.className = 'bokantaj-video-controls';
+                const sound = document.createElement('button');
+                sound.type = 'button';
+                sound.className = 'bokantaj-video-sound';
+                const expand = document.createElement('button');
+                expand.type = 'button';
+                expand.className = 'bokantaj-video-expand';
+                expand.setAttribute('aria-label', 'Ouvrir le lecteur');
+                expand.innerHTML = '<i class="ph ph-arrows-out" aria-hidden="true"></i>';
+                overlay.append(sound, expand);
+                button.replaceWith(shell);
+                shell.append(video, overlay);
+                setBokantajFeedSound(bokantajFeedMuted);
+                video.dataset.autoplayBound = '1';
+                feedVideoObserver?.observe(video);
+            } else {
+                button.replaceWith(video);
+            }
+            const play = video.play();
+            if (play && typeof play.catch === 'function') play.catch(() => {});
+            return video;
         } catch (err) {
             button.dataset.loading = '';
+            button.classList.remove('is-loading');
+            button.setAttribute('aria-busy', 'false');
+            if (!button.querySelector('.bokantaj-video-error')) {
+                const note = document.createElement('span');
+                note.className = 'bokantaj-video-error';
+                note.textContent = 'La vidéo n’a pas pu être chargée.';
+                button.appendChild(note);
+            }
+            return null;
         }
+    }
+
+    // iOS only opens its own player, with the timeline, through this call; the
+    // standard Fullscreen API is ignored for inline video on iPhone.
+    function openFullPlayer(video) {
+        if (!video) return;
+        video.controls = true;
+        setBokantajFeedSound(false);
+        if (typeof video.webkitEnterFullscreen === 'function') {
+            try { video.webkitEnterFullscreen(); return; } catch (err) { /* fall through */ }
+        }
+        if (typeof video.requestFullscreen === 'function') {
+            video.requestFullscreen().catch(() => {});
+            return;
+        }
+        if (typeof video.webkitRequestFullscreen === 'function') video.webkitRequestFullscreen();
+    }
+
+    document.addEventListener('click', async (event) => {
+        const sound = event.target.closest && event.target.closest('.bokantaj-video-sound');
+        if (sound) {
+            event.preventDefault();
+            event.stopPropagation();
+            setBokantajFeedSound(!bokantajFeedMuted);
+            return;
+        }
+        const expand = event.target.closest && event.target.closest('.bokantaj-video-expand');
+        if (expand) {
+            event.preventDefault();
+            event.stopPropagation();
+            openFullPlayer(expand.closest('.bokantaj-video-shell')?.querySelector('video'));
+            return;
+        }
+        const playing = event.target.closest && event.target.closest('video.bokantaj-video[data-feed-video="1"]');
+        if (playing) {
+            // The first tap hands the video over to the native controls, which
+            // is the only way to scrub; after that they own every gesture.
+            if (!playing.controls) {
+                playing.controls = true;
+                playing.closest('.bokantaj-video-shell')?.classList.add('has-controls');
+            }
+            return;
+        }
+        const button = event.target.closest && event.target.closest('.bokantaj-video-poster');
+        if (button) await openBokantajVideo(button, { inFeed: false });
     });
+
+    let feedVideoObserver = null;
+
+    function feedVideoVisibility(entry) {
+        const node = entry.target;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+            if (node.matches('.bokantaj-video-poster')) {
+                openBokantajVideo(node, { inFeed: true });
+            } else if (node.paused) {
+                node.play().catch(() => {});
+            }
+            return;
+        }
+        if (node.tagName === 'VIDEO' && !node.paused) node.pause();
+    }
+
+    function observeFeedVideos(root) {
+        if (!root || typeof IntersectionObserver === 'undefined') return;
+        if (!feedVideoObserver) {
+            feedVideoObserver = new IntersectionObserver((entries) => {
+                entries.forEach(feedVideoVisibility);
+            }, { threshold: [0, 0.6] });
+        }
+        root.querySelectorAll('.bokantaj-video-poster[data-video-src], video.bokantaj-video[data-feed-video="1"]').forEach((node) => {
+            if (node.dataset.autoplayBound === '1') return;
+            node.dataset.autoplayBound = '1';
+            feedVideoObserver.observe(node);
+        });
+    }
 
     function bokantajPhotoGrid(images) {
         const urls = (Array.isArray(images) ? images : []).filter(Boolean).slice(0, 4);
@@ -3088,6 +3426,10 @@ safeDomReady(() => {
                 <button type="button" class="btn-edit-own-comment" data-comment-id="${comment.id}" data-target-id="${targetId}">Modifier</button>
                 <button type="button" class="btn-delete-own-comment" data-comment-id="${comment.id}" data-target-id="${targetId}">Supprimer</button>
             </span>` : '';
+        // Only the author receives their own comment while it is being checked.
+        const review = comment.awaiting_review
+            ? '<span class="comment-review-chip"><i class="ph ph-clock"></i> En cours de vérification</span>'
+            : '';
         return `
             <div class="comment-item-row" data-comment-id="${comment.id}" style="display: flex; gap: 10px; font-size: 0.86rem; background: #FFF; padding: 8px 12px; border-radius: 12px; border: 1px solid #E2E8F0; ${isChild ? 'margin-left: 20px; border-left: 3px solid var(--primary);' : ''}">
                 <img src="${avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" alt="">
@@ -3102,6 +3444,7 @@ safeDomReady(() => {
                             <i class="ph ph-arrow-u-up-left"></i> Répondre
                         </button>
                         ${owner}
+                        ${review}
                     </div>
                 </div>
             </div>`;
@@ -3299,7 +3642,8 @@ safeDomReady(() => {
         const list = currentFlashPosts.filter((post) => {
             if (!post || !bokantajPassesSafety(post)) return false;
             const repo = window.LYANN_BOKANTAJ_REPOSITORY;
-            if (repo && typeof repo.isPubliclyVisible === 'function' && !repo.isPubliclyVisible(post)) return false;
+            const viewerId = window.LYANN_AUTH_STATE?.getSnapshot?.()?.userId || window.CURRENT_USER_ID || window.LYANN_CURRENT_USER?.id;
+            if (repo && typeof repo.isPubliclyVisible === 'function' && !repo.isPubliclyVisible(post, viewerId)) return false;
             if (query && !query.postMatchesTypes(post, active.types)) return false;
             if (query && !query.postWithinPeriod(post, active.period, now)) return false;
             if (active.zone === 'commune' && active.commune && query && !query.communeMatches(post, active.commune)) return false;
@@ -3441,15 +3785,10 @@ safeDomReady(() => {
         console.log("[BOKANTAJ] feed container found (#flashFeedContainer)");
 
         if (bokantajFeedState === 'LOADING') {
-            feedContainer.innerHTML = `
-                <div class="text-center" style="padding: 50px 20px; background: #FFF; border-radius: var(--radius-xl); border: 1.5px solid #E2E8F0;">
-                    <i class="ph ph-spinner spinner" style="font-size: 2.2rem; color: var(--primary); margin-bottom: 12px; display: inline-block;"></i>
-                    <h4 style="font-weight: 800; font-size: 1.05rem; color: #1E293B; margin-bottom: 4px;">Les nouvelles du quartier arrivent…</h4>
-                    <p style="color: var(--text-muted); font-size: 0.88rem;">Un instant, on charge les partages près de chez vous.</p>
-                </div>
-            `;
+            window.LYANN_SKELETON?.show(feedContainer, 'bokantaj', 3);
             return;
         }
+        window.LYANN_SKELETON?.clear(feedContainer);
 
         if (bokantajFeedState === 'ERROR') {
             feedContainer.innerHTML = `
@@ -3688,7 +4027,7 @@ safeDomReady(() => {
                                 </div>
                                 <div class="flash-meta-badges" style="display: flex; align-items: center; width: 100%; box-sizing: border-box; margin-top: 2px;">
                                     <span class="flash-badge-default" style="${isLyann ? 'background: rgba(74, 124, 89, 0.12); color: #1F3827; font-weight: 500; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; text-transform: uppercase; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; letter-spacing: 0.02em;' : 'background: #F1F5F9; color: #475569; font-weight: 500; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box;'}">${badgeText}</span>
-                                    ${!isLyann && post.moderation_status === 'pending' ? '<span class="bokantaj-pending-chip" title="Publication enregistrée, vérification avant diffusion aux autres membres">En cours de chargement</span>' : ''}
+                                    ${!isLyann && post.moderation_status === 'pending' ? `<span class="bokantaj-pending-chip" title="Publication enregistrée, vérification avant diffusion aux autres membres">${(post.videos && post.videos.length) ? 'Vidéo en cours de vérification' : 'En cours de chargement'}</span>` : ''}
                                 </div>
                             </div>
 
@@ -4112,7 +4451,12 @@ safeDomReady(() => {
                 window.lyannAlert('Veuillez écrire un message ou ajouter une photo/vidéo à votre Lyann.');
                 return;
             }
+            if (videoAttachFailed && !attachedVideoFile) {
+                window.lyannAlert('La vidéo n’a pas été jointe. Réessayez ou publiez sans vidéo après avoir fermé le compositeur.');
+                return;
+            }
 
+            clearPublishFailure();
             const submitBtn = createFlashForm.querySelector('button[type="submit"]');
             if (createFlashForm.dataset.publishing === '1') return;
             createFlashForm.dataset.publishing = '1';
@@ -4146,6 +4490,12 @@ safeDomReady(() => {
                     photo.alt = 'Aperçu de votre photo';
                     photo.style.cssText = 'display:block;max-width:160px;max-height:130px;object-fit:cover;border-radius:12px;margin-top:10px;';
                     uploadingCard.append(photo);
+                } else if (attachedVideo) {
+                    const preview = document.createElement('img');
+                    preview.src = attachedVideo;
+                    preview.alt = 'Aperçu de votre vidéo';
+                    preview.style.cssText = 'display:block;max-width:160px;max-height:130px;object-fit:cover;border-radius:12px;margin-top:10px;';
+                    uploadingCard.append(preview);
                 }
                 feedForPreview.parentNode.insertBefore(uploadingCard, feedForPreview);
                 createFlashForm.hidden = true;
@@ -4153,6 +4503,19 @@ safeDomReady(() => {
 
             try {
                 if (!window.LYANN_API_CLIENT?.createPost) throw new Error('Publication indisponible');
+                if (videoPreparePromise) {
+                    if (submitBtn) submitBtn.textContent = 'Préparation de la vidéo…';
+                    await Promise.race([
+                        videoPreparePromise,
+                        new Promise((resolve, reject) => window.setTimeout(
+                            () => reject(new Error('La vidéo n’est pas prête. Réessayez avec un extrait plus court.')),
+                            VIDEO_PREPARE_WAIT_MS
+                        ))
+                    ]);
+                }
+                if (videoPicked && !attachedVideoFile) {
+                    throw new Error('La vidéo n’est pas encore jointe. Attendez « Vidéo jointe » avant de publier.');
+                }
                 const publishedWithImage = attachedPhotoFiles.length > 0;
                 const publishedWithVideo = Boolean(attachedVideoFile);
                 const mediaUrls = [];
@@ -4162,12 +4525,16 @@ safeDomReady(() => {
                     mediaUrls.push(...uploaded);
                 }
                 if (submitBtn && attachedVideoFile) submitBtn.textContent = 'Envoi de la vidéo…';
-                if (attachedVideoFile && window.LYANN_API_CLIENT.uploadPostVideo) {
+                if (attachedVideoFile) {
+                    if (!window.LYANN_API_CLIENT.uploadPostVideo) {
+                        throw new Error('L’envoi vidéo n’est pas disponible. Réessayez.');
+                    }
                     const uploaded = await window.LYANN_API_CLIENT.uploadPostVideo(attachedVideoFile, attachedPosterBlob);
                     if (uploaded && uploaded.video) {
                         mediaUrls.push(uploaded.video);
                         if (uploaded.poster) mediaUrls.push(uploaded.poster);
                     } else if (typeof uploaded === 'string') mediaUrls.push(uploaded);
+                    else throw new Error('La vidéo n’a pas pu être envoyée. Réessayez avant de publier.');
                 }
                 if (submitBtn) submitBtn.textContent = 'Publication…';
                 let createdPost = null;
@@ -4198,6 +4565,9 @@ safeDomReady(() => {
                 attachedVideoFile = null;
                 attachedPosterBlob = null;
                 pendingTrimFile = null;
+                videoAttachFailed = false;
+                videoPicked = false;
+                videoPreparePromise = null;
                 if (flashMediaPreviewContainer) flashMediaPreviewContainer.innerHTML = '';
                 if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
 
@@ -4219,6 +4589,7 @@ safeDomReady(() => {
             } catch (err) {
                 // A failed upload does not erase the draft or expose it publicly.
                 createFlashForm.hidden = false;
+                showPublishFailure(err.message || "Veuillez vous connecter pour publier.");
                 if (window.NotificationService) {
                     window.NotificationService.showToast('warning', err.message || "Veuillez vous connecter pour publier.");
                 }
@@ -4254,6 +4625,11 @@ safeDomReady(() => {
         if (preview) preview.innerHTML = '';
         if (photo) photo.value = '';
         if (video) video.value = '';
+        videoAttachFailed = false;
+        videoPicked = false;
+        videoPreparePromise = null;
+        pendingTrimFile = null;
+        document.getElementById('createFlashForm')?.querySelector('.bokantaj-publish-failure')?.remove();
         const infoType = document.querySelector('input[name="bokantajPostType"][value="info"]');
         if (infoType) infoType.checked = true;
         window.LYANN_BOKANTAJ_MAP?.resetComposerPlace?.();

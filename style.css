@@ -6064,6 +6064,17 @@ input:checked + .slider:before {
     border-color: #E7C4C0;
     color: #9B3A32;
 }
+.comment-review-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #FBF3E2;
+    color: #8A6A1F;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
 
 .flash-action-btn {
     background: transparent;
@@ -8893,6 +8904,116 @@ input:checked + .slider:before {
     border-radius: var(--radius-md);
     object-fit: cover;
     border: 2px solid var(--primary-light);
+}
+.bokantaj-video-attach-status {
+    margin: 8px 0 0;
+    font: 550 .86rem 'Outfit', sans-serif;
+    color: #35583F;
+}
+.bokantaj-video-attach-status.is-error { color: #9B2C2C; }
+
+/* --- Squelettes de chargement partagés --- */
+/* The blocks are decorative; screen readers get this line instead. */
+.lyann-skel-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.lyann-skel {
+    display: block;
+    background: #FFF;
+    border: 1px solid #E2E8F0;
+    border-radius: var(--radius-xl, 18px);
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.lyann-skel-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.lyann-skel-head-text {
+    display: grid;
+    gap: 6px;
+    flex: 1;
+}
+.lyann-skel-avatar,
+.lyann-skel-line,
+.lyann-skel-pill,
+.lyann-skel-chip,
+.lyann-skel-button {
+    display: block;
+    background: linear-gradient(90deg, #ECEFEA 25%, #F6F8F4 37%, #ECEFEA 63%);
+    background-size: 400% 100%;
+    animation: lyann-skel-shimmer 1.4s ease infinite;
+    border-radius: 8px;
+}
+.lyann-skel-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    flex: none;
+}
+.lyann-skel-avatar.is-large { width: 48px; height: 48px; }
+.lyann-skel-line {
+    height: 12px;
+    margin-bottom: 8px;
+}
+.lyann-skel-line.is-small { height: 9px; }
+.lyann-skel-line.is-title { height: 17px; margin-bottom: 12px; }
+.lyann-skel-pill {
+    width: 92px;
+    height: 20px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+}
+.lyann-skel-pill.is-small { width: 60px; }
+.lyann-skel-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+.lyann-skel-chip {
+    width: 76px;
+    height: 18px;
+    border-radius: 999px;
+}
+.lyann-skel-button {
+    width: 100%;
+    height: 40px;
+    border-radius: 20px;
+    margin-top: 12px;
+}
+@keyframes lyann-skel-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lyann-skel-avatar,
+    .lyann-skel-line,
+    .lyann-skel-pill,
+    .lyann-skel-chip,
+    .lyann-skel-button {
+        animation: none;
+        background: #ECEFEA;
+    }
+}
+
+.bokantaj-publish-failure {
+    margin: 10px 0 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #FDF0EF;
+    border: 1px solid #F0C9C5;
+    font: 600 .88rem 'Outfit', sans-serif;
+    color: #9B2C2C;
 }
 
 .flash-card-media-gallery {
@@ -12998,15 +13119,60 @@ body.is-native-app .navbar.scrolled,
 .bokantaj-video,
 .bokantaj-video-poster {
     width: 100%;
-    min-height: 180px;
-    max-height: 70vh;
+    aspect-ratio: var(--media-ratio, 16 / 9);
+    max-height: 86vh;
     background: #1e2822;
     border-radius: 16px;
     object-fit: contain;
 }
+/* Shape still unknown, which happens for clips published before the size was
+   written into the poster name: a slim bar is honest, a wide grey box lies. */
+.bokantaj-video-poster:not(.has-media-ratio),
+.bokantaj-video:not(.has-media-ratio) {
+    aspect-ratio: auto;
+    height: 76px;
+}
+.bokantaj-video-shell {
+    position: relative;
+    display: block;
+    margin-top: 10px;
+}
+/* Kept at the top so they never sit on the native control bar, which appears
+   at the bottom as soon as the member taps the video to scrub. */
+.bokantaj-video-controls {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    display: flex;
+    gap: 8px;
+}
+.bokantaj-video-sound,
+.bokantaj-video-expand {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(255, 253, 249, 0.42);
+    border-radius: 999px;
+    background: rgba(16, 24, 20, 0.82);
+    color: #fffdf9;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    /* The overlay sits on whatever the clip shows, bright sky included. */
+    box-shadow: 0 2px 10px rgba(12, 20, 15, 0.45);
+}
+.bokantaj-video-sound svg,
+.bokantaj-video-expand i {
+    display: block;
+}
 .bokantaj-video-poster {
     position: relative;
     display: block;
+    /* Same breathing room as the photo grid, so the media is never glued to
+       the text of the post. */
+    margin-top: 10px;
     padding: 0;
     border: 0;
     overflow: hidden;
@@ -13016,9 +13182,19 @@ body.is-native-app .navbar.scrolled,
 }
 .bokantaj-video-poster-image {
     width: 100%;
-    max-height: 70vh;
-    object-fit: cover;
+    height: 100%;
+    object-fit: contain;
     display: block;
+}
+.bokantaj-video-poster.is-loading span {
+    opacity: .85;
+}
+.bokantaj-video-poster .bokantaj-video-error {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    font: 550 .82rem 'Outfit', sans-serif;
 }
 .bokantaj-video-poster span {
     position: absolute;
@@ -18098,6 +18274,14 @@ div:has(> #cpHeadline) { display: none !important; }
 }
 .bokantaj-photos-1 { grid-template-columns: 1fr; }
 .bokantaj-photos-1 .bokantaj-photo { height: 280px; }
+/* A lone photo keeps the shape it was shot in, capped so a tall portrait
+   still leaves the card readable. */
+.bokantaj-photos-1 .bokantaj-photo.has-media-ratio {
+    height: auto;
+    aspect-ratio: var(--media-ratio, 4 / 3);
+    max-height: 86vh;
+}
+.bokantaj-photos-1 .bokantaj-photo.has-media-ratio img { object-fit: contain; }
 .bokantaj-photos-2 { grid-template-columns: 1fr 1fr; }
 .bokantaj-photos-2 .bokantaj-photo { height: 220px; }
 .bokantaj-photos-3 {

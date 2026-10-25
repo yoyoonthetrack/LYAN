@@ -106,6 +106,19 @@ test('a verified short MP4 with a clear poster is published, anything unverifiab
     });
     assert.equal(unverified.decision, 'pending');
     assert.equal(unverified.reason, 'video_unverified');
+    const posterOnly = await moderation.classifyContent({
+        text: 'La route est dégagée.',
+        media: [
+            { bucket: 'bokantaj-media-hold', path: 'user/clip.mov' },
+            { bucket: 'bokantaj-media-hold', path: 'user/clip-poster.jpg' }
+        ],
+        apiKey: 'test-key',
+        fetchImpl: clear,
+        inspectVideo: async () => ({ verified: false, reason: 'container' }),
+        downloadMedia: async () => ['data:image/jpeg;base64,aa']
+    });
+    assert.equal(posterOnly.decision, 'approved');
+    assert.equal(posterOnly.reason, 'video_poster_checked');
 });
 
 test('classifier outage, missing key and unreadable image stay pending', async () => {
@@ -224,11 +237,15 @@ test('build 9 can show a refusal sentence and still has no pending-state label',
 
 test('bokantaj photos load with a session and close the viewer with Fermer', () => {
     assert.match(script, /function loadBokantajMedia/);
+    assert.match(script, /function typedBokantajMediaBlob/);
     assert.match(script, /img\[src\*="\/v1\/media\/bokantaj-media"\]/);
     assert.match(script, /data-carousel-close>Fermer/);
     assert.match(script, /data-carousel-wait/);
     assert.match(script, /Chargement de la photo/);
     assert.match(script, /bokantajMediaCache/);
+    assert.match(script, /webkit-playsinline/);
+    assert.equal(moderation.mediaTypeFromPath('user/clip.mp4', 'application/octet-stream'), 'video/mp4');
+    assert.equal(moderation.mediaTypeFromPath('user/clip.mov', 'application/octet-stream'), 'video/quicktime');
 });
 
 test('the OpenAI key is not shipped in the public client or the moderation SQL', () => {

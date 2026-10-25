@@ -182,7 +182,7 @@
 
     function updatePlaceButton() {
         const label = $('bokantajPlaceTriggerLabel');
-        if (label) label.textContent = savedPlace ? '📍 ' + savedPlace.label : '📍 Partager une localisation';
+        if (label) label.textContent = savedPlace ? '📍 ' + savedPlace.label : 'Ajouter une localisation';
         const trigger = $('bokantajPlaceTrigger');
         if (trigger) trigger.classList.toggle('has-place', !!savedPlace);
     }
@@ -243,8 +243,7 @@
         const typed = $('bokantajPlaceName')?.value.trim() || '';
         const kept = savedPlace && savedPlace.label && savedPlace.label !== 'Repère partagé' ? savedPlace.label : '';
         const label = typed.length >= 2 ? typed : (kept || 'Repère partagé');
-        savedPlace = { lat: pub.lat, lng: pub.lng, label, exact: pub.exact };
-        updatePlaceButton();
+        if ($('bokantajPlaceName') && !$('bokantajPlaceName').value.trim()) $('bokantajPlaceName').value = label;
         const icon = window.L.divIcon({
             className: 'bokantaj-picker-pin',
             html: '<span></span>',
@@ -264,11 +263,11 @@
         if (input && guessed && (placeNameAuto || !input.value.trim() || input.value.trim() === 'Repère partagé')) {
             input.value = guessed;
             placeNameAuto = true;
-            savedPlace = { ...savedPlace, label: guessed };
-            updatePlaceButton();
         }
         refreshPlaceSummary(guessed || input?.value.trim() || '');
-        if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Repère placé. Localisation enregistrée ✓ Vous pouvez confirmer, déplacer ou retirer.';
+        if ($('bokantajPickerStatus')) {
+            $('bokantajPickerStatus').textContent = (guessed || input?.value.trim() || label) + ' · choisissez quartier ou point exact.';
+        }
         const gl = pickerMap._lyannGl;
         if (gl && typeof gl.once === 'function' && !guessed) {
             gl.once('idle', () => {
@@ -334,8 +333,8 @@
         if ($('bokantajPlaceName')) $('bokantajPlaceName').value = savedPlace?.label || '';
         refreshPlaceSummary(savedPlace?.label || '');
         $('bokantajPickerStatus').textContent = savedPlace
-            ? 'Repère placé. Confirmez, déplacez-le ou retirez-le.'
-            : 'Touchez la carte pour choisir un point.';
+            ? (savedPlace.label + ' · touchez la carte pour déplacer, puis choisissez comment partager.')
+            : 'Touchez la carte, puis choisissez comment la partager.';
         requestAnimationFrame(() => pickerMap.invalidateSize());
     }
 
@@ -389,14 +388,19 @@
             return;
         }
         if (label.length < 2 || label.length > 90) {
-            $('bokantajPickerStatus').textContent = 'Le nom du repère doit comporter entre 2 et 90 caractères.';
-            $('bokantajPlaceName')?.focus();
+            $('bokantajPickerStatus').textContent = 'Touchez d’abord un endroit sur la carte.';
             return;
         }
         const pub = publicCoordinate(pickerRaw?.lat ?? pickerPoint.lat, pickerRaw?.lng ?? pickerPoint.lng, placeWantsExact());
         savedPlace = { lat: pub.lat, lng: pub.lng, label, exact: pub.exact };
         updatePlaceButton();
         togglePicker(false);
+    }
+
+    function sharePlace(exact) {
+        if ($('bokantajPlaceExact')) $('bokantajPlaceExact').checked = !!exact;
+        if (pickerRaw) setPickerPoint(pickerRaw);
+        savePlace();
     }
 
     function resetComposerPlace() {
@@ -713,8 +717,10 @@
             pickerMap.setView([pickerPoint.lat, pickerPoint.lng], Math.max(pickerMap.getZoom(), 16));
             if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Repère placé. Faites-le glisser ou touchez un autre endroit.';
         });
-        $('bokantajPlaceSave').addEventListener('click', savePlace);
-        $('bokantajPlaceRemove').addEventListener('click', resetComposerPlace);
+        $('bokantajPlaceSave')?.addEventListener('click', savePlace);
+        $('bokantajShareQuarter')?.addEventListener('click', () => sharePlace(false));
+        $('bokantajShareExact')?.addEventListener('click', () => sharePlace(true));
+        $('bokantajPlaceRemove')?.addEventListener('click', resetComposerPlace);
         window.addEventListener('popstate', () => {
             if ($('bokantajPlacePicker') && !$('bokantajPlacePicker').hidden) togglePicker(false);
         });

@@ -1416,7 +1416,7 @@ function maisonMediaFile(payload, kind) {
     }
     const allowed = { 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' };
     if (!allowed[mime]) return { error: 'Choisis une vidéo MP4, MOV ou WebM.' };
-    if (buffer.length > 10 * 1024 * 1024) return { error: 'La vidéo doit faire moins de 10 Mo.' };
+    if (buffer.length > require('../bokantaj-video-policy').MAX_BYTES) return { error: 'La vidéo est trop lourde.' };
     return { buffer, mime, ext: allowed[mime] };
 }
 

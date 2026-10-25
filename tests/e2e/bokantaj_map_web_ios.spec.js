@@ -134,11 +134,10 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
     await page.locator('#bokantajPlaceTrigger').click();
     await expect(page.locator('#bokantajPlacePicker')).toBeVisible();
     await page.locator('#bokantajPickerMap').click({ position: { x: 130, y: 90 } });
-    // One intentional map tap must persist a point, even before optional naming.
-    await expect(page.locator('#bokantajPlaceTriggerLabel')).toContainText('Repère partagé');
-    expect(await page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace())).toEqual(expect.objectContaining({ label: 'Repère partagé' }));
+    await expect(page.locator('#bokantajPickerStatus')).toContainText('choisissez');
+    expect(await page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace())).toBeNull();
     await page.locator('#bokantajPlaceName').fill('Rond-point de Jarry');
-    await page.locator('#bokantajPlaceSave').click();
+    await page.locator('#bokantajShareQuarter').click();
     await expect(page.locator('#bokantajPlaceTriggerLabel')).toContainText('Jarry');
     expect(await page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace())).toEqual(expect.objectContaining({ label: 'Rond-point de Jarry' }));
     // Exercise the visible label, not a forced click on a visually hidden native radio.
@@ -235,18 +234,15 @@ test('GPS place stays approximate until the author shares the exact point', asyn
   await page.locator('#bokantajComposerOpen').click();
   await page.locator('#bokantajPlaceTrigger').click();
   await page.locator('#bokantajLocateMe').click();
-  await expect(page.locator('#bokantajPickerStatus')).toContainText('Repère placé');
-  await expect(page.locator('#bokantajPlaceSummaryTitle')).toHaveText('Position actuelle');
-  await expect(page.locator('#bokantajPlaceSummaryPrecision')).toContainText('quartier');
+  await expect(page.locator('#bokantajPickerStatus')).toContainText('choisissez');
   await page.locator('#bokantajPlaceName').fill('Pointe-à-Pitre');
-  await page.locator('#bokantajPlaceSave').click();
+  await page.locator('#bokantajShareQuarter').click();
   const approx = await page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace());
   expect(approx).toEqual({ lat: 16.241, lng: -61.534, label: 'Pointe-à-Pitre', exact: false });
   await page.locator('#bokantajPlaceTrigger').click();
   await page.locator('#bokantajLocateMe').click();
-  await expect(page.locator('#bokantajPickerStatus')).toContainText('Repère placé');
-  await page.locator('#bokantajPlaceExact').check();
-  await page.locator('#bokantajPlaceSave').click();
+  await expect(page.locator('#bokantajPickerStatus')).toContainText('choisissez');
+  await page.locator('#bokantajShareExact').click();
   const exact = await page.evaluate(() => window.LYANN_BOKANTAJ_MAP.getComposerPlace());
   expect(exact.exact).toBe(true);
   expect(exact.lat).toBeCloseTo(16.24119, 5);

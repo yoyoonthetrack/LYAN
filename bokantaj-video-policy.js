@@ -1,13 +1,54 @@
 'use strict';
 
 const MAX_SECONDS = 60;
-const MAX_BYTES = 10 * 1024 * 1024;
-const MAX_LONG_EDGE = 1280;
-const MAX_SHORT_EDGE = 720;
+// Stored size, after the client re-encodes. Phones shoot far above it, so the
+// picked file is allowed to be much larger and is converted before upload.
+const MAX_BYTES = 40 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 512 * 1024 * 1024;
+const MAX_LONG_EDGE = 1920;
+const MAX_SHORT_EDGE = 1080;
 const PIN_MAX_MS = 7 * 24 * 60 * 60 * 1000;
 const TRAFFIC_PIN_MS = 24 * 60 * 60 * 1000;
 const ORPHAN_MIN_AGE_MS = 48 * 60 * 60 * 1000;
 const PRODUCTION_REF = 'gzispjfoywklpqatjyop';
+
+function videoKind(file) {
+    const mime = String(file && file.type || '').toLowerCase();
+    const name = String(file && file.name || '').toLowerCase();
+    if (mime === 'video/mp4' || mime === 'video/x-m4v' || name.endsWith('.mp4') || name.endsWith('.m4v')) {
+        return { mime: 'video/mp4', ext: 'mp4' };
+    }
+    if (mime === 'video/quicktime' || name.endsWith('.mov')) {
+        return { mime: 'video/quicktime', ext: 'mov' };
+    }
+    if (mime === 'video/webm' || name.endsWith('.webm')) {
+        return { mime: 'video/webm', ext: 'webm' };
+    }
+    if (mime === 'video/mov' || mime === 'video/x-quicktime') {
+        return { mime: 'video/quicktime', ext: 'mov' };
+    }
+    if (mime.startsWith('video/')) {
+        return { mime: mime, ext: 'mp4' };
+    }
+    return null;
+}
+
+// A file whose duration no decoder could read cannot be re-encoded either, so
+// it may only be attached when it already fits the stored limit.
+function canAttachWithoutDuration(file) {
+    return Boolean(videoKind(file) && file && file.size > 0 && file.size <= MAX_BYTES);
+}
+
+function needsReencode(file, meta, clip) {
+    const bytes = Number(file && file.size) || 0;
+    if (bytes > MAX_BYTES) return true;
+    const width = Number(meta && meta.width) || 0;
+    const height = Number(meta && meta.height) || 0;
+    if (Math.max(width, height) > MAX_LONG_EDGE || Math.min(width, height) > MAX_SHORT_EDGE) return true;
+    const duration = Number(meta && meta.duration);
+    if (!clip || !Number.isFinite(duration)) return false;
+    return Math.abs((Number(clip.end) - Number(clip.start)) - duration) >= 0.3;
+}
 
 function clipWindow(duration, start, end) {
     const total = Number(duration);
@@ -28,10 +69,12 @@ function round3(value) {
     return Math.round(value * 1000) / 1000;
 }
 
+// The feed downloads the whole private file before playing it, so quality is
+// pushed as far as 1080p allows while keeping a minute under the stored limit.
 function targetVideoBitsPerSecond(seconds) {
     const span = Math.max(1, Number(seconds) || 1);
-    const budgetBits = 9 * 1024 * 1024 * 8;
-    return Math.max(250000, Math.min(1200000, Math.floor(budgetBits / span)));
+    const budgetBits = (MAX_BYTES - 3 * 1024 * 1024) * 8;
+    return Math.max(600000, Math.min(5000000, Math.floor(budgetBits / span)));
 }
 
 function fitFrame(width, height) {
@@ -44,23 +87,47 @@ function fitFrame(width, height) {
     };
 }
 
+// The poster carries the frame size in its name, so a card can reserve the
+// real shape of the clip before fetching anything. Names without it stay valid.
+const POSTER_PATTERN = /-poster(?:-(\d+)x(\d+))?\.jpe?g(?:[?#]|$)/i;
+
+function posterName(id, width, height) {
+    const w = Math.round(Number(width) || 0);
+    const h = Math.round(Number(height) || 0);
+    return w > 0 && h > 0 ? `${id}-poster-${w}x${h}.jpg` : `${id}-poster.jpg`;
+}
+
 function isPosterUrl(url) {
-    return /-poster\.jpe?g(?:[?#]|$)/i.test(String(url || ''));
+    return POSTER_PATTERN.test(String(url || ''));
+}
+
+function posterRatio(url) {
+    const match = POSTER_PATTERN.exec(String(url || ''));
+    const width = Number(match && match[1]);
+    const height = Number(match && match[2]);
+    if (!(width > 0) || !(height > 0)) return null;
+    return { width, height };
 }
 
 function posterFor(videoUrl, urls) {
     const base = String(videoUrl || '').split(/[?#]/)[0].replace(/\.(mp4|mov|webm|m4v)$/i, '');
     if (!base) return '';
-    return (Array.isArray(urls) ? urls : []).find((url) => String(url || '').split(/[?#]/)[0] === `${base}-poster.jpg`) || '';
+    return (Array.isArray(urls) ? urls : []).find((url) => {
+        const clean = String(url || '').split(/[?#]/)[0];
+        return clean.startsWith(`${base}-poster`) && POSTER_PATTERN.test(clean);
+    }) || '';
 }
 
 function playbackMarkup(videoUrl, posterUrl) {
     const video = escapeAttr(videoUrl);
     const poster = escapeAttr(posterUrl);
+    const ratio = posterRatio(posterUrl);
+    const shaped = ratio ? ' has-media-ratio' : '';
+    const style = ratio ? ` style="--media-ratio:${ratio.width} / ${ratio.height}"` : '';
     const image = poster
         ? `<img src="${poster}" alt="" class="bokantaj-video-poster-image">`
         : '';
-    return `<button type="button" class="bokantaj-video-poster" data-video-src="${video}">${image}<span>Lire la vidéo</span></button>`;
+    return `<button type="button" class="bokantaj-video-poster${shaped}" data-video-src="${video}"${style}>${image}<span>Lire la vidéo</span></button>`;
 }
 
 function escapeAttr(value) {
@@ -151,16 +218,22 @@ function volumeOf(objects) {
 const api = {
     MAX_SECONDS,
     MAX_BYTES,
+    MAX_SOURCE_BYTES,
     MAX_LONG_EDGE,
     MAX_SHORT_EDGE,
     PIN_MAX_MS,
     TRAFFIC_PIN_MS,
     ORPHAN_MIN_AGE_MS,
     PRODUCTION_REF,
+    videoKind,
+    canAttachWithoutDuration,
+    needsReencode,
     clipWindow,
     targetVideoBitsPerSecond,
     fitFrame,
     isPosterUrl,
+    posterName,
+    posterRatio,
     posterFor,
     playbackMarkup,
     mapPinVisible,

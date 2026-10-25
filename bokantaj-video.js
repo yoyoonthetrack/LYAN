@@ -7,6 +7,24 @@
     const policy = window.LYANN_BOKANTAJ_VIDEO_POLICY;
     if (!policy) return;
 
+    // Re-encoding runs in real time, so a 60 s clip needs more than a minute.
+    const ENCODE_GRACE_MS = 20000;
+    const PREPARE_DEADLINE_MS = 150000;
+    const FAST_DEADLINE_MS = 60000;
+    const POSTER_DEADLINE_MS = 30000;
+
+    // Each step below waits on media events that some WebViews never fire;
+    // without a deadline the composer stays on "Préparation" forever.
+    function withDeadline(promise, ms, message) {
+        return new Promise((resolve, reject) => {
+            const timer = window.setTimeout(() => reject(new Error(message)), ms);
+            promise.then(
+                (value) => { window.clearTimeout(timer); resolve(value); },
+                (err) => { window.clearTimeout(timer); reject(err); }
+            );
+        });
+    }
+
     function readMeta(file) {
         return new Promise((resolve) => {
             const url = URL.createObjectURL(file);
@@ -25,7 +43,7 @@
                 duration: video.duration,
                 width: video.videoWidth,
                 height: video.videoHeight
-            }), 2500);
+            }), 8000);
             video.onloadedmetadata = () => {
                 if (Number.isFinite(video.duration) && video.duration > 0) {
                     window.clearTimeout(timeout);
@@ -45,6 +63,12 @@
                     finish({ duration: NaN, width: video.videoWidth, height: video.videoHeight });
                 }
             };
+            video.onloadeddata = () => {
+                if (Number.isFinite(video.duration) && video.duration > 0) {
+                    window.clearTimeout(timeout);
+                    finish({ duration: video.duration, width: video.videoWidth, height: video.videoHeight });
+                }
+            };
             video.onerror = () => {
                 window.clearTimeout(timeout);
                 finish({ duration: NaN, width: 0, height: 0 });
@@ -60,9 +84,20 @@
             video.preload = 'auto';
             video.muted = true;
             video.playsInline = true;
-            video.onerror = () => {
+            let settled = false;
+            const finish = (err, blob) => {
+                if (settled) return;
+                settled = true;
+                window.clearTimeout(timer);
                 URL.revokeObjectURL(url);
-                reject(new Error('La miniature n’a pas pu être créée.'));
+                if (blob) resolve(blob);
+                else reject(err || new Error('La miniature n’a pas pu être créée.'));
+            };
+            // A 4K gallery file needs several seconds just to load and seek on
+            // a phone; 3 s gave up on exactly the files that matter most.
+            const timer = window.setTimeout(() => finish(new Error('La miniature n’a pas pu être créée.')), 12000);
+            video.onerror = () => {
+                finish(new Error('La miniature n’a pas pu être créée.'));
             };
             video.onloadeddata = () => {
                 const seekTo = Math.min(Math.max(0, at || 0), Math.max(0, (video.duration || 1) - 0.05));
@@ -72,11 +107,7 @@
                     canvas.width = frame.width;
                     canvas.height = frame.height;
                     canvas.getContext('2d').drawImage(video, 0, 0, frame.width, frame.height);
-                    canvas.toBlob((blob) => {
-                        URL.revokeObjectURL(url);
-                        if (!blob) reject(new Error('La miniature n’a pas pu être créée.'));
-                        else resolve(blob);
-                    }, 'image/jpeg', 0.72);
+                    canvas.toBlob((blob) => finish(null, blob), 'image/jpeg', 0.72);
                 };
                 video.onseeked = draw;
                 // Seeking to 0 when the player is already at 0 does not fire
@@ -104,7 +135,13 @@
                 URL.revokeObjectURL(url);
                 reject(new Error('La vidéo ne peut pas être lue pour le découpage.'));
             };
+            // iOS fires neither loadeddata nor error for some gallery MOV files.
+            const openWatch = window.setTimeout(() => {
+                URL.revokeObjectURL(url);
+                reject(new Error('Cette vidéo ne peut pas être préparée sur cet appareil. Choisissez un MP4 de 40 Mo maximum.'));
+            }, 12000);
             video.onloadeddata = async () => {
+                window.clearTimeout(openWatch);
                 const frame = policy.fitFrame(video.videoWidth, video.videoHeight);
                 const canvas = document.createElement('canvas');
                 canvas.width = frame.width;
@@ -112,7 +149,7 @@
                 const context = canvas.getContext('2d');
                 if (!canvas.captureStream || typeof MediaRecorder === 'undefined') {
                     URL.revokeObjectURL(url);
-                    const error = new Error('Cet appareil ne peut pas compresser la vidéo. Choisissez un MP4 de 60 secondes et 10 Mo maximum.');
+                    const error = new Error('Cet appareil ne peut pas convertir la vidéo. Choisissez un MP4 de 60 secondes et 40 Mo maximum.');
                     error.code = 'encode_unsupported';
                     reject(error);
                     return;
@@ -179,7 +216,7 @@
                     const type = 'video/mp4';
                     const blob = new Blob(chunks, { type });
                     if (!blob.size || blob.size > policy.MAX_BYTES) {
-                        reject(new Error('Le passage choisi dépasse encore 10 Mo. Raccourcissez-le.'));
+                        reject(new Error('Le passage choisi reste trop lourd après conversion. Raccourcissez-le.'));
                         return;
                     }
                     resolve(new File([blob], type === 'video/mp4' ? 'bokantaj.mp4' : 'bokantaj.webm', { type }));
@@ -219,24 +256,119 @@
         });
     }
 
-    async function prepareClip(file, start, end) {
-        const meta = await readMeta(file);
+    function namedVideo(file) {
+        const kind = policy.videoKind(file);
+        if (!kind) {
+            const error = new Error('Choisissez une vidéo MP4, MOV ou WebM.');
+            error.code = 'type';
+            throw error;
+        }
+        if (file.type === kind.mime) return { file, kind };
+        return {
+            kind,
+            file: new File([file], file.name || ('bokantaj.' + kind.ext), { type: kind.mime, lastModified: file.lastModified || Date.now() })
+        };
+    }
+
+    // WebCodecs converts far faster than real time; the recorder stays as the
+    // fallback for devices that lack it or files it cannot parse.
+    async function convert(source, clip, meta) {
+        const fast = window.LYANN_BOKANTAJ_VIDEO_FAST;
+        if (fast && fast.codecsAvailable()) {
+            try {
+                return await withDeadline(
+                    fast.fastClip(source, clip.start, clip.end, meta),
+                    FAST_DEADLINE_MS,
+                    'La conversion de la vidéo a pris trop de temps.'
+                );
+            } catch (err) {
+                if (window.console && console.info) {
+                    console.info('[BOKANTAJ] conversion rapide indisponible:', err && err.message);
+                }
+            }
+        }
+        try {
+            const recorded = await withDeadline(
+                recordClip(source, clip.start, clip.end),
+                Math.ceil((clip.end - clip.start) * 1000) + ENCODE_GRACE_MS,
+                'La conversion de la vidéo a pris trop de temps. Choisissez un extrait plus court.'
+            );
+            return { file: recorded, poster: null };
+        } catch (err) {
+            if (source.size > policy.MAX_BYTES) throw err;
+            return { file: source, poster: null };
+        }
+    }
+
+    // Moderation can only release a video once it has a poster to review, so a
+    // missing one means a post nobody would ever see. The decoder is tried
+    // first: it is the only route that holds up on large gallery files.
+    async function posterOf(source, at) {
+        const fast = window.LYANN_BOKANTAJ_VIDEO_FAST;
+        if (fast && fast.firstFrame && fast.codecsAvailable()) {
+            try {
+                return await withDeadline(
+                    fast.firstFrame(source, at),
+                    POSTER_DEADLINE_MS,
+                    'La miniature n’a pas pu être créée.'
+                );
+            } catch (err) { /* the <video> route below is the fallback */ }
+        }
+        try {
+            return await grabPoster(source, at);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function posterError() {
+        const error = new Error('La miniature de la vidéo n’a pas pu être créée. Réessayez avec une autre vidéo.');
+        error.code = 'poster';
+        return error;
+    }
+
+    function prepareClip(file, start, end) {
+        return withDeadline(
+            prepareClipSteps(file, start, end),
+            PREPARE_DEADLINE_MS,
+            'La préparation de la vidéo n’a pas abouti. Réessayez avec un extrait plus court.'
+        );
+    }
+
+    async function prepareClipSteps(file, start, end) {
+        const named = namedVideo(file);
+        const source = named.file;
+        const meta = await readMeta(source);
+        if (!Number.isFinite(meta.duration) || meta.duration <= 0) {
+            if (!policy.canAttachWithoutDuration(source)) {
+                const error = new Error('Cette vidéo n’a pas pu être lue. Choisissez un extrait de 60 s et 40 Mo maximum.');
+                error.code = 'duration';
+                throw error;
+            }
+            const unreadPoster = await posterOf(source, 0);
+            if (!unreadPoster) throw posterError();
+            return { file: source, poster: unreadPoster, start: 0, end: 0 };
+        }
         const window = policy.clipWindow(meta.duration, start, end);
         if (!window.ok) {
             const error = new Error(window.reason === 'needs_trim'
                 ? 'Choisissez un passage de 60 secondes maximum.'
-                : 'Ce passage vidéo est trop court.');
+                : window.reason === 'duration'
+                    ? 'Cette vidéo n’a pas pu être lue. Essayez un autre extrait de la galerie.'
+                    : 'Ce passage vidéo est trop court.');
             error.code = window.reason;
             throw error;
         }
-        const poster = await grabPoster(file, window.start);
-        const untouched = file.type === 'video/mp4'
-            && file.size <= policy.MAX_BYTES
-            && meta.width <= policy.MAX_LONG_EDGE + 2
-            && meta.height <= policy.MAX_SHORT_EDGE + 2
-            && Math.abs((window.end - window.start) - meta.duration) < 0.3;
-        const output = untouched ? file : await recordClip(file, window.start, window.end);
-        return { file: output, poster, start: window.start, end: window.end };
+        let poster = null;
+        let output = source;
+        if (policy.needsReencode(source, meta, window)) {
+            const converted = await convert(source, window, meta);
+            output = converted.file;
+            poster = converted.poster;
+        }
+        if (!poster) poster = await posterOf(source, window.start);
+        if (!poster) throw posterError();
+        return { file: output, poster, start: window.start, end: window.end, converted: output !== source };
     }
 
     window.LYANN_BOKANTAJ_VIDEO = {
@@ -249,6 +381,7 @@
         posterFor: policy.posterFor,
         playbackMarkup: policy.playbackMarkup,
         MAX_SECONDS: policy.MAX_SECONDS,
-        MAX_BYTES: policy.MAX_BYTES
+        MAX_BYTES: policy.MAX_BYTES,
+        MAX_SOURCE_BYTES: policy.MAX_SOURCE_BYTES
     };
 })();

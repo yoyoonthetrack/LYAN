@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LYANN — squelettes de chargement</title>
+<link rel="stylesheet" href="../../style.css?v=20261025skel">
+<style>
+    body { background: #FBF7EF; font-family: 'Outfit', sans-serif; padding: 16px; }
+    .zone { max-width: 420px; margin: 0 auto 20px; }
+    h2 { font-size: .9rem; color: #35583F; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+    <div class="zone"><h2>Bokantaj</h2><div id="bokantaj"></div></div>
+    <div class="zone"><h2>Lyanneurs</h2><div id="profiles"></div></div>
+    <div class="zone"><h2>Annonces</h2><div id="annonces"></div></div>
+<script src="../../lyann-skeleton.js"></script>
+<script>
+window.LYANN_SKELETON.show(document.getElementById('bokantaj'), 'bokantaj', 2);
+window.LYANN_SKELETON.show(document.getElementById('profiles'), 'profile', 1);
+window.LYANN_SKELETON.show(document.getElementById('annonces'), 'annonce', 1);
+
+// Proves the threshold: a fast load must never flash a skeleton.
+window.LYANN_SKELETON_PROBE = (async () => {
+    const fast = document.createElement('div');
+    document.body.appendChild(fast);
+    window.LYANN_SKELETON.show(fast, 'bokantaj', 2);
+    window.LYANN_SKELETON.clear(fast);
+    await new Promise((r) => setTimeout(r, 400));
+    const flashed = fast.children.length > 0;
+    fast.remove();
+
+    const slow = document.createElement('div');
+    document.body.appendChild(slow);
+    window.LYANN_SKELETON.show(slow, 'bokantaj', 2);
+    await new Promise((r) => setTimeout(r, 400));
+    const appeared = slow.querySelectorAll('.lyann-skel').length;
+    const busy = slow.getAttribute('aria-busy');
+    slow.remove();
+    return { flashedOnFastLoad: flashed, appearedOnSlowLoad: appeared, busy };
+})();
+</script>
+</body>
+</html>

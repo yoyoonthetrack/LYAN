@@ -43,6 +43,8 @@
     "google-auth-library": "11.3.1",
     "leaflet": "1.9.4",
     "maplibre-gl": "5.6.1",
+    "mp4-muxer": "5.1.5",
+    "mp4box": "0.5.2",
     "pdfkit": "0.20.2",
     "stripe": "^23.0.0",
     "twilio": "^5.2.2"

@@ -33,7 +33,7 @@
     return items.filter((item) => {
       if (!item) return false;
       if (item.item_type !== 'POST' || item.request_id) return false;
-      return isPubliclyVisible(item);
+      return isPubliclyVisible(item, currentMemberId());
     });
   }
 

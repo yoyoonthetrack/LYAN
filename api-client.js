@@ -267,6 +267,20 @@ function displayedBokantajMediaUrl(value) {
     return staging ? staging + url.slice('https://lyann.app'.length) : url;
 }
 
+// The poster size is kept in its file name so the feed can lay out the card
+// before any media is fetched.
+async function readImageSize(blob) {
+    try {
+        if (typeof createImageBitmap === 'function') {
+            const bitmap = await createImageBitmap(blob);
+            const size = { width: bitmap.width, height: bitmap.height };
+            if (typeof bitmap.close === 'function') bitmap.close();
+            return size;
+        }
+    } catch (err) { /* the name simply carries no size */ }
+    return null;
+}
+
 function holdMediaUrl(bucket, objectPath) {
     const binding = resolveLyannClientBinding();
     if (!binding.ok) throw new Error('Environnement média non configuré.');
@@ -1756,11 +1770,13 @@ const LYANN_API_CLIENT = {
         if (!this.supabase || !file) throw new Error('Vidéo indisponible');
         const user = await this.getCurrentUser();
         if (!user) throw new Error('Veuillez vous connecter');
-        const mime = String(file.type || '').toLowerCase();
-        const allowed = { 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' };
-        if (!allowed[mime] || file.size > 10 * 1024 * 1024) {
-            throw new Error('Choisissez une vidéo MP4, MOV ou WebM de moins de 10 Mo.');
+        const kind = window.LYANN_BOKANTAJ_VIDEO_POLICY?.videoKind?.(file)
+            || ({ 'video/mp4': { mime: 'video/mp4', ext: 'mp4' }, 'video/quicktime': { mime: 'video/quicktime', ext: 'mov' }, 'video/webm': { mime: 'video/webm', ext: 'webm' } }[String(file.type || '').toLowerCase()]);
+        const limit = window.LYANN_BOKANTAJ_VIDEO_POLICY?.MAX_BYTES || 25 * 1024 * 1024;
+        if (!kind || file.size > limit) {
+            throw new Error('Cette vidéo reste trop lourde après conversion. Choisissez un extrait plus court.');
         }
+        const mime = kind.mime;
         const duration = await new Promise((resolve) => {
             const url = URL.createObjectURL(file);
             const video = document.createElement('video');
@@ -1769,17 +1785,22 @@ const LYANN_API_CLIENT = {
             video.onerror = () => { URL.revokeObjectURL(url); resolve(NaN); };
             video.src = url;
         });
-        if (!Number.isFinite(duration) || duration <= 0 || duration > 60) {
+        if (Number.isFinite(duration) && (duration <= 0 || duration > 60)) {
             throw new Error('La vidéo doit durer 60 secondes au plus.');
         }
+        // Moderation reviews the poster to release the video, so sending the
+        // clip alone would create a post that stays pending for ever.
+        const posterBlob = arguments[1];
+        if (!posterBlob) {
+            throw new Error('La miniature de la vidéo manque. Rechoisissez la vidéo avant de publier.');
+        }
         const id = crypto.randomUUID();
-        const path = `${user.id}/${id}.${allowed[mime]}`;
+        const path = `${user.id}/${id}.${kind.ext}`;
         const { error } = await this.supabase.storage.from('bokantaj-media-hold').upload(path, file, { contentType: mime });
         if (error) throw new Error('La vidéo n’a pas pu être envoyée. Réessayez avant de publier.');
         const videoUrl = holdMediaUrl('bokantaj-media-hold', path);
-        const posterBlob = arguments[1];
-        if (!posterBlob) return { video: videoUrl, poster: null };
-        const posterPath = `${user.id}/${id}-poster.jpg`;
+        const posterSize = await readImageSize(posterBlob);
+        const posterPath = `${user.id}/${window.LYANN_BOKANTAJ_VIDEO_POLICY.posterName(id, posterSize?.width, posterSize?.height)}`;
         const posterUpload = await this.supabase.storage.from('bokantaj-media-hold').upload(posterPath, posterBlob, { contentType: 'image/jpeg' });
         if (posterUpload.error) {
             await this.supabase.storage.from('bokantaj-media-hold').remove([path]);
@@ -1917,19 +1938,36 @@ const LYANN_API_CLIENT = {
         const matchCol = isLyann ? 'request_id' : 'post_id';
 
         try {
-            const { data, error } = await this.supabase
+            const session = await this.getCurrentUser();
+            const approved = this.supabase
                 .from('bokantaj_comments')
                 .select('*, profiles:author_id(first_name, last_name, avatar_url, city)')
                 // Admin privileges should not reveal moderated comments inside ordinary threads.
                 .eq('public_moderation_status', 'approved')
                 .eq(matchCol, targetId)
                 .order('created_at', { ascending: true });
+            // A member sees their own comment while it is being checked; the
+            // list is read right after sending, before the check has answered.
+            const own = session?.id
+                ? this.supabase
+                    .from('bokantaj_comments')
+                    .select('*, profiles:author_id(first_name, last_name, avatar_url, city)')
+                    .eq('public_moderation_status', 'pending')
+                    .eq('author_id', session.id)
+                    .eq(matchCol, targetId)
+                    .order('created_at', { ascending: true })
+                : Promise.resolve({ data: [], error: null });
+            const [approvedRes, ownRes] = await Promise.all([approved, own]);
 
-            if (error) {
-                console.warn("Error fetching comments:", error);
+            if (approvedRes.error) {
+                console.warn("Error fetching comments:", approvedRes.error);
                 return [];
             }
-            return data || [];
+            const rows = (approvedRes.data || []).concat(ownRes.error ? [] : (ownRes.data || []));
+            rows.forEach((row) => {
+                if (row.public_moderation_status === 'pending') row.awaiting_review = true;
+            });
+            return rows.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
         } catch (e) {
             return [];
         }

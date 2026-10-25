@@ -16,10 +16,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20261024type">
+    <link rel="stylesheet" href="style.css?v=20261025comments">
     <link rel="stylesheet" href="universe-header.css?v=20261018sheet2">
     <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=5.6.1">
-    <link rel="stylesheet" href="bokantaj-map.css?v=20261024tabs">
+    <link rel="stylesheet" href="bokantaj-map.css?v=20261024place">
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4">
     
     <!-- Phosphor Icons -->
@@ -188,26 +188,28 @@
                                 <button type="button" id="bokantajTrimApply">Utiliser ce passage</button>
                             </div>
                             <div class="bokantaj-place-composer">
-                                <button type="button" id="bokantajPlaceTrigger" class="bokantaj-place-trigger" aria-expanded="false" aria-controls="bokantajPlacePicker"><i class="ph ph-map-pin" aria-hidden="true"></i> <span id="bokantajPlaceTriggerLabel">Ajouter un lieu (facultatif)</span></button>
+                                <button type="button" id="bokantajPlaceTrigger" class="bokantaj-place-trigger" aria-expanded="false" aria-controls="bokantajPlacePicker"><i class="ph ph-map-pin" aria-hidden="true"></i> <span id="bokantajPlaceTriggerLabel">Ajouter une localisation</span></button>
                                 <div id="bokantajPlacePicker" class="bokantaj-place-picker" hidden>
-                                    <div class="bokantaj-place-modes" role="group" aria-label="Placer le repère">
-                                        <button type="button" id="bokantajLocateMe"><i class="ph ph-navigation-arrow" aria-hidden="true"></i> Me localiser</button>
-                                        <button type="button" id="bokantajPickOnMap" aria-pressed="true"><i class="ph ph-map-trifold" aria-hidden="true"></i> Choisir sur la carte</button>
+                                    <div class="bokantaj-picker-map-wrap">
+                                        <div id="bokantajPickerMap" class="bokantaj-picker-map" aria-label="Choisir un lieu sur la carte"></div>
+                                        <button type="button" id="bokantajLocateMe" class="bokantaj-picker-locate" aria-label="Me localiser"><i class="ph ph-navigation-arrow" aria-hidden="true"></i></button>
                                     </div>
-                                    <div id="bokantajPickerMap" class="bokantaj-picker-map" aria-label="Choisir un lieu sur la carte"></div>
-                                    <div class="bokantaj-place-summary" id="bokantajPlaceSummary">
+                                    <p class="bokantaj-place-status" id="bokantajPickerStatus" role="status">Touchez la carte, puis choisissez comment la partager.</p>
+                                    <div class="bokantaj-place-share" role="group" aria-label="Comment partager ce lieu">
+                                        <button type="button" id="bokantajShareQuarter" class="bokantaj-place-share-btn is-quarter">Partager le nom du quartier</button>
+                                        <button type="button" id="bokantajShareExact" class="bokantaj-place-share-btn is-exact">Partager la localisation précise</button>
+                                    </div>
+                                    <button type="button" id="bokantajPlaceRemove" class="bokantaj-place-clear">Retirer le lieu</button>
+                                    <button type="button" id="bokantajPickOnMap" hidden aria-pressed="true">Choisir sur la carte</button>
+                                    <input type="checkbox" id="bokantajPlaceExact" hidden>
+                                    <label class="visually-hidden" for="bokantajPlaceName">Nom du quartier</label>
+                                    <input type="text" id="bokantajPlaceName" maxlength="90" hidden autocomplete="off">
+                                    <button type="button" id="bokantajPlaceSave" hidden>Confirmer</button>
+                                    <button type="button" id="bokantajPlaceMove" hidden>Déplacer</button>
+                                    <div hidden>
                                         <strong id="bokantajPlaceSummaryTitle">Position actuelle</strong>
-                                        <span id="bokantajPlaceSummaryMeta">Touchez la carte ou localisez-vous.</span>
+                                        <span id="bokantajPlaceSummaryMeta"></span>
                                         <span id="bokantajPlaceSummaryPrecision">Les autres verront le quartier, pas votre position exacte.</span>
-                                    </div>
-                                    <label class="bokantaj-exact-consent"><input type="checkbox" id="bokantajPlaceExact"> Partager le point exact</label>
-                                    <label for="bokantajPlaceName">Nom du quartier</label>
-                                    <input type="text" id="bokantajPlaceName" maxlength="90" placeholder="Ex. Jarry, Les Abymes…" autocomplete="off">
-                                    <p class="bokantaj-place-status" id="bokantajPickerStatus" role="status">Touchez la carte pour choisir un point.</p>
-                                    <div class="bokantaj-place-picker-actions">
-                                        <button type="button" id="bokantajPlaceMove" class="bokantaj-place-secondary">Déplacer</button>
-                                        <button type="button" id="bokantajPlaceRemove" class="bokantaj-place-secondary">Retirer</button>
-                                        <button type="button" id="bokantajPlaceSave" class="bokantaj-place-primary">Confirmer</button>
                                     </div>
                                 </div>
                             </div>
@@ -1808,13 +1810,13 @@
     <script src="sentry-init.js?v=20260916"></script>
     <script src="surface-manager.js?v=20260922s"></script>
     <script src="app-router.js?v=20261018legal"></script>
-    <script src="api-client.js?v=20261023-bokv11"></script>
+    <script src="api-client.js?v=20261025comments"></script>
     <script src="session-store.js"></script>
     <script src="auth-state.js"></script>
     <script src="data-cache.js"></script>
     <script src="maison-catalog.js?v=20260922c"></script>
     <script src="profile-repository.js?v=20260922c"></script>
-    <script src="bokantaj-repository.js?v=20261023-bokv11"></script>
+    <script src="bokantaj-repository.js?v=20261024vmod"></script>
     <script src="bokantaj-feed-query.js"></script>
     <script src="annonce-format.js?v=20260922e"></script>
     <script src="commune-geo.js?v=20260922e"></script>
@@ -1842,13 +1844,15 @@
 <script src="notifications-ui.js"></script>
     <script src="app-shell.js?v=20261024auth"></script>
     <script src="messaging-ui.js?v=20261015j"></script>
-    <script src="bokantaj-video-policy.js?v=20261023-video"></script>
-    <script src="bokantaj-video.js?v=20261023-video"></script>
-    <script src="script.js?v=20261024poll"></script>
+    <script src="lyann-skeleton.js?v=20261025skel"></script>
+    <script src="bokantaj-video-policy.js?v=20261025vmedia"></script>
+    <script src="bokantaj-video-fast.js?v=20261025comments"></script>
+    <script src="bokantaj-video.js?v=20261025comments"></script>
+    <script src="script.js?v=20261025comments"></script>
     <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
     <script src="vendor/maplibre/maplibre-gl.js?v=5.6.1"></script>
     <script src="vendor/maplibre/leaflet-maplibre-gl.js?v=0.1.4"></script>
-    <script src="bokantaj-map.js?v=20261023-video"></script>
+    <script src="bokantaj-map.js?v=20261024place"></script>
     <script src="onboarding.js"></script>
     <script src="profile-completion.js"></script>
 

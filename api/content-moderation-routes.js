@@ -11,6 +11,7 @@ const {
     containsVideo,
     mediaAccess,
     mediaFromStoredUrl,
+    mediaTypeFromPath,
     normalizeMedia
 } = require('./content-moderation');
 
@@ -425,7 +426,7 @@ async function serveModeratedMedia({ supabaseAdmin, verifyAdminPermission, bucke
     if (access !== 'stream') return { status: 404, body: null };
     if (release.data?.status === 'approved' &&
         ['bokantaj-media-hold', 'bokantaj-media'].includes(bucket) &&
-        (release.data?.kind === 'video' || /-poster\.jpe?g$/i.test(path))) {
+        (release.data?.kind === 'video' || /-poster(?:-\d+x\d+)?\.jpe?g$/i.test(path))) {
         const stillPublished = await isApprovedBokantajMediaReference(supabaseAdmin, bucket, path);
         if (!stillPublished) return { status: 404, body: null };
     }
@@ -434,7 +435,10 @@ async function serveModeratedMedia({ supabaseAdmin, verifyAdminPermission, bucke
     const bytes = Buffer.from(await downloaded.data.arrayBuffer());
     // The storage object is small (Bokantaj <=10 MiB), and range extraction
     // happens only after the existing moderation access control above.
-    return { ...sliceMediaRange(bytes, range), type: downloaded.data.type || 'application/octet-stream' };
+    return {
+        ...sliceMediaRange(bytes, range),
+        type: mediaTypeFromPath(path, downloaded.data.type || 'application/octet-stream')
+    };
 }
 
 module.exports = {

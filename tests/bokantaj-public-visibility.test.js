@@ -59,6 +59,17 @@ test('quiet moderation refresh removes hidden comments from an already-open draw
     assert.match(refresh, /window\.renderBokantajCommentRow\(row, targetId\)/);
 });
 
+test('a re-render refills the drawer it just rebuilt', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
+    const start = source.indexOf('window.loadBokantajFeedFromSupabase');
+    const end = source.indexOf('// Initial feed trigger', start);
+    const loader = source.slice(start, end);
+    // Without this the drawer comes back on its loading placeholder and the
+    // member no longer sees the comment they just posted.
+    assert.match(loader, /if \(openIds\.length\) paintOpenCommentDrawers\(openIds\)/);
+    assert.match(source, /function paintOpenCommentDrawers\(ids\)/);
+});
+
 test('quiet feed refresh keeps an open comment drawer mounted', () => {
     const source = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
     const start = source.indexOf('window.loadBokantajFeedFromSupabase');

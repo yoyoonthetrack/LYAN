@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Bokantaj — conversion WebCodecs</title>
+</head>
+<body>
+<pre id="out">en attente…</pre>
+<script src="../../bokantaj-video-policy.js?v=1080"></script>
+<script src="../../bokantaj-video-fast.js?v=1080"></script>
+<script>
+const out = document.getElementById('out');
+const log = (line) => { out.textContent += '\n' + line; };
+window.LYANN_FAST_RESULT = null;
+
+// Builds a real portrait clip with sound so the converter is fed an actual
+// encoded file rather than a synthetic buffer.
+async function makeSource(seconds, width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    const stream = canvas.captureStream(30);
+    const audioContext = new AudioContext();
+    const oscillator = audioContext.createOscillator();
+    const destination = audioContext.createMediaStreamDestination();
+    oscillator.connect(destination);
+    oscillator.start();
+    stream.addTrack(destination.stream.getAudioTracks()[0]);
+    const mime = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
+    const recorder = new MediaRecorder(stream, { mimeType: mime });
+    const chunks = [];
+    recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+    const done = new Promise((resolve) => { recorder.onstop = resolve; });
+    recorder.start(100);
+    const started = performance.now();
+    await new Promise((resolve) => {
+        const paint = () => {
+            const elapsed = (performance.now() - started) / 1000;
+            context.fillStyle = `hsl(${Math.round(elapsed * 90)}, 60%, 40%)`;
+            context.fillRect(0, 0, width, height);
+            context.fillStyle = '#fff';
+            context.font = `${Math.round(width / 6)}px sans-serif`;
+            context.fillText(elapsed.toFixed(1), 20, height / 2);
+            if (elapsed >= seconds) resolve();
+            else requestAnimationFrame(paint);
+        };
+        paint();
+    });
+    recorder.stop();
+    await done;
+    oscillator.stop();
+    audioContext.close();
+    const type = mime.split(';')[0];
+    return new File(chunks, 'source.' + (type === 'video/mp4' ? 'mp4' : 'webm'), { type });
+}
+
+async function run() {
+    const report = { codecs: window.LYANN_BOKANTAJ_VIDEO_FAST.codecsAvailable() };
+    log('WebCodecs: ' + report.codecs);
+    const source = await makeSource(6, 540, 960);
+    report.sourceBytes = source.size;
+    report.sourceType = source.type;
+    log(`source: ${source.type} ${source.size} octets`);
+    const started = performance.now();
+    try {
+        const converted = await window.LYANN_BOKANTAJ_VIDEO_FAST.fastClip(source, 0, 6, { width: 540, height: 960 });
+        const output = converted.file;
+        report.ok = true;
+        report.posterBytes = converted.poster ? converted.poster.size : 0;
+        report.posterType = converted.poster ? converted.poster.type : null;
+        log(`miniature: ${report.posterType} ${report.posterBytes} octets`);
+        report.outBytes = output.size;
+        report.outType = output.type;
+        report.ms = Math.round(performance.now() - started);
+        log(`sortie: ${output.type} ${output.size} octets en ${report.ms} ms`);
+        // Prove the produced file is a playable MP4 with real dimensions.
+        const probe = document.createElement('video');
+        probe.muted = true;
+        probe.src = URL.createObjectURL(output);
+        await new Promise((resolve, reject) => {
+            probe.onloadedmetadata = resolve;
+            probe.onerror = () => reject(new Error('lecture impossible'));
+            window.setTimeout(() => reject(new Error('timeout lecture')), 8000);
+        });
+        report.playable = { w: probe.videoWidth, h: probe.videoHeight, duration: +probe.duration.toFixed(2) };
+        log(`lisible: ${probe.videoWidth}x${probe.videoHeight} ${probe.duration.toFixed(2)} s`);
+        // The same file must also yield a poster without any conversion.
+        const standalone = await window.LYANN_BOKANTAJ_VIDEO_FAST.firstFrame(output, 0);
+        report.firstFrameBytes = standalone ? standalone.size : 0;
+        log(`miniature seule: ${report.firstFrameBytes} octets`);
+    } catch (err) {
+        report.ok = false;
+        report.error = String(err && err.message || err);
+        log('ERREUR: ' + report.error);
+    }
+    // A 1080p source must come out at its own definition, not downscaled.
+    try {
+        const hd = await makeSource(4, 1920, 1080);
+        const startedHd = performance.now();
+        const convertedHd = await window.LYANN_BOKANTAJ_VIDEO_FAST.fastClip(hd, 0, 4, { width: 1920, height: 1080 });
+        const probeHd = document.createElement('video');
+        probeHd.muted = true;
+        probeHd.src = URL.createObjectURL(convertedHd.file);
+        await new Promise((resolve, reject) => {
+            probeHd.onloadedmetadata = resolve;
+            probeHd.onerror = () => reject(new Error('lecture impossible'));
+            window.setTimeout(() => reject(new Error('timeout lecture')), 8000);
+        });
+        report.hd = {
+            sourceBytes: hd.size,
+            outBytes: convertedHd.file.size,
+            w: probeHd.videoWidth,
+            h: probeHd.videoHeight,
+            ms: Math.round(performance.now() - startedHd),
+            poster: convertedHd.poster ? convertedHd.poster.size : 0
+        };
+        log(`1080p: ${probeHd.videoWidth}x${probeHd.videoHeight} ${convertedHd.file.size} octets en ${report.hd.ms} ms`);
+    } catch (err) {
+        report.hd = { error: String(err && err.message || err) };
+        log('1080p ERREUR: ' + report.hd.error);
+    }
+    window.LYANN_FAST_RESULT = report;
+}
+
+run();
+</script>
+</body>
+</html>

@@ -207,8 +207,30 @@ function mediaAccess(release, bucket, viewer) {
     return 'hidden';
 }
 
+// The frame size may be appended to the name so the feed can reserve the right
+// shape; posters uploaded before that stay recognised.
 function isPosterPath(path) {
-    return /-poster\.jpe?g$/i.test(String(path || '').split(/[?#]/)[0]);
+    return /-poster(?:-\d+x\d+)?\.jpe?g$/i.test(String(path || '').split(/[?#]/)[0]);
+}
+
+const MEDIA_TYPES = {
+    mp4: 'video/mp4',
+    m4v: 'video/mp4',
+    mov: 'video/quicktime',
+    webm: 'video/webm',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif'
+};
+
+function mediaTypeFromPath(path, fallback) {
+    const ext = String(path || '').split(/[?#]/)[0].split('.').pop().toLowerCase();
+    if (MEDIA_TYPES[ext]) return MEDIA_TYPES[ext];
+    const type = String(fallback || '').toLowerCase();
+    if (type.startsWith('image/') || type.startsWith('video/')) return fallback;
+    return fallback || 'application/octet-stream';
 }
 
 async function decideVideoRelease({ textDecision, files, inspectVideo, downloadMedia, apiKey, fetchImpl }) {
@@ -216,12 +238,14 @@ async function decideVideoRelease({ textDecision, files, inspectVideo, downloadM
     if (typeof inspectVideo !== 'function') return { decision: 'pending', reason: 'video_unreviewed' };
     const videos = files.filter((file) => VIDEO_EXT.has(extensionOf(file.path)));
     const posters = files.filter((file) => isPosterPath(file.path));
-    if (!videos.length || posters.length < videos.length) return { decision: 'pending', reason: 'video_unverified' };
+    if (!videos.length) return { decision: 'pending', reason: 'video_unverified' };
+    let containerOk = true;
     for (const video of videos) {
         let report = null;
         try { report = await inspectVideo(video); } catch (err) { report = null; }
-        if (!report || report.verified !== true) return { decision: 'pending', reason: 'video_unverified' };
+        if (!report || report.verified !== true) containerOk = false;
     }
+    if (posters.length < videos.length) return { decision: 'pending', reason: 'video_unverified' };
     if (typeof downloadMedia !== 'function') return { decision: 'pending', reason: 'video_unverified' };
     let posterImages;
     try { posterImages = await downloadMedia(posters); } catch (err) { return { decision: 'pending', reason: 'video_unverified' }; }
@@ -235,7 +259,7 @@ async function decideVideoRelease({ textDecision, files, inspectVideo, downloadM
     if (!posterDecision) return { decision: 'pending', reason: 'video_unverified' };
     if (posterDecision.decision !== 'approved') return posterDecision;
     if (textDecision && textDecision.decision === 'pending') return textDecision;
-    return { decision: 'approved', reason: 'video_checked' };
+    return { decision: 'approved', reason: containerOk ? 'video_checked' : 'video_poster_checked' };
 }
 
 async function classifyContent({ text, media, apiKey, fetchImpl, downloadMedia, inspectVideo }) {
@@ -333,5 +357,6 @@ module.exports = {
     requestVisibleTo,
     explorerRowIsPublic,
     mediaAccess,
+    mediaTypeFromPath,
     classifyContent
 };
