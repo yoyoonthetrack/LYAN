@@ -11,9 +11,21 @@
     return Array.isArray(cached) && (Date.now() - cachedAt) < CACHE_TTL_MS;
   }
 
-  function isPubliclyVisible(item) {
+  function currentMemberId() {
+    return (typeof window !== 'undefined' && (
+      window.LYANN_CURRENT_USER?.id
+      || window.LYANN_AUTH_STATE?.getSnapshot?.()?.userId
+      || window.CURRENT_USER_ID
+    )) || null;
+  }
+
+  function isPubliclyVisible(item, viewerId) {
     const status = String((item && (item.moderation_status || item.public_moderation_status)) || '');
-    return status === 'approved';
+    if (status === 'approved') return true;
+    const viewer = viewerId || currentMemberId();
+    return status === 'pending'
+      && !!viewer
+      && String(item.author_id || item.user_id || '') === String(viewer);
   }
 
   function sanitizeFeed(items) {
@@ -21,7 +33,7 @@
     return items.filter((item) => {
       if (!item) return false;
       if (item.item_type !== 'POST' || item.request_id) return false;
-      return isPubliclyVisible(item);
+      return isPubliclyVisible(item, currentMemberId());
     });
   }
 

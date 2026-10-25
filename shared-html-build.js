@@ -5,6 +5,10 @@ const os = require('os');
 
 const HYGIENE_SCRIPT_TAG = '<script src="production-hygiene.js?v=20260922w" defer></script>';
 const SHARED_RUNTIME_TAGS = [
+  '<script src="lyann-plans.js"></script>',
+  '<script src="business-map.js"></script>',
+  '<script src="business-ui.js" defer></script>',
+  '<script src="store-subscriptions.js" defer></script>',
   '<script src="sentry-init.js?v=20260916-5"></script>',
   '<script src="surface-manager.js?v=20261015j"></script>',
   '<script src="app-router.js?v=20260916-5"></script>',
@@ -241,7 +245,7 @@ function nativeBuildStamp() {
 function resolveInjectedBackendOrigin() {
   if (String(process.env.LYANN_RUNTIME || '').toLowerCase() === 'staging') {
     const origin = String(process.env.LYANN_STAGING_PUBLIC_ORIGIN || '').replace(/\/$/, '');
-    return origin === 'https://staging.lyann.app' ? origin : '';
+    return ['https://staging.lyann.app', 'https://staging-bokantaj.lyann.app'].includes(origin) ? origin : '';
   }
   let backend = process.env.LYANN_E2E_BASE_URL != null
     ? String(process.env.LYANN_E2E_BASE_URL).replace(/\/$/, '')

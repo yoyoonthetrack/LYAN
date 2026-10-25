@@ -485,6 +485,59 @@ function registerAdminOperations(app, { supabaseAdmin, verifyAdminPermission }) 
         return res.json(payload);
     }
 
+
+    // Curated map pins are independent of the post lifecycle. Only authorised
+    // moderators may feature an approved post, and no member API may self-pin.
+    app.get('/v1/admin/bokantaj/map-featured', async (req, res) => {
+        const auth = await verifyAdminPermission(req, 'moderation.manage');
+        if (!auth.authorized) return res.status(auth.status).json({ success: false, error: auth.error });
+        const { data, error } = await supabaseAdmin.from('bokantaj_map_featured')
+            .select('post_id, created_at, reason').order('created_at', { ascending: false }).limit(1000);
+        if (error) return res.status(503).json({ success: false, error: 'Sélections cartographiques indisponibles sur cet environnement.' });
+        return res.json({ success: true, rows: data || [] });
+    });
+
+    app.put('/v1/admin/bokantaj/map-featured/:id', async (req, res) => {
+        const auth = await verifyAdminPermission(req, 'moderation.manage');
+        if (!auth.authorized) return res.status(auth.status).json({ success: false, error: auth.error });
+        const id = String(req.params.id || '');
+        if (!isUuid(id)) return res.status(400).json({ success: false, error: 'Identifiant de publication invalide.' });
+        const reason = String(req.body?.reason || 'Sélection éditoriale de LYANN').trim().slice(0, 280);
+        if (reason.length < 3) return res.status(400).json({ success: false, error: 'Motif de sélection requis.' });
+        const { data: post, error: postError } = await supabaseAdmin.from('bokantaj_posts')
+            .select('id, public_moderation_status, place_lat, place_lng, place_label')
+            .eq('id', id).maybeSingle();
+        if (postError) return res.status(500).json({ success: false, error: 'Publication inaccessible.' });
+        if (!post || post.public_moderation_status !== 'approved'
+            || post.place_lat == null || post.place_lng == null || !post.place_label) {
+            return res.status(409).json({ success: false, error: 'Seule une publication approuvée et géolocalisée peut être conservée.' });
+        }
+        const { error } = await supabaseAdmin.from('bokantaj_map_featured')
+            .upsert({ post_id: id, created_by: auth.userId, reason }, { onConflict: 'post_id' });
+        if (error) return res.status(503).json({ success: false, error: 'Impossible de conserver ce repère.' });
+        await supabaseAdmin.from('admin_audit_events').insert({
+            actor_type: 'ADMIN', actor_id: auth.userId, actor_name: 'Admin',
+            action: 'bokantaj.map.feature', module_name: 'Bokantaj',
+            target_type: 'bokantaj_post', target_id: id, metadata: { reason }
+        }).catch(() => {});
+        return res.json({ success: true, post_id: id, featured: true });
+    });
+
+    app.delete('/v1/admin/bokantaj/map-featured/:id', async (req, res) => {
+        const auth = await verifyAdminPermission(req, 'moderation.manage');
+        if (!auth.authorized) return res.status(auth.status).json({ success: false, error: auth.error });
+        const id = String(req.params.id || '');
+        if (!isUuid(id)) return res.status(400).json({ success: false, error: 'Identifiant invalide.' });
+        const { error } = await supabaseAdmin.from('bokantaj_map_featured').delete().eq('post_id', id);
+        if (error) return res.status(503).json({ success: false, error: 'Impossible de retirer ce repère.' });
+        await supabaseAdmin.from('admin_audit_events').insert({
+            actor_type: 'ADMIN', actor_id: auth.userId, actor_name: 'Admin',
+            action: 'bokantaj.map.unfeature', module_name: 'Bokantaj',
+            target_type: 'bokantaj_post', target_id: id
+        }).catch(() => {});
+        return res.json({ success: true, post_id: id, featured: false });
+    });
+
     app.get('/v1/admin/operations/helpdesk', async (req, res) => {
         const auth = await authorizeHelpdesk(req);
         if (!auth.authorized) return res.status(auth.status).json({ success: false, error: auth.error });

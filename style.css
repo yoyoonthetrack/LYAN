@@ -33,18 +33,18 @@
     --pop-purple-light: #F6EDFC;
 
     /* Neutrals — Warm Sandy Tone */
-    --bg: #FDFCF9;
+    --bg: #F4EDE3;
     --bg-white: #FFFFFF;
-    --bg-warm: #F7F4EE;
+    --bg-warm: #EFE4D6;
     --bg-dark: #1E2822;
     --text: #243329;
     --text-muted: #5C6E62;
     --text-light: #FDFCF9;
 
     /* UI Tokens */
-    --border: #E5DFD5;
-    --shadow-sm: 0 2px 8px rgba(36, 51, 41, 0.05);
-    --shadow-md: 0 8px 24px rgba(36, 51, 41, 0.07);
+    --border: #E0D2C0;
+    --shadow-sm: 0 2px 10px rgba(72, 52, 32, 0.08);
+    --shadow-md: 0 12px 28px rgba(72, 52, 32, 0.1);
     --shadow-lg: 0 16px 40px rgba(36, 51, 41, 0.1);
     --shadow-3d: 0 20px 40px rgba(74, 124, 89, 0.12), 0 4px 12px rgba(229, 179, 69, 0.08);
     --radius-sm: 14px;
@@ -5710,8 +5710,8 @@ input:checked + .slider:before {
 /* Compositeur de Lyann */
 .flash-composer-card,
 .lyann-composer-card {
-    background: #FFFFFF;
-    border: 2px solid var(--border);
+    background: #FFFDF9;
+    border: 1px solid #E4D3C0;
     border-radius: var(--radius-xl);
     padding: 24px;
     margin-bottom: 24px;
@@ -6064,6 +6064,17 @@ input:checked + .slider:before {
     border-color: #E7C4C0;
     color: #9B3A32;
 }
+.comment-review-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #FBF3E2;
+    color: #8A6A1F;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
 
 .flash-action-btn {
     background: transparent;
@@ -6089,8 +6100,8 @@ input:checked + .slider:before {
 
 /* Sidebar & Widgets */
 .sidebar-widget {
-    background: #FFFFFF;
-    border: 1.5px solid var(--border);
+    background: #FFFDF9;
+    border: 1px solid #E4D3C0;
     border-radius: var(--radius-xl);
     padding: 24px;
     margin-bottom: 24px;
@@ -8893,6 +8904,116 @@ input:checked + .slider:before {
     border-radius: var(--radius-md);
     object-fit: cover;
     border: 2px solid var(--primary-light);
+}
+.bokantaj-video-attach-status {
+    margin: 8px 0 0;
+    font: 550 .86rem 'Outfit', sans-serif;
+    color: #35583F;
+}
+.bokantaj-video-attach-status.is-error { color: #9B2C2C; }
+
+/* --- Squelettes de chargement partagés --- */
+/* The blocks are decorative; screen readers get this line instead. */
+.lyann-skel-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.lyann-skel {
+    display: block;
+    background: #FFF;
+    border: 1px solid #E2E8F0;
+    border-radius: var(--radius-xl, 18px);
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.lyann-skel-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.lyann-skel-head-text {
+    display: grid;
+    gap: 6px;
+    flex: 1;
+}
+.lyann-skel-avatar,
+.lyann-skel-line,
+.lyann-skel-pill,
+.lyann-skel-chip,
+.lyann-skel-button {
+    display: block;
+    background: linear-gradient(90deg, #ECEFEA 25%, #F6F8F4 37%, #ECEFEA 63%);
+    background-size: 400% 100%;
+    animation: lyann-skel-shimmer 1.4s ease infinite;
+    border-radius: 8px;
+}
+.lyann-skel-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    flex: none;
+}
+.lyann-skel-avatar.is-large { width: 48px; height: 48px; }
+.lyann-skel-line {
+    height: 12px;
+    margin-bottom: 8px;
+}
+.lyann-skel-line.is-small { height: 9px; }
+.lyann-skel-line.is-title { height: 17px; margin-bottom: 12px; }
+.lyann-skel-pill {
+    width: 92px;
+    height: 20px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+}
+.lyann-skel-pill.is-small { width: 60px; }
+.lyann-skel-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+.lyann-skel-chip {
+    width: 76px;
+    height: 18px;
+    border-radius: 999px;
+}
+.lyann-skel-button {
+    width: 100%;
+    height: 40px;
+    border-radius: 20px;
+    margin-top: 12px;
+}
+@keyframes lyann-skel-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lyann-skel-avatar,
+    .lyann-skel-line,
+    .lyann-skel-pill,
+    .lyann-skel-chip,
+    .lyann-skel-button {
+        animation: none;
+        background: #ECEFEA;
+    }
+}
+
+.bokantaj-publish-failure {
+    margin: 10px 0 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #FDF0EF;
+    border: 1px solid #F0C9C5;
+    font: 600 .88rem 'Outfit', sans-serif;
+    color: #9B2C2C;
 }
 
 .flash-card-media-gallery {
@@ -12995,13 +13116,111 @@ body.is-native-app .navbar.scrolled,
     background: #111;
     object-fit: contain;
 }
-.bokantaj-video {
+.bokantaj-video,
+.bokantaj-video-poster {
     width: 100%;
-    min-height: 180px;
-    max-height: 70vh;
-    background: #111;
+    aspect-ratio: var(--media-ratio, 16 / 9);
+    max-height: 86vh;
+    background: #1e2822;
     border-radius: 16px;
     object-fit: contain;
+}
+/* Shape still unknown, which happens for clips published before the size was
+   written into the poster name: a slim bar is honest, a wide grey box lies. */
+.bokantaj-video-poster:not(.has-media-ratio),
+.bokantaj-video:not(.has-media-ratio) {
+    aspect-ratio: auto;
+    height: 76px;
+}
+.bokantaj-video-shell {
+    position: relative;
+    display: block;
+    margin-top: 10px;
+}
+/* Kept at the top so they never sit on the native control bar, which appears
+   at the bottom as soon as the member taps the video to scrub. */
+.bokantaj-video-controls {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    display: flex;
+    gap: 8px;
+}
+.bokantaj-video-sound,
+.bokantaj-video-expand {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(255, 253, 249, 0.42);
+    border-radius: 999px;
+    background: rgba(16, 24, 20, 0.82);
+    color: #fffdf9;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    /* The overlay sits on whatever the clip shows, bright sky included. */
+    box-shadow: 0 2px 10px rgba(12, 20, 15, 0.45);
+}
+.bokantaj-video-sound svg,
+.bokantaj-video-expand i {
+    display: block;
+}
+.bokantaj-video-poster {
+    position: relative;
+    display: block;
+    /* Same breathing room as the photo grid, so the media is never glued to
+       the text of the post. */
+    margin-top: 10px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    color: #fffdf9;
+    font-weight: 700;
+    cursor: pointer;
+}
+.bokantaj-video-poster-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+.bokantaj-video-poster.is-loading span {
+    opacity: .85;
+}
+.bokantaj-video-poster .bokantaj-video-error {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    font: 550 .82rem 'Outfit', sans-serif;
+}
+.bokantaj-video-poster span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(30, 40, 34, 0.78);
+    border-radius: 999px;
+    padding: 10px 16px;
+}
+.bokantaj-trim {
+    display: grid;
+    gap: 8px;
+    margin: 8px 0 12px;
+    padding: 12px;
+    border: 1px solid #e4d3c0;
+    border-radius: 14px;
+    background: #fffdf9;
+}
+.bokantaj-trim button {
+    min-height: 40px;
+    border: 0;
+    border-radius: 999px;
+    background: #2d5a39;
+    color: #fffdf9;
+    font-weight: 700;
 }
 .chat-attach-menu {
     position: absolute;
@@ -15652,12 +15871,25 @@ body.capacitor-native .nav-msg-btn,
     }
 }
 
-/* Bokantaj Card Typography Polish (Scoped strictly to .flash-card / .lyann-card) */
-.flash-card .lyann-author-name {
+/* Bokantaj Card Typography Polish (Scoped strictly to .flash-card / .lyann-card)
+   Hierarchy: publication message first; chrome (meta, social, owner actions) quieter. */
+.flash-card .lyann-author-name,
+.flash-card .flash-author-info strong.lyann-author-name {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 600 !important;
-    font-size: 0.98rem !important;
+    font-size: 0.92rem !important;
     color: #17231C !important;
+}
+
+.flash-card .lyann-author-meta {
+    font-size: 0.74rem !important;
+    font-weight: 500 !important;
+    color: #64748B !important;
+}
+
+.flash-card .flash-badge-default {
+    font-weight: 500 !important;
+    font-size: 0.7rem !important;
 }
 
 .flash-card .lyann-card-title {
@@ -15669,12 +15901,37 @@ body.capacitor-native .nav-msg-btn,
     letter-spacing: -0.015em !important;
 }
 
-.flash-card .lyann-card-description {
+.flash-card .lyann-card-description,
+.flash-card .flash-card-body {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 450 !important;
-    font-size: 0.95rem !important;
+    font-size: 1.05rem !important;
     color: #334155 !important;
     line-height: 1.5 !important;
+}
+
+.flash-card .flash-actions-bar .flash-action-btn {
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    min-height: 44px !important;
+    min-width: 44px !important;
+    padding: 10px 2px !important;
+    gap: 5px !important;
+}
+
+.flash-card .flash-actions-bar .flash-action-btn i {
+    font-size: 1.05rem !important;
+}
+
+.flash-card .lyann-own-toolbar button {
+    font-weight: 500 !important;
+    font-size: 0.82rem !important;
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+}
+
+.flash-card .lyann-own-toolbar button i {
+    font-size: 1rem !important;
 }
 /* ==========================================================================
    LYANN — CTA IDENTITY TOKENS (REUSABLE CONCEPTUALLY)
@@ -17282,31 +17539,33 @@ body.is-native-app .navbar .nav-auth-btn {
 
 /* Activity Switch Tabs & Status Pills */
 .activity-switch-tabs {
-    display: flex !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px !important;
     margin-bottom: 20px !important;
     border-bottom: 1px solid #EAE6DF !important;
     padding-bottom: 12px !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden !important;
 }
 
 .activity-tab-chip {
-    padding: 8px 16px !important;
+    padding: 8px 6px !important;
     border-radius: 20px !important;
     background: #FFFFFF !important;
     border: 1px solid #CBD5E1 !important;
     color: #475569 !important;
     font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
-    font-size: 0.85rem !important;
+    font-size: 0.78rem !important;
     font-weight: 600 !important;
     cursor: pointer !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    justify-content: center !important;
+    gap: 4px !important;
     transition: all 0.18s ease !important;
     white-space: nowrap !important;
-    flex-shrink: 0 !important;
+    min-width: 0 !important;
+    overflow: hidden;
 }
 
 .activity-tab-chip:hover {
@@ -18015,6 +18274,14 @@ div:has(> #cpHeadline) { display: none !important; }
 }
 .bokantaj-photos-1 { grid-template-columns: 1fr; }
 .bokantaj-photos-1 .bokantaj-photo { height: 280px; }
+/* A lone photo keeps the shape it was shot in, capped so a tall portrait
+   still leaves the card readable. */
+.bokantaj-photos-1 .bokantaj-photo.has-media-ratio {
+    height: auto;
+    aspect-ratio: var(--media-ratio, 4 / 3);
+    max-height: 86vh;
+}
+.bokantaj-photos-1 .bokantaj-photo.has-media-ratio img { object-fit: contain; }
 .bokantaj-photos-2 { grid-template-columns: 1fr 1fr; }
 .bokantaj-photos-2 .bokantaj-photo { height: 220px; }
 .bokantaj-photos-3 {
@@ -18031,36 +18298,94 @@ div:has(> #cpHeadline) { display: none !important; }
 .bokantaj-carousel {
     position: fixed;
     inset: 0;
-    z-index: 1000002;
+    z-index: 2147483600;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(15, 23, 18, 0.92);
-    padding: 48px 64px;
+    background: rgba(23, 28, 24, 0.94);
+    padding:
+        calc(72px + env(safe-area-inset-top, 0px))
+        16px
+        calc(88px + env(safe-area-inset-bottom, 0px));
 }
 .bokantaj-carousel[hidden] { display: none; }
+body.bokantaj-carousel-open { overflow: hidden; }
+body.bokantaj-carousel-open .navbar,
+body.bokantaj-carousel-open .lyann-universe-header,
+body.bokantaj-carousel-open .mobile-bottom-nav,
+body.bokantaj-carousel-open .bokantaj-view-tabs {
+    visibility: hidden;
+}
+.bokantaj-carousel-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+    background: rgba(23, 28, 24, 0.96);
+}
+.bokantaj-carousel-count {
+    color: #fff;
+    font-weight: 700;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
 .bokantaj-carousel-img {
-    max-width: min(960px, 100%);
-    max-height: calc(100vh - 96px);
+    width: min(960px, 100%);
+    height: calc(100dvh - 180px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     object-fit: contain;
     border-radius: 12px;
+    background: transparent;
+}
+.bokantaj-carousel.is-loading .bokantaj-carousel-img {
+    opacity: 0;
+}
+.bokantaj-carousel-wait {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #fffaf0;
+    font: 650 0.95rem 'Outfit', sans-serif;
+    pointer-events: none;
+    text-align: center;
+    padding: 24px;
+}
+.bokantaj-carousel-wait[hidden] { display: none; }
+.bokantaj-carousel-wait .ph {
+    font-size: 2.4rem;
+    color: #eadfbf;
 }
 .bokantaj-carousel-close,
 .bokantaj-carousel-nav {
-    position: absolute;
     border: 0;
     background: #fff;
     color: #17231C;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    font-size: 1.6rem;
-    line-height: 1;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 750;
     cursor: pointer;
 }
-.bokantaj-carousel-close { top: 16px; right: 16px; }
-.bokantaj-carousel-prev { left: 12px; }
-.bokantaj-carousel-next { right: 12px; }
+.bokantaj-carousel-close { padding: 0 16px; }
+.bokantaj-carousel-nav {
+    position: absolute;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 48px;
+    font-size: 1.6rem;
+    line-height: 1;
+}
+.bokantaj-carousel-prev { left: 16px; }
+.bokantaj-carousel-next { right: 16px; }
 
 .lyann-post-menu { position: relative; flex-shrink: 0; }
 .lyann-post-menu summary {

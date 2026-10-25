@@ -107,9 +107,9 @@
     payment_requested: '💳 Paiement demandé',
     payment_secured: '🔒 Fonds sécurisés',
     payment_failed: '❌ Paiement échoué',
-    milestone_created: '🔨 Jalon',
+    milestone_created: '🔨 Paiement par étape',
     milestone_completed: '✓ Travail déclaré terminé',
-    milestone_approved: '✅ Jalon validé',
+    milestone_approved: '✅ Paiement par étape validé',
     funds_released: '💶 Fonds libérés',
     mission_started: 'Mission commencée',
     mission_completed: 'Mission terminée',
@@ -140,7 +140,7 @@
     if (/devis|quote/.test(kind)) return '📄 Devis proposé';
     if (/rendez|date|visit|appointment/.test(kind)) return '📅 Rendez-vous proposé';
     if (/pay/.test(kind)) return 'Paiement effectué';
-    if (/jalon|milestone/.test(kind)) return 'Jalon mis à jour';
+    if (/jalon|milestone/.test(kind)) return 'Paiement par étape mis à jour';
     if (/propos|price|offer/.test(kind)) return 'Proposition';
     return 'Nouveau message';
   }
@@ -298,6 +298,8 @@
           } catch (_) {}
         }
       }
+
+      if (client.decoratePlanBadges) await client.decoratePlanBadges([...profilesById.values()]);
 
       const invitationsByConversation = new Map();
       try {

@@ -161,6 +161,7 @@
 
     const dbProfileFound = mergeProfile(profileData, profileRes?.data || null);
     mergeTrust(profileData, trustRes?.data || null);
+    if (api.decoratePlanBadges) await api.decoratePlanBadges([profileData]);
 
     const portfolioItems = Array.isArray(portfolioRes?.data) ? portfolioRes.data : [];
     const userServices = Array.isArray(servicesRes?.data) ? servicesRes.data : [];

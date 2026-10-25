@@ -1,5 +1,7 @@
 'use strict';
 
+const { releaseMedia, clearPostMedia } = require('./bokantaj-media-retention');
+
 const SUBJECT_TABLES = Object.freeze({
     post: 'bokantaj_posts',
     comment: 'bokantaj_comments',
@@ -292,6 +294,16 @@ function createModerationCenter(deps) {
                 status: 409,
                 error: 'Le trigger de modération a empêché le retrait d’un contenu déjà visible. Appliquer 73_moderation_center.sql sur Staging.'
             };
+        }
+        if (decision === 'rejected' && subject === 'post') {
+            try {
+                await releaseMedia({
+                    supabaseAdmin,
+                    supabaseUrl: process.env.SUPABASE_URL,
+                    urls: updated.data.media_urls
+                });
+                await clearPostMedia(supabaseAdmin, id);
+            } catch (err) {}
         }
         await supabaseAdmin.from('moderation_jobs').update({
             status: 'done',

@@ -529,41 +529,77 @@ test('a failed upload stays in the thread as an error', async ({ page }) => {
 });
 
 test('bokantaj previews a video and renders a player for an existing post', async ({ page }) => {
-  await page.route('**/rest/v1/bokantaj_posts*', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify([{
-      id: '11111111-1111-4111-a111-111111111111',
-      author_id: null,
-      content: 'Vague du matin',
-      type: 'info',
-      media_urls: ['https://example.test/vague.mp4'],
-      created_at: '2026-10-01T12:00:00.000Z',
-      territory: 'Guadeloupe',
-      city: 'Sainte-Anne'
-    }])
-  }));
+  test.setTimeout(60000);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/feed.html');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForFunction(() => window.LYANN_BOKANTAJ_VIDEO && window.LYANN_BOKANTAJ_VIDEO.playbackMarkup);
+  const rules = await page.evaluate(() => {
+    const now = Date.parse('2026-10-23T00:00:00Z');
+    const old = { public_moderation_status: 'approved', type: 'info', created_at: '2026-10-01T00:00:00Z' };
+    return {
+      expired: window.LYANN_BOKANTAJ_VIDEO.mapPinVisible(old, now),
+      permanent: window.LYANN_BOKANTAJ_VIDEO.mapPinVisible({ ...old, map_featured: true }, now),
+      effect: window.LYANN_BOKANTAJ_VIDEO.pinExpiryEffect(),
+      trim: window.LYANN_BOKANTAJ_VIDEO.clipWindow(95).reason
+    };
+  });
+  expect(rules.expired).toBe(false);
+  expect(rules.permanent).toBe(true);
+  expect(rules.effect.deleteVideo).toBe(false);
+  expect(rules.effect.deletePost).toBe(false);
+  expect(rules.trim).toBe('needs_trim');
   await page.evaluate(() => {
     document.body.classList.remove('user-is-logged-out', 'auth-resolving');
     document.body.classList.add('user-is-logged-in', 'auth-ready');
   });
-  await page.locator('#flashVideoInput').setInputFiles({
-    name: 'vague.mp4',
-    mimeType: 'video/mp4',
-    buffer: Buffer.from('00000018667479706d70343200000000', 'hex')
+  await page.locator('#bokantajComposerOpen').click();
+  await page.evaluate(() => { document.getElementById('bokantajTrim').hidden = false; });
+  await expect(page.locator('#bokantajTrimHint')).toContainText('60 secondes');
+  await page.locator('#bokantajTrim').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'artifacts/media-audit/bokantaj-video-trim-390.png' });
+  const recorded = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 320;
+    canvas.height = 180;
+    const context = canvas.getContext('2d');
+    const stream = canvas.captureStream(12);
+    const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8' : 'video/webm';
+    const recorder = new MediaRecorder(stream, { mimeType: mime });
+    const chunks = [];
+    recorder.ondataavailable = (event) => { if (event.data && event.data.size) chunks.push(event.data); };
+    const stopped = new Promise((resolve) => { recorder.onstop = resolve; });
+    recorder.start();
+    for (let frame = 0; frame < 16; frame += 1) {
+      context.fillStyle = frame % 2 ? '#1e2822' : '#e2b56b';
+      context.fillRect(0, 0, 320, 180);
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    }
+    recorder.stop();
+    await stopped;
+    const bytes = new Uint8Array(await new Blob(chunks, { type: 'video/webm' }).arrayBuffer());
+    return Array.from(bytes);
   });
-  const preview = page.locator('#flashMediaPreviewContainer video');
-  await preview.scrollIntoViewIfNeeded();
-  await expect(preview).toBeVisible();
+  await page.locator('#flashVideoInput').setInputFiles({
+    name: 'vague.webm',
+    mimeType: 'video/webm',
+    buffer: Buffer.from(recorded)
+  });
+  const preview = page.locator('#flashMediaPreviewContainer img');
+  await expect(preview).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#flashMediaPreviewContainer video')).toHaveCount(0);
   await preview.screenshot({ path: 'artifacts/media-audit/bokantaj-video-preview-390.png' });
+  await page.evaluate(() => {
+    const markup = window.LYANN_BOKANTAJ_VIDEO.playbackMarkup('https://example.test/vague.mp4', '');
+    document.getElementById('flashFeedContainer').insertAdjacentHTML('afterbegin', markup);
+  });
+  const poster = page.locator('.bokantaj-video-poster');
+  await expect(poster).toBeVisible();
+  await expect(page.locator('video.bokantaj-video')).toHaveCount(0);
+  await poster.click();
   const player = page.locator('video.bokantaj-video');
   await expect(player).toBeVisible();
+  await expect(player).toHaveAttribute('src', /vague\.mp4/);
   await expect(player).toHaveAttribute('controls', '');
   await expect(player).toHaveAttribute('playsinline', '');
-  await player.scrollIntoViewIfNeeded();
   await player.screenshot({ path: 'artifacts/media-audit/bokantaj-video-player-390.png' });
-  await page.screenshot({ path: 'artifacts/media-audit/bokantaj-feed-390.png' });
 });

@@ -21,9 +21,10 @@
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20261019-trace">
+    <link rel="stylesheet" href="style.css?v=20261025comments">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
     <link rel="stylesheet" href="universe-header.css?v=20261017pale">
+<link rel="stylesheet" href="business.css">
 </head>
 <body class="results-page" data-explorer-mode="lyanneurs">
 
@@ -104,6 +105,7 @@
                     <a href="feed.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <span class="nav-live-dot"></span> <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="#" class="open-chat-trigger" data-lyann-route="messages" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+<a href="professional.html" class="desktop-nav-link">Mon activité</a>
                     <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="about.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                 </nav>
@@ -668,7 +670,7 @@
                                     <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">Un montant unique pour votre prestation.</span>
                                 </button>
                                 <button type="button" class="btn btn-primary" id="btnChooseMilestoneDevis" style="flex: 1; padding: 15px; flex-direction: column; gap: 6px; background: var(--primary);">
-                                    <strong style="display: block; font-size: 1rem; color: white;">Devis par Jalons</strong>
+                                    <strong style="display: block; font-size: 1rem; color: white;">Devis avec paiement par étape</strong>
                                     <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.9; color: white;">Plusieurs étapes avec paiements progressifs.</span>
                                 </button>
                             </div>
@@ -711,10 +713,10 @@
                             <!-- Fixed Milestones Structure for Simple/Aesthetic UX -->
                                                         <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
                                 <div class="milestone-allocation-section">
-                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
-                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque jalon garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
+                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Paiements par étape de paiement</label>
+                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque paiement par étape garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
                                     <div id="mdMilestoneList" class="md-milestone-list"></div>
-                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un jalon</button>
+                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un paiement par étape</button>
                                     <div id="mdAllocationSummary" class="md-allocation-summary">
                                         <div class="md-allocation-row"><span>Total du devis</span><strong id="mdAllocationQuoteTotal">0,00 €</strong></div>
                                         <div class="md-allocation-row"><span>Total réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
@@ -821,15 +823,15 @@
                     <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
                     <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
                         <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
-                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
-                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Paiement par étape Terminé</h4>
+                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Paiement par étape X</div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
                             </div>
                             <div style="display: flex; gap: 10px; margin-top: 8px;">
                                 <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
-                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Jalon</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Paiement par étape</button>
                             </div>
                         </form>
                     </div>
@@ -1153,8 +1155,6 @@
     <script src="notifications-service.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="safety-disputes-engine.js"></script>
-    <script src="subscriptions-engine.js"></script>
-    <script src="pro-verification-engine.js"></script>
     <script src="search-engine.js"></script>
     <script src="matching-engine.js"></script>
     <script src="sentry-init.js?v=20260916"></script>
@@ -1190,7 +1190,8 @@
     <script src="commune-geo.js?v=20260922e"></script>
     <script src="commune-distance.js?v=20261019-drom5"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
-    <script src="explorer-ui.js?v=20261018unify" defer></script>
+    <script src="lyann-skeleton.js?v=20261025skel"></script>
+    <script src="explorer-ui.js?v=20261025skel" defer></script>
     <script src="script.js?v=20261019-drom5"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->

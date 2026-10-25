@@ -303,8 +303,8 @@
         setPayReady(false);
         const mount = document.getElementById('lyannCardPaymentElement');
         if (!isPersistedUuid(milestoneId)) {
-            setPaymentError('Paiement indisponible : il faut un jalon PENDING.');
-            return { error: { message: 'Paiement indisponible : il faut un jalon PENDING et POST /v1/payments/create-milestone-intent.' } };
+            setPaymentError('Paiement indisponible : il faut un paiement par étape PENDING.');
+            return { error: { message: 'Paiement indisponible : il faut un paiement par étape PENDING et POST /v1/payments/create-milestone-intent.' } };
         }
         if (!mount) {
             return { error: { message: 'Paiement indisponible : le champ carte Stripe n’est pas sur cet écran.' } };

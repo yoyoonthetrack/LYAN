@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>LYANN — Espace Paiements Sécurisés</title>
-    <meta name="description" content="Découvrez le tiers de confiance LYANN : Devis par jalons, paiement sécurisé, protection des fonds via Stripe Connect et résolution des litiges.">
+    <meta name="description" content="Découvrez le tiers de confiance LYANN : Devis avec paiement par étape, paiement sécurisé, protection des fonds via Stripe Connect et résolution des litiges.">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -166,7 +166,7 @@
             color: var(--sand-yellow-dark);
         }
 
-        /* Stepper de Jalons (Milestone tracking UI) */
+        /* Stepper de Paiements par étape (Milestone tracking UI) */
         .stepper-container {
             display: flex;
             flex-direction: column;
@@ -419,6 +419,7 @@
             font-size: 1.3rem;
         }
     </style>
+<link rel="stylesheet" href="business.css">
 </head>
 <body class="payment-portal-page">
 
@@ -499,6 +500,7 @@
                     <a href="feed.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-broadcast" style="color: var(--primary); font-size: 1.2rem;"></i> BOKANTAJ <span class="nav-live-dot"></span> <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="#" class="open-chat-trigger" data-lyann-route="messages" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-chat-circle-dots" style="color: #4A7C59; font-size: 1.2rem;"></i> MESSAGES <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="pricing.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-tag" style="color: #E76F51; font-size: 1.2rem;"></i> TARIFS & ABONNEMENTS <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
+<a href="professional.html" class="desktop-nav-link">Mon activité</a>
                     <a href="payment-portal.html" class="active" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-shield-check" style="color: #E76F51; font-size: 1.2rem;"></i> PAIEMENT SÉCURISÉ 🔒 <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="how-it-works.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-info" style="color: #7BC5E3; font-size: 1.2rem;"></i> COMMENT ÇA MARCHE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
                     <a href="about.html" style="display: flex; align-items: center; gap: 10px;"><i class="ph ph-users-three" style="color: #4A7C59; font-size: 1.2rem;"></i> NOTRE HISTOIRE <i class="ph ph-caret-right" style="margin-left: auto;"></i></a>
@@ -525,7 +527,7 @@
                 <i class="ph ph-swap sim-info-icon"></i>
                 <div>
                     <h1 style="font-weight: 800; color: var(--primary-dark); font-size: 1.1rem; margin: 0 0 4px;">Paiements LYANN</h1>
-                    <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0;">Le devis, le paiement et le jalon se font dans la conversation. Cette page n’enregistre pas de solde.</p>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0;">Le devis, le paiement et le paiement par étape se font dans la conversation. Cette page n’enregistre pas de solde.</p>
                 </div>
             </div>
             <div class="role-switch-container">
@@ -640,7 +642,7 @@
                 const items = currentRole === 'client' ? [
                     { id: 'requests', label: '1. Demander un service', icon: 'ph-plus-circle' },
                     { id: 'approval', label: '2. Devis reçus', icon: 'ph-receipt' },
-                    { id: 'tracking', label: '3. Suivi & jalons', icon: 'ph-stepper-card' },
+                    { id: 'tracking', label: '3. Suivi & paiements par étape', icon: 'ph-stepper-card' },
                     { id: 'dispute', label: '4. Litiges & Médiation', icon: 'ph-shield-warning' }
                 ] : [
                     { id: 'quote', label: '1. Répondre aux demandes', icon: 'ph-pencil-line' },
@@ -771,7 +773,7 @@
                             milestonesHtml = `
                                 <div style="margin: 16px 0; padding: 12px; background: var(--bg-white); border-radius: var(--radius-md); border: 1px solid var(--border);">
                                     <h5 style="font-weight: 800; font-size: 0.85rem; margin-bottom: 10px; color: var(--primary-dark);">
-                                        <i class="ph ph-git-commit"></i> Plan de travail par jalons :
+                                        <i class="ph ph-git-commit"></i> Plan de travail avec paiement par étape :
                                     </h5>
                                     <div style="display: flex; flex-direction: column; gap: 8px;">
                                         ${tx.milestones.map(m => `
@@ -875,7 +877,7 @@
                 });
             }
 
-            // CLIENT: TAB 3 - Suivi & Jalons (Escrow)
+            // CLIENT: TAB 3 - Suivi & Paiements par étape (Escrow)
             function renderClientTrackingTab(txs) {
                 const activeTxs = txs.filter(t => t.customerId === 101 && (t.status === 'en_cours' || t.status === 'termine'));
 
@@ -913,7 +915,7 @@
                     if (tx.requiresMilestones) {
                         milestonesStepper = `
                             <div class="stepper-container">
-                                <h5 style="font-weight: 800; font-size: 0.9rem; color: var(--primary-dark); margin-bottom: 8px;">Jalons de livraison :</h5>
+                                <h5 style="font-weight: 800; font-size: 0.9rem; color: var(--primary-dark); margin-bottom: 8px;">Paiements par étape de livraison :</h5>
                                 ${tx.milestones.map(m => {
                                     let actionButton = '';
                                     let photoHtml = '';
@@ -967,7 +969,7 @@
                             </div>
                         `;
                     } else {
-                        // Pas de jalons, paiement complet en une fois
+                        // Pas de paiements par étape, paiement complet en une fois
                         milestonesStepper = `
                             <div style="padding: 16px; background: var(--bg-white); border-radius: var(--radius-md); border: 1px solid var(--border); margin-top: 14px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1025,7 +1027,7 @@
                             const txId = btn.getAttribute('data-tx-id');
                             const mId = parseInt(btn.getAttribute('data-milestone-id'));
                             window.LYANN_PAYMENTS.approveMilestone(txId, mId);
-                            showToast("Jalon approuvé ! Les fonds correspondants ont été libérés dans le portefeuille du prestataire.");
+                            showToast("Paiement par étape approuvé ! Les fonds correspondants ont été libérés dans le portefeuille du prestataire.");
                             renderWorkspace();
                         });
                     });
@@ -1034,7 +1036,7 @@
                         btn.addEventListener('click', () => {
                             const txId = btn.getAttribute('data-tx-id');
                             const mId = parseInt(btn.getAttribute('data-milestone-id'));
-                            const comments = prompt("Veuillez indiquer au prestataire les corrections à apporter pour valider ce jalon :");
+                            const comments = prompt("Veuillez indiquer au prestataire les corrections à apporter pour valider ce paiement par étape :");
                             if (comments) {
                                 window.LYANN_PAYMENTS.rejectMilestone(txId, mId, comments);
                                 showToast("Demande de correction transmise au prestataire.");
@@ -1342,7 +1344,7 @@
                 });
             }
 
-            // PROVIDER: TAB 2 - Suivi de Chantier & Validation Jalons
+            // PROVIDER: TAB 2 - Suivi de Chantier & Validation Paiements par étape
             function renderProviderMilestonesTab(txs) {
                 const activeTxs = txs.filter(t => t.providerId === 1 && (t.status === 'en_cours' || t.status === 'litige'));
 
@@ -1407,7 +1409,7 @@
                             </div>
                         `;
                     } else {
-                        // Pas de jalons
+                        // Pas de paiements par étape
                         milestonesListHtml = `
                             <div style="padding: 12px; background: var(--bg-white); border-radius: 8px; border: 1px solid var(--border); margin-top: 10px; text-align: center;">
                                 Prestation unique de <strong>${tx.amount.toFixed(2)} €</strong>. Le paiement sera libéré par le client une fois le travail complètement terminé.
@@ -1447,11 +1449,11 @@
                             const comments = card.querySelector(`#comments-${txId}-${mId}`).value;
 
                             window.LYANN_PAYMENTS.submitMilestoneCompletion(txId, mId, {
-                                comments: comments || "Jalon terminé, en attente de vérification",
+                                comments: comments || "Paiement par étape terminé, en attente de vérification",
                                 photos: ["https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80"] // Simulate photo upload
                             });
 
-                            showToast(`Jalon ${mId} soumis pour validation au client.`);
+                            showToast(`Paiement par étape ${mId} soumis pour validation au client.`);
                             renderWorkspace();
                         });
                     });
@@ -2319,11 +2321,11 @@
                                     <button type="button" class="btn btn-primary choice-card-btn" id="btnChooseDirectPrice">Choisir le Tarif Direct</button>
                                 </div>
 
-                                <!-- CARTE 2: DEVIS PAR JALONS -->
+                                <!-- CARTE 2: DEVIS avec paiement par étape -->
                                 <div class="choice-card-vertical">
-                                    <div class="choice-card-title">Devis par Jalons</div>
+                                    <div class="choice-card-title">Devis avec paiement par étape</div>
                                     <div class="choice-card-desc">Plusieurs étapes avec paiements progressifs.</div>
-                                    <button type="button" class="btn btn-outline choice-card-btn" id="btnChooseMilestoneDevis">Choisir le Devis par Jalons</button>
+                                    <button type="button" class="btn btn-outline choice-card-btn" id="btnChooseMilestoneDevis">Choisir le Devis avec paiement par étape</button>
                                 </div>
                             </div>
                             
@@ -2425,10 +2427,10 @@
                             
                                                         <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px;">
                                 <div class="milestone-allocation-section">
-                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Jalons de paiement</label>
-                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque jalon garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
+                                    <label style="font-size:0.8rem; font-weight:800; display:block; color:var(--primary-dark);">Paiements par étape de paiement</label>
+                                    <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 8px;">Chaque paiement par étape garde sa valeur. Modifier un pourcentage ou un montant ne change pas les autres.</p>
                                     <div id="mdMilestoneList" class="md-milestone-list"></div>
-                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un jalon</button>
+                                    <button type="button" id="mdAddMilestoneBtn" class="btn btn-outline md-add-milestone">Ajouter un paiement par étape</button>
                                     <div id="mdAllocationSummary" class="md-allocation-summary">
                                         <div class="md-allocation-row"><span>Total du devis</span><strong id="mdAllocationQuoteTotal">0,00 €</strong></div>
                                         <div class="md-allocation-row"><span>Total réparti</span><strong id="mdAllocationAmountTotal">0,00 €</strong></div>
@@ -2507,15 +2509,15 @@
                     <!-- OVERLAY: SUBMIT WORK PROOF (FOR ARTISAN) -->
                     <div id="chatSubmitProofOverlay" class="chat-overlay-pane" style="display: none; background: #FFFFFF;">
                         <form id="submitProofForm" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;" onsubmit="event.preventDefault();">
-                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Jalon Terminé</h4>
-                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Jalon X</div>
+                            <h4 style="font-weight: 800; margin-bottom: 5px;">Déclarer un Paiement par étape Terminé</h4>
+                            <div style="font-weight: 700; color: var(--primary-dark);" id="proofMilestoneTitle">Paiement par étape X</div>
                             <div>
                                 <label style="font-size: 0.78rem; font-weight: 700; display: block; margin-bottom: 4px;">Commentaires sur les travaux effectués</label>
                                 <textarea id="proofComments" class="modal-input" placeholder="Détaillez le travail accompli..." required style="width: 100%; box-sizing: border-box; height: 70px; resize: none;"></textarea>
                             </div>
                             <div style="display: flex; gap: 10px; margin-top: 8px;">
                                 <button type="button" id="btnCancelProof" class="btn btn-outline" style="flex: 1; justify-content: center;">Annuler</button>
-                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Jalon</button>
+                                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Soumettre le Paiement par étape</button>
                             </div>
                         </form>
                     </div>
@@ -2733,7 +2735,7 @@
     </div>
 
     <!-- ========================================================================= -->
-    <!-- LYANN STEP 19 — MODAL ESPACE MISSION & SUIVI DE JALONS                   -->
+    <!-- LYANN STEP 19 — MODAL ESPACE MISSION & SUIVI DE PAIEMENTS PAR ÉTAPE                   -->
     <!-- ========================================================================= -->
     <div id="missionDetailsModal" class="modal-backdrop" style="display: none; align-items: center; justify-content: center; z-index: 10005;">
         <div class="modal-card" style="max-width: 620px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
@@ -2757,7 +2759,7 @@
                 <!-- Card Résumé Progression -->
                 <div style="background: white; border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 0.85rem; font-weight: 700; color: #4B5563;">Progression des jalons</span>
+                        <span style="font-size: 0.85rem; font-weight: 700; color: #4B5563;">Progression des paiements par étape</span>
                         <span id="missionModalProgressionText" style="font-size: 0.85rem; font-weight: 800; color: #1F3827;"></span>
                     </div>
                     <div style="width: 100%; height: 8px; background: #E5E7EB; border-radius: 4px; overflow: hidden;">
@@ -2773,9 +2775,9 @@
                     </button>
                 </div>
 
-                <!-- Liste des Jalons Contractuels -->
+                <!-- Liste des Paiements par étape Contractuels -->
                 <h4 style="font-size: 1rem; font-weight: 800; color: #1F3827; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px;">
-                    <i class="ph ph-check-sqaure"></i> Jalons de la mission
+                    <i class="ph ph-check-sqaure"></i> Paiements par étape de la mission
                 </h4>
 
                 <div id="missionModalMilestonesList" style="display: flex; flex-direction: column; gap: 12px;">

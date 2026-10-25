@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=430, initial-scale=1">
+<title>Bokantaj — aperçu et commandes vidéo</title>
+<link rel="stylesheet" href="../../vendor/phosphor/phosphor.css?v=2.1.2">
+<link rel="stylesheet" href="../../style.css?v=overlay">
+<style>
+    body { background: #FBF7EF; font-family: 'Outfit', sans-serif; padding: 14px; }
+    .card { max-width: 402px; margin: 0 auto 18px; background: #fff; border: 1px solid #E2E8F0; border-radius: 18px; padding: 14px; }
+    h2 { font-size: .85rem; color: #35583F; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+    <div class="card"><h2>Aperçu portrait 1080 × 1920 (avant tout chargement)</h2><div id="portrait"></div></div>
+    <div class="card"><h2>Aperçu large 1920 × 1080</h2><div id="wide"></div></div>
+    <div class="card"><h2>Forme inconnue (miniature sans taille, ancien post)</h2><div id="unknown"></div></div>
+    <div class="card"><h2>Commandes sur une vidéo claire</h2><div id="live"></div></div>
+<script src="../../bokantaj-video-policy.js?v=overlay"></script>
+<script>
+const policy = window.LYANN_BOKANTAJ_VIDEO_POLICY;
+
+// No image is loaded: the shape must come from the poster name alone.
+document.getElementById('portrait').innerHTML = policy.playbackMarkup(
+    'https://example.test/v1/media/bokantaj-media-hold/u/clip.mp4', '');
+document.getElementById('portrait').firstChild.style.setProperty('--media-ratio',
+    `${policy.posterRatio('https://example.test/u/clip-poster-1080x1920.jpg').width} / ${policy.posterRatio('https://example.test/u/clip-poster-1080x1920.jpg').height}`);
+document.getElementById('portrait').innerHTML = policy.playbackMarkup(
+    'https://example.test/u/clip.mp4', 'https://example.test/u/clip-poster-1080x1920.jpg')
+    .replace(/<img[^>]*>/, '');
+document.getElementById('wide').innerHTML = policy.playbackMarkup(
+    'https://example.test/u/clip2.mp4', 'https://example.test/u/clip2-poster-1920x1080.jpg')
+    .replace(/<img[^>]*>/, '');
+
+document.getElementById('unknown').innerHTML = policy.playbackMarkup(
+    'https://example.test/u/clip3.mp4', 'https://example.test/u/clip3-poster.jpg')
+    .replace(/<img[^>]*>/, '');
+
+// A bright clip, to judge whether the buttons stay readable over the sky.
+function soundIcon(muted) {
+    const waves = muted
+        ? '<path d="m16.8 9.6 4.4 4.8m0-4.8-4.4 4.8"/>'
+        : '<path d="M16.4 9a4.6 4.6 0 0 1 0 6"/><path d="M19 6.4a8.2 8.2 0 0 1 0 11.2"/>';
+    return `<svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none"
+        stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path fill="currentColor" stroke="none" d="M4.6 9h2.7L12 5.1v13.8L7.3 15H4.6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1Z"/>
+        ${waves}
+    </svg>`;
+}
+
+(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1920;
+    const context = canvas.getContext('2d');
+    const sky = context.createLinearGradient(0, 0, 0, 1920);
+    sky.addColorStop(0, '#cfd8dd');
+    sky.addColorStop(0.55, '#e7eef1');
+    sky.addColorStop(1, '#8aa37d');
+    context.fillStyle = sky;
+    context.fillRect(0, 0, 1080, 1920);
+    const stream = canvas.captureStream(24);
+    const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm' });
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    const stopped = new Promise((r) => { recorder.onstop = r; });
+    recorder.start();
+    await new Promise((r) => setTimeout(r, 900));
+    recorder.stop();
+    await stopped;
+
+    const shell = document.createElement('div');
+    shell.className = 'bokantaj-video-shell';
+    const video = document.createElement('video');
+    video.className = 'bokantaj-video';
+    video.dataset.feedVideo = '1';
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.src = URL.createObjectURL(new Blob(chunks, { type: 'video/mp4' }));
+    video.style.setProperty('--media-ratio', '1080 / 1920');
+    video.classList.add('has-media-ratio');
+    const overlay = document.createElement('div');
+    overlay.className = 'bokantaj-video-controls';
+    const sound = document.createElement('button');
+    sound.type = 'button';
+    sound.className = 'bokantaj-video-sound';
+    sound.innerHTML = soundIcon(true);
+    const expand = document.createElement('button');
+    expand.type = 'button';
+    expand.className = 'bokantaj-video-expand';
+    expand.innerHTML = '<i class="ph ph-arrows-out" aria-hidden="true"></i>';
+    overlay.append(sound, expand);
+    shell.append(video, overlay);
+    document.getElementById('live').append(shell);
+    video.play().catch(() => {});
+
+    await new Promise((r) => setTimeout(r, 400));
+    const box = (selector) => {
+        const node = document.querySelector(selector);
+        const rect = node.getBoundingClientRect();
+        return { w: Math.round(rect.width), h: Math.round(rect.height), ratio: +(rect.width / rect.height).toFixed(3) };
+    };
+    window.LYANN_OVERLAY_RESULT = {
+        portrait: box('#portrait .bokantaj-video-poster'),
+        wide: box('#wide .bokantaj-video-poster'),
+        unknown: box('#unknown .bokantaj-video-poster'),
+        soundGlyph: sound.querySelector('svg') ? Math.round(sound.querySelector('svg').getBoundingClientRect().width) : 0,
+        expandGlyph: Math.round(expand.querySelector('i').getBoundingClientRect().width)
+    };
+})();
+</script>
+</body>
+</html>

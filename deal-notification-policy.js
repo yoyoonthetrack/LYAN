@@ -42,9 +42,9 @@
         '💳 Paiement demandé',
         '🔒 Fonds sécurisés',
         '❌ Paiement échoué',
-        '🔨 Jalon',
+        '🔨 Paiement par étape',
         '✓ Travail déclaré terminé',
-        '✅ Jalon validé',
+        '✅ Paiement par étape validé',
         '💶 Fonds libérés',
         'Mission commencée',
         'Mission terminée',
@@ -55,9 +55,9 @@
         'Devis accepté. La mission a été créée.',
         'Devis refusé.',
         '🚀 Mission démarrée ! Les travaux sont désormais en cours.',
-        '✅ Jalon marqué comme effectué ! Le demandeur a été notifié pour validation.',
-        '🎉 Félicitations ! Tous les jalons ont été validés. La mission est désormais TERMINÉE !',
-        '👍 Jalon validé avec succès !'
+        '✅ Paiement par étape marqué comme effectué ! Le demandeur a été notifié pour validation.',
+        '🎉 Félicitations ! Tous les paiements par étape ont été validés. La mission est désormais TERMINÉE !',
+        '👍 Paiement par étape validé avec succès !'
     ];
 
     function isKeptDealType(type) {

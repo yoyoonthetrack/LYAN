@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bokantaj — forme des médias</title>
+<link rel="stylesheet" href="../../style.css">
+<style>
+    body { background: #FBF7EF; font-family: 'Outfit', sans-serif; padding: 16px; }
+    .card { background: #fff; border-radius: 18px; padding: 14px; margin: 0 auto 18px; max-width: 420px; box-shadow: 0 2px 8px #24432a14; }
+    h2 { font-size: .95rem; margin: 0 0 8px; color: #35583F; }
+</style>
+</head>
+<body>
+    <div class="card">
+        <h2>Vidéo portrait 720 × 1280</h2>
+        <div id="portraitVideo"></div>
+    </div>
+    <div class="card">
+        <h2>Vidéo large 1280 × 720</h2>
+        <div id="wideVideo"></div>
+    </div>
+    <div class="card">
+        <h2>Photo portrait seule 900 × 1600</h2>
+        <div id="portraitPhoto"></div>
+    </div>
+    <div class="card">
+        <h2>Photo large seule 1600 × 900</h2>
+        <div id="widePhoto"></div>
+    </div>
+
+<script src="../../bokantaj-video-policy.js"></script>
+<script>
+function solid(width, height, color) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    context.fillStyle = color;
+    context.fillRect(0, 0, width, height);
+    context.fillStyle = '#fff';
+    context.font = `${Math.round(width / 9)}px sans-serif`;
+    context.fillText(`${width}x${height}`, 12, Math.round(height / 2));
+    return canvas.toDataURL('image/png');
+}
+
+// Mirrors applyMediaRatio in script.js: the holder takes the media ratio.
+function applyMediaRatio(node, width, height) {
+    if (!node || !(width > 0) || !(height > 0)) return;
+    const holder = node.closest('.bokantaj-photos-1 .bokantaj-photo')
+        || node.closest('.bokantaj-video-poster')
+        || node;
+    holder.style.setProperty('--media-ratio', `${Math.round(width)} / ${Math.round(height)}`);
+    holder.classList.add('has-media-ratio');
+}
+
+function mountVideo(hostId, width, height, color) {
+    const host = document.getElementById(hostId);
+    host.innerHTML = window.LYANN_BOKANTAJ_VIDEO_POLICY.playbackMarkup(
+        'https://example.test/clip.mp4',
+        solid(width, height, color)
+    );
+    const image = host.querySelector('img');
+    image.addEventListener('load', () => applyMediaRatio(image, image.naturalWidth, image.naturalHeight));
+    const shell = document.createElement('button');
+    shell.type = 'button';
+    shell.className = 'bokantaj-video-sound';
+    shell.innerHTML = '<i class="ph ph-speaker-slash"></i>🔇';
+    host.querySelector('.bokantaj-video-poster').appendChild(shell);
+}
+
+function mountPhoto(hostId, width, height, color) {
+    const host = document.getElementById(hostId);
+    host.innerHTML = `<div class="bokantaj-photos bokantaj-photos-1">
+        <button type="button" class="bokantaj-photo"><img alt=""></button>
+    </div>`;
+    const image = host.querySelector('img');
+    image.addEventListener('load', () => applyMediaRatio(image, image.naturalWidth, image.naturalHeight));
+    image.src = solid(width, height, color);
+}
+
+mountVideo('portraitVideo', 720, 1280, '#2D5A39');
+mountVideo('wideVideo', 1280, 720, '#1F4E79');
+mountPhoto('portraitPhoto', 900, 1600, '#8A5A2B');
+mountPhoto('widePhoto', 1600, 900, '#5A2B6B');
+</script>
+</body>
+</html>

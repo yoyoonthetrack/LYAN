@@ -164,7 +164,7 @@
             const place = window.formatProfileLocation
                 ? window.formatProfileLocation(p.city, p.territory)
                 : ([p.city, p.territory].filter(Boolean).join(' · ') || 'Guadeloupe');
-            const badgeText = p.badge || (p.is_pro_verified ? 'PRO VÉRIFIÉ' : (p.is_verified || p.kyc_verified ? 'PROFIL VÉRIFIÉ' : ''));
+            const badgeText = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? (window.LYANN_PLANS?.badgeLabel(p) || '') : p.badge || (p.is_pro_verified ? 'PRO VÉRIFIÉ' : (p.is_verified || p.kyc_verified ? 'PROFIL VÉRIFIÉ' : ''));
             const rawSkills = Array.isArray(p.skills) && p.skills.length ? p.skills : (Array.isArray(p.intervention_zone) && p.intervention_zone.length ? p.intervention_zone : (p.services || []).map(s => s.title || s.name).filter(Boolean));
             const skillsText = rawSkills.slice(0, 4).join(' · ');
             const bioQuote = formatBioQuote(p, skillsText);
@@ -326,6 +326,7 @@
             $('explorerSummary').textContent = `${results.length} ${countLabel} · ${(mode === 'annonces' ? filters.area : [filters.commune, filters.territory].filter(Boolean).join(' · ')) || 'Tous les lieux'}`;
             $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
             const container = $('explorerResults');
+            window.LYANN_SKELETON?.clear(container);
             container.dataset.state = results.length ? 'SUCCESS' : 'EMPTY';
             if (!results.length) {
                 container.innerHTML = `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish"><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>' : ''}</div>${refineCard()}`;
@@ -342,7 +343,7 @@
             $('explorerResults').setAttribute('aria-busy', 'true');
             if (!quiet) {
                 $('explorerResults').dataset.state = 'LOADING';
-                $('explorerResults').innerHTML = '<div class="explorer-state" role="status">Chargement…</div>';
+                window.LYANN_SKELETON?.show($('explorerResults'), mode === 'annonces' ? 'annonce' : 'profile', 4);
                 $('explorerSummary').textContent = '';
                 $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
             }
@@ -355,6 +356,7 @@
                 render();
             } catch (error) {
                 if (token !== revision) return;
+                window.LYANN_SKELETON?.clear($('explorerResults'));
                 $('explorerResults').dataset.state = 'ERROR';
                 $('explorerResults').innerHTML = '<div class="explorer-state" role="alert"><h2>Impossible de charger les résultats.</h2><p>La recherche est momentanément indisponible. Réessayez dans un instant.</p><button class="btn btn-primary" data-action="retry">Réessayer</button></div>';
                 $('explorerSummary').textContent = 'Recherche indisponible';

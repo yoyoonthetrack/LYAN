@@ -114,7 +114,7 @@
             const milestones = Array.isArray(quote.milestones) ? quote.milestones : [];
             const pending = milestones.some((row) => row && str(row.status).toUpperCase() === 'PENDING');
             if (!milestones.length) {
-                return 'Le devis est accepté. Le jalon de paiement n’est pas encore disponible.';
+                return 'Le devis est accepté. Le paiement par étape de paiement n’est pas encore disponible.';
             }
             if (readiness === 'unknown') {
                 return 'Vérification du compte de versement… L’état du compte n’est pas encore connu.';
@@ -134,7 +134,7 @@
                         : 'En attente du Lyanneur. Le compte de versement doit être finalisé avant la sécurisation du paiement. Vous n’avez aucune action immédiate.');
             }
             if (pending && role === 'requester') {
-                return 'Le devis est accepté. Sécurisez le paiement du jalon lorsque le compte de versement est prêt.';
+                return 'Le devis est accepté. Sécurisez le paiement du paiement par étape lorsque le compte de versement est prêt.';
             }
             if (pending && role === 'lyanneur') {
                 return 'Le devis est accepté. En attente du paiement du demandeur.';

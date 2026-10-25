@@ -131,6 +131,7 @@
     }
 
     function verifiedLabel(profile) {
+        if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow') return window.LYANN_PLANS?.badgeLabel(profile) || '';
         if (profile?.is_pro_verified) return 'Pro vérifié';
         if (profile?.is_verified) return 'Vérifié';
         return null;

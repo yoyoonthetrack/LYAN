@@ -239,10 +239,12 @@ function initializeNativeFeatures() {
         });
     }
 
-    // Keyboard Accessory Bar
+    // Keyboard accessory bar: it carries the arrows and the Done button, the
+    // only way to close the keyboard on a page with no free space to tap.
+    // The option is named isVisible; with the wrong name the call does nothing.
     const keyboard = getNativePlugin('Keyboard');
     if (keyboard) {
-        keyboard.setAccessoryBarVisible({ visible: true }).catch(() => {});
+        keyboard.setAccessoryBarVisible({ isVisible: true }).catch(() => {});
     }
     
     // Request initial push permissions
