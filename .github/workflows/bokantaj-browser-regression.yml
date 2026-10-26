@@ -87,6 +87,7 @@ jobs:
             test-results/qa-bokantaj-*.png
             test-results/bokantaj-map-*.png
             test-results/qa-notifications-*.png
-            test-results/**/error-context.md
+            test-results/**
+            playwright-report/**
           if-no-files-found: warn
           retention-days: 7
