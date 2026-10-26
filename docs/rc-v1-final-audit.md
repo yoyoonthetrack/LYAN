@@ -16,6 +16,8 @@ Le simulateur iPhone 17 Pro a reçu le même paquet et s’ouvre sur l’accueil
 
 Le paquet reconstruit après le commit porte l’identité `ios-mvpr2mmm-9fa7cc`, le SHA `38b9c63ca196f661d5183402e2c40a0796218371`, le hash de bundle `6784914a5be15f73c6c7e3c86e5938a165234d3fa94a8f124b5e2fa2fb208608`, le backend `https://staging-bokantaj.lyann.app` et le verrou `tdktfbtqceldlaeqjtow`. Les copies iOS et Android sont identiques. L’APK debug `android/app/build/outputs/apk/debug/app-debug.apk` a le SHA-256 `f45459f8e7c96f64434d5e1f38a7b307543b757172a18fb84a5dbb72bb7d7e5c`. Il est installé sur l’émulateur `lyann_api36`. L’application simulateur est installée et lancée sur l’iPhone 17 Pro `9281CEB1-E36D-4654-91E0-3AA741F8AD10`.
 
+Le passage CI de `5b11afb` a trois checks verts et `chromium-qa` rouge : le test de forme cherchait encore un `await` avant `play()`. La lecture reste dans le même tour que le toucher. La mesure du cadre se fait ensuite.
+
 La migration devis et le remboursement Stripe Test restent bloqués comme en V1.5. Aucune fusion, aucun Production, aucun Stripe Live.
 
 Le paquet `490d497` est installé sur un émulateur Pixel 6 (Android 16) et sur le simulateur iPhone 17 Pro. La WebView Android et le fichier `lyann-native-build.json` embarqué dans l’app iOS portent le verrou Staging. Il n’y a pas d’IPA, pas d’AAB signé, pas d’iPhone branché, pas de téléphone Android physique. La migration devis et le remboursement Stripe Test restent bloqués comme en V1.5. Aucune fusion vers `main`, aucun déploiement Production, aucun Stripe Live.

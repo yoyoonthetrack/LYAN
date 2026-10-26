@@ -3418,7 +3418,7 @@ safeDomReady(() => {
         button.classList.add('is-loading');
         button.setAttribute('aria-busy', 'true');
         const video = document.createElement('video');
-        video.className = 'bokantaj-video';
+        video.className = 'bokantaj-video is-settling';
         video.controls = true;
         video.playsInline = true;
         video.setAttribute('playsinline', '');
@@ -3435,6 +3435,7 @@ safeDomReady(() => {
         if (ratio) {
             video.style.setProperty('--media-ratio', ratio);
             video.classList.add('has-media-ratio');
+            video.classList.remove('is-settling');
         }
         const poster = button.querySelector('img');
         const shell = document.createElement('div');
@@ -3459,6 +3460,9 @@ safeDomReady(() => {
         video.src = source;
         const started = video.play();
         if (started && typeof started.catch === 'function') started.catch(() => {});
+        // The gesture has already started playback. Measuring the frame only
+        // updates the box; it must not run before play().
+        if (!ratio) videoShapeReady(video);
         const reveal = () => {
             video.classList.remove('is-settling');
             if (poster && poster.parentElement) poster.remove();

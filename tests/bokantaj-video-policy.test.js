@@ -182,7 +182,11 @@ test('the card holds the shape of the clip before anything is fetched', () => {
     assert.match(css, /\.bokantaj-video:not\(\.has-media-ratio\)/);
     const script = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
     assert.match(script, /function videoShapeReady/);
-    assert.match(script, /if \(!ratio && !codedPortrait\) await videoShapeReady\(video\)/);
+    const opener = script.slice(script.indexOf('function openBokantajVideo'), script.indexOf('function openFullPlayer'));
+    assert.match(opener, /const started = video\.play\(\)/);
+    assert.match(opener, /if \(!ratio\) videoShapeReady\(video\)/);
+    assert.ok(opener.indexOf('video.play()') < opener.indexOf('videoShapeReady(video)'));
+    assert.doesNotMatch(opener, /await /);
     assert.match(script, /function playbackFrame/);
     assert.match(script, /bokantaj-video is-settling/);
     assert.match(css, /\.bokantaj-video-poster-image\.is-oriented/);
