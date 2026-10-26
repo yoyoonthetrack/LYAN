@@ -37,6 +37,7 @@ test('Bokantaj loads posts in order, twenty at a time, and the 15th opens the ne
     window.LYANN_BOKANTAJ_REPOSITORY = {
       load: async () => posts,
       hasMore: () => false,
+      cursor: () => null,
       invalidate() {},
       isPubliclyVisible: repo.isPubliclyVisible,
       sanitizeFeed: repo.sanitizeFeed

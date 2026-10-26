@@ -2632,9 +2632,19 @@ safeDomReady(() => {
             });
             if (gen !== bokantajLoadGen) return;
             currentFlashPosts = keepOwnPendingPosts(Array.isArray(data) ? data : [], previousPosts);
-            bokantajHasMore = window.LYANN_BOKANTAJ_REPOSITORY.hasMore();
-            bokantajCursor = window.LYANN_BOKANTAJ_REPOSITORY.cursor()
-                || (currentFlashPosts.length ? currentFlashPosts[currentFlashPosts.length - 1].created_at : null);
+            // Pagination metadata must not throw away a feed that already loaded.
+            try {
+                bokantajHasMore = window.LYANN_BOKANTAJ_REPOSITORY.hasMore() === true;
+                const cursor = typeof window.LYANN_BOKANTAJ_REPOSITORY.cursor === 'function'
+                    ? window.LYANN_BOKANTAJ_REPOSITORY.cursor()
+                    : null;
+                bokantajCursor = cursor
+                    || (currentFlashPosts.length ? currentFlashPosts[currentFlashPosts.length - 1].created_at : null);
+            } catch (cursorErr) {
+                console.warn('[BOKANTAJ] pagination cursor unavailable', cursorErr);
+                bokantajHasMore = false;
+                bokantajCursor = currentFlashPosts.length ? currentFlashPosts[currentFlashPosts.length - 1].created_at : null;
+            }
             bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
         } catch (err) {
             console.error("[BOKANTAJ] Error during load:", err);
@@ -3162,12 +3172,15 @@ safeDomReady(() => {
         }
         const posters = card.querySelectorAll('.bokantaj-video-poster[data-video-src]');
         for (const button of posters) {
-            ensureVideoPosterOriented(button);
             const source = button.getAttribute('data-video-src');
             if (!source || !button.isConnected) continue;
+            // The full download records the display rotation. A separate Range
+            // request would fetch the same clip twice, including clips the
+            // member has not reached yet.
             if (source.includes('/v1/media/')) {
                 try { await loadBokantajMedia(source); } catch (err) { continue; }
             }
+            await ensureVideoPosterOriented(button);
             // Held until it is actually on screen: the bytes are already here,
             // so opening it later does not start another download.
             const video = await openBokantajVideo(button, { inFeed: true, hold: true });
@@ -3183,7 +3196,6 @@ safeDomReady(() => {
         // Bound before any download, so a clip can play the moment its card
         // has been fetched rather than after the rest of the feed.
         observeFeedVideos(root);
-        root.querySelectorAll('.bokantaj-video-poster[data-video-src]').forEach(ensureVideoPosterOriented);
         if (feedMediaPreload) feedMediaPreload.stop();
         // Taken in the same turn as the render, before the browser starts the
         // requests: otherwise every photo of the feed downloads at once, fails
