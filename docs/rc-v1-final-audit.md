@@ -1,8 +1,101 @@
-# LYANN — Release Candidate V1.1 / V1.2
+# LYANN — Release Candidate V1.1 / V1.2 / V1.3
 
 Verdict : **NO-GO**
 
-Le passage V1.2 a exécuté de vrais parcours Staging (auth QA, publication, modération, messagerie, ouverture des 33 rubriques) et a reconstruit les paquets iOS et Android sur le même commit, verrouillés sur `tdktfbtqceldlaeqjtow`. Il reste les paiements Stripe Test, les devis, la suppression de compte, les achats Sandbox et toute validation sur appareil. Sur `b5a3495`, les 5 checks GitHub attachés à ce commit sont verts. Ce résultat ne couvre pas `6b808c3` ni `429aba4`. Aucun IPA ni AAB n’a été envoyé.
+Le passage V1.3 a exécuté Stripe Test sur Staging, une libération réelle, une suppression de compte QA jetable, et un inventaire des 33 rubriques. Il ne valide pas les écritures du back-office, le remboursement exécuté, le changement de rôle ou d’abonnement, ni un binaire installé. Aucun IPA ni AAB n’a été produit. Aucune fusion vers `main`, aucun déploiement Production, aucun Stripe Live.
+
+## V1.3 — paiements, back-office, cycle de vie, builds
+
+Code produit sous test : `013f04b6e41c1b0ec410559fcc53c9f693d96ad2`. Ce passage n’a pas modifié le produit. Il ajoute le script `scripts/rc-v13-followup.js` et les preuves `artifacts/rc-v13/followup.json`.
+
+API locale `http://127.0.0.1:8098` : `supabase_ref=tdktfbtqceldlaeqjtow`, `isolation=STAGING_ISOLATED`, Stripe `sk_test_` / `pk_test_`.
+
+### Classe des preuves
+
+| Classe | Ce qui a été fait |
+| --- | --- |
+| Tests simulés | Playwright CI et local sur données mockées. Ils ne prouvent pas Supabase. |
+| Tests connectés Staging | Auth QA, devis, jalons, Stripe Test, webhooks signés, libération, suppression d’un compte créé pour l’essai, lecture admin. |
+| Tests natifs simulés | Aucun nouveau passage simulateur dans V1.3. Le paquet local est identifié, non lancé. |
+| Appareils physiques | Aucun. |
+| Sandbox Apple / Google | Aucun achat, aucune restauration. |
+
+### CI du SHA `013f04b`
+
+Relevé GitHub des check-runs de ce commit, après la fin de Chromium. Quatre checks, quatre succès :
+
+| Check | Résultat |
+| --- | --- |
+| `architecture-audit` | success |
+| `chromium-qa` | success |
+| `android-qa` | success |
+| Vercel Preview Comments | success |
+
+Le statut combiné Vercel était déjà `success` pendant que Chromium tournait encore. Il n’a pas été pris pour une CI verte. Les workflows navigateur et Android sont filtrés par chemins : un commit limité au rapport et au script ne les relance pas. Leur dernier succès sur le code produit reste `013f04b`. Le check `architecture-audit` de la PR se relance à chaque poussée. La CI du commit de ce rapport n’est verte qu’une fois ce job terminé avec succès.
+
+### Stripe Test et devis
+
+`node scripts/saved-cards-staging-scenarios.js` : 23 réussis, 0 échec, cible `tdktfbtqceldlaeqjtow`, Stripe `test`. Le script crée une invitation, un devis (`create_request_quote`), l’accepte (`accept_request_quote`), puis le jalon.
+
+| Parcours | Résultat |
+| --- | --- |
+| Deux appels `create-milestone-intent` | même PaymentIntent |
+| Confirmation carte test `4242`, `livemode` faux | `succeeded` |
+| Second confirm | pas de second débit |
+| Webhook signé | jalon `FUNDED`, paiement `SUCCEEDED`, montant inchangé |
+| Webhook sans signature | HTTP 400 |
+| Carte refusée | `card_declined`, jalon non financé |
+| 3DS `pm_card_authenticationRequired` | `requires_action`, jalon non `FUNDED` |
+| Carte enregistrée | visible pour le titulaire, invisible et non supprimable par un autre membre, puis détachée |
+| Prestataire marque le jalon réalisé | `COMPLETED` |
+| Client libère | HTTP 200, jalon `RELEASED`, `transfer_status=TRANSFERRED`, identifiant Stripe `tr_`, brut 4149 cents, net prestataire 3880 |
+| Seconde libération | HTTP 200, idempotente |
+| Prestataire qui tente de libérer | HTTP 403 |
+| Jeton invalide sur la libération | HTTP 401 |
+| Remboursement d’un jalon sans paiement réussi | HTTP 409 `NOT_FUNDED` |
+| Remboursement d’un jalon encore `FUNDED` | HTTP 409 `EXECUTION_DISABLED` |
+
+L’édition d’un devis ou d’un montant de jalon déjà créé n’a pas été exécutée. Le remboursement Stripe d’un paiement réussi n’a pas été exécuté : le grant de remboursement avant transfert est inactif (`active: false`), et l’appel refuse sans écrire. Trois jalons `FUNDED` de ces essais restent en Staging. Ce sont des paiements test, pas des fonds réels.
+
+### Back-office
+
+Les 33 sections s’ouvrent avec la session admin Staging et deviennent `active`. Vingt-neuf déclenchent au moins une réponse HTTP 200 (`/v1/admin/ops`, centre de contrôle, stats). Quatre n’ont rien appelé dans la fenêtre observée : action, marketplace, users, maison. `sec-territories` a reçu un HTTP 400 sur `/v1/admin/ops`. Le journal d’audit a répondu 200, sans création d’une ligne d’audit par une écriture de ce passage.
+
+Treize sections montrent des boutons (export, génération éditoriale, tâches Mika, remboursement, invitation, suspension, offre Pro). Ces boutons n’ont pas été actionnés. Aucune rubrique n’est validée : l’ouverture et la lecture ne prouvent pas une modification, un filtre soumis, une persistance ou un droit d’écriture.
+
+Le compte QA C, après login sur `admin.html`, ressort `UNAUTHENTICATED`. Il n’est pas `AUTHORIZED`. La session membre n’est pas restée ouverte pendant le contrôle admin.
+
+### Cycle de vie
+
+| Parcours | Résultat |
+| --- | --- |
+| Compte jetable `@lyann.invalid`, créé pour cet essai | profil `first_name` modifié et relu |
+| `POST /v1/auth/delete-account` | HTTP 200, `ok: true` |
+| Nouvelle connexion | refusée |
+| Utilisateur auth | absent. Pas de suppression des comptes QA A, B ou C |
+| Jeton invalide | HTTP 401 |
+
+Le handler anonymise le prénom, le nom et l’avatar, puis supprime l’utilisateur auth. Il ne parcourt pas le stockage média et n’applique pas une conservation réglementaire distincte. Ce compte n’avait pas de média. La déconnexion d’une session encore valide, l’expiration réelle d’un JWT, le changement de rôle et le changement d’abonnement n’ont pas été exécutés.
+
+### Builds
+
+Le paquet local iOS et le paquet Android restent ceux de V1.2. Aucun outil de signature Distribution ou de keystore n’est apparu, donc aucun IPA ni AAB n’a été produit.
+
+| Champ | Valeur |
+| --- | --- |
+| Build id | `ios-mvpmc13z-9215ed` |
+| Compilé le | `2026-10-26T18:57:09.789Z` |
+| SHA source | `6b808c3dfca23a5f64ce1398ad369666260c8b81` |
+| Version | `1.0` |
+| Hash bundle | `4f4e84fe72aef10d90f4a7985a51d9328e065b6218bfb34a46c6fc9650144616` |
+| Backend | `https://staging-bokantaj.lyann.app` |
+| Supabase | `tdktfbtqceldlaeqjtow` |
+| Signature | une identité Apple Development. Aucune Apple Distribution. Aucun keystore Android |
+| Appareil | non installé |
+
+Le HTML du paquet ne contient pas la référence Production. Une compilation sans `LYANN_RUNTIME=staging` et sans verrou `tdktfbtqceldlaeqjtow` retomberait sur Production. Cette compilation n’a pas été lancée. Le SHA du paquet est `6b808c3`, pas `013f04b` : les commits intermédiaires ne changent que le rapport.
+
+## V1.2 — preuves Staging et builds
 
 ## V1.2 — preuves Staging et builds
 
@@ -199,16 +292,14 @@ Aucun P0 confirmé (perte de données, fuite de position exacte dans les specs m
 
 ## Décision
 
-**NO-GO** pour une soumission App Store, Google Play ou une promotion Production.
+**NO-GO** pour TestFlight, Google Play, une soumission store ou une promotion Production.
 
-RC-4 est fermé pour le paquet local `ios-mvpmc13z-9215ed` : il porte `6b808c3` et le correctif de fil. Il n’a pas été installé.
+Le code produit `013f04b` a ses quatre checks GitHub en succès, dont Chromium et Android. Le paquet local `ios-mvpmc13z-9215ed` porte `6b808c3` et le correctif de fil. Il n’est pas installable : pas de certificat Apple Distribution, pas de keystore Android, pas d’appareil.
 
 Reste bloquant :
 
-1. Confirmer le nom du job Android et la CI de `6b808c3` / `429aba4`. `b5a3495` est vert sur ses 5 checks.
-2. Stripe Test : paiement, échec, webhook, remboursement, double soumission. Clés test présentes, aucun appel effectué.
-3. Devis, jalons, abonnements et restauration Sandbox.
-4. Suppression de compte et nettoyage des médias, sur un compte QA seulement.
-5. Actions d’écriture des 33 rubriques, pas seulement leur ouverture.
-6. Annonces et fiche Lyanneur de bout en bout dans l’interface.
-7. Archive iOS signée Distribution et AAB signé, puis essai appareil (clavier, caméra, GPS, push, achat Sandbox). Ne pas envoyer aux stores sans accord.
+1. Les 33 rubriques s’ouvrent et 29 lisent une API. Leurs boutons d’écriture n’ont pas été exécutés. `sec-territories` répond 400. Aucune rubrique n’est validée.
+2. Le remboursement d’un paiement réussi est refusé (`EXECUTION_DISABLED`) tant que le grant est inactif. L’édition d’un devis existant n’a pas été jouée.
+3. La suppression auth d’un compte QA jetable fonctionne. Le nettoyage média et la conservation réglementaire ne sont pas implémentés dans ce handler. Rôle, abonnement et expiration réelle de session ne sont pas testés.
+4. Pas d’IPA signé, pas d’AAB signé, pas d’essai appareil, pas d’achat Sandbox Apple ou Google.
+5. La Preview Vercel reste derrière le SSO. Le projet Supabase qu’elle sert n’a pas été lu.

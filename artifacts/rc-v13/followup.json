@@ -1,0 +1,469 @@
+{
+  "environment": "staging",
+  "supabase_ref": "tdktfbtqceldlaeqjtow",
+  "cases": [
+    {
+      "id": "webhook non signé refusé",
+      "ok": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "jeton invalide refusé sur la libération",
+      "ok": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "prestataire marque le jalon réalisé",
+      "ok": true,
+      "detail": "COMPLETED"
+    },
+    {
+      "id": "client demande la libération",
+      "ok": true,
+      "detail": "status=200 code=RELEASED"
+    },
+    {
+      "id": "seconde libération idempotente",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "le prestataire ne libère pas les fonds",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "remboursement refusé sans paiement réussi",
+      "ok": true,
+      "detail": "status=409 code=NOT_FUNDED"
+    },
+    {
+      "id": "profil QA jetable modifié",
+      "ok": true,
+      "detail": "RC13-modifie"
+    },
+    {
+      "id": "suppression du compte QA jetable",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "connexion impossible après suppression",
+      "ok": true,
+      "detail": "Invalid login credentials"
+    },
+    {
+      "id": "compte auth absent après suppression",
+      "ok": true,
+      "detail": "gone"
+    },
+    {
+      "id": "QA C reste hors du back-office",
+      "ok": true,
+      "detail": "UNAUTHENTICATED"
+    },
+    {
+      "id": "rubriques avec au moins un bouton visible",
+      "ok": true,
+      "detail": "13/33"
+    }
+  ],
+  "failures": [],
+  "sections": [
+    {
+      "id": "sec-overview",
+      "active": true,
+      "buttons": [
+        "À traiter",
+        "Exporter les paiements"
+      ],
+      "error": "indisponible",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/kill-switch/global"
+      ]
+    },
+    {
+      "id": "sec-action",
+      "active": true,
+      "buttons": [],
+      "error": "erreur",
+      "network": []
+    },
+    {
+      "id": "sec-marketplace",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": []
+    },
+    {
+      "id": "sec-users",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": []
+    },
+    {
+      "id": "sec-maison",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": []
+    },
+    {
+      "id": "sec-lyanneurs",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/ops"
+      ]
+    },
+    {
+      "id": "sec-requests",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/maison/profiles",
+        "200 http://127.0.0.1:8098/v1/admin/ops"
+      ]
+    },
+    {
+      "id": "sec-missions",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/storage/v1/object/public/avatars/a1ce1222-2eba-491a-80dc-f1d6537d44f5/avatar.jpg",
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/storage/v1/object/public/avatars/0e8ff457-6769-47eb-b4df-b624b28c3298/avatar.jpg",
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/storage/v1/object/public/avatars/dd46c973-db45-40fc-8b1f-f21731e60450/avatar.jpg",
+        "200 http://127.0.0.1:8098/v1/admin/control-center"
+      ]
+    },
+    {
+      "id": "sec-services",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/storage/v1/object/public/avatars/cdd0c8a3-032d-426d-b988-fa08eefd83d1/avatar.jpg",
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/storage/v1/object/public/avatars/d901fe44-76cf-4ace-9a8c-a4f2ffc5f793/avatar.jpg",
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/storage/v1/object/public/avatars/725618e3-5719-43c0-8002-81b372aadfc5/avatar.jpg",
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/storage/v1/object/public/avatars/67a0c628-f483-44ca-831c-c9e921cf5741/avatar.jpg"
+      ]
+    },
+    {
+      "id": "sec-quotes",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/ops",
+        "200 http://127.0.0.1:8098/v1/admin/control-center"
+      ]
+    },
+    {
+      "id": "sec-chat",
+      "active": true,
+      "buttons": [
+        "Consulter une conversation (motif obligatoire)",
+        "Envoyer"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/ops",
+        "200 http://127.0.0.1:8098/v1/admin/marketplace-stats",
+        "200 http://127.0.0.1:8098/v1/admin/control-center"
+      ]
+    },
+    {
+      "id": "sec-editorial",
+      "active": true,
+      "buttons": [
+        "Générer maintenant"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/ops"
+      ]
+    },
+    {
+      "id": "sec-bokantaj",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/agents",
+        "200 http://127.0.0.1:8098/v1/admin/control-center"
+      ]
+    },
+    {
+      "id": "sec-agents",
+      "active": true,
+      "buttons": [
+        "Créer un Agent LYANN",
+        "Centre de Validations ( 15 )",
+        "Tâches En Cours",
+        "Approbations en Attente ( 15 )",
+        "Détails",
+        "Modifier",
+        "Détails",
+        "Modifier",
+        "Détails",
+        "Modifier",
+        "Détails",
+        "Modifier"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/marketplace-stats",
+        "200 http://127.0.0.1:8098/v1/admin/agent-tasks",
+        "200 http://127.0.0.1:8098/v1/admin/editorial/bots",
+        "200 http://127.0.0.1:8098/v1/admin/ops"
+      ]
+    },
+    {
+      "id": "sec-mika",
+      "active": true,
+      "buttons": [
+        "DONNER UNE TÂCHE",
+        "SUSPENDRE",
+        "PRENDRE LA MAIN",
+        "MODIFIER",
+        "📊 Statut du jour",
+        "🌿 2 posts jardinage",
+        "🛑 Suspendre bricolage",
+        "\"Prépare 3 Bokantaj jardinage\"",
+        "\"Concentre-toi sur Saint-François\"",
+        "\"Suspends tes réponses chat\"",
+        "INTERPRÉTER LA COMMANDE",
+        "CONFIRMER"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/ops",
+        "200 http://127.0.0.1:8098/v1/admin/control-center"
+      ]
+    },
+    {
+      "id": "sec-content",
+      "active": true,
+      "buttons": [
+        "Lancer une passe IA",
+        "À vérifier",
+        "Publications Bokantaj",
+        "Commentaires",
+        "Utilisateurs",
+        "Signalements"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/marketplace-stats"
+      ]
+    },
+    {
+      "id": "sec-support",
+      "active": true,
+      "buttons": [
+        "Nouveau ticket",
+        "Enregistrer",
+        "Annuler"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/editorial/bots",
+        "200 http://127.0.0.1:8098/v1/admin/editorial/proposals",
+        "200 http://127.0.0.1:8098/v1/admin/bokantaj/map-featured"
+      ]
+    },
+    {
+      "id": "sec-disputes",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/support/threads",
+        "200 http://127.0.0.1:8098/v1/admin/agents"
+      ]
+    },
+    {
+      "id": "sec-notifications",
+      "active": true,
+      "buttons": [
+        "Diffusion push non branchée"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/operations/helpdesk",
+        "200 http://127.0.0.1:8098/v1/admin/marketplace-stats"
+      ]
+    },
+    {
+      "id": "sec-reviews",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/agent-tasks",
+        "200 http://127.0.0.1:8098/v1/admin/agents/mika",
+        "200 http://127.0.0.1:8098/v1/admin/ops",
+        "200 http://127.0.0.1:8098/v1/admin/moderation-center"
+      ]
+    },
+    {
+      "id": "sec-finances",
+      "active": true,
+      "buttons": [
+        "Dossiers",
+        "Tous",
+        "Remboursements",
+        "Litiges",
+        "Aide jardinage — démonstration Fonds reçus, prestation non commencée · 43,49 € · Client QA / Lyanneur QA",
+        "Aide jardinage — démonstration Prestation commencée · 43,49 € · Client QA / Lyanneur QA",
+        "Aide jardinage — démonstration Prestation déclarée terminée · 43,49 € · Client QA / Lyanneur QA",
+        "Aide jardinage — démonstration Litige — fonds bloqués · 43,49 € · Client QA / Lyanneur QA",
+        "Aide jardinage — démonstration Remboursé · 43,49 € · Client QA / Lyanneur QA",
+        "Aide jardinage — démonstration Transfer Stripe créé · 43,49 € · Client QA / Lyanneur QA",
+        "Refuser",
+        "Proposer une décision"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/audit-logs",
+        "200 http://127.0.0.1:8098/v1/admin/editorial/proposals"
+      ]
+    },
+    {
+      "id": "sec-payouts",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/marketplace-stats",
+        "200 http://127.0.0.1:8098/v1/admin/ops"
+      ]
+    },
+    {
+      "id": "sec-subscriptions",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/ops"
+      ]
+    },
+    {
+      "id": "sec-protection",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/ops",
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/storage/v1/object/public/avatars/0493d467-47c5-4d3f-be29-f67ea2a8d49e/editorial.svg",
+        "200 http://127.0.0.1:8098/v1/admin/marketplace-stats"
+      ]
+    },
+    {
+      "id": "sec-invoices",
+      "active": true,
+      "buttons": [
+        "Exporter Écritures Comptables (CSV)"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/agents/mika"
+      ]
+    },
+    {
+      "id": "sec-taxonomy",
+      "active": true,
+      "buttons": [
+        "Tester une simulation de match",
+        "Lancer le Matching",
+        "Ajouter une Entrée"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/agents",
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/rest/v1/lyann_taxonomy"
+      ]
+    },
+    {
+      "id": "sec-team",
+      "active": true,
+      "buttons": [
+        "Inviter un Collaborateur"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/ops",
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/rest/v1/lyann_taxonomy",
+        "200 http://127.0.0.1:8098/v1/admin/agent-tasks"
+      ]
+    },
+    {
+      "id": "sec-rbac",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/rest/v1/requests",
+        "200 https://tdktfbtqceldlaeqjtow.supabase.co/rest/v1/requests",
+        "200 http://127.0.0.1:8098/v1/admin/audit-logs"
+      ]
+    },
+    {
+      "id": "sec-audit-logs",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/ops",
+        "200 http://127.0.0.1:8098/v1/admin/kill-switch/global"
+      ]
+    },
+    {
+      "id": "sec-feature-flags",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/control-center"
+      ]
+    },
+    {
+      "id": "sec-territories",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "400 http://127.0.0.1:8098/v1/admin/ops"
+      ]
+    },
+    {
+      "id": "sec-health",
+      "active": true,
+      "buttons": [],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/ops"
+      ]
+    },
+    {
+      "id": "sec-user-detail",
+      "active": true,
+      "buttons": [
+        "Retour Liste Membres",
+        "Réattester KYC",
+        "Offrir Abonnement Pro",
+        "Suspendre le Compte"
+      ],
+      "error": "",
+      "network": [
+        "200 http://127.0.0.1:8098/v1/admin/marketplace-stats"
+      ]
+    }
+  ],
+  "ok": true
+}
