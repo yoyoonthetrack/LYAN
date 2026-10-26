@@ -188,6 +188,80 @@ final class LyannSmokeUITests: XCTestCase {
         note(resumed ? "resumed" : "resume-failed")
     }
 
+    func testAnnoncesMapAndMedia() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["Annonces"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["Annonces"].firstMatch.isHittable)
+        app.buttons["Annonces"].firstMatch.tap()
+        let details = app.buttons["Détails"].firstMatch
+        let empty = app.staticTexts["Pas encore d'annonce correspondant à votre recherche."].firstMatch
+        let failed = app.staticTexts["Impossible de charger les résultats."].firstMatch
+        let listed = waitUntil(app, seconds: 20) { details.exists || empty.exists || failed.exists }
+        note(details.exists ? "annonces-cards" : empty.exists ? "annonces-empty" : failed.exists ? "annonces-error" : "annonces-pending")
+        save(app, "v19-annonces")
+        XCTAssertTrue(listed, "Les annonces ne quittent pas le chargement.")
+        if details.exists, details.isHittable {
+            details.tap()
+            let own = app.buttons["Modifier"].firstMatch.waitForExistence(timeout: 6)
+            let contact = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Contacter")).firstMatch
+            note(own ? "annonce-own-detail" : contact.exists ? "annonce-detail" : "annonce-detail-empty")
+            save(app, "v19-annonce-detail")
+            let close = app.buttons["Fermer"].firstMatch
+            if close.waitForExistence(timeout: 2), close.isHittable { close.tap() }
+        }
+
+        let lyanneurs = app.buttons["Lyanneurs"].firstMatch
+        XCTAssertTrue(lyanneurs.waitForExistence(timeout: 5) && lyanneurs.isHittable)
+        lyanneurs.tap()
+        let contactTalent = app.buttons["Contacter"].firstMatch
+        let noTalent = app.staticTexts["Aucun Lyanneur trouvé pour cette recherche."].firstMatch
+        let talents = waitUntil(app, seconds: 20) { contactTalent.exists || noTalent.exists }
+        note(contactTalent.exists ? "lyanneurs-cards" : noTalent.exists ? "lyanneurs-empty" : "lyanneurs-pending")
+        save(app, "v19-lyanneurs")
+        XCTAssertTrue(talents, "Les Lyanneurs ne quittent pas le chargement.")
+
+        app.buttons["Bokantaj"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Carte"].firstMatch.waitForExistence(timeout: 8))
+        app.buttons["Carte"].firstMatch.tap()
+        let arriving = app.staticTexts["La carte arrive…"].firstMatch
+        let basemapFailed = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Fond de carte")).firstMatch
+        let shares = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "partages ici")).firstMatch
+        _ = shares.waitForExistence(timeout: 8)
+        let basemap = waitUntil(app, seconds: 18) { !arriving.exists || basemapFailed.exists }
+        note(basemapFailed.exists ? "map-basemap-error" : basemap && !arriving.exists ? "map-basemap-ready" : "map-basemap-stuck")
+        save(app, "v19-carte")
+        XCTAssertTrue(basemap && !basemapFailed.exists, "Le fond de carte reste sur « La carte arrive… ».")
+
+        app.buttons["Fil"].firstMatch.tap()
+        let photoButton = app.buttons["Photo"].firstMatch
+        let photoOther = app.otherElements["Photo"].firstMatch
+        let photo = photoButton.exists ? photoButton : photoOther
+        if photo.waitForExistence(timeout: 4), photo.isHittable {
+            photo.tap()
+            let cancel = app.buttons["Annuler"].firstMatch
+            if cancel.waitForExistence(timeout: 5), cancel.isHittable {
+                note("photo-picker-open")
+                cancel.tap()
+                note("photo-picker-cancelled")
+            } else {
+                note("photo-picker-not-shown")
+            }
+            save(app, "v19-photo")
+        } else {
+            note("photo-control-absent")
+        }
+        let poster = app.buttons["Lire la vidéo"].firstMatch
+        if poster.waitForExistence(timeout: 6), poster.isHittable {
+            poster.tap()
+            let pause = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "pause")).firstMatch
+            note(pause.waitForExistence(timeout: 6) ? "video-playing" : "video-no-pause")
+            save(app, "v19-video")
+        } else {
+            note("video-poster-absent")
+        }
+    }
+
     func testReturnFromMissionPicker() throws {
         let app = XCUIApplication()
         app.launch()
@@ -927,7 +1001,7 @@ final class LyannSmokeUITests: XCTestCase {
             return
         }
         _ = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", ready)).firstMatch.waitForExistence(timeout: 12)
-        let loading = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Chargement")).firstMatch
+        let loading = app.staticTexts["Chargement…"].firstMatch
         let deadline = Date().addingTimeInterval(16)
         while Date() < deadline && loading.exists {
             RunLoop.current.run(until: Date().addingTimeInterval(0.4))
