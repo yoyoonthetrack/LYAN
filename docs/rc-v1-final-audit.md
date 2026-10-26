@@ -4,7 +4,7 @@ Verdict : **NO-GO**
 
 ## V1.8 — photo Android, XCUITest, iPhone de développement
 
-Les paquets encore installés au moment de ces essais embarquent `fe4d298cf49385b58c414da9b0e682ccdbba9e39`, identité `ios-mvps4sca-6fc9a0`, backend `https://staging-bokantaj.lyann.app`, verrou `tdktfbtqceldlaeqjtow`. Ce n’est pas un téléphone Android. L’iPhone physique a reçu l’app, sans parcours.
+Les parcours ci-dessous ont tourné sur le paquet `fe4d298`, sauf l’iPhone : l’app installée et ouverte ensuite est `ios-mvpu5wa4-d7e45f`. Le paquet reconstruit sur `7f3b81003fcd421d7673d961a1206b7581c4cb5b` porte cette identité, le hash d’assets `7c770eb0c59cc25f3495e3d98abeaefbf4d0f1238248015e12ba8c14d096110a`, la version 1.0, le backend `https://staging-bokantaj.lyann.app` et le verrou `tdktfbtqceldlaeqjtow`. L’APK debug a le SHA-256 `b97a1abfa7d02f28d4cee7c37bdc01deac17ff8e5800e67b4b3014cde7e1156b`, `versionCode` 1. Il est installé sur l’émulateur `emulator-5554`. La même identité est dans l’app du simulateur `9281CEB1-E36D-4654-91E0-3AA741F8AD10`. Ce n’est pas un téléphone Android.
 
 ### Émulateur Pixel 6
 
@@ -24,7 +24,7 @@ Captures : `/tmp/lyann-ios-ui-43-account.png`, `45-annonces.png`, `46b-carte.png
 
 ### iPhone physique
 
-Build debug signé en automatique, équipe `WLV4WC47U2`, identité Apple Development `yoann.danier@gmail.com (CH5MK7M6PD)`, profil « iOS Team Provisioning Profile: app.lyann.mobile » `31827009-7da8-481d-a5c6-24678603e027`. Bundle `app.lyann.mobile`, version 1.0, build 10. L’app est installée sur « iPhone de yoann » (`00008140-00112D0C2684801C`). Le lancement est refusé : l’appareil est verrouillé. Aucun parcours physique.
+Build debug signé en automatique, équipe `WLV4WC47U2`, identité Apple Development `yoann.danier@gmail.com (CH5MK7M6PD)`, profil « iOS Team Provisioning Profile: app.lyann.mobile » `31827009-7da8-481d-a5c6-24678603e027`. Bundle `app.lyann.mobile`, version 1.0, build 10. L’app `ios-mvpu5wa4-d7e45f` est installée sur « iPhone de yoann » (`00008140-00112D0C2684801C`) et le processus démarre. La première capture montre la carte Bokantaj, les tuiles de la Guadeloupe et « 13 partages ici ». Aucun login, aucune photo, aucun message et aucune notification n’ont été pilotés sur cet appareil. Capture : `/tmp/lyann-iphone-launch.png`.
 
 ### Toujours bloqué
 
