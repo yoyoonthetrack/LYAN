@@ -1,8 +1,48 @@
-# LYANN — Release Candidate V1.1 / V1.2 / V1.3
+# LYANN — Release Candidate V1.1 à V1.4
 
 Verdict : **NO-GO**
 
-Le passage V1.3 a exécuté Stripe Test sur Staging, une libération réelle, une suppression de compte QA jetable, et un inventaire des 33 rubriques. Il ne valide pas les écritures du back-office, le remboursement exécuté, le changement de rôle ou d’abonnement, ni un binaire installé. Aucun IPA ni AAB n’a été produit. Aucune fusion vers `main`, aucun déploiement Production, aucun Stripe Live.
+Le passage V1.4 a validé des lectures et quelques écritures admin sur Staging, la création, la modification et l’annulation d’un devis, le changement de rôle d’un compte QA, et la suppression de ce compte. Il n’y a toujours pas d’IPA, pas d’AAB signé pour Play, pas d’appareil physique et pas de remboursement Stripe exécuté. Aucune fusion vers `main`, aucun déploiement Production, aucun Stripe Live.
+
+## V1.4 — back-office, compte, devis, builds
+
+Commit du code : `3435372fcced2d65b0879519a92f218e9bd9cf56`. Preuve `artifacts/rc-v14/pass.json` : 76 cas, 0 échec, le 26 oct 2026. API `127.0.0.1:8098`, `isolation=STAGING_ISOLATED`, Supabase `tdktfbtqceldlaeqjtow`, Stripe test.
+
+| Fonction | Statut | Preuve |
+| --- | --- | --- |
+| 18 ressources `/v1/admin/ops`, dont territoires et feature flags | OK | HTTP 200 admin, HTTP 403 pour le membre QA |
+| Écrans action, marketplace, utilisateurs, maison, territoires, feature flags | OK | Playwright, HTTP 200. Le 400 de V1.3 était `feature-flags`, ressource absente, corrigée dans `3435372` |
+| Filtre utilisateurs | OK | une recherche inconnue ne laisse pas la liste |
+| Ticket d’aide créé, relu, fermé, seconde fermeture | OK | ticket QA fermé. Le membre reçoit 403 |
+| Profils maison | OK | 50 profils lus. Le membre reçoit 403 |
+| Devis créé, modifié à 25, refusé par le client, second refus refusé | OK | le prestataire seul peut modifier |
+| Révision avec une version périmée | KO sur Staging | la fonction déployée lève `40001`. PostgREST réessaie jusqu’au timeout. La source `51_quote_modifications_and_safety.sql` utilise maintenant `P0001`. Cette migration n’a pas été appliquée : aucune URL de base n’est disponible |
+| Remboursement d’un jalon `FUNDED` | KO volontaire | HTTP 409 `EXECUTION_DISABLED`. Le moteur est codé `return false` et le grant ne vise qu’un paiement historique. Aucun contournement, aucun Stripe Live |
+| Rôle d’un compte QA passé à `EMPLOYEE` | OK | `POST /v1/admin/ops/users/:id/role`. Le membre reçoit 403. `OWNER` est refusé. L’ancien RPC, qui lit `profiles.role`, refuse aussi l’admin du back-office |
+| Formule expirée | OK | `effectivePlan` renvoie `FREE`. Pas d’achat Sandbox |
+| Suppression d’un compte `@lyann.invalid` créé pour l’essai | OK | sessions `revoked`, deux JWT refusés, reconnexion impossible, avatar retiré, jeton push désactivé puis absent, profil absent, journal `ACCOUNT_DELETED` |
+| Conservation | OK documentée | paiements, devis, jalons, missions, factures, pièces de chat et preuves de signalement ne sont pas effacés |
+| Les 33 rubriques, chaque bouton d’écriture | NON TESTÉ | les boutons Mika, génération éditoriale, export, suspension et remboursement n’ont pas été actionnés |
+| IPA, AAB Play, appareil, Sandbox store | NON TESTÉ | voir les builds |
+
+### Builds du commit `3435372`
+
+| Champ | Valeur |
+| --- | --- |
+| Build id | `ios-mvpo0omh-5a6365` |
+| Compilé le | `2026-10-26T19:44:19.623Z` |
+| SHA source | `3435372fcced2d65b0879519a92f218e9bd9cf56` |
+| Version | `1.0` |
+| Hash bundle | `76555f229ae28c8b05b27f12a18a539abec5d1ec3bc7034887fc151c468ce5ca` |
+| Backend | `https://staging-bokantaj.lyann.app` |
+| Supabase | `tdktfbtqceldlaeqjtow` |
+| iOS et Android | même `www`, sans référence Production |
+
+Signature : deux identités Apple Development, zéro Apple Distribution, zéro profil d’approvisionnement, zéro keystore d’upload Android. Le keystore debug local `~/.android/debug.keystore` existe. `./gradlew assembleDebug` n’a pas démarré : aucune JVM n’est installée sur cette machine. TestFlight exige un certificat Apple Distribution et un profil App Store. Play Internal exige un keystore d’upload et un JDK. Aucun certificat n’a été inventé.
+
+## V1.3 — paiements, back-office, cycle de vie, builds
+
+Le passage V1.3 a exécuté Stripe Test sur Staging, une libération réelle, une suppression de compte QA jetable, et un inventaire des 33 rubriques. Il ne validait pas encore les écritures du back-office, le remboursement exécuté, le changement de rôle, ni un binaire installé.
 
 ## V1.3 — paiements, back-office, cycle de vie, builds
 
@@ -285,14 +325,14 @@ Aucun P0 confirmé (perte de données, fuite de position exacte dans les specs m
 
 ## Décision
 
-**NO-GO** pour TestFlight, Google Play, une soumission store ou une promotion Production.
+**NO-GO** pour TestFlight, Google Play Internal et une promotion Production.
 
-`013f04b` et `b0935e9` ont chacun leurs quatre checks GitHub en succès, dont Chromium et Android. Le paquet local `ios-mvpmc13z-9215ed` porte `6b808c3` et le correctif de fil. Il n’est pas installable : pas de certificat Apple Distribution, pas de keystore Android, pas d’appareil.
+Le code `3435372` reconstruit le paquet `ios-mvpo0omh-5a6365`, verrouillé sur Staging. Les checks GitHub de ce SHA sont à relever après la poussée. `18daa18` avait ses quatre checks verts avant ces correctifs.
 
 Reste bloquant :
 
-1. Les 33 rubriques s’ouvrent et 29 lisent une API. Leurs boutons d’écriture n’ont pas été exécutés. `sec-territories` répond 400. Aucune rubrique n’est validée.
-2. Le remboursement d’un paiement réussi est refusé (`EXECUTION_DISABLED`) tant que le grant est inactif. L’édition d’un devis existant n’a pas été jouée.
-3. La suppression auth d’un compte QA jetable fonctionne. Le nettoyage média et la conservation réglementaire ne sont pas implémentés dans ce handler. Rôle, abonnement et expiration réelle de session ne sont pas testés.
-4. Pas d’IPA signé, pas d’AAB signé, pas d’essai appareil, pas d’achat Sandbox Apple ou Google.
+1. La plupart des boutons d’écriture des 33 rubriques n’ont pas été exécutés. Les lectures, le filtre utilisateurs, le ticket d’aide et le rôle QA le sont.
+2. Le remboursement Stripe Test d’un paiement réussi reste `EXECUTION_DISABLED`. Le verrou n’a pas été ouvert.
+3. La révision d’un devis avec une version périmée expire sur Staging tant que `P0001` n’est pas migré.
+4. Pas de certificat Apple Distribution, pas de profil, pas de keystore d’upload, pas de JDK pour l’APK debug, pas d’appareil, pas d’achat Sandbox.
 5. La Preview Vercel reste derrière le SSO. Le projet Supabase qu’elle sert n’a pas été lu.
