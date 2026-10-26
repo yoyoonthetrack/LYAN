@@ -1016,6 +1016,8 @@ app.post('/v1/auth/continue-signup', async (req, res) => {
 });
 
 // Account deletion starts inside the app, as required for App Store review.
+const { deleteMemberAccount } = require('./account-deletion');
+
 app.post('/v1/auth/delete-account', async (req, res) => {
     const authHeader = req.headers.authorization || req.headers.Authorization || '';
     const token = String(authHeader).replace(/^Bearer\s+/i, '').trim();
@@ -1031,17 +1033,13 @@ app.post('/v1/auth/delete-account', async (req, res) => {
             return res.status(401).json({ error: 'Session expirée. Reconnecte-toi, puis réessaie.' });
         }
         const userId = data.user.id;
-        await supabaseAdmin.from('profiles').update({
-            first_name: 'Compte',
-            last_name: 'supprimé',
-            avatar_url: null
-        }).eq('id', userId);
-        const deleted = await supabaseAdmin.auth.admin.deleteUser(userId);
-        if (deleted.error) {
-            await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: '876000h' });
-            return res.json({ ok: true, closed: true });
-        }
-        return res.json({ ok: true });
+        const outcome = await deleteMemberAccount(supabaseAdmin, userId, token);
+        return res.json({
+            ok: outcome.ok === true,
+            closed: outcome.closed === true,
+            sessions: outcome.sessions,
+            retained: outcome.retained
+        });
     } catch (err) {
         console.error('[delete-account]', err);
         return res.status(500).json({ error: 'La suppression n’a pas abouti. Réessaie, ou écris à contact@lyann.app.' });
@@ -2330,6 +2328,15 @@ app.get('/v1/admin/ops', async (req, res) => {
             return res.json({ success: true, counts });
         }
 
+        if (resource === 'feature-flags') {
+            const rows = await adminSafeSelect(
+                'feature_flags',
+                'id, key, name, description, enabled, target_audience, updated_at',
+                (q) => q.order('key', { ascending: true }).limit(limit)
+            );
+            return res.json({ success: true, rows });
+        }
+
         return res.status(400).json({ success: false, error: 'Ressource admin inconnue.' });
     } catch (e) {
         console.error('Admin ops error:', e);
@@ -2380,6 +2387,32 @@ app.post('/v1/admin/ops/users/:id/kyc', async (req, res) => {
     }
 });
 
+
+app.post('/v1/admin/ops/users/:id/role', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'users.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    const allowed = ['USER', 'SUPPORT', 'FINANCE', 'MODERATION', 'EMPLOYEE', 'ADMIN'];
+    const role = String(req.body?.role || '').toUpperCase();
+    if (!allowed.includes(role)) {
+        return res.status(400).json({ success: false, error: 'Rôle non autorisé par cette opération.' });
+    }
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('profiles')
+            .update({ role, updated_at: new Date().toISOString() })
+            .eq('id', req.params.id)
+            .select('id, role')
+            .maybeSingle();
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        if (!data) return res.status(404).json({ success: false, error: 'Profil introuvable.' });
+        await recordMaisonAudit(authResult.userId, 'ROLE_UPDATED', req.params.id, { role });
+        return res.json({ success: true, row: data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de modifier le rôle.' });
+    }
+});
 
 app.post('/v1/admin/ops/users/:id/status', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'users.manage');
