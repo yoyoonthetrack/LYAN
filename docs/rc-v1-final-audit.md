@@ -1,8 +1,52 @@
-# LYANN — Release Candidate V1.1 à V1.4
+# LYANN — Release Candidate V1.1 à V1.5
 
 Verdict : **NO-GO**
 
-Le passage V1.4 a validé des lectures et quelques écritures admin sur Staging, la création, la modification et l’annulation d’un devis, le changement de rôle d’un compte QA, et la suppression de ce compte. Il n’y a toujours pas d’IPA, pas d’AAB signé pour Play, pas d’appareil physique et pas de remboursement Stripe exécuté. Aucune fusion vers `main`, aucun déploiement Production, aucun Stripe Live.
+Un APK debug Staging est compilé. Il n’y a pas d’IPA, pas d’AAB signé pour Play, pas d’appareil physique, et le remboursement Stripe Test reste verrouillé. La fonction devis `P0001` n’a pas été appliquée : le jeton de gestion Supabase disponible répond 401. Aucune fusion vers `main`, aucun déploiement Production, aucun Stripe Live.
+
+## V1.5 — migration, remboursement, APK
+
+### Devis, version périmée
+
+Le fichier `59_revise_sent_quote_p0001.sql` ne contient que `revise_sent_quote`. Les deux refus de version utilisent `P0001`, avec un `lock_timeout` de 4 s. `scripts/rc-v15-apply-quote-errcode.js` refuse l’identifiant Production, lit le projet `tdktfbtqceldlaeqjtow`, enregistre l’ancienne définition, puis n’écrit que si elle contient encore `40001`.
+
+L’appel Management API a répondu HTTP 401. Le seul jeton trouvé, dans un autre clone, est rejeté. Aucun mot de passe Postgres n’est présent. Aucune écriture Staging n’a eu lieu. Le conflit de version n’a donc pas été rejoué : l’appel actuel expire encore. Le retour arrière prévu est `artifacts/rc-v15/revise_sent_quote.rollback.sql`, écrit seulement après une lecture réussie de la fonction déployée.
+
+### Remboursement Stripe Test
+
+`preTransferRefundExecutionEnabled()` reste `false`. Un client ne peut pas l’ouvrir. Le grant actif ne correspond qu’au paiement `9af9963d-d5a6-40d3-bc8d-fc9fbf2f0175`, absent de Staging. Les paiements historiques listés restent interdits. Aucun remboursement n’a été exécuté, et le verrou n’a pas été élargi.
+
+### Android
+
+JDK Temurin 21.0.12 : `~/Library/Java/lyann-jdk-21/Contents/Home`. Android SDK et Gradle 8.14.3 sont utilisés. `./gradlew assembleDebug` a réussi.
+
+| Champ | Valeur |
+| --- | --- |
+| Fichier | `android/app/build/outputs/apk/debug/app-debug.apk` |
+| Taille | 29 Mo |
+| SHA-256 du fichier | `07f0cf854a76b01e068683489dc541863cf21fbd246b756685e1a1575ff6e940` |
+| Signature | Android Debug, certificat SHA-256 `b94e23e32389a6a4b1c987ea09bd12a20373f706ed7e61c14f48b5ef66acd2ee` |
+| Version | `1.0` (`versionCode` 1) |
+| SHA du paquet web | `3435372fcced2d65b0879519a92f218e9bd9cf56` |
+| Build id | `ios-mvpo0omh-5a6365` |
+| Hash des assets | `76555f229ae28c8b05b27f12a18a539abec5d1ec3bc7034887fc151c468ce5ca` |
+| Backend | `https://staging-bokantaj.lyann.app` |
+| Supabase | `tdktfbtqceldlaeqjtow` |
+| Compilé le | paquet web `2026-10-26T19:44:19.623Z`, APK le 26 oct 2026 21:00 heure locale |
+
+Ce n’est pas un AAB de Play Internal. La config `release` signe seulement si `LYANN_ANDROID_KEYSTORE`, `LYANN_ANDROID_KEYSTORE_PASSWORD`, `LYANN_ANDROID_KEY_ALIAS` et `LYANN_ANDROID_KEY_PASSWORD` sont fournis. Pour créer l’identité d’upload, hors du dépôt : `keytool -genkeypair -v -keystore lyann-upload.jks -alias lyann -keyalg RSA -keysize 2048 -validity 10000`. Conserver le fichier et les mots de passe hors git, avec une copie de secours. Play App Signing garde la clé d’application ; cette clé ne sert qu’à l’envoi.
+
+### iOS
+
+Xcode 27.1. Bundle `app.lyann.mobile`, équipe `WLV4WC47U2`, signature automatique, version `1.0`, build `10`, identité `iPhone Developer`. Aucun profil d’approvisionnement n’est installé et `PROVISIONING_PROFILE_REQUIRED` vaut YES. Il n’y a pas de certificat Apple Distribution. Un Archive TestFlight ne peut pas être exporté. Aucun contournement n’a été fait.
+
+### Garde de recette
+
+`assertRecipeNativeBundle` refuse un paquet construit avec `LYANN_RUNTIME=staging` s’il vise `gzispjfoywklpqatjyop`, un autre projet, ou un backend autre que `staging.lyann.app` et `staging-bokantaj.lyann.app`. Test : `tests/native-build-identity.test.js`.
+
+## V1.4 — back-office, compte, devis, builds
+
+Le passage V1.4 a validé des lectures et quelques écritures admin sur Staging, la création, la modification et l’annulation d’un devis, le changement de rôle d’un compte QA, et la suppression de ce compte.
 
 ## V1.4 — back-office, compte, devis, builds
 
@@ -327,12 +371,12 @@ Aucun P0 confirmé (perte de données, fuite de position exacte dans les specs m
 
 **NO-GO** pour TestFlight, Google Play Internal et une promotion Production.
 
-Le code `3435372` reconstruit le paquet `ios-mvpo0omh-5a6365`, verrouillé sur Staging. Les checks GitHub de ce SHA sont à relever après la poussée. `18daa18` avait ses quatre checks verts avant ces correctifs.
+L’APK debug `app-debug.apk` est installable sur un appareil Android qui accepte une signature debug. Il embarque le paquet Staging `ios-mvpo0omh-5a6365`. Il n’a pas été installé ici.
 
 Reste bloquant :
 
-1. La plupart des boutons d’écriture des 33 rubriques n’ont pas été exécutés. Les lectures, le filtre utilisateurs, le ticket d’aide et le rôle QA le sont.
-2. Le remboursement Stripe Test d’un paiement réussi reste `EXECUTION_DISABLED`. Le verrou n’a pas été ouvert.
-3. La révision d’un devis avec une version périmée expire sur Staging tant que `P0001` n’est pas migré.
-4. Pas de certificat Apple Distribution, pas de profil, pas de keystore d’upload, pas de JDK pour l’APK debug, pas d’appareil, pas d’achat Sandbox.
-5. La Preview Vercel reste derrière le SSO. Le projet Supabase qu’elle sert n’a pas été lu.
+1. La migration `P0001` est prête et refusée par un jeton de gestion invalide. Le conflit de version expire encore sur Staging.
+2. Le remboursement Stripe Test reste impossible sans élargir le grant : le seul paiement autorisé n’existe pas dans Staging.
+3. Pas de certificat Apple Distribution, pas de profil, donc pas d’IPA. Pas de keystore d’upload, donc pas d’AAB Play.
+4. Pas d’essai sur appareil et pas d’achat Sandbox.
+5. La Preview Vercel reste derrière le SSO.

@@ -6,7 +6,7 @@ process.env.LYANN_MOBILE_BUILD = '1';
 process.env.LYANN_NATIVE_BUILD_AT = new Date().toISOString();
 process.env.LYANN_NATIVE_BUILD_ID = process.env.LYANN_NATIVE_BUILD_ID
   || ('ios-' + Date.now().toString(36) + '-' + crypto.randomBytes(3).toString('hex'));
-const { buildHtml, injectIsolatedSupabaseConfig, resolveInjectedBackendOrigin, nativeBuildIdentity } = require('./shared-html-build');
+const { buildHtml, injectIsolatedSupabaseConfig, resolveInjectedBackendOrigin, nativeBuildIdentity, assertRecipeNativeBundle } = require('./shared-html-build');
 try {
   process.env.LYANN_NATIVE_GIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: __dirname, encoding: 'utf8' }).trim();
 } catch (_) {
@@ -131,6 +131,7 @@ const stamp = {
   lock: identity.supabase
 };
 fs.writeFileSync(path.join(sharedDist, 'lyann-native-build.json'), JSON.stringify(stamp) + '\n');
+assertRecipeNativeBundle(stamp, fs.readFileSync(path.join(sharedDist, 'feed.html'), 'utf8'));
 console.log('LYANN native build stamp', stamp.id, (stamp.sha || '').slice(0, 12), (stamp.bundle || '').slice(0, 12), 'backend=' + (stamp.backend || '(empty)'));
 
 // Capacitor consumes the exact shared artifact. No iOS/Android-specific HTML or JS mutation is allowed here.

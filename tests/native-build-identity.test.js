@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { nativeBuildIdentity } = require('../shared-html-build');
+const { nativeBuildIdentity, assertRecipeNativeBundle } = require('../shared-html-build');
 
 test('a native build identity names the commit, version, backend and Supabase project', () => {
   const identity = nativeBuildIdentity({
@@ -19,6 +19,23 @@ test('a native build identity names the commit, version, backend and Supabase pr
     supabase: 'tdktfbtqceldlaeqjtow',
     backend: 'https://staging-bokantaj.lyann.app'
   });
+});
+
+test('a recipe bundle refuses Production', () => {
+  const previous = process.env.LYANN_RUNTIME;
+  process.env.LYANN_RUNTIME = 'staging';
+  assert.throws(() => assertRecipeNativeBundle({
+    supabase: 'gzispjfoywklpqatjyop',
+    lock: 'gzispjfoywklpqatjyop',
+    backend: 'https://lyann.app'
+  }, '<html></html>'), /Production/);
+  assert.doesNotThrow(() => assertRecipeNativeBundle({
+    supabase: 'tdktfbtqceldlaeqjtow',
+    lock: 'tdktfbtqceldlaeqjtow',
+    backend: 'https://staging-bokantaj.lyann.app'
+  }, '<html>tdktfbtqceldlaeqjtow</html>'));
+  if (previous == null) delete process.env.LYANN_RUNTIME;
+  else process.env.LYANN_RUNTIME = previous;
 });
 
 test('an identity never invents a Supabase project or a backend', () => {

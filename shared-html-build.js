@@ -209,6 +209,32 @@ function nativeBuildIdentity(env = process.env) {
   };
 }
 
+const RECIPE_BACKENDS = Object.freeze([
+  'https://staging.lyann.app',
+  'https://staging-bokantaj.lyann.app'
+]);
+
+function assertRecipeNativeBundle(stamp, html) {
+  const recipe = String(process.env.LYANN_RUNTIME || '').toLowerCase() === 'staging'
+    || !!process.env.LYANN_SUPABASE_LOCK
+    || !!process.env.LYANN_E2E_WRITE_PROJECT_REF;
+  if (!recipe) return;
+  const body = String(html || '');
+  const described = JSON.stringify(stamp || {});
+  if (body.includes('gzispjfoywklpqatjyop') || described.includes('gzispjfoywklpqatjyop')) {
+    throw new Error('Un paquet de recette ne peut pas viser la Production.');
+  }
+  if (!stamp || stamp.supabase !== 'tdktfbtqceldlaeqjtow' || stamp.lock !== 'tdktfbtqceldlaeqjtow') {
+    throw new Error('Un paquet de recette doit verrouiller Supabase sur tdktfbtqceldlaeqjtow.');
+  }
+  if (!RECIPE_BACKENDS.includes(stamp.backend)) {
+    throw new Error('Un paquet de recette doit viser un backend Staging.');
+  }
+  if (!body.includes('tdktfbtqceldlaeqjtow')) {
+    throw new Error('Le HTML de recette ne contient pas le verrou Staging.');
+  }
+}
+
 function enforceScriptCacheBusting(html) {
   const version = assetVersion();
   const identity = process.env.LYANN_MOBILE_BUILD === '1'
@@ -380,6 +406,7 @@ module.exports = {
   injectBootSplash,
   resolveInjectedBackendOrigin,
   nativeBuildIdentity,
+  assertRecipeNativeBundle,
   nativeBuildStamp,
   buildHtml,
   buildHtmlFile

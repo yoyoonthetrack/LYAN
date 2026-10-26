@@ -203,6 +203,8 @@ DECLARE
     v_order int := 1;
     v_snapshot jsonb;
 BEGIN
+    -- PostgREST retries serialization_failure until the HTTP call dies. A stale version is a business refusal.
+    PERFORM set_config('lock_timeout', '4s', true);
     v_my_id := auth.uid();
     IF v_my_id IS NULL THEN
         RAISE EXCEPTION 'Non authentifié' USING ERRCODE = '42501';
