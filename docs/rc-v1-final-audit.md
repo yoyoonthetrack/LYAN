@@ -1,8 +1,50 @@
-# LYANN — Release Candidate V1.1
+# LYANN — Release Candidate V1.1 / V1.2
 
 Verdict : **NO-GO**
 
-Les parcours essentiels (authentification réelle, Bokantaj connecté à Staging, annonces, messagerie, devis, Stripe Test, abonnements natifs, back-office) n’ont pas été exécutés de bout en bout. Sur `e1bf7d6`, la porte d’architecture et les régressions navigateur GitHub sont vertes. Le job Android était encore en cours. Les paquets iOS et Android déjà compilés ne contiennent pas le dernier correctif de fil.
+Le passage V1.2 a exécuté de vrais parcours Staging (auth QA, publication, modération, messagerie, ouverture des 33 rubriques) et a reconstruit les paquets iOS et Android sur le même commit, verrouillés sur `tdktfbtqceldlaeqjtow`. Il reste les paiements Stripe Test, les devis, la suppression de compte, les achats Sandbox et toute validation sur appareil. La CI du commit de build n’est pas encore relue. Aucun IPA ni AAB n’a été envoyé.
+
+## V1.2 — preuves Staging et builds
+
+Commit du code testé et compilé : `6b808c3dfca23a5f64ce1398ad369666260c8b81`.
+
+API locale `http://127.0.0.1:8098/v1/runtime/identity` : `supabase_ref=tdktfbtqceldlaeqjtow`, `isolation=STAGING_ISOLATED`. Stripe dans `.env.staging-v2` : clés test, pas live. Le garde refuse Production.
+
+`node scripts/rc-v12-staging-pass.js` : 20 cas, 0 échec. Preuve `artifacts/rc-v12/staging-pass.json`.
+
+| Parcours | Résultat |
+| --- | --- |
+| Connexion des trois comptes QA existants | OK |
+| A publie un repère arrondi `16.241,-61.534` via RLS | OK, statut `pending` |
+| B ne le voit pas tant qu’il n’est pas approuvé | OK |
+| Admin approuve, B le voit, admin masque, B ne le voit plus | OK |
+| A écrit à B, B lit, C ne lit pas et ne peut pas écrire à la place de A (`42501`) | OK |
+| Login UI de A sur `/feed.html`, publication persistée `pending`, invisible pour B | OK |
+| HTML servi verrouillé Staging, sans référence Production | OK |
+| Admin réel autorisé, 33 sections s’ouvrent | OK (navigation, pas chaque bouton) |
+| Compte QA C sur l’admin | non autorisé (`UNAUTHENTICATED`) |
+| Lignes QA de ce passage supprimées | OK |
+
+Les 33 sections ont été ouvertes dans l’admin réel. Les boutons d’écriture (collecte éditoriale, paiements, suppressions) n’ont pas été actionnés.
+
+Build natif, iOS et Android byte-identiques, non installé sur appareil :
+
+| Champ | Valeur |
+| --- | --- |
+| Build id | `ios-mvpmc13z-9215ed` |
+| Compilé le | `2026-10-26T18:57:09.789Z` |
+| SHA | `6b808c3dfca23a5f64ce1398ad369666260c8b81` |
+| Version | `1.0` |
+| Hash bundle | `4f4e84fe72aef10d90f4a7985a51d9328e065b6218bfb34a46c6fc9650144616` |
+| Backend | `https://staging-bokantaj.lyann.app` |
+| Supabase | `tdktfbtqceldlaeqjtow` |
+| `feed.html` iOS = Android | oui, sha256 `5309c2c3095486386f40776f347cb476592ca9f8efaa94dd30a8ecbebe6d4153` |
+| Production ou `service_role` dans le HTML | non |
+| Correctif de fil présent dans `script.js` du paquet | oui |
+
+Une identité Apple Development est présente. Aucune identité Apple Distribution n’est listée, et aucun keystore Android n’est dans le dépôt. TestFlight et Play Internal ne sont pas préparés. Le paquet `ios-mvp6mel3-079240` est remplacé localement par celui-ci. Ce n’est pas une validation appareil.
+
+## V1.1 — état antérieur
 
 Aucun défaut P0 confirmé n’est resté ouvert dans le périmètre corrigé. L’absence de P0 confirmé ne vaut pas une validation.
 
@@ -124,7 +166,7 @@ Les 33 rubriques présentes dans `admin.html` : overview, action, marketplace, u
 | RC-1 | P1 | corrigé dans la source, encore dans le paquet natif | Le fil devenait vide si `cursor()` lançait une exception après un chargement réussi. |
 | RC-2 | P1 | corrigé dans la source, encore dans le paquet natif | Toutes les vidéos du fil étaient range-fetchées dès le rendu, hors de la fenêtre de 20. |
 | RC-3 | P1 | corrigé dans `3ec921a` et présent dans le paquet `ios-mvp6mel3` | Champ quartier masqué et zoom de carte couvert. Vérifié par Playwright sur la source RC, pas sur un appareil. |
-| RC-4 | P1 | ouvert | Les binaires locaux ne portent ni le SHA `e1bf7d6` ni les correctifs RC-1 et RC-2. Les soumettre en l’état publierait un autre logiciel que la branche RC. |
+| RC-4 | P1 | fermé dans le paquet local, non installé | `ios-mvpmc13z-9215ed` porte `6b808c3` et les correctifs RC-1 et RC-2. Pas d’installation appareil, pas d’envoi store. |
 | RC-5 | P1 | ouvert pour la décision | Les parcours membres réels, la modération Bokantaj en base, Stripe Test et les 33 rubriques ne sont pas exécutés. |
 
 Aucun P0 confirmé (perte de données, fuite de position exacte dans les specs mockées, mélange Production observé dans un déploiement). Les risques non testés restent des bloqueurs de GO, pas des P0 inventés.
@@ -159,4 +201,14 @@ Aucun P0 confirmé (perte de données, fuite de position exacte dans les specs m
 
 **NO-GO** pour une soumission App Store, Google Play ou une promotion Production.
 
-Pour passer à GO il faut, sur un même SHA : CI GitHub verte, parcours essentiels exécutés sur Staging avec preuve en base, aucun P0, aucun P1 critique ouvert (RC-4 et RC-5 aujourd’hui), paquets iOS et Android identifiés par SHA, hash, backend et projet Supabase, et tests natifs indispensables réellement faits sur appareil.
+RC-4 est fermé pour le paquet local `ios-mvpmc13z-9215ed` : il porte `6b808c3` et le correctif de fil. Il n’a pas été installé.
+
+Reste bloquant :
+
+1. Relire la CI GitHub de `6b808c3` (architecture, Chromium, Android).
+2. Stripe Test : paiement, échec, webhook, remboursement, double soumission. Clés test présentes, aucun appel effectué.
+3. Devis, jalons, abonnements et restauration Sandbox.
+4. Suppression de compte et nettoyage des médias, sur un compte QA seulement.
+5. Actions d’écriture des 33 rubriques, pas seulement leur ouverture.
+6. Annonces et fiche Lyanneur de bout en bout dans l’interface.
+7. Archive iOS signée Distribution et AAB signé, puis essai appareil (clavier, caméra, GPS, push, achat Sandbox). Ne pas envoyer aux stores sans accord.
