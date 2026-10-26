@@ -7455,7 +7455,16 @@ document.addEventListener('touchstart', (e) => {
             remove.className = 'btn btn-outline md-milestone-remove';
             remove.textContent = 'Supprimer';
             remove.disabled = milestoneEditorState.rows.length <= 1;
-            remove.addEventListener('click', () => {
+            remove.addEventListener('click', (event) => {
+                const overlay = document.getElementById('chatMilestoneDevisForm');
+                // The rows are painted while the devis sheet is still closed.
+                // A click that is not on the visible control must not ask to
+                // delete a payment, and must not block the WebView on confirm().
+                if (!overlay || overlay.getClientRects().length === 0 || remove.getClientRects().length === 0) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                }
                 if (milestoneEditorApi.rowHasData(row) && !window.confirm('Supprimer ce paiement par étape et conserver les autres tels quels ?')) return;
                 milestoneEditorApi.removeRow(milestoneEditorState, row.id);
                 paintMilestoneRows();

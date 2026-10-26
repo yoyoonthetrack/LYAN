@@ -3170,25 +3170,9 @@ safeDomReady(() => {
                 node.removeAttribute('src');
             }
         }
-        const posters = card.querySelectorAll('.bokantaj-video-poster[data-video-src]');
-        for (const button of posters) {
-            const source = button.getAttribute('data-video-src');
-            if (!source || !button.isConnected) continue;
-            // The full download records the display rotation. A separate Range
-            // request would fetch the same clip twice, including clips the
-            // member has not reached yet.
-            if (source.includes('/v1/media/')) {
-                try { await loadBokantajMedia(source); } catch (err) { continue; }
-            }
-            await ensureVideoPosterOriented(button);
-            // Held until it is actually on screen: the bytes are already here,
-            // so opening it later does not start another download.
-            const video = await openBokantajVideo(button, { inFeed: true, hold: true });
-            if (video && feedMediaOnScreen(video)) {
-                const play = video.play();
-                if (play && typeof play.catch === 'function') play.catch(() => {});
-            }
-        }
+        // Posters stay posters. The player requests the clip, with Range,
+        // only after the member taps. A full download here would start every
+        // video in the window before anyone asked to watch it.
     }
 
     function hydrateHoldMedia(root) {
@@ -3426,135 +3410,70 @@ safeDomReady(() => {
         });
     }
 
-    async function openBokantajVideo(button, options) {
+    function openBokantajVideo(button) {
         if (!button || button.dataset.loading === '1') return null;
         const source = button.getAttribute('data-video-src');
         if (!source) return null;
-        const inFeed = Boolean(options && options.inFeed);
         button.dataset.loading = '1';
         button.classList.add('is-loading');
         button.setAttribute('aria-busy', 'true');
-        try {
-            const src = source.includes('/v1/media/') ? await loadBokantajMedia(source) : source;
-            const fileRotation = bokantajMediaRotation.get(source) || 0;
-            const poster = button.querySelector('img');
-            if (poster && !poster.getAttribute('src')) {
-                const held = poster.dataset.holdSrc;
-                if (held) {
-                    try {
-                        poster.src = held.includes('/v1/media/') ? await loadBokantajMedia(held) : held;
-                    } catch (err) {
-                        poster.removeAttribute('src');
-                    }
-                }
-            }
-            if (poster && poster.getAttribute('src')) await imageReady(poster);
-            const video = document.createElement('video');
-            video.className = 'bokantaj-video is-settling';
-            video.controls = !inFeed;
-            video.playsInline = true;
-            video.setAttribute('playsinline', '');
-            video.setAttribute('webkit-playsinline', '');
-            video.preload = 'auto';
-            const ratio = button.style.getPropertyValue('--media-ratio');
-            if (ratio) {
-                video.style.setProperty('--media-ratio', ratio);
-                video.classList.add('has-media-ratio');
-            }
-            video.src = src;
-            const posterW = poster ? poster.naturalWidth : 0;
-            const posterH = poster ? poster.naturalHeight : 0;
-            const codedPortrait = (fileRotation === 90 || fileRotation === 270) && posterW > posterH;
-            if (codedPortrait) {
-                applyMediaRatio(button, posterH, posterW);
-                applyMediaRatio(video, posterH, posterW);
-            }
-            if (poster && codedPortrait) {
-                const blob = await canvasJpeg(paintUpright(poster, fileRotation));
-                if (blob) {
-                    const upright = URL.createObjectURL(blob);
-                    poster.src = upright;
-                    await imageReady(poster);
-                    video.poster = upright;
-                    poster.classList.add('is-oriented');
-                }
-            }
-            if (inFeed) {
-                video.dataset.feedVideo = '1';
-                video.dataset.videoSrc = source;
-                video.loop = true;
-                video.muted = bokantajFeedMuted;
-                video.setAttribute('muted', '');
-                const shell = document.createElement('div');
-                shell.className = 'bokantaj-video-shell';
-                const overlay = document.createElement('div');
-                overlay.className = 'bokantaj-video-controls';
-                const sound = document.createElement('button');
-                sound.type = 'button';
-                sound.className = 'bokantaj-video-sound';
-                const expand = document.createElement('button');
-                expand.type = 'button';
-                expand.className = 'bokantaj-video-expand';
-                expand.setAttribute('aria-label', 'Ouvrir le lecteur');
-                expand.innerHTML = '<i class="ph ph-arrows-out" aria-hidden="true"></i>';
-                overlay.append(sound, expand);
-                button.replaceWith(shell);
-                if (poster) shell.appendChild(poster);
-                shell.append(video, overlay);
-                setBokantajFeedSound(bokantajFeedMuted);
-                video.dataset.autoplayBound = '1';
-                feedVideoObserver?.observe(video);
-            } else {
-                button.appendChild(video);
-            }
-            // The shape is read before the clip is shown, otherwise a poster
-            // with no size would appear at a wrong height for a second.
-            if (!ratio && !codedPortrait) await videoShapeReady(video);
-            const frame = playbackFrame(video, poster && poster.naturalWidth, poster && poster.naturalHeight, fileRotation);
-            if (frame.width > 0 && frame.height > 0 && !(codedPortrait && frame.width > frame.height)) {
-                applyMediaRatio(button, frame.width, frame.height);
-                applyMediaRatio(video, frame.width, frame.height);
-            }
-            if (poster && frame.turn && !poster.classList.contains('is-oriented')) {
-                const blob = await canvasJpeg(paintUpright(poster, frame.turn));
-                if (blob) {
-                    const upright = URL.createObjectURL(blob);
-                    poster.src = upright;
-                    video.poster = upright;
-                }
-            }
-            if (poster) poster.classList.add('is-oriented');
-            try {
-                const started = video.play();
-                if (started && typeof started.catch === 'function') await started.catch(() => {});
-            } catch (err) { /* a refused play still reveals on the timer */ }
-            await new Promise((resolve) => {
-                const timer = window.setTimeout(resolve, 2500);
-                const finish = () => { window.clearTimeout(timer); resolve(); };
-                if (typeof video.requestVideoFrameCallback !== 'function') {
-                    if (video.readyState >= 2) finish();
-                    else video.addEventListener('loadeddata', finish, { once: true });
-                    return;
-                }
-                video.requestVideoFrameCallback(() => video.requestVideoFrameCallback(finish));
-            });
+        const video = document.createElement('video');
+        video.className = 'bokantaj-video';
+        video.controls = true;
+        video.playsInline = true;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+        // metadata lets the player ask for a range. The whole file is not
+        // fetched before play().
+        video.preload = 'metadata';
+        video.dataset.feedVideo = '1';
+        video.dataset.videoSrc = source;
+        video.loop = true;
+        video.muted = bokantajFeedMuted;
+        if (bokantajFeedMuted) video.setAttribute('muted', '');
+        const ratio = button.style.getPropertyValue('--media-ratio');
+        if (ratio) {
+            video.style.setProperty('--media-ratio', ratio);
+            video.classList.add('has-media-ratio');
+        }
+        const poster = button.querySelector('img');
+        const shell = document.createElement('div');
+        shell.className = 'bokantaj-video-shell';
+        const overlay = document.createElement('div');
+        overlay.className = 'bokantaj-video-controls';
+        const sound = document.createElement('button');
+        sound.type = 'button';
+        sound.className = 'bokantaj-video-sound';
+        const expand = document.createElement('button');
+        expand.type = 'button';
+        expand.className = 'bokantaj-video-expand';
+        expand.setAttribute('aria-label', 'Ouvrir le lecteur');
+        expand.innerHTML = '<i class="ph ph-arrows-out" aria-hidden="true"></i>';
+        overlay.append(sound, expand);
+        button.replaceWith(shell);
+        if (poster) shell.appendChild(poster);
+        shell.append(video, overlay);
+        setBokantajFeedSound(bokantajFeedMuted);
+        video.dataset.autoplayBound = '1';
+        feedVideoObserver?.observe(video);
+        video.src = source;
+        const started = video.play();
+        if (started && typeof started.catch === 'function') started.catch(() => {});
+        const reveal = () => {
             video.classList.remove('is-settling');
             if (poster && poster.parentElement) poster.remove();
-            if (!inFeed) button.replaceWith(video);
-            if (options && options.hold && !feedMediaOnScreen(video)) video.pause();
-            return video;
-        } catch (err) {
-            button.dataset.loading = '';
-            button.classList.remove('is-loading');
-            button.setAttribute('aria-busy', 'false');
-            if (!button.querySelector('.bokantaj-video-error')) {
+        };
+        video.addEventListener('playing', reveal, { once: true });
+        video.addEventListener('error', () => {
+            reveal();
+            if (!shell.querySelector('.bokantaj-video-error')) {
                 const note = document.createElement('span');
                 note.className = 'bokantaj-video-error';
                 note.textContent = 'La vidéo n’a pas pu être chargée.';
-                button.appendChild(note);
+                shell.appendChild(note);
             }
-            return null;
-        }
+        }, { once: true });
+        return video;
     }
 
     // iOS only opens its own player, with the timeline, through this call; the
@@ -3599,7 +3518,10 @@ safeDomReady(() => {
             return;
         }
         const button = event.target.closest && event.target.closest('.bokantaj-video-poster');
-        if (button) await openBokantajVideo(button, { inFeed: false });
+        if (button) {
+            event.preventDefault();
+            openBokantajVideo(button);
+        }
     });
 
     let feedVideoObserver = null;
@@ -3608,11 +3530,7 @@ safeDomReady(() => {
         const node = entry.target;
         if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
             if (node.matches('.bokantaj-video-poster')) {
-                // Opening here would download this clip on its own, ahead of the
-                // queue. The window fetches it in order and opens it then.
-                const source = node.getAttribute('data-video-src') || '';
-                if (source.includes('/v1/media/') && !bokantajMediaCache.get(source)) return;
-                openBokantajVideo(node, { inFeed: true });
+                return;
             } else if (node.paused) {
                 node.play().catch(() => {});
             }
@@ -5017,13 +4935,14 @@ safeDomReady(() => {
     if (composerOpenBtn) composerOpenBtn.addEventListener('click', () => window.openBokantajComposer());
     const photoQuick = document.getElementById('btnComposerPhotoQuick');
     if (photoQuick) photoQuick.addEventListener('click', () => {
+        // The control is a label for the file input. Opening the composer in
+        // this turn keeps that user gesture, which is what Android needs to
+        // show the photo picker. A scripted input.click() does not.
         window.openBokantajComposer();
-        document.getElementById('flashPhotoInput')?.click();
     });
     const videoQuick = document.getElementById('btnComposerVideoQuick');
     if (videoQuick) videoQuick.addEventListener('click', () => {
         window.openBokantajComposer();
-        document.getElementById('flashVideoInput')?.click();
     });
     document.addEventListener('click', (event) => {
         const opener = event.target.closest('#btnEmptyBokantajShare');
@@ -10024,10 +9943,9 @@ safeDomReady(() => {
     if (wizardPhotoUploadZone) {
         wizardPhotoUploadZone.addEventListener('click', (e) => {
             if (e.target.closest('.photo-remove-btn')) return;
+            if (wizardPhotoUploadZone.tagName === 'LABEL') return;
             const input = document.getElementById('wizardPhotoInput');
-            if (input) {
-                input.click();
-            }
+            if (input) input.click();
         });
     }
 
@@ -11633,7 +11551,7 @@ window.lyannOpenAvatarModal = function() {
                 <h4 style="margin:0 0 16px 0; font-size:1.1rem; color:#1D2A44;"><i class="ph ph-camera"></i> Photo de profil</h4>
                 <div style="margin-bottom:20px;">
                     <input type="file" id="lyannAvatarFileInput" accept="image/*" style="display:none;" onchange="window.lyannHandleAvatarFileSelected(event)">
-                    <button type="button" class="btn btn-primary" style="width:100%; justify-content:center; margin-bottom:10px;" onclick="document.getElementById('lyannAvatarFileInput').click()"><i class="ph ph-upload-simple"></i> Changer ma photo</button>
+                    <label for="lyannAvatarFileInput" class="btn btn-primary" style="width:100%; justify-content:center; margin-bottom:10px;"><i class="ph ph-upload-simple"></i> Changer ma photo</label>
                     <button type="button" class="btn btn-outline" style="width:100%; justify-content:center; color:#C95140; border-color:#FCA5A5;" onclick="window.lyannHandleAvatarDelete()"><i class="ph ph-trash"></i> Supprimer ma photo</button>
                 </div>
             </div>

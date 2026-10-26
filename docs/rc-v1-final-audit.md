@@ -1,8 +1,75 @@
-# LYANN — Release Candidate V1.1 à V1.5
+# LYANN — Release Candidate V1.1 à V1.7
 
 Verdict : **NO-GO**
 
-Un APK debug Staging est compilé. Il n’y a pas d’IPA, pas d’AAB signé pour Play, pas d’appareil physique, et le remboursement Stripe Test reste verrouillé. La fonction devis `P0001` n’a pas été appliquée : le jeton de gestion Supabase disponible répond 401. Aucune fusion vers `main`, aucun déploiement Production, aucun Stripe Live.
+## V1.7 — vidéo, photo, suppression accidentelle
+
+Les trois anomalies V1.6 ont une cause dans le code, pas dans l’émulateur.
+
+La lecture attendait le téléchargement complet du fichier avant d’appeler `play()`. Le geste utilisateur était alors perdu, et l’affiche « Lire la vidéo » restait. Le fil ne télécharge plus les vidéos à l’avance. Un toucher crée le lecteur tout de suite et lui donne l’URL Staging : le lecteur demande lui-même les plages d’octets. Sur l’émulateur Pixel 6, la vidéo « Hello » de Yoann D. a démarré (`currentTime` 5,25 s, `paused` faux), la pause a répondu, puis la reprise. L’URL lue commence par `https://staging-bokantaj.lyann.app/v1/media/`, pas par `blob:`. Le bouton plein écran est dans le lecteur. Ce n’est pas un téléphone.
+
+Le sélecteur photo s’ouvre. Le bouton « Photo » du formulaire le faisait déjà : le premier essai V1.6 tapait à côté. L’icône du compositeur appelait `input.click()`, que la WebView Android ignore. Cette icône est maintenant une étiquette du champ fichier. Un toucher dessus ouvre `PhotopickerGetContentActivity`. Annuler ramène à LYANN. Le même principe vaut pour l’icône vidéo, l’étape photos d’une annonce dans `feed.html`, et « Changer ma photo ».
+
+Le dialogue « Supprimer ce paiement par étape » vient des trois boutons « Supprimer » peints au chargement dans `#chatMilestoneDevisForm`, qui est fermé. Les lignes par défaut ont déjà un pourcentage, donc `rowHasData` est vrai. Un `click()` sur ce bouton invisible appelait `window.confirm` et bloquait la WebView. Le bouton ne confirme plus que s’il est réellement affiché. Une fenêtre inactive ne reçoit plus les touches (`pointer-events: none`). L’essai sur l’émulateur a cliqué le bouton caché : aucun dialogue.
+
+Le simulateur iPhone 17 Pro a reçu le même paquet et s’ouvre sur l’accueil invité. `Simulator.app` n’est pas disponible ici, donc les parcours connectés du simulateur ne sont pas exécutés. L’iPhone physique n’est pas branché. L’Android physique n’est pas testé.
+
+La migration devis et le remboursement Stripe Test restent bloqués comme en V1.5. Aucune fusion, aucun Production, aucun Stripe Live.
+
+Le paquet `490d497` est installé sur un émulateur Pixel 6 (Android 16) et sur le simulateur iPhone 17 Pro. La WebView Android et le fichier `lyann-native-build.json` embarqué dans l’app iOS portent le verrou Staging. Il n’y a pas d’IPA, pas d’AAB signé, pas d’iPhone branché, pas de téléphone Android physique. La migration devis et le remboursement Stripe Test restent bloqués comme en V1.5. Aucune fusion vers `main`, aucun déploiement Production, aucun Stripe Live.
+
+## V1.6 — émulateur Android et simulateur iOS
+
+Source `490d497df76f1a5d9214a498ffe19fe505ad88ef`. Les checks de ce commit étaient verts avant cette passe. Aucun nouveau commit n’a été poussé.
+
+| Champ | Valeur |
+| --- | --- |
+| Build id | `ios-mvppim4h-dfca5b` |
+| Compilé le | `2026-10-26T20:26:15.807Z` |
+| SHA source | `490d497df76f1a5d9214a498ffe19fe505ad88ef` |
+| Version | `1.0` (`versionCode` Android 1, build iOS 10) |
+| Hash des assets | `2464c33f2180a054f5d4e575cf5787dc818372d5a8176e8dc8e1c86ccc6e49ad` |
+| Backend | `https://staging-bokantaj.lyann.app` |
+| Supabase | `tdktfbtqceldlaeqjtow` |
+| APK | `android/app/build/outputs/apk/debug/app-debug.apk` |
+| SHA-256 du fichier | `8738b70dfb55af8725f9a1a96963b66e14db897845dfbba66a1f273db92afc06` |
+| Signature | Android Debug, la même identité que V1.5 |
+| iOS simulateur | `Debug-iphonesimulator/App.app`, `CODE_SIGNING_ALLOWED=NO`, build Xcode réussi |
+
+L’émulateur est `lyann_api36`, Pixel 6, API 36, arm64. Un APK déjà présent avait `versionCode` 13 ; `adb install -r` a été refusé, puis l’installation avec autorisation de downgrade a réussi. L’application testée est bien `versionCode` 1. Ce n’est pas un téléphone.
+
+### Matrice
+
+| Parcours | Web réel | iOS simulateur | iPhone physique | Android émulateur | Android physique |
+| --- | --- | --- | --- | --- | --- |
+| Ouverture | déjà validé avant V1.6 | écran d’accueil invité, capture `ios-01-launch.png` | non exécuté | carrousel invité, puis shell membre | non testé |
+| Connexion et déconnexion QA | déjà validé | non exécuté | non exécuté | session ouverte puis fermée | non testé |
+| Bokantaj, publication, carte | déjà validé | non exécuté | non exécuté | texte publié puis retiré ; carte Guadeloupe affichée | non testé |
+| GPS et quartier | déjà validé | non exécuté | non exécuté | position simulée `16.241,-61.534` ; partage de quartier arrondi à 3 décimales | non testé |
+| Annonces et Lyanneurs | déjà validé | non exécuté | non exécuté | les deux pages s’ouvrent ; une annonce QA est visible ; le détail n’a pas été confirmé | non testé |
+| Messagerie et notifications | déjà validé | non exécuté | non exécuté | liste réelle (Support, conversations) ; modale Notifications peuplée | non testé |
+| Profil | déjà validé | non exécuté | non exécuté | fiche QA A., Basse-Terre, Guadeloupe | non testé |
+| Clavier et défilement | déjà validé | non exécuté | non exécuté | clavier système dans le compositeur ; défilement exécuté | non testé |
+| Galerie | déjà validé côté web | non exécuté | non exécuté | le champ photo est présent ; le sélecteur Android ne s’est pas ouvert | non testé |
+| Vidéo | déjà validé côté web | non exécuté | non exécuté | les affiches « Lire la vidéo » sont visibles ; la lecture n’a pas démarré pendant l’observation | non testé |
+| Arrière-plan et reprise | non repris ici | non exécuté | non exécuté | retour au premier plan, page visible | non testé |
+| Perte et retour réseau | non repris ici | non exécuté | non exécuté | requête coupée, puis identité Staging HTTP 200 | non testé |
+
+Les captures sont dans `artifacts/rc-v16/`. Un dialogue natif « Supprimer ce paiement par étape » est apparu après un toucher hors parcours ; il a été annulé. Aucun paiement n’a été retiré.
+
+### iOS
+
+Le simulateur iPhone 17 Pro `9281CEB1-E36D-4654-91E0-3AA741F8AD10` a reçu le même paquet. L’application s’ouvre sur l’accueil invité. `Simulator.app` n’est pas ouvrable dans cet environnement, donc les touches de connexion, caméra, GPS, notifications, clavier, vidéo et reprise n’ont pas été faites sur le simulateur. Ces parcours ne sont pas validés.
+
+Pour l’iPhone physique : brancher l’appareil, le déverrouiller, accepter « Faire confiance à cet ordinateur », puis dans Xcode ouvrir `ios/App/App.xcodeproj`, choisir la cible App et l’iPhone, et lancer avec l’équipe `WLV4WC47U2` déjà réglée. Aucun certificat Apple Distribution et aucun profil ne sont installés : Xcode peut créer un profil de développement seulement après cette confiance. TestFlight reste impossible. Ne pas lancer un Archive.
+
+### Staging laissé en l’état
+
+La migration `59_revise_sent_quote_p0001.sql` n’est toujours pas appliquée : le jeton de gestion répond 401, et aucun mot de passe Postgres n’est disponible. Le conflit de version n’a pas été rejoué. Le remboursement reste `EXECUTION_DISABLED`. Les droits d’abonnement n’ont pas été réessayés au-delà de `effectivePlan`. Le nettoyage média après suppression de compte reste celui de V1.4. Les boutons admin Mika, génération, export, suspension, remboursement et attribution Pro n’ont pas été actionnés.
+
+### Stores
+
+Pas de publication. Pas de keystore d’upload, donc pas d’AAB. Pas de certificat Distribution, donc pas d’IPA. La signature debug Android et la signature simulateur iOS sont les seules produites.
 
 ## V1.5 — migration, remboursement, APK
 
@@ -371,12 +438,12 @@ Aucun P0 confirmé (perte de données, fuite de position exacte dans les specs m
 
 **NO-GO** pour TestFlight, Google Play Internal et une promotion Production.
 
-L’APK debug `app-debug.apk` est installable sur un appareil Android qui accepte une signature debug. Il embarque le paquet Staging `ios-mvpo0omh-5a6365`. Il n’a pas été installé ici.
+L’APK debug `8738b70d…` est installé sur l’émulateur Pixel 6. Il embarque `ios-mvppim4h-dfca5b`. Le même paquet tourne sur le simulateur iPhone 17 Pro, arrêté à l’accueil. Aucun des deux n’est un essai physique.
 
 Reste bloquant :
 
 1. La migration `P0001` est prête et refusée par un jeton de gestion invalide. Le conflit de version expire encore sur Staging.
 2. Le remboursement Stripe Test reste impossible sans élargir le grant : le seul paiement autorisé n’existe pas dans Staging.
 3. Pas de certificat Apple Distribution, pas de profil, donc pas d’IPA. Pas de keystore d’upload, donc pas d’AAB Play.
-4. Pas d’essai sur appareil et pas d’achat Sandbox.
-5. La Preview Vercel reste derrière le SSO.
+4. iPhone physique non branché. Android physique non testé. Le simulateur iOS s’ouvre, sans parcours connecté : l’application Simulator n’est pas pilotable dans cet environnement.
+5. La Preview Vercel reste derrière le SSO. Pas d’achat Sandbox.

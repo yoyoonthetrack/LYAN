@@ -46,13 +46,15 @@ test('Bokantaj loads posts in order, twenty at a time, and the 15th opens the ne
   await page.evaluate(() => window.loadBokantajFeedFromSupabase({ force: true }));
   await expect(page.locator('#preload-0')).toBeVisible();
 
-  const firstWindow = [...Array(20).keys()].map((index) => index + (index === 5 ? '.mp4' : '.jpg'));
-  await expect.poll(() => seen.length, { timeout: 15000 }).toBe(20);
-  expect(seen.slice(0, 20)).toEqual(firstWindow);
+  const firstWindow = [...Array(20).keys()].filter((index) => index !== 5).map((index) => index + '.jpg');
+  await expect.poll(() => seen.length, { timeout: 15000 }).toBe(19);
+  expect(seen.slice(0, 19)).toEqual(firstWindow);
+  // A video is fetched when the member taps it, not while the window fills.
+  expect(seen).not.toContain('5.mp4');
   // The 15th post is still below the fold, so the next window stays closed.
   expect(seen).not.toContain('20.jpg');
 
   await page.locator('#preload-14').scrollIntoViewIfNeeded();
-  await expect.poll(() => seen.length, { timeout: 15000 }).toBe(25);
-  expect(seen.slice(20)).toEqual(['20.jpg', '21.jpg', '22.jpg', '23.jpg', '24.jpg']);
+  await expect.poll(() => seen.length, { timeout: 15000 }).toBe(24);
+  expect(seen.slice(19)).toEqual(['20.jpg', '21.jpg', '22.jpg', '23.jpg', '24.jpg']);
 });
