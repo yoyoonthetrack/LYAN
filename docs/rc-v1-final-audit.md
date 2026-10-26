@@ -1,6 +1,34 @@
-# LYANN — Release Candidate V1.1 à V1.8
+# LYANN — Release Candidate V1.1 à V1.9
 
 Verdict : **NO-GO**
+
+## V1.9 — iPhone verrouillé, annonces, carte, médias QA
+
+Les paquets installés restent `ios-mvpu5wa4-d7e45f`, SHA embarqué `7f3b81003fcd421d7673d961a1206b7581c4cb5b`, backend `https://staging-bokantaj.lyann.app`, verrou `tdktfbtqceldlaeqjtow`. Aucun correctif produit n’a été nécessaire pour les annonces ni pour le fond de carte : les deux s’affichent une fois le chargement fini.
+
+### iPhone physique
+
+« iPhone de yoann » accepte le lancement de `app.lyann.mobile`. L’écran qui répond est le code de déverrouillage. Les parcours sur l’appareil n’ont pas été exécutés.
+
+### Simulateur iPhone 17 Pro
+
+`testAnnoncesMapAndMedia` réussit. Annonces affiche « 7 annonces · Tous les lieux » et la carte `RC14-mvpnz42j-devis` (Le Gosier, Jardinage). Le détail de cette annonce, qui appartient à QA A, s’ouvre avec Modifier et Supprimer. Le bandeau vide de V1.8 était la capture pendant le chargement : le test prenait aussi le texte caché « Chargement du profil… » pour un chargement de liste. Staging a 7 demandes publiques ouvertes ; la requête répond en 345 ms.
+
+Lyanneurs affiche « 53 Lyanneurs · Tous les lieux » et la fiche Alain C. (Saint-Joseph). Le bouton Contacter est dans l’arbre. Il n’a pas été activé.
+
+La carte Bokantaj quitte « La carte arrive… ». Le fond OpenFreeMap de la Guadeloupe, les grappes 7, 5 et le repère resto, et les boutons de zoom sont là. « 13 partages ici ». Le GPS du simulateur est posé à 16,241, −61,534. Le fil de carte ne dessine pas de point utilisateur : la position sert au choix de lieu du compositeur, qui n’a pas été ouvert. Une position de quartier reste arrondie à trois décimales tant que le membre n’a pas choisi le point exact.
+
+Le toucher « Lire la vidéo » remplace l’affiche par le lecteur (son coupé et « Ouvrir le lecteur »). Aucun bouton dont le nom contient « pause » n’apparaît, et l’image reste blanche. L’icône Photo du compositeur n’est pas exposée sous le nom Photo : le sélecteur ne s’ouvre pas par ce test.
+
+Captures : `/tmp/lyann-ios-ui-v19-annonces.png`, `v19-annonce-detail.png`, `v19-lyanneurs.png`, `v19-carte.png`, `v19-video.png`. Journal : `/tmp/lyann-ios-uitest10.log`.
+
+### Émulateur — nettoyage du média QA
+
+Le fichier laissé par la photo V1.8, `0cf16918-9951-47bd-a726-e3efca8cbbf4.jpg`, est dans le dossier QA A de `bokantaj-media-hold`, créé à 22:18 UTC, sans publication qui le référence. Le balayage automatique ne le retire qu’après 48 h. `releaseMedia`, le même chemin que la suppression admin Staging, le retire. Un second fichier créé pour l’essai, `qa-cleanup-v19.jpg`, suit le même chemin et disparaît de l’inventaire. L’URL publique répond 200 avec une image SVG de 431 octets, `Cache-Control: private, no-store` : c’est le visuel d’attente, pas le JPEG. Aucun fichier hors de ce dossier QA n’a été supprimé. 68 publications restent en base.
+
+### Toujours en attente
+
+Parcours sur l’iPhone une fois le code saisi. Lecture vidéo avec pause et plein écran. Sélection d’une photo iOS. Contact d’un Lyanneur depuis sa fiche. Point GPS dans le compositeur. Migration devis et remboursement Stripe Test inchangés. Aucune fusion, aucun Production, aucun Stripe Live.
 
 ## V1.8 — photo Android, XCUITest, iPhone de développement
 
