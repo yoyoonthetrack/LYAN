@@ -20,18 +20,11 @@ API locale `http://127.0.0.1:8098` : `supabase_ref=tdktfbtqceldlaeqjtow`, `isola
 | Appareils physiques | Aucun. |
 | Sandbox Apple / Google | Aucun achat, aucune restauration. |
 
-### CI du SHA `013f04b`
+### CI
 
-Relevé GitHub des check-runs de ce commit, après la fin de Chromium. Quatre checks, quatre succès :
+`013f04b` puis le commit de preuves `b0935e9f602ed542c4198ba3b8544b704efb8b79` ont chacun quatre checks terminés en succès : `architecture-audit`, `chromium-qa`, `android-qa`, Vercel Preview Comments. Les runs de `b0935e9` : architecture [40384733210](https://github.com/yoyoonthetrack/LYAN/actions/runs/40384733210), Chromium [40384732922](https://github.com/yoyoonthetrack/LYAN/actions/runs/40384732922), Android [40384732882](https://github.com/yoyoonthetrack/LYAN/actions/runs/40384732882).
 
-| Check | Résultat |
-| --- | --- |
-| `architecture-audit` | success |
-| `chromium-qa` | success |
-| `android-qa` | success |
-| Vercel Preview Comments | success |
-
-Le statut combiné Vercel était déjà `success` pendant que Chromium tournait encore. Il n’a pas été pris pour une CI verte. Les workflows navigateur et Android sont filtrés par chemins : un commit limité au rapport et au script ne les relance pas. Leur dernier succès sur le code produit reste `013f04b`. Le check `architecture-audit` de la PR se relance à chaque poussée. La CI du commit de ce rapport n’est verte qu’une fois ce job terminé avec succès.
+Le statut combiné Vercel était déjà `success` pendant que Chromium de `013f04b` tournait encore. Il n’a pas été pris pour une CI verte. Chromium et Android se sont quand même relancés sur `b0935e9`. Les traces Playwright restent demandées par le workflow en cas d’échec. Ce passage n’a pas d’échec à archiver.
 
 ### Stripe Test et devis
 
@@ -294,7 +287,7 @@ Aucun P0 confirmé (perte de données, fuite de position exacte dans les specs m
 
 **NO-GO** pour TestFlight, Google Play, une soumission store ou une promotion Production.
 
-Le code produit `013f04b` a ses quatre checks GitHub en succès, dont Chromium et Android. Le paquet local `ios-mvpmc13z-9215ed` porte `6b808c3` et le correctif de fil. Il n’est pas installable : pas de certificat Apple Distribution, pas de keystore Android, pas d’appareil.
+`013f04b` et `b0935e9` ont chacun leurs quatre checks GitHub en succès, dont Chromium et Android. Le paquet local `ios-mvpmc13z-9215ed` porte `6b808c3` et le correctif de fil. Il n’est pas installable : pas de certificat Apple Distribution, pas de keystore Android, pas d’appareil.
 
 Reste bloquant :
 
