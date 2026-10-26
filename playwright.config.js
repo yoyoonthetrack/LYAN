@@ -17,7 +17,8 @@ module.exports = defineConfig({
   reporter: [['list']],
   use: {
     baseURL: process.env.LYANN_E2E_BASE_URL || 'http://127.0.0.1:8080',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
     viewport: { width: 1280, height: 720 }
   },
   projects: [

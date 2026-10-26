@@ -81,8 +81,8 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Upload Chromium evidence on failure
-        if: failure()
+      - name: Upload Chromium evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lyann-bokantaj-android-test-evidence
