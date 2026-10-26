@@ -1,6 +1,34 @@
-# LYANN — Release Candidate V1.1 à V1.7
+# LYANN — Release Candidate V1.1 à V1.8
 
 Verdict : **NO-GO**
+
+## V1.8 — photo Android, XCUITest, iPhone de développement
+
+Les paquets encore installés au moment de ces essais embarquent `fe4d298cf49385b58c414da9b0e682ccdbba9e39`, identité `ios-mvps4sca-6fc9a0`, backend `https://staging-bokantaj.lyann.app`, verrou `tdktfbtqceldlaeqjtow`. Ce n’est pas un téléphone Android. L’iPhone physique a reçu l’app, sans parcours.
+
+### Émulateur Pixel 6
+
+Le sélecteur système ne se pilote plus par `adb exec-out screencap` : cette capture bloque le démon tant que Photos est devant. L’arbre du sélecteur se lit avec `uiautomator dump` vers un fichier de l’appareil, et la fenêtre active avec `dumpsys window`, chaque commande coupée par le client au bout de quelques secondes.
+
+Annulation : Retour rend `MainActivity`, le champ photo a 0 fichier. Reprise : la première vignette, puis Terminé, rend `33.jpg` (338 octets) et une miniature dans le compositeur. Publication « Repère photo QA v18 », post `fd760bba-a466-4d5d-9400-6887dfd0183d`, statut `pending`, un média dans `bokantaj-media-hold` sur `staging-bokantaj.lyann.app`. Le compte QA B ne lit pas la ligne. La suppression par l’auteur retire la ligne. L’URL média répond encore 200 : la suppression membre n’efface pas l’objet, le balayage des orphelins est le chemin différé. Pas de suppression Storage depuis le client.
+
+### Simulateur iPhone 17 Pro
+
+`testQaLoginSessionAndSurfaces` interroge des libellés nommés. Il ne parcourt plus tous les boutons du fil. Le passage recompilé dure 146 s et réussit (`** TEST SUCCEEDED **`).
+
+Connexion : session QA A déjà là, feuille « Mon compte » avec `qa.a.author.stagingv2@lyann.invalid` et « Qa A. », formule Gratuit. La feuille se ferme par le bouton Fermer visible, sinon par le contrôle en haut à droite. La session est encore là après relance. Clavier ouvert dans le compositeur. Publication texte « Repere simulateur v18 », post Staging `b2cea39d-964c-42c7-aff9-1494c32f1430`, statut `approved`, aucun média, puis suppression de la ligne par l’auteur. Annonces affiche le bandeau et un corps vide. Lyanneurs s’affiche. Messages affiche Support LYANN, Qa L. et Ludivine R. ; la note du test disait encore « chargement » parce qu’elle cherchait un texte statique, alors que la ligne est un bouton. Notifications s’ouvre sur des rappels et des devis. Retour de l’arrière-plan : la feuille Finances est toujours là.
+
+La carte expose « Carte des publications géolocalisées » pendant que l’écran dit encore « La carte arrive… ». Le GPS du simulateur est posé à 16,241, −61,534. Aucun point utilisateur n’est lu à l’écran. Le bouton « Lire la vidéo » a été touché ; la capture ne montre pas la lecture. Le bouton Photo du compositeur n’était plus là après la publication : pas de sélection photo iOS.
+
+Captures : `/tmp/lyann-ios-ui-43-account.png`, `45-annonces.png`, `46b-carte.png`, `46c-clavier.png`, `46d-video.png`, `48-messages.png`, `49-notifications.png`, `53-resumed.png`. Journal : `/tmp/lyann-ios-uitest8.log`.
+
+### iPhone physique
+
+Build debug signé en automatique, équipe `WLV4WC47U2`, identité Apple Development `yoann.danier@gmail.com (CH5MK7M6PD)`, profil « iOS Team Provisioning Profile: app.lyann.mobile » `31827009-7da8-481d-a5c6-24678603e027`. Bundle `app.lyann.mobile`, version 1.0, build 10. L’app est installée sur « iPhone de yoann » (`00008140-00112D0C2684801C`). Le lancement est refusé : l’appareil est verrouillé. Aucun parcours physique.
+
+### Toujours bloqué
+
+Migration devis Staging : non appliquée. Remboursement Stripe Test : non exécuté. Actions admin d’écriture : non cliquées. Android physique : non testé. Aucune fusion, aucun Production, aucun Stripe Live.
 
 ## V1.7 — vidéo, photo, suppression accidentelle
 

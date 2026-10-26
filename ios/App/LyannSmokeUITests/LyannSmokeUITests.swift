@@ -61,31 +61,84 @@ final class LyannSmokeUITests: XCTestCase {
         XCTAssertTrue(signedIn, "La barre membre n’apparaît pas. \(visibleLabels(app))")
 
         openAccount(app, shot: "43-account")
-        let emailShown = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "@lyann.invalid")).firstMatch
-        let named = app.staticTexts["Qa A."].exists
-        note(emailShown.exists ? "account-email-visible" : "account-email-missing")
-        note(named ? "identity-qa-a" : "identity-missing")
-        XCTAssertTrue(emailShown.exists && named, "Le compte ouvert n’est pas QA A. \(visibleLabels(app))")
-        if app.buttons["Fermer"].exists { app.buttons["Fermer"].firstMatch.tap() }
+        let identity = accountIdentityVisible(app)
+        note(identity.email ? "account-email-visible" : "account-email-missing")
+        note(identity.name ? "identity-qa-a" : "identity-missing")
+        XCTAssertTrue(identity.email && identity.name, "Le compte ouvert n’est pas QA A. \(visibleLabels(app))")
+        dismissSheet(app)
 
         app.terminate()
         app.launch()
         let persisted = app.buttons["Profil"].waitForExistence(timeout: 25)
         save(app, "44-relaunch")
         if persisted { openAccount(app, shot: "44b-relaunch-account") }
-        let stillQa = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "@lyann.invalid")).firstMatch.exists
+        let stillQa = accountIdentityVisible(app).email
         note(stillQa ? "session-persisted" : "session-lost")
         XCTAssertTrue(persisted && stillQa, "La session QA A ne survit pas à la fermeture.")
+        dismissSheet(app)
+        XCTAssertTrue(app.buttons["Profil"].firstMatch.isHittable, "La feuille compte recouvre encore la barre.")
 
         visit(app, "Annonces", "45-annonces", ready: "annonces")
         visit(app, "Bokantaj", "46-bokantaj", ready: "Bokantaj")
+        if tapIfHittable(app.buttons["Carte"].firstMatch, name: "Carte") {
+            let canvas = app.otherElements["Carte des publications géolocalisées"].firstMatch
+            let mapReady = canvas.waitForExistence(timeout: 8)
+            note(mapReady ? "map-canvas-shown" : "map-canvas-missing")
+            save(app, "46b-carte")
+            _ = tapIfHittable(app.buttons["Fil"].firstMatch, name: "Fil")
+        }
+        let composer = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Partager une idée")).firstMatch
+        if tapIfHittable(composer, name: "Compositeur") {
+            let field = app.textViews.matching(NSPredicate(format: "label CONTAINS %@ OR placeholderValue CONTAINS %@", "Écrivez votre Lyann", "Écrivez votre Lyann")).firstMatch
+            if field.waitForExistence(timeout: 4) {
+                field.tap()
+                let keyboard = app.keyboards.firstMatch.waitForExistence(timeout: 4)
+                note(keyboard ? "keyboard-open" : "keyboard-missing")
+                if keyboard { field.typeText("Repere simulateur v18") }
+                let publish = app.buttons["Publier"].firstMatch
+                if publish.waitForExistence(timeout: 3), publish.isHittable {
+                    publish.tap()
+                    let posted = app.staticTexts["Repere simulateur v18"].firstMatch.waitForExistence(timeout: 12)
+                    note(posted ? "bokantaj-published" : "bokantaj-publish-unconfirmed")
+                } else {
+                    note("publish-not-hittable")
+                }
+            } else {
+                note("composer-field-missing")
+            }
+            save(app, "46c-clavier")
+        }
+        let photo = app.buttons["Photo"].firstMatch
+        if photo.waitForExistence(timeout: 3), photo.isHittable {
+            photo.tap()
+            let cancel = app.buttons["Annuler"].firstMatch
+            if cancel.waitForExistence(timeout: 4), cancel.isHittable {
+                note("photo-picker-open")
+                cancel.tap()
+                note("photo-picker-cancelled")
+            } else {
+                note("photo-picker-not-shown")
+            }
+            save(app, "46e-photo")
+        } else {
+            note("photo-control-absent")
+        }
+        let poster = app.buttons["Lire la vidéo"].firstMatch
+        if poster.waitForExistence(timeout: 4), poster.isHittable {
+            poster.tap()
+            note("video-tapped")
+            save(app, "46d-video")
+        } else {
+            note("video-poster-absent")
+        }
         visit(app, "Lyanneurs", "47-lyanneurs", ready: "Lyanneurs")
 
         if tapIfHittable(app.buttons["Messages"].firstMatch, name: "Messages") {
             let loaded = waitUntil(app, seconds: 16) {
                 app.staticTexts["Impossible de charger les conversations."].exists
                     || app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Réessayer")).firstMatch.exists
-                    || app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Qa L")).firstMatch.exists
+                    || app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Qa L")).firstMatch.exists
+                    || app.staticTexts["Support LYANN"].firstMatch.exists
             }
             save(app, "48-messages")
             let retry = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Réessayer")).firstMatch
@@ -349,9 +402,6 @@ final class LyannSmokeUITests: XCTestCase {
         app.links["Ouvrir Mon activité"].firstMatch.tap()
         _ = app.staticTexts["Mon activité"].waitForExistence(timeout: 8)
         save(app, "90-activity")
-        for button in app.buttons.allElementsBoundByIndex where button.exists && (button.label.contains("mission") || button.label.contains("Mes")) {
-            note("chip \(button.label) \(state(button))")
-        }
         let missions = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Mes missions")).firstMatch
         if missions.waitForExistence(timeout: 4) {
             note("missions-chip \(state(missions))")
@@ -824,13 +874,50 @@ final class LyannSmokeUITests: XCTestCase {
         }
     }
 
+    private func accountIdentityVisible(_ app: XCUIApplication) -> (email: Bool, name: Bool) {
+        let email = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "@lyann.invalid")).firstMatch
+        let name = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Qa A")).firstMatch
+        let ready = waitUntil(app, seconds: 8) { email.exists || name.exists }
+        return (ready && email.exists, ready && name.exists)
+    }
+
+    private func sheetIsOpen(_ app: XCUIApplication) -> Bool {
+        app.buttons["Modifier mon profil public"].firstMatch.exists
+            || app.staticTexts["Formule actuelle"].firstMatch.exists
+            || app.staticTexts["Paiements sécurisés"].firstMatch.exists
+            || app.staticTexts["Mes missions"].firstMatch.exists
+    }
+
+    private func dismissSheet(_ app: XCUIApplication) {
+        guard sheetIsOpen(app) else {
+            note("sheet-absent")
+            return
+        }
+        let close = app.buttons["Fermer"].firstMatch
+        if close.exists, close.isHittable {
+            close.tap()
+        } else {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.89, dy: 0.08)).tap()
+        }
+        let gone = waitUntil(app, seconds: 3) { !sheetIsOpen(app) }
+        if !gone {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.89, dy: 0.08)).tap()
+        }
+        let menu = app.buttons["Fermer le menu"].firstMatch
+        if menu.exists, menu.isHittable { menu.tap() }
+        note(waitUntil(app, seconds: 2) { !sheetIsOpen(app) } ? "sheet-closed" : "sheet-still-open")
+    }
+
     private func openAccount(_ app: XCUIApplication, shot: String) {
         guard tapIfHittable(app.buttons["Menu Principal"].firstMatch, name: "Menu compte") else { return }
-        sleep(1)
-        if tapIfHittable(app.links["Ouvrir Mon compte"].firstMatch, name: "Mon compte")
-            || tapIfHittable(app.staticTexts["Mon compte"].firstMatch, name: "Mon compte texte") {
-            sleep(2)
+        let account = app.links["Ouvrir Mon compte"].firstMatch
+        guard account.waitForExistence(timeout: 4), account.isHittable else {
+            note("account-link-missing")
+            return
         }
+        account.tap()
+        let opened = waitUntil(app, seconds: 8) { sheetIsOpen(app) }
+        note(opened ? "account-open" : "account-not-open")
         save(app, shot)
     }
 
@@ -880,19 +967,17 @@ final class LyannSmokeUITests: XCTestCase {
 
     private func dump(_ app: XCUIApplication, _ moment: String) {
         note("--- \(moment) webViews=\(app.webViews.count) ---")
-        for element in app.buttons.allElementsBoundByIndex.prefix(25) where element.exists {
-            note("button \(state(element)) \(element.label)")
-        }
-        for element in app.textFields.allElementsBoundByIndex.prefix(8) where element.exists {
-            note("text \(state(element)) \(element.label)")
-        }
-        for element in app.secureTextFields.allElementsBoundByIndex.prefix(4) where element.exists {
-            note("secure \(state(element)) \(element.label)")
+        for label in ["Se connecter", "Valider la connexion", "Profil", "Bokantaj", "Fil", "Carte", "Messages", "Notifications"] {
+            let button = app.buttons[label].firstMatch
+            guard button.exists else { continue }
+            note("button \(label) hittable=\(button.isHittable)")
         }
     }
 
     private func visibleLabels(_ app: XCUIApplication) -> String {
-        app.staticTexts.allElementsBoundByIndex.prefix(10).map(\.label).joined(separator: " | ")
+        ["Profil", "Bokantaj", "Messages", "Se connecter"].compactMap { label in
+            app.buttons[label].firstMatch.exists ? label : nil
+        }.joined(separator: " | ")
     }
 
     private func note(_ line: String) {
