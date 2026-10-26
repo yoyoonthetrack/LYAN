@@ -2,7 +2,7 @@
 
 Verdict : **NO-GO**
 
-Le passage V1.2 a exécuté de vrais parcours Staging (auth QA, publication, modération, messagerie, ouverture des 33 rubriques) et a reconstruit les paquets iOS et Android sur le même commit, verrouillés sur `tdktfbtqceldlaeqjtow`. Il reste les paiements Stripe Test, les devis, la suppression de compte, les achats Sandbox et toute validation sur appareil. La CI du commit de build n’est pas encore relue. Aucun IPA ni AAB n’a été envoyé.
+Le passage V1.2 a exécuté de vrais parcours Staging (auth QA, publication, modération, messagerie, ouverture des 33 rubriques) et a reconstruit les paquets iOS et Android sur le même commit, verrouillés sur `tdktfbtqceldlaeqjtow`. Il reste les paiements Stripe Test, les devis, la suppression de compte, les achats Sandbox et toute validation sur appareil. Sur `b5a3495`, les 5 checks GitHub attachés à ce commit sont verts. Ce résultat ne couvre pas `6b808c3` ni `429aba4`. Aucun IPA ni AAB n’a été envoyé.
 
 ## V1.2 — preuves Staging et builds
 
@@ -124,7 +124,7 @@ Déclenchée par la PR 13.
 | --- | --- |
 | `architecture-audit` | success — https://github.com/yoyoonthetrack/LYAN/actions/runs/40380086237 |
 | `chromium-qa` | success — https://github.com/yoyoonthetrack/LYAN/actions/runs/40380086256 |
-| `android-qa` | encore in progress au dernier relevé (compilation APK comprise, budget 35 min) |
+| `android-qa` | encore in progress au relevé manuel sur `e1bf7d6`. L’événement CI de `b5a3495` dit 5 checks verts sans les nommer. |
 | Vercel | deployment completed, tableau https://vercel.com/yoyo-d85d/lyan/AQEHK5oezAPWrf5FiDVD84YLHoaw |
 | Vercel Preview Comments | success |
 
@@ -174,7 +174,7 @@ Aucun P0 confirmé (perte de données, fuite de position exacte dans les specs m
 ## CI, builds, Preview
 
 - CI locale architecture : PASS sur l’arbre `e1bf7d6`.
-- CI GitHub : architecture et Chromium verts sur `e1bf7d6`. Android non encore conclu. La CI n’est pas entièrement verte.
+- CI GitHub : architecture et Chromium verts sur `e1bf7d6`. Commit `b5a3495` : 5/5 checks verts. Le job Android n’est pas nommé dans cet événement.
 - Builds disponibles : paquet local déjà présent `ios-mvp6mel3-079240` (Staging, 26 oct 2026 11:37 UTC), en retard sur la RC. Pas de nouvel IPA, pas d’APK de cette session, pas de TestFlight, pas de Play Internal.
 - URL Preview : `https://lyan-git-release-lyann-rc-v1-1-yoyo-d85d.vercel.app`, protégée par SSO. Isolation non lue.
 - `main` et Production : non touchés. Stripe Live : non activé.
@@ -205,7 +205,7 @@ RC-4 est fermé pour le paquet local `ios-mvpmc13z-9215ed` : il porte `6b808c3` 
 
 Reste bloquant :
 
-1. Relire la CI GitHub de `6b808c3` (architecture, Chromium, Android).
+1. Confirmer le nom du job Android et la CI de `6b808c3` / `429aba4`. `b5a3495` est vert sur ses 5 checks.
 2. Stripe Test : paiement, échec, webhook, remboursement, double soumission. Clés test présentes, aucun appel effectué.
 3. Devis, jalons, abonnements et restauration Sandbox.
 4. Suppression de compte et nettoyage des médias, sur un compte QA seulement.
