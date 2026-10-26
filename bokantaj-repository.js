@@ -4,8 +4,12 @@
   const CACHE_TTL_MS = 15000;
   let cached = null;
   let cachedAt = 0;
+  let cacheTerritory = '';
   let inFlight = null;
+  let inFlightTerritory = '';
+  let loadToken = 0;
   let lastHasMore = false;
+  let lastCursor = null;
 
   function isFresh() {
     return Array.isArray(cached) && (Date.now() - cachedAt) < CACHE_TTL_MS;
@@ -46,19 +50,26 @@
     const result = await client.getFeed(options || {});
     if (result && result.error) throw result.error;
     lastHasMore = !!(result && result.hasMore);
+    lastCursor = result && result.cursor ? result.cursor : null;
     return sanitizeFeed(result ? result.data : []);
   }
 
   async function load(options = {}) {
-    if (options.before) return fetchFeed(options);
+    const territory = options.territory || 'all';
+    if (options.before) return fetchFeed({ before: options.before, territory });
     const force = options.force === true;
-    if (!force && isFresh()) return cached;
-    if (!force && inFlight) return inFlight;
+    if (!force && isFresh() && cacheTerritory === territory) return cached;
+    if (!force && inFlight && inFlightTerritory === territory) return inFlight;
 
-    const flight = fetchFeed({})
+    const token = ++loadToken;
+    inFlightTerritory = territory;
+    const flight = fetchFeed({ territory })
       .then((items) => {
-        cached = items;
-        cachedAt = Date.now();
+        if (token === loadToken) {
+          cached = items;
+          cacheTerritory = territory;
+          cachedAt = Date.now();
+        }
         return items;
       })
       .finally(() => {
@@ -79,6 +90,7 @@
     invalidate,
     sanitizeFeed,
     isPubliclyVisible,
-    hasMore() { return lastHasMore; }
+    hasMore() { return lastHasMore; },
+    cursor() { return lastCursor; }
   });
 })();

@@ -72,13 +72,16 @@ test('a card keeps the shape of the media and plays video on scroll', () => {
     const icons = fs.readFileSync(path.join(__dirname, '../vendor/phosphor/phosphor.css'), 'utf8');
     assert.doesNotMatch(icons, /\.ph-speaker/);
     assert.match(icons, /\.ph-arrows-out/);
-    // Autoplay is bound before the media downloads, which run together: bound
-    // last and one by one, a video waited for every photo of the feed first.
-    const hydrate = source.slice(source.indexOf('async function hydrateHoldMedia'));
-    const body = hydrate.slice(0, hydrate.indexOf('\n    }'));
-    assert.ok(body.indexOf('observeFeedVideos(root)') < body.indexOf('querySelectorAll'), 'bound before fetching');
-    assert.match(body, /await Promise\.all\(Array\.from\(nodes\)\.map/);
-    assert.doesNotMatch(body, /for \(const node of nodes\)/);
+    // The feed fills twenty posts in order. Reaching the 15th starts the next
+    // twenty, so a clip is already fetched when the member gets to it.
+    assert.match(source, /const FEED_MEDIA_BATCH = 20/);
+    assert.match(source, /const FEED_MEDIA_TRIGGER = 15/);
+    const hydrate = source.slice(source.indexOf('function hydrateHoldMedia'));
+    const body = hydrate.slice(0, hydrate.indexOf('\n        pump();'));
+    assert.ok(body.indexOf('observeFeedVideos(root)') < body.indexOf('preloadFeedCard'), 'bound before fetching');
+    assert.match(body, /released - runway - 1/);
+    assert.match(source, /async function preloadFeedCard/);
+    assert.doesNotMatch(body, /await Promise\.all/);
     assert.match(css, /aspect-ratio: var\(--media-ratio, 16 \/ 9\)/);
     assert.match(css, /\.bokantaj-video-sound/);
     assert.match(css, /\.bokantaj-photos-1 \.bokantaj-photo\.has-media-ratio/);

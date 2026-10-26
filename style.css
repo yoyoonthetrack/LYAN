@@ -151,6 +151,41 @@ body.keyboard-open {
     padding-bottom: 0 !important;
 }
 
+/* Clavier ouvert, formulaire « Nouveau service » : 100vh et 88dvh ignorent le
+   clavier, donc la carte reste centrée sur l'écran entier et sa moitié basse —
+   description et bouton Enregistrer — se retrouve dessous. On la recale sur la
+   hauteur réellement visible, publiée par le moteur d'évitement clavier. */
+body.keyboard-open #addServiceModal.modal-overlay.active {
+    top: var(--lyann-vv-offset, 0px) !important;
+    height: var(--lyann-vv-height, 100dvh) !important;
+    align-items: flex-start !important;
+    /* Pinned to the top of the visible area, so the notch has to be respected
+       explicitly: centring used to keep the card clear of it. */
+    padding: max(10px, env(safe-area-inset-top, 0px)) 14px 10px !important;
+}
+
+body.keyboard-open #addServiceModal.modal-overlay.active .modal-card {
+    margin: 0 auto !important;
+    max-height: 100% !important;
+}
+
+body.keyboard-open #addServiceModal .modal-header {
+    padding: 14px 20px 12px !important;
+}
+
+/* The optional-fields hint stays; only the decorative logo row goes. */
+body.keyboard-open #addServiceModal .modal-logo {
+    display: none !important;
+}
+
+body.keyboard-open #addServiceModal .modal-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 16px 20px !important;
+    overflow-y: auto !important;
+}
+
 /* Touch Targets Standard (44px iOS / 48px Android) */
 .btn-icon,
 .nav-tab,
@@ -11046,6 +11081,37 @@ button.is-busy {
 #lyann-page-veil.is-enter {
     animation: lyannPageEnter 0.2s ease both;
 }
+/*
+ * Applications iOS et Android : la page sortante se brouille derrière le voile,
+ * la page entrante repart du même voile et le dissipe. Le flou est porté par le
+ * voile en backdrop-filter, jamais par body — un filtre sur body ferait de lui
+ * le bloc conteneur des éléments en position fixed.
+ */
+body.is-native-app #lyann-page-veil.is-on {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+html.lyann-page-entering::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 2147482500;
+    background: #F7F5F0;
+    pointer-events: none;
+    animation: lyannPageReveal 0.26s ease-out both;
+}
+@keyframes lyannPageReveal {
+    from {
+        opacity: 1;
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+    }
+    to {
+        opacity: 0;
+        -webkit-backdrop-filter: blur(0px);
+        backdrop-filter: blur(0px);
+    }
+}
 @media (prefers-reduced-motion: reduce) {
     #lyann-page-veil,
     #lyann-page-veil.is-on {
@@ -11055,6 +11121,13 @@ button.is-busy {
     }
     #lyann-page-veil.is-enter {
         animation: none;
+    }
+    body.is-native-app #lyann-page-veil.is-on {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+    html.lyann-page-entering::before {
+        content: none;
     }
     .lyann-btn-spin,
     .btn .lyann-btn-spin,
@@ -13185,6 +13258,21 @@ body.is-native-app .navbar.scrolled,
     height: 100%;
     object-fit: contain;
     display: block;
+    /* The stored frame is often the coded landscape picture. It stays hidden
+       until the feed has turned it upright, so the clip never appears on its side. */
+    opacity: 0;
+}
+.bokantaj-video-poster-image.is-oriented { opacity: 1; }
+.bokantaj-video.is-settling { opacity: 0; }
+.bokantaj-video-poster > .bokantaj-video.is-settling {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+}
+.bokantaj-video-shell > .bokantaj-video-poster-image {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
 }
 .bokantaj-video-poster.is-loading span {
     opacity: .85;

@@ -1,5 +1,10 @@
 /* Bokantaj Carte: compact pastel UX shared by Web and iOS WKWebView */
-.bokantaj-view-tabs{display:flex;gap:4px;padding:4px;background:#fff;border:1px solid #c5d4c8;border-radius:16px;margin:12px 0;box-shadow:0 3px 10px rgba(36,56,43,.08)}
+/* Pinned under the app header on both tabs: switching between the feed and the
+   map must never require scrolling back up. A sticky element needs an ancestor
+   that is not a scroll container, and the global overflow-x: hidden makes body
+   one; clip keeps the same horizontal guard without that side effect. */
+body.feed-page{overflow-x:clip !important}
+.bokantaj-view-tabs{position:sticky;top:calc(var(--lyann-shell-header-height, var(--lyann-header-total-height)) + 8px);z-index:20;display:flex;gap:4px;padding:4px;background:#fff;border:1px solid #c5d4c8;border-radius:16px;margin:12px 0;box-shadow:0 3px 10px rgba(36,56,43,.08)}
 .bokantaj-view-tabs button{flex:1;min-height:44px;border:0;background:transparent;border-radius:12px;color:#1e3a2a;font:700 1rem 'Outfit',sans-serif;cursor:pointer}
 .bokantaj-view-tabs button i{margin-right:6px;font-size:1.05rem;vertical-align:-2px}
 .bokantaj-view-tabs button.is-selected{color:#fff;background:#35583F;box-shadow:0 2px 8px rgba(53,88,63,.28)}
@@ -16,6 +21,8 @@
 .bokantaj-picker-map{height:230px;border-radius:13px;background:#eaf0e6;overflow:hidden;z-index:1}
 .bokantaj-picker-locate{position:absolute;top:10px;right:10px;z-index:400;width:44px;height:44px;border:0;border-radius:50%;background:#fff;color:#35583F;box-shadow:0 2px 10px rgba(36,56,43,.16);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:1.2rem}
 .bokantaj-place-status{font-size:.86rem;line-height:1.4;color:#52665a;margin:0 0 10px;min-height:20px}
+.bokantaj-place-name{display:grid;gap:4px;margin:0 0 10px;color:#35583F;font:650 .82rem 'Outfit',sans-serif}
+.bokantaj-place-name input{min-height:44px;border:1px solid #e4d3c0;border-radius:12px;padding:8px 12px;color:#1e3a2a;font:500 .95rem 'Outfit',sans-serif;background:#fff}
 .bokantaj-place-share{display:grid;gap:8px}
 .bokantaj-place-share-btn{min-height:48px;border-radius:14px;padding:10px 14px;cursor:pointer;font:650 .92rem 'Outfit',sans-serif}
 .bokantaj-place-share-btn.is-quarter{border:0;background:#35583F;color:#fff}
@@ -56,7 +63,6 @@
 .bokantaj-map-chips{gap:8px;padding:0 14px 10px;scroll-padding:14px}
 .bokantaj-map-chips button{min-height:44px;padding:9px 14px;background:#f4f3e9;border-color:#e5e2d3;color:#4f5b4b}
 .bokantaj-map-chips button.is-active{background:#e9c879;border-color:#dab45d;color:#493a22;box-shadow:0 2px 5px #90712b18}
-.bokantaj-map-gesture{margin:0;padding:0 16px 12px;font-size:.78rem;color:#687161}
 .bokantaj-map-canvas,.bokantaj-picker-map{background:#f0ede5;isolation:isolate}
 .bokantaj-map-canvas{height:min(62dvh,620px);min-height:380px}
 .bokantaj-map-pin{background:transparent;border:0;border-radius:0;box-shadow:none;display:block;filter:drop-shadow(0 3px 3px #594b3433)}
@@ -73,7 +79,7 @@
 .bokantaj-map-pin.is-cluster .bokantaj-pin-face{transform:none;border-radius:50%;background:#f1d996;box-shadow:0 0 0 5px #fff8e68c;inset:2px 2px 6px}
 .bokantaj-map-pin:focus-visible .bokantaj-pin-face{outline:3px solid #3c705e;outline-offset:3px}
 .bokantaj-map-section button:focus-visible,.bokantaj-place-picker button:focus-visible{outline:3px solid #397260;outline-offset:2px}
-.bokantaj-map-canvas .leaflet-control-zoom,.bokantaj-picker-map .leaflet-control-zoom{border:1px solid #ddd7c9;border-radius:15px;overflow:hidden;box-shadow:0 3px 12px #5b51351c}
+.bokantaj-map-canvas .leaflet-control-zoom,.bokantaj-picker-map .leaflet-control-zoom{border:1px solid #ddd7c9;border-radius:15px;overflow:hidden;box-shadow:0 3px 12px #5b51351c;z-index:500}
 .bokantaj-map-canvas .leaflet-control-zoom a,.bokantaj-picker-map .leaflet-control-zoom a{width:44px;height:44px;line-height:44px;background:#fffdf7;color:#4e604c}
 .bokantaj-map-canvas .leaflet-control-attribution,.bokantaj-picker-map .leaflet-control-attribution{background:#fffdf2ed;color:#506050;font-size:10px;padding:3px 6px;max-width:100%;box-sizing:border-box}
 .bokantaj-map-canvas .leaflet-control-attribution a,.bokantaj-picker-map .leaflet-control-attribution a{color:#365e62}
@@ -96,10 +102,11 @@ body.feed-page .flash-card.is-map-focus{box-shadow:0 0 0 4px rgba(229,179,69,.45
 .bokantaj-picker-pin span{display:block;width:22px;height:22px;border-radius:50%;background:#e4b44e;border:3px solid #285b3e;box-shadow:0 2px 8px rgba(40,60,40,.25)}
 .bokantaj-cluster-list{max-height:190px;overflow:auto;display:grid;gap:6px}
 .bokantaj-cluster-list button{min-height:44px;text-align:left;background:#f6ebd7;border:0;border-radius:10px;padding:10px;color:#4a4939}
-.bokantaj-basemap-notice{position:absolute;z-index:450;left:12px;right:68px;top:12px;padding:10px 12px;border-radius:12px;background:#fffaf1f5;color:#655336;box-shadow:0 2px 10px #594b3420;font:500 .85rem/1.4 'Outfit',sans-serif}
+.bokantaj-basemap-notice{position:absolute;z-index:450;left:12px;right:68px;top:12px;padding:10px 12px;border-radius:12px;background:#fffaf1f5;color:#655336;box-shadow:0 2px 10px #594b3420;font:500 .85rem/1.4 'Outfit',sans-serif;pointer-events:none}
+.bokantaj-basemap-notice button{pointer-events:auto}
 .bokantaj-basemap-notice[hidden]{display:none}
 .bokantaj-basemap-notice button{min-height:44px;background:#eddaab;border:0;border-radius:8px;padding:8px 12px;color:#4c422f;font-weight:700}
-@media(max-width:600px){.bokantaj-map-canvas{height:57dvh;min-height:360px}.bokantaj-map-topbar{padding:12px 12px 8px}.bokantaj-map-gesture{font-size:.75rem}.bokantaj-map-chips button{padding:8px 12px}.bokantaj-map-detail{padding-bottom:max(16px,env(safe-area-inset-bottom))}}
+@media(max-width:600px){.bokantaj-map-canvas{height:57dvh;min-height:360px}.bokantaj-map-topbar{padding:12px 12px 8px}.bokantaj-map-chips button{padding:8px 12px}.bokantaj-map-detail{padding-bottom:max(16px,env(safe-area-inset-bottom))}}
 .bokantaj-pending-chip{display:inline-block;margin-left:6px;padding:3px 8px;border-radius:999px;background:#f4ead1;color:#5a4a2a;font-size:.7rem;font-weight:750}
 .bokantaj-photo.is-broken{min-height:72px;background:#f3eee4;border-radius:12px}
 .bokantaj-photo.is-broken::after{content:'Photo indisponible';display:grid;place-items:center;min-height:72px;color:#6b6254;font-size:.8rem;font-weight:650}
@@ -110,3 +117,47 @@ body.feed-page .flash-card.is-map-focus{box-shadow:0 0 0 4px rgba(229,179,69,.45
 .bokantaj-picker-map .bokantaj-basemap-notice{top:auto;bottom:28px;right:12px;padding:6px 8px;font-size:.75rem}
 .bokantaj-map-topbar select{width:auto;max-width:48%;min-width:0;flex:0 1 auto}
 .bokantaj-map-section{scroll-margin-top:88px}
+
+/* The map chrome rides over the tiles: on a phone the territory pill, the
+   category chips and the status line used to eat ~140px before a single street
+   was visible. */
+.bokantaj-map-stage{position:relative;display:flex;flex-direction:column;isolation:isolate}
+.bokantaj-map-controls{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;flex-direction:column;gap:8px;padding-top:10px;pointer-events:none}
+.bokantaj-map-controls>*{pointer-events:auto}
+.bokantaj-map-topbar{padding:0 12px;gap:6px;justify-content:flex-start}
+.bokantaj-map-topbar select{width:auto;max-width:min(58%,220px);flex:0 0 auto;background:#fffdf8f2;border-color:#ded9c7;box-shadow:0 2px 10px #3a3c2c26;font-weight:750;padding:5px 10px}
+.bokantaj-map-chips{padding:0 12px 4px}
+.bokantaj-map-chips button{background:#fffdf8f2;border-color:#e2ddcc;box-shadow:0 2px 10px #3a3c2c26;backdrop-filter:blur(6px)}
+.bokantaj-map-chips button.is-active{background:#e9c879;border-color:#d8b25a;color:#453519}
+/* The band must not swallow the pan gesture: only the pills react to touch. */
+.bokantaj-map-chips{pointer-events:none}
+.bokantaj-map-chips button{pointer-events:auto}
+/* Reading matter only: the band must never steal a tap meant for the map. */
+.bokantaj-map-status{position:absolute;left:0;right:0;bottom:0;z-index:2;pointer-events:none;padding:26px 14px 12px;background:linear-gradient(to top,#fffdf8f5 42%,#fffdf800);color:#55614f;font-weight:600;transition:opacity .18s ease}
+.bokantaj-map-stage:has(.bokantaj-map-detail:not([hidden])) .bokantaj-map-status{opacity:0}
+/* Keep the credits readable: the status band stops above them. */
+.bokantaj-map-status{bottom:20px}
+.bokantaj-map-stage .leaflet-bottom .leaflet-control-zoom{margin-bottom:54px}
+@media(max-width:600px){
+ .bokantaj-map-stage:has(.bokantaj-map-detail:not([hidden])) .leaflet-bottom.leaflet-right{bottom:auto;top:128px;z-index:1000}
+}
+.bokantaj-map-stage .bokantaj-basemap-notice{top:114px}
+
+/* The detail rises over the map instead of pushing the page down. */
+.bokantaj-map-detail{position:absolute;left:0;right:0;bottom:0;z-index:4;max-height:76%;overflow:auto;border-radius:22px 22px 0 0;border-top:1px solid #e8dbc1;box-shadow:0 -8px 28px #4a402c26;padding-right:52px}
+.bokantaj-map-detail:not([hidden]){animation:bokantaj-sheet-rise .22s ease-out}
+@keyframes bokantaj-sheet-rise{from{transform:translateY(16px);opacity:.4}to{transform:translateY(0);opacity:1}}
+.bokantaj-map-detail-close{position:absolute;top:12px;right:12px;width:40px;height:40px;display:grid;place-items:center;border:1px solid #e3d6bd;border-radius:50%;background:#fffdf8;color:#5a4a2a;font-size:1.1rem;cursor:pointer}
+@media(prefers-reduced-motion:reduce){.bokantaj-map-detail:not([hidden]){animation:none}}
+
+/* Full-height map on a phone: you land on the tiles, and Fil/Carte stays put. */
+@media(max-width:767px){
+ body.bokantaj-map-open{overflow:hidden}
+ body.bokantaj-map-open .bokantaj-view-tabs{position:fixed;top:var(--lyann-shell-header-height, var(--lyann-header-total-height));left:0;right:0;z-index:31;margin:0;padding:6px 12px;border-radius:0;border-left:0;border-right:0;border-top:0;box-shadow:0 2px 10px #28372a14}
+ body.bokantaj-map-open .bokantaj-map-section{position:fixed;left:0;right:0;top:calc(var(--lyann-shell-header-height, var(--lyann-header-total-height)) + var(--lyann-map-tabs-height,54px));bottom:0;z-index:30;margin:0;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column}
+ body.bokantaj-map-open.has-bottom-nav .bokantaj-map-section,
+ body.bokantaj-map-open.is-native-app .bokantaj-map-section{bottom:var(--lyann-bottom-nav-total-height)}
+ body.bokantaj-map-open .bokantaj-map-stage{flex:1;min-height:0}
+ body.bokantaj-map-open .bokantaj-map-canvas{height:100%;min-height:0}
+ body.bokantaj-map-open .bokantaj-map-detail{border-radius:22px 22px 0 0}
+}

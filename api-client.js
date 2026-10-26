@@ -1503,15 +1503,22 @@ const LYANN_API_CLIENT = {
 
         try {
             const sessionUser = await this.getCurrentUser();
-            // 1. Fetch Bokantaj Posts
-            let postsQuery = this.supabase
-                .from('bokantaj_posts')
-                .select('*')
-                // Public Bokantaj must never expose hidden/pending posts, including to admin sessions.
-                .eq('public_moderation_status', 'approved')
-                .order('created_at', { ascending: false })
-                .limit(LYANN_FEED_PAGE_SIZE);
-            if (pageOptions.before) postsQuery = postsQuery.lt('created_at', pageOptions.before);
+            const territoryFilter = ['guadeloupe', 'martinique', 'guyane', 'reunion', 'saint-martin'].includes(pageOptions.territory)
+                ? pageOptions.territory
+                : '';
+            const matchesTerritory = (row, author) => {
+                if (!territoryFilter) return true;
+                const query = window.LYANN_BOKANTAJ_QUERY;
+                if (!query || typeof query.postMatchesTerritory !== 'function') return true;
+                return query.postMatchesTerritory({
+                    territory: row.territory,
+                    author_territory: author && author.territory,
+                    city: row.city,
+                    author_city: author && author.city
+                }, territoryFilter);
+            };
+            // A member's island is often stored on the author, not the post.
+            // Keep reading older pages until the island has a full page, or the feed ends.
             const pendingQuery = sessionUser?.id && !pageOptions.before
                 ? this.supabase
                     .from('bokantaj_posts')
@@ -1521,30 +1528,53 @@ const LYANN_API_CLIENT = {
                     .order('created_at', { ascending: false })
                     .limit(10)
                 : Promise.resolve({ data: [], error: null });
-            const [{ data: postsData, error: postsError }, pendingRes] = await Promise.all([postsQuery, pendingQuery]);
-
-            if (postsError) throw postsError;
-            const approved = postsData || [];
+            const profilesMap = {};
+            const collected = [];
+            let scanCursor = pageOptions.before || '';
+            let moreRaw = false;
+            const scanLimit = territoryFilter ? 6 : 1;
+            for (let scan = 0; scan < scanLimit && collected.length < LYANN_FEED_PAGE_SIZE; scan += 1) {
+                let postsQuery = this.supabase
+                    .from('bokantaj_posts')
+                    .select('*')
+                    .eq('public_moderation_status', 'approved')
+                    .order('created_at', { ascending: false })
+                    .limit(LYANN_FEED_PAGE_SIZE);
+                if (scanCursor) postsQuery = postsQuery.lt('created_at', scanCursor);
+                const { data: postsData, error: postsError } = await postsQuery;
+                if (postsError) throw postsError;
+                const batch = postsData || [];
+                moreRaw = batch.length === LYANN_FEED_PAGE_SIZE;
+                if (!batch.length) {
+                    moreRaw = false;
+                    break;
+                }
+                scanCursor = batch[batch.length - 1].created_at;
+                const authorIds = [...new Set(batch.map((row) => row.author_id).filter(Boolean))].filter((id) => !profilesMap[id]);
+                if (authorIds.length > 0) {
+                    try {
+                        const { data: pubProfs } = await this.supabase
+                            .from('public_profiles')
+                            .select('id, first_name, last_name, avatar_url, city, territory, bio')
+                            .in('id', authorIds);
+                        if (pubProfs && Array.isArray(pubProfs)) {
+                            pubProfs.forEach((profile) => { profilesMap[profile.id] = profile; });
+                        }
+                    } catch (profErr) {
+                        console.warn("[LYANN API] Error fetching public_profiles for feed:", profErr);
+                    }
+                }
+                batch.forEach((row) => {
+                    if (matchesTerritory(row, profilesMap[row.author_id])) collected.push(row);
+                });
+            }
+            const pendingRes = await pendingQuery;
+            const approved = collected.slice(0, LYANN_FEED_PAGE_SIZE);
             const ownPending = (pendingRes && pendingRes.data) || [];
             const seen = new Set(approved.map((row) => row.id));
             const posts = [...ownPending.filter((row) => row && !seen.has(row.id)), ...approved];
-            // Community discovery never queries or merges transactional Requests.
-            const authorIds = [...new Set(posts.map(p => p.author_id).filter(Boolean))];
-
-            const profilesMap = {};
-            if (authorIds.length > 0) {
-                try {
-                    const { data: pubProfs } = await this.supabase
-                        .from('public_profiles')
-                        .select('id, first_name, last_name, avatar_url, city, territory, bio')
-                        .in('id', authorIds);
-                    if (pubProfs && Array.isArray(pubProfs)) {
-                        pubProfs.forEach(p => { profilesMap[p.id] = p; });
-                    }
-                } catch (profErr) {
-                    console.warn("[LYANN API] Error fetching public_profiles for feed:", profErr);
-                }
-            }
+            const feedCursor = approved.length ? approved[approved.length - 1].created_at : (scanCursor || null);
+            const feedHasMore = collected.length > approved.length || moreRaw;
 
             function formatAuthorName(prof) {
                 if (!prof || !prof.first_name) return 'Lyanneur';
@@ -1621,8 +1651,16 @@ const LYANN_API_CLIENT = {
                     type: p.type,
                     city: p.city || '',
                     territory: p.territory || authorProf?.territory || '',
+                    author_territory: authorProf?.territory || '',
                     location: p.city || p.territory || authorProf?.city || '',
-                    territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
+                    territoryKey: (window.LYANN_BOKANTAJ_QUERY && window.LYANN_BOKANTAJ_QUERY.postTerritoryKey)
+                        ? window.LYANN_BOKANTAJ_QUERY.postTerritoryKey({
+                            territory: p.territory,
+                            author_territory: authorProf?.territory,
+                            city: p.city,
+                            author_city: authorProf?.city
+                        })
+                        : extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
                     place_lat: p.place_lat,
                     place_lng: p.place_lng,
                     place_label: p.place_label || null,
@@ -1645,7 +1683,7 @@ const LYANN_API_CLIENT = {
 
             const unifiedFeed = formattedPosts;
 
-            return { data: unifiedFeed, error: null, hasMore: posts.length === LYANN_FEED_PAGE_SIZE };
+            return { data: unifiedFeed, error: null, hasMore: feedHasMore, cursor: feedCursor };
         } catch (err) {
             console.error("❌ Error loading unified Bokantaj feed:", err);
             return { data: [], error: err.message || "Erreur serveur" };

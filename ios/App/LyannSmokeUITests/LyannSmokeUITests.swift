@@ -549,6 +549,194 @@ final class LyannSmokeUITests: XCTestCase {
         }
     }
 
+    // Three things only the native shell can answer: whether the pinned Fil/Carte
+    // bar survives a scroll, whether the keyboard can be closed, and whether the
+    // system photo sheet speaks French.
+    func testBokantajChromeKeyboardAndFrenchPickers() throws {
+        let app = XCUIApplication()
+        app.launch()
+        signIn(app)
+
+        XCTAssertTrue(app.buttons["Bokantaj"].waitForExistence(timeout: 25), "Barre membre absente. \(visibleLabels(app))")
+        app.buttons["Bokantaj"].firstMatch.tap()
+        sleep(3)
+        let feedTab = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Fil")).firstMatch
+        XCTAssertTrue(feedTab.waitForExistence(timeout: 20), "Onglet Fil absent. \(visibleLabels(app))")
+        let restingTop = feedTab.frame.minY
+        save(app, "80-feed")
+
+        app.swipeUp()
+        app.swipeUp()
+        sleep(1)
+        save(app, "81-feed-scrolled")
+        note("fil resting=\(restingTop) scrolled=\(feedTab.frame.minY) hittable=\(feedTab.isHittable)")
+        XCTAssertTrue(feedTab.exists && feedTab.isHittable, "Fil/Carte ne reste pas accessible après défilement.")
+        XCTAssertLessThan(feedTab.frame.minY, restingTop + 8, "La barre Fil/Carte a défilé avec la page.")
+
+        let mapTab = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Carte")).firstMatch
+        if tapIfHittable(mapTab, name: "Carte") {
+            sleep(4)
+            save(app, "82-map")
+            note("carte fil=\(feedTab.frame) tout=\(app.buttons["Tout"].frame)")
+            XCTAssertTrue(app.buttons["Tout"].exists, "Les filtres de catégorie ont disparu de la carte.")
+            if tapIfHittable(feedTab, name: "Retour au fil") { sleep(2) }
+        }
+
+        // Keyboard: it must always offer a way down.
+        save(app, "82b-back-to-feed")
+        // The avatar alt text is prepended to the label, so only CONTAINS matches.
+        let composerQuery = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Partager une idée"))
+        for _ in 0..<8 where !composerQuery.firstMatch.isHittable {
+            app.swipeDown()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        }
+        let composer = composerQuery.firstMatch
+        XCTAssertTrue(composer.waitForExistence(timeout: 8), "Composeur absent. \(visibleLabels(app))")
+        note("composeur \(state(composer))")
+        forceTap(composer)
+        sleep(2)
+        let field = app.textViews.firstMatch.exists ? app.textViews.firstMatch : app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 8), "Champ de saisie absent du composeur.")
+        field.tap()
+        let opened = waitUntil(app, seconds: 6) { app.keyboards.count > 0 }
+        save(app, "83-keyboard")
+        note("clavier ouvert=\(opened) frame=\(field.frame)")
+        XCTAssertTrue(opened, "Le clavier ne s’ouvre pas sur le composeur.")
+        // A tap well above the field is what a member does to get the keyboard out of the way.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
+        let closed = waitUntil(app, seconds: 8) { app.keyboards.count == 0 }
+        save(app, "84-keyboard-dismissed")
+        note("clavier refermé=\(closed)")
+        XCTAssertTrue(closed, "Le clavier reste ouvert après un appui en dehors du champ.")
+
+        // The photo sheet comes from iOS, so it follows CFBundleLocalizations.
+        // Two buttons carry that label: the shortcut in the bar and the one in the
+        // open form. Only the lower one belongs to the form that is on screen.
+        let photo = app.buttons.matching(identifier: "Photo").firstMatch
+        XCTAssertTrue(photo.waitForExistence(timeout: 8), "Bouton Photo absent. \(visibleLabels(app))")
+        for _ in 0..<6 where !photo.isHittable {
+            app.swipeDown()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        }
+        note("photo \(state(photo))")
+        forceTap(photo)
+        // The sheet belongs to SpringBoard, not to the web view.
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        _ = waitUntil(app, seconds: 12) {
+            app.sheets.count + app.alerts.count + springboard.sheets.count + springboard.alerts.count > 0
+        }
+        sleep(2)
+        save(app, "85-picker")
+        let labels = (app.sheets.buttons.allElementsBoundByIndex.map(\.label)
+            + app.alerts.buttons.allElementsBoundByIndex.map(\.label)
+            + springboard.sheets.buttons.allElementsBoundByIndex.map(\.label)
+            + springboard.alerts.buttons.allElementsBoundByIndex.map(\.label)).filter { !$0.isEmpty }
+        note("picker \(labels.joined(separator: " | "))")
+        let english = labels.contains { $0 == "Photo Library" || $0 == "Take Photo" || $0 == "Choose File" || $0 == "Choose Files" }
+        XCTAssertFalse(english, "Le sélecteur iOS est resté en anglais : \(labels)")
+        // The sheet does not always come up on a simulator, so its absence is
+        // recorded rather than treated as a localisation failure.
+        if labels.isEmpty { note("picker-absent") }
+        if app.buttons["Annuler"].exists { app.buttons["Annuler"].firstMatch.tap() }
+    }
+
+    // Visual check of the three native banners, one capture per universe.
+    func testNativeUniverseHeaders() throws {
+        let app = XCUIApplication()
+        app.launch()
+        signIn(app)
+        XCTAssertTrue(app.buttons["Bokantaj"].waitForExistence(timeout: 25), "Barre membre absente. \(visibleLabels(app))")
+
+        for (tab, shot) in [("Bokantaj", "90-header-bokantaj"), ("Lyanneurs", "91-header-lyanneurs"), ("Annonces", "92-header-annonces")] {
+            XCTAssertTrue(tapIfHittable(app.buttons[tab].firstMatch, name: tab), "Onglet \(tab) inaccessible.")
+            sleep(4)
+            save(app, shot)
+        }
+    }
+
+    // The skill form with the keyboard up: everything that matters must stay
+    // on screen, Enregistrer included.
+    func testSkillFormWithKeyboard() throws {
+        let app = XCUIApplication()
+        app.launch()
+        signIn(app)
+        XCTAssertTrue(app.buttons["Profil"].waitForExistence(timeout: 25), "Barre membre absente. \(visibleLabels(app))")
+        app.buttons["Profil"].firstMatch.tap()
+        sleep(3)
+        save(app, "94-account")
+
+        let add = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@",
+                                                   "Nouveau service", "Ajouter un service")).firstMatch
+        for _ in 0..<10 where !add.exists || !add.isHittable {
+            app.swipeUp()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        }
+        guard add.exists else {
+            dump(app, "account-without-service-button")
+            save(app, "95-no-service-button")
+            XCTFail("Bouton d’ajout de compétence introuvable.")
+            return
+        }
+        forceTap(add)
+        sleep(2)
+        save(app, "95-skill-form")
+
+        let title = app.textFields.matching(NSPredicate(format: "value CONTAINS[c] %@ OR placeholderValue CONTAINS[c] %@",
+                                                        "Réparation de clim", "Réparation de clim")).firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 8), "Champ du nom de compétence absent. \(visibleLabels(app))")
+        forceTap(title)
+        XCTAssertTrue(waitUntil(app, seconds: 8) { app.keyboards.count > 0 }, "Le clavier ne s’ouvre pas.")
+        sleep(2)
+        save(app, "96-skill-form-keyboard")
+
+        let keyboardTop = app.keyboards.firstMatch.frame.minY
+        let submit = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Enregistrer ce service")).firstMatch
+        XCTAssertTrue(submit.exists, "Bouton Enregistrer absent du formulaire. \(visibleLabels(app))")
+        note("keyboardTop=\(keyboardTop) submit=\(state(submit))")
+        XCTAssertLessThanOrEqual(submit.frame.maxY, keyboardTop,
+                                 "Le bouton Enregistrer passe sous le clavier.")
+    }
+
+    private func forceTap(_ element: XCUIElement) {
+        if element.isHittable { element.tap() }
+        else { element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+    }
+
+    private func signIn(_ app: XCUIApplication) {
+        let guestButton = app.buttons["Se connecter"].firstMatch
+        guard guestButton.waitForExistence(timeout: 30) else {
+            note("session-already-present")
+            return
+        }
+        guestButton.tap()
+        let email = app.textFields["Adresse email de connexion"]
+        let password = app.secureTextFields["Mot de passe de connexion"]
+        guard email.waitForExistence(timeout: 8), password.waitForExistence(timeout: 4) else {
+            XCTFail("Formulaire de connexion absent. \(visibleLabels(app))")
+            return
+        }
+        let mail = ProcessInfo.processInfo.environment["LYANN_E2E_QA_A_EMAIL"] ?? ""
+        let secret = ProcessInfo.processInfo.environment["LYANN_E2E_QA_A_PASSWORD"] ?? ""
+        XCTAssertFalse(mail.isEmpty || secret.isEmpty, "Identifiants QA absents")
+        email.tap()
+        email.typeText(mail)
+        password.tap()
+        password.typeText(secret)
+        // The submit button sits under the keyboard, so it has to go down first.
+        if app.keyboards.buttons["retour"].exists { app.keyboards.buttons["retour"].tap() }
+        else if app.keyboards.buttons["Return"].exists { app.keyboards.buttons["Return"].tap() }
+        _ = waitUntil(app, seconds: 4) { app.keyboards.count == 0 }
+        let submit = app.buttons["Valider la connexion"]
+        // Return may already have validated the form, in which case there is nothing left to tap.
+        if submit.waitForExistence(timeout: 4) {
+            note("submit \(state(submit))")
+            if submit.isHittable { submit.tap() } else { submit.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+        } else {
+            note("submit-absent \(visibleLabels(app))")
+        }
+        XCTAssertTrue(app.buttons["Profil"].waitForExistence(timeout: 30), "Connexion QA échouée. \(visibleLabels(app))")
+    }
+
     private func waitForInbox(_ app: XCUIApplication, seconds: TimeInterval) -> String {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {
@@ -694,6 +882,7 @@ final class LyannSmokeUITests: XCTestCase {
     }
 
     private func note(_ line: String) {
+        print("LYANN-NOTE \(line)")
         guard let data = (line + "\n").data(using: .utf8) else { return }
         if FileManager.default.fileExists(atPath: reportURL.path),
            let handle = try? FileHandle(forWritingTo: reportURL) {
@@ -708,6 +897,10 @@ final class LyannSmokeUITests: XCTestCase {
     private func save(_ app: XCUIApplication, _ name: String) {
         let shot = XCUIScreen.main.screenshot()
         try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/tmp/lyann-ios-ui-\(name).png"))
+        // The runner sandbox is the only place the host can read back reliably.
+        let inbox = FileManager.default.temporaryDirectory.appendingPathComponent("lyann-ui-\(name).png")
+        try? shot.pngRepresentation.write(to: inbox)
+        print("LYANN-SHOT \(inbox.path)")
         let attachment = XCTAttachment(screenshot: shot)
         attachment.name = name
         attachment.lifetime = .keepAlways

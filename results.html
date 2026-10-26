@@ -15,16 +15,39 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800;9..144,900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- Phosphor Icons -->
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20261025comments">
+    <link rel="stylesheet" href="style.css?v=20261026vid">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
-    <link rel="stylesheet" href="universe-header.css?v=20261017pale">
+    <link rel="stylesheet" href="universe-header.css?v=20261026ios">
 <link rel="stylesheet" href="business.css">
+
+    <!-- Voile d'arrivée. Posé avant le premier rendu, sinon la page surgit d'un coup. -->
+    <script>
+        (function () {
+            try {
+                var bridge = window.Capacitor;
+                var native = !!(bridge && (
+                    (typeof bridge.isNativePlatform === 'function' && bridge.isNativePlatform())
+                    || (typeof bridge.getPlatform === 'function' && (bridge.getPlatform() === 'ios' || bridge.getPlatform() === 'android'))
+                ));
+                if (!native) return;
+                var root = document.documentElement;
+                root.classList.add('lyann-page-entering');
+                var clear = function () { root.classList.remove('lyann-page-entering'); };
+                root.addEventListener('animationend', function onEnd(event) {
+                    if (event.animationName !== 'lyannPageReveal') return;
+                    root.removeEventListener('animationend', onEnd);
+                    clear();
+                });
+                window.setTimeout(clear, 1200);
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body class="results-page" data-explorer-mode="lyanneurs">
 
@@ -124,15 +147,55 @@
 
     <main id="explorer" class="explorer-page lyann-universe" data-mode="lyanneurs" data-universe="lyanneurs">
         <header class="lyann-universe-header" data-universe="lyanneurs">
-            <img class="annonces-header-art" src="assets/universe/lyann-annonces-header.webp?v=20261017pale" alt="" width="1728" height="816">
-            <img class="lyanneurs-header-art" src="assets/universe/lyann-lyanneurs-header.webp?v=20261017pale" alt="" width="1728" height="999">
-            <img class="annonces-header-desktop" src="assets/universe/lyann-annonces-header-desktop.webp?v=20261017pale" alt="" width="3072" height="582">
-            <img class="lyanneurs-header-desktop" src="assets/universe/lyann-lyanneurs-header-desktop.webp?v=20261017pale" alt="" width="3072" height="660">
-            <div class="lyann-universe-frame">
-                <img id="universeArtWide" class="lyann-universe-art is-wide" src="assets/universe/lyanneurs-landscape.webp" alt="" width="1024" height="576">
-                <img id="universeArtTall" class="lyann-universe-art is-tall" src="assets/universe/lyanneurs-portrait.webp" alt="" width="759" height="1024">
+            <!-- Annonces Banner -->
+            <div class="lyann-universe-banner banner-annonces">
+                <div class="banner-watermarks" aria-hidden="true">
+                    <svg class="wm-icon wm-bubble-1" viewBox="0 0 54 44"><path d="M6 38l6-4h32a8 8 0 0 0 8-8V10a8 8 0 0 0-8-8H10a8 8 0 0 0-8 8v18a8 8 0 0 0 4 6.8z" fill="#F4E2B8"/><circle cx="16" cy="19" r="2.5" fill="#FCF6E6"/><circle cx="27" cy="19" r="2.5" fill="#FCF6E6"/><circle cx="38" cy="19" r="2.5" fill="#FCF6E6"/></svg>
+                    <svg class="wm-icon wm-bubble-2" viewBox="0 0 64 52"><path d="M56 46l-7-5H12a10 10 0 0 1-10-10V12A10 10 0 0 1 12 2h40a10 10 0 0 1 10 10v24a10 10 0 0 1-6 8.5z" fill="#F4E2B8"/><circle cx="21" cy="24" r="3" fill="#FCF6E6"/><circle cx="32" cy="24" r="3" fill="#FCF6E6"/><circle cx="43" cy="24" r="3" fill="#FCF6E6"/></svg>
+                    <svg class="wm-icon wm-search" viewBox="0 0 40 40" fill="none" stroke="#F0DEBA" stroke-width="3" stroke-linecap="round"><circle cx="17" cy="17" r="10"/><line x1="24.5" y1="24.5" x2="35" y2="35" stroke-width="4.5"/></svg>
+                    <svg class="wm-icon wm-cloud-annonces" viewBox="0 0 110 50" fill="#FFFFFF"><path d="M22 46h66a18 18 0 0 0 5-35.3 24 24 0 0 0-47-2A16 16 0 0 0 22 46z"/></svg>
+                </div>
+                <div class="banner-content">
+                    <div class="banner-badge badge-annonces">
+                        <span class="badge-bubble">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="#3D7D54"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><circle cx="8" cy="12" r="1.2" fill="#fff"/><circle cx="12" cy="12" r="1.2" fill="#fff"/><circle cx="16" cy="12" r="1.2" fill="#fff"/></svg>
+                        </span>
+                        <span class="badge-text">DES BESOINS, DES SOLUTIONS</span>
+                    </div>
+                    <h1 class="banner-title annonces-title">Annonces</h1>
+                    <p class="banner-subtitle annonces-subtitle">Un besoin ? Trouvez la solution dans votre commune.</p>
+                </div>
+                <div class="banner-illustration">
+                    <img src="assets/universe/annonces-hero-character@2x.webp" alt="Annonces" width="344" height="236">
+                </div>
             </div>
-            <div class="lyann-universe-copy">
+
+            <!-- Lyanneurs Banner -->
+            <div class="lyann-universe-banner banner-lyanneurs">
+                <div class="banner-watermarks" aria-hidden="true">
+                    <svg class="wm-icon wm-roller" viewBox="0 0 44 44" fill="#B7D7BE"><rect x="8" y="4" width="28" height="12" rx="4"/><path d="M22 16v8a4 4 0 0 1-4 4h-4v12h4" fill="none" stroke="#B7D7BE" stroke-width="3"/></svg>
+                    <svg class="wm-icon wm-screwdriver" viewBox="0 0 40 40" fill="#B7D7BE" transform="rotate(35 20 20)"><rect x="16" y="2" width="8" height="16" rx="2"/><rect x="18" y="18" width="4" height="18"/><polygon points="17,36 23,36 21,39 19,39"/></svg>
+                    <svg class="wm-icon wm-drill" viewBox="0 0 44 36" fill="#B7D7BE"><path d="M4 12h20v8H16v12h-8V20H4z"/><line x1="24" y1="16" x2="38" y2="16" stroke="#B7D7BE" stroke-width="3"/></svg>
+                </div>
+                <div class="banner-content">
+                    <div class="banner-badge badge-lyanneurs">
+                        <span class="badge-icon">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                            </svg>
+                        </span>
+                        <span class="badge-text">LES TALENTS D'ICI</span>
+                    </div>
+                    <h1 class="banner-title lyanneurs-title">Lyanneurs</h1>
+                    <p class="banner-subtitle lyanneurs-subtitle">Des talents et des pros tout près de chez vous.</p>
+                </div>
+                <div class="banner-illustration">
+                    <img src="assets/universe/lyanneurs-hero-character@2x.webp" alt="Lyanneurs" width="349" height="236">
+                </div>
+            </div>
+
+            <!-- Hidden semantic copy for accessibility & test selectors -->
+            <div class="lyann-universe-copy sr-only">
                 <h1 id="explorerTitle">Lyanneurs</h1>
                 <p id="explorerSubtitle">Des talents et des pros tout près de chez vous.</p>
             </div>

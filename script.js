@@ -2448,6 +2448,85 @@ safeDomReady(() => {
     let bokantajPaging = false;
     let bokantajLocationAsked = false;
     const bokantajFilters = { types: [], zone: 'all', radiusKm: 5, commune: '', period: 'all' };
+    const BOKANTAJ_TERRITORIES = ['all', 'guadeloupe', 'martinique', 'guyane', 'reunion', 'saint-martin'];
+    const BOKANTAJ_TERRITORY_STORAGE = 'lyann_bokantaj_territory';
+    let bokantajTerritory = 'all';
+    let bokantajTerritoryReady = null;
+
+    function storedBokantajTerritory() {
+        try {
+            const value = sessionStorage.getItem(BOKANTAJ_TERRITORY_STORAGE);
+            return BOKANTAJ_TERRITORIES.includes(value) ? value : '';
+        } catch (_) {
+            return '';
+        }
+    }
+
+    function rememberBokantajTerritory(key) {
+        try {
+            if (BOKANTAJ_TERRITORIES.includes(key)) sessionStorage.setItem(BOKANTAJ_TERRITORY_STORAGE, key);
+        } catch (_) {}
+    }
+
+    function clearBokantajTerritoryChoice() {
+        try { sessionStorage.removeItem(BOKANTAJ_TERRITORY_STORAGE); } catch (_) {}
+    }
+
+    async function resolveBokantajTerritory() {
+        const chosen = storedBokantajTerritory();
+        if (chosen) return chosen;
+        let profile = window.LYANN_CURRENT_USER_PROFILE;
+        if (!profile?.territory) {
+            try {
+                const session = typeof getActiveSupabaseSession === 'function' ? await getActiveSupabaseSession() : null;
+                if (session?.user?.id && window.LYANN_API_CLIENT?.getProfile) {
+                    const result = await Promise.race([
+                        window.LYANN_API_CLIENT.getProfile(session.user.id),
+                        new Promise((resolve) => setTimeout(() => resolve(null), 2500))
+                    ]);
+                    if (result?.data) {
+                        profile = result.data;
+                        window.LYANN_CURRENT_USER_PROFILE = profile;
+                    }
+                }
+            } catch (_) {}
+        }
+        const key = window.LYANN_BOKANTAJ_QUERY?.territoryKeyFromLabel?.(profile?.territory);
+        return key || 'all';
+    }
+
+    function bokantajTerritoryPromise() {
+        if (!bokantajTerritoryReady) {
+            bokantajTerritoryReady = resolveBokantajTerritory().then((key) => {
+                const chosen = storedBokantajTerritory();
+                bokantajTerritory = chosen || key || 'all';
+                const feedSelect = document.getElementById('bokantajTerritoryFilter');
+                if (feedSelect) feedSelect.value = bokantajTerritory;
+                if (bokantajTerritory !== 'all') window.LYANN_BOKANTAJ_MAP?.setTerritory?.(bokantajTerritory);
+                return bokantajTerritory;
+            });
+        }
+        return bokantajTerritoryReady;
+    }
+
+    window.LYANN_BOKANTAJ_PLACE = {
+        ready() { return bokantajTerritoryPromise(); },
+        current() { return bokantajTerritory; },
+        choose(key, source) {
+            if (!BOKANTAJ_TERRITORIES.includes(key)) return;
+            const changed = key !== bokantajTerritory;
+            bokantajTerritory = key;
+            if (source === 'feed' || source === 'map') rememberBokantajTerritory(key);
+            if (source === 'logout') clearBokantajTerritoryChoice();
+            const feedSelect = document.getElementById('bokantajTerritoryFilter');
+            if (feedSelect && feedSelect.value !== key) feedSelect.value = key;
+            if (source === 'logout') window.LYANN_BOKANTAJ_MAP?.setTerritory?.('guadeloupe');
+            else if (source !== 'map' && key !== 'all') window.LYANN_BOKANTAJ_MAP?.setTerritory?.(key);
+            if (changed && typeof window.loadBokantajFeedFromSupabase === 'function') {
+                window.loadBokantajFeedFromSupabase({ force: true });
+            }
+        }
+    };
     let attachedPhotos = [];
     let attachedPhotoFiles = [];
     let attachedVideo = null;
@@ -2541,15 +2620,21 @@ safeDomReady(() => {
 
             const client = window.LYANN_API_CLIENT || window.apiClient;
             if (client?.advanceRequestLifecycle) client.advanceRequestLifecycle();
+            await bokantajTerritoryPromise();
+            if (gen !== bokantajLoadGen) return;
             const profile = window.LYANN_CURRENT_USER_PROFILE;
             if (profile && window.LYANN_GEO && typeof window.LYANN_GEO.setViewerLocation === 'function') {
                 window.LYANN_GEO.setViewerLocation(profile.city, profile.territory);
             }
-            const data = await window.LYANN_BOKANTAJ_REPOSITORY.load({ force: options.force === true });
+            const data = await window.LYANN_BOKANTAJ_REPOSITORY.load({
+                force: options.force === true,
+                territory: bokantajTerritory
+            });
             if (gen !== bokantajLoadGen) return;
             currentFlashPosts = keepOwnPendingPosts(Array.isArray(data) ? data : [], previousPosts);
             bokantajHasMore = window.LYANN_BOKANTAJ_REPOSITORY.hasMore();
-            bokantajCursor = currentFlashPosts.length ? currentFlashPosts[currentFlashPosts.length - 1].created_at : null;
+            bokantajCursor = window.LYANN_BOKANTAJ_REPOSITORY.cursor()
+                || (currentFlashPosts.length ? currentFlashPosts[currentFlashPosts.length - 1].created_at : null);
             bokantajFeedState = currentFlashPosts.length === 0 ? 'EMPTY' : 'READY';
         } catch (err) {
             console.error("[BOKANTAJ] Error during load:", err);
@@ -3004,8 +3089,14 @@ safeDomReady(() => {
                 cache: 'no-store'
             });
             if (!response.ok) throw new Error('media');
-            const blob = await response.blob();
-            const typed = typedBokantajMediaBlob(blob, source, response.headers.get('content-type'));
+            const bytes = await response.arrayBuffer();
+            const headerType = response.headers.get('content-type');
+            if (String(headerType || '').toLowerCase().startsWith('video/') || /\.(mp4|mov|m4v)(?:[?#]|$)/i.test(source)) {
+                const turn = window.LYANN_BOKANTAJ_VIDEO_POLICY && window.LYANN_BOKANTAJ_VIDEO_POLICY.mp4Rotation;
+                bokantajMediaRotation.set(source, turn ? turn(bytes) : 0);
+            }
+            const blob = new Blob([bytes], { type: String(headerType || '').split(';')[0] });
+            const typed = typedBokantajMediaBlob(blob, source, headerType);
             if (!typed) throw new Error('media');
             return URL.createObjectURL(typed);
         })();
@@ -3032,21 +3123,33 @@ safeDomReady(() => {
     function watchPhotoRatio(node) {
         if (!node || node.dataset.ratioBound === '1') return;
         node.dataset.ratioBound = '1';
-        const paint = () => applyMediaRatio(node, node.naturalWidth, node.naturalHeight);
+        const paint = () => {
+            if (node.closest('.bokantaj-video-poster')) return;
+            applyMediaRatio(node, node.naturalWidth, node.naturalHeight);
+        };
         if (node.complete && node.naturalWidth) paint();
         node.addEventListener('load', paint);
     }
 
-    async function hydrateHoldMedia(root) {
-        if (!root) return;
-        // Bound before any download: a video entering the screen must not wait
-        // for every avatar and photo of the feed to be fetched first.
-        observeFeedVideos(root);
-        const nodes = root.querySelectorAll('img[src*="/v1/media/bokantaj-media"], img[src*="/v1/media/avatars-hold/"], .bokantaj-video-poster img[src*="/v1/media/"]');
-        // Fetched together rather than one after the other, for the same reason.
-        await Promise.all(Array.from(nodes).map(async (node) => {
-            const source = node.getAttribute('src');
-            if (!source || node.dataset.mediaReady === '1') return;
+    // One window fills before the next starts, in the order of the feed, so a
+    // member scrolling never waits on the post they just reached. The 15th post
+    // of the window is the signal to fetch the following twenty.
+    const FEED_MEDIA_BATCH = 20;
+    const FEED_MEDIA_TRIGGER = 15;
+    let feedMediaPreload = null;
+
+    function feedMediaOnScreen(node) {
+        const rect = node.getBoundingClientRect();
+        if (!(rect.height > 0)) return false;
+        const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+        return visible >= Math.min(rect.height, window.innerHeight) * 0.6;
+    }
+
+    async function preloadFeedCard(card) {
+        const images = card.querySelectorAll('img[data-hold-src]');
+        for (const node of images) {
+            const source = node.dataset.holdSrc;
+            if (!source || node.dataset.mediaReady === '1') continue;
             try {
                 node.src = await loadBokantajMedia(source);
                 node.dataset.mediaReady = '1';
@@ -3056,9 +3159,88 @@ safeDomReady(() => {
                 node.closest('.bokantaj-photo')?.classList.add('is-broken');
                 node.removeAttribute('src');
             }
-        }));
-        root.querySelectorAll('.bokantaj-photos-1 img, .bokantaj-video-poster img').forEach(watchPhotoRatio);
+        }
+        const posters = card.querySelectorAll('.bokantaj-video-poster[data-video-src]');
+        for (const button of posters) {
+            ensureVideoPosterOriented(button);
+            const source = button.getAttribute('data-video-src');
+            if (!source || !button.isConnected) continue;
+            if (source.includes('/v1/media/')) {
+                try { await loadBokantajMedia(source); } catch (err) { continue; }
+            }
+            // Held until it is actually on screen: the bytes are already here,
+            // so opening it later does not start another download.
+            const video = await openBokantajVideo(button, { inFeed: true, hold: true });
+            if (video && feedMediaOnScreen(video)) {
+                const play = video.play();
+                if (play && typeof play.catch === 'function') play.catch(() => {});
+            }
+        }
+    }
+
+    function hydrateHoldMedia(root) {
+        if (!root) return;
+        // Bound before any download, so a clip can play the moment its card
+        // has been fetched rather than after the rest of the feed.
         observeFeedVideos(root);
+        root.querySelectorAll('.bokantaj-video-poster[data-video-src]').forEach(ensureVideoPosterOriented);
+        if (feedMediaPreload) feedMediaPreload.stop();
+        // Taken in the same turn as the render, before the browser starts the
+        // requests: otherwise every photo of the feed downloads at once, fails
+        // without its token, and the address is gone by the time its turn comes.
+        root.querySelectorAll('img[src*="/v1/media/bokantaj-media"], img[src*="/v1/media/avatars-hold/"], .bokantaj-video-poster img[src*="/v1/media/"]').forEach((node) => {
+            if (node.dataset.holdSrc || node.dataset.mediaReady === '1') return;
+            node.dataset.holdSrc = node.getAttribute('src');
+            node.removeAttribute('src');
+        });
+        const cards = [...root.querySelectorAll(':scope > .flash-card')];
+        let released = Math.min(FEED_MEDIA_BATCH, cards.length);
+        let cursor = 0;
+        let pumping = false;
+        let stopped = false;
+        const runway = FEED_MEDIA_BATCH - FEED_MEDIA_TRIGGER;
+        const observer = new IntersectionObserver((entries) => {
+            if (stopped) return;
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                const visible = entry.intersectionRect.height;
+                const tall = visible >= window.innerHeight * 0.45;
+                if (entry.intersectionRatio < 0.4 && !tall) return;
+                const index = cards.indexOf(entry.target);
+                if (index < 0) return;
+                let grew = false;
+                while (index >= released - runway - 1 && released < cards.length) {
+                    released = Math.min(cards.length, released + FEED_MEDIA_BATCH);
+                    grew = true;
+                }
+                if (grew) pump();
+            });
+        }, { threshold: [0, 0.4, 0.6] });
+        cards.forEach((card) => observer.observe(card));
+
+        async function pump() {
+            if (pumping || stopped) return;
+            pumping = true;
+            try {
+                while (!stopped && cursor < released) {
+                    const card = cards[cursor];
+                    cursor += 1;
+                    if (card && card.isConnected) await preloadFeedCard(card);
+                }
+            } finally {
+                pumping = false;
+                if (!stopped && cursor < released) pump();
+            }
+        }
+
+        feedMediaPreload = {
+            stop() {
+                stopped = true;
+                observer.disconnect();
+            }
+        };
+        root.querySelectorAll('.bokantaj-photos-1 img, .bokantaj-video-poster img').forEach(watchPhotoRatio);
+        pump();
     }
 
     // Muted autoplay is the only form iOS allows without a tap, so the feed
@@ -3091,6 +3273,128 @@ safeDomReady(() => {
         });
     }
 
+    const bokantajMediaRotation = new Map();
+
+    async function fetchVideoRotation(url) {
+        if (!url || !url.includes('/v1/media/')) return 0;
+        try {
+            const token = await bokantajMediaToken();
+            const response = await fetch(url, {
+                headers: {
+                    ...(token ? { Authorization: 'Bearer ' + token } : {}),
+                    Range: 'bytes=0-65535'
+                },
+                cache: 'no-store'
+            });
+            if (!response.ok && response.status !== 206) return 0;
+            const bytes = await response.arrayBuffer();
+            const turn = window.LYANN_BOKANTAJ_VIDEO_POLICY && window.LYANN_BOKANTAJ_VIDEO_POLICY.mp4Rotation;
+            return turn ? turn(bytes) : 0;
+        } catch (_) {
+            return 0;
+        }
+    }
+
+    async function ensureVideoPosterOriented(button) {
+        if (!button || button.dataset.oriented === '1') return;
+        button.dataset.oriented = '1';
+        const videoSrc = button.getAttribute('data-video-src');
+        if (!videoSrc) return;
+        let rotation = bokantajMediaRotation.get(videoSrc);
+        if (rotation === undefined && videoSrc.includes('/v1/media/')) {
+            rotation = await fetchVideoRotation(videoSrc);
+            bokantajMediaRotation.set(videoSrc, rotation);
+        }
+        const isSwapped = rotation === 90 || rotation === 270;
+        const coded = /^(\d+)x(\d+)$/.exec(button.getAttribute('data-coded-ratio') || '');
+        const codedW = coded ? Number(coded[1]) : 0;
+        const codedH = coded ? Number(coded[2]) : 0;
+        if (isSwapped && codedW > codedH) {
+            applyMediaRatio(button, codedH, codedW);
+        } else if (!isSwapped && rotation === 0 && codedW > 0 && codedH > 0) {
+            applyMediaRatio(button, codedW, codedH);
+        } else if (isSwapped) {
+            const currentRatio = button.style.getPropertyValue('--media-ratio');
+            if (currentRatio) {
+                const parts = currentRatio.split('/').map((s) => parseFloat(s.trim()));
+                if (parts.length === 2 && parts[0] > parts[1]) {
+                    button.style.setProperty('--media-ratio', `${parts[1]} / ${parts[0]}`);
+                    button.classList.add('has-media-ratio');
+                }
+            }
+        }
+        const img = button.querySelector('img');
+        if (img) {
+            const turnImg = async () => {
+                if (img.dataset.turned === '1') return;
+                img.dataset.turned = '1';
+                if (isSwapped && img.naturalWidth > img.naturalHeight) {
+                    applyMediaRatio(button, img.naturalHeight, img.naturalWidth);
+                    const blob = await canvasJpeg(paintUpright(img, rotation));
+                    if (blob) {
+                        img.src = URL.createObjectURL(blob);
+                        await imageReady(img);
+                    }
+                }
+                img.classList.add('is-oriented');
+            };
+            if (img.complete && img.naturalWidth) turnImg();
+            else img.addEventListener('load', turnImg);
+        }
+    }
+
+    function imageReady(img) {
+        if (!img) return Promise.resolve();
+        if (img.complete && img.naturalWidth) return Promise.resolve();
+        return new Promise((resolve) => {
+            const done = () => {
+                img.removeEventListener('load', done);
+                img.removeEventListener('error', done);
+                resolve();
+            };
+            img.addEventListener('load', done);
+            img.addEventListener('error', done);
+        });
+    }
+
+    function paintUpright(image, rotation) {
+        const width = image.naturalWidth;
+        const height = image.naturalHeight;
+        const canvas = document.createElement('canvas');
+        const swap = rotation === 90 || rotation === 270;
+        canvas.width = swap ? height : width;
+        canvas.height = swap ? width : height;
+        const context = canvas.getContext('2d');
+        context.translate(canvas.width / 2, canvas.height / 2);
+        context.rotate((rotation * Math.PI) / 180);
+        context.drawImage(image, -width / 2, -height / 2);
+        return canvas;
+    }
+
+    function canvasJpeg(canvas) {
+        return new Promise((resolve) => {
+            try { canvas.toBlob((blob) => resolve(blob || null), 'image/jpeg', 0.86); }
+            catch (err) { resolve(null); }
+        });
+    }
+
+    // The stored poster is the coded frame. A 90° matrix means that frame is
+    // landscape while the clip plays portrait, which is the sideways flash.
+    function playbackFrame(video, posterW, posterH, fileRotation) {
+        const vw = video.videoWidth || 0;
+        const vh = video.videoHeight || 0;
+        const swapped = fileRotation === 90 || fileRotation === 270;
+        if (!(vw > 0) || !(vh > 0)) {
+            if (swapped && posterW > posterH) return { width: posterH, height: posterW, turn: fileRotation };
+            return { width: posterW, height: posterH, turn: 0 };
+        }
+        if (posterW > 0 && posterH > 0 && (posterW > posterH) !== (vw > vh)) {
+            return { width: vw, height: vh, turn: fileRotation || 90 };
+        }
+        if (swapped && posterW > posterH && vw > vh) return { width: vh, height: vw, turn: fileRotation };
+        return { width: vw, height: vh, turn: 0 };
+    }
+
     function videoShapeReady(video) {
         return new Promise((resolve) => {
             if (video.readyState >= 1) {
@@ -3120,27 +3424,49 @@ safeDomReady(() => {
         button.setAttribute('aria-busy', 'true');
         try {
             const src = source.includes('/v1/media/') ? await loadBokantajMedia(source) : source;
+            const fileRotation = bokantajMediaRotation.get(source) || 0;
+            const poster = button.querySelector('img');
+            if (poster && !poster.getAttribute('src')) {
+                const held = poster.dataset.holdSrc;
+                if (held) {
+                    try {
+                        poster.src = held.includes('/v1/media/') ? await loadBokantajMedia(held) : held;
+                    } catch (err) {
+                        poster.removeAttribute('src');
+                    }
+                }
+            }
+            if (poster && poster.getAttribute('src')) await imageReady(poster);
             const video = document.createElement('video');
-            video.className = 'bokantaj-video';
+            video.className = 'bokantaj-video is-settling';
             video.controls = !inFeed;
             video.playsInline = true;
             video.setAttribute('playsinline', '');
             video.setAttribute('webkit-playsinline', '');
             video.preload = 'auto';
-            const poster = button.querySelector('img');
-            if (poster) video.poster = poster.src;
             const ratio = button.style.getPropertyValue('--media-ratio');
             if (ratio) {
                 video.style.setProperty('--media-ratio', ratio);
                 video.classList.add('has-media-ratio');
             }
-            video.addEventListener('loadedmetadata', () => {
-                applyMediaRatio(video, video.videoWidth, video.videoHeight);
-            });
             video.src = src;
-            // The shape is read before the swap, otherwise a clip whose poster
-            // carries no size would appear at a wrong height for a second.
-            if (!ratio) await videoShapeReady(video);
+            const posterW = poster ? poster.naturalWidth : 0;
+            const posterH = poster ? poster.naturalHeight : 0;
+            const codedPortrait = (fileRotation === 90 || fileRotation === 270) && posterW > posterH;
+            if (codedPortrait) {
+                applyMediaRatio(button, posterH, posterW);
+                applyMediaRatio(video, posterH, posterW);
+            }
+            if (poster && codedPortrait) {
+                const blob = await canvasJpeg(paintUpright(poster, fileRotation));
+                if (blob) {
+                    const upright = URL.createObjectURL(blob);
+                    poster.src = upright;
+                    await imageReady(poster);
+                    video.poster = upright;
+                    poster.classList.add('is-oriented');
+                }
+            }
             if (inFeed) {
                 video.dataset.feedVideo = '1';
                 video.dataset.videoSrc = source;
@@ -3161,15 +3487,49 @@ safeDomReady(() => {
                 expand.innerHTML = '<i class="ph ph-arrows-out" aria-hidden="true"></i>';
                 overlay.append(sound, expand);
                 button.replaceWith(shell);
+                if (poster) shell.appendChild(poster);
                 shell.append(video, overlay);
                 setBokantajFeedSound(bokantajFeedMuted);
                 video.dataset.autoplayBound = '1';
                 feedVideoObserver?.observe(video);
             } else {
-                button.replaceWith(video);
+                button.appendChild(video);
             }
-            const play = video.play();
-            if (play && typeof play.catch === 'function') play.catch(() => {});
+            // The shape is read before the clip is shown, otherwise a poster
+            // with no size would appear at a wrong height for a second.
+            if (!ratio && !codedPortrait) await videoShapeReady(video);
+            const frame = playbackFrame(video, poster && poster.naturalWidth, poster && poster.naturalHeight, fileRotation);
+            if (frame.width > 0 && frame.height > 0 && !(codedPortrait && frame.width > frame.height)) {
+                applyMediaRatio(button, frame.width, frame.height);
+                applyMediaRatio(video, frame.width, frame.height);
+            }
+            if (poster && frame.turn && !poster.classList.contains('is-oriented')) {
+                const blob = await canvasJpeg(paintUpright(poster, frame.turn));
+                if (blob) {
+                    const upright = URL.createObjectURL(blob);
+                    poster.src = upright;
+                    video.poster = upright;
+                }
+            }
+            if (poster) poster.classList.add('is-oriented');
+            try {
+                const started = video.play();
+                if (started && typeof started.catch === 'function') await started.catch(() => {});
+            } catch (err) { /* a refused play still reveals on the timer */ }
+            await new Promise((resolve) => {
+                const timer = window.setTimeout(resolve, 2500);
+                const finish = () => { window.clearTimeout(timer); resolve(); };
+                if (typeof video.requestVideoFrameCallback !== 'function') {
+                    if (video.readyState >= 2) finish();
+                    else video.addEventListener('loadeddata', finish, { once: true });
+                    return;
+                }
+                video.requestVideoFrameCallback(() => video.requestVideoFrameCallback(finish));
+            });
+            video.classList.remove('is-settling');
+            if (poster && poster.parentElement) poster.remove();
+            if (!inFeed) button.replaceWith(video);
+            if (options && options.hold && !feedMediaOnScreen(video)) video.pause();
             return video;
         } catch (err) {
             button.dataset.loading = '';
@@ -3236,6 +3596,10 @@ safeDomReady(() => {
         const node = entry.target;
         if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
             if (node.matches('.bokantaj-video-poster')) {
+                // Opening here would download this clip on its own, ahead of the
+                // queue. The window fetches it in order and opens it then.
+                const source = node.getAttribute('data-video-src') || '';
+                if (source.includes('/v1/media/') && !bokantajMediaCache.get(source)) return;
                 openBokantajVideo(node, { inFeed: true });
             } else if (node.paused) {
                 node.play().catch(() => {});
@@ -3646,6 +4010,7 @@ safeDomReady(() => {
             if (repo && typeof repo.isPubliclyVisible === 'function' && !repo.isPubliclyVisible(post, viewerId)) return false;
             if (query && !query.postMatchesTypes(post, active.types)) return false;
             if (query && !query.postWithinPeriod(post, active.period, now)) return false;
+            if (query && !query.postMatchesTerritory(post, bokantajTerritory)) return false;
             if (active.zone === 'commune' && active.commune && query && !query.communeMatches(post, active.commune)) return false;
             annotateBokantajDistance(post, active, mode);
             if (active.zone === 'nearby') {
@@ -3684,15 +4049,15 @@ safeDomReady(() => {
         let guard = 0;
         while (!post && bokantajHasMore && bokantajCursor && guard < 6 && window.LYANN_BOKANTAJ_REPOSITORY) {
             guard += 1;
-            const page = await window.LYANN_BOKANTAJ_REPOSITORY.load({ before: bokantajCursor });
+            const page = await window.LYANN_BOKANTAJ_REPOSITORY.load({ before: bokantajCursor, territory: bokantajTerritory });
             const items = Array.isArray(page) ? page : [];
             const seen = new Set(currentFlashPosts.map((item) => item && item.id));
             items.forEach((item) => {
                 if (item && !seen.has(item.id)) currentFlashPosts.push(item);
             });
-            bokantajHasMore = items.length > 0 && window.LYANN_BOKANTAJ_REPOSITORY.hasMore();
-            if (items.length) bokantajCursor = items[items.length - 1].created_at;
-            if (!items.length) bokantajHasMore = false;
+            const revealCursor = window.LYANN_BOKANTAJ_REPOSITORY.cursor() || (items.length ? items[items.length - 1].created_at : null);
+            bokantajHasMore = window.LYANN_BOKANTAJ_REPOSITORY.hasMore() && !!revealCursor && revealCursor !== bokantajCursor;
+            if (revealCursor) bokantajCursor = revealCursor;
             post = currentFlashPosts.find((item) => item && String(item.id) === id);
         }
         const visible = post && window.LYANN_BOKANTAJ_REPOSITORY
@@ -4702,6 +5067,10 @@ safeDomReady(() => {
         });
     }
 
+    document.getElementById('bokantajTerritoryFilter')?.addEventListener('change', (event) => {
+        window.LYANN_BOKANTAJ_PLACE?.choose(event.target.value, 'feed');
+    });
+
     function readBokantajFilterDraft() {
         const types = [...document.querySelectorAll('#bokantajTypeChips .bokantaj-choice.is-selected')]
             .map((btn) => btn.dataset.type)
@@ -4908,16 +5277,16 @@ safeDomReady(() => {
                 button.textContent = 'Chargement…';
             }
             try {
-                const page = await window.LYANN_BOKANTAJ_REPOSITORY.load({ before: bokantajCursor });
+                const page = await window.LYANN_BOKANTAJ_REPOSITORY.load({ before: bokantajCursor, territory: bokantajTerritory });
                 if (gen !== bokantajLoadGen) return;
                 const items = Array.isArray(page) ? page : [];
                 const seen = new Set(currentFlashPosts.map((post) => post && post.id));
                 items.forEach((item) => {
                     if (item && !seen.has(item.id)) currentFlashPosts.push(item);
                 });
-                bokantajHasMore = items.length > 0 && window.LYANN_BOKANTAJ_REPOSITORY.hasMore();
-                if (items.length) bokantajCursor = items[items.length - 1].created_at;
-                if (!items.length) bokantajHasMore = false;
+                const nextCursor = window.LYANN_BOKANTAJ_REPOSITORY.cursor() || (items.length ? items[items.length - 1].created_at : null);
+                bokantajHasMore = window.LYANN_BOKANTAJ_REPOSITORY.hasMore() && !!nextCursor && nextCursor !== bokantajCursor;
+                if (nextCursor) bokantajCursor = nextCursor;
                 renderFlashFeed();
             } catch (err) {
                 if (window.lyannAlert) window.lyannAlert('Les publications plus anciennes n’ont pas pu être chargées.');
@@ -7076,7 +7445,7 @@ safeDomReady(() => {
                             <span style="font-weight: 800; font-size: 1.2rem; color: #4A7C59; margin-left: 8px;">Nouveau Service</span>
                         </div>
                         <h3 class="step-title" style="font-size: 1.4rem; margin-top: 10px; margin-bottom: 4px;">Proposez votre talent</h3>
-                        <p class="step-desc" style="margin-bottom: 0;">Ajoutez un nouveau service à proposer à la communauté.</p>
+                        <p class="step-desc" style="margin-bottom: 0;">Seul le nom de la compétence est obligatoire. Sans tarif, elle s’affiche « Sur devis ».</p>
                     </div>
 
                     <div class="modal-body">
@@ -7091,15 +7460,15 @@ safeDomReady(() => {
 
                             <div class="form-group-row" style="display: flex; gap: 12px; margin-bottom: 14px;">
                                 <div class="form-group flex-1" style="margin-bottom: 0; flex: 1;">
-                                    <label for="servicePrice" style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Tarif (€) ou "Sur devis"</label>
+                                    <label for="servicePrice" style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Tarif (€), facultatif</label>
                                     <div class="input-with-icon" style="position: relative;">
                                         <i class="ph ph-currency-eur" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                                        <input type="text" id="servicePrice" class="modal-input" placeholder="Ex: 50" required style="width: 100%; box-sizing: border-box; padding-left: 38px;">
+                                        <input type="text" id="servicePrice" class="modal-input" inputmode="decimal" placeholder="Ex: 50, ou laissez vide" style="width: 100%; box-sizing: border-box; padding-left: 38px;">
                                     </div>
                                 </div>
                                 <div class="form-group flex-1" style="margin-bottom: 0; flex: 1;">
-                                    <label for="serviceBilling" style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Facturation</label>
-                                    <select id="serviceBilling" class="modal-input" style="width: 100%; box-sizing: border-box; padding-left: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: white; height: 42px;" required>
+                                    <label for="serviceBilling" style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Facturation, facultatif</label>
+                                    <select id="serviceBilling" class="modal-input" style="width: 100%; box-sizing: border-box; padding-left: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: white; height: 42px;">
                                         <option value="/ heure">Par heure</option>
                                         <option value="/ unité">Par unité</option>
                                         <option value="/ chantier">Par chantier</option>
@@ -7109,7 +7478,7 @@ safeDomReady(() => {
                             </div>
 
                             <div class="form-group" style="margin-bottom: 14px;">
-                                <label for="serviceDesc" style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Description / Conditions</label>
+                                <label for="serviceDesc" style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 6px;">Description / Conditions, facultatif</label>
                                 <textarea id="serviceDesc" class="modal-input" style="width: 100%; box-sizing: border-box; padding-left: 16px; padding-top: 10px; height: 80px; resize: none;" placeholder="Détails du service, matériel inclus ou non, conditions..."></textarea>
                             </div>
 
@@ -7128,13 +7497,15 @@ safeDomReady(() => {
                 e.preventDefault();
                 const title = document.getElementById('serviceTitle').value.trim();
                 let price = document.getElementById('servicePrice').value.trim();
-                const billing = document.getElementById('serviceBilling').value;
+                let billing = document.getElementById('serviceBilling').value;
                 const desc = document.getElementById('serviceDesc').value.trim();
 
                 if (!title) return;
 
                 if (price.toLowerCase() === 'sur devis' || isNaN(parseFloat(price))) {
                     price = 'Sur devis';
+                    // A billing unit without an amount says nothing to a visitor.
+                    billing = 'Sur devis';
                 }
 
                 const userId = (typeof getMyId === 'function') ? getMyId() : 'me';
@@ -7343,6 +7714,11 @@ safeDomReady(() => {
         }
 
         if (profileData) {
+            window.LYANN_CURRENT_USER_PROFILE = profileData;
+            const memberTerritory = window.LYANN_BOKANTAJ_QUERY?.territoryKeyFromLabel?.(profileData.territory);
+            if (memberTerritory && !storedBokantajTerritory()) {
+                window.LYANN_BOKANTAJ_PLACE?.choose(memberTerritory, 'profile');
+            }
             const storedProfileObj = {
                 id: profileData.id,
                 firstName: profileData.first_name || '',
@@ -8080,6 +8456,8 @@ safeDomReady(() => {
             if (freeCta) freeCta.textContent = 'Commencer gratuitement';
             window.CURRENT_USER_ID = null;
             window.LYANN_CURRENT_USER = null;
+            window.LYANN_CURRENT_USER_PROFILE = null;
+            window.LYANN_BOKANTAJ_PLACE?.choose('all', 'logout');
 
             try {
                 if (typeof safeStorage !== 'undefined') {

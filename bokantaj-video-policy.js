@@ -122,12 +122,16 @@ function playbackMarkup(videoUrl, posterUrl) {
     const video = escapeAttr(videoUrl);
     const poster = escapeAttr(posterUrl);
     const ratio = posterRatio(posterUrl);
-    const shaped = ratio ? ' has-media-ratio' : '';
-    const style = ratio ? ` style="--media-ratio:${ratio.width} / ${ratio.height}"` : '';
+    // A landscape size in the filename is the coded iPhone frame. Reserving it
+    // paints a wide black box before the clip is known to be portrait.
+    const portrait = ratio && ratio.height > ratio.width;
+    const shaped = portrait ? ' has-media-ratio' : '';
+    const style = portrait ? ` style="--media-ratio:${ratio.width} / ${ratio.height}"` : '';
+    const coded = ratio ? ` data-coded-ratio="${ratio.width}x${ratio.height}"` : '';
     const image = poster
         ? `<img src="${poster}" alt="" class="bokantaj-video-poster-image">`
         : '';
-    return `<button type="button" class="bokantaj-video-poster${shaped}" data-video-src="${video}"${style}>${image}<span>Lire la vidéo</span></button>`;
+    return `<button type="button" class="bokantaj-video-poster${shaped}" data-video-src="${video}"${coded}${style}>${image}<span>Lire la vidéo</span></button>`;
 }
 
 function escapeAttr(value) {
@@ -148,6 +152,68 @@ function mapPinVisible(post, now) {
 
 function pinExpiryEffect() {
     return { hidePinOnly: true, deletePost: false, deletePhotos: false, deleteVideo: false };
+}
+
+// iPhone portrait clips store a landscape frame plus a display matrix. The
+// poster is that raw frame, so the feed has to know the matrix before showing it.
+function mp4Rotation(input) {
+    const bytes = mp4Bytes(input);
+    if (!bytes || bytes.length < 16) return 0;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const found = rotationIn(view, 0, bytes.length);
+    return found === null ? 0 : found;
+}
+
+function mp4Bytes(input) {
+    if (!input) return null;
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(input)) {
+        return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+    }
+    if (input instanceof ArrayBuffer) return new Uint8Array(input);
+    if (ArrayBuffer.isView(input)) return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+    return null;
+}
+
+function rotationIn(view, start, end) {
+    let offset = start;
+    while (offset + 8 <= end) {
+        let size = view.getUint32(offset);
+        let header = 8;
+        if (size === 1 && offset + 16 <= end) {
+            size = view.getUint32(offset + 8) * 4294967296 + view.getUint32(offset + 12);
+            header = 16;
+        }
+        if (!size || size < header || offset + size > end) break;
+        const type = String.fromCharCode(
+            view.getUint8(offset + 4), view.getUint8(offset + 5),
+            view.getUint8(offset + 6), view.getUint8(offset + 7)
+        );
+        if (type === 'tkhd') {
+            const rotation = tkhdRotation(view, offset, size);
+            if (rotation !== null) return rotation;
+        } else if (type === 'moov' || type === 'trak') {
+            const nested = rotationIn(view, offset + header, offset + size);
+            if (nested !== null) return nested;
+        }
+        offset += size;
+    }
+    return null;
+}
+
+function tkhdRotation(view, offset, size) {
+    const version = view.getUint8(offset + 8);
+    const matrixAt = offset + (version === 1 ? 60 : 48);
+    const widthAt = matrixAt + 36;
+    if (widthAt + 8 > offset + size) return null;
+    const width = view.getUint32(widthAt);
+    const height = view.getUint32(widthAt + 4);
+    if (width < 2 && height < 2) return null;
+    const a = view.getInt32(matrixAt);
+    const b = view.getInt32(matrixAt + 4);
+    if (a === 0 && b > 0) return 90;
+    if (a < 0 && b === 0) return 180;
+    if (a === 0 && b < 0) return 270;
+    return 0;
 }
 
 function inspectMp4(input) {
@@ -239,6 +305,7 @@ const api = {
     mapPinVisible,
     pinExpiryEffect,
     inspectMp4,
+    mp4Rotation,
     isProductionTarget,
     mediaDeletionAllowed,
     selectOrphans,

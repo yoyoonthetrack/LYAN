@@ -411,10 +411,12 @@
                     if (button.dataset.id) window.openPublicMemberProfile?.(button.dataset.id);
                     else window.LYANN_ROUTER.requireAuthForInteraction('requestAuthor', {requestId: button.closest('[data-request-id]')?.dataset.requestId});
                     break;
-                case 'contact': if (row) window.LYANN_ROUTER.go('messages', {contactId:row.id, name:row.name, direct:true}); break;
+                // origin: 'explorer' sends the back arrow to the list the member
+                // came from instead of the inbox.
+                case 'contact': if (row) window.LYANN_ROUTER.go('messages', {contactId:row.id, name:row.name, direct:true, origin:'explorer'}); break;
                 case 'help':
                     if (row && row.status === 'OPEN' && (!currentUserId() || row.requester_id !== currentUserId())) {
-                        window.LYANN_ROUTER.go('messages', { contactId: row.requester_id, requestId: row.id,
+                        window.LYANN_ROUTER.go('messages', { contactId: row.requester_id, requestId: row.id, origin: 'explorer',
                             name: name(row.profiles), initialNeed: {requestId:row.id, requesterId:row.requester_id, helperId:currentUserId(), title:row.title} });
                     }
                     break;

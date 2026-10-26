@@ -15,9 +15,9 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20261025comments">
-    <link rel="stylesheet" href="universe-header.css?v=20261018sheet2">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800;9..144,900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20261026vid">
+    <link rel="stylesheet" href="universe-header.css?v=20261026ios">
     <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=5.6.1">
     <link rel="stylesheet" href="bokantaj-map.css?v=20261024place">
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4">
@@ -25,6 +25,29 @@
     <!-- Phosphor Icons -->
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
+    <!-- Voile d'arrivée. Posé avant le premier rendu, sinon la page surgit d'un coup. -->
+    <script>
+        (function () {
+            try {
+                var bridge = window.Capacitor;
+                var native = !!(bridge && (
+                    (typeof bridge.isNativePlatform === 'function' && bridge.isNativePlatform())
+                    || (typeof bridge.getPlatform === 'function' && (bridge.getPlatform() === 'ios' || bridge.getPlatform() === 'android'))
+                ));
+                if (!native) return;
+                var root = document.documentElement;
+                root.classList.add('lyann-page-entering');
+                var clear = function () { root.classList.remove('lyann-page-entering'); };
+                root.addEventListener('animationend', function onEnd(event) {
+                    if (event.animationName !== 'lyannPageReveal') return;
+                    root.removeEventListener('animationend', onEnd);
+                    clear();
+                });
+                window.setTimeout(clear, 1200);
+            } catch (e) {}
+        })();
+    </script>
+
     <!-- Global early error handlers -->
     <script>
         window.handleAvatarError = function(imgEl) {
@@ -134,8 +157,32 @@
     <!-- ========== HERO PAGE BOKANTAJ ========== -->
     <section class="feed-hero-section lyann-universe-header" data-universe="bokantaj">
         <div class="container lyann-universe" data-universe="bokantaj">
-            <img class="bokantaj-header-art" src="assets/universe/lyann-bokantaj-header-en-direct.webp?v=20261017pale" alt="Bokantaj, en direct. Partagez une actu, une idée ou un bon plan avec vos voisins." width="1728" height="834">
-            <img class="bokantaj-header-desktop" src="assets/universe/lyann-bokantaj-header-desktop.webp?v=20261017pale" alt="" width="3072" height="582">
+            <div class="lyann-universe-banner banner-bokantaj">
+                <div class="banner-watermarks" aria-hidden="true">
+                    <svg class="wm-icon wm-star-1" viewBox="0 0 40 40"><polygon points="20,2 25,14 38,15 28,24 31,37 20,29 9,37 12,24 2,15 15,14" fill="#F4E3BF"/></svg>
+                    <svg class="wm-icon wm-star-2" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,12 15,15 12,22 9,15 2,12 9,9" fill="#F4E3BF"/></svg>
+                    <svg class="wm-icon wm-play" viewBox="0 0 60 50"><rect x="2" y="2" width="56" height="46" rx="14" fill="#F4E3BF"/><polygon points="24,14 40,25 24,36" fill="#FCF6E6"/></svg>
+                    <svg class="wm-icon wm-camera" viewBox="0 0 60 48" fill="none" stroke="#F0DEBA" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6h24l4 6h8a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4h8l4-6z"/><circle cx="30" cy="28" r="9" stroke-width="4"/></svg>
+                    <svg class="wm-icon wm-news" viewBox="0 0 80 40"><rect x="2" y="2" width="76" height="36" rx="6" fill="#F5E4C0" transform="rotate(-5 40 20)"/><text x="40" y="20" text-anchor="middle" font-family="'Outfit', sans-serif" font-weight="900" font-size="10" fill="#FFFFFF" transform="rotate(-5 40 20)">BREAKING</text><text x="40" y="31" text-anchor="middle" font-family="'Outfit', sans-serif" font-weight="900" font-size="9" fill="#FFFFFF" transform="rotate(-5 40 20)">NEWS</text></svg>
+                    <svg class="wm-icon wm-cocktail" viewBox="0 0 40 40" fill="none" stroke="#F0DEBA" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="8,8 32,8 20,24" stroke-width="2.5"/><line x1="20" y1="24" x2="20" y2="34"/><line x1="12" y1="34" x2="28" y2="34"/><line x1="16" y1="4" x2="28" y2="16"/></svg>
+                    <svg class="wm-icon wm-cloud" viewBox="0 0 70 36" fill="#FFFFFF"><path d="M16 32h38a14 14 0 0 0 3-27.7 18 18 0 0 0-35-1.5A12 12 0 0 0 16 32z"/></svg>
+                </div>
+                <div class="banner-content">
+                    <div class="banner-badge badge-bokantaj">
+                        <span class="badge-icon">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M7.76 7.76a6 6 0 0 0 0 8.48"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M16.24 7.76a6 6 0 0 1 0 8.48"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                            </svg>
+                        </span>
+                        <span class="badge-text">EN DIRECT</span>
+                    </div>
+                    <h1 class="banner-title">Bokantaj</h1>
+                    <p class="banner-subtitle">Partagez une idée, un bon plan ou une actu avec vos voisins.</p>
+                </div>
+                <div class="banner-illustration">
+                    <img src="assets/universe/bokantaj-hero-character@2x.webp" alt="Bokantaj" width="438" height="236">
+                </div>
+            </div>
         </div>
     </section>
 
@@ -195,6 +242,9 @@
                                         <button type="button" id="bokantajLocateMe" class="bokantaj-picker-locate" aria-label="Me localiser"><i class="ph ph-navigation-arrow" aria-hidden="true"></i></button>
                                     </div>
                                     <p class="bokantaj-place-status" id="bokantajPickerStatus" role="status">Touchez la carte, puis choisissez comment la partager.</p>
+                                    <label class="bokantaj-place-name" for="bokantajPlaceName">Nom du quartier
+                                        <input type="text" id="bokantajPlaceName" maxlength="90" autocomplete="off">
+                                    </label>
                                     <div class="bokantaj-place-share" role="group" aria-label="Comment partager ce lieu">
                                         <button type="button" id="bokantajShareQuarter" class="bokantaj-place-share-btn is-quarter">Partager le nom du quartier</button>
                                         <button type="button" id="bokantajShareExact" class="bokantaj-place-share-btn is-exact">Partager la localisation précise</button>
@@ -202,8 +252,6 @@
                                     <button type="button" id="bokantajPlaceRemove" class="bokantaj-place-clear">Retirer le lieu</button>
                                     <button type="button" id="bokantajPickOnMap" hidden aria-pressed="true">Choisir sur la carte</button>
                                     <input type="checkbox" id="bokantajPlaceExact" hidden>
-                                    <label class="visually-hidden" for="bokantajPlaceName">Nom du quartier</label>
-                                    <input type="text" id="bokantajPlaceName" maxlength="90" hidden autocomplete="off">
                                     <button type="button" id="bokantajPlaceSave" hidden>Confirmer</button>
                                     <button type="button" id="bokantajPlaceMove" hidden>Déplacer</button>
                                     <div hidden>
@@ -235,6 +283,17 @@
                     </div>
                     <div id="bokantajFeedSection" role="tabpanel" aria-labelledby="bokantajViewFeed">
                     <div class="bokantaj-sort-bar" role="tablist" aria-label="Ordre du Bokantaj">
+                        <label class="bokantaj-territory-filter">
+                            <span>Territoire</span>
+                            <select id="bokantajTerritoryFilter" aria-label="Territoire du Bokantaj">
+                                <option value="all">Tous les territoires</option>
+                                <option value="guadeloupe">Guadeloupe</option>
+                                <option value="martinique">Martinique</option>
+                                <option value="guyane">Guyane</option>
+                                <option value="reunion">La Réunion</option>
+                                <option value="saint-martin">Saint-Martin</option>
+                            </select>
+                        </label>
                         <button type="button" class="bokantaj-sort-tab is-selected" id="bokantajSortRecent" role="tab" aria-selected="true" data-sort="recent">Publications récentes</button>
                         <button type="button" class="bokantaj-sort-tab" id="bokantajSortNearby" role="tab" aria-selected="false" data-sort="nearby">Autour de moi</button>
                         <button type="button" class="bokantaj-sort-filters" id="btnOpenBokantajFilterSheet" aria-label="Filtres">
@@ -251,29 +310,32 @@
                     </div>
                     </div>
                     <section id="bokantajMapSection" class="bokantaj-map-section" role="tabpanel" aria-labelledby="bokantajViewMap" hidden>
-                        <div class="bokantaj-map-topbar">
-                            <span>📍 Ce qui se passe dans le coin</span>
-                            <select id="bokantajMapTerritory" aria-label="Changer de territoire">
-                                <option value="guadeloupe">Guadeloupe</option>
-                                <option value="martinique">Martinique</option>
-                                <option value="guyane">Guyane</option>
-                                <option value="reunion">La Réunion</option>
-                                <option value="saint-martin">Saint-Martin</option>
-                            </select>
+                        <div class="bokantaj-map-stage">
+                            <div id="bokantajMapCanvas" class="bokantaj-map-canvas" aria-label="Carte des publications géolocalisées"></div>
+                            <div class="bokantaj-map-controls">
+                                <div class="bokantaj-map-topbar">
+                                    <span aria-hidden="true">📍</span>
+                                    <select id="bokantajMapTerritory" aria-label="Changer de territoire">
+                                        <option value="guadeloupe">Guadeloupe</option>
+                                        <option value="martinique">Martinique</option>
+                                        <option value="guyane">Guyane</option>
+                                        <option value="reunion">La Réunion</option>
+                                        <option value="saint-martin">Saint-Martin</option>
+                                    </select>
+                                </div>
+                                <div id="bokantajMapFilters" class="bokantaj-map-chips" aria-label="Filtrer la carte">
+                                    <button type="button" data-map-type="all" class="is-active">Tout</button>
+                                    <button type="button" data-map-type="trafic">🚗 Trafic</button>
+                                    <button type="button" data-map-type="bon_plan">✨ Bons plans</button>
+                                    <button type="button" data-map-type="restaurant">🍴 Restos</button>
+                                    <button type="button" data-map-type="avis">⭐ Avis</button>
+                                    <button type="button" data-map-type="info">💬 Infos</button>
+                                    <button type="button" data-map-type="evenement">🎉 Sorties</button>
+                                </div>
+                            </div>
+                            <p id="bokantajMapStatus" class="bokantaj-map-status" role="status">Zoomez sur un quartier pour explorer les publications.</p>
+                            <article id="bokantajMapDetail" class="bokantaj-map-detail" hidden aria-live="polite"></article>
                         </div>
-                        <div id="bokantajMapFilters" class="bokantaj-map-chips" aria-label="Filtrer la carte">
-                            <button type="button" data-map-type="all" class="is-active">Tout</button>
-                            <button type="button" data-map-type="trafic">🚗 Trafic</button>
-                            <button type="button" data-map-type="bon_plan">✨ Bons plans</button>
-                            <button type="button" data-map-type="restaurant">🍴 Restos</button>
-                            <button type="button" data-map-type="avis">⭐ Avis</button>
-                            <button type="button" data-map-type="info">💬 Infos</button>
-                            <button type="button" data-map-type="evenement">🎉 Sorties</button>
-                        </div>
-                        <p class="bokantaj-map-gesture">Explorez les quartiers · Pincez pour zoomer</p>
-                        <div id="bokantajMapCanvas" class="bokantaj-map-canvas" aria-label="Carte des publications géolocalisées"></div>
-                        <p id="bokantajMapStatus" class="bokantaj-map-status" role="status">Zoomez sur un quartier pour explorer les publications.</p>
-                        <article id="bokantajMapDetail" class="bokantaj-map-detail" hidden aria-live="polite"></article>
                     </section>
 
                 </main>
@@ -1810,14 +1872,14 @@
     <script src="sentry-init.js?v=20260916"></script>
     <script src="surface-manager.js?v=20260922s"></script>
     <script src="app-router.js?v=20261018legal"></script>
-    <script src="api-client.js?v=20261025comments"></script>
+    <script src="api-client.js?v=20261026territory"></script>
     <script src="session-store.js"></script>
     <script src="auth-state.js"></script>
     <script src="data-cache.js"></script>
     <script src="maison-catalog.js?v=20260922c"></script>
     <script src="profile-repository.js?v=20260922c"></script>
-    <script src="bokantaj-repository.js?v=20261024vmod"></script>
-    <script src="bokantaj-feed-query.js"></script>
+    <script src="bokantaj-repository.js?v=20261026territory"></script>
+    <script src="bokantaj-feed-query.js?v=20261026territory"></script>
     <script src="annonce-format.js?v=20260922e"></script>
     <script src="commune-geo.js?v=20260922e"></script>
     <script src="commune-distance.js?v=20261019-drom5"></script>
@@ -1845,14 +1907,14 @@
     <script src="app-shell.js?v=20261024auth"></script>
     <script src="messaging-ui.js?v=20261015j"></script>
     <script src="lyann-skeleton.js?v=20261025skel"></script>
-    <script src="bokantaj-video-policy.js?v=20261025vmedia"></script>
-    <script src="bokantaj-video-fast.js?v=20261025comments"></script>
+    <script src="bokantaj-video-policy.js?v=20261026vid"></script>
+    <script src="bokantaj-video-fast.js?v=20261026vid"></script>
     <script src="bokantaj-video.js?v=20261025comments"></script>
-    <script src="script.js?v=20261025comments"></script>
+    <script src="script.js?v=20261026vid2"></script>
     <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
     <script src="vendor/maplibre/maplibre-gl.js?v=5.6.1"></script>
     <script src="vendor/maplibre/leaflet-maplibre-gl.js?v=0.1.4"></script>
-    <script src="bokantaj-map.js?v=20261024place"></script>
+    <script src="bokantaj-map.js?v=20261026territory2"></script>
     <script src="onboarding.js"></script>
     <script src="profile-completion.js"></script>
 

@@ -58,6 +58,34 @@
         return vendorPromise;
     }
 
+    function orientedSize(width, height, rotation) {
+        if (rotation === 90 || rotation === 270) return { width: height, height: width };
+        return { width, height };
+    }
+
+    // The coded frame is what the decoder returns. Turning it here means the
+    // file, the poster and the feed all share one upright picture.
+    function paintFrame(context, videoFrame, rotation, width, height) {
+        context.save();
+        context.clearRect(0, 0, width, height);
+        if (rotation === 90) {
+            context.translate(width, 0);
+            context.rotate(Math.PI / 2);
+            context.drawImage(videoFrame, 0, 0, height, width);
+        } else if (rotation === 270) {
+            context.translate(0, height);
+            context.rotate(-Math.PI / 2);
+            context.drawImage(videoFrame, 0, 0, height, width);
+        } else if (rotation === 180) {
+            context.translate(width, height);
+            context.rotate(Math.PI);
+            context.drawImage(videoFrame, 0, 0, width, height);
+        } else {
+            context.drawImage(videoFrame, 0, 0, width, height);
+        }
+        context.restore();
+    }
+
     function rotationOf(track) {
         const matrix = track && track.matrix;
         if (!matrix || matrix.length < 5) return 0;
@@ -189,7 +217,9 @@
         const track = parsed.videoTrack;
         const codedWidth = track.video ? track.video.width : meta.width;
         const codedHeight = track.video ? track.video.height : meta.height;
-        const frame = policy.fitFrame(codedWidth, codedHeight);
+        const rotation = rotationOf(track);
+        const display = orientedSize(codedWidth, codedHeight, rotation);
+        const frame = policy.fitFrame(display.width, display.height);
         const seconds = Math.max(0.5, Number(end) - Number(start));
         const config = await encoderConfig(frame.width, frame.height, seconds);
         if (!config) throw new Error('no_encoder');
@@ -212,7 +242,7 @@
                 codec: 'avc',
                 width: frame.width,
                 height: frame.height,
-                rotation: rotationOf(track)
+                rotation: 0
             },
             ...(audioTrack ? {
                 audio: {
@@ -252,7 +282,7 @@
                     videoFrame.close();
                     return;
                 }
-                context.drawImage(videoFrame, 0, 0, frame.width, frame.height);
+                paintFrame(context, videoFrame, rotation, frame.width, frame.height);
                 if (!painted) posterCanvas.getContext('2d').drawImage(canvas, 0, 0);
                 const scaled = new window.VideoFrame(canvas, { timestamp: timestamp - startUs });
                 videoFrame.close();
@@ -341,7 +371,9 @@
         if (!description) throw new Error('no_description');
         const codedWidth = track.video ? track.video.width : 0;
         const codedHeight = track.video ? track.video.height : 0;
-        const frame = policy.fitFrame(codedWidth, codedHeight);
+        const rotation = rotationOf(track);
+        const display = orientedSize(codedWidth, codedHeight, rotation);
+        const frame = policy.fitFrame(display.width, display.height);
         const canvas = document.createElement('canvas');
         canvas.width = frame.width;
         canvas.height = frame.height;
@@ -352,7 +384,7 @@
         const decoder = new window.VideoDecoder({
             output: (videoFrame) => {
                 if (!drawn && videoFrame.timestamp >= atUs) {
-                    canvas.getContext('2d').drawImage(videoFrame, 0, 0, frame.width, frame.height);
+                    paintFrame(canvas.getContext('2d'), videoFrame, rotation, frame.width, frame.height);
                     drawn = true;
                 }
                 videoFrame.close();

@@ -58,6 +58,8 @@ test('conversion prefers WebCodecs and never drops the sound', () => {
     assert.match(fast, /function codecsAvailable/);
     // The original audio track is copied, so no AudioEncoder support is needed.
     assert.match(fast, /addAudioChunkRaw/);
+    assert.match(fast, /function paintFrame/);
+    assert.match(fast, /rotation: 0/);
     assert.match(fast, /throw new Error\('no_audio_description'\)/);
     assert.doesNotMatch(fast, /new window\.AudioEncoder/);
     // The recorder stays reachable for devices without WebCodecs.
@@ -166,6 +168,10 @@ test('the card holds the shape of the clip before anything is fetched', () => {
     const html = policy.playbackMarkup('https://example.test/a.mp4', sized);
     assert.match(html, /style="--media-ratio:1080 \/ 1920"/);
     assert.match(html, /class="bokantaj-video-poster has-media-ratio"/);
+    // A landscape filename is the coded phone frame: the card must not open wide.
+    const codedWide = policy.playbackMarkup('https://example.test/a.mp4', 'https://example.test/a-poster-1920x1080.jpg');
+    assert.match(codedWide, /data-coded-ratio="1920x1080"/);
+    assert.doesNotMatch(codedWide, /--media-ratio/);
 
     // Shape unknown: a slim bar, and the video only appears once measured, so
     // no wrongly shaped box is ever shown.
@@ -176,7 +182,10 @@ test('the card holds the shape of the clip before anything is fetched', () => {
     assert.match(css, /\.bokantaj-video:not\(\.has-media-ratio\)/);
     const script = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
     assert.match(script, /function videoShapeReady/);
-    assert.match(script, /if \(!ratio\) await videoShapeReady\(video\)/);
+    assert.match(script, /if \(!ratio && !codedPortrait\) await videoShapeReady\(video\)/);
+    assert.match(script, /function playbackFrame/);
+    assert.match(script, /bokantaj-video is-settling/);
+    assert.match(css, /\.bokantaj-video-poster-image\.is-oriented/);
     assert.match(script, /video\.classList\.add\('has-media-ratio'\)/);
 
     const client = fs.readFileSync(path.join(__dirname, '../api-client.js'), 'utf8');
@@ -191,6 +200,32 @@ test('the card holds the shape of the clip before anything is fetched', () => {
         fs.readFileSync(path.join(__dirname, '../api/content-moderation-routes.js'), 'utf8'),
         /-poster\(\?:-\\d\+x\\d\+\)\?\\\.jpe\?g\$/
     );
+});
+
+test('a portrait iPhone matrix is read off the video track', () => {
+    function track(rotation) {
+        const tkhd = Buffer.alloc(88);
+        tkhd.writeUInt32BE(Math.round(1920 * 65536), 76);
+        tkhd.writeUInt32BE(Math.round(1080 * 65536), 80);
+        if (rotation === 90) tkhd.writeInt32BE(65536, 44);
+        if (rotation === 270) tkhd.writeInt32BE(-65536, 44);
+        if (rotation === 180) tkhd.writeInt32BE(-65536, 40);
+        return tkhd;
+    }
+    const audio = Buffer.alloc(88);
+    const file = (rotation) => Buffer.concat([
+        box('ftyp', Buffer.from('isom')),
+        box('mdat', Buffer.alloc(32)),
+        box('moov', Buffer.concat([
+            box('trak', box('tkhd', audio)),
+            box('trak', box('tkhd', track(rotation)))
+        ]))
+    ]);
+    assert.equal(policy.mp4Rotation(sample()), 0);
+    assert.equal(policy.mp4Rotation(file(90)), 90);
+    assert.equal(policy.mp4Rotation(file(180)), 180);
+    assert.equal(policy.mp4Rotation(file(270)), 270);
+    assert.equal(policy.mp4Rotation(new Uint8Array(file(90))), 90);
 });
 
 test('a checked MP4 can pass and an unverifiable file cannot', () => {

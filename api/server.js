@@ -124,7 +124,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({
     origin: (origin, callback) => callback(null, true),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Platform-Client', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Platform-Client', 'Accept', 'Range'],
+    exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
     credentials: true
 }));
 

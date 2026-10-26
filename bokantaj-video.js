@@ -99,15 +99,40 @@
             video.onerror = () => {
                 finish(new Error('La miniature n’a pas pu être créée.'));
             };
-            video.onloadeddata = () => {
+            video.onloadeddata = async () => {
                 const seekTo = Math.min(Math.max(0, at || 0), Math.max(0, (video.duration || 1) - 0.05));
+                let rotation = 0;
+                try {
+                    const head = await file.slice(0, 131072).arrayBuffer();
+                    rotation = policy.mp4Rotation ? policy.mp4Rotation(head) : 0;
+                } catch (_) {}
                 const draw = () => {
-                    const frame = policy.fitFrame(video.videoWidth, video.videoHeight);
+                    const isSwapped = rotation === 90 || rotation === 270;
+                    const vw = video.videoWidth || 1920;
+                    const vh = video.videoHeight || 1080;
+                    const displayW = isSwapped ? vh : vw;
+                    const displayH = isSwapped ? vw : vh;
+                    const frame = policy.fitFrame(displayW, displayH);
                     const canvas = document.createElement('canvas');
                     canvas.width = frame.width;
                     canvas.height = frame.height;
-                    canvas.getContext('2d').drawImage(video, 0, 0, frame.width, frame.height);
-                    canvas.toBlob((blob) => finish(null, blob), 'image/jpeg', 0.72);
+                    const context = canvas.getContext('2d');
+                    if (rotation === 90) {
+                        context.translate(frame.width, 0);
+                        context.rotate(Math.PI / 2);
+                        context.drawImage(video, 0, 0, frame.height, frame.width);
+                    } else if (rotation === 270) {
+                        context.translate(0, frame.height);
+                        context.rotate(-Math.PI / 2);
+                        context.drawImage(video, 0, 0, frame.height, frame.width);
+                    } else if (rotation === 180) {
+                        context.translate(frame.width, frame.height);
+                        context.rotate(Math.PI);
+                        context.drawImage(video, 0, 0, frame.width, frame.height);
+                    } else {
+                        context.drawImage(video, 0, 0, frame.width, frame.height);
+                    }
+                    canvas.toBlob((blob) => finish(null, blob), 'image/jpeg', 0.82);
                 };
                 video.onseeked = draw;
                 // Seeking to 0 when the player is already at 0 does not fire

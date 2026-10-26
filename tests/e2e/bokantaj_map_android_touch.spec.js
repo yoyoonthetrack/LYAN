@@ -28,7 +28,7 @@ test('Bokantaj Carte Pixel Android: tactile Fil/Carte, filtre, repère et zoom',
   await expect(page.locator('.bokantaj-map-pin')).toHaveCount(1);
   await page.locator('.bokantaj-map-pin').tap();
   await expect(page.locator('#bokantajMapDetail')).toContainText('Jarry');
-  const zoom = page.locator('#bokantajMapCanvas .leaflet-control-zoom-in');
+  const zoom = page.getByRole('button', { name: 'Zoomer', exact: true });
   await expect(zoom).toBeVisible();
   await zoom.tap();
   await expect(page.locator('#bokantajMapSection')).toBeVisible();
