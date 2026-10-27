@@ -23,12 +23,11 @@ test('a shared star control paints the chosen note and leaves the stored value a
     assert.match(css, /color: #B7AFA3/);
 });
 
-test('the Bokantaj title turns off the wonky j', () => {
-    assert.match(header, /"WONK" 0/);
-    assert.match(header, /"SOFT" 0/);
+test('the Bokantaj title is one Fraunces word', () => {
+    assert.doesNotMatch(header, /banner-title-j/);
+    assert.doesNotMatch(header, /"WONK"/);
     const feed = fs.readFileSync(path.join(__dirname, '../feed.html'), 'utf8');
-    assert.match(feed, /Fraunces:opsz,SOFT,WONK,wght/);
-    assert.match(feed, /aria-label="Bokantaj"/);
-    assert.match(feed, /class="banner-title-j"/);
-    assert.doesNotMatch(feed, /<h1 class="banner-title">Bokantaj<\/h1>/);
+    assert.match(feed, /<h1 class="banner-title">Bokantaj<\/h1>/);
+    assert.doesNotMatch(feed, /banner-title-j/);
+    assert.match(feed, /family=Fraunces/);
 });

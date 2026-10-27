@@ -108,7 +108,7 @@
                     rotation = known && policy.mp4Rotation ? policy.mp4Rotation(head) : 0;
                     if (!known && policy.mp4RotationScan && file.size > 131072) {
                         const tail = await file.slice(Math.max(0, file.size - 262144)).arrayBuffer();
-                        rotation = policy.mp4RotationScan(tail);
+                        rotation = policy.mp4RotationScan(tail) || 0;
                     }
                 } catch (_) {}
                 const draw = () => {

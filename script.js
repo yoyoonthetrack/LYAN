@@ -3344,7 +3344,8 @@ safeDomReady(() => {
         }
         if (isSwapped && codedW > codedH) {
             applyMediaRatio(button, codedH, codedW);
-        } else if (videoSrc.includes('/v1/media/') && codedW > codedH) {
+            button.dataset.turn = String(rotation);
+        } else if (videoSrc.includes('/v1/media/') && codedW > codedH && rotation !== 0) {
             // The stored JPEG is the coded landscape frame. A confirmed 90°
             // matrix is handled above. Anything else waits for the player,
             // which reports the upright size, so the sideways still never shows.
@@ -3515,6 +3516,7 @@ safeDomReady(() => {
             shell.style.setProperty('--media-ratio', ratio);
             shell.classList.add('has-media-ratio');
         }
+        if (button.dataset.turn) shell.dataset.turn = button.dataset.turn;
         shell.append(video, overlay);
         document.querySelectorAll('video.bokantaj-video[data-feed-video="1"]').forEach((other) => {
             if (other !== video && !other.paused) other.pause();
@@ -3567,7 +3569,11 @@ safeDomReady(() => {
             }
         };
         const ios = window.Capacitor && typeof window.Capacitor.getPlatform === 'function' && window.Capacitor.getPlatform() === 'ios';
-        if (ios) {
+        // A visible clip on iOS still plays from the remote URL, in ranges.
+        // The full local copy stays behind an explicit tap: autoplay must not
+        // download a whole MOV for every card that scrolls by.
+        const explicit = button.dataset.explicit === '1';
+        if (ios && explicit) {
             // The tap is the download. WKWebView leaves a white frame when the
             // media response is Cache-Control: no-store, so iOS plays a local
             // blob. Web and Android keep a direct URL and Range requests.
@@ -3586,14 +3592,22 @@ safeDomReady(() => {
             const dw = video.videoWidth;
             const dh = video.videoHeight;
             if (!(dw > 0) || !(dh > 0)) return;
+            const turn = Number(shell.dataset.turn || 0);
             const reserved = shell.style.getPropertyValue('--media-ratio');
             if (!reserved) {
-                applyMediaRatio(shell, dw, dh);
-                return;
+                const swapped = turn === 90 || turn === 270;
+                applyMediaRatio(shell, swapped ? dh : dw, swapped ? dw : dh);
             }
-            const parts = reserved.split('/').map((part) => parseFloat(part));
-            if (parts.length === 2 && (parts[1] > parts[0]) !== (dh > dw)) {
-                applyMediaRatio(shell, dw, dh);
+            // The file matrix says the picture is upright the other way. The
+            // decoder still reports the coded frame, so the element turns to
+            // match the box that was reserved. A player that already reports
+            // the display size is left alone.
+            const parts = (shell.style.getPropertyValue('--media-ratio') || '').split('/').map((part) => parseFloat(part));
+            const displayPortrait = parts.length === 2 && parts[1] > parts[0];
+            const codedPortrait = dh > dw;
+            if ((turn === 90 || turn === 270) && displayPortrait !== codedPortrait) {
+                shell.classList.toggle('is-turn-90', turn === 90);
+                shell.classList.toggle('is-turn-270', turn === 270);
             }
         });
         return video;
@@ -3685,6 +3699,7 @@ safeDomReady(() => {
         const button = event.target.closest && event.target.closest('.bokantaj-video-poster');
         if (button) {
             event.preventDefault();
+            button.dataset.explicit = '1';
             openBokantajVideo(button);
         }
     });

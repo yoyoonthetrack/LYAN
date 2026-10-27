@@ -13285,6 +13285,26 @@ body.is-native-app .navbar.scrolled,
     aspect-ratio: auto;
     object-fit: contain;
 }
+/* The decoder paints the coded landscape frame. The matrix already reserved
+   a portrait box, so the element turns inside that box. */
+.bokantaj-video-shell.is-turn-90,
+.bokantaj-video-shell.is-turn-270 {
+    container-type: size;
+}
+.bokantaj-video-shell.is-turn-90 > .bokantaj-video,
+.bokantaj-video-shell.is-turn-270 > .bokantaj-video {
+    width: 100cqh;
+    height: 100cqw;
+    max-height: none;
+    left: 50%;
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translate(-50%, -50%) rotate(90deg);
+}
+.bokantaj-video-shell.is-turn-270 > .bokantaj-video {
+    transform: translate(-50%, -50%) rotate(-90deg);
+}
 .bokantaj-video-shell.is-stage > .bokantaj-video {
     width: 100%;
     height: auto;

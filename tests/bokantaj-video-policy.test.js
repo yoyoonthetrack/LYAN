@@ -198,6 +198,8 @@ test('the card holds the shape of the clip before anything is fetched', () => {
     assert.match(script, /function playMostVisibleFeedVideo/);
     assert.match(script, /bytes=-262143/);
     assert.match(script, /ratioDeferred/);
+    assert.match(script, /is-turn-90/);
+    assert.match(script, /dataset\.explicit/);
     assert.match(script, /replacePlaybackFetch/);
     assert.doesNotMatch(preload, /loadBokantajMedia\(source, 'playback'\)/);
     assert.match(opener, /dataset\.holdPause = '1'/);
@@ -263,6 +265,9 @@ test('a portrait iPhone matrix is read off the video track', () => {
     assert.equal(policy.mp4HasTkhd(tail), false);
     assert.equal(policy.mp4RotationScan(tail), 90);
     assert.equal(policy.mp4RotationScan(Buffer.alloc(32)), null);
+    // Hello is a portrait phone clip: coded 3840×2160, display matrix 90°.
+    assert.deepEqual(policy.displayFrame(3840, 2160, 90), { width: 2160, height: 3840, rotation: 90 });
+    assert.deepEqual(policy.displayFrame(1920, 1080, 0), { width: 1920, height: 1080, rotation: 0 });
 });
 
 test('a checked MP4 can pass and an unverifiable file cannot', () => {

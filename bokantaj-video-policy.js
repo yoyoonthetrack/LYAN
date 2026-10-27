@@ -91,6 +91,15 @@ function fitFrame(width, height) {
 // real shape of the clip before fetching anything. Names without it stay valid.
 const POSTER_PATTERN = /-poster(?:-(\d+)x(\d+))?\.jpe?g(?:[?#]|$)/i;
 
+function displayFrame(width, height, rotation) {
+    const turn = rotation === 90 || rotation === 270;
+    return {
+        width: turn ? height : width,
+        height: turn ? width : height,
+        rotation: rotation || 0
+    };
+}
+
 function posterName(id, width, height) {
     const w = Math.round(Number(width) || 0);
     const h = Math.round(Number(height) || 0);
@@ -339,6 +348,7 @@ const api = {
     fitFrame,
     isPosterUrl,
     posterName,
+    displayFrame,
     posterRatio,
     posterFor,
     playbackMarkup,

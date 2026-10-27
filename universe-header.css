@@ -633,22 +633,13 @@ body[data-explorer-mode="lyanneurs"] .banner-lyanneurs {
     font-family: 'Fraunces', Georgia, serif;
     font-size: 3.15rem;
     font-weight: 800;
-    font-optical-sizing: none;
-    /* Fraunces WONK draws a j whose hook runs back under the word. SOFT 0
-       keeps the sharp serif terminals of the rest of the name. */
-    font-variation-settings: "opsz" 72, "wght" 800, "SOFT" 0, "WONK" 0;
     color: #1F4A2C;
-    line-height: 1.12;
-    margin: 4px 0 6px;
-    letter-spacing: -0.02em;
-    padding-bottom: 0.02em;
-}
-.banner-title-j {
-    display: inline-block;
-    width: 0.5em;
-    height: 0.98em;
-    margin-left: 0.01em;
-    vertical-align: -0.22em;
+    /* The whole word, including the j, uses one Fraunces cut. Room below the
+       baseline keeps the real descender inside the banner. */
+    line-height: 1.28;
+    margin: 2px 0 4px;
+    letter-spacing: 0.01em;
+    padding-bottom: 0.08em;
     overflow: visible;
 }
 
