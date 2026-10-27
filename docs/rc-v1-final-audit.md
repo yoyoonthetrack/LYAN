@@ -1,6 +1,44 @@
-# LYANN — Release Candidate V1.1 à V2.0
+# LYANN — Release Candidate V1.1 à V2.1
 
 Verdict : **NO-GO**
+
+## V2.1 — photo iOS, plein écran, lieu exact
+
+Le correctif produit est `2053e9d5f4a249cb336c4d937d4c8d3c6d822e5c`. Le paquet reconstruit ensuite porte l’identité `ios-mvpyrwgw-accac6`, le hash d’assets `9095907b05497f11e89c0332937f543fe5bfbc04654b694734f4796fc244a35a`, la version 1.0, le backend `https://staging-bokantaj.lyann.app`, le projet `tdktfbtqceldlaeqjtow` et le même verrou. Les parcours ci-dessous ont tourné sur le simulateur iPhone 17 Pro `9281CEB1-E36D-4654-91E0-3AA741F8AD10`, contre le backend Staging réellement déployé. Ce n’est pas l’iPhone physique. L’émulateur Android n’a pas été relancé.
+
+### iPhone physique
+
+« iPhone de yoann » (`00008140-00112D0C2684801C`) a été déverrouillé un moment (`passcodeRequired: false`). Le binaire installé était encore `app.lyann.mobile` 1.0 (10), antérieur à V2.0. Aucun parcours n’a été piloté et aucune capture d’écran de l’appareil n’a été prise. Le téléphone s’est ensuite reverrouillé (`passcodeRequired: true`). Le code n’a pas été saisi. Pour reprendre : déverrouiller « iPhone de yoann » et le laisser déverrouillé.
+
+### Photo — simulateur, backend Staging déployé
+
+Le bouton Photo du formulaire ouvre la feuille « Photothèque ». La photothèque s’ouvre, « Annuler » la ferme, une seconde ouverture sélectionne l’image verte ajoutée pour le test, et le compositeur affiche l’aperçu. La publication `QA-IOS-V21-PHOTO` apparaît dans le fil, avec le bandeau « Votre publication est maintenant visible. »
+
+Staging, projet `tdktfbtqceldlaeqjtow` : la ligne est `approved`, sans lieu, avec un objet dans `bokantaj-media-hold`. Une lecture anonyme voit la publication. Trois publications photo de ce passage ont été supprimées, puis `releaseMedia` a retiré leurs trois objets (aucune référence restante). L’URL publique de l’un d’eux répond ensuite HTTP 404, corps vide. Le JPEG n’est plus servi.
+
+Journaux : `/tmp/lyann-ios-uitest21.log`, `/tmp/lyann-ios-uitest23.log`. Captures : `/tmp/lyann-v21/`.
+
+### Vidéo — simulateur, backend Staging déployé
+
+`https://staging-bokantaj.lyann.app/v1/runtime/identity` répond encore le commit `80ceae7c35bcc7a1bbe5160f68e604bd2350ec20`. Une vidéo approuvée répond `cache-control: private, no-store`. Le correctif serveur (`private, max-age=300` et la plage transmise à Storage) est dans la branche et couvert par les tests unitaires. Il n’est pas déployé, donc il n’est pas validé.
+
+Sur ce backend, le simulateur joue après le toucher, depuis un blob local. `/tmp/lyann-ios-uitest18.log` note `video-several`, `video-playing`, `video-stage` et `video-back-feed` : « Fermer le lecteur » quitte la scène et le fil est de nouveau là. Le bouton natif du lecteur système n’est pas utilisé. Une passe suivante a rejoué une vidéo du fil (`video-playing`, plusieurs boutons « Lire la vidéo ») sans rouvrir la scène, parce que le bouton était hors d’atteinte. Une seconde vidéo distincte, un réseau lent ou coupé, et le nettoyage des fichiers temporaires iOS n’ont pas été exécutés. Le code révoque le blob quand la page passe en arrière-plan ; ce nettoyage n’a pas été observé.
+
+### Lieu — simulateur, GPS `16.241184,-61.533721`
+
+Le partage « Partager le nom du quartier » publie `QA-IOS-V21-QUARTIER`, statut `approved`, libellé Mortenol, coordonnées `16.241` et `-61.534` (trois décimales). Le fil affiche « Localisation · Mortenol ».
+
+« Partager la localisation précise » est un second bouton. Après ce choix, le libellé contient « position exacte » et la publication `QA-IOS-V21-EXACT` est `approved`, libellé Mortenol, coordonnées `16.241184` et `-61.533721` (six décimales). Une lecture anonyme voit les deux. Les lignes de quartier restent à trois décimales : la position précise n’est enregistrée qu’après ce bouton.
+
+La règle de repère, appliquée à l’horodatage stocké, laisse ces publications `info` visibles sur la carte maintenant et les retire au-delà de sept jours, sans supprimer la publication. Le délai de sept jours n’a pas été attendu sur la carte. Le retour au fil est visible : l’onglet Fil montre les cartes publiées.
+
+### Nettoyage et qualité
+
+Les huit lignes `QA-IOS-V21-%` ont été supprimées. Il en reste zéro. `node --test` sur la politique vidéo, la publication et les plages : 26 réussites. L’émulateur Android n’a pas été reconstruit dans ce passage.
+
+### Toujours en attente
+
+Recette sur l’iPhone déverrouillé, avec le paquet `2053e9d5`. Seconde vidéo, réseau interrompu, nettoyage des fichiers temporaires, et observation réelle de la disparition d’un repère. Déploiement du correctif d’en-tête, puis rejeu du lecteur contre ce serveur. Migration devis et remboursement Stripe Test inchangés. Aucune fusion, aucun Production, aucun Stripe Live.
 
 ## V2.0 — lecture iOS, bouton Photo, lieu du compositeur
 
