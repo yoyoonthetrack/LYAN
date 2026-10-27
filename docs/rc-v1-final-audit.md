@@ -1,6 +1,22 @@
-# LYANN — Release Candidate V1.1 à V2.7
+# LYANN — Release Candidate V1.1 à V2.8
 
 Verdict : **NO-GO**
+
+La décision détaillée, la matrice et les blocages restants sont dans `docs/rc-final-go-no-go.md`.
+
+## V2.8 — serveur Staging, vidéos vérifiées, paquets du même commit
+
+Produit `f02e6cca302d4647d32fff61cebdcfc19a531df3`. Le projet Vercel touché est `lyann-staging-preview` (`prj_FHIKUKYa8IwpiitigUma4gTtTF6q`), pas `lyan`. `https://staging.lyann.app/v1/runtime/identity` répond `kind=staging`, `supabase_ref=tdktfbtqceldlaeqjtow`, `isolation=STAGING_ISOLATED`, `production=false`, `commit=f02e6cca302d4647d32fff61cebdcfc19a531df3`. `/v1/payments/config` répond `stripe_mode=test`. Le contrôle hébergé de base passe. `https://lyann.app/v1/runtime/identity` répond 404. Aucune fusion, aucun déploiement du projet Production, Stripe Live inchangé.
+
+`https://staging-bokantaj.lyann.app` reste un domaine de branche `feature/bokantaj-map-v1` du projet `lyan`. Son identité est encore `80ceae7c`, `kind=preview`. Il n’a pas été réassigné : cela modifierait le projet Production. Les paquets natifs de cette passe appellent `https://staging.lyann.app`.
+
+Le worker hébergé n’avait ni `OPENAI_API_KEY`, ni secret de cron. Une vidéo sans vérificateur était classée `video_unreviewed` et tenue dès la première tentative. Le classement sans clé est maintenant `unconfigured`, donc repris, pas publié. Les deux secrets de Staging ont été posés sur le seul projet `lyann-staging-preview`, puis ce projet a été redéployé.
+
+Les deux vidéos tenues ont été relues par le vérificateur réel, pas forcées. `f3d3cd3d` (Morne-à-l’Eau) et `a9b1fc89` (Drums) sont `approved`, raison `video_checked`, jobs `done`, en 4,3 s chacune. Le fichier « Hello » n’a pas été réécrit. La migration `59_revise_sent_quote_p0001.sql` reçoit encore HTTP 401 du jeton de gestion : aucune écriture SQL. Le remboursement pré-transfert reste fermé : `preTransferRefundExecutionEnabled` vaut faux, et le grant Staging est inactif. Aucun remboursement n’a été créé.
+
+Paquet `ios-mvqglbi4-f14a27`, hash d’assets `419af7b077c23ee784e7e0d1ff220423f17d555c0ed662bdd0130cf324bd59c6`, version 1.0, build iOS 10, `versionCode` Android 1, compilé le 2026-10-27T09:04:11Z, backend `https://staging.lyann.app`, projet `tdktfbtqceldlaeqjtow`, SHA `f02e6cca302d4647d32fff61cebdcfc19a531df3`. Signature iOS automatique, équipe `WLV4WC47U2`. L’iPhone de yoann a lancé l’app : session QA, fil Bokantaj, la vidéo de Morne-à-l’Eau est à l’écran avec ses commandes de lecture. L’APK debug SHA-256 `f56bed017e233a59fadc26c31b10a8810cea430cd499356b2c8c68ff6cd43cab` est installé sur l’émulateur `lyann_api36` (`emulator-5554`), pas sur un téléphone. L’AAB signé SHA-256 `11f962e552db0c7056b8a2527a0eb4042a361f9fcb6a28ee87e5cd636ab89dd6`, certificat `CN=LYANN Upload`, n’a pas été envoyé à Google Play. Aucune archive n’a été envoyée à TestFlight.
+
+Au moment de cette note, sur `f02e6cc` : architecture et Android verts, Chromium encore en cours. Le rouge Chromium de `c060bc3` venait du titre de repère, qui inclut maintenant « secteur d’environ 4 km ». Les deux tests locaux passent.
 
 ## V2.7 — Gelasio, carte, territoire, compositeur, vidéo « Drums »
 
