@@ -197,6 +197,9 @@ test('the card holds the shape of the clip before anything is fetched', () => {
     assert.match(script, /connection\.saveData/);
     assert.match(script, /function playMostVisibleFeedVideo/);
     assert.match(script, /bytes=-262143/);
+    assert.match(script, /await read\(range, false\)/);
+    assert.match(script, /ratioDeferred === '1'/);
+    assert.match(script, /uprightPosterBlob/);
     assert.match(script, /ratioDeferred/);
     assert.match(script, /is-turn-90/);
     assert.match(script, /dataset\.explicit/);

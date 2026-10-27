@@ -3293,25 +3293,30 @@ safeDomReady(() => {
         const policy = window.LYANN_BOKANTAJ_VIDEO_POLICY;
         const turn = policy && policy.mp4Rotation;
         if (!turn) return null;
-        const read = async (range) => {
+        // Range together with Authorization is a preflight. The deployed media
+        // route does not list Range in Access-Control-Allow-Headers, so that
+        // preflight fails and a 90° iPhone clip is treated as landscape.
+        // The public range is enough for an approved post. The token is only
+        // a fallback, and it is sent alone of the two when the open range
+        // did not return a movie atom.
+        const read = async (range, authenticated) => {
             try {
-                const token = await bokantajMediaToken();
-                const response = await fetch(url, {
-                    headers: {
-                        ...(token ? { Authorization: 'Bearer ' + token } : {}),
-                        Range: range
-                    },
-                    cache: 'no-store'
-                });
+                const headers = { Range: range };
+                if (authenticated) {
+                    const token = await bokantajMediaToken();
+                    if (token) headers.Authorization = 'Bearer ' + token;
+                }
+                const response = await fetch(url, { headers, cache: 'no-store' });
                 if (!response.ok && response.status !== 206) return null;
                 return response.arrayBuffer();
             } catch (_) {
                 return null;
             }
         };
-        const head = await read('bytes=0-65535');
+        const probe = async (range) => (await read(range, false)) || (await read(range, true));
+        const head = await probe('bytes=0-65535');
         if (head && policy.mp4HasTkhd && policy.mp4HasTkhd(head)) return turn(head);
-        const tail = await read('bytes=-262143');
+        const tail = await probe('bytes=-262143');
         if (tail && policy.mp4RotationScan) {
             const scanned = policy.mp4RotationScan(tail);
             if (scanned !== null && scanned !== undefined) return scanned;
@@ -3368,26 +3373,42 @@ safeDomReady(() => {
                 }
             }
         }
+        const finish = () => {
+            button.dataset.oriented = '1';
+            scheduleFeedAutoplay();
+        };
         const img = button.querySelector('img');
         if (img) {
             const turnImg = async () => {
                 if (img.dataset.turned === '1') return;
                 img.dataset.turned = '1';
-                if (isSwapped && img.naturalWidth > img.naturalHeight) {
-                    applyMediaRatio(button, img.naturalHeight, img.naturalWidth);
-                    const blob = await canvasJpeg(paintUpright(img, rotation));
+                if (isSwapped && ((img.naturalWidth > img.naturalHeight) || (codedW > codedH))) {
+                    applyMediaRatio(button, codedH || img.naturalHeight, codedW || img.naturalWidth);
+                    // The poster <img> is cross-origin, so painting it taints the
+                    // canvas and the sideways JPEG would stay on screen. The
+                    // bytes are fetched instead, then drawn from a bitmap.
+                    const blob = await uprightPosterBlob(img.currentSrc || img.src, rotation);
                     if (blob) {
                         img.src = URL.createObjectURL(blob);
                         await imageReady(img);
+                        img.dataset.upright = '1';
                     }
                 }
-                img.classList.add('is-oriented');
+                if (!isSwapped || img.dataset.upright === '1') img.classList.add('is-oriented');
             };
+            if (isSwapped) {
+                const run = () => turnImg().then(finish);
+                if (img.complete && (img.naturalWidth || codedW > codedH)) run();
+                else {
+                    img.addEventListener('load', run, { once: true });
+                    img.addEventListener('error', finish, { once: true });
+                }
+                return;
+            }
             if (img.complete && img.naturalWidth) turnImg();
             else img.addEventListener('load', turnImg);
         }
-        button.dataset.oriented = '1';
-        scheduleFeedAutoplay();
+        finish();
     }
 
     function imageReady(img) {
@@ -3404,9 +3425,22 @@ safeDomReady(() => {
         });
     }
 
+    async function uprightPosterBlob(url, rotation) {
+        try {
+            const response = await fetch(String(url || '').split('#')[0], { cache: 'no-store' });
+            if (!response.ok) return null;
+            const bitmap = await createImageBitmap(await response.blob());
+            const canvas = paintUpright(bitmap, rotation);
+            if (typeof bitmap.close === 'function') bitmap.close();
+            return canvasJpeg(canvas);
+        } catch (_) {
+            return null;
+        }
+    }
+
     function paintUpright(image, rotation) {
-        const width = image.naturalWidth;
-        const height = image.naturalHeight;
+        const width = image.naturalWidth || image.width;
+        const height = image.naturalHeight || image.height;
         const canvas = document.createElement('canvas');
         const swap = rotation === 90 || rotation === 270;
         canvas.width = swap ? height : width;
@@ -3757,6 +3791,9 @@ safeDomReady(() => {
         }
         const coded = best.getAttribute('data-coded-ratio');
         if (coded && best.dataset.oriented !== '1') return;
+        // The matrix is still unknown. Opening now would lock the coded
+        // landscape frame, which is the sideways Hello card.
+        if (best.dataset.ratioDeferred === '1' && !best.classList.contains('has-media-ratio')) return;
         openBokantajVideo(best);
     }
 
