@@ -260,7 +260,7 @@ for (const mobile of [false, true]) {
     await expect(page.locator('#bokantajMapCanvas canvas')).toBeVisible();
     await expect(page.getByRole('link', { name: '© OpenStreetMap', exact: true })).toBeVisible();
     const marker = page.locator('#bokantajMapCanvas .bokantaj-map-pin');
-    await expect(marker).toHaveAttribute('title', 'Resto · Pointe-à-Pitre');
+    await expect(marker).toHaveAttribute('title', 'Resto · Pointe-à-Pitre · secteur d’environ 4 km');
     await page.evaluate(() => { document.getElementById('bokantajMapDetail').hidden = true; });
     await marker.focus();
     await page.keyboard.press('Enter');

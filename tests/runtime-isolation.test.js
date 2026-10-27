@@ -67,6 +67,11 @@ test('runtime identity reports the staging ref without secrets', () => {
     assert.equal(identity.production, false);
     assert.equal(identity.isolation, 'STAGING_ISOLATED');
     assert.equal(identity.commit, '1e4b351deadbeef');
+    const cliDeploy = runtimeIdentity(Object.assign({}, previewEnv, {
+        VERCEL_GIT_COMMIT_SHA: '',
+        LYANN_RELEASE_SHA: 'c060bc3cf5f7c66e23de30707fc60724b7df1032'
+    }));
+    assert.equal(cliDeploy.commit, 'c060bc3cf5f7c66e23de30707fc60724b7df1032');
     assert.equal(JSON.stringify(identity).includes('sk_'), false);
     assert.equal(JSON.stringify(identity).includes('service_role'), false);
     const gateway = fs.readFileSync(path.join(__dirname, '../api/index.js'), 'utf8');

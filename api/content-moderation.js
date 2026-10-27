@@ -273,7 +273,9 @@ async function classifyContent({ text, media, apiKey, fetchImpl, downloadMedia, 
     const trimmed = String(text || '').trim();
     if (!trimmed && files.length === 0) return { decision: 'approved', reason: 'empty' };
     if (!apiKey || typeof fetchImpl !== 'function') {
-        return combineDecisions({ decision: 'pending', reason: 'unconfigured' }, files);
+        // A missing checker is a technical retry. It must not be rewritten into
+        // video_unreviewed, which parks the publication on the first attempt.
+        return { decision: 'pending', reason: 'unconfigured' };
     }
     if (containsVideo(files)) {
         const textDecision = trimmed

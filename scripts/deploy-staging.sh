@@ -24,8 +24,11 @@ export LYANN_VERCEL_CLI_DEPLOY=1
 node scripts/staging-preflight.js
 
 # --prod promotes the stable domain of lyann-staging-preview, not the project lyan.
+RELEASE_SHA=$(git rev-parse HEAD)
 npx vercel deploy --local-config vercel.staging.json --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID" --prod --yes \
   --build-env LYANN_VERCEL_CLI_DEPLOY=1 \
-  --build-env VERCEL_PROJECT_NAME=lyann-staging-preview
+  --build-env VERCEL_PROJECT_NAME=lyann-staging-preview \
+  --build-env LYANN_RELEASE_SHA="$RELEASE_SHA" \
+  --env LYANN_RELEASE_SHA="$RELEASE_SHA"
 echo "Contrôle : node scripts/verify-staging-hosted.js"
 echo "Retour arrière : npx vercel rollback --local-config vercel.staging.json --project ${VERCEL_PROJECT_ID} --scope ${VERCEL_ORG_ID}"
