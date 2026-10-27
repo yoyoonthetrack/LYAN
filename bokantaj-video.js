@@ -104,7 +104,12 @@
                 let rotation = 0;
                 try {
                     const head = await file.slice(0, 131072).arrayBuffer();
-                    rotation = policy.mp4Rotation ? policy.mp4Rotation(head) : 0;
+                    const known = policy.mp4HasTkhd ? policy.mp4HasTkhd(head) : false;
+                    rotation = known && policy.mp4Rotation ? policy.mp4Rotation(head) : 0;
+                    if (!known && policy.mp4RotationScan && file.size > 131072) {
+                        const tail = await file.slice(Math.max(0, file.size - 262144)).arrayBuffer();
+                        rotation = policy.mp4RotationScan(tail);
+                    }
                 } catch (_) {}
                 const draw = () => {
                     const isSwapped = rotation === 90 || rotation === 270;

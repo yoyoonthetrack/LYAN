@@ -13,6 +13,83 @@ window.getBlockedUsers = function() {
     }
 };
 
+// Shared note control. Selected stars are gold, the others stay a neutral outline.
+// The numeric value written by the existing forms is unchanged.
+window.mountLyannStars = function(host, options) {
+    const opts = options || {};
+    const select = opts.select || null;
+    let selected = Number(opts.value || (select && select.value) || 5);
+    if (!(selected >= 1 && selected <= 5)) selected = 5;
+    const group = document.createElement('div');
+    group.className = 'lyann-stars';
+    group.setAttribute('role', 'radiogroup');
+    group.setAttribute('aria-label', opts.label || 'Note');
+    const buttons = [];
+    const value = document.createElement('span');
+    value.className = 'lyann-stars-value';
+    const paint = (preview) => {
+        const shown = preview || selected;
+        buttons.forEach((button, index) => {
+            const on = index < shown;
+            button.classList.toggle('is-on', !preview && on);
+            button.classList.toggle('is-preview', Boolean(preview) && on);
+            button.textContent = on ? '★' : '☆';
+            button.setAttribute('aria-checked', String(index + 1 === selected));
+        });
+        value.textContent = shown + '/5';
+    };
+    const choose = (note) => {
+        selected = note;
+        buttons.forEach((button, index) => { button.tabIndex = index + 1 === selected ? 0 : -1; });
+        if (select) select.value = String(note);
+        paint(0);
+        if (typeof opts.onChange === 'function') opts.onChange(note);
+    };
+    for (let note = 1; note <= 5; note += 1) {
+        const star = document.createElement('button');
+        star.type = 'button';
+        star.setAttribute('role', 'radio');
+        star.setAttribute('aria-label', note + ' sur 5');
+        star.tabIndex = note === selected ? 0 : -1;
+        star.addEventListener('keydown', (event) => {
+            const key = event.key;
+            if (key !== 'ArrowRight' && key !== 'ArrowLeft' && key !== 'ArrowUp' && key !== 'ArrowDown') return;
+            event.preventDefault();
+            const delta = (key === 'ArrowRight' || key === 'ArrowUp') ? 1 : -1;
+            const next = Math.min(5, Math.max(1, selected + delta));
+            buttons[next - 1].focus();
+            choose(next);
+        });
+        star.addEventListener('pointerenter', (event) => {
+            if (event.pointerType && event.pointerType !== 'mouse') return;
+            paint(note);
+        });
+        star.addEventListener('click', () => choose(note));
+        buttons.push(star);
+        group.appendChild(star);
+    }
+    group.addEventListener('pointerleave', () => paint(0));
+    group.appendChild(value);
+    paint(0);
+    const picker = {
+        element: group,
+        get value() { return selected; }
+    };
+    if (host) host.appendChild(group);
+    return picker;
+};
+
+window.upgradeLyannStarSelects = function(root) {
+    (root || document).querySelectorAll('select#revRating').forEach((select) => {
+        if (select.dataset.starsReady === '1') return;
+        select.dataset.starsReady = '1';
+        select.classList.add('lyann-stars-native');
+        const holder = document.createElement('div');
+        select.after(holder);
+        window.mountLyannStars(holder, { select, value: Number(select.value) || 5, label: 'Note sur 5' });
+    });
+};
+
 function isLyannSupportContact(contactId) {
     const id = contactId || currentChatContact?.id || window.LYANN_ACTIVE_CHAT_CONTACT?.id;
     return Boolean(id && window.LYANN_SUPPORT_USER_ID && String(id) === String(window.LYANN_SUPPORT_USER_ID));
@@ -3857,31 +3934,7 @@ function paintInlineReview() {
         card.remove();
     });
     head.append(title, close);
-    const stars = document.createElement('div');
-    stars.className = 'chat-inline-review-stars';
-    stars.setAttribute('role', 'radiogroup');
-    stars.setAttribute('aria-label', 'Note');
-    let selected = 5;
-    const buttons = [];
-    for (let value = 1; value <= 5; value += 1) {
-        const star = document.createElement('button');
-        star.type = 'button';
-        star.className = 'chat-inline-review-star' + (value <= selected ? ' is-on' : '');
-        star.setAttribute('role', 'radio');
-        star.setAttribute('aria-checked', value === selected ? 'true' : 'false');
-        star.setAttribute('aria-label', value + ' sur 5');
-        star.textContent = '★';
-        star.addEventListener('click', () => {
-            selected = value;
-            buttons.forEach((button, index) => {
-                const on = index < selected;
-                button.classList.toggle('is-on', on);
-                button.setAttribute('aria-checked', index + 1 === selected ? 'true' : 'false');
-            });
-        });
-        buttons.push(star);
-        stars.appendChild(star);
-    }
+    const picker = window.mountLyannStars(null, { value: 5, label: 'Note' });
     const row = document.createElement('div');
     row.className = 'chat-inline-review-row';
     const field = document.createElement('textarea');
@@ -3897,7 +3950,7 @@ function paintInlineReview() {
     send.className = 'btn btn-primary';
     send.textContent = 'Publier';
     row.append(field, send);
-    card.append(head, stars, row);
+    card.append(head, picker.element, row);
     field.addEventListener('focus', () => holdReviewKeyboard(card, true));
     field.addEventListener('blur', () => {
         setTimeout(() => {
@@ -3908,7 +3961,7 @@ function paintInlineReview() {
         event.preventDefault();
         if (send.disabled) return;
         send.disabled = true;
-        publishPeerReview(selected, field.value).then(() => {
+        publishPeerReview(picker.value, field.value).then(() => {
             window.__lyannReviewNow = false;
             holdReviewKeyboard(card, false);
             card.remove();
@@ -7396,6 +7449,7 @@ document.addEventListener('touchstart', (e) => {
             refreshOpenBusinessCards();
         });
     }
+    if (typeof window.upgradeLyannStarSelects === 'function') window.upgradeLyannStarSelects(document);
 
     const milestoneEditorApi = window.LYANN_MILESTONE_EDITOR;
     let milestoneEditorState = milestoneEditorApi ? milestoneEditorApi.createState() : null;

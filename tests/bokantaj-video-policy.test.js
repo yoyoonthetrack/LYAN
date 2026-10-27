@@ -184,21 +184,25 @@ test('the card holds the shape of the clip before anything is fetched', () => {
     const css = fs.readFileSync(path.join(__dirname, '../style.css'), 'utf8');
     assert.match(css, /\.bokantaj-video:not\(\.has-media-ratio\)/);
     const script = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
-    assert.match(script, /function videoShapeReady/);
     const opener = script.slice(script.indexOf('function openBokantajVideo'), script.indexOf('function openFullPlayer'));
+    const preload = script.slice(script.indexOf('async function preloadFeedCard'), script.indexOf('function hydrateHoldMedia'));
+    assert.match(script, /function videoShapeReady/);
     assert.match(opener, /const started = video\.play\(\)/);
     assert.match(opener, /getPlatform\(\) === 'ios'/);
     assert.match(opener, /loadBokantajMedia\(source, 'playback'\)/);
     assert.match(script, /webkitExitFullscreen/);
-    const preload = script.slice(script.indexOf('async function preloadFeedCard'), script.indexOf('function hydrateHoldMedia'));
-    assert.doesNotMatch(preload, /playback/);
-    assert.match(opener, /if \(!ratio\) videoShapeReady\(video\)/);
-    assert.ok(opener.indexOf('video.play()') < opener.indexOf('videoShapeReady(video)'));
-    assert.doesNotMatch(opener, /await /);
+    assert.match(opener, /loadedmetadata/);
+    assert.match(opener, /video\.loop = !\(Number\(video\.duration\) > 60\)/);
+    assert.match(script, /prefers-reduced-motion: reduce/);
+    assert.match(script, /connection\.saveData/);
+    assert.match(script, /function playMostVisibleFeedVideo/);
+    assert.match(script, /bytes=-262143/);
+    assert.match(script, /replacePlaybackFetch/);
+    assert.doesNotMatch(preload, /loadBokantajMedia\(source, 'playback'\)/);
     assert.match(opener, /dataset\.holdPause = '1'/);
     assert.match(opener, /Lecture en cours/);
     assert.match(opener, /aria-label', 'Pause'/);
-    assert.match(script, /if \(node\.dataset\.holdPause === '1'\) return;/);
+    assert.match(script, /if \(video\.dataset\.holdPause === '1'\) return;/);
     assert.match(script, /function playbackFrame/);
     assert.match(script, /bokantaj-video is-settling/);
     assert.match(css, /\.bokantaj-video-poster-image\.is-oriented/);
@@ -254,6 +258,9 @@ test('a portrait iPhone matrix is read off the video track', () => {
     assert.equal(policy.mp4Rotation(file(180)), 180);
     assert.equal(policy.mp4Rotation(file(270)), 270);
     assert.equal(policy.mp4Rotation(new Uint8Array(file(90))), 90);
+    const tail = file(90).subarray(24);
+    assert.equal(policy.mp4HasTkhd(tail), false);
+    assert.equal(policy.mp4RotationScan(tail), 90);
 });
 
 test('a checked MP4 can pass and an unverifiable file cannot', () => {

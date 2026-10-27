@@ -3066,6 +3066,15 @@ safeDomReady(() => {
     }
 
     const bokantajMediaCache = new Map();
+    let bokantajPlaybackAbort = null;
+
+    // Only the clip that is about to play may download. Starting another
+    // cancels the previous file so a fast scroll cannot pull the whole feed.
+    function replacePlaybackFetch() {
+        if (bokantajPlaybackAbort) bokantajPlaybackAbort.abort();
+        bokantajPlaybackAbort = new AbortController();
+        return bokantajPlaybackAbort.signal;
+    }
 
     function typedBokantajMediaBlob(blob, url, headerType) {
         const header = String(headerType || blob && blob.type || '').toLowerCase();
@@ -3096,9 +3105,11 @@ safeDomReady(() => {
         if (cached) return cached;
         const request = (async () => {
             const token = await bokantajMediaToken();
+            const playbackSignal = mode === 'playback' ? replacePlaybackFetch() : undefined;
             const response = await fetch(source, {
                 headers: token ? { Authorization: 'Bearer ' + token } : {},
-                cache: 'no-store'
+                cache: 'no-store',
+                signal: playbackSignal
             });
             if (!response.ok) throw new Error('media');
             const bytes = await response.arrayBuffer();
@@ -3279,27 +3290,35 @@ safeDomReady(() => {
 
     async function fetchVideoRotation(url) {
         if (!url || !url.includes('/v1/media/')) return 0;
-        try {
-            const token = await bokantajMediaToken();
-            const response = await fetch(url, {
-                headers: {
-                    ...(token ? { Authorization: 'Bearer ' + token } : {}),
-                    Range: 'bytes=0-65535'
-                },
-                cache: 'no-store'
-            });
-            if (!response.ok && response.status !== 206) return 0;
-            const bytes = await response.arrayBuffer();
-            const turn = window.LYANN_BOKANTAJ_VIDEO_POLICY && window.LYANN_BOKANTAJ_VIDEO_POLICY.mp4Rotation;
-            return turn ? turn(bytes) : 0;
-        } catch (_) {
-            return 0;
-        }
+        const policy = window.LYANN_BOKANTAJ_VIDEO_POLICY;
+        const turn = policy && policy.mp4Rotation;
+        if (!turn) return 0;
+        const read = async (range) => {
+            try {
+                const token = await bokantajMediaToken();
+                const response = await fetch(url, {
+                    headers: {
+                        ...(token ? { Authorization: 'Bearer ' + token } : {}),
+                        Range: range
+                    },
+                    cache: 'no-store'
+                });
+                if (!response.ok && response.status !== 206) return null;
+                return response.arrayBuffer();
+            } catch (_) {
+                return null;
+            }
+        };
+        const head = await read('bytes=0-65535');
+        if (head && policy.mp4HasTkhd && policy.mp4HasTkhd(head)) return turn(head);
+        const tail = await read('bytes=-262143');
+        if (tail && policy.mp4RotationScan) return policy.mp4RotationScan(tail);
+        return head ? turn(head) : 0;
     }
 
     async function ensureVideoPosterOriented(button) {
-        if (!button || button.dataset.oriented === '1') return;
-        button.dataset.oriented = '1';
+        if (!button || button.dataset.orienting === '1') return;
+        button.dataset.orienting = '1';
         const videoSrc = button.getAttribute('data-video-src');
         if (!videoSrc) return;
         let rotation = bokantajMediaRotation.get(videoSrc);
@@ -3314,6 +3333,9 @@ safeDomReady(() => {
         if (isSwapped && codedW > codedH) {
             applyMediaRatio(button, codedH, codedW);
         } else if (!isSwapped && rotation === 0 && codedW > 0 && codedH > 0) {
+            applyMediaRatio(button, codedW, codedH);
+        } else if (rotation === undefined && codedW > 0 && codedH > 0) {
+            // A local or already-shaped file has no display matrix to wait for.
             applyMediaRatio(button, codedW, codedH);
         } else if (isSwapped) {
             const currentRatio = button.style.getPropertyValue('--media-ratio');
@@ -3343,6 +3365,8 @@ safeDomReady(() => {
             if (img.complete && img.naturalWidth) turnImg();
             else img.addEventListener('load', turnImg);
         }
+        button.dataset.oriented = '1';
+        scheduleFeedAutoplay();
     }
 
     function imageReady(img) {
@@ -3425,7 +3449,7 @@ safeDomReady(() => {
         button.setAttribute('aria-busy', 'true');
         const video = document.createElement('video');
         video.className = 'bokantaj-video is-settling';
-        video.controls = true;
+        video.controls = false;
         video.playsInline = true;
         video.setAttribute('playsinline', '');
         video.setAttribute('webkit-playsinline', '');
@@ -3467,7 +3491,14 @@ safeDomReady(() => {
         overlay.append(toggle, sound, expand, state);
         button.replaceWith(shell);
         if (poster) shell.appendChild(poster);
+        if (ratio) {
+            shell.style.setProperty('--media-ratio', ratio);
+            shell.classList.add('has-media-ratio');
+        }
         shell.append(video, overlay);
+        document.querySelectorAll('video.bokantaj-video[data-feed-video="1"]').forEach((other) => {
+            if (other !== video && !other.paused) other.pause();
+        });
         setBokantajFeedSound(bokantajFeedMuted);
         video.dataset.autoplayBound = '1';
         // The feed observer must not pause this clip before its first frame,
@@ -3479,8 +3510,10 @@ safeDomReady(() => {
             if (poster && poster.parentElement) poster.remove();
         };
         const showFailure = () => {
-            reveal();
             delete video.dataset.holdPause;
+            video.classList.add('is-settling');
+            if (poster && !shell.contains(poster)) shell.insertBefore(poster, video);
+            poster?.classList.add('is-oriented');
             state.textContent = 'La vidéo n’a pas pu être chargée.';
             if (!shell.querySelector('.bokantaj-video-error')) {
                 const note = document.createElement('span');
@@ -3508,7 +3541,7 @@ safeDomReady(() => {
             const started = video.play();
             if (started && typeof started.catch === 'function') {
                 started.catch((err) => {
-                    if (err && err.name === 'AbortError') return;
+                    if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return;
                     showFailure();
                 });
             }
@@ -3528,9 +3561,10 @@ safeDomReady(() => {
             video.src = source;
             playClip();
         }
-        // The gesture has already started playback. Measuring the frame only
-        // updates the box; it must not run before play().
-        if (!ratio) videoShapeReady(video);
+        video.addEventListener('loadedmetadata', () => {
+            video.loop = !(Number(video.duration) > 60);
+            if (!ratio) applyMediaRatio(shell, video.videoWidth, video.videoHeight);
+        });
         return video;
     }
 
@@ -3558,25 +3592,28 @@ safeDomReady(() => {
     }
 
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState !== 'hidden') return;
-        document.querySelectorAll('video.bokantaj-video').forEach((video) => {
-            const shell = video.closest('.bokantaj-video-shell');
-            shell?.classList.remove('is-stage');
-            const expand = shell?.querySelector('.bokantaj-video-expand');
-            if (expand) expand.setAttribute('aria-label', 'Ouvrir le lecteur');
-            if (typeof video.webkitExitFullscreen === 'function') {
-                try { video.webkitExitFullscreen(); } catch (err) { /* already inline */ }
-            }
-            if (!video.paused) video.pause();
-            const src = video.getAttribute('src') || '';
-            if (src.startsWith('blob:')) {
-                const remote = video.dataset.videoSrc || '';
-                if (remote) bokantajMediaCache.delete(remote + '\0playback');
-                URL.revokeObjectURL(src);
-                video.removeAttribute('src');
-                try { video.load(); } catch (err) { /* element already gone */ }
-            }
-        });
+        if (document.visibilityState === 'hidden') {
+            document.querySelectorAll('video.bokantaj-video').forEach((video) => {
+                const shell = video.closest('.bokantaj-video-shell');
+                shell?.classList.remove('is-stage');
+                const expand = shell?.querySelector('.bokantaj-video-expand');
+                if (expand) expand.setAttribute('aria-label', 'Ouvrir le lecteur');
+                if (typeof video.webkitExitFullscreen === 'function') {
+                    try { video.webkitExitFullscreen(); } catch (err) { /* already inline */ }
+                }
+                if (!video.paused) video.pause();
+                const src = video.getAttribute('src') || '';
+                if (src.startsWith('blob:')) {
+                    const remote = video.dataset.videoSrc || '';
+                    if (remote) bokantajMediaCache.delete(remote + '\0playback');
+                    URL.revokeObjectURL(src);
+                    video.removeAttribute('src');
+                    try { video.load(); } catch (err) { /* element already gone */ }
+                }
+            });
+            return;
+        }
+        scheduleFeedAutoplay();
     });
 
     document.addEventListener('click', async (event) => {
@@ -3622,19 +3659,84 @@ safeDomReady(() => {
     });
 
     let feedVideoObserver = null;
+    let feedAutoplayFrame = 0;
 
-    function feedVideoVisibility(entry) {
-        const node = entry.target;
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-            if (node.matches('.bokantaj-video-poster')) {
-                return;
-            } else if (node.paused) {
-                node.play().catch(() => {});
+    function feedAutoplayAllowed() {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+        const connection = navigator.connection || navigator.webkitConnection || navigator.mozConnection;
+        if (connection && connection.saveData) return false;
+        return true;
+    }
+
+    function feedVisibleShare(node) {
+        const rect = node.getBoundingClientRect();
+        if (!(rect.height > 8)) return 0;
+        const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+        return Math.max(0, visible / Math.min(rect.height, window.innerHeight));
+    }
+
+    function scheduleFeedAutoplay() {
+        if (feedAutoplayFrame) return;
+        feedAutoplayFrame = window.requestAnimationFrame(() => {
+            feedAutoplayFrame = 0;
+            playMostVisibleFeedVideo();
+        });
+    }
+
+    function playMostVisibleFeedVideo() {
+        const nodes = [...document.querySelectorAll('.bokantaj-video-poster[data-video-src], video.bokantaj-video[data-feed-video="1"]')];
+        let best = null;
+        let bestShare = 0.6;
+        nodes.forEach((node) => {
+            const box = node.closest('.bokantaj-video-shell') || node;
+            const share = feedVisibleShare(box);
+            if (share > bestShare) {
+                best = node;
+                bestShare = share;
             }
+        });
+        document.querySelectorAll('video.bokantaj-video[data-feed-video="1"]').forEach((video) => {
+            if (video === best) return;
+            if (video.dataset.holdPause === '1') return;
+            if (!video.paused) video.pause();
+        });
+        if (!best || !feedAutoplayAllowed()) return;
+        if (best.matches('video')) {
+            if (!best.getAttribute('src') && best.dataset.videoSrc) {
+                attachFeedSource(best);
+                return;
+            }
+            if (best.paused && best.getAttribute('src')) best.play().catch(() => {});
             return;
         }
-        if (node.dataset.holdPause === '1') return;
-        if (node.tagName === 'VIDEO' && !node.paused) node.pause();
+        const coded = best.getAttribute('data-coded-ratio');
+        if (coded && best.dataset.oriented !== '1') return;
+        openBokantajVideo(best);
+    }
+
+    function attachFeedSource(video) {
+        const source = video.dataset.videoSrc;
+        if (!source || video.dataset.loading === '1') return;
+        video.dataset.loading = '1';
+        const ios = window.Capacitor && typeof window.Capacitor.getPlatform === 'function' && window.Capacitor.getPlatform() === 'ios';
+        const playClip = () => {
+            delete video.dataset.loading;
+            const started = video.play();
+            if (started && typeof started.catch === 'function') started.catch(() => {});
+        };
+        if (ios) {
+            loadBokantajMedia(source, 'playback').then((local) => {
+                video.src = local;
+                playClip();
+            }).catch(() => { delete video.dataset.loading; });
+            return;
+        }
+        video.src = source;
+        playClip();
+    }
+
+    function feedVideoVisibility() {
+        scheduleFeedAutoplay();
     }
 
     function observeFeedVideos(root) {
@@ -3647,8 +3749,10 @@ safeDomReady(() => {
         root.querySelectorAll('.bokantaj-video-poster[data-video-src], video.bokantaj-video[data-feed-video="1"]').forEach((node) => {
             if (node.dataset.autoplayBound === '1') return;
             node.dataset.autoplayBound = '1';
+            if (node.matches('.bokantaj-video-poster')) ensureVideoPosterOriented(node);
             feedVideoObserver.observe(node);
         });
+        scheduleFeedAutoplay();
     }
 
     function bokantajPhotoGrid(images) {

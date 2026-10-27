@@ -157,11 +157,33 @@ function pinExpiryEffect() {
 // iPhone portrait clips store a landscape frame plus a display matrix. The
 // poster is that raw frame, so the feed has to know the matrix before showing it.
 function mp4Rotation(input) {
-    const bytes = mp4Bytes(input);
-    if (!bytes || bytes.length < 16) return 0;
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    const found = rotationIn(view, 0, bytes.length);
+    const found = mp4RotationFound(input);
     return found === null ? 0 : found;
+}
+
+// A camera MOV often parks moov at the end. The first range then has no tkhd,
+// and a landscape coded frame would be reserved for a portrait clip.
+function mp4HasTkhd(input) {
+    return mp4RotationFound(input) !== null;
+}
+
+function mp4RotationScan(input) {
+    const bytes = mp4Bytes(input);
+    if (!bytes) return 0;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    for (let i = 4; i + 8 < bytes.length; i += 1) {
+        if (bytes[i] !== 0x74 || bytes[i + 1] !== 0x6b || bytes[i + 2] !== 0x68 || bytes[i + 3] !== 0x64) continue;
+        const rotation = tkhdRotation(view, i - 4, Math.min(bytes.length - (i - 4), 240));
+        if (rotation) return rotation;
+    }
+    return 0;
+}
+
+function mp4RotationFound(input) {
+    const bytes = mp4Bytes(input);
+    if (!bytes || bytes.length < 16) return null;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return rotationIn(view, 0, bytes.length);
 }
 
 function mp4Bytes(input) {
@@ -322,6 +344,8 @@ const api = {
     pinExpiryEffect,
     inspectMp4,
     mp4Rotation,
+    mp4HasTkhd,
+    mp4RotationScan,
     isProductionTarget,
     mediaDeletionAllowed,
     selectOrphans,
